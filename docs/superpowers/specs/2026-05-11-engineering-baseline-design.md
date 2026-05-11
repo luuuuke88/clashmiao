@@ -1,7 +1,7 @@
 # 工程基线（Engineering Baseline）设计
 
 **日期**：2026-05-11
-**状态**：approved
+**状态**：**deferred** — 项目核心功能还不完整时不做工程包装。等到项目内容（macOS 真上网 / iOS 接入 / widget 重构 / 测试覆盖）相对成熟后再回来按本 spec 落地。
 **适用范围**：clashmiao-client 仓库（[https://github.com/luuuuke88/clashmiao](https://github.com/luuuuke88/clashmiao)）
 
 ---

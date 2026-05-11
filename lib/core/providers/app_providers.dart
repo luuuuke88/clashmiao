@@ -10,7 +10,7 @@ import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/utils/config_parser.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
-import 'package:clashmiao/main.dart' show getDefaultConfigOptions;
+import 'package:clashmiao/core/config/default_config_options.dart';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';

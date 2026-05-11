@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:ui';
-import 'package:clashmiao/main.dart' show getDefaultConfigOptions;
+import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';

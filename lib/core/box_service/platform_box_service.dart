@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/directories.dart';
@@ -26,6 +27,10 @@ class PlatformBoxService implements BoxService {
   );
   static const _groupsChannel = EventChannel('$_channelPrefix/groups');
   static const _logsChannel = EventChannel('$_channelPrefix/service.logs');
+  static const _alertsChannel = EventChannel(
+    '$_channelPrefix/service.alerts',
+    JSONMethodCodec(),
+  );
 
   late final ValueStream<BoxStatus> _status;
 
@@ -100,6 +105,19 @@ class PlatformBoxService implements BoxService {
 
   @override
   Stream<BoxStatus> watchStatus() => _status;
+
+  @override
+  Stream<BoxAlert> watchAlerts() {
+    return _alertsChannel.receiveBroadcastStream().map((event) {
+      if (event is Map) {
+        return BoxAlert(
+          type: BoxAlertType.parse(event['alert'] as String?),
+          message: event['message'] as String?,
+        );
+      }
+      return const BoxAlert(type: BoxAlertType.unknown);
+    });
+  }
 
   @override
   Stream<BoxStats> watchStats() {

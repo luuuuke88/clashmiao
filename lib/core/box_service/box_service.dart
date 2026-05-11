@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/directories.dart';
@@ -61,6 +62,9 @@ abstract interface class BoxService {
 
   /// 监听服务状态变化
   Stream<BoxStatus> watchStatus();
+
+  /// 监听非致命错误：VPN 权限缺失、配置为空、Service 启动失败等。
+  Stream<BoxAlert> watchAlerts();
 
   /// 监听流量统计
   Stream<BoxStats> watchStats();

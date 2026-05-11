@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/directories.dart';
@@ -41,6 +42,9 @@ class StubBoxService implements BoxService {
 
   @override
   Stream<BoxStatus> watchStatus() => Stream.value(const BoxStopped());
+
+  @override
+  Stream<BoxAlert> watchAlerts() => const Stream.empty();
 
   @override
   Stream<BoxStats> watchStats() => Stream.value(BoxStats.empty);

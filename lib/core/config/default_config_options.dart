@@ -35,9 +35,13 @@ Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
     'url-test-interval': 600,
     'enable-clash-api': true,
     'clash-api-port': 6756,
-    'enable-tun': false,
+    // Android/iOS 必须开 TUN 才能让 sing-box 接管系统流量（走 VpnService）。
+    // 桌面端如果不需要 TUN 模式，调用方可显式覆盖为 false。
+    'enable-tun': true,
     'enable-tun-service': false,
-    'set-system-proxy': true,
+    // Android/iOS 上 set-system-proxy 需要 root 或系统签名，普通 app 用不了。
+    // 桌面端能用，但同一份默认配置就先关掉，TUN 模式才是移动端的常规路径。
+    'set-system-proxy': false,
     'bypass-lan': false,
     'allow-connection-from-lan': false,
     'enable-fake-dns': false,

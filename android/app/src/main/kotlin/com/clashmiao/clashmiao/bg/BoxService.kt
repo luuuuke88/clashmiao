@@ -146,7 +146,9 @@ class BoxService(
             }
 
             val selectedConfigPath = Settings.activeConfigPath
+            Log.d(TAG, "selectedConfigPath='$selectedConfigPath'")
             if (selectedConfigPath.isBlank()) {
+                Log.w(TAG, "activeConfigPath blank → stopAndAlert(EmptyConfiguration)")
                 stopAndAlert(Alert.EmptyConfiguration)
                 return
             }
@@ -154,7 +156,9 @@ class BoxService(
             activeProfileName = Settings.activeProfileName
 
             val configOptions = Settings.configOptions
+            Log.d(TAG, "configOptions length=${configOptions.length}")
             if (configOptions.isBlank()) {
+                Log.w(TAG, "configOptions blank → stopAndAlert(EmptyConfiguration)")
                 stopAndAlert(Alert.EmptyConfiguration)
                 return
             }
@@ -162,10 +166,11 @@ class BoxService(
             val content = try {
                 Mobile.buildConfig(selectedConfigPath, configOptions)
             } catch (e: Exception) {
-                Log.w(TAG, e)
+                Log.w(TAG, "Mobile.buildConfig failed", e)
                 stopAndAlert(Alert.EmptyConfiguration)
                 return
             }
+            Log.d(TAG, "Mobile.buildConfig ok, content length=${content.length}")
 
             if (Settings.debugMode) {
                 File(workingDir, "current-config.json").writeText(content)
@@ -178,22 +183,35 @@ class BoxService(
                 }
             }
 
+            Log.d(TAG, "DefaultNetworkMonitor.start()")
             DefaultNetworkMonitor.start()
+            Log.d(TAG, "Libbox.registerLocalDNSTransport")
             Libbox.registerLocalDNSTransport(LocalResolver)
+            Log.d(TAG, "Libbox.setMemoryLimit")
             Libbox.setMemoryLimit(!Settings.disableMemoryLimit)
 
             val newService = try {
+                Log.d(TAG, "Libbox.newService start")
                 Libbox.newService(content, platformInterface)
             } catch (e: Exception) {
+                Log.w(TAG, "Libbox.newService failed", e)
                 stopAndAlert(Alert.CreateService, e.message)
                 return
             }
+            Log.d(TAG, "Libbox.newService ok")
 
             if (delayStart) {
                 delay(1000L)
             }
 
-            newService.start()
+            Log.d(TAG, "newService.start()")
+            try {
+                newService.start()
+            } catch (e: Throwable) {
+                Log.e(TAG, "newService.start() THREW", e)
+                throw e
+            }
+            Log.d(TAG, "newService.start() ok")
             boxService = newService
             commandServer?.setService(boxService)
             status.postValue(Status.Started)
@@ -297,6 +315,7 @@ class BoxService(
     }
 
     private suspend fun stopAndAlert(type: Alert, message: String? = null) {
+        Log.w(TAG, "stopAndAlert: type=$type message=$message")
         Settings.startedByUser = false
         withContext(Dispatchers.Main) {
             if (receiverRegistered) {
@@ -312,8 +331,20 @@ class BoxService(
     }
 
     fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        Log.d(TAG, "onStartCommand entered, status=${status.value}")
         if (status.value != Status.Stopped) return Service.START_NOT_STICKY
         status.value = Status.Starting
+
+        // Android 14+ (API 34+) 要求 onStartCommand 后几秒内必须 startForeground，
+        // 否则系统会以 ForegroundServiceDidNotStartInTimeException 杀掉进程。
+        // 真正的 startService 是异步走 IO 线程的，所以这里同步先挂一个
+        // "starting" notification 把 Service 提升为前台，后续日志/状态走原流程。
+        try {
+            notification.show("", R.string.status_starting)
+            Log.d(TAG, "placeholder startForeground done")
+        } catch (e: Exception) {
+            Log.e(TAG, "placeholder startForeground failed", e)
+        }
 
         if (!receiverRegistered) {
             ContextCompat.registerReceiver(service, receiver, IntentFilter().apply {

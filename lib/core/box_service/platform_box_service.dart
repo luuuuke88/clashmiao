@@ -143,10 +143,11 @@ class PlatformBoxService implements BoxService {
     );
   }
 
-  /// 解析状态事件
+  /// 解析状态事件。原生侧推过来的是 Status enum 的 .name，
+  /// Android 用 PascalCase（"Started"），iOS / 桌面可能不同——统一小写后匹配。
   BoxStatus _parseStatus(dynamic event) {
     if (event is Map) {
-      final status = event['status'] as String?;
+      final status = (event['status'] as String?)?.toLowerCase();
       return switch (status) {
         'started' => const BoxStarted(),
         'starting' => const BoxStarting(),

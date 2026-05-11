@@ -7,7 +7,6 @@ import android.net.ProxyInfo
 import android.net.VpnService
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
 import com.clashmiao.clashmiao.constant.PerAppProxyMode
 import com.clashmiao.clashmiao.ktx.toIpPrefix
 import io.nekohasekai.libbox.TunOptions
@@ -54,10 +53,7 @@ class VPNService : VpnService(), PlatformInterfaceWrapper {
     var systemProxyEnabled = false
 
     override fun openTun(options: TunOptions): Int {
-        Log.d(TAG, "openTun called, checking VPN permission")
-        val prepareIntent = prepare(this)
-        Log.d(TAG, "VpnService.prepare result: ${if (prepareIntent == null) "null (granted)" else "non-null (need user authorization)"}")
-        if (prepareIntent != null) error("android: missing vpn permission")
+        if (prepare(this) != null) error("android: missing vpn permission")
 
         val builder = Builder()
             .setSession("sing-box")

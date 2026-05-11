@@ -15,7 +15,6 @@ import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/localization/gen/translations.g.dart';
 
 class SettingsPage extends ConsumerWidget {
   const SettingsPage({super.key});
@@ -82,7 +81,7 @@ class SettingsPage extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).aiUi.borderColor.withOpacity(0.05),
+                      ).aiUi.borderColor.withValues(alpha: 0.05),
                     ),
                     boxShadow: Theme.of(context).aiUi.cardShadow,
                   ),
@@ -168,7 +167,7 @@ class SettingsPage extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).aiUi.borderColor.withOpacity(0.05),
+                      ).aiUi.borderColor.withValues(alpha: 0.05),
                     ),
                     boxShadow: Theme.of(context).aiUi.cardShadow,
                   ),
@@ -246,7 +245,7 @@ class SettingsPage extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).aiUi.borderColor.withOpacity(0.05),
+                      ).aiUi.borderColor.withValues(alpha: 0.05),
                     ),
                     boxShadow: Theme.of(context).aiUi.cardShadow,
                   ),
@@ -303,7 +302,7 @@ class SettingsPage extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).aiUi.borderColor.withOpacity(0.05),
+                      ).aiUi.borderColor.withValues(alpha: 0.05),
                     ),
                     boxShadow: Theme.of(context).aiUi.cardShadow,
                   ),
@@ -363,7 +362,7 @@ class SettingsPage extends ConsumerWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).aiUi.borderColor.withOpacity(0.05),
+                      ).aiUi.borderColor.withValues(alpha: 0.05),
                     ),
                     boxShadow: Theme.of(context).aiUi.cardShadow,
                   ),
@@ -542,7 +541,7 @@ class _Divider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Divider(
       height: 1,
-      color: Theme.of(context).aiUi.borderColor.withOpacity(0.05),
+      color: Theme.of(context).aiUi.borderColor.withValues(alpha: 0.05),
     );
   }
 }
@@ -579,7 +578,7 @@ class _SettingsTile extends StatelessWidget {
               height: 32,
               decoration: BoxDecoration(
                 color: (iconColor ?? Theme.of(context).aiUi.secondaryTextColor)
-                    .withOpacity(isLight ? 0.1 : 0.2),
+                    .withValues(alpha: isLight ? 0.1 : 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -630,7 +629,7 @@ class _SwitchSettingsTile extends StatelessWidget {
       trailing: Switch(
         value: value,
         onChanged: onChanged,
-        activeColor: Theme.of(context).colorScheme.primary,
+        activeThumbColor: Theme.of(context).colorScheme.primary,
       ),
       onTap: () => onChanged(!value),
     );

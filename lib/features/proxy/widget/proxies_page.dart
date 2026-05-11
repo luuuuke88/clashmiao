@@ -9,7 +9,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:collection/collection.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -276,6 +275,7 @@ class ProxiesPage extends ConsumerWidget {
         // Toast can be annoying on fast switches, removed or keep brief
         // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
       }).catchError((e) {
+        if (!context.mounted) return;
         AppToast.error(context, t.proxies.switchToFailed(error: e.toString()));
       });
     } else {
@@ -403,15 +403,15 @@ class _AutoSelectCard extends HookConsumerWidget {
     final aiUi = theme.aiUi;
 
     final backgroundColor = isSelected
-        ? theme.colorScheme.primary.withOpacity(0.1)
+        ? theme.colorScheme.primary.withValues(alpha: 0.1)
         : aiUi.glassColor;
     final borderColor = isSelected
         ? theme.colorScheme.primary
-        : aiUi.borderColor.withOpacity(0.05);
+        : aiUi.borderColor.withValues(alpha: 0.05);
     final textColor =
         isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface;
     final subTextColor = isSelected
-        ? theme.colorScheme.primary.withOpacity(0.8)
+        ? theme.colorScheme.primary.withValues(alpha: 0.8)
         : aiUi.secondaryTextColor;
 
     return GestureDetector(
@@ -433,7 +433,7 @@ class _AutoSelectCard extends HookConsumerWidget {
               decoration: BoxDecoration(
                 color: isSelected
                     ? theme.colorScheme.primary
-                    : theme.colorScheme.primary.withOpacity(0.1),
+                    : theme.colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(
@@ -469,7 +469,7 @@ class _AutoSelectCard extends HookConsumerWidget {
               Icon(
                 FluentIcons.chevron_right_24_regular,
                 size: 16,
-                color: aiUi.secondaryTextColor.withOpacity(0.5),
+                color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
               ),
           ],
         ),
@@ -481,6 +481,7 @@ class _AutoSelectCard extends HookConsumerWidget {
 class _EmptyProxy extends ConsumerWidget {
   const _EmptyProxy();
 
+  @override
   Widget build(BuildContext context, WidgetRef ref) {
     final aiUi = Theme.of(context).aiUi;
     final t = ref.watch(translationsProvider);
@@ -515,7 +516,7 @@ class _EmptyProxy extends ConsumerWidget {
             t.home.emptyProfilesMsg,
             style: TextStyle(
               fontSize: 13,
-              color: aiUi.secondaryTextColor.withOpacity(0.7),
+              color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
             ),
           ),
         ],
@@ -547,7 +548,7 @@ class _GroupHeader extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -604,7 +605,7 @@ class _GroupHeader extends ConsumerWidget {
             t.proxies.lineCount(count: group.items.length.toString()),
             style: TextStyle(
               fontSize: 11,
-              color: aiUi.secondaryTextColor.withOpacity(0.6),
+              color: aiUi.secondaryTextColor.withValues(alpha: 0.6),
             ),
           ),
         ],
@@ -643,11 +644,11 @@ class _ProxyTile extends StatelessWidget {
     final isLight = theme.brightness == Brightness.light;
 
     final bgColor = isSelected
-        ? theme.colorScheme.primary.withOpacity(0.08)
+        ? theme.colorScheme.primary.withValues(alpha: 0.08)
         : (isLight ? Colors.white : aiUi.glassColor);
     final borderColor = isSelected
-        ? theme.colorScheme.primary.withOpacity(0.3)
-        : aiUi.borderColor.withOpacity(0.15);
+        ? theme.colorScheme.primary.withValues(alpha: 0.3)
+        : aiUi.borderColor.withValues(alpha: 0.15);
 
     return GestureDetector(
       onTap: onTap,
@@ -744,7 +745,7 @@ class _DelayBadge extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.1),
+          color: Colors.grey.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Text(
@@ -770,7 +771,7 @@ class _DelayBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

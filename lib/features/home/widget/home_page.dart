@@ -58,7 +58,7 @@ class HomePage extends ConsumerWidget {
                 width: 300,
                 height: 300,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(
+                  color: theme.colorScheme.primary.withValues(alpha: 
                     theme.brightness == Brightness.dark ? 0.0 : 0.08,
                   ),
                   shape: BoxShape.circle,
@@ -234,7 +234,7 @@ class _HeaderButton extends StatelessWidget {
           shape: BoxShape.circle,
           border: filled
               ? null
-              : Border.all(color: aiUi.borderColor.withOpacity(0.5)),
+              : Border.all(color: aiUi.borderColor.withValues(alpha: 0.5)),
           boxShadow: filled ? aiUi.primaryShadow : null,
         ),
         child: Icon(
@@ -280,7 +280,7 @@ class _ActiveProfileCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
@@ -355,7 +355,7 @@ class _ActiveProfileCard extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: theme.colorScheme.primary.withOpacity(0.6),
+                            color: theme.colorScheme.primary.withValues(alpha: 0.6),
                             blurRadius: 8,
                           ),
                         ],
@@ -572,7 +572,7 @@ class _ModeSelector extends HookConsumerWidget {
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isLight ? 0.08 : 0.2),
+                      color: Colors.black.withValues(alpha: isLight ? 0.08 : 0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -719,7 +719,7 @@ class _StatTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -731,7 +731,7 @@ class _StatTile extends StatelessWidget {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 18, color: theme.colorScheme.primary),
@@ -811,7 +811,7 @@ class _EmptyProfileBody extends ConsumerWidget {
           '',
           style: TextStyle(
             fontSize: 13,
-            color: aiUi.secondaryTextColor.withOpacity(0.7),
+            color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
           ),
         ),
         const SizedBox(height: 32),

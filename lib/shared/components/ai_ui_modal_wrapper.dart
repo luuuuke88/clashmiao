@@ -21,7 +21,7 @@ class AiUiModalWrapper extends StatelessWidget {
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 30,
               offset: const Offset(0, -5),
             ),
@@ -43,18 +43,18 @@ class AiUiModalWrapper extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 0),
                       decoration: BoxDecoration(
                         color: isLight
-                            ? Colors.white.withOpacity(0.1)
-                            : Colors.black.withOpacity(0.2),
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.2),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(32),
                           topRight: Radius.circular(32),
                         ),
                         border: Border.all(
                           color: isLight
-                              ? Colors.white.withOpacity(0.5)
+                              ? Colors.white.withValues(alpha: 0.5)
                               : Theme.of(
                                   context,
-                                ).aiUi.borderColor.withOpacity(0.1),
+                                ).aiUi.borderColor.withValues(alpha: 0.1),
                           width: 0.5,
                         ),
                       ),
@@ -69,7 +69,7 @@ class AiUiModalWrapper extends StatelessWidget {
                               decoration: BoxDecoration(
                                 color: Theme.of(
                                   context,
-                                ).aiUi.secondaryTextColor.withOpacity(0.1),
+                                ).aiUi.secondaryTextColor.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                             ),

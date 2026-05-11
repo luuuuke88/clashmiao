@@ -26,6 +26,9 @@ dependencies:
   # 函数式编程
   fpdart: ^1.1.0
 
+  # 集合扩展（firstWhereOrNull 等）
+  collection: ^1.18.0
+
   # 响应式
   rxdart: ^0.28.0
 

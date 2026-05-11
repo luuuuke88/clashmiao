@@ -157,8 +157,9 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(profileListProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -204,7 +205,7 @@ class _EmptyState extends ConsumerWidget {
             '',
             style: TextStyle(
               fontSize: 13,
-              color: aiUi.secondaryTextColor.withOpacity(0.7),
+              color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
             ),
           ),
           const SizedBox(height: 32),
@@ -295,11 +296,11 @@ class _ProfileCard extends ConsumerWidget {
     final isLight = theme.brightness == Brightness.light;
 
     final bgColor = profile.active
-        ? theme.colorScheme.primary.withOpacity(0.08)
+        ? theme.colorScheme.primary.withValues(alpha: 0.08)
         : (isLight ? Colors.white : aiUi.glassColor);
     final borderColor = profile.active
-        ? theme.colorScheme.primary.withOpacity(0.3)
-        : aiUi.borderColor.withOpacity(0.3);
+        ? theme.colorScheme.primary.withValues(alpha: 0.3)
+        : aiUi.borderColor.withValues(alpha: 0.3);
 
     return GestureDetector(
       onTap: onTap,
@@ -326,7 +327,7 @@ class _ProfileCard extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: profile.active
                         ? theme.colorScheme.primary
-                        : theme.colorScheme.primary.withOpacity(0.1),
+                        : theme.colorScheme.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -470,9 +471,10 @@ class _ProfileCard extends ConsumerWidget {
                   icon: FluentIcons.share_20_regular,
                   onTap: () async {
                     await Clipboard.setData(ClipboardData(text: profile.url));
-                    if (context.mounted)
+                    if (context.mounted) {
                       AppToast.success(
                           context, t.profile.share.subscriptionLinkCopied);
+                    }
                   },
                 ),
                 const SizedBox(width: 8),
@@ -483,7 +485,7 @@ class _ProfileCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.delete_20_regular,
-                  color: Colors.redAccent.withOpacity(0.8),
+                  color: Colors.redAccent.withValues(alpha: 0.8),
                   onTap: onDelete,
                 ),
               ],

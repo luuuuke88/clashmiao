@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
@@ -95,7 +94,7 @@ class _GlassBottomNav extends ConsumerWidget {
       decoration: BoxDecoration(
         color: isLight
             ? aiUi.glassColor
-            : const Color(0xFF16161A).withOpacity(0.95),
+            : const Color(0xFF16161A).withValues(alpha: 0.95),
         border: Border(
           top: BorderSide(
             color: isLight ? aiUi.borderColor : const Color(0x14FFFFFF),
@@ -118,8 +117,8 @@ class _GlassBottomNav extends ConsumerWidget {
           final color = isSelected
               ? theme.colorScheme.primary
               : (isLight
-                  ? aiUi.secondaryTextColor.withOpacity(0.6)
-                  : Colors.white.withOpacity(0.4));
+                  ? aiUi.secondaryTextColor.withValues(alpha: 0.6)
+                  : Colors.white.withValues(alpha: 0.4));
 
           return Expanded(
             child: GestureDetector(
@@ -133,7 +132,7 @@ class _GlassBottomNav extends ConsumerWidget {
                     height: 32,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? theme.colorScheme.primary.withOpacity(0.12)
+                          ? theme.colorScheme.primary.withValues(alpha: 0.12)
                           : Colors.transparent,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: isSelected && isLight
@@ -141,7 +140,7 @@ class _GlassBottomNav extends ConsumerWidget {
                               BoxShadow(
                                 color: const Color(
                                   0xFF3B82F6,
-                                ).withOpacity(0.12),
+                                ).withValues(alpha: 0.12),
                                 blurRadius: 12,
                                 offset: const Offset(0, 4),
                               ),

@@ -13,9 +13,7 @@ class AppTheme {
           seedColor: const Color(0xFF3B82F6), // Vibrant Blue
           brightness: Brightness.light,
           surface: Colors.white,
-          background: const Color(0xFFF8FAFC), // Slate 50
           onSurface: const Color(0xFF1E293B), // Slate 800
-          onBackground: const Color(0xFF1E293B),
         );
     return ThemeData(
       useMaterial3: true,
@@ -41,7 +39,6 @@ class AppTheme {
           seedColor: const Color(0xFF6366f1), // UI Primary
           brightness: Brightness.dark,
           surface: const Color(0xFF16161a), // Card Dark
-          background: Colors.black, // Pure Black
         );
     return ThemeData(
       useMaterial3: true,

@@ -110,12 +110,12 @@ class _SelectionTile extends StatelessWidget {
             color: isSelected
                 ? Theme.of(
                     context,
-                  ).colorScheme.primary.withOpacity(isLight ? 0.08 : 0.15)
+                  ).colorScheme.primary.withValues(alpha: isLight ? 0.08 : 0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: isSelected
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
                   : Colors.transparent,
             ),
           ),

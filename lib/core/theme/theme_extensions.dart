@@ -57,20 +57,20 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
   final List<BoxShadow> primaryShadow;
 
   static final AiUiTheme dark = AiUiTheme(
-    glassColor: const Color(0x9916161A), // 0xFF16161A.withOpacity(0.6)
-    borderColor: const Color(0x14FFFFFF), // Colors.white.withOpacity(0.08)
-    softBackgroundColor: const Color(0x0DFFFFFF), // Colors.white.withOpacity(0.05)
-    secondaryTextColor: const Color(0x80FFFFFF), // Colors.white.withOpacity(0.5)
+    glassColor: const Color(0x9916161A), // 0xFF16161A.withValues(alpha: 0.6)
+    borderColor: const Color(0x14FFFFFF), // Colors.white.withValues(alpha: 0.08)
+    softBackgroundColor: const Color(0x0DFFFFFF), // Colors.white.withValues(alpha: 0.05)
+    secondaryTextColor: const Color(0x80FFFFFF), // Colors.white.withValues(alpha: 0.5)
     cardShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.2),
+        color: Colors.black.withValues(alpha: 0.2),
         blurRadius: 20,
         offset: const Offset(0, 10),
       ),
     ],
     primaryShadow: [
       BoxShadow(
-        color: const Color(0xFF6366f1).withOpacity(0.2),
+        color: const Color(0xFF6366f1).withValues(alpha: 0.2),
         blurRadius: 20,
         offset: const Offset(0, 8),
       ),
@@ -84,14 +84,14 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     secondaryTextColor: const Color(0xFF475569), // Slate 600
     cardShadow: [
       BoxShadow(
-        color: Colors.black.withOpacity(0.04),
+        color: Colors.black.withValues(alpha: 0.04),
         blurRadius: 20,
         offset: const Offset(0, 10),
       ),
     ],
     primaryShadow: [
       BoxShadow(
-        color: const Color(0xFF3B82F6).withOpacity(0.15),
+        color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
         blurRadius: 30,
         offset: const Offset(0, 10),
       ),

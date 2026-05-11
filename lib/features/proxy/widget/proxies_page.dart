@@ -1,68 +1,18 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/features/proxy/state/optimistic_proxy_selections_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxies_sort_notifier.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
+import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:collection/collection.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:clashmiao/core/localization/translations.dart';
-import 'package:collection/collection.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-enum ProxiesSort {
-  unsorted,
-  name,
-  delay;
-
-  String present(TranslationsEn t) => switch (this) {
-        ProxiesSort.unsorted => t.proxies.sortOptions.unsorted,
-        ProxiesSort.name => t.proxies.sortOptions.name,
-        ProxiesSort.delay => t.proxies.sortOptions.delay,
-      };
-}
-
-final optimisticProxySelectionsProvider = StateNotifierProvider<
-    OptimisticProxySelectionsNotifier, Map<String, String>>((ref) {
-  return OptimisticProxySelectionsNotifier();
-});
-
-class OptimisticProxySelectionsNotifier
-    extends StateNotifier<Map<String, String>> {
-  OptimisticProxySelectionsNotifier() : super({});
-
-  void update(String group, String proxy) {
-    state = {...state, group: proxy};
-  }
-}
-
-final proxiesSortProvider =
-    StateNotifierProvider<ProxiesSortNotifier, ProxiesSort>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-  return ProxiesSortNotifier(prefs);
-});
-
-class ProxiesSortNotifier extends StateNotifier<ProxiesSort> {
-  final SharedPreferences prefs;
-
-  ProxiesSortNotifier(this.prefs) : super(_read(prefs));
-
-  static ProxiesSort _read(SharedPreferences prefs) {
-    final name = prefs.getString('proxies_sort_mode');
-    return ProxiesSort.values.firstWhere(
-      (e) => e.name == name,
-      orElse: () => ProxiesSort.delay,
-    );
-  }
-
-  Future<void> updateSort(ProxiesSort value) async {
-    state = value;
-    await prefs.setString('proxies_sort_mode', value.name);
-  }
-}
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ProxiesPage extends ConsumerWidget {
   const ProxiesPage({super.key});

@@ -1,29 +1,29 @@
 import 'dart:io';
 
-/// sing-box 内核启动时使用的全局默认配置。
+/// sing-box 内核启动时使用的全局默认配置（hiddify libcore 的 `configOptions`）。
 ///
-/// 切换"全局/智能"模式时复用此函数。
-/// [executeConfigAsIs] = true → 全局模式，直接使用原始配置；
-/// [executeConfigAsIs] = false → 智能模式，附加中国直连分流规则。
+/// 注意：智能 / 全局分流由 `RuntimeConfigBuilder` 在 connect 时
+/// 现场写到 runtime-config.json，**不**依赖这里的 fork-side `region` / `rules`。
+///
+/// [executeConfigAsIs] 现在只用于 Dart 端记录用户选择，
+/// 不再走 fork 的 cn 路径（避免 fork 强制 append 中国大陆下载不动的 remote rule-set）。
 Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
-  final rules = executeConfigAsIs
-      ? <Map<String, dynamic>>[]
-      : <Map<String, dynamic>>[
-          {
-            'domains': 'domain:.cn,geosite:cn',
-            'ip': 'geoip:cn',
-            'outbound': 'bypass',
-          },
-        ];
-
   // 移动端走 VpnService 接管流量 → TUN 必开、系统代理设置不可用（需 root）。
   // 桌面端反过来：系统代理设置 OK，TUN 默认关（需要 admin/root 才能 setup）。
   final isMobile = Platform.isAndroid || Platform.isIOS;
 
   return {
-    'region': executeConfigAsIs ? 'other' : 'cn',
+    // region 永远 'other'：sing-box 1.8 fork（hiddify libcore）在 region != 'other'
+    // 时会强制 append 一个 remote rule-set，URL 指向 hiddify-geo，中国大陆 GFW 阻断
+    // 让 sing-box 启动时 routing 不完整。我们改用 Dart 端注入 local rule-set
+    // （RuntimeConfigBuilder）。
+    'region': 'other',
+    // 不让 fork 自己注入 bypass rules，路由完全交给 RuntimeConfigBuilder。
+    'execute-config-as-is': true,
+    // 关键：让 fork 用 profile 自带的 inbounds/dns/route，而不是自己 rebuild
+    // 一份强制走 udp://1.1.1.1 / 强制 append remote rule-set 的 DNS 配置。
+    'enable-full-config': true,
     'block-ads': false,
-    'execute-config-as-is': executeConfigAsIs,
     'log-level': 'warn',
     'resolve-destination': false,
     'ipv6-mode': 'ipv4_only',
@@ -49,7 +49,7 @@ Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
     'enable-fake-dns': false,
     'enable-dns-routing': true,
     'independent-dns-cache': true,
-    'rules': rules,
+    'rules': <Map<String, dynamic>>[],
     'mux': {
       'enable': false,
       'padding': false,

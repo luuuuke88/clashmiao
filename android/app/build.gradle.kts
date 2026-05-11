@@ -25,6 +25,14 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        multiDexEnabled = true
+        ndk {
+            abiFilters += listOf("x86_64", "armeabi-v7a", "arm64-v8a")
+        }
+    }
+
+    buildFeatures {
+        aidl = true
     }
 
     buildTypes {
@@ -35,7 +43,11 @@ android {
 }
 
 dependencies {
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
 }
 
 flutter {

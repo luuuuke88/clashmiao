@@ -1,168 +1,160 @@
 package com.clashmiao.clashmiao
 
+import android.annotation.SuppressLint
 import android.content.Intent
+import android.Manifest
+import android.content.pm.PackageManager
 import android.net.VpnService
-import io.flutter.embedding.android.FlutterActivity
+import android.os.Build
+import android.util.Log
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.lifecycleScope
+import com.clashmiao.clashmiao.bg.ServiceConnection
+import com.clashmiao.clashmiao.bg.ServiceNotification
+import com.clashmiao.clashmiao.constant.Alert
+import com.clashmiao.clashmiao.constant.ServiceMode
+import com.clashmiao.clashmiao.constant.Status
+import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
-import io.flutter.plugin.common.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.LinkedList
 
-class MainActivity : FlutterActivity() {
 
-    private val CHANNEL_PREFIX = "com.clashmiao.app"
-    private val VPN_REQUEST_CODE = 1001
+class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
+    companion object {
+        private const val TAG = "ANDROID/MyActivity"
+        lateinit var instance: MainActivity
 
-    private var statusSink: EventChannel.EventSink? = null
-    private var statsSink: EventChannel.EventSink? = null
-    private var groupsSink: EventChannel.EventSink? = null
-    private var logsSink: EventChannel.EventSink? = null
+        const val VPN_PERMISSION_REQUEST_CODE = 1001
+        const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1010
+    }
 
-    private var pendingResult: MethodChannel.Result? = null
+    private val connection = ServiceConnection(this, this)
+
+    val logList = LinkedList<String>()
+    var logCallback: ((Boolean) -> Unit)? = null
+    val serviceStatus = MutableLiveData(Status.Stopped)
+    val serviceAlerts = MutableLiveData<ServiceEvent?>(null)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        val messenger = flutterEngine.dartExecutor.binaryMessenger
-
-        // Method Channel
-        MethodChannel(messenger, "$CHANNEL_PREFIX/method").setMethodCallHandler { call, result ->
-            handleMethodCall(call, result)
-        }
-
-        // Status Event Channel
-        EventChannel(messenger, "$CHANNEL_PREFIX/service.status", JSONMethodCodec.INSTANCE)
-            .setStreamHandler(object : EventChannel.StreamHandler {
-                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    statusSink = events
-                    events?.success(mapOf("status" to "stopped"))
-                }
-                override fun onCancel(arguments: Any?) { statusSink = null }
-            })
-
-        // Stats Event Channel
-        EventChannel(messenger, "$CHANNEL_PREFIX/stats", JSONMethodCodec.INSTANCE)
-            .setStreamHandler(object : EventChannel.StreamHandler {
-                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    statsSink = events
-                }
-                override fun onCancel(arguments: Any?) { statsSink = null }
-            })
-
-        // Groups Event Channel
-        EventChannel(messenger, "$CHANNEL_PREFIX/groups")
-            .setStreamHandler(object : EventChannel.StreamHandler {
-                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    groupsSink = events
-                }
-                override fun onCancel(arguments: Any?) { groupsSink = null }
-            })
-
-        // Logs Event Channel
-        EventChannel(messenger, "$CHANNEL_PREFIX/service.logs")
-            .setStreamHandler(object : EventChannel.StreamHandler {
-                override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
-                    logsSink = events
-                }
-                override fun onCancel(arguments: Any?) { logsSink = null }
-            })
+        instance = this
+        reconnect()
+        flutterEngine.plugins.add(MethodHandler(lifecycleScope))
+        flutterEngine.plugins.add(PlatformSettingsHandler())
+        flutterEngine.plugins.add(EventHandler())
+        flutterEngine.plugins.add(LogHandler())
+        flutterEngine.plugins.add(GroupsChannel(lifecycleScope))
+        flutterEngine.plugins.add(ActiveGroupsChannel(lifecycleScope))
+        flutterEngine.plugins.add(StatsChannel(lifecycleScope))
     }
 
-    private fun handleMethodCall(call: MethodCall, result: MethodChannel.Result) {
-        when (call.method) {
-            "setup" -> {
-                // TODO: 初始化 sing-box 核心
-                result.success(true)
-            }
+    fun reconnect() {
+        connection.reconnect()
+    }
 
-            "start" -> {
-                val path = call.argument<String>("path")
-                if (path == null) {
-                    result.error("INVALID_ARGS", "缺少 path 参数", null)
-                    return
-                }
-                // 请求 VPN 权限
-                val intent = VpnService.prepare(this)
-                if (intent != null) {
-                    pendingResult = result
-                    startActivityForResult(intent, VPN_REQUEST_CODE)
-                } else {
-                    // 已有权限，直接启动
-                    startVpn(path, result)
+    fun startService() {
+        if (!ServiceNotification.checkPermission()) {
+            grantNotificationPermission()
+            return
+        }
+        lifecycleScope.launch(Dispatchers.IO) {
+            if (Settings.rebuildServiceMode()) {
+                reconnect()
+            }
+            if (Settings.serviceMode == ServiceMode.VPN) {
+                if (prepare()) {
+                    Log.d(TAG, "VPN permission required")
+                    return@launch
                 }
             }
 
-            "stop" -> {
-                // TODO: 停止 VPN 服务
-                statusSink?.success(mapOf("status" to "stopped"))
-                result.success(true)
+            val intent = Intent(Application.application, Settings.serviceClass())
+            withContext(Dispatchers.Main) {
+                ContextCompat.startForegroundService(Application.application, intent)
             }
-
-            "restart" -> {
-                val path = call.argument<String>("path")
-                if (path == null) {
-                    result.error("INVALID_ARGS", "缺少 path 参数", null)
-                    return
-                }
-                // TODO: 重启 VPN 服务
-                result.success(true)
-            }
-
-            "parse_config" -> {
-                val path = call.argument<String>("path")
-                val tempPath = call.argument<String>("tempPath")
-                // TODO: 验证配置文件
-                result.success("")
-            }
-
-            "select_outbound" -> {
-                val groupTag = call.argument<String>("groupTag")
-                val outboundTag = call.argument<String>("outboundTag")
-                // TODO: 切换出站代理
-                result.success(true)
-            }
-
-            "url_test" -> {
-                val groupTag = call.argument<String>("groupTag")
-                // TODO: 延迟测试
-                result.success(true)
-            }
-
-            "generate_config" -> {
-                val path = call.argument<String>("path")
-                // TODO: 生成完整配置
-                result.success("")
-            }
-
-            "change_config_options" -> {
-                // TODO: 更新配置选项
-                result.success(true)
-            }
-
-            "clear_logs" -> {
-                result.success(true)
-            }
-
-            else -> result.notImplemented()
         }
     }
 
-    private fun startVpn(configPath: String, result: MethodChannel.Result) {
-        // TODO: 启动 VpnService，传入配置路径
-        statusSink?.success(mapOf("status" to "starting"))
-        // 模拟启动
-        statusSink?.success(mapOf("status" to "started"))
-        result.success(true)
+    private suspend fun prepare() = withContext(Dispatchers.Main) {
+        try {
+            val intent = VpnService.prepare(this@MainActivity)
+            if (intent != null) {
+                startActivityForResult(intent, VPN_PERMISSION_REQUEST_CODE)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            onServiceAlert(Alert.RequestVPNPermission, e.message)
+            false
+        }
+    }
+
+    override fun onServiceStatusChanged(status: Status) {
+        serviceStatus.postValue(status)
+    }
+
+    override fun onServiceAlert(type: Alert, message: String?) {
+        serviceAlerts.postValue(ServiceEvent(Status.Stopped, type, message))
+    }
+
+    override fun onServiceWriteLog(message: String?) {
+        if (message == null) return
+        if (logList.size > 300) {
+            logList.removeFirst()
+        }
+        logList.addLast(message)
+        logCallback?.invoke(false)
+    }
+
+    override fun onServiceResetLogs(messages: MutableList<String>) {
+        logList.clear()
+        logList.addAll(messages)
+        logCallback?.invoke(true)
+    }
+
+    override fun onDestroy() {
+        connection.disconnect()
+        super.onDestroy()
+    }
+
+    @SuppressLint("NewApi")
+    private fun grantNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                NOTIFICATION_PERMISSION_REQUEST_CODE
+            )
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startService()
+            } else onServiceAlert(Alert.RequestNotificationPermission, null)
+        }
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) {
-                // 用户授权了 VPN 权限
-                // TODO: 启动 VPN
-                pendingResult?.success(true)
-            } else {
-                pendingResult?.error("VPN_DENIED", "用户拒绝了 VPN 权限", null)
-            }
-            pendingResult = null
+        if (requestCode == VPN_PERMISSION_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) startService()
+            else onServiceAlert(Alert.RequestVPNPermission, null)
+        } else if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
+            if (resultCode == RESULT_OK) startService()
+            else onServiceAlert(Alert.RequestNotificationPermission, null)
         }
     }
 }

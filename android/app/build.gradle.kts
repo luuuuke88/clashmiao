@@ -22,9 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.clashmiao.clashmiao"
         minSdk = flutter.minSdkVersion
-        // 对齐 baseproxy 的 targetSdk 35：Android 16 (API 36) 对 specialUse
-        // foreground service 限制更严，会让 VpnService 起不来。
-        targetSdk = 35
+        targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true

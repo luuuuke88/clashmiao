@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// sing-box 内核启动时使用的全局默认配置。
 ///
 /// 切换"全局/智能"模式时复用此函数。
@@ -13,6 +15,10 @@ Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
             'outbound': 'bypass',
           },
         ];
+
+  // 移动端走 VpnService 接管流量 → TUN 必开、系统代理设置不可用（需 root）。
+  // 桌面端反过来：系统代理设置 OK，TUN 默认关（需要 admin/root 才能 setup）。
+  final isMobile = Platform.isAndroid || Platform.isIOS;
 
   return {
     'region': executeConfigAsIs ? 'other' : 'cn',
@@ -35,13 +41,9 @@ Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
     'url-test-interval': 600,
     'enable-clash-api': true,
     'clash-api-port': 6756,
-    // Android/iOS 必须开 TUN 才能让 sing-box 接管系统流量（走 VpnService）。
-    // 桌面端如果不需要 TUN 模式，调用方可显式覆盖为 false。
-    'enable-tun': true,
+    'enable-tun': isMobile,
     'enable-tun-service': false,
-    // Android/iOS 上 set-system-proxy 需要 root 或系统签名，普通 app 用不了。
-    // 桌面端能用，但同一份默认配置就先关掉，TUN 模式才是移动端的常规路径。
-    'set-system-proxy': false,
+    'set-system-proxy': !isMobile,
     'bypass-lan': false,
     'allow-connection-from-lan': false,
     'enable-fake-dns': false,

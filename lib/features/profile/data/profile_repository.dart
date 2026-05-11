@@ -214,13 +214,31 @@ class ProfileRepository {
   }
 
   /// 把订阅原始 body 归一化成 sing-box JSON 并写到 [output]。
-  /// native `parse(configPath, tempPath)` 语义：从 `tempPath` 读内容、
-  /// 解析（Clash YAML / vless 链接 / sing-box JSON）、写回 `configPath`。
-  /// 失败时 fallback 到把原始 body 直接写出（很多订阅本身就是合法 sing-box JSON）。
+  ///
+  /// **优先**：如果 raw 是合法 sing-box JSON（`{` 开头，能 jsonDecode 出 outbounds），
+  /// 直接写出原文——保留 inbounds / dns / route / rule_set 等完整字段，
+  /// 让 fork 的 `enable-full-config: true` 路径能拿到完整 profile。
+  ///
+  /// **否则**：调 native `parse(configPath, tempPath)`（Clash YAML / vless 链接 → sing-box JSON），
+  /// 但 parse 后的输出只剩 outbounds，需要 RuntimeConfigBuilder 在 connect 时补全。
   Future<void> _normalizeAndWrite({
     required String rawBody,
     required File output,
   }) async {
+    final trimmed = rawBody.trimLeft();
+    if (trimmed.startsWith('{')) {
+      try {
+        final decoded = jsonDecode(trimmed) as Map<String, dynamic>;
+        if (decoded.containsKey('outbounds')) {
+          await output.writeAsString(rawBody);
+          debugPrint('[Profile] raw 已是 sing-box JSON，跳过 native parse');
+          return;
+        }
+      } catch (_) {
+        // 不是合法 JSON 就 fallthrough 到 native parse
+      }
+    }
+
     if (boxService is StubBoxService) {
       await output.writeAsString(rawBody);
       return;
@@ -237,7 +255,6 @@ class ProfileRepository {
         await output.writeAsString(rawBody);
         return;
       }
-      // 成功：native 已经把归一化后的 JSON 写到 output。
       if (!await output.exists()) {
         debugPrint('[Profile] validateConfig 成功但未写出 output，回退');
         await output.writeAsString(rawBody);

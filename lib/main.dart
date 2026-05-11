@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:clashmiao/app/app.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/rule_set_provisioner.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/model/directories.dart';
@@ -34,11 +35,18 @@ void main() async {
       );
       await boxService.setup(dirs, debug: true);
 
-      // 传入默认配置（智能模式）
+      // 把 bundled .srs rule-set 文件 provision 到 workingDir，
+      // smart 模式的 RuntimeConfigBuilder 引用相对路径 ./geoip-cn.srs / ./geosite-cn.srs。
+      await RuleSetProvisioner().ensureProvisioned(dirs.workingDir);
+
+      // 启动时按 prefs 里持久化的 mode 推 changeConfigOptions
+      // （之前默认 false，导致用户切到全局后被启动覆盖回 cn）。
+      final prefs = container.read(sharedPreferencesProvider).requireValue;
+      final modeIndex = prefs.getInt('clashmiao_proxy_mode') ?? 1; // 0=全局 1=智能
       await boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions()),
+        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: modeIndex == 0)),
       );
-      debugPrint('sing-box 核心初始化成功');
+      debugPrint('sing-box 核心初始化成功（mode=$modeIndex）');
     } catch (e) {
       debugPrint('sing-box 初始化失败: $e');
     }

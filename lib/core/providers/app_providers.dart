@@ -11,6 +11,8 @@ import 'package:clashmiao/core/utils/config_parser.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
+import 'package:clashmiao/core/config/runtime_config_builder.dart';
+import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -167,11 +169,25 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     _transitioning = true;
     state = const AsyncData(BoxStarting());
     try {
-      // 连接前推送配置，确保系统代理等选项生效
+      // 读用户当前选的 mode（0=全局，1=智能），决定要不要走分流
+      final modeIndex = _ref.read(proxyModeProvider);
+      final isGlobal = modeIndex == 0;
+
+      // 连接前推送 fork-side options（关键：region='other' 已经在 default 写死，
+      // 这里 executeConfigAsIs 跟用户选择对齐，留给后续可能扩展使用）。
       await _boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions()),
+        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: isGlobal)),
       );
-      await _boxService.start(configPath, name: active.name);
+
+      // 现场组装 runtime-config.json（注入 / 剥离 rule-set），native 加载这个。
+      final workingDir = await getApplicationDocumentsDirectory();
+      final runtimeConfig = await RuntimeConfigBuilder().build(
+        baseProfile: configFile,
+        isSmart: !isGlobal,
+        workingDir: workingDir,
+      );
+
+      await _boxService.start(runtimeConfig.path, name: active.name);
       // 至少展示 1.5秒 连接中动画
       await Future.delayed(const Duration(milliseconds: 1500));
       state = const AsyncData(BoxStarted());
@@ -181,7 +197,15 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         try {
           await _boxService.stop();
           await Future.delayed(const Duration(milliseconds: 500));
-          await _boxService.start(configPath, name: active.name);
+          // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失分流配置）
+          final modeIndex = _ref.read(proxyModeProvider);
+          final workingDir = await getApplicationDocumentsDirectory();
+          final runtimeConfig = await RuntimeConfigBuilder().build(
+            baseProfile: configFile,
+            isSmart: modeIndex != 0,
+            workingDir: workingDir,
+          );
+          await _boxService.start(runtimeConfig.path, name: active.name);
           await Future.delayed(const Duration(milliseconds: 1500));
           state = const AsyncData(BoxStarted());
           return;

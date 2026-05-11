@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
@@ -13,6 +14,12 @@ final boxServiceProvider = Provider<BoxService>((ref) {
 final boxStatusProvider = StreamProvider<BoxStatus>((ref) {
   final service = ref.watch(boxServiceProvider);
   return service.watchStatus();
+});
+
+/// 非致命错误流，UI 用 ref.listen 订阅后弹 toast / dialog。
+final boxAlertsProvider = StreamProvider<BoxAlert>((ref) {
+  final service = ref.watch(boxServiceProvider);
+  return service.watchAlerts();
 });
 
 /// 流量统计 — 仅在已连接时才订阅

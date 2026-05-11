@@ -5,6 +5,7 @@ import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:clashmiao/features/settings/widget/settings_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -28,28 +29,44 @@ class _ShellPageState extends ConsumerState<ShellPage> {
 
   @override
   Widget build(BuildContext context) {
-    // 统一顶部偏移：macOS 避开红绿灯，桌面端预留间距，移动端用系统安全区
+    // 桌面端预留窗口装饰（macOS 红绿灯/Win+Linux 标题栏间距），移动端交给各页面 SafeArea
     final double topPad;
     if (Platform.isMacOS) {
       topPad = 28;
     } else if (Platform.isWindows || Platform.isLinux) {
       topPad = 8;
     } else {
-      topPad = MediaQuery.of(context).padding.top;
+      topPad = 0;
     }
 
-    return Scaffold(
-      body: Column(
-        children: [
-          SizedBox(height: topPad),
-          Expanded(
-            child: IndexedStack(index: _selectedIndex, children: _pages),
-          ),
-          _GlassBottomNav(
-            selectedIndex: _selectedIndex,
-            onTap: (i) => setState(() => _selectedIndex = i),
-          ),
-        ],
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final overlayStyle = SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+      statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
+      systemNavigationBarColor: isLight
+          ? Colors.white
+          : const Color(0xFF16161A),
+      systemNavigationBarIconBrightness: isLight
+          ? Brightness.dark
+          : Brightness.light,
+    );
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: overlayStyle,
+      child: Scaffold(
+        body: Column(
+          children: [
+            if (topPad > 0) SizedBox(height: topPad),
+            Expanded(
+              child: IndexedStack(index: _selectedIndex, children: _pages),
+            ),
+            _GlassBottomNav(
+              selectedIndex: _selectedIndex,
+              onTap: (i) => setState(() => _selectedIndex = i),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -68,22 +85,22 @@ class _GlassBottomNav extends ConsumerWidget {
       (
         FluentIcons.power_20_regular,
         FluentIcons.power_20_filled,
-        t.home.pageTitle
+        t.home.pageTitle,
       ),
       (
         FluentIcons.filter_20_regular,
         FluentIcons.filter_20_filled,
-        t.proxies.pageTitle
+        t.proxies.pageTitle,
       ),
       (
         FluentIcons.document_20_regular,
         FluentIcons.document_20_filled,
-        t.profile.overviewPageTitle
+        t.profile.overviewPageTitle,
       ),
       (
         FluentIcons.settings_20_regular,
         FluentIcons.settings_20_filled,
-        t.settings.pageTitle
+        t.settings.pageTitle,
       ),
     ];
     final theme = Theme.of(context);
@@ -117,8 +134,8 @@ class _GlassBottomNav extends ConsumerWidget {
           final color = isSelected
               ? theme.colorScheme.primary
               : (isLight
-                  ? aiUi.secondaryTextColor.withValues(alpha: 0.6)
-                  : Colors.white.withValues(alpha: 0.4));
+                    ? aiUi.secondaryTextColor.withValues(alpha: 0.6)
+                    : Colors.white.withValues(alpha: 0.4));
 
           return Expanded(
             child: GestureDetector(

@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
@@ -88,11 +89,21 @@ class ServiceNotification(private val status: MutableLiveData<Status>, private v
                 )
             )
         }
-        service.startForeground(
-            notificationId, notificationBuilder
-                .setContentTitle(profileName.takeIf { it.isNotBlank() } ?: "ClashMiao")
-                .setContentText(service.getString(contentTextId)).build()
-        )
+        val notification = notificationBuilder
+            .setContentTitle(profileName.takeIf { it.isNotBlank() } ?: "ClashMiao")
+            .setContentText(service.getString(contentTextId)).build()
+
+        // Android 14+ (API 34) 要求 startForeground 显式声明 foregroundServiceType，
+        // 必须与 manifest 上 <service foregroundServiceType=...> 完全一致。
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            service.startForeground(
+                notificationId,
+                notification,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE,
+            )
+        } else {
+            service.startForeground(notificationId, notification)
+        }
     }
 
 

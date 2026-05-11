@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:ui';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -15,24 +16,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
-
-final proxyModeProvider = StateNotifierProvider<ProxyModeNotifier, int>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-  return ProxyModeNotifier(prefs);
-});
-
-class ProxyModeNotifier extends StateNotifier<int> {
-  final SharedPreferences prefs;
-  ProxyModeNotifier(this.prefs)
-      : super(prefs.getInt('clashmiao_proxy_mode') ?? 1);
-
-  Future<void> updateMode(int value) async {
-    state = value;
-    await prefs.setInt('clashmiao_proxy_mode', value);
-  }
-}
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});

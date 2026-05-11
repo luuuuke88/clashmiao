@@ -413,7 +413,7 @@ class _ConnectionInfo extends ConsumerWidget {
           key: ValueKey(status.runtimeType),
           builder: (context) {
             if (isDisconnected) {
-              return const SizedBox(height: 20); // 像 baseproxy 一样断开时不显示
+              return const SizedBox(height: 20);
             }
             if (isSwitching) {
               return Row(

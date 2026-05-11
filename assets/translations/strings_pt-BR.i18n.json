@@ -1,6 +1,6 @@
 {
   "general": {
-    "appTitle": "Hiddify",
+    "appTitle": "ClashMiao",
     "reset": "Restaurar",
     "toggle": {
       "enabled": "Habilitado",
@@ -299,7 +299,7 @@
     }
   },
   "play": {
-    "title": "Hiddify (Pré-visualização)",
+    "title": "ClashMiao (Pré-visualização)",
     "short_description": "Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks"
   },
   "connection": {

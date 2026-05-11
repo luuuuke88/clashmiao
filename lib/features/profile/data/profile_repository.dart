@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/features/profile/data/profile_parser.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,6 +16,7 @@ class ProfileRepository {
     required this.dio,
     required this.configDir,
     required this.prefs,
+    required this.boxService,
   });
 
   final Dio dio;
@@ -21,6 +25,10 @@ class ProfileRepository {
   final Directory configDir;
 
   final SharedPreferences prefs;
+
+  /// 用于把订阅原始内容（Clash YAML / vless 链接列表 / sing-box JSON）
+  /// 归一化成 sing-box JSON。native 的 `parse` 入口会原地覆盖文件。
+  final BoxService boxService;
 
   static const _profilesKey = 'clashmiao_profiles';
   static const _activeProfileKey = 'clashmiao_active_profile';
@@ -91,10 +99,14 @@ class ProfileRepository {
       profile = profile.copyWith(name: customName.trim());
     }
 
-    // 保存配置文件到本地
+    // 归一化：先把原始响应写到 tempFile（输入），让 native parse 读它、
+    // 解析（Clash YAML / base64 / sing-box JSON）后**写到** configFile（输出）。
     final configFile = File(configFilePath(profile.id));
     await configFile.parent.create(recursive: true);
-    await configFile.writeAsString(response.data ?? '');
+    await _normalizeAndWrite(
+      rawBody: response.data ?? '',
+      output: configFile,
+    );
 
     // 添加到列表
     final profiles = getAll();
@@ -135,9 +147,12 @@ class ProfileRepository {
     final parsed = ProfileParser.parse(current.url, headers);
     final subInfo = parsed.subInfo;
 
-    // 保存新配置
+    // 重新归一化（参见 addByUrl 注释）
     final configFile = File(configFilePath(profileId));
-    await configFile.writeAsString(response.data ?? '');
+    await _normalizeAndWrite(
+      rawBody: response.data ?? '',
+      output: configFile,
+    );
 
     final updated = current.copyWith(
       lastUpdate: DateTime.now(),
@@ -194,6 +209,47 @@ class ProfileRepository {
         await update(profile.id);
       } catch (_) {
         // 单个更新失败不影响其他
+      }
+    }
+  }
+
+  /// 把订阅原始 body 归一化成 sing-box JSON 并写到 [output]。
+  /// native `parse(configPath, tempPath)` 语义：从 `tempPath` 读内容、
+  /// 解析（Clash YAML / vless 链接 / sing-box JSON）、写回 `configPath`。
+  /// 失败时 fallback 到把原始 body 直接写出（很多订阅本身就是合法 sing-box JSON）。
+  Future<void> _normalizeAndWrite({
+    required String rawBody,
+    required File output,
+  }) async {
+    if (boxService is StubBoxService) {
+      await output.writeAsString(rawBody);
+      return;
+    }
+    final tempFile = File('${output.path}.tmp');
+    try {
+      await tempFile.writeAsString(rawBody);
+      final err = await boxService.validateConfig(
+        output.path,
+        tempFile.path,
+      );
+      if (err != null && err.isNotEmpty) {
+        debugPrint('[Profile] validateConfig 失败，回退到原始内容: $err');
+        await output.writeAsString(rawBody);
+        return;
+      }
+      // 成功：native 已经把归一化后的 JSON 写到 output。
+      if (!await output.exists()) {
+        debugPrint('[Profile] validateConfig 成功但未写出 output，回退');
+        await output.writeAsString(rawBody);
+      }
+    } catch (e, st) {
+      debugPrint('[Profile] _normalizeAndWrite 抛异常: $e\n$st');
+      await output.writeAsString(rawBody);
+    } finally {
+      if (await tempFile.exists()) {
+        try {
+          await tempFile.delete();
+        } catch (_) {}
       }
     }
   }

@@ -45,10 +45,13 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
     },
   );
 
+  final boxService = ref.watch(boxServiceProvider);
+
   return ProfileRepository(
     dio: dio,
     configDir: Directory(appDir.path),
     prefs: prefs,
+    boxService: boxService,
   );
 });
 

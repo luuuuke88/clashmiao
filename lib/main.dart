@@ -7,6 +7,7 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -65,10 +66,54 @@ void main() async {
     });
   }
 
+  // dev-only：检测 ~/.clashmiao_dev_subscription_url，自动添加订阅 + 自动连接，
+  // 解放手动 UI 测试。release build 不会走这分支。
+  if (kDebugMode) {
+    // ignore: discarded_futures
+    _devAutoBoot(container);
+  }
+
   runApp(
     UncontrolledProviderScope(
       container: container,
       child: const ClashMiaoApp(),
     ),
   );
+}
+
+/// Dev-only：如果用户主目录有 `.clashmiao_dev_subscription_url`，
+/// 自动添加订阅 + 自动连接，省去手动 UI 操作来跑调试循环。
+Future<void> _devAutoBoot(ProviderContainer container) async {
+  try {
+    final home = Platform.environment['HOME'];
+    if (home == null) return;
+    final urlFile = File('$home/.clashmiao_dev_subscription_url');
+    if (!await urlFile.exists()) return;
+    final url = (await urlFile.readAsString()).trim();
+    if (url.isEmpty) return;
+
+    final repo = await container.read(profileRepositoryProvider.future);
+    final existing = repo.getAll();
+    if (existing.isEmpty) {
+      debugPrint('[DevBoot] 自动添加订阅...');
+      try {
+        await repo.addByUrl(url, customName: 'dev');
+        debugPrint('[DevBoot] 订阅添加成功');
+      } catch (e) {
+        debugPrint('[DevBoot] 订阅添加失败: $e');
+        return;
+      }
+    } else {
+      debugPrint('[DevBoot] 已有订阅 ${existing.length} 个，跳过添加');
+    }
+
+    // 给 UI / status stream 一点时间稳定，然后触发 connect
+    await Future.delayed(const Duration(seconds: 2));
+    debugPrint('[DevBoot] 自动连接...');
+    await container
+        .read(connectionControllerProvider.notifier)
+        .toggle();
+  } catch (e, st) {
+    debugPrint('[DevBoot] 出错: $e\n$st');
+  }
 }

@@ -40,7 +40,7 @@ class RuntimeConfigBuilder {
     // 永远先剥离 profile 自带的 rule-set 引用：
     //   - route.rule_set: 全清
     //   - route.rules / dns.rules: 删任何 rule_set: [...] 的项
-    // 这样无论智能 / 全局，profile 自带的 hiddify-geo url 引用都不会去 fetch。
+    // 这样无论智能 / 全局，profile 自带的 上游 geo CDN url 引用都不会去 fetch。
     _stripRuleSetReferences(cfg);
 
     if (isSmart) {
@@ -62,7 +62,7 @@ class RuntimeConfigBuilder {
   void _coerceDesktopInbounds(Map<String, dynamic> cfg) {
     // 桌面端剥离 tun + mixed inbound：
     //  - tun: 用户进程没 root 建不了
-    //  - mixed: hiddify fork 在 enable-full-config 路径下仍然会 append 一个 mixed:MixedPort，
+    //  - mixed: 上游 fork 在 enable-full-config 路径下仍然会 append 一个 mixed:MixedPort，
     //    如果 profile 也有 mixed 会端口冲突。让 fork 那条独占 2080。
     final inbounds = (cfg['inbounds'] as List?)?.cast<dynamic>() ?? [];
     inbounds.removeWhere(

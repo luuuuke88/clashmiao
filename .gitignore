@@ -67,3 +67,6 @@ app.*.map.json
 **/windows/flutter/ephemeral/
 
 # 生成代码：本仓库选择提交 *.g.dart / *.freezed.dart 以便 fresh clone 即可运行
+
+# 内部 AI 协作设计文档 / 实现计划（不公开）
+docs/superpowers/

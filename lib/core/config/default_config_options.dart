@@ -1,6 +1,6 @@
 import 'dart:io';
 
-/// sing-box 内核启动时使用的全局默认配置（hiddify libcore 的 `configOptions`）。
+/// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
 ///
 /// 注意：智能 / 全局分流由 `RuntimeConfigBuilder` 在 connect 时
 /// 现场写到 runtime-config.json，**不**依赖这里的 fork-side `region` / `rules`。
@@ -13,8 +13,8 @@ Map<String, dynamic> getDefaultConfigOptions({bool executeConfigAsIs = false}) {
   final isMobile = Platform.isAndroid || Platform.isIOS;
 
   return {
-    // region 永远 'other'：sing-box 1.8 fork（hiddify libcore）在 region != 'other'
-    // 时会强制 append 一个 remote rule-set，URL 指向 hiddify-geo，中国大陆 GFW 阻断
+    // region 永远 'other'：sing-box 1.8 fork（上游 libcore fork）在 region != 'other'
+    // 时会强制 append 一个 remote rule-set，URL 指向 上游 geo CDN，中国大陆 GFW 阻断
     // 让 sing-box 启动时 routing 不完整。我们改用 Dart 端注入 local rule-set
     // （RuntimeConfigBuilder）。
     'region': 'other',

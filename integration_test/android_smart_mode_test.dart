@@ -1,0 +1,114 @@
+import 'dart:io';
+
+import 'package:clashmiao/app/app.dart';
+import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/model/directories.dart';
+import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/home/widget/connection_button.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:integration_test/integration_test.dart';
+import 'package:path_provider/path_provider.dart';
+
+import '_fixtures/subscription_source.dart';
+import '_fixtures/test_helpers.dart';
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  testWidgets(
+    'Android smart mode: connect → traffic proxied → disconnect',
+    (tester) async {
+      if (!Platform.isAndroid) {
+        markTestSkipped('android-only E2E');
+        return;
+      }
+
+      final url = await SubscriptionSource.resolve();
+      final container = ProviderContainer();
+
+      // 初始化真实 BoxService（不 mock）
+      final boxService = container.read(boxServiceProvider);
+      expect(
+        boxService is StubBoxService,
+        isFalse,
+        reason: 'expected real BoxService on Android',
+      );
+
+      await boxService.init();
+      final appDir = await getApplicationDocumentsDirectory();
+      final tempDir = await getTemporaryDirectory();
+      await boxService.setup(
+        AppDirectories(
+          baseDir: Directory(appDir.path),
+          workingDir: Directory(appDir.path),
+          tempDir: Directory(tempDir.path),
+        ),
+        debug: true,
+      );
+
+      // 注入测试订阅（绕开 UI 添加流程）
+      final repo = await container.read(profileRepositoryProvider.future);
+      if (repo.getAll().isEmpty) {
+        await repo.addByUrl(url, customName: 'e2e-test');
+      }
+
+      // 锁定智能模式（index=1）
+      await container.read(proxyModeProvider.notifier).updateMode(1);
+
+      // 启动 app
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const ClashMiaoApp(),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 2));
+
+      // baseline IP（VPN 未开）
+      final baselineIp = await fetchEgressIp();
+      expect(
+        baselineIp,
+        matches(RegExp(r'^\d+\.\d+\.\d+\.\d+$')),
+        reason: 'baseline must be IPv4, got: $baselineIp',
+      );
+
+      // 点连接
+      final connectFinder = find.byType(ConnectionButton);
+      expect(connectFinder, findsOneWidget);
+      await tester.tap(connectFinder);
+      await tester.pump();
+
+      // 等 BoxStarted（30s 超时，含 1.5s 连接动画）
+      await waitForStatus<BoxStarted>(
+        tester,
+        container,
+        timeout: const Duration(seconds: 30),
+      );
+
+      // 验证出口 IP 变了
+      final proxiedIp = await fetchEgressIp();
+      expect(proxiedIp, matches(RegExp(r'^\d+\.\d+\.\d+\.\d+$')));
+      expect(
+        proxiedIp,
+        isNot(equals(baselineIp)),
+        reason:
+            'expected egress IP to change after VPN, '
+            'baseline=$baselineIp, proxied=$proxiedIp',
+      );
+
+      // 断开
+      await tester.tap(connectFinder);
+      await tester.pump();
+      await waitForStatus<BoxStopped>(
+        tester,
+        container,
+        timeout: const Duration(seconds: 30),
+      );
+    },
+    timeout: const Timeout(Duration(minutes: 3)),
+  );
+}

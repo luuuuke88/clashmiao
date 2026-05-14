@@ -53,7 +53,21 @@ void main() {
       // 注入测试订阅（绕开 UI 添加流程）
       final repo = await container.read(profileRepositoryProvider.future);
       if (repo.getAll().isEmpty) {
-        await repo.addByUrl(url, customName: 'e2e-test');
+        const proxyUriSchemes = [
+          'ss',
+          'vless',
+          'vmess',
+          'trojan',
+          'hysteria',
+          'hysteria2',
+          'tuic',
+        ];
+        final isProxyUri = proxyUriSchemes.any((s) => url.startsWith('$s://'));
+        if (isProxyUri) {
+          await repo.addByContent(url, name: 'e2e-test');
+        } else {
+          await repo.addByUrl(url, customName: 'e2e-test');
+        }
       }
 
       // 锁定智能模式（index=1）

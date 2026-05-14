@@ -222,4 +222,52 @@ void main() {
       expect(repo.getActive(), isNull);
     });
   });
+
+  group('ProfileRepository.addByContent', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('content_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: StubBoxService(),
+      );
+    });
+
+    tearDown(() async {
+      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+    });
+
+    test('ss:// URI 内容写到 profile 文件（stub 路径下原文写出）', () async {
+      const ssUri = 'ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwYXNz@host:443#node';
+      final profile = await repo.addByContent(ssUri, name: 'My SS');
+
+      expect(profile.name, 'My SS');
+      expect(profile.active, isTrue); // 首条自动 active
+      // URL 字段做了截断 + 前缀，避免存敏感凭据
+      expect(profile.url.startsWith('content://'), isTrue);
+      expect(profile.url.length, lessThan(60));
+
+      final file = File(repo.configFilePath(profile.id));
+      expect(await file.readAsString(), ssUri);
+    });
+
+    test('空 name 使用默认 "本地导入"', () async {
+      final profile = await repo.addByContent('ss://abc@h:1#x', name: '');
+      expect(profile.name, '本地导入');
+    });
+
+    test('第二次 addByContent 不自动 active（保留首条）', () async {
+      final p1 = await repo.addByContent('ss://abc@h:1#x', name: 'A');
+      final p2 = await repo.addByContent('ss://xyz@h:2#y', name: 'B');
+      expect(p1.active, isTrue);
+      expect(p2.active, isFalse);
+      expect(repo.getActive()?.id, p1.id);
+    });
+  });
 }

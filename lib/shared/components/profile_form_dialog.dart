@@ -134,15 +134,36 @@ Future<void> showProfileFormDialog(
   );
 }
 
+/// 支持的代理单节点 URI scheme（直接走 native parse，不走 HTTP fetch）。
+const _kProxyUriSchemes = [
+  'ss',
+  'vless',
+  'vmess',
+  'trojan',
+  'hysteria',
+  'hysteria2',
+  'tuic',
+];
+
 Future<void> _doAdd(
   BuildContext context,
   WidgetRef ref,
-  String url, {
+  String urlOrUri, {
   String? customName,
 }) async {
   try {
     final repo = await ref.read(profileRepositoryProvider.future);
-    await repo.addByUrl(url, customName: customName);
+    final isProxyUri = _kProxyUriSchemes.any(
+      (scheme) => urlOrUri.startsWith('$scheme://'),
+    );
+    if (isProxyUri) {
+      await repo.addByContent(
+        urlOrUri,
+        name: customName ?? '',
+      );
+    } else {
+      await repo.addByUrl(urlOrUri, customName: customName);
+    }
     ref.invalidate(profileListProvider);
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);

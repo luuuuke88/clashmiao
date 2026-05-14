@@ -106,7 +106,21 @@ Future<void> _devAutoBoot(ProviderContainer container) async {
     if (existing.isEmpty) {
       debugPrint('[DevBoot] 自动添加订阅...');
       try {
-        await repo.addByUrl(url, customName: 'dev');
+        const proxyUriSchemes = [
+          'ss',
+          'vless',
+          'vmess',
+          'trojan',
+          'hysteria',
+          'hysteria2',
+          'tuic',
+        ];
+        final isProxyUri = proxyUriSchemes.any((s) => url.startsWith('$s://'));
+        if (isProxyUri) {
+          await repo.addByContent(url, name: 'dev');
+        } else {
+          await repo.addByUrl(url, customName: 'dev');
+        }
         debugPrint('[DevBoot] 订阅添加成功');
       } catch (e) {
         debugPrint('[DevBoot] 订阅添加失败: $e');

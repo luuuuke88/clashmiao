@@ -1,5 +1,7 @@
 # 喵速 (ClashMiao)
 
+[![CI](https://github.com/luuuuke88/clashmiao/actions/workflows/ci.yml/badge.svg)](https://github.com/luuuuke88/clashmiao/actions/workflows/ci.yml)
+
 跨平台代理客户端，基于 [sing-box](https://github.com/SagerNet/sing-box) 核心。
 
 ## 平台支持
@@ -60,6 +62,16 @@ flutter run                 # 自动检测设备
 flutter run -d emulator-5554  # 指定 Android 模拟器
 flutter run -d macos          # macOS 桌面
 ```
+
+## 测试
+
+```bash
+bash bin/test-unit.sh    # unit + widget（无设备需求）
+bash bin/test-all.sh     # 加 format + analyze + 可选 E2E
+bash bin/test-e2e.sh     # Android emulator E2E（需 adb 可见设备）
+```
+
+测试覆盖：~30 个 unit/widget + 1 个 Android E2E（真实出流量验证）。
 
 ## 许可证
 

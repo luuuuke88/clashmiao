@@ -103,10 +103,7 @@ class ProfileRepository {
     // 解析（Clash YAML / base64 / sing-box JSON）后**写到** configFile（输出）。
     final configFile = File(configFilePath(profile.id));
     await configFile.parent.create(recursive: true);
-    await _normalizeAndWrite(
-      rawBody: response.data ?? '',
-      output: configFile,
-    );
+    await _normalizeAndWrite(rawBody: response.data ?? '', output: configFile);
 
     // 添加到列表
     final profiles = getAll();
@@ -149,10 +146,7 @@ class ProfileRepository {
 
     // 重新归一化（参见 addByUrl 注释）
     final configFile = File(configFilePath(profileId));
-    await _normalizeAndWrite(
-      rawBody: response.data ?? '',
-      output: configFile,
-    );
+    await _normalizeAndWrite(rawBody: response.data ?? '', output: configFile);
 
     final updated = current.copyWith(
       lastUpdate: DateTime.now(),
@@ -165,8 +159,11 @@ class ProfileRepository {
   }
 
   /// 编辑订阅信息（名称、URL）
-  Future<void> editProfile(String profileId,
-      {String? newName, String? newUrl}) async {
+  Future<void> editProfile(
+    String profileId, {
+    String? newName,
+    String? newUrl,
+  }) async {
     final profiles = getAll();
     final index = profiles.indexWhere((p) => p.id == profileId);
     if (index < 0) return;
@@ -246,10 +243,7 @@ class ProfileRepository {
     final tempFile = File('${output.path}.tmp');
     try {
       await tempFile.writeAsString(rawBody);
-      final err = await boxService.validateConfig(
-        output.path,
-        tempFile.path,
-      );
+      final err = await boxService.validateConfig(output.path, tempFile.path);
       if (err != null && err.isNotEmpty) {
         debugPrint('[Profile] validateConfig 失败，回退到原始内容: $err');
         await output.writeAsString(rawBody);

@@ -96,7 +96,8 @@ class RuntimeConfigBuilder {
 
   void _injectSmartCnRouting(Map<String, dynamic> cfg) {
     // 1. 注入 local rule-set 引用
-    final route = (cfg['route'] ??= <String, dynamic>{}) as Map<String, dynamic>;
+    final route =
+        (cfg['route'] ??= <String, dynamic>{}) as Map<String, dynamic>;
     route['rule_set'] = <Map<String, dynamic>>[
       {
         'tag': _ruleSetGeoip,
@@ -113,8 +114,8 @@ class RuntimeConfigBuilder {
     ];
 
     // 2. route.rules 第一条：中国 IP / 域名走 direct
-    final routeRules = (route['rules'] ??= <Map<String, dynamic>>[])
-        as List<dynamic>;
+    final routeRules =
+        (route['rules'] ??= <Map<String, dynamic>>[]) as List<dynamic>;
     routeRules.insert(0, <String, dynamic>{
       'rule_set': <String>[_ruleSetGeoip, _ruleSetGeosite],
       'outbound': 'direct',
@@ -122,8 +123,8 @@ class RuntimeConfigBuilder {
 
     // 3. dns.rules 第一条：中国域名走 local DNS（profile 里如果有 tag=local 的 server）
     final dns = (cfg['dns'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-    final dnsRules = (dns['rules'] ??= <Map<String, dynamic>>[])
-        as List<dynamic>;
+    final dnsRules =
+        (dns['rules'] ??= <Map<String, dynamic>>[]) as List<dynamic>;
     dnsRules.insert(0, <String, dynamic>{
       'rule_set': <String>[_ruleSetGeosite],
       'server': 'local',

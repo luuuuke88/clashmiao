@@ -42,8 +42,8 @@ class HomePage extends ConsumerWidget {
                 width: 300,
                 height: 300,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 
-                    theme.brightness == Brightness.dark ? 0.0 : 0.08,
+                  color: theme.colorScheme.primary.withValues(
+                    alpha: theme.brightness == Brightness.dark ? 0.0 : 0.08,
                   ),
                   shape: BoxShape.circle,
                 ),
@@ -169,7 +169,8 @@ class HomePage extends ConsumerWidget {
                             error: (e, _) {
                               final t = ref.watch(translationsProvider);
                               return Center(
-                                  child: Text('${t.failure.unexpected}: $e'));
+                                child: Text('${t.failure.unexpected}: $e'),
+                              );
                             },
                           ),
                         ),
@@ -186,7 +187,10 @@ class HomePage extends ConsumerWidget {
   }
 
   void _showAddProfileSheet(
-      BuildContext context, WidgetRef ref, TranslationsEn t) {
+    BuildContext context,
+    WidgetRef ref,
+    TranslationsEn t,
+  ) {
     showProfileFormDialog(context, ref);
   }
 }
@@ -339,7 +343,9 @@ class _ActiveProfileCard extends StatelessWidget {
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.6),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.6,
+                            ),
                             blurRadius: 8,
                           ),
                         ],
@@ -396,8 +402,9 @@ class _ConnectionInfo extends ConsumerWidget {
     int delay = 0;
     if (groups.isNotEmpty && groups.first.items.isNotEmpty) {
       final selected = groups.first.selected;
-      final activeItem =
-          groups.first.items.where((i) => i.tag == selected).firstOrNull;
+      final activeItem = groups.first.items
+          .where((i) => i.tag == selected)
+          .firstOrNull;
       if (activeItem != null) {
         nodeName = activeItem.tag;
         delay = activeItem.delay;
@@ -533,10 +540,7 @@ class _ModeSelector extends HookConsumerWidget {
       decoration: BoxDecoration(
         color: aiUi.softBackgroundColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(
-          color: aiUi.borderColor,
-          width: 0.5,
-        ),
+        border: Border.all(color: aiUi.borderColor, width: 0.5),
       ),
       child: Stack(
         children: [
@@ -556,7 +560,9 @@ class _ModeSelector extends HookConsumerWidget {
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isLight ? 0.08 : 0.2),
+                      color: Colors.black.withValues(
+                        alpha: isLight ? 0.08 : 0.2,
+                      ),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -623,7 +629,8 @@ class _ModeItem extends HookWidget {
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isActive
-                ? Colors.transparent // Color is handled by the slider
+                ? Colors
+                      .transparent // Color is handled by the slider
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),

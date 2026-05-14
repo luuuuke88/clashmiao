@@ -38,7 +38,9 @@ class RuleSetProvisioner {
         bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
         flush: true,
       );
-      debugPrint('[RuleSetProvisioner] wrote ${out.path} (${bytes.lengthInBytes} bytes)');
+      debugPrint(
+        '[RuleSetProvisioner] wrote ${out.path} (${bytes.lengthInBytes} bytes)',
+      );
     }
     await versionFile.writeAsString(bundledVersion);
   }

@@ -11,17 +11,17 @@ enum ProxiesSort {
   delay;
 
   String present(TranslationsEn t) => switch (this) {
-        ProxiesSort.unsorted => t.proxies.sortOptions.unsorted,
-        ProxiesSort.name => t.proxies.sortOptions.name,
-        ProxiesSort.delay => t.proxies.sortOptions.delay,
-      };
+    ProxiesSort.unsorted => t.proxies.sortOptions.unsorted,
+    ProxiesSort.name => t.proxies.sortOptions.name,
+    ProxiesSort.delay => t.proxies.sortOptions.delay,
+  };
 }
 
 final proxiesSortProvider =
     StateNotifierProvider<ProxiesSortNotifier, ProxiesSort>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-  return ProxiesSortNotifier(prefs);
-});
+      final prefs = ref.watch(sharedPreferencesProvider).requireValue;
+      return ProxiesSortNotifier(prefs);
+    });
 
 class ProxiesSortNotifier extends StateNotifier<ProxiesSort> {
   ProxiesSortNotifier(this.prefs) : super(_read(prefs));

@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 class ConnectionButtonTheme extends ThemeExtension<ConnectionButtonTheme> {
-  const ConnectionButtonTheme({
-    this.idleColor,
-    this.connectedColor,
-  });
+  const ConnectionButtonTheme({this.idleColor, this.connectedColor});
 
   final Color? idleColor;
   final Color? connectedColor;
@@ -18,11 +15,10 @@ class ConnectionButtonTheme extends ThemeExtension<ConnectionButtonTheme> {
   ThemeExtension<ConnectionButtonTheme> copyWith({
     Color? idleColor,
     Color? connectedColor,
-  }) =>
-      ConnectionButtonTheme(
-        idleColor: idleColor ?? this.idleColor,
-        connectedColor: connectedColor ?? this.connectedColor,
-      );
+  }) => ConnectionButtonTheme(
+    idleColor: idleColor ?? this.idleColor,
+    connectedColor: connectedColor ?? this.connectedColor,
+  );
 
   @override
   ThemeExtension<ConnectionButtonTheme> lerp(
@@ -58,9 +54,15 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
 
   static final AiUiTheme dark = AiUiTheme(
     glassColor: const Color(0x9916161A), // 0xFF16161A.withValues(alpha: 0.6)
-    borderColor: const Color(0x14FFFFFF), // Colors.white.withValues(alpha: 0.08)
-    softBackgroundColor: const Color(0x0DFFFFFF), // Colors.white.withValues(alpha: 0.05)
-    secondaryTextColor: const Color(0x80FFFFFF), // Colors.white.withValues(alpha: 0.5)
+    borderColor: const Color(
+      0x14FFFFFF,
+    ), // Colors.white.withValues(alpha: 0.08)
+    softBackgroundColor: const Color(
+      0x0DFFFFFF,
+    ), // Colors.white.withValues(alpha: 0.05)
+    secondaryTextColor: const Color(
+      0x80FFFFFF,
+    ), // Colors.white.withValues(alpha: 0.5)
     cardShadow: [
       BoxShadow(
         color: Colors.black.withValues(alpha: 0.2),
@@ -123,8 +125,16 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     return AiUiTheme(
       glassColor: Color.lerp(glassColor, other.glassColor, t)!,
       borderColor: Color.lerp(borderColor, other.borderColor, t)!,
-      softBackgroundColor: Color.lerp(softBackgroundColor, other.softBackgroundColor, t)!,
-      secondaryTextColor: Color.lerp(secondaryTextColor, other.secondaryTextColor, t)!,
+      softBackgroundColor: Color.lerp(
+        softBackgroundColor,
+        other.softBackgroundColor,
+        t,
+      )!,
+      secondaryTextColor: Color.lerp(
+        secondaryTextColor,
+        other.secondaryTextColor,
+        t,
+      )!,
       cardShadow: BoxShadow.lerpList(cardShadow, other.cardShadow, t)!,
       primaryShadow: BoxShadow.lerpList(primaryShadow, other.primaryShadow, t)!,
     );

@@ -71,8 +71,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                 child: profilesAsync.when(
                   data: (profiles) {
                     if (profiles.isEmpty) {
-                      return _EmptyState(
-                          onAdd: () => _showAddDialog(context));
+                      return _EmptyState(onAdd: () => _showAddDialog(context));
                     }
                     return ListView.separated(
                       padding: const EdgeInsets.only(bottom: 120),
@@ -83,7 +82,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                           profile: profiles[index],
                           onTap: () => _setActive(profiles[index].id),
                           onUpdate: () => _updateProfile(profiles[index].id, t),
-                          onEdit: () => _showEditDialog(context, profiles[index]),
+                          onEdit: () =>
+                              _showEditDialog(context, profiles[index]),
                           onDelete: () => _deleteProfile(profiles[index].id, t),
                         );
                       },
@@ -130,7 +130,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(profileListProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
-      if (mounted) AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+      if (mounted)
+        AppToast.error(context, '${t.profile.update.failureMsg}: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -452,8 +453,9 @@ class _ProfileCard extends ConsumerWidget {
             if (profile.lastUpdate != null) ...[
               const SizedBox(height: 6),
               Text(
-                t.profile.subscription
-                    .updatedTimeAgo(timeago: _fmtTime(profile.lastUpdate!)),
+                t.profile.subscription.updatedTimeAgo(
+                  timeago: _fmtTime(profile.lastUpdate!),
+                ),
                 style: TextStyle(fontSize: 10, color: aiUi.secondaryTextColor),
               ),
             ],
@@ -473,7 +475,9 @@ class _ProfileCard extends ConsumerWidget {
                     await Clipboard.setData(ClipboardData(text: profile.url));
                     if (context.mounted) {
                       AppToast.success(
-                          context, t.profile.share.subscriptionLinkCopied);
+                        context,
+                        t.profile.share.subscriptionLinkCopied,
+                      );
                     }
                   },
                 ),

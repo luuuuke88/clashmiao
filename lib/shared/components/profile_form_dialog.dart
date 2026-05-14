@@ -39,9 +39,9 @@ Future<void> showProfileFormDialog(
               Text(
                 isEdit ? '编辑订阅' : '添加订阅',
                 style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5,
-                    ),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.5,
+                ),
               ),
               if (!isEdit) ...[
                 const SizedBox(height: 4),
@@ -83,8 +83,9 @@ Future<void> showProfileFormDialog(
                     icon: const Icon(FluentIcons.clipboard_paste_24_regular),
                     tooltip: '从剪贴板粘贴',
                     onPressed: () async {
-                      final data =
-                          await Clipboard.getData(Clipboard.kTextPlain);
+                      final data = await Clipboard.getData(
+                        Clipboard.kTextPlain,
+                      );
                       if (data?.text != null && data!.text!.isNotEmpty) {
                         urlCtrl.text = data.text!;
                       }
@@ -103,14 +104,23 @@ Future<void> showProfileFormDialog(
                   onPressed: () async {
                     Navigator.of(ctx).pop();
                     if (isEdit) {
-                      await _doEdit(context, ref, profile.id,
-                          name: nameCtrl.text, url: urlCtrl.text);
+                      await _doEdit(
+                        context,
+                        ref,
+                        profile.id,
+                        name: nameCtrl.text,
+                        url: urlCtrl.text,
+                      );
                     } else {
                       final url = urlCtrl.text.trim();
                       if (url.isEmpty) return;
                       final name = nameCtrl.text.trim();
-                      await _doAdd(context, ref, url,
-                          customName: name.isEmpty ? null : name);
+                      await _doAdd(
+                        context,
+                        ref,
+                        url,
+                        customName: name.isEmpty ? null : name,
+                      );
                     }
                   },
                   child: Text(isEdit ? '保存' : '添加'),

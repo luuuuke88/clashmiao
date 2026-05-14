@@ -812,3 +812,15 @@ class _EmptyProfileBody extends ConsumerWidget {
     );
   }
 }
+
+/// 测试用 export：暴露私有 `_ModeSelector` 给 widget test 使用。
+///
+/// 不要在生产代码中使用 —— 此 wrapper 仅为绕开私有可见性。
+class ModeSelectorForTest extends StatelessWidget {
+  const ModeSelectorForTest({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _ModeSelector(aiUi: Theme.of(context).aiUi);
+  }
+}

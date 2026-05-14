@@ -8,11 +8,11 @@
 
 | 平台 | 状态 | 实现方式 | 验证情况 |
 |------|------|---------|---------|
-| Android | ✅ 可用 | VpnService + `libcore.aar` | tun0 接管流量、模拟器 ping 通、UI 显示已连接 |
-| macOS | 🟡 编译过、UI 启动 | FFI + `libcore.dylib` + 系统代理 | 待手动验证 mixed-port 监听 + 系统代理设置 |
-| iOS | ❌ 未实现 | 计划：NetworkExtension PacketTunnelProvider | 阻塞：Apple Developer 账号 |
-| Windows | ❌ 未实现 | 计划：FFI + WinTun | — |
-| Linux | ❌ 未实现 | 计划：FFI + TUN | — |
+| Android | ✅ 可用 | VpnService + `libcore.aar` | tun0 接管流量、模拟器 ping 通、订阅 / ss-uri 都能加载 |
+| macOS | ✅ 可用 | FFI + `libcore.dylib` + 系统代理 | 154.83.95.148 → 45.202.255.184 验证通过，烟雾 36s 跑完 |
+| iOS | 🟡 代码脚手架完成 | NetworkExtension PacketTunnelProvider | 阻塞：Apple Developer 账号 + 真机签名，见 `ios/SCAFFOLDING.md` |
+| Windows | 🟡 脚手架完成（未验证） | FFI + `libcore.dll` + 系统代理（IE 注册表） | 需 Windows 机器，见 `windows/SCAFFOLDING.md` |
+| Linux | 🟡 脚手架完成（未验证） | FFI + `libcore.so` + 系统代理（GNOME 手动设） | 需 Linux 机器，见 `linux/SCAFFOLDING.md` |
 
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 

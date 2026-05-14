@@ -111,23 +111,18 @@ ios/Shared/FilePath.swift / CommandClient.swift     — 主 app 与 Extension �
 
 ## 横向工作
 
-### 测试覆盖
+### 测试覆盖 ✅
 
-当前：只有 `ConnectionButton` 4 个 widget test。
+- ~30 个 unit + widget 测试，覆盖 `RuntimeConfigBuilder` / `ProfileParser` / `ConfigParser` / `BoxAlertType.parse` / `ProfileRepository.addByUrl` / `ConnectionButton` / `ModeSelector`
+- 1 个 Android E2E：模拟器内点连接 → 出口 IP 变化 → 断开（真实出流量验证）
+- 本地一键：`bash bin/test-all.sh`
 
-下一步该补的：
-- `BoxAlertType.parse` unit test（PascalCase → enum）
-- `_parseStatus` unit test（toLowerCase 兼容）
-- `default_config_options` 平台分支 test（mock `Platform.isAndroid`）
-- 集成 test：模拟 EventChannel 推送 → 验证 provider 状态变化
+### CI/CD ✅
 
-### CI
-
-还没接。目标：
-1. GitHub Actions：每 push 跑 `flutter analyze` + `flutter test`
-2. Android APK debug 构建产物（artifact）
-3. macOS dmg release 构建（需要 macOS runner，免费额度有限）
-4. iOS / Windows / Linux 暂搁置
+- GitHub Actions 4 个 job 并行：`analyze` / `test-unit` / `test-e2e-android` / `build-android`
+- `git tag v*` 触发 `release.yml`：自动出 APK + AAB + macOS dmg 并挂到 GitHub Release
+- E2E job 跑 `reactivecircus/android-emulator-runner@v2`，订阅 URL 通过 `secrets.CLASHMIAO_TEST_SUB_URL` 注入
+- 由于 emulator + TUN + 订阅可用性叠加风险，E2E job 暂 `continue-on-error: true`，下个 milestone 调优
 
 ### 文档
 

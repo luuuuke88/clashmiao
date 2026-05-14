@@ -1,0 +1,26 @@
+//
+//  Base.xcconfig
+//  ClashMiao – shared build configuration for Runner + tunnel extension
+//
+//  GPL-3.0 License
+//  Copyright (c) 2026 ClashMiao Contributors
+//
+//  Centralises the bundle identifier roots and signing team so that the
+//  main app and the packet tunnel extension stay aligned. Override these
+//  values per environment (Debug/Release) by layering additional
+//  xcconfig files on top of this one in the Xcode build settings UI.
+//
+
+// Root identifier used as the prefix for both the application bundle id
+// and the App Group. The runtime entitlements derive `group.<this>` from
+// it (see Runner.entitlements / SingBoxPacketTunnel.entitlements).
+BASE_BUNDLE_IDENTIFIER = com.clashmiao.shared
+
+// Method/Event channel namespace shared with the Dart side
+// (`PlatformBoxService._channelPrefix`). Do not change unless you also
+// update lib/core/box_service/platform_box_service.dart.
+SERVICE_IDENTIFIER = com.clashmiao.app
+
+// Apple Developer team id. Leave blank locally and let Xcode auto-pick,
+// or set explicitly for CI signing.
+DEVELOPMENT_TEAM =

@@ -9,6 +9,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
 
 /// 订阅仓库 - 管理订阅的增删改查和配置文件下载
 class ProfileRepository {
@@ -71,6 +72,165 @@ class ProfileRepository {
       return p.copyWith(active: p.id == profileId);
     }).toList();
     await _saveAll(updated);
+  }
+
+  /// 直接导入单节点 / 内嵌订阅内容（ss:// vless:// trojan:// hysteria2:// vmess://
+  /// 等代理 URI，或者一段已经是 Clash YAML / sing-box JSON 的文本）。
+  ///
+  /// 不走 HTTP 获取，把内容当订阅 body 直接喂给 native parse。
+  /// 适用：剪贴板粘贴的单节点 URI、本地手动备份的配置内容。
+  Future<ProfileEntity> addByContent(
+    String content, {
+    required String name,
+  }) async {
+    final id = const Uuid().v4();
+    final configFile = File(configFilePath(id));
+    await configFile.parent.create(recursive: true);
+    await _normalizeAndWrite(rawBody: content, output: configFile);
+
+    // 补齐 native parse 输出的"裸 outbounds"结构：
+    // ss:// / vless:// 单 URI 解析出来通常只有一个代理 outbound，没有 direct、
+    // 没有 selector group、没有 route.final。RuntimeConfigBuilder 智能模式
+    // 注入的 `outbound: 'direct'` 规则会找不到 direct outbound，整条路由失效，
+    // 流量绕过 TUN 走系统默认链路。
+    if (await configFile.exists()) {
+      await _ensureMinimalProfileStructure(configFile);
+    }
+
+    final isFirst = getAll().isEmpty;
+    final entity = ProfileEntity(
+      id: id,
+      // 不存完整 URI 到 url（可能含敏感凭据 / 密码）
+      name: name.trim().isEmpty ? '本地导入' : name.trim(),
+      url: 'content://${_truncate(content, 24)}',
+      active: isFirst,
+      lastUpdate: DateTime.now(),
+    );
+
+    final profiles = getAll();
+    profiles.add(entity);
+    await _saveAll(profiles);
+    if (isFirst) await setActive(id);
+    return entity;
+  }
+
+  /// 给 native parse 出的精简 profile 补齐：
+  /// - outbounds: 缺 direct 加 direct；缺 selector 自动包装出 `proxy` selector
+  /// - route.final: 缺则指向 proxy（或第一个非 direct outbound）
+  /// - inbounds: 缺则补 tun + mixed（移动端用 tun，桌面端 RuntimeConfigBuilder
+  ///   会 strip 掉，最后 fork 自己接管）
+  /// 已有这些字段则保留不动。
+  Future<void> _ensureMinimalProfileStructure(File file) async {
+    final raw = await file.readAsString();
+    final Map<String, dynamic> cfg;
+    try {
+      cfg = jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      // 不是 JSON（StubBoxService fallback 写的原文），不动
+      return;
+    }
+
+    final outbounds = (cfg['outbounds'] as List?)?.cast<dynamic>() ?? [];
+    final tagsSet = <String>{
+      for (final o in outbounds)
+        if (o is Map && o['tag'] is String) o['tag'] as String,
+    };
+
+    var changed = false;
+    final hasDirect = outbounds.any(
+      (o) => o is Map && o['type'] == 'direct',
+    );
+    if (!hasDirect) {
+      outbounds.add({'type': 'direct', 'tag': 'direct'});
+      tagsSet.add('direct');
+      changed = true;
+    }
+
+    final hasSelector = outbounds.any(
+      (o) => o is Map && o['type'] == 'selector',
+    );
+    if (!hasSelector) {
+      // proxy 候选 = 所有非 direct / 非 dns / 非 block 的 outbound tag
+      final proxyTags = outbounds
+          .where(
+            (o) =>
+                o is Map &&
+                o['tag'] is String &&
+                o['type'] != 'direct' &&
+                o['type'] != 'dns' &&
+                o['type'] != 'block',
+          )
+          .map((o) => (o as Map)['tag'] as String)
+          .toList();
+      if (proxyTags.isNotEmpty) {
+        outbounds.insert(0, {
+          'type': 'selector',
+          'tag': 'proxy',
+          'outbounds': proxyTags,
+          'default': proxyTags.first,
+        });
+        changed = true;
+      }
+    }
+
+    final route = (cfg['route'] is Map<String, dynamic>)
+        ? cfg['route'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    if (route['final'] == null) {
+      // 优先 proxy selector；没有就用第一个非 direct 的
+      route['final'] = tagsSet.contains('proxy')
+          ? 'proxy'
+          : outbounds
+                .firstWhere(
+                  (o) => o is Map && o['type'] != 'direct',
+                  orElse: () => {'tag': 'direct'},
+                )['tag'];
+      cfg['route'] = route;
+      changed = true;
+    }
+
+    final inbounds = (cfg['inbounds'] as List?)?.cast<dynamic>() ?? [];
+    if (inbounds.isEmpty) {
+      // tun + mixed 一并补。tun 配置抄上游 fork 的 default，最稳：
+      // - inet4 用 /28 不用 /30（auto_route 兼容性更好）
+      // - endpoint_independent_nat: true（关键：sing-box outbound 才能正确 NAT）
+      // - sniff: 让 TUN 解析 SNI/HTTP host，路由能按域名分流
+      //
+      // 桌面端这两条都会被 RuntimeConfigBuilder strip 掉，由 fork 自动 append。
+      inbounds.add({
+        'type': 'tun',
+        'tag': 'tun-in',
+        'stack': 'mixed',
+        'mtu': 9000,
+        'auto_route': true,
+        'strict_route': true,
+        'endpoint_independent_nat': true,
+        'inet4_address': ['172.19.0.1/28'],
+        'inet6_address': ['fdfe:dcba:9876::1/126'],
+        'sniff': true,
+        'sniff_override_destination': true,
+      });
+      inbounds.add({
+        'type': 'mixed',
+        'tag': 'mixed-in',
+        'listen': '127.0.0.1',
+        'listen_port': 2080,
+        'sniff': true,
+        'sniff_override_destination': true,
+      });
+      cfg['inbounds'] = inbounds;
+      changed = true;
+    }
+
+    if (changed) {
+      cfg['outbounds'] = outbounds;
+      await file.writeAsString(jsonEncode(cfg));
+    }
+  }
+
+  static String _truncate(String s, int n) {
+    final stripped = s.trim().replaceAll(RegExp(r'\s+'), '');
+    return stripped.length <= n ? stripped : '${stripped.substring(0, n)}...';
   }
 
   /// 添加订阅（下载并解析）

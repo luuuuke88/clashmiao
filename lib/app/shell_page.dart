@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
@@ -21,8 +22,6 @@ class ShellPage extends ConsumerStatefulWidget {
 }
 
 class _ShellPageState extends ConsumerState<ShellPage> {
-  int _selectedIndex = 0;
-
   static const _pages = [
     HomePage(),
     ProxiesPage(),
@@ -32,6 +31,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
 
   @override
   Widget build(BuildContext context) {
+    final selectedIndex = ref.watch(selectedTabProvider);
     // sing-box 核心层推过来的非致命错误 → 全局 toast。
     ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
       final alert = next.valueOrNull;
@@ -69,11 +69,12 @@ class _ShellPageState extends ConsumerState<ShellPage> {
           children: [
             if (topPad > 0) SizedBox(height: topPad),
             Expanded(
-              child: IndexedStack(index: _selectedIndex, children: _pages),
+              child: IndexedStack(index: selectedIndex, children: _pages),
             ),
             _GlassBottomNav(
-              selectedIndex: _selectedIndex,
-              onTap: (i) => setState(() => _selectedIndex = i),
+              selectedIndex: selectedIndex,
+              onTap: (i) =>
+                  ref.read(selectedTabProvider.notifier).state = i,
             ),
           ],
         ),

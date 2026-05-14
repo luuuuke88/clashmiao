@@ -8,6 +8,7 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -44,7 +45,10 @@ void main() async {
       final prefs = container.read(sharedPreferencesProvider).requireValue;
       final modeIndex = prefs.getInt('clashmiao_proxy_mode') ?? 1; // 0=全局 1=智能
       await boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: modeIndex == 0)),
+        jsonEncode(getDefaultConfigOptions(
+          executeConfigAsIs: modeIndex == 0,
+          settings: container.read(networkSettingsProvider),
+        )),
       );
       debugPrint('sing-box 核心初始化成功（mode=$modeIndex）');
     } catch (e) {

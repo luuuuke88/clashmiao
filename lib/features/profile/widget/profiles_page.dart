@@ -84,7 +84,11 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                           onUpdate: () => _updateProfile(profiles[index].id, t),
                           onEdit: () =>
                               _showEditDialog(context, profiles[index]),
-                          onDelete: () => _deleteProfile(profiles[index].id, t),
+                          onDelete: () => _confirmDeleteProfile(
+                            profiles[index].id,
+                            profiles[index].name,
+                            t,
+                          ),
                         );
                       },
                     );
@@ -136,6 +140,33 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _confirmDeleteProfile(
+    String id,
+    String name,
+    TranslationsEn t,
+  ) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除订阅'),
+        content: Text('确定要删除"$name"吗？此操作不可撤销。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('取消'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('删除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    await _deleteProfile(id, t);
   }
 
   Future<void> _deleteProfile(String id, TranslationsEn t) async {

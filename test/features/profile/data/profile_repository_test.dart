@@ -138,7 +138,7 @@ void main() {
       if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
     });
 
-    Future<String> _add(String name) async {
+    Future<String> addNamed(String name) async {
       final body = jsonEncode({
         'outbounds': [
           {'type': 'selector', 'tag': name, 'outbounds': <String>[]},
@@ -154,7 +154,7 @@ void main() {
     }
 
     test('delete 移除 profile + 删配置文件', () async {
-      final id = await _add('A');
+      final id = await addNamed('A');
       final cfgPath = repo.configFilePath(id);
       expect(await File(cfgPath).exists(), isTrue);
 
@@ -164,8 +164,8 @@ void main() {
     });
 
     test('删掉激活订阅后自动切到第一个剩下的', () async {
-      final aId = await _add('A');
-      final bId = await _add('B');
+      final aId = await addNamed('A');
+      final bId = await addNamed('B');
       await repo.setActive(aId);
 
       await repo.delete(aId);
@@ -173,15 +173,15 @@ void main() {
     });
 
     test('删唯一订阅后 getActive 返回 null', () async {
-      final id = await _add('OnlyOne');
+      final id = await addNamed('OnlyOne');
       await repo.delete(id);
       expect(repo.getAll(), isEmpty);
       expect(repo.getActive(), isNull);
     });
 
     test('setActive 切换 + 更新 active 标记', () async {
-      final aId = await _add('A');
-      final bId = await _add('B');
+      final aId = await addNamed('A');
+      final bId = await addNamed('B');
 
       await repo.setActive(bId);
       expect(repo.getActive()?.id, bId);
@@ -191,7 +191,7 @@ void main() {
     });
 
     test('editProfile 改名 + 改 URL（trim、空值跳过）', () async {
-      final id = await _add('Original');
+      final id = await addNamed('Original');
 
       await repo.editProfile(id, newName: '  Renamed  ');
       expect(repo.getAll().firstWhere((p) => p.id == id).name, 'Renamed');
@@ -208,8 +208,8 @@ void main() {
     });
 
     test('getActive 在 activeId 找不到时 fallback 到第一个', () async {
-      final aId = await _add('A');
-      await _add('B');
+      final aId = await addNamed('A');
+      await addNamed('B');
       // 删 A 的 prefs key 模拟脏数据，但 A profile 还在
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('clashmiao_active_profile', 'no-such-id');

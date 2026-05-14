@@ -27,10 +27,7 @@ Future<Widget> _host(BoxStatus status, {VoidCallback? onTap}) async {
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
       ),
       home: Scaffold(
-        body: ConnectionButton(
-          status: status,
-          onTap: onTap ?? () {},
-        ),
+        body: ConnectionButton(status: status, onTap: onTap ?? () {}),
       ),
     ),
   );
@@ -45,7 +42,7 @@ void main() {
       );
       // pump translations future + animation init
       // 不能 pumpAndSettle：动画是无限循环的（涟漪 / 同步图标），settle 不会到。
-await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('点击连接'), findsOneWidget);
 
@@ -57,7 +54,7 @@ await tester.pump(const Duration(milliseconds: 200));
     testWidgets('Starting 状态显示"正在连接"', (tester) async {
       await tester.pumpWidget(await _host(const BoxStarting()));
       // 不能 pumpAndSettle：动画是无限循环的（涟漪 / 同步图标），settle 不会到。
-await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('正在连接'), findsOneWidget);
     });
@@ -87,7 +84,7 @@ await tester.pump(const Duration(milliseconds: 200));
     testWidgets('Stopping 状态显示"正在断开连接"', (tester) async {
       await tester.pumpWidget(await _host(const BoxStopping()));
       // 不能 pumpAndSettle：动画是无限循环的（涟漪 / 同步图标），settle 不会到。
-await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('正在断开连接'), findsOneWidget);
     });

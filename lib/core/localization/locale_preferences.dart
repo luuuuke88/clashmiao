@@ -8,8 +8,10 @@ part 'locale_preferences.g.dart';
 class LocalePreferences extends _$LocalePreferences {
   @override
   AppLocale build() {
-    final persisted =
-        ref.watch(sharedPreferencesProvider).requireValue.getString("locale");
+    final persisted = ref
+        .watch(sharedPreferencesProvider)
+        .requireValue
+        .getString("locale");
     if (persisted == null) return AppLocaleUtils.findDeviceLocale();
     if (persisted == "zh") {
       return AppLocale.zhCn;

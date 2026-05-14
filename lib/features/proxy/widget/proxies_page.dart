@@ -117,8 +117,10 @@ class ProxiesPage extends ConsumerWidget {
                         onTap: isConnected
                             ? () => _testAll(context, ref, groups)
                             : () {
-                                AppToast.info(context,
-                                    t.failure.singbox.serviceNotRunning);
+                                AppToast.info(
+                                  context,
+                                  t.failure.singbox.serviceNotRunning,
+                                );
                               },
                       ),
                     ],
@@ -137,7 +139,8 @@ class ProxiesPage extends ConsumerWidget {
                         itemBuilder: (ctx, index) {
                           final group = groups[index];
                           // Identify Auto/URL-Test item
-                          final autoProxy = group.items.firstWhereOrNull(
+                          final autoProxy =
+                              group.items.firstWhereOrNull(
                                 (e) =>
                                     e.type.toLowerCase() == 'urltest' ||
                                     e.type.toLowerCase() == 'url_test',
@@ -145,8 +148,9 @@ class ProxiesPage extends ConsumerWidget {
                               group.items.firstWhereOrNull(
                                 (e) => e.tag.toLowerCase() == 'auto',
                               );
-                          final otherProxies =
-                              group.items.where((e) => e != autoProxy).toList();
+                          final otherProxies = group.items
+                              .where((e) => e != autoProxy)
+                              .toList();
 
                           return Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,7 +166,8 @@ class ProxiesPage extends ConsumerWidget {
                                         AppToast.info(
                                           context,
                                           t.proxies.testingDelayInfo(
-                                              name: group.tag),
+                                            name: group.tag,
+                                          ),
                                         );
                                       }
                                     : null,
@@ -222,12 +227,16 @@ class ProxiesPage extends ConsumerWidget {
           .read(boxServiceProvider)
           .selectOutbound(groupTag, outboundTag)
           .then((_) {
-        // Toast can be annoying on fast switches, removed or keep brief
-        // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
-      }).catchError((e) {
-        if (!context.mounted) return;
-        AppToast.error(context, t.proxies.switchToFailed(error: e.toString()));
-      });
+            // Toast can be annoying on fast switches, removed or keep brief
+            // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
+          })
+          .catchError((e) {
+            if (!context.mounted) return;
+            AppToast.error(
+              context,
+              t.proxies.switchToFailed(error: e.toString()),
+            );
+          });
     } else {
       AppToast.info(context, t.proxies.connectBeforeSwitch);
     }
@@ -242,8 +251,10 @@ class ProxiesPage extends ConsumerWidget {
       ref.read(boxServiceProvider).urlTest(g.tag);
     }
     final t = ref.read(translationsProvider);
-    AppToast.info(context,
-        t.proxies.startDelayTestForGroups(count: groups.length.toString()));
+    AppToast.info(
+      context,
+      t.proxies.startDelayTestForGroups(count: groups.length.toString()),
+    );
   }
 }
 
@@ -282,20 +293,20 @@ class ProxiesSortModal extends HookConsumerWidget {
             };
 
             return ListTile(
-              title: Text(e.present(t)),
-              leading: Icon(icon),
-              selected: sortBy == e,
-              trailing: sortBy == e
-                  ? Icon(
-                      FluentIcons.checkmark_24_filled,
-                      color: Theme.of(context).colorScheme.primary,
-                    )
-                  : null,
-              onTap: () {
-                ref.read(proxiesSortProvider.notifier).updateSort(e);
-                context.pop();
-              },
-            )
+                  title: Text(e.present(t)),
+                  leading: Icon(icon),
+                  selected: sortBy == e,
+                  trailing: sortBy == e
+                      ? Icon(
+                          FluentIcons.checkmark_24_filled,
+                          color: Theme.of(context).colorScheme.primary,
+                        )
+                      : null,
+                  onTap: () {
+                    ref.read(proxiesSortProvider.notifier).updateSort(e);
+                    context.pop();
+                  },
+                )
                 .animate()
                 .fadeIn(duration: 300.ms, delay: (200 + e.index * 50).ms)
                 .slideX(
@@ -358,8 +369,9 @@ class _AutoSelectCard extends HookConsumerWidget {
     final borderColor = isSelected
         ? theme.colorScheme.primary
         : aiUi.borderColor.withValues(alpha: 0.05);
-    final textColor =
-        isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface;
+    final textColor = isSelected
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurface;
     final subTextColor = isSelected
         ? theme.colorScheme.primary.withValues(alpha: 0.8)
         : aiUi.secondaryTextColor;
@@ -618,8 +630,9 @@ class _ProxyTile extends StatelessWidget {
               width: 4,
               height: 36,
               decoration: BoxDecoration(
-                color:
-                    isSelected ? theme.colorScheme.primary : Colors.transparent,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(4),
               ),
             ),
@@ -633,8 +646,9 @@ class _ProxyTile extends StatelessWidget {
                     proxy.tag,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w500,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
                       color: isSelected
                           ? theme.colorScheme.primary
                           : theme.colorScheme.onSurface,

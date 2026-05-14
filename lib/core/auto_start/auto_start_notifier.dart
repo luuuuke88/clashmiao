@@ -34,7 +34,6 @@ class AutoStartNotifier extends StateNotifier<bool> {
   }
 }
 
-final autoStartProvider =
-    StateNotifierProvider<AutoStartNotifier, bool>((ref) {
+final autoStartProvider = StateNotifierProvider<AutoStartNotifier, bool>((ref) {
   return AutoStartNotifier();
 });

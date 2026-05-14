@@ -64,8 +64,9 @@ void main() async {
       center: true,
       backgroundColor: Colors.transparent,
       skipTaskbar: false,
-      titleBarStyle:
-          Platform.isMacOS ? TitleBarStyle.hidden : TitleBarStyle.normal,
+      titleBarStyle: Platform.isMacOS
+          ? TitleBarStyle.hidden
+          : TitleBarStyle.normal,
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
       await windowManager.show();
@@ -118,9 +119,7 @@ Future<void> _devAutoBoot(ProviderContainer container) async {
     // 给 UI / status stream 一点时间稳定，然后触发 connect
     await Future.delayed(const Duration(seconds: 2));
     debugPrint('[DevBoot] 自动连接...');
-    await container
-        .read(connectionControllerProvider.notifier)
-        .toggle();
+    await container.read(connectionControllerProvider.notifier).toggle();
   } catch (e, st) {
     debugPrint('[DevBoot] 出错: $e\n$st');
   }

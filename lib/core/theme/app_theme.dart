@@ -8,7 +8,8 @@ class AppTheme {
   final String fontFamily;
 
   ThemeData lightTheme(ColorScheme? lightColorScheme) {
-    final ColorScheme scheme = lightColorScheme ??
+    final ColorScheme scheme =
+        lightColorScheme ??
         ColorScheme.fromSeed(
           seedColor: const Color(0xFF3B82F6), // Vibrant Blue
           brightness: Brightness.light,
@@ -23,7 +24,10 @@ class AppTheme {
       textTheme: const TextTheme(
         bodyLarge: TextStyle(color: Color(0xFF1E293B)),
         bodyMedium: TextStyle(color: Color(0xFF475569)), // Slate 600
-        titleLarge: TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.bold),
+        titleLarge: TextStyle(
+          color: Color(0xFF1E293B),
+          fontWeight: FontWeight.bold,
+        ),
       ),
       fontFamily: fontFamily,
       extensions: <ThemeExtension<dynamic>>{
@@ -34,7 +38,8 @@ class AppTheme {
   }
 
   ThemeData darkTheme(ColorScheme? darkColorScheme) {
-    final ColorScheme scheme = darkColorScheme ??
+    final ColorScheme scheme =
+        darkColorScheme ??
         ColorScheme.fromSeed(
           seedColor: const Color(0xFF6366f1), // UI Primary
           brightness: Brightness.dark,

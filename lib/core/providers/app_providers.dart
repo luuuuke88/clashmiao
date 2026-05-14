@@ -33,10 +33,12 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
   final prefs = await ref.watch(sharedPreferencesProvider.future);
   final appDir = await getApplicationDocumentsDirectory();
 
-  final dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 15),
-    receiveTimeout: const Duration(seconds: 30),
-  ));
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 30),
+    ),
+  );
   // 忽略自签名证书 + 跳过系统代理直连（避免 sing-box 代理干扰）
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
@@ -264,5 +266,5 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
 
 final connectionControllerProvider =
     StateNotifierProvider<ConnectionController, AsyncValue<BoxStatus>>((ref) {
-  return ConnectionController(ref);
-});
+      return ConnectionController(ref);
+    });

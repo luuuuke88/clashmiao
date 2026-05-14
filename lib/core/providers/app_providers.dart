@@ -211,7 +211,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           await Future.delayed(const Duration(milliseconds: 1500));
           state = const AsyncData(BoxStarted());
           return;
-        } catch (_) {}
+        } catch (retryErr) {
+          _ref.read(connectionErrorProvider.notifier).state =
+              retryErr.toString();
+        }
+      } else {
+        _ref.read(connectionErrorProvider.notifier).state = e.toString();
       }
       state = const AsyncData(BoxStopped());
     } finally {
@@ -238,6 +243,11 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   }
 
   /// 重连（用 restart 原子操作，避免 stop+start 竞态）
+  ///
+  /// 必须用 RuntimeConfigBuilder 现场拼好的 runtime-config.json，
+  /// 否则切换"全局/智能"时分流配置不生效（restart 直接拿原始 profile
+  /// 等于退回到 profile 自带的 rule-set 引用，可能 fetch 远端 GFW-blocked
+  /// 资源、或者全局模式下没剥离 hiddify-fork 的兜底 default，效果不可预期）。
   Future<void> reconnect() async {
     if (_isStub) return;
     final repoAsync = _ref.read(profileRepositoryProvider);
@@ -246,13 +256,29 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     final active = repo.getActive();
     if (active == null) return;
 
-    final configPath = repo.configFilePath(active.id);
+    final configFile = File(repo.configFilePath(active.id));
+    if (!await configFile.exists()) {
+      debugPrint('重连: 配置文件不存在 ${configFile.path}');
+      return;
+    }
+
     state = const AsyncData(BoxStarting());
     try {
-      debugPrint('重连: restart $configPath');
-      await _boxService.restart(configPath, name: active.name);
+      final modeIndex = _ref.read(proxyModeProvider);
+      final isGlobal = modeIndex == 0;
+      // mode 可能在两次 connect 之间变了；先把 options 重推一遍
+      await _boxService.changeConfigOptions(
+        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: isGlobal)),
+      );
+      final workingDir = await getApplicationDocumentsDirectory();
+      final runtimeConfig = await RuntimeConfigBuilder().build(
+        baseProfile: configFile,
+        isSmart: !isGlobal,
+        workingDir: workingDir,
+      );
+      debugPrint('重连: restart ${runtimeConfig.path}');
+      await _boxService.restart(runtimeConfig.path, name: active.name);
       debugPrint('restart 完成');
-      // 等待状态通过 watchStatus 更新
       await Future.delayed(const Duration(seconds: 2));
       if (state.valueOrNull is BoxStarting) {
         state = const AsyncData(BoxStarted());
@@ -268,3 +294,10 @@ final connectionControllerProvider =
     StateNotifierProvider<ConnectionController, AsyncValue<BoxStatus>>((ref) {
       return ConnectionController(ref);
     });
+
+/// 最近一次 connect/reconnect 失败的错误信息（人类可读 string）。
+///
+/// 用 string 而不是 Exception 是为了能从 `valueOrNull == null` 区分"没失败过"
+/// 和"刚失败"两种状态。UI 通过 listen 拿到变化弹 toast 之后应该
+/// `.state = null` 把它清空。
+final connectionErrorProvider = StateProvider<String?>((_) => null);

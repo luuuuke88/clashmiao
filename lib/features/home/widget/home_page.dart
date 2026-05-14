@@ -9,6 +9,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -28,6 +29,14 @@ class HomePage extends ConsumerWidget {
     final connectionState = ref.watch(connectionControllerProvider);
     final status = connectionState.valueOrNull ?? const BoxStopped();
     final activeProfile = ref.watch(activeProfileProvider);
+
+    // 连接错误一次性反馈：错误出现 → 弹 toast → 清空
+    ref.listen<String?>(connectionErrorProvider, (prev, next) {
+      if (next != null && next.isNotEmpty && context.mounted) {
+        AppToast.error(context, next);
+        ref.read(connectionErrorProvider.notifier).state = null;
+      }
+    });
 
     return Scaffold(
       body: Stack(
@@ -518,9 +527,17 @@ class _ModeSelector extends HookConsumerWidget {
     final isGlobal = index == 0;
     try {
       final service = ref.read(boxServiceProvider);
-      // 传完整配置，只改 execute-config-as-is
+      // 推 fork-side options（mode 状态对齐，但路由是 RuntimeConfigBuilder 决定的）
       final options = getDefaultConfigOptions(executeConfigAsIs: isGlobal);
       await service.changeConfigOptions(jsonEncode(options));
+
+      // 如果当前在连接中，需要 reconnect 让新的 runtime-config 生效
+      // —— 仅推 changeConfigOptions 不会让 sing-box 重读路由规则。
+      final connStatus =
+          ref.read(connectionControllerProvider).valueOrNull;
+      if (connStatus is BoxStarted) {
+        await ref.read(connectionControllerProvider.notifier).reconnect();
+      }
     } catch (e) {
       final t = ref.read(translationsProvider);
       debugPrint(t.home.failedToSwitchMode(error: e.toString()));

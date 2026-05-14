@@ -27,7 +27,7 @@ Future<Directory> _mockPathProvider() async {
 
 /// 非 stub spy，控制 watchStatus 流，记录方法调用次数。
 class _SpyBoxService implements BoxService {
-  final statusController = Stream<BoxStatus>.empty().asBroadcastStream();
+  final statusController = const Stream<BoxStatus>.empty().asBroadcastStream();
 
   int startCalls = 0;
   int stopCalls = 0;

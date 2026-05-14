@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
-import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -25,6 +25,7 @@ class SettingsPage extends ConsumerWidget {
     final themeMode = ref.watch(themePreferencesProvider);
     final locale = ref.watch(localePreferencesProvider);
     final t = ref.watch(translationsProvider);
+    final netSettings = ref.watch(networkSettingsProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -183,7 +184,7 @@ class SettingsPage extends ConsumerWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  '2080',
+                                  '${netSettings.mixedPort}',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Theme.of(
@@ -208,32 +209,48 @@ class SettingsPage extends ConsumerWidget {
                             iconColor: const Color(0xFFF97316), // Orange
                             icon: FluentIcons.globe_search_24_regular,
                             label: t.config.setSystemProxy,
-                            value: true,
-                            onChanged: (v) => AppToast.info(
-                              context,
-                              v
-                                  ? t.settings.systemProxyEnabled
-                                  : t.settings.systemProxyDisabled,
-                            ),
+                            value: netSettings.setSystemProxy,
+                            onChanged: (v) async {
+                              await ref
+                                  .read(networkSettingsProvider.notifier)
+                                  .setSystemProxy(v);
+                              if (context.mounted) {
+                                AppToast.info(
+                                  context,
+                                  v
+                                      ? t.settings.systemProxyEnabled
+                                      : t.settings.systemProxyDisabled,
+                                );
+                              }
+                            },
                           ),
                           const _Divider(),
                           _SwitchSettingsTile(
                             iconColor: const Color(0xFFEC4899), // Pink
                             icon: FluentIcons.arrow_routing_24_regular,
                             label: t.config.enableTun,
-                            value: false,
-                            onChanged: (_) => AppToast.info(
-                              context,
-                              t.settings.adminPrivilegesRequired,
-                            ),
+                            value: netSettings.enableTun,
+                            onChanged: (v) async {
+                              if (v && !Platform.isAndroid && !Platform.isIOS) {
+                                AppToast.info(
+                                  context,
+                                  t.settings.adminPrivilegesRequired,
+                                );
+                              }
+                              await ref
+                                  .read(networkSettingsProvider.notifier)
+                                  .setEnableTun(v);
+                            },
                           ),
                           const _Divider(),
                           _SwitchSettingsTile(
                             iconColor: const Color(0xFF6366F1), // Indigo
                             icon: FluentIcons.wifi_1_24_regular,
                             label: t.config.allowConnectionFromLan,
-                            value: false,
-                            onChanged: (_) => AppToast.info(context, '开发中'),
+                            value: netSettings.allowConnectionFromLan,
+                            onChanged: (v) => ref
+                                .read(networkSettingsProvider.notifier)
+                                .setAllowLan(v),
                           ),
                         ],
                       ),
@@ -264,7 +281,7 @@ class SettingsPage extends ConsumerWidget {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
-                                  'udp://1.1.1.1',
+                                  netSettings.remoteDnsAddress,
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: Theme.of(
@@ -282,18 +299,17 @@ class SettingsPage extends ConsumerWidget {
                                 ),
                               ],
                             ),
-                            onTap: () => AppToast.info(
-                              context,
-                              t.general.underDevelopment,
-                            ),
+                            onTap: () => _showDnsEditor(context, ref, t),
                           ),
                           const _Divider(),
                           _SwitchSettingsTile(
                             iconColor: const Color(0xFF8B5CF6), // Violet
                             icon: FluentIcons.arrow_routing_24_regular,
                             label: t.config.enableDnsRouting,
-                            value: true,
-                            onChanged: (_) {},
+                            value: netSettings.enableDnsRouting,
+                            onChanged: (v) => ref
+                                .read(networkSettingsProvider.notifier)
+                                .setEnableDnsRouting(v),
                           ),
                         ],
                       ),
@@ -487,7 +503,8 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
-    final controller = TextEditingController(text: '2080');
+    final current = ref.read(networkSettingsProvider).mixedPort;
+    final controller = TextEditingController(text: '$current');
     showAiUiModal(
       context: context,
       isScrollControlled: true,
@@ -531,9 +548,94 @@ class SettingsPage extends ConsumerWidget {
                   width: double.infinity,
                   height: 48,
                   child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      AppToast.info(context, t.settings.portChangeNotice);
+                    onPressed: () async {
+                      final raw = controller.text.trim();
+                      final port = int.tryParse(raw);
+                      if (port == null || port < 1024 || port > 65535) {
+                        AppToast.error(context, '端口范围 1024-65535');
+                        return;
+                      }
+                      try {
+                        await ref
+                            .read(networkSettingsProvider.notifier)
+                            .setMixedPort(port);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        if (context.mounted) {
+                          AppToast.info(context, t.settings.portChangeNotice);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          AppToast.error(context, '保存失败: $e');
+                        }
+                      }
+                    },
+                    child: Text(t.general.confirm),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showDnsEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
+    final current = ref.read(networkSettingsProvider).remoteDnsAddress;
+    final controller = TextEditingController(text: current);
+    showAiUiModal(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return AiUiModalWrapper(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              24,
+              0,
+              24,
+              MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  t.config.remoteDnsAddress,
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: t.config.remoteDnsAddress,
+                    hintText: 'udp://1.1.1.1 / https://1.1.1.1/dns-query',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(FluentIcons.server_24_regular),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: FilledButton(
+                    onPressed: () async {
+                      final addr = controller.text.trim();
+                      if (addr.isEmpty) {
+                        AppToast.error(context, 'DNS 地址不能为空');
+                        return;
+                      }
+                      await ref
+                          .read(networkSettingsProvider.notifier)
+                          .setRemoteDnsAddress(addr);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (context.mounted) {
+                        AppToast.info(context, t.settings.portChangeNotice);
+                      }
                     },
                     child: Text(t.general.confirm),
                   ),
@@ -657,49 +759,82 @@ class _LogsPage extends ConsumerWidget {
     final t = ref.watch(translationsProvider);
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
-    final isConnected =
-        ref.watch(connectionControllerProvider).valueOrNull is BoxStarted;
+    final logsAsync = ref.watch(boxLogStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(t.logs.pageTitle),
         actions: [
           IconButton(
-            icon: const Icon(FluentIcons.delete_24_regular),
-            onPressed: () {
-              AppToast.info(context, t.logs.logsCleared);
-            },
-          ),
-          IconButton(
             icon: const Icon(FluentIcons.copy_24_regular),
+            tooltip: '复制全部',
             onPressed: () {
-              Clipboard.setData(const ClipboardData(text: ''));
+              final lines = logsAsync.valueOrNull ?? const [];
+              Clipboard.setData(ClipboardData(text: lines.join('\n')));
               AppToast.success(context, t.logs.logsCopied);
             },
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isConnected
-                  ? FluentIcons.document_text_24_regular
-                  : FluentIcons.plug_disconnected_24_regular,
-              size: 48,
-              color: aiUi.secondaryTextColor,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              isConnected
-                  ? t.logs.logsUnderDevelopment
-                  : t.logs.noLogsWhenDisconnected,
-              style: TextStyle(fontSize: 14, color: aiUi.secondaryTextColor),
-            ),
-          ],
-        ),
+      body: logsAsync.when(
+        data: (lines) {
+          if (lines.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    FluentIcons.document_24_regular,
+                    size: 48,
+                    color: aiUi.secondaryTextColor,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '暂无日志（连接 sing-box 后会有内容）',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: aiUi.secondaryTextColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            reverse: false,
+            itemCount: lines.length,
+            itemBuilder: (_, i) {
+              final line = lines[i];
+              final color = _colorFor(line, aiUi);
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 1),
+                child: SelectableText(
+                  line,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontFamily: 'Monospace',
+                    color: color,
+                  ),
+                ),
+              );
+            },
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('日志读取失败: $e')),
       ),
     );
+  }
+
+  /// 按日志级别上色：ERROR 红，WARN 橙，INFO 默认，DEBUG 灰
+  Color _colorFor(String line, AiUiTheme aiUi) {
+    final lower = line.toLowerCase();
+    if (lower.contains('error') || lower.contains('fatal')) {
+      return const Color(0xFFEF4444);
+    }
+    if (lower.contains('warn')) return const Color(0xFFF59E0B);
+    if (lower.contains('debug')) return aiUi.secondaryTextColor.withValues(alpha: 0.6);
+    return aiUi.secondaryTextColor;
   }
 }

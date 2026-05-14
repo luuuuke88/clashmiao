@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'dart:ui';
+import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -97,7 +99,9 @@ class HomePage extends ConsumerWidget {
                           children: [
                             _HeaderButton(
                               icon: FluentIcons.options_24_regular,
-                              onTap: () {},
+                              onTap: () =>
+                                  ref.read(selectedTabProvider.notifier).state =
+                                      AppTab.settings,
                             ),
                             const SizedBox(width: 12),
                             _HeaderButton(
@@ -528,7 +532,10 @@ class _ModeSelector extends HookConsumerWidget {
     try {
       final service = ref.read(boxServiceProvider);
       // 推 fork-side options（mode 状态对齐，但路由是 RuntimeConfigBuilder 决定的）
-      final options = getDefaultConfigOptions(executeConfigAsIs: isGlobal);
+      final options = getDefaultConfigOptions(
+        executeConfigAsIs: isGlobal,
+        settings: ref.read(networkSettingsProvider),
+      );
       await service.changeConfigOptions(jsonEncode(options));
 
       // 如果当前在连接中，需要 reconnect 让新的 runtime-config 生效

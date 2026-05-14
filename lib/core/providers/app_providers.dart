@@ -12,6 +12,7 @@ import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/config/runtime_config_builder.dart';
+import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 
 import 'package:dio/dio.dart';
@@ -178,7 +179,10 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // 连接前推送 fork-side options（关键：region='other' 已经在 default 写死，
       // 这里 executeConfigAsIs 跟用户选择对齐，留给后续可能扩展使用）。
       await _boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: isGlobal)),
+        jsonEncode(getDefaultConfigOptions(
+          executeConfigAsIs: isGlobal,
+          settings: _ref.read(networkSettingsProvider),
+        )),
       );
 
       // 现场组装 runtime-config.json（注入 / 剥离 rule-set），native 加载这个。
@@ -268,7 +272,10 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       final isGlobal = modeIndex == 0;
       // mode 可能在两次 connect 之间变了；先把 options 重推一遍
       await _boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(executeConfigAsIs: isGlobal)),
+        jsonEncode(getDefaultConfigOptions(
+          executeConfigAsIs: isGlobal,
+          settings: _ref.read(networkSettingsProvider),
+        )),
       );
       final workingDir = await getApplicationDocumentsDirectory();
       final runtimeConfig = await RuntimeConfigBuilder().build(
@@ -301,3 +308,29 @@ final connectionControllerProvider =
 /// 和"刚失败"两种状态。UI 通过 listen 拿到变化弹 toast 之后应该
 /// `.state = null` 把它清空。
 final connectionErrorProvider = StateProvider<String?>((_) => null);
+
+/// sing-box 实时日志流（从 $appDocs/box.log 每 1.5s tail 一次）。
+///
+/// 桌面端 sing-box 把日志直接写到 box.log；移动端 fork 也可以走同样路径。
+/// 这里用 Stream + Timer 主动 poll 而不是 inotify，跨平台代价最小，
+/// 1-2s 延迟对 UI 显示足够。
+final boxLogStreamProvider = StreamProvider<List<String>>((ref) async* {
+  final docsDir = await getApplicationDocumentsDirectory();
+  final logFile = File('${docsDir.path}/box.log');
+  // 第一帧立即 yield 当前内容（若有），之后每 1.5s 重读
+  String? prev;
+  while (true) {
+    if (await logFile.exists()) {
+      final content = await logFile.readAsString();
+      if (content != prev) {
+        prev = content;
+        // 只保留最后 500 行，避免 UI 卡死
+        final lines = const LineSplitter().convert(content);
+        yield lines.length > 500 ? lines.sublist(lines.length - 500) : lines;
+      }
+    } else {
+      yield const [];
+    }
+    await Future.delayed(const Duration(milliseconds: 1500));
+  }
+});

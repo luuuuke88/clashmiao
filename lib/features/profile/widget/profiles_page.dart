@@ -130,8 +130,9 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(profileListProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

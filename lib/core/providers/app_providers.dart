@@ -101,11 +101,30 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           // 过渡动画期间不允许核心直接覆盖状态
           if (_transitioning) return;
           state = AsyncData(status);
+          _syncStartedAt(status);
         },
         onError: (e) {
           debugPrint('watchStatus 错误: $e');
         },
       );
+    }
+    // 内部 state setter 也走 _syncStartedAt（addListener 监听本 notifier）
+    addListener((value) {
+      final s = value.valueOrNull;
+      if (s != null) _syncStartedAt(s);
+    });
+  }
+
+  /// 跟 connectionStartedAtProvider 同步：进入 Started 时记录时间，离开时清零。
+  void _syncStartedAt(BoxStatus status) {
+    final prov = _ref.read(connectionStartedAtProvider.notifier);
+    if (status is BoxStarted) {
+      // 已有时间戳就不覆盖（避免重复 listener 重置）
+      if (prov.state == null) {
+        prov.state = DateTime.now();
+      }
+    } else if (status is BoxStopped) {
+      if (prov.state != null) prov.state = null;
     }
   }
 
@@ -308,6 +327,10 @@ final connectionControllerProvider =
 /// 和"刚失败"两种状态。UI 通过 listen 拿到变化弹 toast 之后应该
 /// `.state = null` 把它清空。
 final connectionErrorProvider = StateProvider<String?>((_) => null);
+
+/// 进入 BoxStarted 时记录的时间戳（用来算"已连接 N 分钟"）。
+/// 由 ConnectionController 在 state 变 Started 时设置，断开时清零。
+final connectionStartedAtProvider = StateProvider<DateTime?>((_) => null);
 
 /// sing-box 实时日志流（从 $appDocs/box.log 每 1.5s tail 一次）。
 ///

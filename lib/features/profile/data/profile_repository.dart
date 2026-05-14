@@ -202,20 +202,11 @@ class ProfileRepository {
       //   direct → 直连 DNS（用来解析 remote 自己的域名 + 国内域名）
       //   local  → 系统 DNS（用来解析 direct 自己的域名 fallback）
       // 不写 detour 让 sing-box 走路由表（route.final / route.rules）。
-      // remote 用 DoH（https），通过 TCP 出站，比 UDP 通过 SS 更稳。
-      // direct/local 走 udp 不经代理。
+      // 简化：remote/direct 都用纯 IP，省去 address_resolver 链。
+      // local 备用走系统 DNS（不经代理）。
       dnsServers.addAll([
-        {
-          'tag': 'remote',
-          'address': 'https://1.1.1.1/dns-query',
-          'address_resolver': 'direct',
-        },
-        {
-          'tag': 'direct',
-          'address': 'udp://1.1.1.1',
-          'address_resolver': 'local',
-          'detour': 'direct',
-        },
+        {'tag': 'remote', 'address': 'udp://1.1.1.1'},
+        {'tag': 'direct', 'address': 'udp://1.1.1.1', 'detour': 'direct'},
         {'tag': 'local', 'address': 'local', 'detour': 'direct'},
       ]);
       dns['servers'] = dnsServers;

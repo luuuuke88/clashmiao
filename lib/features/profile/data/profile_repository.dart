@@ -189,6 +189,41 @@ class ProfileRepository {
       changed = true;
     }
 
+    // dns.servers 缺失会让 RuntimeConfigBuilder 注入的 `server: "local"` 引用
+    // 不到任何 server → sing-box DNS 阶段没有解析后端 → Chrome 上 DNS_PROBE_
+    // FINISHED_NO_INTERNET。补上标准两 server：local（系统）+ remote（走代理）。
+    final dns = (cfg['dns'] is Map<String, dynamic>)
+        ? cfg['dns'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    final dnsServers = (dns['servers'] as List?)?.cast<dynamic>() ?? [];
+    if (dnsServers.isEmpty) {
+      // 3 层 DNS server 链（参考 sing-box 推荐套路）：
+      //   remote → 远程 DNS（走代理）
+      //   direct → 直连 DNS（用来解析 remote 自己的域名 + 国内域名）
+      //   local  → 系统 DNS（用来解析 direct 自己的域名 fallback）
+      // 不写 detour 让 sing-box 走路由表（route.final / route.rules）。
+      // remote 用 DoH（https），通过 TCP 出站，比 UDP 通过 SS 更稳。
+      // direct/local 走 udp 不经代理。
+      dnsServers.addAll([
+        {
+          'tag': 'remote',
+          'address': 'https://1.1.1.1/dns-query',
+          'address_resolver': 'direct',
+        },
+        {
+          'tag': 'direct',
+          'address': 'udp://1.1.1.1',
+          'address_resolver': 'local',
+          'detour': 'direct',
+        },
+        {'tag': 'local', 'address': 'local', 'detour': 'direct'},
+      ]);
+      dns['servers'] = dnsServers;
+      dns['final'] = dns['final'] ?? 'remote';
+      cfg['dns'] = dns;
+      changed = true;
+    }
+
     final inbounds = (cfg['inbounds'] as List?)?.cast<dynamic>() ?? [];
     if (inbounds.isEmpty) {
       // tun + mixed 一并补。tun 配置抄上游 fork 的 default，最稳：

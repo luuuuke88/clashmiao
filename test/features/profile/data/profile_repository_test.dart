@@ -117,4 +117,109 @@ void main() {
       expect(profile.name, 'MyCustom');
     });
   });
+
+  group('ProfileRepository 增删改活', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('repo_crud_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: StubBoxService(),
+      );
+    });
+
+    tearDown(() async {
+      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+    });
+
+    Future<String> _add(String name) async {
+      final body = jsonEncode({
+        'outbounds': [
+          {'type': 'selector', 'tag': name, 'outbounds': <String>[]},
+        ],
+      });
+      final server = await _serveOnce(body, headers: {});
+      addTearDown(() => server.close(force: true));
+      final p = await repo.addByUrl(
+        'http://localhost:${server.port}/',
+        customName: name,
+      );
+      return p.id;
+    }
+
+    test('delete 移除 profile + 删配置文件', () async {
+      final id = await _add('A');
+      final cfgPath = repo.configFilePath(id);
+      expect(await File(cfgPath).exists(), isTrue);
+
+      await repo.delete(id);
+      expect(repo.getAll().any((p) => p.id == id), isFalse);
+      expect(await File(cfgPath).exists(), isFalse);
+    });
+
+    test('删掉激活订阅后自动切到第一个剩下的', () async {
+      final aId = await _add('A');
+      final bId = await _add('B');
+      await repo.setActive(aId);
+
+      await repo.delete(aId);
+      expect(repo.getActive()?.id, bId);
+    });
+
+    test('删唯一订阅后 getActive 返回 null', () async {
+      final id = await _add('OnlyOne');
+      await repo.delete(id);
+      expect(repo.getAll(), isEmpty);
+      expect(repo.getActive(), isNull);
+    });
+
+    test('setActive 切换 + 更新 active 标记', () async {
+      final aId = await _add('A');
+      final bId = await _add('B');
+
+      await repo.setActive(bId);
+      expect(repo.getActive()?.id, bId);
+      // 所有 profile 的 active 标记应该和 setActive 对齐
+      expect(repo.getAll().firstWhere((p) => p.id == bId).active, isTrue);
+      expect(repo.getAll().firstWhere((p) => p.id == aId).active, isFalse);
+    });
+
+    test('editProfile 改名 + 改 URL（trim、空值跳过）', () async {
+      final id = await _add('Original');
+
+      await repo.editProfile(id, newName: '  Renamed  ');
+      expect(repo.getAll().firstWhere((p) => p.id == id).name, 'Renamed');
+
+      // 空字符串 / 仅空格不应该覆盖
+      await repo.editProfile(id, newName: '   ');
+      expect(repo.getAll().firstWhere((p) => p.id == id).name, 'Renamed');
+
+      await repo.editProfile(id, newUrl: 'https://newurl.example/sub');
+      expect(
+        repo.getAll().firstWhere((p) => p.id == id).url,
+        'https://newurl.example/sub',
+      );
+    });
+
+    test('getActive 在 activeId 找不到时 fallback 到第一个', () async {
+      final aId = await _add('A');
+      await _add('B');
+      // 删 A 的 prefs key 模拟脏数据，但 A profile 还在
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('clashmiao_active_profile', 'no-such-id');
+      // 因为 activeId 找不到，会返回 profiles.first
+      expect(repo.getActive()?.id, aId);
+    });
+
+    test('getActive 在 prefs 没设过时返回 null', () async {
+      // 无任何 profile
+      expect(repo.getActive(), isNull);
+    });
+  });
 }

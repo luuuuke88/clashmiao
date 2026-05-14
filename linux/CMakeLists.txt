@@ -106,6 +106,16 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
     COMPONENT Runtime)
 endforeach(bundled_library)
 
+# ClashMiao: sing-box 核心库（libcore.so）。
+# libs/libcore.so 由开发者用 core/build.sh linux 生成后手动放到 linux/libs/
+# 这里检测一下：存在则装进 lib/，让 FFI 用 RPATH ($ORIGIN/lib) 找到。
+set(CLASHMIAO_CORE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libs/libcore.so")
+if(EXISTS "${CLASHMIAO_CORE_LIB}")
+  install(FILES "${CLASHMIAO_CORE_LIB}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/linux/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

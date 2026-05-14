@@ -87,6 +87,16 @@ if(PLUGIN_BUNDLED_LIBRARIES)
     COMPONENT Runtime)
 endif()
 
+# ClashMiao: sing-box 核心库（libcore.dll）。
+# libs/libcore.dll 由开发者用 core/build.sh windows 生成后手动放到 windows/libs/
+# 检测一下：存在就装到与 .exe 同级目录，FFI DynamicLibrary.open('libcore.dll') 即可找到。
+set(CLASHMIAO_CORE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libs/libcore.dll")
+if(EXISTS "${CLASHMIAO_CORE_LIB}")
+  install(FILES "${CLASHMIAO_CORE_LIB}"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}"
+    COMPONENT Runtime)
+endif()
+
 # Copy the native assets provided by the build.dart from all packages.
 set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
 install(DIRECTORY "${NATIVE_ASSETS_DIR}"

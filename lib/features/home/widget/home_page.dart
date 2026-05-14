@@ -397,7 +397,7 @@ class _ActiveProfileCard extends StatelessWidget {
   }
 }
 
-class _ConnectionInfo extends ConsumerWidget {
+class _ConnectionInfo extends HookConsumerWidget {
   final BoxStatus status;
   const _ConnectionInfo({required this.status});
 
@@ -423,6 +423,21 @@ class _ConnectionInfo extends ConsumerWidget {
         delay = activeItem.delay;
       }
     }
+
+    // 每秒滴答触发 rebuild 让"已连接 X 分 Y 秒"更新
+    final tick = useState(0);
+    useEffect(() {
+      if (!isConnected) return null;
+      final timer = Stream.periodic(const Duration(seconds: 1)).listen((_) {
+        tick.value++;
+      });
+      return timer.cancel;
+    }, [isConnected]);
+
+    final startedAt = ref.watch(connectionStartedAtProvider);
+    final durationText = (isConnected && startedAt != null)
+        ? _formatDuration(DateTime.now().difference(startedAt))
+        : null;
 
     return AnimatedSize(
       duration: 300.ms,
@@ -461,51 +476,66 @@ class _ConnectionInfo extends ConsumerWidget {
               );
             }
             if (isConnected) {
-              return Row(
+              return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    FluentIcons.server_24_filled,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 200),
-                    child: Text(
-                      nodeName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        FluentIcons.server_24_filled,
+                        size: 16,
+                        color: theme.colorScheme.primary,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 6),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 200),
+                        child: Text(
+                          nodeName,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Container(
+                        width: 1,
+                        height: 12,
+                        color: theme.aiUi.borderColor,
+                      ),
+                      const SizedBox(width: 12),
+                      Icon(
+                        FluentIcons.wifi_1_24_filled,
+                        size: 16,
+                        color: delay > 0
+                            ? const Color(0xFF10B981)
+                            : theme.aiUi.secondaryTextColor,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        delay > 0 ? "${delay}ms" : "Checking",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: delay > 0
+                              ? const Color(0xFF10B981)
+                              : theme.aiUi.secondaryTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (durationText != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '已连接 $durationText',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.aiUi.secondaryTextColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 1,
-                    height: 12,
-                    color: theme.aiUi.borderColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    FluentIcons.wifi_1_24_filled,
-                    size: 16,
-                    color: delay > 0
-                        ? const Color(0xFF10B981)
-                        : theme.aiUi.secondaryTextColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    delay > 0 ? "${delay}ms" : "Checking",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: delay > 0
-                          ? const Color(0xFF10B981)
-                          : theme.aiUi.secondaryTextColor,
-                    ),
-                  ),
+                  ],
                 ],
               );
             }
@@ -515,6 +545,16 @@ class _ConnectionInfo extends ConsumerWidget {
       ),
     );
   }
+}
+
+String _formatDuration(Duration d) {
+  if (d.inHours > 0) {
+    return '${d.inHours}h ${d.inMinutes.remainder(60)}m';
+  }
+  if (d.inMinutes > 0) {
+    return '${d.inMinutes}m ${d.inSeconds.remainder(60)}s';
+  }
+  return '${d.inSeconds}s';
 }
 
 class _ModeSelector extends HookConsumerWidget {

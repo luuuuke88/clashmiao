@@ -9,6 +9,7 @@ import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/core/tray/tray_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -77,7 +78,19 @@ void main() async {
       await windowManager.focus();
       await windowManager.setResizable(false);
     });
+
+    // 桌面端系统托盘（macOS 状态栏 / Windows 任务栏 / Linux indicator）
+    await TrayController.instance.setup(container);
+
+    // 注册退出前钩子：用户关窗口时先停 sing-box，避免系统代理残留。
+    await windowManager.setPreventClose(true);
+    windowManager.addListener(_DesktopShutdownGuard(container));
   }
+
+  // 启动时尝试自动更新所有订阅（按 updateInterval 判断哪些过期了）。
+  // 失败不阻塞，让用户至少能用旧 profile。
+  // ignore: discarded_futures
+  _autoUpdateOnLaunch(container);
 
   // dev-only：检测 ~/.clashmiao_dev_subscription_url，自动添加订阅 + 自动连接，
   // 解放手动 UI 测试。release build 不会走这分支。
@@ -92,6 +105,57 @@ void main() async {
       child: const ClashMiaoApp(),
     ),
   );
+}
+
+/// 桌面端关窗口时先停 sing-box，避免系统代理残留导致用户没网。
+///
+/// window_manager 的 `setPreventClose(true)` 让 onWindowClose 变成可拦截事件；
+/// 我们 stop boxService 再 destroy。
+class _DesktopShutdownGuard with WindowListener {
+  _DesktopShutdownGuard(this._container);
+  final ProviderContainer _container;
+  bool _shuttingDown = false;
+
+  @override
+  void onWindowClose() async {
+    if (_shuttingDown) return;
+    _shuttingDown = true;
+    try {
+      await _container
+          .read(connectionControllerProvider.notifier)
+          .disconnect();
+    } catch (_) {
+      // 即便停失败也得退，否则用户卡死
+    }
+    await TrayController.instance.dispose();
+    await windowManager.destroy();
+  }
+}
+
+/// 启动时按 `updateInterval` 自动更新过期的订阅。
+///
+/// `addByContent` 导入的本地节点（url 以 `content://` 开头）跳过 —— 它们
+/// 没有可 fetch 的 HTTP URL。
+Future<void> _autoUpdateOnLaunch(ProviderContainer container) async {
+  try {
+    final repo = await container.read(profileRepositoryProvider.future);
+    final profiles = repo.getAll();
+    final now = DateTime.now();
+    for (final p in profiles) {
+      if (p.url.startsWith('content://')) continue;
+      final last = p.lastUpdate;
+      if (last == null) continue;
+      if (now.difference(last) < p.updateInterval) continue;
+      try {
+        debugPrint('[AutoUpdate] 更新 ${p.name}...');
+        await repo.update(p.id);
+      } catch (e) {
+        debugPrint('[AutoUpdate] ${p.name} 更新失败: $e');
+      }
+    }
+  } catch (e) {
+    debugPrint('[AutoUpdate] 整体失败: $e');
+  }
 }
 
 /// Dev-only：如果用户主目录有 `.clashmiao_dev_subscription_url`，

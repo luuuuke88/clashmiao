@@ -13,7 +13,10 @@ class NetworkSettings {
     this.enableTun = false,
     this.allowConnectionFromLan = false,
     this.enableDnsRouting = true,
-    this.remoteDnsAddress = 'udp://1.1.1.1',
+    // DoH 走 TCP，对不支持 UDP 转发的 SS / Trojan 等代理节点也能工作。
+    // 用 udp://1.1.1.1 风险：如果代理 outbound 不支持 UDP，DNS 永远超时
+    // → Chrome 报 DNS_PROBE_FINISHED_NXDOMAIN。
+    this.remoteDnsAddress = 'https://1.1.1.1/dns-query',
   });
 
   final int mixedPort;
@@ -68,7 +71,8 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
       enableTun: p.getBool(_kEnableTun) ?? false,
       allowConnectionFromLan: p.getBool(_kAllowLan) ?? false,
       enableDnsRouting: p.getBool(_kEnableDnsRouting) ?? true,
-      remoteDnsAddress: p.getString(_kRemoteDnsAddress) ?? 'udp://1.1.1.1',
+      remoteDnsAddress:
+          p.getString(_kRemoteDnsAddress) ?? 'https://1.1.1.1/dns-query',
     );
   }
 

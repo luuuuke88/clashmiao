@@ -44,8 +44,8 @@ void main() {
       expect(find.text('简体中文'), findsOneWidget);
       // 端口默认 2080
       expect(find.text('2080'), findsOneWidget);
-      // 远程 DNS 默认 udp://1.1.1.1
-      expect(find.text('udp://1.1.1.1'), findsOneWidget);
+      // 远程 DNS 默认 DoH（TCP 通道，兼容不支持 UDP 的代理节点）
+      expect(find.text('https://1.1.1.1/dns-query'), findsOneWidget);
     });
   });
 }

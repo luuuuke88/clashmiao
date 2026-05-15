@@ -93,6 +93,7 @@ dev_dependencies:
   drift_dev: ^2.18.0
   go_router_builder: ^2.7.0
   slang_build_runner: ^3.32.0
+  pigeon: ^26.1.0
 
 flutter:
   uses-material-design: true

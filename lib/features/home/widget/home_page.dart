@@ -580,8 +580,7 @@ class _ModeSelector extends HookConsumerWidget {
 
       // 如果当前在连接中，需要 reconnect 让新的 runtime-config 生效
       // —— 仅推 changeConfigOptions 不会让 sing-box 重读路由规则。
-      final connStatus =
-          ref.read(connectionControllerProvider).valueOrNull;
+      final connStatus = ref.read(connectionControllerProvider).valueOrNull;
       if (connStatus is BoxStarted) {
         await ref.read(connectionControllerProvider.notifier).reconnect();
       }

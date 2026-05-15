@@ -69,20 +69,20 @@ class TrayController extends TrayListener {
   Future<void> _rebuildMenu(BoxStatus status) async {
     final isConnected = status is BoxStarted;
     final isTransitioning = status is BoxStarting || status is BoxStopping;
-    final menu = Menu(items: [
-      MenuItem(
-        key: 'toggle',
-        label: isConnected
-            ? '断开连接'
-            : (isTransitioning ? '切换中...' : '连接'),
-        disabled: isTransitioning,
-      ),
-      MenuItem.separator(),
-      MenuItem(key: 'show', label: '显示窗口'),
-      MenuItem(key: 'hide', label: '隐藏到托盘'),
-      MenuItem.separator(),
-      MenuItem(key: 'quit', label: '退出 ClashMiao'),
-    ]);
+    final menu = Menu(
+      items: [
+        MenuItem(
+          key: 'toggle',
+          label: isConnected ? '断开连接' : (isTransitioning ? '切换中...' : '连接'),
+          disabled: isTransitioning,
+        ),
+        MenuItem.separator(),
+        MenuItem(key: 'show', label: '显示窗口'),
+        MenuItem(key: 'hide', label: '隐藏到托盘'),
+        MenuItem.separator(),
+        MenuItem(key: 'quit', label: '退出 ClashMiao'),
+      ],
+    );
     try {
       await trayManager.setContextMenu(menu);
     } catch (e) {

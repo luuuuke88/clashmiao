@@ -198,10 +198,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // 连接前推送 fork-side options（关键：region='other' 已经在 default 写死，
       // 这里 executeConfigAsIs 跟用户选择对齐，留给后续可能扩展使用）。
       await _boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(
-          executeConfigAsIs: isGlobal,
-          settings: _ref.read(networkSettingsProvider),
-        )),
+        jsonEncode(
+          getDefaultConfigOptions(
+            executeConfigAsIs: isGlobal,
+            settings: _ref.read(networkSettingsProvider),
+          ),
+        ),
       );
 
       // 现场组装 runtime-config.json（注入 / 剥离 rule-set），native 加载这个。
@@ -235,8 +237,8 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           state = const AsyncData(BoxStarted());
           return;
         } catch (retryErr) {
-          _ref.read(connectionErrorProvider.notifier).state =
-              retryErr.toString();
+          _ref.read(connectionErrorProvider.notifier).state = retryErr
+              .toString();
         }
       } else {
         _ref.read(connectionErrorProvider.notifier).state = e.toString();
@@ -291,10 +293,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       final isGlobal = modeIndex == 0;
       // mode 可能在两次 connect 之间变了；先把 options 重推一遍
       await _boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(
-          executeConfigAsIs: isGlobal,
-          settings: _ref.read(networkSettingsProvider),
-        )),
+        jsonEncode(
+          getDefaultConfigOptions(
+            executeConfigAsIs: isGlobal,
+            settings: _ref.read(networkSettingsProvider),
+          ),
+        ),
       );
       final workingDir = await getApplicationDocumentsDirectory();
       final runtimeConfig = await RuntimeConfigBuilder().build(

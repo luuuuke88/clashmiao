@@ -1,8 +1,7 @@
 name: CI
 
-# 设计原则：CI 只跑跨平台、无外部依赖的检查（analyze + 单测）；
-# 重型作业（Android emulator E2E、APK release build）一律本地 `bash bin/test-all.sh` 跑。
-# 这样 CI 永远 ~2 分钟结束，不被 emulator 冷启 / libcore.aar 二进制 缺失之类的问题拖累。
+# 设计原则：CI 跑跨平台、无外部依赖的检查（analyze + 单测 + Android release build）。
+# Android emulator E2E 因为冷启 8-10min 不进 CI，仍靠本地 bin/test-all.sh 跑。
 
 on:
   pull_request:
@@ -23,6 +22,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -36,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -43,3 +46,26 @@ jobs:
           cache: true
       - run: flutter pub get
       - run: flutter test test/ --reporter expanded
+
+  build-android:
+    runs-on: ubuntu-latest
+    needs: [analyze, test-unit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clashmiao-android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk

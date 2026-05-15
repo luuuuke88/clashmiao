@@ -51,7 +51,7 @@ app.*.map.json
 /libcore/bin/
 /libcore/include/
 
-# 平台二进制 / framework
+# 平台二进制 / framework（绝大多数 gitignored）
 *.dylib
 *.so
 *.a
@@ -59,6 +59,11 @@ app.*.map.json
 *.jar
 *.xcframework/
 *.framework/
+
+# 例外：android/app/libs/libcore.aar 通过 Git LFS 入库，让 CI 能编 Android
+# release APK。否则 PR 上 build-android 永远失败。其他 .dylib/.so/.dll 仍按
+# 平台本地 build.sh 编译。
+!android/app/libs/libcore.aar
 
 # Flutter ephemeral
 **/ios/Flutter/ephemeral/

@@ -4,6 +4,22 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### 后续轮次（基础设施 + 修 P0 bug）
+
+#### Added
+- **Pigeon 强类型 native bridge** 脚手架：`pigeons/box_api.dart` 定义 BoxHostApi，
+  `dart run pigeon` 生成三端代码（Dart/Kotlin/Swift），完整迁移留待单独 PR
+- **Git LFS** 入库 `android/app/libs/libcore.aar`（120MB），CI 现在能编 Android release APK；
+  ci.yml `build-android` job 重新启用、去掉 continue-on-error
+
+#### Fixed
+- **Android 单 SS URI DNS 不通**根因：sing-box fork 在 `enable-full-config=true` 时
+  强制把 `dns-remote` 改成 `udp://1.1.1.1` 经代理转发，但 SS 协议很多服务器不支持 UDP
+  → DNS 包丢 → Chrome DNS_PROBE_FINISHED。改默认 `remoteDnsAddress` 为 DoH
+  (`https://1.1.1.1/dns-query`)，走 TCP 通道，所有 SS / Trojan 服务都支持 TCP
+- `curly_braces_in_flow_control_structures` lint 修一处（CI analyze 拦了）
+- `dart format` 全仓重排（10 个文件）
+
 ### Added
 - iOS NetworkExtension 脚手架（PacketTunnelProvider + Runner VPNManager + Handlers）
 - Windows / Linux libcore 集成的 CMake 配置 + SCAFFOLDING 文档

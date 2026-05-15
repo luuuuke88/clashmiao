@@ -14,41 +14,40 @@ PlatformException _createConnectionError(String channelName) {
     message: 'Unable to establish connection on channel: "$channelName".',
   );
 }
+
 bool _deepEquals(Object? a, Object? b) {
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-        .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
-    return a.length == b.length && a.entries.every((MapEntry<Object?, Object?> entry) =>
-        (b as Map<Object?, Object?>).containsKey(entry.key) &&
-        _deepEquals(entry.value, b[entry.key]));
+    return a.length == b.length &&
+        a.entries.every(
+          (MapEntry<Object?, Object?> entry) =>
+              (b as Map<Object?, Object?>).containsKey(entry.key) &&
+              _deepEquals(entry.value, b[entry.key]),
+        );
   }
   return a == b;
 }
 
-
 /// sing-box 调用入参 / 出参承载体。
 class StartRequest {
-  StartRequest({
-    required this.configPath,
-    this.profileName = '',
-  });
+  StartRequest({required this.configPath, this.profileName = ''});
 
   String configPath;
 
   String profileName;
 
   List<Object?> _toList() {
-    return <Object?>[
-      configPath,
-      profileName,
-    ];
+    return <Object?>[configPath, profileName];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static StartRequest decode(Object result) {
     result as List<Object?>;
@@ -72,31 +71,25 @@ class StartRequest {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class ConfigOptions {
-  ConfigOptions({
-    required this.jsonOptions,
-  });
+  ConfigOptions({required this.jsonOptions});
 
   String jsonOptions;
 
   List<Object?> _toList() {
-    return <Object?>[
-      jsonOptions,
-    ];
+    return <Object?>[jsonOptions];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static ConfigOptions decode(Object result) {
     result as List<Object?>;
-    return ConfigOptions(
-      jsonOptions: result[0]! as String,
-    );
+    return ConfigOptions(jsonOptions: result[0]! as String);
   }
 
   @override
@@ -113,29 +106,23 @@ class ConfigOptions {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class SelectOutboundRequest {
-  SelectOutboundRequest({
-    required this.groupTag,
-    required this.outboundTag,
-  });
+  SelectOutboundRequest({required this.groupTag, required this.outboundTag});
 
   String groupTag;
 
   String outboundTag;
 
   List<Object?> _toList() {
-    return <Object?>[
-      groupTag,
-      outboundTag,
-    ];
+    return <Object?>[groupTag, outboundTag];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static SelectOutboundRequest decode(Object result) {
     result as List<Object?>;
@@ -159,8 +146,7 @@ class SelectOutboundRequest {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class ValidateConfigRequest {
@@ -177,15 +163,12 @@ class ValidateConfigRequest {
   bool debug;
 
   List<Object?> _toList() {
-    return <Object?>[
-      path,
-      tempPath,
-      debug,
-    ];
+    return <Object?>[path, tempPath, debug];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static ValidateConfigRequest decode(Object result) {
     result as List<Object?>;
@@ -210,32 +193,26 @@ class ValidateConfigRequest {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
 
 class ValidateConfigResult {
-  ValidateConfigResult({
-    this.error,
-  });
+  ValidateConfigResult({this.error});
 
   /// `null` 表示成功；非空字符串为人类可读错误。
   String? error;
 
   List<Object?> _toList() {
-    return <Object?>[
-      error,
-    ];
+    return <Object?>[error];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static ValidateConfigResult decode(Object result) {
     result as List<Object?>;
-    return ValidateConfigResult(
-      error: result[0] as String?,
-    );
+    return ValidateConfigResult(error: result[0] as String?);
   }
 
   @override
@@ -252,10 +229,8 @@ class ValidateConfigResult {
 
   @override
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
-  int get hashCode => Object.hashAll(_toList())
-;
+  int get hashCode => Object.hashAll(_toList());
 }
-
 
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
@@ -264,19 +239,19 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is StartRequest) {
+    } else if (value is StartRequest) {
       buffer.putUint8(129);
       writeValue(buffer, value.encode());
-    }    else if (value is ConfigOptions) {
+    } else if (value is ConfigOptions) {
       buffer.putUint8(130);
       writeValue(buffer, value.encode());
-    }    else if (value is SelectOutboundRequest) {
+    } else if (value is SelectOutboundRequest) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is ValidateConfigRequest) {
+    } else if (value is ValidateConfigRequest) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    }    else if (value is ValidateConfigResult) {
+    } else if (value is ValidateConfigResult) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
     } else {
@@ -287,15 +262,15 @@ class _PigeonCodec extends StandardMessageCodec {
   @override
   Object? readValueOfType(int type, ReadBuffer buffer) {
     switch (type) {
-      case 129: 
+      case 129:
         return StartRequest.decode(readValue(buffer)!);
-      case 130: 
+      case 130:
         return ConfigOptions.decode(readValue(buffer)!);
-      case 131: 
+      case 131:
         return SelectOutboundRequest.decode(readValue(buffer)!);
-      case 132: 
+      case 132:
         return ValidateConfigRequest.decode(readValue(buffer)!);
-      case 133: 
+      case 133:
         return ValidateConfigResult.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -308,9 +283,13 @@ class BoxHostApi {
   /// Constructor for [BoxHostApi].  The [binaryMessenger] named argument is
   /// available for dependency injection.  If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  BoxHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  BoxHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -318,12 +297,14 @@ class BoxHostApi {
   final String pigeonVar_messageChannelSuffix;
 
   Future<void> init() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.init$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.init$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
@@ -340,14 +321,23 @@ class BoxHostApi {
     }
   }
 
-  Future<void> setup(String baseDir, String workingDir, String tempDir, bool debug) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.setup$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+  Future<void> setup(
+    String baseDir,
+    String workingDir,
+    String tempDir,
+    bool debug,
+  ) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.setup$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[baseDir, workingDir, tempDir, debug],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[baseDir, workingDir, tempDir, debug]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -364,13 +354,17 @@ class BoxHostApi {
   }
 
   Future<ValidateConfigResult> validateConfig(ValidateConfigRequest req) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.validateConfig$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.validateConfig$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[req],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[req]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -392,13 +386,17 @@ class BoxHostApi {
   }
 
   Future<void> changeConfigOptions(ConfigOptions options) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.changeConfigOptions$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.changeConfigOptions$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[options],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[options]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -415,13 +413,17 @@ class BoxHostApi {
   }
 
   Future<void> start(StartRequest req) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.start$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.start$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[req],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[req]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -438,12 +440,14 @@ class BoxHostApi {
   }
 
   Future<void> stop() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.stop$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.stop$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
@@ -461,13 +465,17 @@ class BoxHostApi {
   }
 
   Future<void> restart(StartRequest req) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.restart$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.restart$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[req],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[req]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -484,13 +492,17 @@ class BoxHostApi {
   }
 
   Future<void> selectOutbound(SelectOutboundRequest req) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.selectOutbound$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.selectOutbound$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[req],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[req]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -507,13 +519,17 @@ class BoxHostApi {
   }
 
   Future<void> urlTest(String groupTag) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.urlTest$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.urlTest$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[groupTag],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[groupTag]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -530,13 +546,17 @@ class BoxHostApi {
   }
 
   Future<String?> generateFullConfig(String path) async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.generateFullConfig$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.generateFullConfig$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[path],
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[path]);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;
     if (pigeonVar_replyList == null) {
@@ -553,12 +573,14 @@ class BoxHostApi {
   }
 
   Future<void> clearLogs() async {
-    final String pigeonVar_channelName = 'dev.flutter.pigeon.clashmiao.BoxHostApi.clearLogs$pigeonVar_messageChannelSuffix';
-    final BasicMessageChannel<Object?> pigeonVar_channel = BasicMessageChannel<Object?>(
-      pigeonVar_channelName,
-      pigeonChannelCodec,
-      binaryMessenger: pigeonVar_binaryMessenger,
-    );
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.clearLogs$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;

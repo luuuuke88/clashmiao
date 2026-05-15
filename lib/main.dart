@@ -46,10 +46,12 @@ void main() async {
       final prefs = container.read(sharedPreferencesProvider).requireValue;
       final modeIndex = prefs.getInt('clashmiao_proxy_mode') ?? 1; // 0=全局 1=智能
       await boxService.changeConfigOptions(
-        jsonEncode(getDefaultConfigOptions(
-          executeConfigAsIs: modeIndex == 0,
-          settings: container.read(networkSettingsProvider),
-        )),
+        jsonEncode(
+          getDefaultConfigOptions(
+            executeConfigAsIs: modeIndex == 0,
+            settings: container.read(networkSettingsProvider),
+          ),
+        ),
       );
       debugPrint('sing-box 核心初始化成功（mode=$modeIndex）');
     } catch (e) {
@@ -121,9 +123,7 @@ class _DesktopShutdownGuard with WindowListener {
     if (_shuttingDown) return;
     _shuttingDown = true;
     try {
-      await _container
-          .read(connectionControllerProvider.notifier)
-          .disconnect();
+      await _container.read(connectionControllerProvider.notifier).disconnect();
     } catch (_) {
       // 即便停失败也得退，否则用户卡死
     }

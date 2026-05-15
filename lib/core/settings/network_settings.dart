@@ -52,9 +52,9 @@ const _kRemoteDnsAddress = 'clashmiao_remote_dns_address';
 
 final networkSettingsProvider =
     StateNotifierProvider<NetworkSettingsNotifier, NetworkSettings>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-  return NetworkSettingsNotifier(prefs);
-});
+      final prefs = ref.watch(sharedPreferencesProvider).requireValue;
+      return NetworkSettingsNotifier(prefs);
+    });
 
 class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   NetworkSettingsNotifier(this.prefs) : super(_read(prefs));

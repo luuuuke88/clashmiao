@@ -157,10 +157,7 @@ Future<void> _doAdd(
       (scheme) => urlOrUri.startsWith('$scheme://'),
     );
     if (isProxyUri) {
-      await repo.addByContent(
-        urlOrUri,
-        name: customName ?? '',
-      );
+      await repo.addByContent(urlOrUri, name: customName ?? '');
     } else {
       await repo.addByUrl(urlOrUri, customName: customName);
     }

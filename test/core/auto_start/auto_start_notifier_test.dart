@@ -30,12 +30,12 @@ void main() {
       var getCalls = 0;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_channel, (call) async {
-        if (call.method == 'getAutoStart') {
-          getCalls++;
-          return true;
-        }
-        return null;
-      });
+            if (call.method == 'getAutoStart') {
+              getCalls++;
+              return true;
+            }
+            return null;
+          });
       final n = AutoStartNotifier();
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(getCalls, 1);
@@ -46,13 +46,13 @@ void main() {
       bool? receivedEnabled;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_channel, (call) async {
-        if (call.method == 'getAutoStart') return false;
-        if (call.method == 'setAutoStart') {
-          receivedEnabled = (call.arguments as Map)['enabled'] as bool?;
-          return null;
-        }
-        return null;
-      });
+            if (call.method == 'getAutoStart') return false;
+            if (call.method == 'setAutoStart') {
+              receivedEnabled = (call.arguments as Map)['enabled'] as bool?;
+              return null;
+            }
+            return null;
+          });
       final n = AutoStartNotifier();
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(n.state, isFalse);
@@ -64,12 +64,12 @@ void main() {
     test('native 抛错时保持当前 state', () async {
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(_channel, (call) async {
-        if (call.method == 'getAutoStart') return true;
-        if (call.method == 'setAutoStart') {
-          throw PlatformException(code: 'ERR');
-        }
-        return null;
-      });
+            if (call.method == 'getAutoStart') return true;
+            if (call.method == 'setAutoStart') {
+              throw PlatformException(code: 'ERR');
+            }
+            return null;
+          });
       final n = AutoStartNotifier();
       await Future<void>.delayed(const Duration(milliseconds: 50));
       expect(n.state, isTrue);

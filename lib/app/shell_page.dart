@@ -73,8 +73,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
             ),
             _GlassBottomNav(
               selectedIndex: selectedIndex,
-              onTap: (i) =>
-                  ref.read(selectedTabProvider.notifier).state = i,
+              onTap: (i) => ref.read(selectedTabProvider.notifier).state = i,
             ),
           ],
         ),

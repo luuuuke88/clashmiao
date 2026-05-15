@@ -137,9 +137,7 @@ class ProfileRepository {
     };
 
     var changed = false;
-    final hasDirect = outbounds.any(
-      (o) => o is Map && o['type'] == 'direct',
-    );
+    final hasDirect = outbounds.any((o) => o is Map && o['type'] == 'direct');
     if (!hasDirect) {
       outbounds.add({'type': 'direct', 'tag': 'direct'});
       tagsSet.add('direct');
@@ -180,11 +178,10 @@ class ProfileRepository {
       // 优先 proxy selector；没有就用第一个非 direct 的
       route['final'] = tagsSet.contains('proxy')
           ? 'proxy'
-          : outbounds
-                .firstWhere(
-                  (o) => o is Map && o['type'] != 'direct',
-                  orElse: () => {'tag': 'direct'},
-                )['tag'];
+          : outbounds.firstWhere(
+              (o) => o is Map && o['type'] != 'direct',
+              orElse: () => {'tag': 'direct'},
+            )['tag'];
       cfg['route'] = route;
       changed = true;
     }

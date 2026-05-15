@@ -834,7 +834,8 @@ class _LogsPage extends ConsumerWidget {
       return const Color(0xFFEF4444);
     }
     if (lower.contains('warn')) return const Color(0xFFF59E0B);
-    if (lower.contains('debug')) return aiUi.secondaryTextColor.withValues(alpha: 0.6);
+    if (lower.contains('debug'))
+      return aiUi.secondaryTextColor.withValues(alpha: 0.6);
     return aiUi.secondaryTextColor;
   }
 }

@@ -1,0 +1,7 @@
+android/app/libs/libcore.aar filter=lfs diff=lfs merge=lfs -text
+libcore/bin/*.dylib filter=lfs diff=lfs merge=lfs -text
+core/output/*.aar filter=lfs diff=lfs merge=lfs -text
+core/output/*.dylib filter=lfs diff=lfs merge=lfs -text
+core/output/*.so filter=lfs diff=lfs merge=lfs -text
+core/output/*.dll filter=lfs diff=lfs merge=lfs -text
+core/output/*.xcframework/** filter=lfs diff=lfs merge=lfs -text

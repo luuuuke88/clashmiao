@@ -116,13 +116,13 @@ jobs:
       - run: flutter config --enable-macos-desktop
       - run: flutter build macos --debug --no-tree-shake-icons
 
-  # iOS debug build (unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
-  # Libcore.xcframework 已从 baseproxy 复制，pod install 可正常识别两个 target。
-  # 不需要 Apple Developer 账号，--no-codesign 跳过签名。
-  # macos-14 (Xcode 15) 用于 iOS：Xcode 16 在无签名环境下无法解析
-  # com.apple.product-type.app-extension.network-extension，Xcode 15 无此问题。
+  # iOS debug build (simulator, unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
+  # Libcore.xcframework 含 ios-arm64_x86_64-simulator slice。
+  # 直接调用 xcodebuild 面向 iphonesimulator：规避 iphoneos domain 在无签名环境下
+  # 无法解析 com.apple.product-type.app-extension.network-extension 的 CI 限制。
+  # Flutter Run Script phases 会自动调用 flutter assemble 编译 Dart 代码。
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
@@ -137,7 +137,18 @@ jobs:
       - name: pod install
         working-directory: ios
         run: pod install
-      - run: flutter build ios --debug --no-codesign --no-tree-shake-icons
+      - name: xcodebuild iOS Simulator debug (no codesign)
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            SKIP_INSTALL=YES
 
   # Windows debug build —— CMakeLists.txt 用 if(EXISTS) 检查 libcore.dll，
   # 缺文件时只是跳过 install 而不报错，编译本身可以通过。

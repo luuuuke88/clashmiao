@@ -24,3 +24,9 @@ SERVICE_IDENTIFIER = com.clashmiao.app
 // Apple Developer team id. Leave blank locally and let Xcode auto-pick,
 // or set explicitly for CI signing.
 DEVELOPMENT_TEAM =
+
+// CocoaPods sandbox paths — required by the [CP] Check Pods Manifest.lock
+// build phase in SingBoxPacketTunnel (which uses Base.xcconfig instead of
+// the CocoaPods-generated xcconfig as its base configuration).
+PODS_ROOT = ${SRCROOT}/Pods
+PODS_PODFILE_DIR_PATH = ${SRCROOT}/.

@@ -48,7 +48,7 @@ app.*.map.json
 /core/sing-box/
 /core/output/
 /core/.cache/
-/libcore/bin/
+/libcore/bin/*
 /libcore/include/
 
 # 平台二进制 / framework（绝大多数 gitignored）
@@ -65,6 +65,7 @@ app.*.map.json
 # 平台本地 build.sh 编译。
 !android/app/libs/libcore.aar
 !android/gradle/wrapper/gradle-wrapper.jar
+!libcore/bin/libcore.dylib
 !ios/Frameworks/Libcore.xcframework/
 !ios/Frameworks/Libcore.xcframework/**
 

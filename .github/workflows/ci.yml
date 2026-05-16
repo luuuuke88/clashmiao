@@ -119,8 +119,10 @@ jobs:
   # iOS debug build (unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
   # Libcore.xcframework 已从 baseproxy 复制，pod install 可正常识别两个 target。
   # 不需要 Apple Developer 账号，--no-codesign 跳过签名。
+  # macos-14 (Xcode 15) 用于 iOS：Xcode 16 在无签名环境下无法解析
+  # com.apple.product-type.app-extension.network-extension，Xcode 15 无此问题。
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-14
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4

@@ -30,3 +30,9 @@ DEVELOPMENT_TEAM =
 // the CocoaPods-generated xcconfig as its base configuration).
 PODS_ROOT = ${SRCROOT}/Pods
 PODS_PODFILE_DIR_PATH = ${SRCROOT}/.
+
+// Libcore.xcframework references libresolv DNS resolver symbols
+// (_res_9_nclose / _res_9_ninit / _res_9_nsearch). libresolv is a private
+// Apple framework so it must be linked explicitly rather than pulled in via
+// the framework linker search path.
+OTHER_LDFLAGS = $(inherited) -lresolv

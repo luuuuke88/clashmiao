@@ -296,7 +296,7 @@ class BoxHostApi {
 
   final String pigeonVar_messageChannelSuffix;
 
-  Future<void> init() async {
+  Future<void> initialize() async {
     final String pigeonVar_channelName =
         'dev.flutter.pigeon.clashmiao.BoxHostApi.init$pigeonVar_messageChannelSuffix';
     final BasicMessageChannel<Object?> pigeonVar_channel =

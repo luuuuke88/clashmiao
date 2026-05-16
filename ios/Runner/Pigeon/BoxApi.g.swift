@@ -333,7 +333,7 @@ class BoxApiPigeonCodec: FlutterStandardMessageCodec, @unchecked Sendable {
 ///
 /// Generated protocol from Pigeon that represents a handler of messages from Flutter.
 protocol BoxHostApi {
-  func init(completion: @escaping (Result<Void, Error>) -> Void)
+  func initialize(completion: @escaping (Result<Void, Error>) -> Void)
   func setup(baseDir: String, workingDir: String, tempDir: String, debug: Bool, completion: @escaping (Result<Void, Error>) -> Void)
   func validateConfig(req: ValidateConfigRequest, completion: @escaping (Result<ValidateConfigResult, Error>) -> Void)
   func changeConfigOptions(options: ConfigOptions, completion: @escaping (Result<Void, Error>) -> Void)
@@ -355,7 +355,7 @@ class BoxHostApiSetup {
     let initChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.init\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
       initChannel.setMessageHandler { _, reply in
-        api.init { result in
+        api.initialize { result in
           switch result {
           case .success:
             reply(wrapResult(nil))

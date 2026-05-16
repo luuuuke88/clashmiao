@@ -117,19 +117,16 @@ jobs:
       - run: flutter build macos --debug --no-tree-shake-icons
 
   # iOS debug build (unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
-  # Libcore.xcframework 已含 ios-arm64 device slice。
-  # Xcode 16.x 在无签名构建下无法解析 network-extension product type spec；
-  # 改用 macos-14 + 显式 Xcode 15.4 绕过此限制（Xcode 15 正常处理无签名扩展）。
+  # Libcore.xcframework 已含 ios-arm64 device slice，pod install 可识别两个 target。
+  # productType 用通用 com.apple.product-type.app-extension（Xcode 现代版本有效），
+  # 不需要 Apple Developer 账号，--no-codesign 跳过签名。
   build-ios:
-    runs-on: macos-14
+    runs-on: macos-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
         with:
           lfs: true
-      - uses: maxim-lobanov/setup-xcode@v1
-        with:
-          xcode-version: '15.4'
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

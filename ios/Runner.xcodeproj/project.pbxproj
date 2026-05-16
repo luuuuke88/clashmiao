@@ -381,7 +381,7 @@
 			name = SingBoxPacketTunnel;
 			productName = SingBoxPacketTunnel;
 			productReference = 4080CC7D71A0BF216D35BC84 /* SingBoxPacketTunnel.appex */;
-			productType = "com.apple.product-type.app-extension.network-extension";
+			productType = "com.apple.product-type.app-extension";
 		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;

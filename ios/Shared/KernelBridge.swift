@@ -40,7 +40,8 @@ public enum KernelBridge {
 
     /// Run libcore's one-time process setup. Idempotent in practice.
     public static func bootOnce() {
-        MobileSetup()
+        var error: NSError?
+        MobileSetup(&error)
     }
 
     // MARK: - Configuration helpers

@@ -47,9 +47,36 @@ jobs:
       - run: flutter pub get
       - run: flutter test test/ --reporter expanded
 
+  # Android Kotlin host JVM 单测：守 wire-format / LogBuffer / AIDL decode 这些
+  # 纯逻辑。不需要 emulator，几秒就跑完。新增 Kotlin 代码必须有对应测试，否则
+  # PR 进不了 main。
+  test-android-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - working-directory: android
+        run: ./gradlew :app:testDebugUnitTest --console=plain
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-unit-test-reports
+          path: build/app/test-results/**/*.xml
+
   build-android:
     runs-on: ubuntu-latest
-    needs: [analyze, test-unit]
+    needs: [analyze, test-unit, test-android-unit]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -69,3 +96,82 @@ jobs:
         with:
           name: clashmiao-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+
+  # macOS debug build —— 跑在 macos-latest 上，验证 macOS 端 FFI / 桌面 UI
+  # 不会因为 Android 这边改动回归（之前 macOS 烟雾测试在 luke 本地手跑过，CI 这边
+  # 把"能编"的 gate 加进来）。
+  build-macos:
+    runs-on: macos-latest
+    needs: [analyze, test-unit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --debug --no-tree-shake-icons
+
+  # iOS debug build (unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
+  # Libcore.xcframework 已从 baseproxy 复制，pod install 可正常识别两个 target。
+  # 不需要 Apple Developer 账号，--no-codesign 跳过签名。
+  build-ios:
+    runs-on: macos-latest
+    needs: [analyze, test-unit]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - name: pod install
+        working-directory: ios
+        run: pod install
+      - run: flutter build ios --debug --no-codesign --no-tree-shake-icons
+
+  # Windows debug build —— libcore.dll 没 cross-compile，build 在
+  # plugins step 可能因 missing native lib 失败。先标 continue-on-error，
+  # 把它当 "已知 broken" 的 indicator 而不是 gate。
+  build-windows:
+    runs-on: windows-latest
+    needs: [analyze, test-unit]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --debug
+
+  # Linux debug build —— 同 Windows，libcore.so 缺，先 continue-on-error。
+  build-linux:
+    runs-on: ubuntu-latest
+    needs: [analyze, test-unit]
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - run: sudo apt-get update -y && sudo apt-get install -y ninja-build libgtk-3-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop
+      - run: flutter build linux --debug

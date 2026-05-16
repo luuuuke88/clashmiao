@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/utils/config_parser.dart';
@@ -107,6 +108,23 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           debugPrint('watchStatus 错误: $e');
         },
       );
+
+      // sing-box 启动 / 创建 service 失败时核心会推 alert，
+      // 但 watchStatus 在 _transitioning 期间被忽略 → state 还停留在
+      // delayed BoxStarted，UI 显示"已连接"但其实没在跑。
+      // 收到这类启动失败 alert 时强制回到 BoxStopped + 解锁 transition。
+      _alertSub = service.watchAlerts().listen((alert) {
+        if (!mounted) return;
+        final isFatal =
+            alert.type == BoxAlertType.startService ||
+            alert.type == BoxAlertType.createService ||
+            alert.type == BoxAlertType.emptyConfiguration;
+        if (!isFatal) return;
+        _transitioning = false;
+        state = const AsyncData(BoxStopped());
+        _ref.read(connectionErrorProvider.notifier).state =
+            alert.message ?? alert.type.name;
+      });
     }
     // 内部 state setter 也走 _syncStartedAt（addListener 监听本 notifier）
     addListener((value) {
@@ -130,6 +148,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
 
   final Ref _ref;
   StreamSubscription? _statusSub;
+  StreamSubscription? _alertSub;
   bool _transitioning = false;
 
   BoxService get _boxService => _ref.read(boxServiceProvider);
@@ -138,6 +157,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   @override
   void dispose() {
     _statusSub?.cancel();
+    _alertSub?.cancel();
     super.dispose();
   }
 
@@ -208,10 +228,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
 
       // 现场组装 runtime-config.json（注入 / 剥离 rule-set），native 加载这个。
       final workingDir = await getApplicationDocumentsDirectory();
+      final settings = _ref.read(networkSettingsProvider);
       final runtimeConfig = await RuntimeConfigBuilder().build(
         baseProfile: configFile,
         isSmart: !isGlobal,
         workingDir: workingDir,
+        remoteDnsAddress: settings.remoteDnsAddress,
       );
 
       await _boxService.start(runtimeConfig.path, name: active.name);
@@ -227,10 +249,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失分流配置）
           final modeIndex = _ref.read(proxyModeProvider);
           final workingDir = await getApplicationDocumentsDirectory();
+          final settings = _ref.read(networkSettingsProvider);
           final runtimeConfig = await RuntimeConfigBuilder().build(
             baseProfile: configFile,
             isSmart: modeIndex != 0,
             workingDir: workingDir,
+            remoteDnsAddress: settings.remoteDnsAddress,
           );
           await _boxService.start(runtimeConfig.path, name: active.name);
           await Future.delayed(const Duration(milliseconds: 1500));
@@ -301,10 +325,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         ),
       );
       final workingDir = await getApplicationDocumentsDirectory();
+      final settings = _ref.read(networkSettingsProvider);
       final runtimeConfig = await RuntimeConfigBuilder().build(
         baseProfile: configFile,
         isSmart: !isGlobal,
         workingDir: workingDir,
+        remoteDnsAddress: settings.remoteDnsAddress,
       );
       debugPrint('重连: restart ${runtimeConfig.path}');
       await _boxService.restart(runtimeConfig.path, name: active.name);

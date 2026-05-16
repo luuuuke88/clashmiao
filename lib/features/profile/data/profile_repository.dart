@@ -195,15 +195,14 @@ class ProfileRepository {
     final dnsServers = (dns['servers'] as List?)?.cast<dynamic>() ?? [];
     if (dnsServers.isEmpty) {
       // 3 层 DNS server 链（参考 sing-box 推荐套路）：
-      //   remote → 远程 DNS（走代理）
+      //   remote → 远程 DNS（走代理）。用 DoH 而不是 udp://1.1.1.1，因为很多 SS /
+      //            Trojan 节点不转发 UDP，udp DNS 永远超时。RuntimeConfigBuilder
+      //            每次 connect 会按用户 NetworkSettings.remoteDnsAddress 覆盖。
       //   direct → 直连 DNS（用来解析 remote 自己的域名 + 国内域名）
       //   local  → 系统 DNS（用来解析 direct 自己的域名 fallback）
-      // 不写 detour 让 sing-box 走路由表（route.final / route.rules）。
-      // 简化：remote/direct 都用纯 IP，省去 address_resolver 链。
-      // local 备用走系统 DNS（不经代理）。
       dnsServers.addAll([
-        {'tag': 'remote', 'address': 'udp://1.1.1.1'},
-        {'tag': 'direct', 'address': 'udp://1.1.1.1', 'detour': 'direct'},
+        {'tag': 'remote', 'address': 'https://1.1.1.1/dns-query'},
+        {'tag': 'direct', 'address': '1.1.1.1', 'detour': 'direct'},
         {'tag': 'local', 'address': 'local', 'detour': 'direct'},
       ]);
       dns['servers'] = dnsServers;

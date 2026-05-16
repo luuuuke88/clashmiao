@@ -54,7 +54,7 @@
         </activity>
 
         <service
-            android:name=".bg.VPNService"
+            android:name=".engine.TunnelService"
             android:exported="false"
             android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_VPN_SERVICE">
@@ -67,7 +67,7 @@
         </service>
 
         <service
-            android:name=".bg.ProxyService"
+            android:name=".engine.PlainService"
             android:exported="false"
             android:foregroundServiceType="specialUse">
             <property

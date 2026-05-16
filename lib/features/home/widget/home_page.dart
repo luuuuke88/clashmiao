@@ -594,8 +594,10 @@ class _ModeSelector extends HookConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final mode = ref.watch(proxyModeProvider);
+    final t = ref.watch(translationsProvider);
     final isLight = theme.brightness == Brightness.light;
-    final modes = ['全局', '智能'];
+    // 0=Global, 1=Smart。下标对齐 proxyModeProvider int。
+    final modes = [t.home.routingMode.global, t.home.routingMode.smart];
 
     return Container(
       width: 180,

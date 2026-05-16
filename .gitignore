@@ -60,10 +60,12 @@ app.*.map.json
 *.xcframework/
 *.framework/
 
-# 例外：android/app/libs/libcore.aar 通过 Git LFS 入库，让 CI 能编 Android
-# release APK。否则 PR 上 build-android 永远失败。其他 .dylib/.so/.dll 仍按
+# 例外：android libcore.aar 和 ios Libcore.xcframework 通过 Git LFS 入库，
+# 让 CI 能编对应平台 release/debug build。其他 .dylib/.so/.dll 仍按
 # 平台本地 build.sh 编译。
 !android/app/libs/libcore.aar
+!ios/Frameworks/Libcore.xcframework/
+!ios/Frameworks/Libcore.xcframework/**
 
 # Flutter ephemeral
 **/ios/Flutter/ephemeral/

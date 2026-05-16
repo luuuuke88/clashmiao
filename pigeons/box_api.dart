@@ -63,7 +63,7 @@ class ValidateConfigResult {
 @HostApi()
 abstract class BoxHostApi {
   @async
-  void init();
+  void initialize();
 
   @async
   void setup(String baseDir, String workingDir, String tempDir, bool debug);

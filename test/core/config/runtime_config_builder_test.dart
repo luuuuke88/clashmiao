@@ -49,6 +49,17 @@ void main() {
         containsAll(['geoip-cn', 'geosite-cn']),
       );
 
+      // 路径必须绝对 —— Android 上 sing-box CWD 跟 Flutter workingDir 不一致，
+      // 相对路径会让 rule-set 静默失败，结果智能模式看起来跟全局一模一样。
+      for (final rs in ruleSets) {
+        expect(
+          (rs['path'] as String).startsWith('/'),
+          isTrue,
+          reason: 'rule-set path 必须绝对：${rs['path']}',
+        );
+        expect(rs['path'], contains(tmp.path));
+      }
+
       final routeRules = (cfg['route']['rules'] as List).cast<Map>();
       expect(routeRules.first['outbound'], 'direct');
       expect(

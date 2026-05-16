@@ -4,21 +4,60 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### 后续轮次（基础设施 + 修 P0 bug）
+### Android Kotlin 端 clean-room 重写（Phase 1-7，本地分阶段验证）
+
+为远离 GPL-3 衍生品风险，把整个 Android Kotlin 层按"看代码理解 → 关掉文件 → 自己写"
+的原则重新组织。每阶段单独 `flutter build apk` + 单测 + 装机 smoke 验证。
+
+#### Changed —— 文件 / 包结构（Kotlin 端）
+
+- `constant/` (6 文件) + `ktx/` (2 文件) → `core/Constants.kt` + `core/LibboxAdapters.kt`
+  类型重命名：`Action` → `BroadcastIntents`，`Status` → `KernelStatus`，`Alert` → `AlertCode`，
+  `PerAppProxyMode` → `AppFilterMode`，`ServiceMode` → `EngineMode`，`SettingsKey` → `PrefsKey`。
+  enum case 名 / 字段值字符串（wire format）全保留 —— Dart EventChannel 协议不破。
+- 7 个独立 `*Handler` / `*Channel` FlutterPlugin → `bridge/MethodBridge.kt` +
+  `bridge/StreamBridge.kt`，dispatch 从 big-`when` 改成 name→suspend handler map。
+- `bg/` 12 文件 → `engine/` 10 文件：`BoxService` → `KernelHost`，`VPNService` → `TunnelService`，
+  `ProxyService` → `PlainService`，`PlatformInterfaceWrapper` → `LibboxHost`（abstract class），
+  `DefaultNetworkListener`+`DefaultNetworkMonitor` → `NetworkWatcher`，
+  `ServiceNotification` → `ForegroundNotice`，`ServiceConnection` → `KernelConnection`（Sink 接口替代 Callback），
+  `ServiceBinder` → `KernelBinder`，`LocalResolver` → `SystemDnsBridge`。
+  删 `AppChangeReceiver`（body 全注释）+ `BootReceiver`（未注册）。
+- `Settings.kt` → `core/Prefs.kt`，按职责分 `Profile / Engine / Notice / AppFilter` 4 个 group。
+- `MainActivity.logList: LinkedList + logCallback: var` → `engine/LogBuffer` 类（thread-safe，capacity bound）。
+- `AndroidManifest.xml` service class 名同步更新。
 
 #### Added
-- **Pigeon 强类型 native bridge** 脚手架：`pigeons/box_api.dart` 定义 BoxHostApi，
-  `dart run pigeon` 生成三端代码（Dart/Kotlin/Swift），完整迁移留待单独 PR
-- **Git LFS** 入库 `android/app/libs/libcore.aar`（120MB），CI 现在能编 Android release APK；
-  ci.yml `build-android` job 重新启用、去掉 continue-on-error
 
-#### Fixed
+- **Kotlin host JVM 单测**（17 个）：
+  - `ConstantsTest` 6 条：守 wire-format 字符串值（enum name / prefs key / broadcast action）。
+    任何人 IDE refactor 改了 `KernelStatus.Started` → `Activated`，这里先红。
+  - `LogBufferTest` 7 条：append / 超 capacity 丢最旧 / subscriber 触发 / snapshot 隔离。
+  - `KernelConnectionDecodeTest` 4 条：AIDL ordinal → enum 越界 fallback。
+  - 跑法：`cd android && JAVA_HOME=$(Android Studio JBR) ./gradlew :app:testDebugUnitTest`
+- **Dart widget test**（2 条）：`proxies_page_tap_test.dart` 覆盖 ss-node tile 两条 isConnected 分支，
+  守住用户报过的"Lines 页 tap 崩溃"回归。
+- **Pigeon 第一条 method 迁移试水**：`bridge/PigeonBridge.kt` 实现 `BoxHostApi`，
+  `validateConfig` 走 Pigeon 强类型路径（替代 `_methodChannel.invokeMethod('parse_config', map)`）；
+  其余 10 个 method 暂留 stub（Result.failure），Dart 端继续走 `MethodBridge`，逐条迁。
+
+#### Fixed（前一批，保留记录）
+
 - **Android 单 SS URI DNS 不通**根因：sing-box fork 在 `enable-full-config=true` 时
   强制把 `dns-remote` 改成 `udp://1.1.1.1` 经代理转发，但 SS 协议很多服务器不支持 UDP
   → DNS 包丢 → Chrome DNS_PROBE_FINISHED。改默认 `remoteDnsAddress` 为 DoH
   (`https://1.1.1.1/dns-query`)，走 TCP 通道，所有 SS / Trojan 服务都支持 TCP
-- `curly_braces_in_flow_control_structures` lint 修一处（CI analyze 拦了）
-- `dart format` 全仓重排（10 个文件）
+- **Smart 模式 rule-set 解不到根因**：`RuntimeConfigBuilder._injectSmartCnRouting` 用相对路径
+  `./geoip-cn.srs`，但 Android 上 sing-box CWD 是 external files (`/storage/.../files/`)，
+  跟 Flutter workingDir (`app_flutter/`) 不一致 → 静默失败 → smart 表现得跟 global 一样。
+  改成绝对路径 + 单测断言 `path.startsWith('/')`。
+- **Mixed inbound 端口冲突**：profile 自带的 mixed inbound 跟 fork 自己 inject 的 mixed:MixedPort
+  撞 2080 → `bind: address already in use`。所有平台都剥 profile 自带 mixed（之前只剥桌面端）。
+- **"已连接"卡死**：sing-box 启动失败时 watchStatus 在 `_transitioning` 期间被忽略，UI 还显示已连接。
+  `ConnectionController` 现在监听 `BoxAlert`，遇到启动失败 alert 强制回 BoxStopped。
+- **mode pill 文案换行**：英文 "Smart Routing" 在 180px 滑块里挤成 3 行带孤儿 "g"。改 i18n
+  到单词级（en: "Global"/"Smart"，zh-CN: "全局"/"智能"）。
+- **Git LFS** 入库 `android/app/libs/libcore.aar`（120MB），CI 能编 Android release APK。
 
 ### Added
 - iOS NetworkExtension 脚手架（PacketTunnelProvider + Runner VPNManager + Handlers）

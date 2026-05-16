@@ -35,8 +35,8 @@
     "emptyProfilesMsg": "从添加订阅配置文件开始",
     "noActiveProfileMsg": "选择配置文件",
     "routingMode": {
-      "global": "全局代理",
-      "smart": "智能分流"
+      "global": "全局",
+      "smart": "智能"
     },
     "failedToSwitchMode": "切换模式失败: ${error}"
   },

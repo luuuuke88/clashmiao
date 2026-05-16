@@ -1,160 +1,138 @@
 package com.clashmiao.clashmiao
 
-import android.annotation.SuppressLint
 import android.content.Intent
-import android.Manifest
-import android.content.pm.PackageManager
-import android.net.VpnService
-import android.os.Build
-import android.util.Log
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.lifecycleScope
-import com.clashmiao.clashmiao.bg.ServiceConnection
-import com.clashmiao.clashmiao.bg.ServiceNotification
-import com.clashmiao.clashmiao.constant.Alert
-import com.clashmiao.clashmiao.constant.ServiceMode
-import com.clashmiao.clashmiao.constant.Status
+import com.clashmiao.clashmiao.bridge.MethodBridge
+import com.clashmiao.clashmiao.bridge.PigeonBridge
+import com.clashmiao.clashmiao.bridge.ServiceEvent
+import com.clashmiao.clashmiao.bridge.StreamBridge
+import com.clashmiao.clashmiao.core.AlertCode
+import com.clashmiao.clashmiao.core.EngineMode
+import com.clashmiao.clashmiao.core.KernelStatus
+import com.clashmiao.clashmiao.core.Prefs
+import com.clashmiao.clashmiao.engine.ForegroundNotice
+import com.clashmiao.clashmiao.engine.KernelConnection
+import com.clashmiao.clashmiao.engine.LogBuffer
+import com.clashmiao.clashmiao.engine.PermissionGate
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.util.LinkedList
 
+/**
+ * Flutter 入口 Activity，主要职责四件：
+ *   1. 注册 Flutter↔Native 的 [MethodBridge] / [StreamBridge] / [PigeonBridge]
+ *   2. 通过 [KernelConnection] 跟后台 service 绑 / 解绑
+ *   3. 通过 [PermissionGate] 拉 VPN + 通知权限 dialog
+ *   4. 把 [LogBuffer] / [serviceStatus] / [serviceAlerts] LiveData 暴露给 StreamBridge
+ *
+ * 真正的 sing-box 内核逻辑 / 路由 / TUN 设置在 [engine.KernelHost] / [engine.TunnelService]
+ * 里，跟 Activity 完全解耦。
+ */
+class MainActivity : FlutterFragmentActivity(),
+    KernelConnection.Sink,
+    PermissionGate.Listener {
 
-class MainActivity : FlutterFragmentActivity(), ServiceConnection.Callback {
     companion object {
-        private const val TAG = "ANDROID/MyActivity"
         lateinit var instance: MainActivity
-
-        const val VPN_PERMISSION_REQUEST_CODE = 1001
-        const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1010
+            private set
     }
 
-    private val connection = ServiceConnection(this, this)
+    private val connection = KernelConnection(this, this)
+    private val permissionGate = PermissionGate(this)
 
-    val logList = LinkedList<String>()
-    var logCallback: ((Boolean) -> Unit)? = null
-    val serviceStatus = MutableLiveData(Status.Stopped)
+    val logBuffer = LogBuffer(capacity = 300)
+    val serviceStatus = MutableLiveData(KernelStatus.Stopped)
     val serviceAlerts = MutableLiveData<ServiceEvent?>(null)
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         instance = this
-        reconnect()
-        flutterEngine.plugins.add(MethodHandler(lifecycleScope))
-        flutterEngine.plugins.add(PlatformSettingsHandler())
-        flutterEngine.plugins.add(EventHandler())
-        flutterEngine.plugins.add(LogHandler())
-        flutterEngine.plugins.add(GroupsChannel(lifecycleScope))
-        flutterEngine.plugins.add(ActiveGroupsChannel(lifecycleScope))
-        flutterEngine.plugins.add(StatsChannel(lifecycleScope))
+        permissionGate.bindActivity(this)
+        connection.resetBinding()
+        // 三层 plugin：Dart→native RPC、native→Dart push streams、Pigeon 强类型迁移中。
+        flutterEngine.plugins.add(MethodBridge(lifecycleScope))
+        flutterEngine.plugins.add(StreamBridge().also { it.installScope(lifecycleScope) })
+        flutterEngine.plugins.add(PigeonBridge(lifecycleScope))
     }
 
-    fun reconnect() {
-        connection.reconnect()
-    }
+    // === 给 KernelHost / 内部 caller 用的入口 =============================
 
+    fun reconnect() = connection.resetBinding()
+
+    /**
+     * 启动 sing-box service：
+     *   1. 先确保有通知权限（13+ 要 runtime 权限，没的话弹 dialog 然后等回调）
+     *   2. 如果当前 mode 是 VPN，确保有 VPN 授权（首次弹 system consent）
+     *   3. 两个权限都拿到后，按 mode 决定 startForegroundService([Prefs.Engine.serviceClass]())
+     */
     fun startService() {
-        if (!ServiceNotification.checkPermission()) {
-            grantNotificationPermission()
+        if (!ForegroundNotice.canPostNotifications()) {
+            permissionGate.askNotificationPermissionIfNeeded()
             return
         }
         lifecycleScope.launch(Dispatchers.IO) {
-            if (Settings.rebuildServiceMode()) {
-                reconnect()
-            }
-            if (Settings.serviceMode == ServiceMode.VPN) {
-                if (prepare()) {
-                    Log.d(TAG, "VPN permission required")
-                    return@launch
+            if (Prefs.Engine.shouldRebuildService()) reconnect()
+            if (Prefs.Engine.mode == EngineMode.VPN) {
+                val ready = withContext(Dispatchers.Main) {
+                    permissionGate.askVpnPermissionIfNeeded()
                 }
+                if (!ready) return@launch // 等 user 在 system dialog 上选
             }
-
-            val intent = Intent(Application.application, Settings.serviceClass())
-            withContext(Dispatchers.Main) {
-                ContextCompat.startForegroundService(Application.application, intent)
-            }
+            launchForegroundServiceNow()
         }
     }
 
-    private suspend fun prepare() = withContext(Dispatchers.Main) {
-        try {
-            val intent = VpnService.prepare(this@MainActivity)
-            if (intent != null) {
-                startActivityForResult(intent, VPN_PERMISSION_REQUEST_CODE)
-                true
-            } else {
-                false
-            }
-        } catch (e: Exception) {
-            onServiceAlert(Alert.RequestVPNPermission, e.message)
-            false
-        }
+    private suspend fun launchForegroundServiceNow() = withContext(Dispatchers.Main) {
+        val intent = Intent(Application.application, Prefs.Engine.serviceClass())
+        ContextCompat.startForegroundService(Application.application, intent)
     }
 
-    override fun onServiceStatusChanged(status: Status) {
-        serviceStatus.postValue(status)
+    // === KernelConnection.Sink ============================================
+
+    override fun onStatusChange(status: KernelStatus) = serviceStatus.postValue(status)
+
+    override fun onAlert(code: AlertCode, message: String?) =
+        serviceAlerts.postValue(ServiceEvent(KernelStatus.Stopped, code, message))
+
+    override fun onWriteLog(message: String?) {
+        message ?: return
+        logBuffer.append(message)
     }
 
-    override fun onServiceAlert(type: Alert, message: String?) {
-        serviceAlerts.postValue(ServiceEvent(Status.Stopped, type, message))
-    }
+    override fun onResetLogs(messages: MutableList<String>) = logBuffer.reset(messages)
 
-    override fun onServiceWriteLog(message: String?) {
-        if (message == null) return
-        if (logList.size > 300) {
-            logList.removeFirst()
-        }
-        logList.addLast(message)
-        logCallback?.invoke(false)
-    }
+    // === PermissionGate.Listener ==========================================
+    // 三种"用户授权完了"都重试 startService，让正常路径继续；拒绝走 alert 通知 UI。
 
-    override fun onServiceResetLogs(messages: MutableList<String>) {
-        logList.clear()
-        logList.addAll(messages)
-        logCallback?.invoke(true)
-    }
+    override fun onVpnConsented() = startService()
+    override fun onVpnDenied() = onAlert(AlertCode.RequestVPNPermission, null)
+    override fun onNotificationConsented() = startService()
+    override fun onNotificationDenied() = onAlert(AlertCode.RequestNotificationPermission, null)
+    override fun onPreflightFailure(code: AlertCode, message: String?) = onAlert(code, message)
+
+    // === Activity 生命周期 ================================================
 
     override fun onDestroy() {
+        permissionGate.unbindActivity()
         connection.disconnect()
         super.onDestroy()
     }
 
-    @SuppressLint("NewApi")
-    private fun grantNotificationPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.POST_NOTIFICATIONS),
-                NOTIFICATION_PERMISSION_REQUEST_CODE
-            )
-        }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        permissionGate.handleActivityResult(requestCode, resultCode)
     }
 
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
-        grantResults: IntArray
+        grantResults: IntArray,
     ) {
-        if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                startService()
-            } else onServiceAlert(Alert.RequestNotificationPermission, null)
-        }
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == VPN_PERMISSION_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) startService()
-            else onServiceAlert(Alert.RequestVPNPermission, null)
-        } else if (requestCode == NOTIFICATION_PERMISSION_REQUEST_CODE) {
-            if (resultCode == RESULT_OK) startService()
-            else onServiceAlert(Alert.RequestNotificationPermission, null)
-        }
+        permissionGate.handleRequestPermissionsResult(requestCode, grantResults)
     }
 }

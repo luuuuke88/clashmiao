@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
 import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
@@ -34,6 +35,10 @@ class PlatformBoxService implements BoxService {
 
   late final ValueStream<BoxStatus> _status;
 
+  /// Pigeon 强类型 host API（跟 MethodChannel 并存的过渡形态）。目前只 validateConfig
+  /// 走它；其它 method 还在 [_methodChannel]，后续逐条搬过来。
+  final _pigeonHost = pigeon.BoxHostApi();
+
   @override
   Future<void> init() async {
     final statusStream = _statusChannel.receiveBroadcastStream().map(
@@ -60,13 +65,15 @@ class PlatformBoxService implements BoxService {
     String tempPath, {
     bool debug = false,
   }) async {
-    final message = await _methodChannel.invokeMethod<String>('parse_config', {
-      'path': path,
-      'tempPath': tempPath,
-      'debug': debug,
-    });
-    if (message == null || message.isEmpty) return null;
-    return message;
+    // 走 Pigeon —— 强类型 + 编译期匹配字段名，比 invokeMethod('parse_config', map) 安全。
+    final result = await _pigeonHost.validateConfig(
+      pigeon.ValidateConfigRequest(
+        path: path,
+        tempPath: tempPath,
+        debug: debug,
+      ),
+    );
+    return result.error;
   }
 
   @override

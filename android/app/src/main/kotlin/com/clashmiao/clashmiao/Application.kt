@@ -3,12 +3,9 @@ package com.clashmiao.clashmiao
 import android.app.Application
 import android.app.NotificationManager
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.net.ConnectivityManager
 import android.os.PowerManager
 import androidx.core.content.getSystemService
-import com.clashmiao.clashmiao.bg.AppChangeReceiver
 import go.Seq
 import com.clashmiao.clashmiao.Application as BoxApplication
 
@@ -16,19 +13,13 @@ class Application : Application() {
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
-
         application = this
     }
 
     override fun onCreate() {
         super.onCreate()
-
+        // Go Mobile gomobile bind 出来的 libbox 要拿 Android Context 才能跑 cgo
         Seq.setContext(this)
-
-        registerReceiver(AppChangeReceiver(), IntentFilter().apply {
-            addAction(Intent.ACTION_PACKAGE_ADDED)
-            addDataScheme("package")
-        })
     }
 
     companion object {

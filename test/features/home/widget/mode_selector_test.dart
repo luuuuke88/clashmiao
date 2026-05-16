@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
@@ -95,8 +96,9 @@ void main() {
     // 初始：智能（index=1）
     expect(container.read(proxyModeProvider), 1);
 
-    // 找 '全局' 文本并 tap
-    final globalLabel = find.text('全局');
+    // 走当前 locale 的翻译：之前写死 '全局' 没多语言，现在走 t.home.routingMode.global
+    final t = container.read(translationsProvider);
+    final globalLabel = find.text(t.home.routingMode.global);
     expect(globalLabel, findsOneWidget);
 
     await tester.tap(globalLabel);

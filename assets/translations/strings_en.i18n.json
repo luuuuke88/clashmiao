@@ -35,8 +35,8 @@
     "emptyProfilesMsg": "Begin by Adding a Subscription Profile",
     "noActiveProfileMsg": "Choose a Profile",
     "routingMode": {
-      "global": "Global Proxy",
-      "smart": "Smart Routing"
+      "global": "Global",
+      "smart": "Smart"
     },
     "failedToSwitchMode": "Failed to switch mode: ${error}"
   },

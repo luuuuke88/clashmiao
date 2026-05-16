@@ -50,7 +50,11 @@ class _SpyBoxService implements BoxService {
   @override
   Future<void> setup(AppDirectories d, {bool debug = false}) async {}
   @override
-  Future<String?> validateConfig(String a, String b, {bool debug = false}) async => null;
+  Future<String?> validateConfig(
+    String a,
+    String b, {
+    bool debug = false,
+  }) async => null;
   @override
   Future<void> changeConfigOptions(String jsonOptions) async {}
   @override
@@ -80,11 +84,11 @@ class _SpyBoxService implements BoxService {
 const _ssNode = OutboundProxy(tag: 'ss-node', type: 'shadowsocks');
 
 OutboundGroup _proxyGroup({String selected = 'ss-node'}) => OutboundGroup(
-      tag: 'proxy',
-      type: 'selector',
-      selected: selected,
-      items: const [_ssNode],
-    );
+  tag: 'proxy',
+  type: 'selector',
+  selected: selected,
+  items: const [_ssNode],
+);
 
 Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
   required bool connected,
@@ -141,7 +145,9 @@ void main() {
     await _drainToasts(tester);
   });
 
-  testWidgets('已连接时 tap ss-node tile → selectOutbound 触发 + optimistic 更新', (tester) async {
+  testWidgets('已连接时 tap ss-node tile → selectOutbound 触发 + optimistic 更新', (
+    tester,
+  ) async {
     final (widget, container, spy) = await _host(connected: true);
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
@@ -156,7 +162,9 @@ void main() {
     expect(spy.selectOutboundCalls, 1);
     expect(spy.lastGroupTag, 'proxy');
     expect(spy.lastOutboundTag, 'ss-node');
-    expect(container.read(optimisticProxySelectionsProvider), {'proxy': 'ss-node'});
+    expect(container.read(optimisticProxySelectionsProvider), {
+      'proxy': 'ss-node',
+    });
     await _drainToasts(tester);
   });
 
@@ -208,7 +216,10 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
 
 void _addProxiesPageExtraTests() {
   testWidgets('空 groups 时显示 _EmptyProxy 文案（zhCn = 无可用的线路）', (tester) async {
-    final (widget, _, _) = await _hostWithGroups(connected: false, groups: const []);
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: const [],
+    );
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
@@ -238,7 +249,10 @@ void _addProxiesPageExtraTests() {
         items: [],
       ),
     ];
-    final (widget, _, _) = await _hostWithGroups(connected: false, groups: reserved);
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: reserved,
+    );
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
@@ -246,7 +260,9 @@ void _addProxiesPageExtraTests() {
     expect(find.text('无可用的线路'), findsOneWidget);
   });
 
-  testWidgets('未连接时点 flash header button → info toast，不触发 urlTest', (tester) async {
+  testWidgets('未连接时点 flash header button → info toast，不触发 urlTest', (
+    tester,
+  ) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: false,
       groups: [_proxyGroup()],

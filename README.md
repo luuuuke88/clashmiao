@@ -44,15 +44,22 @@
 
 ### sing-box 核心
 
-预编译产物已经放在 `core/output/`（iOS xcframework）、`android/app/libs/libcore.aar`、`libcore/bin/libcore.dylib`（macOS）。重新生成：
+预编译动态库通过 GitHub Release（tag `libcore-v<sing-box-version>`）分发。fresh clone 后跑：
 
 ```bash
-cd core
-./build.sh android   # Android arm64-v8a / armeabi-v7a / x86_64
-./build.sh ios       # iOS arm64 + simulator
-./build.sh macos     # macOS arm64 + x86_64 universal
-./build.sh all
+bin/fetch-libcore.sh          # 默认拉 Android + 当前 host 平台的 lib
+bin/fetch-libcore.sh all      # 拉全部 5 个平台
+bin/fetch-libcore.sh ios      # 单独拉 iOS xcframework
 ```
+
+放到正确路径：
+- `android/app/libs/libcore.aar`
+- `libcore/bin/libcore.dylib`（macOS）
+- `ios/Frameworks/Libcore.xcframework/`（iOS，zip 解开）
+- `windows/libs/libcore.dll`
+- `linux/libs/libcore.so`
+
+CI 同样走这个脚本。升级 sing-box 版本时另起一个 `libcore-v*` tag 上传新二进制。
 
 ### 跑起来
 

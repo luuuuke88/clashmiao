@@ -51,23 +51,20 @@ app.*.map.json
 /libcore/bin/*
 /libcore/include/
 
-# 平台二进制 / framework（绝大多数 gitignored）
+# 平台二进制 / framework（一律 gitignored，通过 GitHub Release 分发）
 *.dylib
 *.so
+*.dll
 *.a
 *.aar
 *.jar
 *.xcframework/
 *.framework/
 
-# 例外：五个平台的 libcore 通过 Git LFS 入库，CI / fresh clone 即可编 release。
-!android/app/libs/libcore.aar
+# 平台 libcore 二进制不入 git（走 GitHub Release tag libcore-v<sing-box-ver>，
+# CI / 本地用 bin/fetch-libcore.sh 拉）。
+# 例外：android gradle wrapper jar 必须入库。
 !android/gradle/wrapper/gradle-wrapper.jar
-!libcore/bin/libcore.dylib
-!ios/Frameworks/Libcore.xcframework/
-!ios/Frameworks/Libcore.xcframework/**
-!windows/libs/libcore.dll
-!linux/libs/libcore.so
 
 # Flutter ephemeral
 **/ios/Flutter/ephemeral/

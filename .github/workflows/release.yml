@@ -9,6 +9,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.41.4'
+  LIBCORE_TAG: libcore-v1.11.0
 
 jobs:
   android:
@@ -24,6 +25,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (android)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh android
       - run: flutter pub get
       - run: flutter build apk --release
       - run: flutter build appbundle --release
@@ -43,6 +48,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (macos)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh macos
       - run: flutter pub get
       - run: flutter build macos --release
       - name: Create dmg

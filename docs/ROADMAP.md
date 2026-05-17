@@ -6,134 +6,119 @@
 
 ## 里程碑 1 — Android VPN ✅ 完成
 
-**结果**：用户在模拟器上点连接 → 系统 VPN 权限弹窗 → tun0 接管全部 TCP/UDP → UI 显示「已连接」+ 节点延迟。
+**结果**：模拟器点连接 → 系统 VPN 权限弹窗 → tun0 接管全部 TCP/UDP → UI「已连接」+ 节点延迟。`bin/test-e2e.sh` 跑 `integration_test/android_smart_mode_test.dart` 断言出口 IP 真实变化。
 
 **关键决策点**（已写入 [docs/ARCHITECTURE.md](ARCHITECTURE.md)）：
-- 进程模型：VpnService 跑独立进程，AIDL 跟主进程通讯
+- 进程模型：`engine.TunnelService` 跑独立进程，AIDL 跟主进程通讯
 - `startForeground` 必须传 `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`（Android 14+）
 - onStartCommand 入口同步挂 placeholder 通知，避免 IO 线程启动 sing-box 超过 5s 超时被杀
+- Kotlin 端 2026-05 完成 clean-room 重写（Phase 1-7），17 个 host JVM 单测守 wire-format
 
 ---
 
-## 里程碑 2 — macOS 系统代理 🟡 进行中
+## 里程碑 2 — macOS 系统代理 ✅ 完成
+
+**结果**：`flutter build macos --debug` + 手动 smoke 验证（154.83.95.148 → 45.202.255.184，36 秒走完）。系统托盘 + 关窗自动停 sing-box + 启动自动更新过期订阅都齐了。
+
+技术要点：
+- pbxproj shell script build phase 自动把 `libcore/bin/libcore.dylib` 拷到 `${PRODUCT_NAME}.app/Contents/Frameworks/` 并 `codesign --force --sign -`
+- entitlements：sandbox 关、network client/server 开、JIT 允许
+- `default_config_options.dart` 在 macOS / Linux / Windows 默认 `set-system-proxy=true / enable-tun=false`
+
+---
+
+## 里程碑 3 — iOS PacketTunnel 🟡 代码就绪 / 卡签名
+
+**代码完成**：
+- `ios/SingBoxPacketTunnel/` Network Extension target（com.apple.product-type.app-extension）
+- `ios/Runner/{VPN,Handlers,Shared}/` 主 app 侧 Swift 全部完工（~20 个 .swift）
+- `Runner.xcodeproj` 注册 SingBoxPacketTunnel 为 app-extension，自动 embed Libcore.xcframework
+- Podfile 已加 extension target 段
+- CI `build-ios` job (`flutter build ios --debug --no-codesign`) 跑绿
+
+**阻塞**（用户层硬约束，无法绕开）：
+1. Apple Developer 账号（$99/年）—— https://developer.apple.com/programs/enroll/
+2. NetworkExtension capability 申请审批（1–2 个工作日人工审）
+3. App ID `com.clashmiao.clashmiao` + `com.clashmiao.clashmiao.SingBoxPacketTunnel` 注册
+4. App Group `group.com.clashmiao.shared` 注册
+5. Provisioning Profile 下载到本机 Xcode
+6. iOS 真机一台（Simulator 不支持 NetworkExtension）
+
+详见 `ios/SCAFFOLDING.md`。拿到资源后预期 ~半天调试可上真机。
+
+---
+
+## 里程碑 4 — Windows 🟡 代码 + lib 就绪 / 卡真机
 
 **当前状态**：
-- ✅ `flutter build macos` 通过，`.app` 自动打包 `libcore.dylib` 到 `Contents/Frameworks/`
-- ✅ entitlements 已配（sandbox 关、network client/server 开、JIT 允许）
-- ✅ `FFIBoxService` 完整实现，`default_config_options.dart` 在 macOS 上默认 `set-system-proxy=true / enable-tun=false`
-- 🟡 没有手动验证：sing-box 是否真在 127.0.0.1:2080 监听、macOS 系统代理是否真被切到这里
+- ✅ `libcore-windows-amd64.dll`（41M，amd64 c-shared，含 setup/start/stop/parse 等 11 个 FFI 符号）在 GitHub Release tag `libcore-v1.11.0`
+- ✅ `windows/CMakeLists.txt` install 阶段把 dll 拷到 `.exe` 同级
+- ✅ CI `build-windows` 跑 `flutter build windows --release`，bundle 校验 + `clashmiao-windows-release` artifact 上传
+- ❌ 没有 Windows 物理机 / VM 跑过一次连接 smoke（设系统代理 + 浏览器 → 出口 IP 变化）
 
-**剩下要做的事**：
-1. **运行验证**
-   ```bash
-   flutter run -d macos
-   # 添加订阅，点连接，观察:
-   # 1. 终端日志：sing-box 是否启动成功（Status: Started）
-   # 2. 系统设置 → 网络 → Wi-Fi → 详细信息 → 代理：是否被改为 127.0.0.1:2080
-   # 3. lsof -nP -iTCP:2080 -sTCP:LISTEN：是否有 clashmiao 在监听
-   # 4. 在浏览器访问 https://www.google.com 看是否能通
-   ```
-
-2. **可能的 bug**：
-   - macOS dylib 加载路径：`FFIBoxService` 怎么找 `libcore.dylib`？看 `lib/core/box_service/ffi_box_service.dart` 的 `DynamicLibrary.open(...)` 调用，确认走的是 `@executable_path/../Frameworks/libcore.dylib`
-   - macOS 14+ 设置系统代理可能需要管理员权限（输 admin 密码）
-   - `tun-implementation: mixed` 在 macOS 用不上但 sing-box 应该忽略它
-
-3. **未实现**：
-   - macOS 退出时自动还原系统代理设置（避免离开 app 后所有流量都死）
-   - macOS 菜单栏图标 + 快捷切换（tray_manager 已在依赖里）
-
----
-
-## 里程碑 3 — iOS PacketTunnel ❌ 未开始
-
-**前置条件**（必须先满足）：
-1. 注册 Apple Developer 账号（$99/年），位置：<https://developer.apple.com/programs/enroll/>
-2. 在 Developer 后台申请 **NetworkExtension Capability** entitlement（人工审批，1–2 个工作日）
-3. 注册主 App ID `com.clashmiao.clashmiao` 和 Extension App ID `com.clashmiao.clashmiao.SingBoxPacketTunnel`
-4. 注册 App Group `group.com.clashmiao.clashmiao`
-5. 下载 Provisioning Profile 到本机 Xcode
-6. iOS 真机一台（iOS Simulator **不能**跑 NetworkExtension）
-
-**Port 计划**：
-
-| 阶段 | 工作 | 工时 |
-|------|------|------|
-| 1 | 新建 `ios/SingBoxPacketTunnel/` Extension target 目录 + Swift 源文件 | 1–2 h |
-| 2 | 新建 `ios/Runner/VPN/` + `ios/Runner/Handlers/` 主 app 侧代码 | 1 h |
-| 3 | 在 Xcode 新建 SingBoxPacketTunnel target（Application Extension → Network Extension） | 30 min |
-| 4 | 把 swift 源加进 target，链接 `Libbox.xcframework` | 30 min |
-| 5 | entitlements 写 App Group + NetworkExtension capability；Info.plist 配 NSExtensionPrincipalClass | 30 min |
-| 6 | Podfile 加 Extension target 段 | 15 min |
-| 7 | 配 Signing & Capabilities（依赖前置条件 1–5 完成）| 30 min |
-| 8 | 真机部署、调试 startTunnel/stopTunnel、修 routes/DNS 配置 bug | 4–8 h |
-
-**实际工作量**：纯代码 ~3 h + Xcode 配置 ~1 h + 真机调试 ~ 半天。
-
-**Extension 端关键 Swift 文件**（自己实现，参考 sing-box-for-ios 的 PacketTunnelProvider 模式）：
-
-```
-ios/SingBoxPacketTunnel/PacketTunnelProvider.swift  — Extension 入口，继承 NEPacketTunnelProvider
-ios/SingBoxPacketTunnel/ExtensionProvider.swift     — sing-box 核心生命周期
-ios/SingBoxPacketTunnel/PlatformInterface.swift     — NEPacketTunnelNetworkSettings 配置
-ios/Runner/VPN/VPNManager.swift                     — NEVPNManager 生命周期
-ios/Runner/VPN/VPNConfig.swift                      — UserDefaults 持久化
-ios/Runner/Handlers/MethodHandler.swift             — Flutter MethodChannel 接入
-ios/Runner/Handlers/AlertsEventHandler.swift        — alerts 流
-ios/Runner/Handlers/GroupsEventHandler.swift / StatsEventHandler.swift
-ios/Shared/FilePath.swift / CommandClient.swift     — 主 app 与 Extension 共享
+**剩下要做的事**（拿到 Windows 机器后）：
+```powershell
+git clone luke501/clashmiao
+bash bin/fetch-libcore.sh windows
+flutter pub get
+flutter build windows --release
+build\windows\x64\runner\Release\clashmiao.exe
+# 添加订阅、点连接、看 Edge / Chrome 出口 IP
 ```
 
----
-
-## 里程碑 4 — Windows ❌ 未开始
-
-**思路**：FFI 直接调 `libcore.dll`，桌面端走系统代理（与 macOS 同款思路）。
-
-**前置**：
-1. 用 `core/build.sh windows` 编译 Windows dll（脚本待扩展 `windows` target）
-2. 在 Windows 机器或 Parallels VM 上跑 `flutter build windows`
-3. `tray_manager` + `window_manager` 已在依赖里，可以做最小化到系统托盘
-
-**未知数**：
-- Windows 系统代理设置 API（应该 sing-box 内部已实现，看 `set-system-proxy` 在 Windows 上的行为）
-- WinTun TUN 模式（如果以后要支持全局 TUN，需要 admin + 安装 WinTun 驱动）
+可能踩坑：`set-system-proxy: true` 写 IE 注册表需要管理员权限；macOS / Linux 编 dll 的 CGo 链接方式跟 native MSVC 不完全一致，可能要重编一次。
 
 ---
 
-## 里程碑 5 — Linux ❌ 未开始
+## 里程碑 5 — Linux 🟡 代码 + lib 就绪 / 卡真机桌面
 
-类似 macOS：FFI + `libcore.so` + 系统代理（gnome / KDE 环境变量 `http_proxy` 或 `gsettings`）。
+**当前状态**：
+- ✅ `libcore-linux-amd64.so`（45M）在 GitHub Release tag `libcore-v1.11.0`
+- ✅ Debian Linux 容器实测 `dlopen()` + `dlsym()` 11 个 FFI 符号全 resolve（`ldd` 只依赖 libc）—— 证 ELF 加载链路真通
+- ✅ `linux/CMakeLists.txt` install 拷 so 到 `bundle/lib/`，rpath `$ORIGIN/lib`
+- ✅ CI `build-linux` 跑 `flutter build linux --release`，bundle 校验 + `nm -D` 抽查 FFI 符号 + artifact 上传
+- ❌ 没有 Linux 桌面 / GUI VM 跑过一次连接 smoke
 
-完整 TUN 模式需要 `CAP_NET_ADMIN`（pkexec / setcap），开发体验差，建议先只支持 mixed inbound + 用户手动设代理。
+**剩下要做的事**（拿到 Linux 桌面后）：
+```bash
+git clone luke501/clashmiao
+bash bin/fetch-libcore.sh linux
+flutter pub get
+flutter build linux --release
+./build/linux/x64/release/bundle/clashmiao
+# GNOME Settings → Network → Network Proxy → Manual 127.0.0.1:2080
+# 浏览器看出口 IP
+```
+
+可选后续：自己写 `bin/clashmiao-setproxy.sh` 帮 GNOME / KDE / XFCE 自动配。CAP_NET_ADMIN 全局 TUN 模式留单独 milestone。
 
 ---
 
 ## 横向工作
 
-### 测试覆盖 ✅
+### libcore 二进制分发 ✅
 
-- ~30 个 unit + widget 测试，覆盖 `RuntimeConfigBuilder` / `ProfileParser` / `ConfigParser` / `BoxAlertType.parse` / `ProfileRepository.addByUrl` / `ConnectionButton` / `ModeSelector`
-- 1 个 Android E2E：模拟器内点连接 → 出口 IP 变化 → 断开（真实出流量验证）
-- 本地一键：`bash bin/test-all.sh`
+5 个平台的 libcore 走 GitHub Release tag `libcore-v<sing-box-version>`，`bin/fetch-libcore.sh` 统一拉取。详见 README + ARCHITECTURE。
 
 ### CI/CD ✅
 
-- GitHub Actions 4 个 job 并行：`analyze` / `test-unit` / `test-e2e-android` / `build-android`
-- `git tag v*` 触发 `release.yml`：自动出 APK + AAB + macOS dmg 并挂到 GitHub Release
-- E2E job 跑 `reactivecircus/android-emulator-runner@v2`，订阅 URL 通过 `secrets.CLASHMIAO_TEST_SUB_URL` 注入
-- 由于 emulator + TUN + 订阅可用性叠加风险，E2E job 暂 `continue-on-error: true`，下个 milestone 调优
+GitHub Actions 8 个 job 并行 gate：
+- analyze / test-unit / test-android-unit（PR gate）
+- build-android / build-macos / build-ios / build-windows / build-linux（5 平台 release/debug build）
+- Windows / Linux build 后校验 libcore 真被 install 到产物，Linux 还 `nm -D` 抽查 FFI 符号
+
+`release.yml` 跟 `v*` tag 触发 Android APK/AAB + macOS dmg 自动发布。
 
 ### 文档
 
 - [x] README.md — 平台支持表 + 入门
-- [x] docs/ARCHITECTURE.md — 架构分层 + channel 协议
+- [x] docs/ARCHITECTURE.md — 架构分层 + 各平台 native 文件骨架
 - [x] docs/ROADMAP.md — 本文件
-- [ ] docs/CONTRIBUTING.md — 提交规范、commit 风格
-- [ ] docs/DEBUGGING.md — Android logcat 关键 tag、macOS Console、iOS Xcode 调试 step
+- [x] ios/SCAFFOLDING.md / windows/libs/README.md / linux/libs/README.md — 各平台运行前置
+- [ ] docs/DEBUGGING.md — Android logcat 关键 tag、macOS Console、iOS Xcode 调试
 
 ### 已知风险
 
-- **协议**：当前 GPL-3.0；若未来要闭源 / 商业化，需要重新评估原生层代码出处与协议（咨询律师）
-- **核心库版本**：`libcore.aar` / `libcore.dylib` 是某个 sing-box 版本 snapshot，sing-box 升级后要重 build。`core/build.sh` 里写死了 `SINGBOX_VERSION="1.11.0"`，定期评估升级
-- **Apple 政策**：iOS NetworkExtension 在 App Store 审核越来越严，2024 后 VPN 类应用必须证明合理用途，自用 / 企业可绕开
+- **核心库版本**：libcore 是 sing-box `v1.11.0` snapshot；上游升级后要重 build。tag 命名 `libcore-v<version>` 留出升级路径
+- **Apple 政策**：iOS NetworkExtension 在 App Store 审核越来越严，VPN 类需证明合理用途
+- **协议**：当前 GPL-3.0；若日后闭源 / 商业化，需重新评估各平台 native 实现的协议出处

@@ -60,14 +60,14 @@ app.*.map.json
 *.xcframework/
 *.framework/
 
-# 例外：android libcore.aar 和 ios Libcore.xcframework 通过 Git LFS 入库，
-# 让 CI 能编对应平台 release/debug build。其他 .dylib/.so/.dll 仍按
-# 平台本地 build.sh 编译。
+# 例外：五个平台的 libcore 通过 Git LFS 入库，CI / fresh clone 即可编 release。
 !android/app/libs/libcore.aar
 !android/gradle/wrapper/gradle-wrapper.jar
 !libcore/bin/libcore.dylib
 !ios/Frameworks/Libcore.xcframework/
 !ios/Frameworks/Libcore.xcframework/**
+!windows/libs/libcore.dll
+!linux/libs/libcore.so
 
 # Flutter ephemeral
 **/ios/Flutter/ephemeral/

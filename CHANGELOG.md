@@ -4,6 +4,15 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Windows / Linux libcore 就绪（CI 升 release gate）
+
+Windows / Linux 之前一直是"脚手架完成、lib 缺位"——`flutter build` 能过但 release 包里没 libcore，FFI 加载失败回落 StubBoxService。这一轮把核心库补齐：
+
+- `windows/libs/libcore.dll`（41M）、`linux/libs/libcore.so`（45M）入 Git LFS，跟 `android/app/libs/libcore.aar`、`libcore/bin/libcore.dylib`、`ios/Frameworks/Libcore.xcframework/` 同一套机制。
+- CMake install 阶段已就位，fresh clone + `flutter build {windows,linux} --release` 即可出可运行包。
+- CI 升级：`build-windows` / `build-linux` 从 `--debug` 改 `--release`，加 LFS smudge 防护（产物 < 1MB 即报错），构建后 grep 校验 libcore 真被装到 `Release/` 或 `bundle/lib/`，linux 还 `nm -D` 抽查 `setup/start/stop/parse/selectOutbound/urlTest` 六个 FFI 符号。release 产物 upload-artifact。
+- 五个平台之中只剩 iOS（卡 Apple Developer 账号 + 真机签名）一项硬阻塞；Windows / Linux 进入"待真机点连接 smoke"状态。
+
 ### Android Kotlin 端 clean-room 重写（Phase 1-7，本地分阶段验证）
 
 为远离 GPL-3 衍生品风险，把整个 Android Kotlin 层按"看代码理解 → 关掉文件 → 自己写"

@@ -96,11 +96,11 @@ void main() {
       await tester.tap(connectFinder);
       await tester.pump();
 
-      // 等 BoxStarted（30s 超时，含 1.5s 连接动画）
+      // 等 BoxStarted（60s 超时，含 1.5s 连接动画 + 可能的 VPN dialog 等待 + sing-box bootstrap）
       await waitForStatus<BoxStarted>(
         tester,
         container,
-        timeout: const Duration(seconds: 30),
+        timeout: const Duration(seconds: 60),
       );
 
       // 验证出口 IP 变了

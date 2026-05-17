@@ -99,8 +99,14 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       _statusSub = service.watchStatus().listen(
         (status) {
           if (!mounted) return;
-          // 过渡动画期间不允许核心直接覆盖状态
-          if (_transitioning) return;
+          // 过渡动画期间允许 final state（BoxStarted / BoxStopped）穿透，
+          // 但忽略中间态（BoxStarting / BoxStopping），避免抖动 UI。
+          // 之前的 `if (_transitioning) return` 把真实 BoxStarted 也拦了，
+          // 导致 connect() 1.5s 后手动写 BoxStarted —— 但 native sing-box
+          // 实际可能还没起来，状态就成了"假已连接"。
+          if (_transitioning && (status is BoxStarting || status is BoxStopping)) {
+            return;
+          }
           state = AsyncData(status);
           _syncStartedAt(status);
         },
@@ -237,9 +243,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       );
 
       await _boxService.start(runtimeConfig.path, name: active.name);
-      // 至少展示 1.5秒 连接中动画
+      // 让 BoxStarting 动画至少展示 1.5s，期间锁住 _transitioning。
+      // 之后**不**手动写 BoxStarted —— 真实 BoxStarted 由 watchStatus
+      // 在 native sing-box 实际起来（VpnService 接管流量、TUN 建好）后推送。
+      // 这之前如果 user 没点 VPN dialog / sing-box 启动失败，会停在 BoxStarting，
+      // 由 watchAlerts 的 fatal alert 强制回到 BoxStopped。
       await Future.delayed(const Duration(milliseconds: 1500));
-      state = const AsyncData(BoxStarted());
     } catch (e) {
       final errMsg = e.toString();
       if (errMsg.contains('instance not stopped')) {
@@ -258,7 +267,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           );
           await _boxService.start(runtimeConfig.path, name: active.name);
           await Future.delayed(const Duration(milliseconds: 1500));
-          state = const AsyncData(BoxStarted());
+          // 同上：不手动写 BoxStarted，让 watchStatus 推真实状态。
           return;
         } catch (retryErr) {
           _ref.read(connectionErrorProvider.notifier).state = retryErr

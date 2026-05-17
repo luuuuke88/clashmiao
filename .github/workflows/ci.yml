@@ -1,7 +1,11 @@
 name: CI
 
-# 设计原则：CI 跑跨平台、无外部依赖的检查（analyze + 单测 + Android release build）。
+# 设计原则：CI 跑跨平台、无外部依赖的检查（analyze + 单测 + 5 平台 build）。
 # Android emulator E2E 因为冷启 8-10min 不进 CI，仍靠本地 bin/test-all.sh 跑。
+#
+# libcore 二进制走 GitHub Release tag (LIBCORE_TAG)，build job 用 gh release
+# download 拉。**绝不 lfs: true** —— 仓库 LFS bandwidth 配额按月计，多 job 并行
+# checkout 会瞬间吃光 1GB/月，导致整个 CI 死锁。
 
 on:
   pull_request:
@@ -16,14 +20,13 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.41.4'
+  LIBCORE_TAG: libcore-v1.11.0
 
 jobs:
   analyze:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -37,8 +40,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -48,14 +49,11 @@ jobs:
       - run: flutter test test/ --reporter expanded
 
   # Android Kotlin host JVM 单测：守 wire-format / LogBuffer / AIDL decode 这些
-  # 纯逻辑。不需要 emulator，几秒就跑完。新增 Kotlin 代码必须有对应测试，否则
-  # PR 进不了 main。
+  # 纯逻辑。不需要 emulator / libcore，几秒就跑完。
   test-android-unit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -79,8 +77,6 @@ jobs:
     needs: [analyze, test-unit, test-android-unit]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -90,6 +86,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (android)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh android
       - run: flutter pub get
       - run: flutter build apk --release
       - uses: actions/upload-artifact@v4
@@ -97,70 +97,64 @@ jobs:
           name: clashmiao-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-  # macOS debug build —— 跑在 macos-latest 上，验证 macOS 端 FFI / 桌面 UI
-  # 不会因为 Android 这边改动回归（之前 macOS 烟雾测试在 luke 本地手跑过，CI 这边
-  # 把"能编"的 gate 加进来）。
   build-macos:
     runs-on: macos-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (macos)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh macos
       - run: flutter pub get
       - run: flutter config --enable-macos-desktop
       - run: flutter build macos --debug --no-tree-shake-icons
 
-  # iOS debug build (unsigned) —— SingBoxPacketTunnel target 已注册进 pbxproj，
-  # Libcore.xcframework 已含 ios-arm64 device slice，pod install 可识别两个 target。
-  # productType 用通用 com.apple.product-type.app-extension（Xcode 现代版本有效），
-  # 不需要 Apple Developer 账号，--no-codesign 跳过签名。
+  # iOS unsigned debug build —— SingBoxPacketTunnel target 在 pbxproj，
+  # Libcore.xcframework 走 Release artifact 拉。pod install 识别两个 target。
+  # productType 通用 com.apple.product-type.app-extension，--no-codesign 跳过签名。
   build-ios:
     runs-on: macos-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (ios xcframework)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh ios
       - run: flutter pub get
       - name: pod install
         working-directory: ios
         run: pod install
       - run: flutter build ios --debug --no-codesign --no-tree-shake-icons
 
-  # Windows release build —— libcore.dll 入 LFS，CMakeLists.txt install 阶段
-  # 自动拷到 .exe 同目录。验证步骤显式检查 libcore.dll 存在且非空，避免 LFS
-  # smudge 失败（pointer 文件）导致 release 包静默缺核心。
+  # Windows release build —— libcore.dll 拉 Release artifact，CMakeLists.txt
+  # install 阶段拷到 .exe 同目录。grep 校验 libcore 真在 release output。
   build-windows:
     runs-on: windows-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Verify libcore.dll is a real binary (not LFS pointer)
-        shell: pwsh
-        run: |
-          $f = "windows/libs/libcore.dll"
-          if (!(Test-Path $f)) { Write-Error "libcore.dll missing"; exit 1 }
-          $size = (Get-Item $f).Length
-          if ($size -lt 1000000) { Write-Error "libcore.dll suspiciously small ($size bytes) — LFS smudge failed?"; exit 1 }
-          Write-Host "libcore.dll size: $size bytes (ok)"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (windows)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: bin/fetch-libcore.sh windows
       - run: flutter pub get
       - run: flutter config --enable-windows-desktop
       - run: flutter build windows --release
@@ -179,30 +173,23 @@ jobs:
           name: clashmiao-windows-release
           path: build/windows/x64/runner/Release/
 
-  # Linux release build —— libcore.so 入 LFS，CMakeLists.txt install 拷到
-  # bundle/lib/，rpath $ORIGIN/lib 让 ELF 找到。
+  # Linux release build —— libcore.so 拉 Release artifact，CMakeLists.txt install
+  # 拷到 bundle/lib/，rpath $ORIGIN/lib 让 ELF 找到。nm 抽查 FFI 符号导出。
   build-linux:
     runs-on: ubuntu-latest
     needs: [analyze, test-unit]
     steps:
       - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - name: Verify libcore.so is a real binary (not LFS pointer)
-        run: |
-          f=linux/libs/libcore.so
-          [ -f "$f" ] || { echo "libcore.so missing"; exit 1; }
-          size=$(stat -c%s "$f")
-          if [ "$size" -lt 1000000 ]; then
-            echo "libcore.so suspiciously small ($size bytes) — LFS smudge failed?"; exit 1
-          fi
-          echo "libcore.so size: $size bytes (ok)"
       - run: sudo apt-get update -y && sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (linux)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh linux
       - run: flutter pub get
       - run: flutter config --enable-linux-desktop
       - run: flutter build linux --release
@@ -213,7 +200,6 @@ jobs:
             find build/linux -name libcore.so
             echo "libcore.so not bundled into release output"; exit 1
           fi
-          # Sanity-check that the FFI exports we need are present in the linked binary
           nm -D --defined-only "$bundled" | grep -E ' T (setup|start|stop|parse|selectOutbound|urlTest)$' || {
             echo "libcore.so is missing expected FFI symbols"; exit 1
           }

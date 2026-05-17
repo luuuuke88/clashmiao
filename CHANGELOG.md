@@ -4,14 +4,32 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
-### Windows / Linux libcore 就绪（CI 升 release gate）
+### libcore 二进制分发：LFS → GitHub Release tag
 
-Windows / Linux 之前一直是"脚手架完成、lib 缺位"——`flutter build` 能过但 release 包里没 libcore，FFI 加载失败回落 StubBoxService。这一轮把核心库补齐：
+之前所有平台的 libcore 走 Git LFS，仓库 LFS 占 ~420MB。CI 多 job 并行 checkout 拉 LFS 约 3.4GB / run，GitHub Free Plan 1GB/月 bandwidth 配额被打爆，CI 全员 fail in `git lfs fetch`。
 
-- `windows/libs/libcore.dll`（41M）、`linux/libs/libcore.so`（45M）入 Git LFS，跟 `android/app/libs/libcore.aar`、`libcore/bin/libcore.dylib`、`ios/Frameworks/Libcore.xcframework/` 同一套机制。
-- CMake install 阶段已就位，fresh clone + `flutter build {windows,linux} --release` 即可出可运行包。
-- CI 升级：`build-windows` / `build-linux` 从 `--debug` 改 `--release`，加 LFS smudge 防护（产物 < 1MB 即报错），构建后 grep 校验 libcore 真被装到 `Release/` 或 `bundle/lib/`，linux 还 `nm -D` 抽查 `setup/start/stop/parse/selectOutbound/urlTest` 六个 FFI 符号。release 产物 upload-artifact。
-- 五个平台之中只剩 iOS（卡 Apple Developer 账号 + 真机签名）一项硬阻塞；Windows / Linux 进入"待真机点连接 smoke"状态。
+改走 GitHub Release：
+
+- 创建 tag `libcore-v1.11.0`，把 5 个平台的核心库作为 release asset 上传
+  （`libcore-android.aar` 115M / `libcore-macos-arm64.dylib` 44M / `libcore-windows-amd64.dll` 41M / `libcore-linux-amd64.so` 45M / `Libcore.xcframework.zip` 143M）
+- 仓库不再 track 任何 lib 二进制，`.gitattributes` 清空 LFS rule，`.gitignore` 让本地下载的 lib 落地但不入 git
+- `bin/fetch-libcore.sh` 用 `gh release download` 把对应平台 lib 拉到 build 期望路径
+- CI ci.yml / release.yml 改成：`actions/checkout` 不带 lfs，每个 build job 加 fetch 步骤拉自己需要的 lib（释放 LFS bandwidth 压力）
+- Windows / Linux 升 release build gate，build 后校验 libcore 真被装到产物且 FFI 符号导出
+
+历史 LFS object 暂未清理（不影响新流程，但占静态 storage 配额）。后续可以 `git filter-repo` 收尾。
+
+### Windows / Linux libcore 二进制就位（amd64 c-shared）
+
+用 docker `golang:1.22-bookworm` linux/amd64 容器交叉编两个产物：
+
+- Linux：`CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -buildmode=c-shared`，45M
+- Windows：装 `gcc-mingw-w64-x86-64`，`CC=x86_64-w64-mingw32-gcc CGO_ENABLED=1 GOOS=windows GOARCH=amd64`，41M
+- 都用同套 build tags：`with_gvisor,with_quic,with_wireguard,with_ech,with_utls,with_clash_api,with_grpc`
+
+`nm -D` 验证 FFI 符号齐全：`setup` / `setupOnce` / `start` / `stop` / `parse` / `generateConfig` / `selectOutbound` / `urlTest` / `changeConfigOptions` / `startCommandClient` / `stopCommandClient`。
+
+五平台 lib 全到位；iOS 仍卡 Apple Developer 账号 + 真机签名，Windows / Linux 进入"待真机点连接 smoke"。
 
 ### Android Kotlin 端 clean-room 重写（Phase 1-7，本地分阶段验证）
 

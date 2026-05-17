@@ -1,10 +1,3 @@
-android/app/libs/libcore.aar filter=lfs diff=lfs merge=lfs -text
-libcore/bin/*.dylib filter=lfs diff=lfs merge=lfs -text
-windows/libs/*.dll filter=lfs diff=lfs merge=lfs -text
-linux/libs/*.so filter=lfs diff=lfs merge=lfs -text
-core/output/*.aar filter=lfs diff=lfs merge=lfs -text
-core/output/*.dylib filter=lfs diff=lfs merge=lfs -text
-core/output/*.so filter=lfs diff=lfs merge=lfs -text
-core/output/*.dll filter=lfs diff=lfs merge=lfs -text
-core/output/*.xcframework/** filter=lfs diff=lfs merge=lfs -text
-ios/Frameworks/Libcore.xcframework/** filter=lfs diff=lfs merge=lfs -text
+# 历史 commit 里所有 libcore.* 都走过 LFS；2026-05-18 起核心库改走 GitHub Release
+# (tag libcore-v<sing-box-version>)，仓库不再 track 二进制，CI 用 gh release download
+# 拉到对应 libs/ 目录。LFS rule 清空，避免新 commit 再 push object 进 LFS quota。

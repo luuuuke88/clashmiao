@@ -1,9 +1,25 @@
-# libcore.dll 二进制位置（构建时由 CMake 拷贝到运行时目录）
+# libcore.dll
 
-把 `core/build.sh windows` 编出的 `core/output/libcore-windows-amd64.dll` 拷贝到这里改名 `libcore.dll`：
+预编译的 sing-box 核心动态库（amd64，CGo `-buildmode=c-shared`），通过 Git LFS 入库。
 
+`windows/runner/CMakeLists.txt` 的 install 阶段会把它拷到 `.exe` 同目录，Dart FFI `DynamicLibrary.open('libcore.dll')` 直接加载。
+
+导出符号：`setup` / `setupOnce` / `start` / `stop` / `parse` / `generateConfig` / `selectOutbound` / `urlTest` / `changeConfigOptions` / `startCommandClient` / `stopCommandClient`。
+
+替换步骤（更新 sing-box 版本时）：
+
+```bash
+# 在 macOS / Linux 主机上交叉编译（依赖 Docker）
+docker run --rm --platform linux/amd64 \
+  -v <go-source-dir>:/src:ro -v $(pwd):/out \
+  -w /work golang:1.22-bookworm bash -c '
+    cp -r /src/. /work/
+    apt-get update -q && apt-get install -y -q gcc-mingw-w64-x86-64
+    CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CC=x86_64-w64-mingw32-gcc \
+      go build -trimpath -buildmode=c-shared -ldflags="-w -s" \
+      -tags with_gvisor,with_quic,with_wireguard,with_ech,with_utls,with_clash_api,with_grpc \
+      -o /out/libcore.dll ./custom
+  '
+git lfs track windows/libs/libcore.dll
+git add windows/libs/libcore.dll && git commit -m "build(windows): refresh libcore.dll"
 ```
-cp core/output/libcore-windows-amd64.dll windows/libs/libcore.dll
-```
-
-`windows/runner/CMakeLists.txt` 会在 install 阶段把这个文件拷到 `${INSTALL_BUNDLE_LIB_DIR}/libcore.dll`（即 .exe 同目录），FFI `DynamicLibrary.open('libcore.dll')` 即可加载。

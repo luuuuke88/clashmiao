@@ -11,8 +11,8 @@
 | Android | ✅ 可用 | VpnService + `libcore.aar` | tun0 接管流量、模拟器 ping 通、订阅 / ss-uri 都能加载 |
 | macOS | ✅ 可用 | FFI + `libcore.dylib` + 系统代理 | 154.83.95.148 → 45.202.255.184 验证通过，烟雾 36s 跑完 |
 | iOS | 🟡 代码脚手架完成 | NetworkExtension PacketTunnelProvider | 阻塞：Apple Developer 账号 + 真机签名，见 `ios/SCAFFOLDING.md` |
-| Windows | 🟡 脚手架完成（未验证） | FFI + `libcore.dll` + 系统代理（IE 注册表） | 需 Windows 机器，见 `windows/SCAFFOLDING.md` |
-| Linux | 🟡 脚手架完成（未验证） | FFI + `libcore.so` + 系统代理（GNOME 手动设） | 需 Linux 机器，见 `linux/SCAFFOLDING.md` |
+| Windows | 🟡 lib 就绪 / 待真机验证 | FFI + `libcore.dll` (LFS) + 系统代理 (Wininet) | `flutter build windows` 可出 release，需 Windows 机器走一次连接 smoke |
+| Linux | 🟡 lib 就绪 / 待真机验证 | FFI + `libcore.so` (LFS) + 系统代理 (GNOME 手动设) | `flutter build linux` 可出 release，需 Linux 机器走一次连接 smoke |
 
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
 

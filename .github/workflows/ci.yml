@@ -49,7 +49,8 @@ jobs:
       - run: flutter test test/ --reporter expanded
 
   # Android Kotlin host JVM 单测：守 wire-format / LogBuffer / AIDL decode 这些
-  # 纯逻辑。不需要 emulator / libcore，几秒就跑完。
+  # 纯逻辑。不需要 emulator，但 :app:compileDebugKotlin 引用 libcore.aar
+  # 里的 OutboundGroup 等类，所以 aar 必须先拉下来。
   test-android-unit:
     runs-on: ubuntu-latest
     steps:
@@ -63,6 +64,10 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Fetch libcore (android)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh android
       - run: flutter pub get
       - working-directory: android
         run: ./gradlew :app:testDebugUnitTest --console=plain

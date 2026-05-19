@@ -2,6 +2,7 @@ import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/assets/widget/assets_page.dart';
 import 'package:clashmiao/features/settings/logic/backup_service.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -374,6 +375,22 @@ class SettingsPage extends ConsumerWidget {
                                 }
                               }
                             },
+                          ),
+                          const _Divider(),
+                          _SettingsTile(
+                            iconColor: const Color(0xFF6366F1), // Indigo
+                            icon: FluentIcons.database_20_regular,
+                            label: '规则库管理',
+                            trailing: Icon(
+                              FluentIcons.chevron_right_24_regular,
+                              size: 18,
+                              color: Theme.of(context).aiUi.secondaryTextColor,
+                            ),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const AssetsPage(),
+                              ),
+                            ),
                           ),
                         ],
                       ),

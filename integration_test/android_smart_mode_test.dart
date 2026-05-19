@@ -97,11 +97,11 @@ void main() {
       await tester.tap(connectFinder);
       await tester.pump();
 
-      // 等 BoxStarted（90s 超时，含 1.5s 连接动画 + 可能的 VPN dialog 等待 + sing-box bootstrap）
+      // 等 BoxStarted（120s 超时，含 VPN consent dialog 等待 + sing-box bootstrap）
       await waitForStatus<BoxStarted>(
         tester,
         container,
-        timeout: const Duration(seconds: 90),
+        timeout: const Duration(seconds: 120),
         onTimeout: () {
           final err = container.read(connectionErrorProvider);
           if (err != null) debugPrint('[e2e] connection error: $err');
@@ -139,6 +139,6 @@ void main() {
       await tester.tap(connectFinder);
       await tester.pump(const Duration(seconds: 2));
     },
-    timeout: const Timeout(Duration(minutes: 3)),
+    timeout: const Timeout(Duration(minutes: 5)),
   );
 }

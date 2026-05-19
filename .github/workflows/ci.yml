@@ -69,8 +69,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh android
       - run: flutter pub get
-      - working-directory: android
-        run: ./gradlew :app:testDebugUnitTest --console=plain
+      - name: Gradle test (with 3x retry — google maven 偶发握手失败)
+        working-directory: android
+        run: |
+          for i in 1 2 3; do
+            if ./gradlew :app:testDebugUnitTest --console=plain --no-daemon; then
+              exit 0
+            fi
+            echo "::warning::gradle attempt $i failed, retry in 15s..."
+            sleep 15
+          done
+          exit 1
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -222,6 +231,7 @@ jobs:
   smoke-macos:
     runs-on: macos-latest
     needs: [build-macos]
+    timeout-minutes: 20
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -250,6 +260,7 @@ jobs:
   smoke-linux:
     runs-on: ubuntu-latest
     needs: [build-linux]
+    timeout-minutes: 15
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4
@@ -279,6 +290,7 @@ jobs:
   smoke-windows:
     runs-on: windows-latest
     needs: [build-windows]
+    timeout-minutes: 20
     if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
     steps:
       - uses: actions/checkout@v4

@@ -2,6 +2,7 @@ import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/settings/logic/backup_service.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/settings_selection_modal.dart';
@@ -310,6 +311,69 @@ class SettingsPage extends ConsumerWidget {
                             onChanged: (v) => ref
                                 .read(networkSettingsProvider.notifier)
                                 .setEnableDnsRouting(v),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Data Section
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.light
+                            ? Colors.white
+                            : Theme.of(context).aiUi.glassColor,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).aiUi.borderColor.withValues(alpha: 0.05),
+                        ),
+                        boxShadow: Theme.of(context).aiUi.cardShadow,
+                      ),
+                      child: Column(
+                        children: [
+                          _SettingsTile(
+                            iconColor: const Color(0xFF22C55E), // Green
+                            icon: FluentIcons.arrow_upload_20_regular,
+                            label: '导出备份',
+                            trailing: Icon(
+                              FluentIcons.chevron_right_24_regular,
+                              size: 18,
+                              color: Theme.of(context).aiUi.secondaryTextColor,
+                            ),
+                            onTap: () async {
+                              try {
+                                await BackupService.export(ref);
+                              } catch (e) {
+                                if (context.mounted) {
+                                  AppToast.error(context, '导出失败: $e');
+                                }
+                              }
+                            },
+                          ),
+                          const _Divider(),
+                          _SettingsTile(
+                            iconColor: const Color(0xFFF59E0B), // Amber
+                            icon: FluentIcons.arrow_download_20_regular,
+                            label: '导入备份',
+                            trailing: Icon(
+                              FluentIcons.chevron_right_24_regular,
+                              size: 18,
+                              color: Theme.of(context).aiUi.secondaryTextColor,
+                            ),
+                            onTap: () async {
+                              try {
+                                final msg = await BackupService.import(ref);
+                                if (msg != null && context.mounted) {
+                                  AppToast.success(context, msg);
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  AppToast.error(context, '导入失败: $e');
+                                }
+                              }
+                            },
                           ),
                         ],
                       ),

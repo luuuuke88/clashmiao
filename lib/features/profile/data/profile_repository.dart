@@ -361,6 +361,19 @@ class ProfileRepository {
     await _saveAll(profiles);
   }
 
+  /// 插入或更新订阅（按 id 匹配；备份恢复时使用）
+  Future<void> upsert(Map<String, dynamic> json) async {
+    final entity = ProfileEntity.fromJson(json);
+    final profiles = getAll();
+    final idx = profiles.indexWhere((p) => p.id == entity.id);
+    if (idx >= 0) {
+      profiles[idx] = entity;
+    } else {
+      profiles.add(entity);
+    }
+    await _saveAll(profiles);
+  }
+
   /// 删除订阅
   Future<void> delete(String profileId) async {
     final profiles = getAll();

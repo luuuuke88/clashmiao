@@ -2,6 +2,7 @@ import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/assets/widget/assets_page.dart';
 import 'package:clashmiao/features/settings/logic/backup_service.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -11,6 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:io';
 
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
@@ -28,6 +30,7 @@ class SettingsPage extends ConsumerWidget {
     final locale = ref.watch(localePreferencesProvider);
     final t = ref.watch(translationsProvider);
     final netSettings = ref.watch(networkSettingsProvider);
+    final update = ref.watch(updateAvailableProvider);
 
     return Scaffold(
       body: SafeArea(
@@ -72,6 +75,27 @@ class SettingsPage extends ConsumerWidget {
                 child: ListView(
                   padding: EdgeInsets.zero,
                   children: [
+                    if (update.valueOrNull != null)
+                      MaterialBanner(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                        content: Text('新版本 ${update.value} 可用'),
+                        actions: [
+                          TextButton(
+                            onPressed: () =>
+                                ref.invalidate(updateAvailableProvider),
+                            child: const Text('忽略'),
+                          ),
+                          TextButton(
+                            onPressed: () => launchUrl(
+                              Uri.parse(
+                                'https://github.com/${const String.fromEnvironment('GITHUB_REPO_SLUG')}/releases/latest',
+                              ),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: const Text('查看'),
+                          ),
+                        ],
+                      ),
                     // General Section
                     Container(
                       margin: const EdgeInsets.only(top: 8, bottom: 24),

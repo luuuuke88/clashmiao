@@ -10,6 +10,7 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
+import 'package:clashmiao/features/home/widget/traffic_sparkline.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
@@ -170,7 +171,7 @@ class HomePage extends ConsumerWidget {
 
                                   // 底部统计
                                   if (MediaQuery.sizeOf(context).width < 840)
-                                    _FooterStats(aiUi: aiUi),
+                                    const TrafficSparklineCard(),
 
                                   const SizedBox(height: 16),
                                 ],

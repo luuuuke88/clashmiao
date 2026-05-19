@@ -699,6 +699,13 @@ class _ProxyTile extends StatelessWidget {
   }
 }
 
+Color _latencyColor(int ms) => switch (ms) {
+  <= 0 => Colors.red,
+  <= 150 => Colors.green,
+  <= 400 => Colors.orange,
+  _ => Colors.red,
+};
+
 class _DelayBadge extends StatelessWidget {
   final int delay;
   const _DelayBadge({required this.delay});
@@ -707,36 +714,29 @@ class _DelayBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     if (delay <= 0) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.grey.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
+          color: Colors.red.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: Text(
-          '-',
+        child: const Text(
+          '超时',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade500,
+            color: Colors.red,
           ),
         ),
       );
     }
 
-    final Color color;
-    if (delay < 200) {
-      color = const Color(0xFF10B981);
-    } else if (delay < 500) {
-      color = const Color(0xFFEAB308);
-    } else {
-      color = const Color(0xFFEF4444);
-    }
+    final color = _latencyColor(delay);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         '${delay}ms',

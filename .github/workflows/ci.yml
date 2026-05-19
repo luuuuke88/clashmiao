@@ -366,5 +366,6 @@ jobs:
             flutter build apk --debug
             adb install -r build/app/outputs/flutter-apk/app-debug.apk
             adb shell pm grant com.clashmiao.clashmiao android.permission.POST_NOTIFICATIONS || true
+            adb shell cmd appops set com.clashmiao.clashmiao ESTABLISH_VPN_SERVICE allow || true
             bash bin/grant-vpn-android.sh &
             flutter test integration_test/android_smart_mode_test.dart -d emulator-5554 --dart-define=CLASHMIAO_TEST_SUB_URL="$CLASHMIAO_TEST_SUB_URL"

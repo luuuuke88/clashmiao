@@ -272,6 +272,39 @@ struct ValidateConfigResult: Hashable {
   }
 }
 
+/// Generated class from Pigeon that represents data sent in messages.
+struct InstalledApp: Hashable {
+  var packageName: String
+  var appName: String
+  var isSystemApp: Bool
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> InstalledApp? {
+    let packageName = pigeonVar_list[0] as! String
+    let appName = pigeonVar_list[1] as! String
+    let isSystemApp = pigeonVar_list[2] as! Bool
+
+    return InstalledApp(
+      packageName: packageName,
+      appName: appName,
+      isSystemApp: isSystemApp
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      packageName,
+      appName,
+      isSystemApp,
+    ]
+  }
+  static func == (lhs: InstalledApp, rhs: InstalledApp) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
 private class BoxApiPigeonCodecReader: FlutterStandardReader {
   override func readValue(ofType type: UInt8) -> Any? {
     switch type {
@@ -285,6 +318,8 @@ private class BoxApiPigeonCodecReader: FlutterStandardReader {
       return ValidateConfigRequest.fromList(self.readValue() as! [Any?])
     case 133:
       return ValidateConfigResult.fromList(self.readValue() as! [Any?])
+    case 134:
+      return InstalledApp.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
     }
@@ -307,6 +342,9 @@ private class BoxApiPigeonCodecWriter: FlutterStandardWriter {
       super.writeValue(value.toList())
     } else if let value = value as? ValidateConfigResult {
       super.writeByte(133)
+      super.writeValue(value.toList())
+    } else if let value = value as? InstalledApp {
+      super.writeByte(134)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -344,6 +382,8 @@ protocol BoxHostApi {
   func urlTest(groupTag: String, completion: @escaping (Result<Void, Error>) -> Void)
   func generateFullConfig(path: String, completion: @escaping (Result<String?, Error>) -> Void)
   func clearLogs(completion: @escaping (Result<Void, Error>) -> Void)
+  func getInstalledApps(completion: @escaping (Result<[InstalledApp], Error>) -> Void)
+  func getAppIconBase64(packageName: String, completion: @escaping (Result<String?, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -352,9 +392,9 @@ class BoxHostApiSetup {
   /// Sets up an instance of `BoxHostApi` to handle messages through the `binaryMessenger`.
   static func setUp(binaryMessenger: FlutterBinaryMessenger, api: BoxHostApi?, messageChannelSuffix: String = "") {
     let channelSuffix = messageChannelSuffix.count > 0 ? ".\(messageChannelSuffix)" : ""
-    let initChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.init\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    let initializeChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.initialize\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
-      initChannel.setMessageHandler { _, reply in
+      initializeChannel.setMessageHandler { _, reply in
         api.initialize { result in
           switch result {
           case .success:
@@ -365,7 +405,7 @@ class BoxHostApiSetup {
         }
       }
     } else {
-      initChannel.setMessageHandler(nil)
+      initializeChannel.setMessageHandler(nil)
     }
     let setupChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.setup\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {
@@ -535,6 +575,38 @@ class BoxHostApiSetup {
       }
     } else {
       clearLogsChannel.setMessageHandler(nil)
+    }
+    let getInstalledAppsChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.getInstalledApps\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getInstalledAppsChannel.setMessageHandler { _, reply in
+        api.getInstalledApps { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getInstalledAppsChannel.setMessageHandler(nil)
+    }
+    let getAppIconBase64Channel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.getAppIconBase64\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getAppIconBase64Channel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let packageNameArg = args[0] as! String
+        api.getAppIconBase64(packageName: packageNameArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getAppIconBase64Channel.setMessageHandler(nil)
     }
   }
 }

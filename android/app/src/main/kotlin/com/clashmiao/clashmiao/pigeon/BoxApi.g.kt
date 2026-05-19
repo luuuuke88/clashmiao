@@ -234,6 +234,40 @@ data class ValidateConfigResult (
 
   override fun hashCode(): Int = toList().hashCode()
 }
+
+/** Generated class from Pigeon that represents data sent in messages. */
+data class InstalledApp (
+  val packageName: String,
+  val appName: String,
+  val isSystemApp: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): InstalledApp {
+      val packageName = pigeonVar_list[0] as String
+      val appName = pigeonVar_list[1] as String
+      val isSystemApp = pigeonVar_list[2] as Boolean
+      return InstalledApp(packageName, appName, isSystemApp)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      packageName,
+      appName,
+      isSystemApp,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is InstalledApp) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
 private open class BoxApiPigeonCodec : StandardMessageCodec() {
   override fun readValueOfType(type: Byte, buffer: ByteBuffer): Any? {
     return when (type) {
@@ -262,6 +296,11 @@ private open class BoxApiPigeonCodec : StandardMessageCodec() {
           ValidateConfigResult.fromList(it)
         }
       }
+      134.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          InstalledApp.fromList(it)
+        }
+      }
       else -> super.readValueOfType(type, buffer)
     }
   }
@@ -287,6 +326,10 @@ private open class BoxApiPigeonCodec : StandardMessageCodec() {
         stream.write(133)
         writeValue(stream, value.toList())
       }
+      is InstalledApp -> {
+        stream.write(134)
+        writeValue(stream, value.toList())
+      }
       else -> super.writeValue(stream, value)
     }
   }
@@ -299,7 +342,7 @@ private open class BoxApiPigeonCodec : StandardMessageCodec() {
  * Generated interface from Pigeon that represents a handler of messages from Flutter.
  */
 interface BoxHostApi {
-  fun init(callback: (Result<Unit>) -> Unit)
+  fun initialize(callback: (Result<Unit>) -> Unit)
   fun setup(baseDir: String, workingDir: String, tempDir: String, debug: Boolean, callback: (Result<Unit>) -> Unit)
   fun validateConfig(req: ValidateConfigRequest, callback: (Result<ValidateConfigResult>) -> Unit)
   fun changeConfigOptions(options: ConfigOptions, callback: (Result<Unit>) -> Unit)
@@ -310,6 +353,8 @@ interface BoxHostApi {
   fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit)
   fun generateFullConfig(path: String, callback: (Result<String?>) -> Unit)
   fun clearLogs(callback: (Result<Unit>) -> Unit)
+  fun getInstalledApps(callback: (Result<List<InstalledApp>>) -> Unit)
+  fun getAppIconBase64(packageName: String, callback: (Result<String?>) -> Unit)
 
   companion object {
     /** The codec used by BoxHostApi. */
@@ -321,10 +366,10 @@ interface BoxHostApi {
     fun setUp(binaryMessenger: BinaryMessenger, api: BoxHostApi?, messageChannelSuffix: String = "") {
       val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
       run {
-        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.init$separatedMessageChannelSuffix", codec)
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.initialize$separatedMessageChannelSuffix", codec)
         if (api != null) {
           channel.setMessageHandler { _, reply ->
-            api.init{ result: Result<Unit> ->
+            api.initialize{ result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(BoxApiPigeonUtils.wrapError(error))
@@ -521,6 +566,44 @@ interface BoxHostApi {
                 reply.reply(BoxApiPigeonUtils.wrapError(error))
               } else {
                 reply.reply(BoxApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.getInstalledApps$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getInstalledApps{ result: Result<List<InstalledApp>> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(BoxApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.getAppIconBase64$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val packageNameArg = args[0] as String
+            api.getAppIconBase64(packageNameArg) { result: Result<String?> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(BoxApiPigeonUtils.wrapResult(data))
               }
             }
           }

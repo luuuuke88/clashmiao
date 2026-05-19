@@ -32,7 +32,10 @@ class BackupService {
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
-    if (result == null || result.files.single.path == null) return null;
+    if (result == null ||
+        result.files.isEmpty ||
+        result.files.single.path == null)
+      return null;
 
     final content = await File(result.files.single.path!).readAsString();
     final bundle = BackupBundle.fromJson(
@@ -46,6 +49,22 @@ class BackupService {
     if (bundle.activeProfileId != null) {
       await repo.setActive(bundle.activeProfileId!);
     }
+
+    // Re-download config for URL-based profiles (local/content:// profiles are skipped)
+    for (final p in bundle.profiles) {
+      final url = p['url'] as String? ?? '';
+      if (!url.startsWith('content://') &&
+          url.isNotEmpty &&
+          Uri.tryParse(url)?.hasScheme == true) {
+        try {
+          final id = p['id'] as String;
+          await repo.update(id);
+        } catch (_) {
+          // best-effort; user can manually refresh if needed
+        }
+      }
+    }
+
     return '已导入 ${bundle.profiles.length} 个订阅';
   }
 }

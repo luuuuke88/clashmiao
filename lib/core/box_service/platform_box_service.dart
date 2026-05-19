@@ -17,7 +17,6 @@ import 'package:rxdart/rxdart.dart';
 class PlatformBoxService implements BoxService {
   static const _channelPrefix = 'com.clashmiao.app';
 
-  static const _methodChannel = MethodChannel('$_channelPrefix/method');
   static const _statusChannel = EventChannel(
     '$_channelPrefix/service.status',
     JSONMethodCodec(),
@@ -28,6 +27,7 @@ class PlatformBoxService implements BoxService {
   );
   static const _groupsChannel = EventChannel('$_channelPrefix/groups');
   static const _logsChannel = EventChannel('$_channelPrefix/service.logs');
+  static const _networkChannel = EventChannel('$_channelPrefix/network');
   static const _alertsChannel = EventChannel(
     '$_channelPrefix/service.alerts',
     JSONMethodCodec(),
@@ -35,8 +35,7 @@ class PlatformBoxService implements BoxService {
 
   late final ValueStream<BoxStatus> _status;
 
-  /// Pigeon 强类型 host API（跟 MethodChannel 并存的过渡形态）。目前只 validateConfig
-  /// 走它；其它 method 还在 [_methodChannel]，后续逐条搬过来。
+  /// Pigeon 强类型 host API — 全部 kernel method 已迁移，不再使用 MethodChannel。
   final _pigeonHost = pigeon.BoxHostApi();
 
   @override
@@ -51,12 +50,19 @@ class PlatformBoxService implements BoxService {
 
   @override
   Future<void> setup(AppDirectories directories, {bool debug = false}) async {
-    await _methodChannel.invokeMethod('setup');
+    await _pigeonHost.setup(
+      directories.baseDir.path,
+      directories.workingDir.path,
+      directories.tempDir.path,
+      debug,
+    );
   }
 
   @override
   Future<void> changeConfigOptions(String jsonOptions) async {
-    await _methodChannel.invokeMethod('change_config_options', jsonOptions);
+    await _pigeonHost.changeConfigOptions(
+      pigeon.ConfigOptions(jsonOptions: jsonOptions),
+    );
   }
 
   @override
@@ -78,36 +84,36 @@ class PlatformBoxService implements BoxService {
 
   @override
   Future<void> start(String configPath, {String name = ''}) async {
-    await _methodChannel.invokeMethod('start', {
-      'path': configPath,
-      'name': name,
-    });
+    await _pigeonHost.start(
+      pigeon.StartRequest(configPath: configPath, profileName: name),
+    );
   }
 
   @override
   Future<void> stop() async {
-    await _methodChannel.invokeMethod('stop');
+    await _pigeonHost.stop();
   }
 
   @override
   Future<void> restart(String configPath, {String name = ''}) async {
-    await _methodChannel.invokeMethod('restart', {
-      'path': configPath,
-      'name': name,
-    });
+    await _pigeonHost.restart(
+      pigeon.StartRequest(configPath: configPath, profileName: name),
+    );
   }
 
   @override
   Future<void> selectOutbound(String groupTag, String outboundTag) async {
-    await _methodChannel.invokeMethod('select_outbound', {
-      'groupTag': groupTag,
-      'outboundTag': outboundTag,
-    });
+    await _pigeonHost.selectOutbound(
+      pigeon.SelectOutboundRequest(
+        groupTag: groupTag,
+        outboundTag: outboundTag,
+      ),
+    );
   }
 
   @override
   Future<void> urlTest(String groupTag) async {
-    await _methodChannel.invokeMethod('url_test', {'groupTag': groupTag});
+    await _pigeonHost.urlTest(groupTag);
   }
 
   @override
@@ -151,14 +157,12 @@ class PlatformBoxService implements BoxService {
 
   @override
   Future<String?> generateFullConfig(String path) async {
-    return await _methodChannel.invokeMethod<String>('generate_config', {
-      'path': path,
-    });
+    return _pigeonHost.generateFullConfig(path);
   }
 
   @override
   Future<void> clearLogs() async {
-    await _methodChannel.invokeMethod('clear_logs');
+    await _pigeonHost.clearLogs();
   }
 
   @override
@@ -167,6 +171,14 @@ class PlatformBoxService implements BoxService {
       (event) => (event as List).map((e) => e as String).toList(),
     );
   }
+
+  @override
+  Stream<void> watchNetworkChanged() {
+    return _networkChannel.receiveBroadcastStream().map((_) => null);
+  }
+
+  @override
+  Future<void> resetTunnel() => _pigeonHost.resetTunnel();
 
   /// 解析状态事件。原生侧推过来的是 Status enum 的 .name，
   /// Android 用 PascalCase（"Started"），iOS / 桌面可能不同——统一小写后匹配。

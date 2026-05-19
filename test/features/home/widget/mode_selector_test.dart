@@ -60,6 +60,10 @@ class _SpyBoxService implements BoxService {
   Future<void> clearLogs() async {}
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
+  @override
+  Stream<void> watchNetworkChanged() => const Stream.empty();
+  @override
+  Future<void> resetTunnel() async {}
 }
 
 void main() {

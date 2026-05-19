@@ -111,4 +111,7 @@ abstract class BoxHostApi {
 
   @async
   String? getAppIconBase64(String packageName);
+
+  @async
+  void resetTunnel();
 }

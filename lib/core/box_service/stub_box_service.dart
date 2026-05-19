@@ -60,4 +60,10 @@ class StubBoxService implements BoxService {
 
   @override
   Stream<List<String>> watchLogs(String path) => Stream.value([]);
+
+  @override
+  Stream<void> watchNetworkChanged() => const Stream.empty();
+
+  @override
+  Future<void> resetTunnel() async {}
 }

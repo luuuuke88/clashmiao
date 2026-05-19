@@ -56,6 +56,10 @@ final class TunnelManager: ObservableObject {
     private var pollTimer: Timer?
     private var cancelBag = Set<AnyCancellable>()
 
+    private var userInitiatedDisconnect = false
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectAttempt = 0
+
     /// When the user pressed "connect". Cached in App Group defaults
     /// so we can recover after a process restart mid-session.
     private var sessionStart: Date? {
@@ -85,8 +89,10 @@ final class TunnelManager: ObservableObject {
             queue: nil
         ) { [weak self] note in
             guard let connection = note.object as? NEVPNConnection else { return }
+            let newStatus = connection.status
             DispatchQueue.main.async {
-                self?.state = connection.status
+                self?.state = newStatus
+                self?.handleStatusChanged(newStatus)
             }
         }
 
@@ -161,6 +167,9 @@ final class TunnelManager: ObservableObject {
     /// Disconnect the tunnel if currently connected. No-op otherwise.
     func disconnect() {
         guard state == .connected else { return }
+        userInitiatedDisconnect = true
+        reconnectTask?.cancel()
+        reconnectTask = nil
         manager.connection.stopVPNTunnel()
     }
 
@@ -190,6 +199,65 @@ final class TunnelManager: ObservableObject {
                 }
             }
             .store(in: &cancelBag)
+    }
+
+    // MARK: - Auto-reconnect
+
+    private func handleStatusChanged(_ status: NEVPNStatus) {
+        switch status {
+        case .disconnected:
+            if !userInitiatedDisconnect && reconnectAttempt < 4 {
+                scheduleReconnect()
+            } else {
+                userInitiatedDisconnect = false
+                reconnectAttempt = 0
+            }
+        case .connected:
+            reconnectTask?.cancel()
+            reconnectTask = nil
+            reconnectAttempt = 0
+        default:
+            break
+        }
+    }
+
+    private func scheduleReconnect() {
+        let delay = pow(2.0, Double(reconnectAttempt))
+        reconnectAttempt += 1
+        reconnectTask?.cancel()
+        reconnectTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            do {
+                let config = try KernelBridge.buildFullConfig(
+                    profilePath: TunnelProfile.shared.activeConfigPath,
+                    options: TunnelProfile.shared.configOptions
+                )
+                try await connect(with: config,
+                                  disableMemoryLimit: TunnelProfile.shared.disableMemoryLimit)
+            } catch {
+                // next disconnected event will trigger retry
+            }
+        }
+    }
+
+    func resetTunnel() async {
+        userInitiatedDisconnect = false
+        reconnectAttempt = 0
+        if state == .connected {
+            manager.connection.stopVPNTunnel()
+        } else {
+            do {
+                let config = try KernelBridge.buildFullConfig(
+                    profilePath: TunnelProfile.shared.activeConfigPath,
+                    options: TunnelProfile.shared.configOptions
+                )
+                try await connect(with: config,
+                                  disableMemoryLimit: TunnelProfile.shared.disableMemoryLimit)
+            } catch {
+                // next disconnected event will trigger reconnect attempt
+            }
+        }
     }
 
     // MARK: - Telemetry

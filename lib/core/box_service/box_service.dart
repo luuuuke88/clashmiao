@@ -80,4 +80,12 @@ abstract interface class BoxService {
 
   /// 监听日志
   Stream<List<String>> watchLogs(String path);
+
+  /// 监听网络切换事件（WiFi ↔ 蜂窝，或短暂断网恢复）。
+  /// 仅在已连接状态下由调用方决定是否触发重连。
+  Stream<void> watchNetworkChanged();
+
+  /// 强制重置隧道（iOS 专用：取消用户主动断开标记，触发重连）。
+  /// 其他平台为空操作。
+  Future<void> resetTunnel();
 }

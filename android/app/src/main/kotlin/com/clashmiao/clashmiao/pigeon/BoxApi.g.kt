@@ -355,6 +355,7 @@ interface BoxHostApi {
   fun clearLogs(callback: (Result<Unit>) -> Unit)
   fun getInstalledApps(callback: (Result<List<InstalledApp>>) -> Unit)
   fun getAppIconBase64(packageName: String, callback: (Result<String?>) -> Unit)
+  fun resetTunnel(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by BoxHostApi. */
@@ -604,6 +605,23 @@ interface BoxHostApi {
               } else {
                 val data = result.getOrNull()
                 reply.reply(BoxApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.resetTunnel$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.resetTunnel{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(BoxApiPigeonUtils.wrapResult(null))
               }
             }
           }

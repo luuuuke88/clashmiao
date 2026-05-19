@@ -104,7 +104,8 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           // 之前的 `if (_transitioning) return` 把真实 BoxStarted 也拦了，
           // 导致 connect() 1.5s 后手动写 BoxStarted —— 但 native sing-box
           // 实际可能还没起来，状态就成了"假已连接"。
-          if (_transitioning && (status is BoxStarting || status is BoxStopping)) {
+          if (_transitioning &&
+              (status is BoxStarting || status is BoxStopping)) {
             return;
           }
           state = AsyncData(status);

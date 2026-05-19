@@ -330,6 +330,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   /// 资源、或者全局模式下没剥离 hiddify-fork 的兜底 default，效果不可预期）。
   Future<void> reconnect() async {
     if (_isStub) return;
+    _ref.read(connectionErrorProvider.notifier).state = null;
     final repoAsync = _ref.read(profileRepositoryProvider);
     if (!repoAsync.hasValue) return;
     final repo = repoAsync.requireValue;

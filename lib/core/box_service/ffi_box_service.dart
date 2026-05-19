@@ -94,6 +94,8 @@ class FFIBoxService implements BoxService {
   Stream<BoxStats>? _statsStream;
   Stream<List<OutboundGroup>>? _groupsStream;
 
+  final _networkChangedController = StreamController<void>.broadcast();
+
   /// 加载动态库
   void _loadLibrary() {
     String libPath = '';
@@ -335,6 +337,12 @@ class FFIBoxService implements BoxService {
     final content = await file.readAsString();
     yield const LineSplitter().convert(content);
   }
+
+  @override
+  Stream<void> watchNetworkChanged() => _networkChangedController.stream;
+
+  @override
+  Future<void> resetTunnel() async {}
 
   BoxStatus _parseStatus(dynamic event) {
     debugPrint('sing-box 推送原始数据: $event');

@@ -191,6 +191,10 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         }
     }
 
+    override fun resetTunnel(callback: (Result<Unit>) -> Unit) {
+        callback(Result.success(Unit))
+    }
+
     private fun <T> pending(callback: (Result<T>) -> Unit) {
         callback(Result.failure(NotImplementedError("not migrated to Pigeon yet")))
     }

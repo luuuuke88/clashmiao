@@ -384,6 +384,7 @@ protocol BoxHostApi {
   func clearLogs(completion: @escaping (Result<Void, Error>) -> Void)
   func getInstalledApps(completion: @escaping (Result<[InstalledApp], Error>) -> Void)
   func getAppIconBase64(packageName: String, completion: @escaping (Result<String?, Error>) -> Void)
+  func resetTunnel(completion: @escaping (Result<Void, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -607,6 +608,21 @@ class BoxHostApiSetup {
       }
     } else {
       getAppIconBase64Channel.setMessageHandler(nil)
+    }
+    let resetTunnelChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.resetTunnel\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      resetTunnelChannel.setMessageHandler { _, reply in
+        api.resetTunnel { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      resetTunnelChannel.setMessageHandler(nil)
     }
   }
 }

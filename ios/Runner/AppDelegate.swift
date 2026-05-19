@@ -67,6 +67,8 @@ import Libcore
         TrafficStatsStream.register(with: registry.registrar(forPlugin: "TrafficStatsStream")!)
         ProxyGroupsStream.register(with: registry.registrar(forPlugin: "ProxyGroupsStream")!)
         LogLinesStream.register(with: registry.registrar(forPlugin: "LogLinesStream")!)
+        let registrar = registry.registrar(forPlugin: "PigeonBridge")!
+        BoxHostApiSetup.setUp(binaryMessenger: registrar.messenger(), api: PigeonBridge())
     }
 
     /// Some Flutter templates ship with a UIWindowScene + root

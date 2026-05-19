@@ -33,13 +33,13 @@ class HomePage extends ConsumerWidget {
     final status = connectionState.valueOrNull ?? const BoxStopped();
     final activeProfile = ref.watch(activeProfileProvider);
 
-    // 连接错误一次性反馈：错误出现 → 弹 toast → 清空
+    // 连接错误反馈：错误出现 → 弹 toast（错误保留供重连按钮使用）
     ref.listen<String?>(connectionErrorProvider, (prev, next) {
       if (next != null && next.isNotEmpty && context.mounted) {
         AppToast.error(context, next);
-        ref.read(connectionErrorProvider.notifier).state = null;
       }
     });
+    final connectionError = ref.watch(connectionErrorProvider);
 
     return Scaffold(
       body: Stack(
@@ -156,6 +156,29 @@ class HomePage extends ConsumerWidget {
                                           .toggle();
                                     },
                                   ),
+
+                                  if (connectionError != null &&
+                                      status is BoxStopped) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      connectionError,
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontSize: 12,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    TextButton.icon(
+                                      icon: const Icon(Icons.refresh),
+                                      label: const Text('强制重连'),
+                                      onPressed: () => ref
+                                          .read(
+                                            connectionControllerProvider
+                                                .notifier,
+                                          )
+                                          .reconnect(),
+                                    ),
+                                  ],
 
                                   const SizedBox(height: 24),
 

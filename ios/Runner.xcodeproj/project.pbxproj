@@ -46,6 +46,7 @@
 		F5C36AABCF7D47F719B0DDA3 /* KernelCommandClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC238F9F0DAAD38A0F719675 /* KernelCommandClient.swift */; };
 		F75CE347A47118F547EDE334 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8624CEE0422FDD124AD4BD34 /* Pods_RunnerTests.framework */; };
 		FCA7C1A07286140D48A2E562 /* BoxAlertsStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B7189AE86C875C322E43803 /* BoxAlertsStream.swift */; };
+		D4E8F1A23C9B5E6D7A8F4C10 /* PigeonBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -145,6 +146,7 @@
 		E545B94C1E1C511ABF5E7F9A /* SingBoxPacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SingBoxPacketTunnel.entitlements; sourceTree = "<group>"; };
 		EE6A2A6AA865037501EECB1D /* KernelProviderProxy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelProviderProxy.swift; sourceTree = "<group>"; };
 		FC238F9F0DAAD38A0F719675 /* KernelCommandClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelCommandClient.swift; sourceTree = "<group>"; };
+		A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -222,6 +224,7 @@
 				4B7189AE86C875C322E43803 /* BoxAlertsStream.swift */,
 				62AF794B8AA9BF53FAFF248C /* ChannelMethodHandler.swift */,
 				2A489F6935CBD46E3AD897A2 /* LogLinesStream.swift */,
+				A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */,
 				C6F511FCA07379DC076F9063 /* ProxyGroupsStream.swift */,
 				0D76E2A918B7080335498259 /* TrafficStatsStream.swift */,
 				3A35DC89447BF279AC8E03B0 /* TunnelStatusStream.swift */,
@@ -642,6 +645,7 @@
 				2A5E964D883263D4555CAA71 /* KernelBridge.swift in Sources */,
 				F5C36AABCF7D47F719B0DDA3 /* KernelCommandClient.swift in Sources */,
 				3CD1417C8C537235ACB0F289 /* ProfilePathResolver.swift in Sources */,
+				D4E8F1A23C9B5E6D7A8F4C10 /* PigeonBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

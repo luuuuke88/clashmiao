@@ -14,6 +14,7 @@ Future<void> waitForStatus<T extends BoxStatus>(
   ProviderContainer container, {
   Duration timeout = const Duration(seconds: 30),
   Duration interval = const Duration(milliseconds: 300),
+  void Function()? onTimeout,
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
@@ -21,6 +22,7 @@ Future<void> waitForStatus<T extends BoxStatus>(
     final s = container.read(connectionControllerProvider).valueOrNull;
     if (s is T) return;
   }
+  onTimeout?.call();
   final last = container.read(connectionControllerProvider).valueOrNull;
   fail('Expected status $T within $timeout, last seen: $last');
 }

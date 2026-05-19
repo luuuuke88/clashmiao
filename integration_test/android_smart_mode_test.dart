@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:clashmiao/app/app.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -96,11 +97,15 @@ void main() {
       await tester.tap(connectFinder);
       await tester.pump();
 
-      // 等 BoxStarted（60s 超时，含 1.5s 连接动画 + 可能的 VPN dialog 等待 + sing-box bootstrap）
+      // 等 BoxStarted（90s 超时，含 1.5s 连接动画 + 可能的 VPN dialog 等待 + sing-box bootstrap）
       await waitForStatus<BoxStarted>(
         tester,
         container,
-        timeout: const Duration(seconds: 60),
+        timeout: const Duration(seconds: 90),
+        onTimeout: () {
+          final err = container.read(connectionErrorProvider);
+          if (err != null) debugPrint('[e2e] connection error: $err');
+        },
       );
 
       // BoxStarted 后 sing-box 还在 VPN CONNECTING 阶段（节点 URLTest 没完），

@@ -213,9 +213,8 @@ class HomePage extends ConsumerWidget {
                               ),
                             );
                           },
-                          loading: () => const Center(
-                            child: CircularProgressIndicator(),
-                          ),
+                          loading: () =>
+                              const Center(child: CircularProgressIndicator()),
                           error: (e, _) {
                             final t = ref.watch(translationsProvider);
                             return Center(

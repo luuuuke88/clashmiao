@@ -8,6 +8,8 @@ class ProfileEntity {
     this.lastUpdate,
     this.subInfo,
     this.updateInterval = const Duration(hours: 1),
+    this.notes,
+    this.customUserAgent,
   });
 
   final String id;
@@ -17,6 +19,10 @@ class ProfileEntity {
   final DateTime? lastUpdate;
   final SubscriptionInfo? subInfo;
   final Duration updateInterval;
+  final String? notes;
+  final String? customUserAgent;
+
+  static const _sentinel = Object();
 
   ProfileEntity copyWith({
     String? id,
@@ -26,6 +32,8 @@ class ProfileEntity {
     DateTime? lastUpdate,
     SubscriptionInfo? subInfo,
     Duration? updateInterval,
+    Object? notes = _sentinel,
+    Object? customUserAgent = _sentinel,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
@@ -35,6 +43,10 @@ class ProfileEntity {
       lastUpdate: lastUpdate ?? this.lastUpdate,
       subInfo: subInfo ?? this.subInfo,
       updateInterval: updateInterval ?? this.updateInterval,
+      notes: notes == _sentinel ? this.notes : notes as String?,
+      customUserAgent: customUserAgent == _sentinel
+          ? this.customUserAgent
+          : customUserAgent as String?,
     );
   }
 
@@ -46,6 +58,8 @@ class ProfileEntity {
     'lastUpdate': lastUpdate?.toIso8601String(),
     'updateInterval': updateInterval.inHours,
     'subInfo': subInfo?.toJson(),
+    'notes': notes,
+    'customUserAgent': customUserAgent,
   };
 
   factory ProfileEntity.fromJson(Map<String, dynamic> json) {
@@ -61,6 +75,8 @@ class ProfileEntity {
       subInfo: json['subInfo'] != null
           ? SubscriptionInfo.fromJson(json['subInfo'] as Map<String, dynamic>)
           : null,
+      notes: json['notes'] as String?,
+      customUserAgent: json['customUserAgent'] as String?,
     );
   }
 }

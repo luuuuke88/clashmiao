@@ -313,7 +313,11 @@ class ProfileRepository {
       options: Options(
         responseType: ResponseType.plain,
         followRedirects: true,
-        headers: {'User-Agent': 'ClashMiao/0.1.0 (sing-box)'},
+        headers: {
+          'User-Agent': current.customUserAgent?.isNotEmpty == true
+              ? current.customUserAgent!
+              : 'ClashMiao/0.1.0 (sing-box)',
+        },
       ),
     );
 
@@ -338,6 +342,15 @@ class ProfileRepository {
     await _saveAll(profiles);
 
     return updated;
+  }
+
+  /// 替换整个订阅实体（按 id 匹配）
+  Future<void> updateProfile(ProfileEntity entity) async {
+    final profiles = getAll();
+    final index = profiles.indexWhere((p) => p.id == entity.id);
+    if (index < 0) return;
+    profiles[index] = entity;
+    await _saveAll(profiles);
   }
 
   /// 编辑订阅信息（名称、URL）

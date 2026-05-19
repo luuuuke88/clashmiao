@@ -39,9 +39,13 @@ class BackupService {
     }
 
     final content = await File(result.files.single.path!).readAsString();
-    final bundle = BackupBundle.fromJson(
-      jsonDecode(content) as Map<String, dynamic>,
-    );
+    final Map<String, dynamic> jsonMap;
+    try {
+      jsonMap = jsonDecode(content) as Map<String, dynamic>;
+    } on FormatException {
+      throw Exception('备份文件格式无效，请确认选择的是 ClashMiao 导出的 JSON 文件');
+    }
+    final bundle = BackupBundle.fromJson(jsonMap);
 
     final repo = await ref.read(profileRepositoryProvider.future);
     for (final p in bundle.profiles) {

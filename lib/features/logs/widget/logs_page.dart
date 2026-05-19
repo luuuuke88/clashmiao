@@ -45,11 +45,13 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     final state = ref.watch(logFilterProvider);
     final notifier = ref.read(logFilterProvider.notifier);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients &&
-          _scrollController.position.maxScrollExtent > 0) {
-        _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
-      }
+    ref.listen(logFilterProvider, (_, __) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients &&
+            _scrollController.position.maxScrollExtent > 0) {
+          _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+        }
+      });
     });
 
     return Scaffold(

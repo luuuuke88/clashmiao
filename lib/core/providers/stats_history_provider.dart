@@ -7,7 +7,7 @@ const _maxSamples = 60;
 class StatsHistoryNotifier extends StateNotifier<List<BoxStats>> {
   StatsHistoryNotifier(this._ref) : super([]) {
     _ref.listen(boxStatsProvider, (_, next) {
-      if (!next.hasValue) return;
+      if (next is! AsyncData) return;
       final updated = [...state, next.requireValue];
       state = updated.length > _maxSamples
           ? updated.sublist(updated.length - _maxSamples)

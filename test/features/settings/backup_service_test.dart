@@ -4,13 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('BackupBundle round-trips through JSON correctly', () {
-    final original = BackupBundle(
+    const original = BackupBundle(
       version: BackupBundle.currentVersion,
       profiles: [
         {'id': 'abc', 'name': 'test', 'url': 'https://example.com'},
       ],
       activeProfileId: 'abc',
-      settings: const {},
+      settings: {},
       createdAt: 1000000,
     );
 

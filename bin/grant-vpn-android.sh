@@ -3,7 +3,7 @@
 # Runs in a loop for up to 60s so the integration test can proceed unattended.
 set -uo pipefail
 
-for i in $(seq 1 120); do
+for i in $(seq 1 360); do
   top=$(adb shell dumpsys window windows 2>/dev/null \
         | grep -E "mCurrentFocus|vpndialogs|permissioncontroller" || true)
   if echo "$top" | grep -qi "vpndialogs\|permissioncontroller"; then

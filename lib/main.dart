@@ -14,7 +14,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
+
+const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -103,12 +106,29 @@ void main() async {
     _devAutoBoot(container);
   }
 
-  runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const ClashMiaoApp(),
-    ),
-  );
+  if (_sentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = _sentryDsn;
+        options.tracesSampleRate = 0.05;
+        options.attachScreenshot = false;
+        options.sendDefaultPii = false;
+      },
+      appRunner: () => runApp(
+        UncontrolledProviderScope(
+          container: container,
+          child: const ClashMiaoApp(),
+        ),
+      ),
+    );
+  } else {
+    runApp(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ClashMiaoApp(),
+      ),
+    );
+  }
 }
 
 /// 桌面端关窗口时先停 sing-box，避免系统代理残留导致用户没网。

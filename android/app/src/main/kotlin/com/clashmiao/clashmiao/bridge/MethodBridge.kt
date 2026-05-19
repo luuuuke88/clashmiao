@@ -12,10 +12,6 @@ import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.MainActivity
-import com.clashmiao.clashmiao.core.Prefs
-import com.clashmiao.clashmiao.engine.KernelHost
-import com.clashmiao.clashmiao.core.KernelStatus
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -25,13 +21,11 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugin.common.StandardMethodCodec
-import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.mobile.Mobile
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
 
@@ -66,17 +60,9 @@ class MethodBridge(
     private var pendingBatteryResult: MethodChannel.Result? = null
 
     // 内核 channel handler 表：method name → 该方法的处理函数。
-    // 注意：parse_config 已迁去 PigeonBridge.validateConfig；后续每搬一条这里就删一条。
+    // 注意：所有 kernel method 已迁去 PigeonBridge；此表仅保留 generate_warp_config
+    // （Mobile SDK 特有，暂未 Pigeon 化）。
     private val kernelOps: Map<String, KernelOp> = buildMap {
-        put("setup", ::opSetup)
-        put("change_config_options", ::opChangeConfigOptions)
-        put("generate_config", ::opGenerateConfig)
-        put("start", ::opStart)
-        put("stop", ::opStop)
-        put("restart", ::opRestart)
-        put("select_outbound", ::opSelectOutbound)
-        put("url_test", ::opUrlTest)
-        put("clear_logs", ::opClearLogs)
         put("generate_warp_config", ::opGenerateWarpConfig)
     }
 
@@ -171,89 +157,6 @@ class MethodBridge(
 
     private fun argsAsMap(call: MethodCall): Map<*, *> =
         call.arguments as? Map<*, *> ?: emptyMap<Any, Any>()
-
-    private suspend fun opSetup(@Suppress("UNUSED_PARAMETER") call: MethodCall, result: MethodChannel.Result) {
-        Mobile.setup()
-        result.success("")
-    }
-
-    private suspend fun opChangeConfigOptions(call: MethodCall, result: MethodChannel.Result) {
-        Prefs.Engine.configOptionsJson = call.arguments as String
-        result.success(true)
-    }
-
-    private suspend fun opGenerateConfig(call: MethodCall, result: MethodChannel.Result) {
-        val a = argsAsMap(call)
-        val path = a["path"] as String
-        val options = Prefs.Engine.configOptionsJson
-        if (options.isBlank() || path.isBlank()) {
-            result.error("E_BLANK", "missing path or options", null)
-            return
-        }
-        result.success(KernelHost.buildConfig(path, options))
-    }
-
-    private suspend fun opStart(call: MethodCall, result: MethodChannel.Result) {
-        val a = argsAsMap(call)
-        Prefs.Profile.activeConfigPath = a["path"] as String? ?: ""
-        Prefs.Profile.activeName = a["name"] as String? ?: ""
-        val act = MainActivity.instance
-        if (act.serviceStatus.value == KernelStatus.Started) {
-            result.success(true)
-            return
-        }
-        act.startService()
-        result.success(true)
-    }
-
-    private suspend fun opStop(@Suppress("UNUSED_PARAMETER") call: MethodCall, result: MethodChannel.Result) {
-        if (MainActivity.instance.serviceStatus.value != KernelStatus.Started) {
-            result.success(true)
-            return
-        }
-        KernelHost.fireStop()
-        result.success(true)
-    }
-
-    private suspend fun opRestart(call: MethodCall, result: MethodChannel.Result) {
-        val a = argsAsMap(call)
-        Prefs.Profile.activeConfigPath = a["path"] as String? ?: ""
-        Prefs.Profile.activeName = a["name"] as String? ?: ""
-        val act = MainActivity.instance
-        if (act.serviceStatus.value != KernelStatus.Started) {
-            result.success(true)
-            return
-        }
-        val needRestart = Prefs.Engine.shouldRebuildService()
-        if (needRestart) {
-            act.reconnect()
-            KernelHost.fireStop()
-            delay(1000L)
-            act.startService()
-            result.success(true)
-            return
-        }
-        Libbox.newStandaloneCommandClient().serviceReload()
-        result.success(true)
-    }
-
-    private suspend fun opSelectOutbound(call: MethodCall, result: MethodChannel.Result) {
-        val a = argsAsMap(call)
-        Libbox.newStandaloneCommandClient()
-            .selectOutbound(a["groupTag"] as String, a["outboundTag"] as String)
-        result.success(true)
-    }
-
-    private suspend fun opUrlTest(call: MethodCall, result: MethodChannel.Result) {
-        val a = argsAsMap(call)
-        Libbox.newStandaloneCommandClient().urlTest(a["groupTag"] as String)
-        result.success(true)
-    }
-
-    private suspend fun opClearLogs(@Suppress("UNUSED_PARAMETER") call: MethodCall, result: MethodChannel.Result) {
-        MainActivity.instance.logBuffer.clear()
-        result.success(true)
-    }
 
     private suspend fun opGenerateWarpConfig(call: MethodCall, result: MethodChannel.Result) {
         val a = argsAsMap(call)

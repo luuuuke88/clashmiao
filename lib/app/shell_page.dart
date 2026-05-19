@@ -7,6 +7,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
+import 'package:clashmiao/features/logs/widget/logs_page.dart';
 import 'package:clashmiao/features/settings/widget/settings_page.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -27,6 +28,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
     ProxiesPage(),
     ProfilesPage(),
     SettingsPage(),
+    LogsPage(),
   ];
 
   @override
@@ -125,6 +127,11 @@ class _GlassBottomNav extends ConsumerWidget {
         FluentIcons.settings_20_regular,
         FluentIcons.settings_20_filled,
         t.settings.pageTitle,
+      ),
+      (
+        FluentIcons.document_text_20_regular,
+        FluentIcons.document_text_20_filled,
+        '日志',
       ),
     ];
     final theme = Theme.of(context);

@@ -174,7 +174,7 @@ class PlatformBoxService implements BoxService {
 
   @override
   Stream<void> watchNetworkChanged() {
-    return _networkChannel.receiveBroadcastStream().map((_) => null);
+    return _networkChannel.receiveBroadcastStream().map((_) {});
   }
 
   @override

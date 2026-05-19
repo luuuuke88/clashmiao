@@ -1,5 +1,7 @@
 package com.clashmiao.clashmiao.bridge
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.lifecycle.Observer
 import com.clashmiao.clashmiao.MainActivity
@@ -41,12 +43,28 @@ class StreamBridge : FlutterPlugin {
         private const val CHANNEL_GROUPS = "com.clashmiao.app/groups"
         private const val CHANNEL_GROUPS_LITE = "com.clashmiao.app/active-groups"
         private const val CHANNEL_LOGS = "com.clashmiao.app/service.logs"
+        private const val CHANNEL_NETWORK = "com.clashmiao.app/network"
         private val gson = Gson()
+
+        /** 唯一实例引用，供 NetworkWatcher 等原生组件推送事件。 */
+        @Volatile var instance: StreamBridge? = null
+            private set
+
+        fun emitNetworkChanged() {
+            instance?.networkSink?.let { sink ->
+                Handler(Looper.getMainLooper()).post {
+                    sink.success("changed")
+                }
+            }
+        }
     }
 
     /** 默认 scope；可被 [installScope] 替换为带 lifecycle 的 scope。 */
     private var scope: CoroutineScope? = null
     private val bindings = mutableListOf<SinkBinding>()
+
+    /** network EventChannel 的当前 sink（主线程写，主线程读）。 */
+    @Volatile private var networkSink: EventChannel.EventSink? = null
 
     /** MainActivity 在 configureFlutterEngine 里调一次，把 lifecycle scope 注入。 */
     fun installScope(scope: CoroutineScope) {
@@ -54,6 +72,7 @@ class StreamBridge : FlutterPlugin {
     }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        instance = this
         val msg = binding.binaryMessenger
         // 1. LiveData 驱动：status + alerts
         bindings += jsonStream(msg, CHANNEL_STATUS, StatusSource(TAG))
@@ -64,9 +83,20 @@ class StreamBridge : FlutterPlugin {
         bindings += standardStream(msg, CHANNEL_GROUPS_LITE, GroupsSource(LibboxCommandStream.StreamKind.GROUP_INFO_ONLY))
         // 3. logs：直接吃 LogBuffer.subscriber，不走 libbox command client。
         bindings += standardStream(msg, CHANNEL_LOGS, LogsSource())
+        // 4. network：NetworkWatcher 检测到新默认网络时推送。
+        EventChannel(msg, CHANNEL_NETWORK).setStreamHandler(object : EventChannel.StreamHandler {
+            override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
+                networkSink = events
+            }
+            override fun onCancel(arguments: Any?) {
+                networkSink = null
+            }
+        })
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        instance = null
+        networkSink = null
         bindings.forEach { it.detach() }
         bindings.clear()
     }

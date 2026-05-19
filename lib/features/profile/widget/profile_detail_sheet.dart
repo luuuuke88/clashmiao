@@ -57,11 +57,11 @@ class _State extends ConsumerState<ProfileDetailSheet> {
             ),
           ),
           const SizedBox(height: 8),
-          DropdownButtonFormField<int>(
+          DropdownButton<int>(
             value: [1, 6, 12, 24, 72].contains(_intervalHours)
                 ? _intervalHours
                 : 24,
-            decoration: const InputDecoration(labelText: '自动更新间隔'),
+            isExpanded: true,
             items: const [
               DropdownMenuItem(value: 1, child: Text('1 小时')),
               DropdownMenuItem(value: 6, child: Text('6 小时')),
@@ -94,7 +94,8 @@ class _State extends ConsumerState<ProfileDetailSheet> {
     );
     await repo.updateProfile(updated);
     if (!context.mounted) return;
-    ref.invalidate(profileListProvider);
+    // ignore: use_build_context_synchronously
     Navigator.of(context).pop();
+    ref.invalidate(profileListProvider);
   }
 }

@@ -27,7 +27,10 @@ void main() {
   });
 
   test('new fields round-trip through JSON', () {
-    final json = buildProfileJson(notes: 'test note', customUserAgent: 'MyApp/1.0');
+    final json = buildProfileJson(
+      notes: 'test note',
+      customUserAgent: 'MyApp/1.0',
+    );
     expect(json['notes'], 'test note');
     expect(json['customUserAgent'], 'MyApp/1.0');
   });

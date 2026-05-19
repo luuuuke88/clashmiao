@@ -58,7 +58,7 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
 
     // === migrated (continued) ================================================
 
-    override fun init(callback: (Result<Unit>) -> Unit) = pending(callback)
+    override fun initialize(callback: (Result<Unit>) -> Unit) = pending(callback)
 
     override fun setup(
         baseDir: String,

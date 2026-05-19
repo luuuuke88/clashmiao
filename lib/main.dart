@@ -94,9 +94,11 @@ void main() async {
   // ignore: discarded_futures
   _autoUpdateOnLaunch(container);
 
-  // dev-only：检测 ~/.clashmiao_dev_subscription_url，自动添加订阅 + 自动连接，
-  // 解放手动 UI 测试。release build 不会走这分支。
-  if (kDebugMode) {
+  // dev-only / CI smoke：检测 ~/.clashmiao_dev_subscription_url 或
+  // CLASHMIAO_TEST_SUB_URL env，自动添加订阅 + 自动连接，解放手动 UI 测试。
+  // Debug build 默认走；release build 只在显式 env 有 secret 时才触发（CI smoke）。
+  final smokeEnv = Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '';
+  if (kDebugMode || smokeEnv.isNotEmpty) {
     // ignore: discarded_futures
     _devAutoBoot(container);
   }
@@ -162,11 +164,19 @@ Future<void> _autoUpdateOnLaunch(ProviderContainer container) async {
 /// 自动添加订阅 + 自动连接，省去手动 UI 操作来跑调试循环。
 Future<void> _devAutoBoot(ProviderContainer container) async {
   try {
-    final home = Platform.environment['HOME'];
-    if (home == null) return;
-    final urlFile = File('$home/.clashmiao_dev_subscription_url');
-    if (!await urlFile.exists()) return;
-    final url = (await urlFile.readAsString()).trim();
+    // 三种入口：
+    //   1. CLASHMIAO_TEST_SUB_URL 环境变量（CI 注入 secret 走这条）
+    //   2. ~/.clashmiao_dev_subscription_url 文件（unix dev 习惯）
+    //   3. %USERPROFILE%\.clashmiao_dev_subscription_url（windows）
+    final env = Platform.environment;
+    String url = (env['CLASHMIAO_TEST_SUB_URL'] ?? '').trim();
+    if (url.isEmpty) {
+      final home = env['HOME'] ?? env['USERPROFILE'];
+      if (home == null) return;
+      final urlFile = File('$home/.clashmiao_dev_subscription_url');
+      if (!await urlFile.exists()) return;
+      url = (await urlFile.readAsString()).trim();
+    }
     if (url.isEmpty) return;
 
     final repo = await container.read(profileRepositoryProvider.future);

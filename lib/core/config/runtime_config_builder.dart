@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/features/profile/model/advanced_config.dart';
 import 'package:flutter/foundation.dart';
 
 bool get _isDesktop =>
@@ -31,6 +32,7 @@ class RuntimeConfigBuilder {
     required bool isSmart,
     required Directory workingDir,
     String? remoteDnsAddress,
+    AdvancedConfig? advancedConfig,
   }) async {
     final raw = await baseProfile.readAsString();
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
@@ -52,8 +54,11 @@ class RuntimeConfigBuilder {
     // 这样无论智能 / 全局，profile 自带的 上游 geo CDN url 引用都不会去 fetch。
     _stripRuleSetReferences(cfg);
 
-    if (remoteDnsAddress != null && remoteDnsAddress.isNotEmpty) {
-      _overrideRemoteDnsAddress(cfg, remoteDnsAddress);
+    final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
+        ? advancedConfig!.remoteDnsOverride!
+        : remoteDnsAddress;
+    if (effectiveDns != null && effectiveDns.isNotEmpty) {
+      _overrideRemoteDnsAddress(cfg, effectiveDns);
     }
 
     if (isSmart) {

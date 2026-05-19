@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/import/qr_scanner_page.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -79,17 +81,35 @@ Future<void> showProfileFormDialog(
                     borderRadius: BorderRadius.circular(12),
                   ),
                   prefixIcon: const Icon(FluentIcons.link_24_regular),
-                  suffixIcon: IconButton(
-                    icon: const Icon(FluentIcons.clipboard_paste_24_regular),
-                    tooltip: '从剪贴板粘贴',
-                    onPressed: () async {
-                      final data = await Clipboard.getData(
-                        Clipboard.kTextPlain,
-                      );
-                      if (data?.text != null && data!.text!.isNotEmpty) {
-                        urlCtrl.text = data.text!;
-                      }
-                    },
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (Platform.isAndroid || Platform.isIOS)
+                        IconButton(
+                          icon: const Icon(FluentIcons.qr_code_20_regular),
+                          tooltip: '扫描二维码',
+                          onPressed: () async {
+                            final result = await openQrScanner(ctx);
+                            if (result != null) {
+                              urlCtrl.text = result;
+                            }
+                          },
+                        ),
+                      IconButton(
+                        icon: const Icon(
+                          FluentIcons.clipboard_paste_24_regular,
+                        ),
+                        tooltip: '从剪贴板粘贴',
+                        onPressed: () async {
+                          final data = await Clipboard.getData(
+                            Clipboard.kTextPlain,
+                          );
+                          if (data?.text != null && data!.text!.isNotEmpty) {
+                            urlCtrl.text = data.text!;
+                          }
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 keyboardType: TextInputType.url,

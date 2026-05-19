@@ -80,6 +80,14 @@ dependencies:
   intl: ^0.20.2
   launch_at_startup: ^0.5.1
 
+  # 监控、分享、文件、权限、图表、加密
+  sentry_flutter: ^8.13.0
+  share_plus: ^10.0.0
+  file_picker: ^8.1.2
+  permission_handler: ^11.3.0
+  fl_chart: ^0.69.0
+  crypto: ^3.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -15,7 +15,9 @@ void main() {
     );
 
     final json = jsonEncode(original.toJson());
-    final decoded = BackupBundle.fromJson(jsonDecode(json) as Map<String, dynamic>);
+    final decoded = BackupBundle.fromJson(
+      jsonDecode(json) as Map<String, dynamic>,
+    );
 
     expect(decoded.version, BackupBundle.currentVersion);
     expect(decoded.profiles.length, 1);

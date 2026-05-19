@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/features/settings/model/backup_bundle.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -34,8 +34,9 @@ class BackupService {
     );
     if (result == null ||
         result.files.isEmpty ||
-        result.files.single.path == null)
+        result.files.single.path == null) {
       return null;
+    }
 
     final content = await File(result.files.single.path!).readAsString();
     final bundle = BackupBundle.fromJson(

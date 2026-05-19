@@ -162,14 +162,17 @@ class HomePage extends ConsumerWidget {
                                     const SizedBox(height: 8),
                                     Text(
                                       connectionError,
-                                      style: const TextStyle(
-                                        color: Colors.red,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.error,
                                         fontSize: 12,
                                       ),
                                       textAlign: TextAlign.center,
                                     ),
                                     TextButton.icon(
-                                      icon: const Icon(Icons.refresh),
+                                      icon: const Icon(
+                                        FluentIcons
+                                            .arrow_counterclockwise_24_regular,
+                                      ),
                                       label: const Text('强制重连'),
                                       onPressed: () => ref
                                           .read(

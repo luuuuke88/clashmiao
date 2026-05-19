@@ -283,7 +283,7 @@ class SettingsPage extends ConsumerWidget {
                             const _Divider(),
                             _SettingsTile(
                               iconColor: const Color(0xFF059669), // Emerald 600
-                              icon: Icons.apps,
+                              icon: FluentIcons.phone_tablet_24_regular,
                               label: '每应用代理',
                               trailing: Icon(
                                 FluentIcons.chevron_right_24_regular,

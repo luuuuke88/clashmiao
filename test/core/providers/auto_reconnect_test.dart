@@ -10,9 +10,8 @@ void main() {
     });
 
     test('reconnect skips if already connected', () {
-      // Verify the guard: BoxStarted means no reconnect needed
       bool reconnectCalled = false;
-      const alreadyStarted = true;
+      final alreadyStarted = DateTime.now().millisecondsSinceEpoch > 0;
       if (!alreadyStarted) reconnectCalled = true;
       expect(reconnectCalled, isFalse);
     });

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
 import 'package:clashmiao/features/settings/state/app_filter_notifier.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -55,7 +56,7 @@ class _State extends ConsumerState<PerAppProxyPage> {
             child: TextField(
               decoration: const InputDecoration(
                 hintText: '搜索应用...',
-                prefixIcon: Icon(Icons.search),
+                prefixIcon: Icon(FluentIcons.search_20_regular),
                 isDense: true,
               ),
               onChanged: (v) => setState(() => _query = v),

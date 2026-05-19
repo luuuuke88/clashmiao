@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/onboarding/onboarding_state.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -100,7 +101,11 @@ class _WelcomePage extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const FlutterLogo(size: 80),
+        Icon(
+          FluentIcons.shield_task_28_regular,
+          size: 80,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(height: 24),
         Text(
           '欢迎使用 ClashMiao',
@@ -115,7 +120,7 @@ class _WelcomePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
-        ElevatedButton(onPressed: onNext, child: const Text('下一步')),
+        FilledButton(onPressed: onNext, child: const Text('下一步')),
       ],
     );
   }
@@ -130,13 +135,17 @@ class _ImportPage extends ConsumerWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.link, size: 64),
+        Icon(
+          FluentIcons.link_24_regular,
+          size: 64,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(height: 24),
         Text('添加订阅', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 12),
         const Text('粘贴订阅链接或扫描二维码'),
         const SizedBox(height: 24),
-        ElevatedButton(
+        FilledButton(
           onPressed: () async {
             await showProfileFormDialog(context, ref);
             onImported();
@@ -158,7 +167,11 @@ class _ModePage extends StatelessWidget {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const Icon(Icons.tune, size: 64),
+        Icon(
+          FluentIcons.options_24_regular,
+          size: 64,
+          color: Theme.of(context).colorScheme.primary,
+        ),
         const SizedBox(height: 24),
         Text('选择模式', style: Theme.of(context).textTheme.headlineSmall),
         const SizedBox(height: 12),
@@ -170,7 +183,7 @@ class _ModePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
-        ElevatedButton(onPressed: onDone, child: const Text('开始使用')),
+        FilledButton(onPressed: onDone, child: const Text('开始使用')),
       ],
     );
   }

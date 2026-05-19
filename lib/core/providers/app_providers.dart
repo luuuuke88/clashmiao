@@ -21,6 +21,7 @@ import 'package:dio/io.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 // ============ Profile Providers ============
@@ -127,10 +128,26 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             alert.type == BoxAlertType.createService ||
             alert.type == BoxAlertType.emptyConfiguration;
         if (!isFatal) return;
+        const dsn = String.fromEnvironment('SENTRY_DSN');
+        if (dsn.isNotEmpty) {
+          unawaited(
+            Sentry.captureMessage(
+              'BoxAlert fatal: ${alert.type.name}',
+              level: SentryLevel.error,
+            ),
+          );
+        }
         _transitioning = false;
         state = const AsyncData(BoxStopped());
         _ref.read(connectionErrorProvider.notifier).state =
             alert.message ?? alert.type.name;
+      });
+
+      _networkSub = service.watchNetworkChanged().listen((_) {
+        if (!mounted) return;
+        if (state.valueOrNull is BoxStarted) {
+          unawaited(_autoReconnect());
+        }
       });
     }
     // 内部 state setter 也走 _syncStartedAt（addListener 监听本 notifier）
@@ -156,6 +173,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   final Ref _ref;
   StreamSubscription? _statusSub;
   StreamSubscription? _alertSub;
+  StreamSubscription<void>? _networkSub;
   bool _transitioning = false;
 
   BoxService get _boxService => _ref.read(boxServiceProvider);
@@ -165,6 +183,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   void dispose() {
     _statusSub?.cancel();
     _alertSub?.cancel();
+    _networkSub?.cancel();
     super.dispose();
   }
 
@@ -241,6 +260,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         isSmart: !isGlobal,
         workingDir: workingDir,
         remoteDnsAddress: settings.remoteDnsAddress,
+        advancedConfig: active.advancedConfig,
       );
 
       await _boxService.start(runtimeConfig.path, name: active.name);
@@ -265,6 +285,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             isSmart: modeIndex != 0,
             workingDir: workingDir,
             remoteDnsAddress: settings.remoteDnsAddress,
+            advancedConfig: active.advancedConfig,
           );
           await _boxService.start(runtimeConfig.path, name: active.name);
           await Future.delayed(const Duration(milliseconds: 1500));
@@ -341,6 +362,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         isSmart: !isGlobal,
         workingDir: workingDir,
         remoteDnsAddress: settings.remoteDnsAddress,
+        advancedConfig: active.advancedConfig,
       );
       debugPrint('重连: restart ${runtimeConfig.path}');
       await _boxService.restart(runtimeConfig.path, name: active.name);
@@ -353,6 +375,22 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       debugPrint('重连失败: $e');
       state = const AsyncData(BoxStopped());
     }
+  }
+
+  Future<void> _autoReconnect() async {
+    const delays = [1, 2, 4, 8];
+    for (final d in delays) {
+      await Future.delayed(Duration(seconds: d));
+      if (!mounted) return;
+      if (state.valueOrNull is BoxStarted) return; // already recovered
+      try {
+        await reconnect();
+        if (state.valueOrNull is BoxStarted) return;
+      } catch (e) {
+        debugPrint('[AutoReconnect] attempt failed: $e');
+      }
+    }
+    debugPrint('[AutoReconnect] exhausted all 4 attempts');
   }
 }
 

@@ -2,6 +2,7 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/features/profile/widget/profile_advanced_sheet.dart';
 import 'package:clashmiao/features/profile/widget/profile_detail_sheet.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
@@ -87,6 +88,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                               _showEditDialog(context, profiles[index]),
                           onDetails: () =>
                               _showDetailSheet(context, profiles[index]),
+                          onAdvancedConfig: () =>
+                              _showAdvancedSheet(context, profiles[index]),
                           onDelete: () => _confirmDeleteProfile(
                             profiles[index].id,
                             profiles[index].name,
@@ -122,6 +125,14 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       context: context,
       isScrollControlled: true,
       builder: (_) => ProfileDetailSheet(profile: profile),
+    );
+  }
+
+  void _showAdvancedSheet(BuildContext context, ProfileEntity profile) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => ProfileAdvancedSheet(profile: profile),
     );
   }
 
@@ -324,6 +335,7 @@ class _ProfileCard extends ConsumerWidget {
     required this.onUpdate,
     required this.onEdit,
     required this.onDetails,
+    required this.onAdvancedConfig,
     required this.onDelete,
   });
 
@@ -332,6 +344,7 @@ class _ProfileCard extends ConsumerWidget {
   final VoidCallback onUpdate;
   final VoidCallback onEdit;
   final VoidCallback onDetails;
+  final VoidCallback onAdvancedConfig;
   final VoidCallback onDelete;
 
   @override
@@ -535,6 +548,11 @@ class _ProfileCard extends ConsumerWidget {
                 _SmallIconButton(
                   icon: FluentIcons.info_20_regular,
                   onTap: onDetails,
+                ),
+                const SizedBox(width: 8),
+                _SmallIconButton(
+                  icon: FluentIcons.settings_20_regular,
+                  onTap: onAdvancedConfig,
                 ),
                 const SizedBox(width: 8),
                 _SmallIconButton(

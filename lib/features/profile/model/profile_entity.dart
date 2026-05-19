@@ -1,3 +1,5 @@
+import 'package:clashmiao/features/profile/model/advanced_config.dart';
+
 /// 订阅配置实体
 class ProfileEntity {
   const ProfileEntity({
@@ -10,6 +12,7 @@ class ProfileEntity {
     this.updateInterval = const Duration(hours: 1),
     this.notes,
     this.customUserAgent,
+    this.advancedConfig,
   });
 
   final String id;
@@ -21,6 +24,7 @@ class ProfileEntity {
   final Duration updateInterval;
   final String? notes;
   final String? customUserAgent;
+  final AdvancedConfig? advancedConfig;
 
   static const _sentinel = Object();
 
@@ -34,6 +38,7 @@ class ProfileEntity {
     Duration? updateInterval,
     Object? notes = _sentinel,
     Object? customUserAgent = _sentinel,
+    Object? advancedConfig = _sentinel,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
@@ -47,6 +52,9 @@ class ProfileEntity {
       customUserAgent: customUserAgent == _sentinel
           ? this.customUserAgent
           : customUserAgent as String?,
+      advancedConfig: advancedConfig == _sentinel
+          ? this.advancedConfig
+          : advancedConfig as AdvancedConfig?,
     );
   }
 
@@ -60,6 +68,7 @@ class ProfileEntity {
     'subInfo': subInfo?.toJson(),
     'notes': notes,
     'customUserAgent': customUserAgent,
+    if (advancedConfig != null) 'advancedConfig': advancedConfig!.toJson(),
   };
 
   factory ProfileEntity.fromJson(Map<String, dynamic> json) {
@@ -77,6 +86,11 @@ class ProfileEntity {
           : null,
       notes: json['notes'] as String?,
       customUserAgent: json['customUserAgent'] as String?,
+      advancedConfig: json['advancedConfig'] != null
+          ? AdvancedConfig.fromJson(
+              json['advancedConfig'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 }

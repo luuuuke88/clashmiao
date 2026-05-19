@@ -103,15 +103,29 @@ void main() {
         timeout: const Duration(seconds: 60),
       );
 
-      // 验证出口 IP 变了
-      final proxiedIp = await fetchEgressIp();
+      // BoxStarted 后 sing-box 还在 VPN CONNECTING 阶段（节点 URLTest 没完），
+      // 出口 IP 可能还是直连。最多 retry 8 次（每次 4s），任何一次拿到 ≠ baseline
+      // 的合法 IPv4 就过。
+      String proxiedIp = baselineIp;
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(seconds: 4));
+        try {
+          proxiedIp = await fetchEgressIp(timeout: const Duration(seconds: 8));
+          if (RegExp(r'^\d+\.\d+\.\d+\.\d+$').hasMatch(proxiedIp) &&
+              proxiedIp != baselineIp) {
+            break;
+          }
+        } catch (_) {
+          // 等的过程中 socket 可能因 TUN route 切换被 reset，吞掉继续 retry
+        }
+      }
       expect(proxiedIp, matches(RegExp(r'^\d+\.\d+\.\d+\.\d+$')));
       expect(
         proxiedIp,
         isNot(equals(baselineIp)),
         reason:
-            'expected egress IP to change after VPN, '
-            'baseline=$baselineIp, proxied=$proxiedIp',
+            'expected egress IP to change after VPN within ~32s, '
+            'baseline=$baselineIp, last proxied=$proxiedIp',
       );
 
       // 断开

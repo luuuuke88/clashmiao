@@ -213,3 +213,184 @@ jobs:
         with:
           name: clashmiao-linux-release
           path: build/linux/x64/release/bundle/
+
+  # ============ 真流量 smoke 验证 ============
+  # 每个 smoke job：build release → 启动 GUI app（DevBoot 自动加订阅 + 连接）→
+  # 等 mixed inbound 127.0.0.1:2080 监听 → curl --proxy 拿出口 IP → 对比 baseline。
+  # 没有 CLASHMIAO_TEST_SUB_URL secret 时整组跳过（fork PR 等场景）。
+
+  smoke-macos:
+    runs-on: macos-latest
+    needs: [build-macos]
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fetch libcore (macos)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh macos
+      - run: flutter pub get
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --release --no-tree-shake-icons
+      - name: Smoke (real proxy traffic)
+        env:
+          CLASHMIAO_TEST_SUB_URL: ${{ secrets.CLASHMIAO_TEST_SUB_URL }}
+        run: |
+          if [ -z "$CLASHMIAO_TEST_SUB_URL" ]; then
+            echo "CLASHMIAO_TEST_SUB_URL secret unset, skipping smoke"
+            exit 0
+          fi
+          bash bin/smoke-desktop.sh
+
+  smoke-linux:
+    runs-on: ubuntu-latest
+    needs: [build-linux]
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -y && sudo apt-get install -y ninja-build libgtk-3-dev libayatana-appindicator3-dev xvfb curl
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fetch libcore (linux)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh linux
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop
+      - run: flutter build linux --release
+      - name: Smoke (real proxy traffic)
+        env:
+          CLASHMIAO_TEST_SUB_URL: ${{ secrets.CLASHMIAO_TEST_SUB_URL }}
+        run: |
+          if [ -z "$CLASHMIAO_TEST_SUB_URL" ]; then
+            echo "CLASHMIAO_TEST_SUB_URL secret unset, skipping smoke"
+            exit 0
+          fi
+          bash bin/smoke-desktop.sh
+
+  smoke-windows:
+    runs-on: windows-latest
+    needs: [build-windows]
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fetch libcore (windows)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: bin/fetch-libcore.sh windows
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --release
+      - name: Smoke (real proxy traffic)
+        env:
+          CLASHMIAO_TEST_SUB_URL: ${{ secrets.CLASHMIAO_TEST_SUB_URL }}
+        shell: pwsh
+        run: |
+          if (-not $env:CLASHMIAO_TEST_SUB_URL) {
+            Write-Host "CLASHMIAO_TEST_SUB_URL secret unset, skipping smoke"
+            exit 0
+          }
+          .\bin\smoke-desktop.ps1
+
+  # Android 真流量 e2e：reactivecircus/android-emulator-runner 起 KVM emulator
+  # 跑 integration_test/android_smart_mode_test.dart，断言代理出口 IP ≠ baseline。
+  # KVM 启动 emulator 大约 5-10min，整个 job 通常 15-20min。
+  smoke-android:
+    runs-on: ubuntu-latest
+    needs: [build-android]
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fetch libcore (android)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh android
+      - run: flutter pub get
+      - name: Run integration_test on emulator
+        env:
+          CLASHMIAO_TEST_SUB_URL: ${{ secrets.CLASHMIAO_TEST_SUB_URL }}
+        uses: reactivecircus/android-emulator-runner@v2
+        if: ${{ env.CLASHMIAO_TEST_SUB_URL != '' }}
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          ram-size: 4096M
+          heap-size: 1024M
+          disable-animations: true
+          script: |
+            # 预 grant POST_NOTIFICATIONS（VPN dialog 还是会弹，由 grant-perms 自动点）
+            adb wait-for-device
+            adb shell input keyevent 82  # wake screen
+            # install + grant
+            flutter build apk --debug
+            adb install -r build/app/outputs/flutter-apk/app-debug.apk
+            adb shell pm grant com.clashmiao.clashmiao android.permission.POST_NOTIFICATIONS || true
+            # 后台 watch VPN dialog
+            cat > /tmp/grant-vpn.sh <<'EOF'
+            #!/usr/bin/env bash
+            set -uo pipefail
+            for i in $(seq 1 120); do
+              top=$(adb shell dumpsys window windows 2>/dev/null | grep -E "mCurrentFocus|vpndialogs|permissioncontroller" || true)
+              if echo "$top" | grep -qi "vpndialogs\|permissioncontroller"; then
+                sleep 0.4
+                adb shell uiautomator dump /sdcard/uidump.xml >/dev/null 2>&1 && \
+                  adb shell cat /sdcard/uidump.xml > /tmp/uidump.xml
+                python3 - <<'PY'
+            import re, subprocess, sys
+            xml = open('/tmp/uidump.xml').read()
+            for pat in [
+              r'resource-id="com\.android\.permissioncontroller:id/permission_allow_button"',
+              r'resource-id="android:id/button1"',
+              r'text="Allow"', r'text="OK"',
+            ]:
+              m = re.search(pat + r'[^/]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
+              if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                cx, cy = (x1+x2)//2, (y1+y2)//2
+                print(f"[grant-vpn] tap ({cx},{cy})")
+                subprocess.run(['adb','shell','input','tap',str(cx),str(cy)], check=True)
+                sys.exit(0)
+            sys.exit(1)
+            PY
+                if [ $? -eq 0 ]; then sleep 1; fi
+              fi
+              sleep 0.5
+            done
+            EOF
+            chmod +x /tmp/grant-vpn.sh
+            /tmp/grant-vpn.sh &
+            # 跑 integration test
+            flutter test integration_test/android_smart_mode_test.dart \
+              -d emulator-5554 \
+              --dart-define=CLASHMIAO_TEST_SUB_URL="$CLASHMIAO_TEST_SUB_URL"

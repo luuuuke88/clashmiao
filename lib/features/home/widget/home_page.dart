@@ -183,12 +183,12 @@ class HomePage extends ConsumerWidget {
                                     ),
                                   ],
 
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 16),
 
                                   // 连接信息
                                   _ConnectionInfo(status: status),
 
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 16),
 
                                   // 代理模式
                                   _ModeSelector(aiUi: aiUi),
@@ -199,7 +199,7 @@ class HomePage extends ConsumerWidget {
                                   if (MediaQuery.sizeOf(context).width < 840)
                                     const TrafficSparklineCard(),
 
-                                  const SizedBox(height: 16),
+                                  const SizedBox(height: 8),
                                 ],
                               );
                             },

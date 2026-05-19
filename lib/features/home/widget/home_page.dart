@@ -121,100 +121,109 @@ class HomePage extends ConsumerWidget {
 
                   const SizedBox(height: 24),
 
-                  // 内容区
+                  // 内容区 — LayoutBuilder 捕获可用高度，SingleChildScrollView 在内容
+                  // 超出时允许滚动，ConstrainedBox+IntrinsicHeight 让 Spacer 在有余
+                  // 量时正常撑满，避免小屏幕（Pixel 6）RenderFlex overflow。
                   Expanded(
-                    child: CustomScrollView(
-                      slivers: [
-                        SliverFillRemaining(
-                          hasScrollBody: false,
-                          child: activeProfile.when(
-                            data: (profile) {
-                              if (profile == null) {
-                                return _EmptyProfileBody(
-                                  onAdd: () {
-                                    final t = ref.read(translationsProvider);
-                                    _showAddProfileSheet(context, ref, t);
-                                  },
-                                );
-                              }
-                              return Column(
-                                children: [
-                                  // 当前订阅卡片
-                                  _ActiveProfileCard(profile: profile),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return activeProfile.when(
+                          data: (profile) {
+                            if (profile == null) {
+                              return _EmptyProfileBody(
+                                onAdd: () {
+                                  final t = ref.read(translationsProvider);
+                                  _showAddProfileSheet(context, ref, t);
+                                },
+                              );
+                            }
+                            return SingleChildScrollView(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: constraints.maxHeight,
+                                ),
+                                child: IntrinsicHeight(
+                                  child: Column(
+                                    children: [
+                                      // 当前订阅卡片
+                                      _ActiveProfileCard(profile: profile),
 
-                                  const Spacer(flex: 2),
+                                      const Spacer(flex: 2),
 
-                                  // 连接按钮
-                                  ConnectionButton(
-                                    status: status,
-                                    onTap: () {
-                                      ref
-                                          .read(
-                                            connectionControllerProvider
-                                                .notifier,
-                                          )
-                                          .toggle();
-                                    },
+                                      // 连接按钮
+                                      ConnectionButton(
+                                        status: status,
+                                        onTap: () {
+                                          ref
+                                              .read(
+                                                connectionControllerProvider
+                                                    .notifier,
+                                              )
+                                              .toggle();
+                                        },
+                                      ),
+
+                                      if (connectionError != null &&
+                                          status is BoxStopped) ...[
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          connectionError,
+                                          style: TextStyle(
+                                            color: theme.colorScheme.error,
+                                            fontSize: 12,
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                        TextButton.icon(
+                                          icon: const Icon(
+                                            FluentIcons
+                                                .arrow_counterclockwise_24_regular,
+                                          ),
+                                          label: const Text('强制重连'),
+                                          onPressed: () => ref
+                                              .read(
+                                                connectionControllerProvider
+                                                    .notifier,
+                                              )
+                                              .reconnect(),
+                                        ),
+                                      ],
+
+                                      const SizedBox(height: 16),
+
+                                      // 连接信息
+                                      _ConnectionInfo(status: status),
+
+                                      const SizedBox(height: 16),
+
+                                      // 代理模式
+                                      _ModeSelector(aiUi: aiUi),
+
+                                      const Spacer(flex: 6),
+
+                                      // 底部统计
+                                      if (MediaQuery.sizeOf(context).width <
+                                          840)
+                                        const TrafficSparklineCard(),
+
+                                      const SizedBox(height: 8),
+                                    ],
                                   ),
-
-                                  if (connectionError != null &&
-                                      status is BoxStopped) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      connectionError,
-                                      style: TextStyle(
-                                        color: theme.colorScheme.error,
-                                        fontSize: 12,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    TextButton.icon(
-                                      icon: const Icon(
-                                        FluentIcons
-                                            .arrow_counterclockwise_24_regular,
-                                      ),
-                                      label: const Text('强制重连'),
-                                      onPressed: () => ref
-                                          .read(
-                                            connectionControllerProvider
-                                                .notifier,
-                                          )
-                                          .reconnect(),
-                                    ),
-                                  ],
-
-                                  const SizedBox(height: 16),
-
-                                  // 连接信息
-                                  _ConnectionInfo(status: status),
-
-                                  const SizedBox(height: 16),
-
-                                  // 代理模式
-                                  _ModeSelector(aiUi: aiUi),
-
-                                  const Spacer(flex: 6),
-
-                                  // 底部统计
-                                  if (MediaQuery.sizeOf(context).width < 840)
-                                    const TrafficSparklineCard(),
-
-                                  const SizedBox(height: 8),
-                                ],
-                              );
-                            },
-                            loading: () => const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                            error: (e, _) {
-                              final t = ref.watch(translationsProvider);
-                              return Center(
-                                child: Text('${t.failure.unexpected}: $e'),
-                              );
-                            },
+                                ),
+                              ),
+                            );
+                          },
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(),
                           ),
-                        ),
-                      ],
+                          error: (e, _) {
+                            final t = ref.watch(translationsProvider);
+                            return Center(
+                              child: Text('${t.failure.unexpected}: $e'),
+                            );
+                          },
+                        );
+                      },
                     ),
                   ),
                 ],

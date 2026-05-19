@@ -24,7 +24,13 @@ Map<String, dynamic> getDefaultConfigOptions({
   // 桌面端 TUN 默认关，由用户决定要不要开（需要 root）。
   final enableTunFinal = isMobile ? true : s.enableTun;
   // 移动端 system-proxy 始终 false（不可用）；桌面端按用户开关。
-  final setSystemProxyFinal = isMobile ? false : s.setSystemProxy;
+  // 例外：CLASHMIAO_TEST_SUB_URL 有值时（CI smoke）强制 false，
+  // 因为 GHA Linux runner 没 GNOME session，sing-box 调 gsettings 会
+  // 死在 "set system proxy: gsettings ... exit status 1"。smoke 用
+  // curl --proxy 127.0.0.1:2080 直接走 mixed inbound 不需要 system proxy。
+  final isSmoke =
+      (Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '').isNotEmpty;
+  final setSystemProxyFinal = (isMobile || isSmoke) ? false : s.setSystemProxy;
 
   return {
     // region 永远 'other'：sing-box 1.8 fork（上游 libcore fork）在 region != 'other'

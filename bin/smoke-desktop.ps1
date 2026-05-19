@@ -43,13 +43,17 @@ if (-not (Test-Path $appExe)) {
 }
 
 Log "launching $appExe"
+$stdoutLog = Join-Path $env:RUNNER_TEMP "clashmiao-stdout.log"
+if (-not $env:RUNNER_TEMP) { $stdoutLog = Join-Path $env:TEMP "clashmiao-stdout.log" }
+$stderrLog = "$stdoutLog.err"
 $proc = Start-Process -FilePath $appExe -PassThru -WindowStyle Hidden `
-  -RedirectStandardOutput /tmp/clashmiao-stdout.log `
-  -RedirectStandardError /tmp/clashmiao-stderr.log -ErrorAction SilentlyContinue
+  -RedirectStandardOutput $stdoutLog `
+  -RedirectStandardError $stderrLog -ErrorAction SilentlyContinue
 if (-not $proc) {
-  # fallback: no log redirection (some GitHub runners forbid /tmp)
+  # fallback: no log redirection
   $proc = Start-Process -FilePath $appExe -PassThru -WindowStyle Hidden
 }
+Log "PID = $($proc.Id)  stdoutLog=$stdoutLog"
 
 try {
   # ============ 3. wait mixed inbound ============
@@ -67,9 +71,21 @@ try {
   }
   if (-not $listening) {
     Write-Host "FAIL: 端口 $Port 没监听"
+    if (Test-Path $stdoutLog) {
+      Write-Host "--- stdout tail (last 80 lines) ---"
+      Get-Content $stdoutLog -Tail 80
+    }
+    if (Test-Path $stderrLog) {
+      Write-Host "--- stderr tail (last 40 lines) ---"
+      Get-Content $stderrLog -Tail 40
+    }
     exit 6
   }
   Log "  listening"
+  if (Test-Path $stdoutLog) {
+    Write-Host "--- stdout tail (last 20) ---"
+    Get-Content $stdoutLog -Tail 20
+  }
 
   Log "settle ${SettleAfterListen}s for outbound url-test"
   Start-Sleep -Seconds $SettleAfterListen

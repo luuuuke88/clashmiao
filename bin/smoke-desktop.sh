@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# 跨平台桌面 smoke：启动 debug GUI app（DevBoot 自动加订阅 + 连接） →
+# 跨平台桌面 smoke：启动 GUI app（DevBoot 自动加订阅 + 连接） →
 # 等 mixed inbound 监听 → curl --proxy 拿出口 IP → 对比直连 baseline。
 #
 # 输入：CLASHMIAO_TEST_SUB_URL env，或 ~/.clashmiao_dev_subscription_url 文件
-# 平台：macOS / Linux / Windows
+# 平台：macOS / Linux
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 PORT=2080
 TARGET_HOST="api.ipify.org"
-WAIT_TIMEOUT=${WAIT_TIMEOUT:-60}    # mixed inbound listen
+WAIT_TIMEOUT=${WAIT_TIMEOUT:-90}    # mixed inbound listen
 SETTLE_AFTER_LISTEN=${SETTLE_AFTER_LISTEN:-8}  # 等节点 url-test 完成
 
 OS=$(uname -s)
-log() { echo "[smoke] $*"; }
+log() { echo "[smoke $(date +%H:%M:%S)] $*"; }
 
 # ============ 0. 前置检查 ============
 if [[ -z "${CLASHMIAO_TEST_SUB_URL:-}" && ! -f "$HOME/.clashmiao_dev_subscription_url" ]]; then
@@ -82,11 +82,15 @@ done
 if ! (echo > /dev/tcp/127.0.0.1/$PORT) 2>/dev/null; then
   echo "FAIL: 端口 $PORT 没监听 (sing-box 没启动)"
   if [[ -f /tmp/clashmiao-stdout.log ]]; then
-    echo "--- app stdout/stderr tail ---"
-    tail -50 /tmp/clashmiao-stdout.log
+    echo "--- app stdout/stderr tail (last 80) ---"
+    tail -80 /tmp/clashmiao-stdout.log
   fi
+  echo "--- pgrep clashmiao ---"
+  pgrep -a clashmiao 2>&1 || pgrep -lf clashmiao 2>&1 || true
   exit 6
 fi
+log "  app stdout tail (last 30):"
+[[ -f /tmp/clashmiao-stdout.log ]] && tail -30 /tmp/clashmiao-stdout.log | sed 's/^/  | /'
 
 # 给 sing-box 多点时间完成节点 url-test（避免还没选好出 outbound）
 log "settle ${SETTLE_AFTER_LISTEN}s for outbound url-test"

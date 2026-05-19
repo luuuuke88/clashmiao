@@ -121,9 +121,10 @@ class HomePage extends ConsumerWidget {
 
                   const SizedBox(height: 24),
 
-                  // 内容区 — LayoutBuilder 捕获可用高度，SingleChildScrollView 在内容
-                  // 超出时允许滚动，ConstrainedBox+IntrinsicHeight 让 Spacer 在有余
-                  // 量时正常撑满，避免小屏幕（Pixel 6）RenderFlex overflow。
+                  // 内容区 — 不使用 Spacer/IntrinsicHeight，避免 AnimatedSize
+                  // overshoot 导致 RenderFlex overflow；小屏幕(<740dp)用 FittedBox
+                  // 将连接按钮从 280→240dp，留出足够余量；SingleChildScrollView
+                  // 兜底处理极端字号放大场景。
                   Expanded(
                     child: LayoutBuilder(
                       builder: (context, constraints) {
@@ -137,21 +138,23 @@ class HomePage extends ConsumerWidget {
                                 },
                               );
                             }
+                            final isCompact = constraints.maxHeight < 740;
+                            final btnSize = isCompact ? 240.0 : 280.0;
                             return SingleChildScrollView(
-                              child: ConstrainedBox(
-                                constraints: BoxConstraints(
-                                  minHeight: constraints.maxHeight,
-                                ),
-                                child: IntrinsicHeight(
-                                  child: Column(
-                                    children: [
-                                      // 当前订阅卡片
-                                      _ActiveProfileCard(profile: profile),
+                              child: Column(
+                                children: [
+                                  // 当前订阅卡片
+                                  _ActiveProfileCard(profile: profile),
 
-                                      const Spacer(flex: 2),
+                                  SizedBox(height: isCompact ? 8 : 16),
 
-                                      // 连接按钮
-                                      ConnectionButton(
+                                  // 连接按钮（小屏幕缩至 240dp 防溢出）
+                                  SizedBox(
+                                    width: btnSize,
+                                    height: btnSize,
+                                    child: FittedBox(
+                                      fit: BoxFit.contain,
+                                      child: ConnectionButton(
                                         status: status,
                                         onTap: () {
                                           ref
@@ -162,54 +165,53 @@ class HomePage extends ConsumerWidget {
                                               .toggle();
                                         },
                                       ),
-
-                                      if (connectionError != null &&
-                                          status is BoxStopped) ...[
-                                        const SizedBox(height: 8),
-                                        Text(
-                                          connectionError,
-                                          style: TextStyle(
-                                            color: theme.colorScheme.error,
-                                            fontSize: 12,
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        TextButton.icon(
-                                          icon: const Icon(
-                                            FluentIcons
-                                                .arrow_counterclockwise_24_regular,
-                                          ),
-                                          label: const Text('强制重连'),
-                                          onPressed: () => ref
-                                              .read(
-                                                connectionControllerProvider
-                                                    .notifier,
-                                              )
-                                              .reconnect(),
-                                        ),
-                                      ],
-
-                                      const SizedBox(height: 16),
-
-                                      // 连接信息
-                                      _ConnectionInfo(status: status),
-
-                                      const SizedBox(height: 16),
-
-                                      // 代理模式
-                                      _ModeSelector(aiUi: aiUi),
-
-                                      const Spacer(flex: 6),
-
-                                      // 底部统计
-                                      if (MediaQuery.sizeOf(context).width <
-                                          840)
-                                        const TrafficSparklineCard(),
-
-                                      const SizedBox(height: 8),
-                                    ],
+                                    ),
                                   ),
-                                ),
+
+                                  if (connectionError != null &&
+                                      status is BoxStopped) ...[
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      connectionError,
+                                      style: TextStyle(
+                                        color: theme.colorScheme.error,
+                                        fontSize: 12,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    TextButton.icon(
+                                      icon: const Icon(
+                                        FluentIcons
+                                            .arrow_counterclockwise_24_regular,
+                                      ),
+                                      label: const Text('强制重连'),
+                                      onPressed: () => ref
+                                          .read(
+                                            connectionControllerProvider
+                                                .notifier,
+                                          )
+                                          .reconnect(),
+                                    ),
+                                  ],
+
+                                  const SizedBox(height: 16),
+
+                                  // 连接信息
+                                  _ConnectionInfo(status: status),
+
+                                  const SizedBox(height: 16),
+
+                                  // 代理模式
+                                  _ModeSelector(aiUi: aiUi),
+
+                                  SizedBox(height: isCompact ? 16 : 24),
+
+                                  // 底部统计
+                                  if (MediaQuery.sizeOf(context).width < 840)
+                                    const TrafficSparklineCard(),
+
+                                  const SizedBox(height: 8),
+                                ],
                               ),
                             );
                           },

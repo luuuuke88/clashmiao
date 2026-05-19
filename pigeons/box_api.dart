@@ -59,6 +59,17 @@ class ValidateConfigResult {
   final String? error;
 }
 
+class InstalledApp {
+  InstalledApp({
+    required this.packageName,
+    required this.appName,
+    required this.isSystemApp,
+  });
+  final String packageName;
+  final String appName;
+  final bool isSystemApp;
+}
+
 /// Dart 调原生：sing-box 生命周期 + 状态变更。
 @HostApi()
 abstract class BoxHostApi {
@@ -94,4 +105,10 @@ abstract class BoxHostApi {
 
   @async
   void clearLogs();
+
+  @async
+  List<InstalledApp> getInstalledApps();
+
+  @async
+  String? getAppIconBase64(String packageName);
 }

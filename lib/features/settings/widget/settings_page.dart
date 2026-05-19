@@ -4,6 +4,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/assets/widget/assets_page.dart';
+import 'package:clashmiao/features/settings/widget/per_app_proxy_page.dart';
 import 'package:clashmiao/features/settings/logic/backup_service.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -278,6 +279,26 @@ class SettingsPage extends ConsumerWidget {
                                 .read(networkSettingsProvider.notifier)
                                 .setAllowLan(v),
                           ),
+                          if (Platform.isAndroid) ...[
+                            const _Divider(),
+                            _SettingsTile(
+                              iconColor: const Color(0xFF059669), // Emerald 600
+                              icon: Icons.apps,
+                              label: '每应用代理',
+                              trailing: Icon(
+                                FluentIcons.chevron_right_24_regular,
+                                size: 18,
+                                color: Theme.of(
+                                  context,
+                                ).aiUi.secondaryTextColor,
+                              ),
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) => const PerAppProxyPage(),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),

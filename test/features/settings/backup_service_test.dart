@@ -1,42 +1,37 @@
 import 'dart:convert';
+import 'package:clashmiao/features/settings/model/backup_bundle.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// 简化版 BackupBundle 用于测试序列化往返
-Map<String, dynamic> buildBundle({
-  required List<Map<String, dynamic>> profiles,
-  String? activeId,
-}) {
-  return {
-    'version': '1.0',
-    'profiles': profiles,
-    'activeProfileId': activeId,
-    'settings': <String, dynamic>{},
-    'createdAt': DateTime.now().millisecondsSinceEpoch,
-  };
-}
-
 void main() {
-  test('bundle serializes and deserializes correctly', () {
-    final original = buildBundle(
+  test('BackupBundle round-trips through JSON correctly', () {
+    final original = BackupBundle(
+      version: BackupBundle.currentVersion,
       profiles: [
-        {'id': 'abc', 'name': 'test', 'url': 'https://example.com', 'active': true}
+        {'id': 'abc', 'name': 'test', 'url': 'https://example.com'},
       ],
-      activeId: 'abc',
+      activeProfileId: 'abc',
+      settings: const {},
+      createdAt: 1000000,
     );
-    final json = jsonEncode(original);
-    final decoded = jsonDecode(json) as Map<String, dynamic>;
 
-    expect(decoded['version'], '1.0');
-    expect((decoded['profiles'] as List).length, 1);
-    expect(decoded['activeProfileId'], 'abc');
+    final json = jsonEncode(original.toJson());
+    final decoded = BackupBundle.fromJson(jsonDecode(json) as Map<String, dynamic>);
+
+    expect(decoded.version, BackupBundle.currentVersion);
+    expect(decoded.profiles.length, 1);
+    expect(decoded.profiles.first['id'], 'abc');
+    expect(decoded.activeProfileId, 'abc');
+    expect(decoded.createdAt, 1000000);
   });
 
-  test('rejects unknown version', () {
-    final bundle = buildBundle(profiles: [])..['version'] = '99.0';
+  test('BackupBundle.fromJson rejects unknown version', () {
     expect(
-      () {
-        if (bundle['version'] != '1.0') throw Exception('不支持的备份版本');
-      },
+      () => BackupBundle.fromJson({
+        'version': '99.0',
+        'profiles': [],
+        'settings': {},
+        'createdAt': 0,
+      }),
       throwsException,
     );
   });

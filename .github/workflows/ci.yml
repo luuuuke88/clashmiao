@@ -21,7 +21,7 @@ concurrency:
 env:
   FLUTTER_VERSION: '3.41.4'
   LIBCORE_TAG: libcore-v1.11.0
-  LIBCORE_REPO: luke501/clashmiao
+  LIBCORE_REPO: luuuuke88/clashmiao
 
 jobs:
   analyze:

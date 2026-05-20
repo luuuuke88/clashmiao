@@ -16,7 +16,7 @@
 set -euo pipefail
 
 TAG="${LIBCORE_TAG:-libcore-v1.11.0}"
-LIBCORE_REPO="${LIBCORE_REPO:-luke501/clashmiao}"
+LIBCORE_REPO="${LIBCORE_REPO:-luuuuke88/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 

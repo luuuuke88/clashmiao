@@ -329,6 +329,21 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space (remove unused SDK components before emulator)
+        run: |
+          sudo rm -rf /usr/local/lib/android/sdk/ndk
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/30.0.3
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/31.0.0
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/32.0.0
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/33.0.0
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/33.0.1
+          sudo rm -rf /usr/local/lib/android/sdk/build-tools/33.0.2
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /usr/local/share/powershell
+          sudo rm -rf /usr/local/share/chromium
+          sudo rm -rf /usr/local/lib/node_modules
+          df -h /
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -348,6 +363,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh android
       - run: flutter pub get
+      - name: Build debug APK before emulator start
+        run: flutter build apk --debug
       - name: Run integration_test on emulator
         env:
           CLASHMIAO_TEST_SUB_URL: ${{ secrets.CLASHMIAO_TEST_SUB_URL }}
@@ -364,7 +381,6 @@ jobs:
           script: |
             adb wait-for-device
             adb shell input keyevent 82
-            flutter build apk --debug
             adb install -r build/app/outputs/flutter-apk/app-debug.apk
             adb shell pm grant com.clashmiao.clashmiao android.permission.POST_NOTIFICATIONS || true
             adb shell cmd appops set com.clashmiao.clashmiao ESTABLISH_VPN_SERVICE allow || true

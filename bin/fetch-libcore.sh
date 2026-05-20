@@ -16,6 +16,7 @@
 set -euo pipefail
 
 TAG="${LIBCORE_TAG:-libcore-v1.11.0}"
+LIBCORE_REPO="${LIBCORE_REPO:-luke501/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
@@ -37,7 +38,7 @@ dl() {
     return
   fi
   log "下载 $asset → $dest"
-  gh release download "$TAG" -p "$asset" -O "$dest" --clobber
+  gh release download "$TAG" -p "$asset" -O "$dest" --clobber --repo "$LIBCORE_REPO"
 }
 
 fetch_android() {
@@ -57,7 +58,7 @@ fetch_ios() {
   mkdir -p "$(dirname "$tmp")" ios/Frameworks
   if [ ! -s "$tmp" ] || [ "${FORCE:-}" = "1" ]; then
     log "下载 Libcore.xcframework.zip"
-    gh release download "$TAG" -p Libcore.xcframework.zip -O "$tmp" --clobber
+    gh release download "$TAG" -p Libcore.xcframework.zip -O "$tmp" --clobber --repo "$LIBCORE_REPO"
   fi
   rm -rf ios/Frameworks/Libcore.xcframework
   unzip -q -o "$tmp" -d ios/Frameworks/

@@ -42,16 +42,16 @@ dl() {
 }
 
 fetch_android() {
-  dl libcore-android.aar android/app/libs/libcore.aar
+  dl libcore.aar android/app/libs/libcore.aar
 }
 fetch_macos() {
-  dl libcore-macos-arm64.dylib libcore/bin/libcore.dylib
+  dl libcore.dylib libcore/bin/libcore.dylib
 }
 fetch_windows() {
-  dl libcore-windows-amd64.dll windows/libs/libcore.dll
+  dl libcore.dll windows/libs/libcore.dll
 }
 fetch_linux() {
-  dl libcore-linux-amd64.so linux/libs/libcore.so
+  dl libcore.so linux/libs/libcore.so
 }
 fetch_ios() {
   local tmp="$REPO_ROOT/.cache/libcore-ios.zip"

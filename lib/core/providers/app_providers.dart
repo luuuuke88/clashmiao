@@ -42,11 +42,11 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
       receiveTimeout: const Duration(seconds: 30),
     ),
   );
-  // 忽略自签名证书 + 跳过系统代理直连（避免 sing-box 代理干扰）
+  // 跳过系统代理直连，避免正在运行的 sing-box 代理干扰订阅下载。
+  // TLS 证书仍使用系统默认校验；生产环境不能接受任意证书。
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
       final client = HttpClient();
-      client.badCertificateCallback = (_, __, ___) => true;
       client.findProxy = (_) => 'DIRECT';
       return client;
     },
@@ -176,6 +176,8 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   StreamSubscription<void>? _networkSub;
   bool _transitioning = false;
 
+  bool get isStarted => state.valueOrNull is BoxStarted;
+
   BoxService get _boxService => _ref.read(boxServiceProvider);
   bool get _isStub => _boxService is StubBoxService;
 
@@ -248,6 +250,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           getDefaultConfigOptions(
             executeConfigAsIs: isGlobal,
             settings: _ref.read(networkSettingsProvider),
+            advancedConfig: active.advancedConfig,
           ),
         ),
       );
@@ -316,6 +319,10 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       await Future.delayed(const Duration(milliseconds: 1500));
       state = const AsyncData(BoxStopped());
     } catch (e) {
+      // stop 失败时内核可能还在跑：UI 回 Stopped 让用户能重试，
+      // 但错误必须可见（之前静默吞掉导致"显示已断开、流量还在走"无法排查）。
+      debugPrint('disconnect 失败: $e');
+      _ref.read(connectionErrorProvider.notifier).state = e.toString();
       state = const AsyncData(BoxStopped());
     } finally {
       _transitioning = false;
@@ -353,6 +360,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           getDefaultConfigOptions(
             executeConfigAsIs: isGlobal,
             settings: _ref.read(networkSettingsProvider),
+            advancedConfig: active.advancedConfig,
           ),
         ),
       );
@@ -368,36 +376,59 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       debugPrint('重连: restart ${runtimeConfig.path}');
       await _boxService.restart(runtimeConfig.path, name: active.name);
       debugPrint('restart 完成');
+      // 不手动写 BoxStarted（跟 connect 同一原则）：restart 调用返回只代表
+      // 命令送达，native sing-box 是否真起来由 watchStatus 推送决定。之前
+      // "2s 后仍 Starting 就标 Started" 会在启动实际失败时伪装成功，
+      // 让 _autoReconnect 误判恢复而停止退避。这里等一个观察窗口即可，
+      // 真实失败由 watchAlerts 的 fatal alert 拉回 BoxStopped。
       await Future.delayed(const Duration(seconds: 2));
-      if (state.valueOrNull is BoxStarting) {
-        state = const AsyncData(BoxStarted());
-      }
     } catch (e) {
       debugPrint('重连失败: $e');
       state = const AsyncData(BoxStopped());
     }
   }
 
+  bool _autoReconnecting = false;
+
   Future<void> _autoReconnect() async {
-    const delays = [1, 2, 4, 8];
-    for (final d in delays) {
-      await Future.delayed(Duration(seconds: d));
-      if (!mounted) return;
-      if (state.valueOrNull is BoxStarted) return; // already recovered
-      try {
-        await reconnect();
-        if (state.valueOrNull is BoxStarted) return;
-      } catch (e) {
-        debugPrint('[AutoReconnect] attempt failed: $e');
+    // 网络抖动（WiFi↔蜂窝快速切换）会连发多个 network_changed 事件，
+    // 不加闸门会并发跑多个退避循环、reconnect/restart 互相竞态。
+    if (_autoReconnecting) return;
+    _autoReconnecting = true;
+    try {
+      const delays = [1, 2, 4, 8];
+      for (final d in delays) {
+        await Future.delayed(Duration(seconds: d));
+        if (!mounted) return;
+        if (state.valueOrNull is BoxStarted) return; // already recovered
+        try {
+          await reconnect();
+          if (state.valueOrNull is BoxStarted) return;
+        } catch (e) {
+          debugPrint('[AutoReconnect] attempt failed: $e');
+        }
       }
+      debugPrint('[AutoReconnect] exhausted all 4 attempts');
+    } finally {
+      _autoReconnecting = false;
     }
-    debugPrint('[AutoReconnect] exhausted all 4 attempts');
   }
 }
 
 final connectionControllerProvider =
     StateNotifierProvider<ConnectionController, AsyncValue<BoxStatus>>((ref) {
-      return ConnectionController(ref);
+      final controller = ConnectionController(ref);
+      // 网络设置（端口 / TUN / LAN / DNS）变更后，正在跑的 sing-box 仍用旧值，
+      // 必须 reconnect 才生效——之前要求用户手动断开重连，跟设置页
+      // "改完即生效"的预期不符。listen 放 provider 体内（StateNotifier 内部
+      // 拿不到 ref.listen），连接中才触发，未连接时改设置无副作用。
+      ref.listen(networkSettingsProvider, (prev, next) {
+        if (prev == null || identical(prev, next)) return;
+        if (controller.isStarted) {
+          unawaited(controller.reconnect());
+        }
+      });
+      return controller;
     });
 
 /// 最近一次 connect/reconnect 失败的错误信息（人类可读 string）。
@@ -411,12 +442,15 @@ final connectionErrorProvider = StateProvider<String?>((_) => null);
 /// 由 ConnectionController 在 state 变 Started 时设置，断开时清零。
 final connectionStartedAtProvider = StateProvider<DateTime?>((_) => null);
 
-/// sing-box 实时日志流（从 $appDocs/box.log 每 1.5s tail 一次）。
+/// sing-box 实时日志流。
 ///
-/// 桌面端 sing-box 把日志直接写到 box.log；移动端 fork 也可以走同样路径。
-/// 这里用 Stream + Timer 主动 poll 而不是 inotify，跨平台代价最小，
-/// 1-2s 延迟对 UI 显示足够。
+/// 移动端使用原生 service.logs EventChannel；桌面端保留 box.log 文件轮询。
 final boxLogStreamProvider = StreamProvider<List<String>>((ref) async* {
+  if (Platform.isAndroid || Platform.isIOS) {
+    yield* ref.watch(boxServiceProvider).watchLogs('');
+    return;
+  }
+
   final docsDir = await getApplicationDocumentsDirectory();
   final logFile = File('${docsDir.path}/box.log');
   // 第一帧立即 yield 当前内容（若有），之后每 1.5s 重读

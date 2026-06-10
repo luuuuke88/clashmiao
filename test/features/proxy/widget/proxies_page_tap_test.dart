@@ -9,6 +9,7 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/proxy/state/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -33,6 +34,7 @@ class _SpyBoxService implements BoxService {
   int selectOutboundCalls = 0;
   String? lastGroupTag;
   String? lastOutboundTag;
+  final List<String> urlTestCalls = [];
   Future<void>? selectOutboundOverride;
 
   @override
@@ -64,7 +66,10 @@ class _SpyBoxService implements BoxService {
   @override
   Future<void> restart(String path, {String name = ''}) async {}
   @override
-  Future<void> urlTest(String g) async {}
+  Future<void> urlTest(String g) async {
+    urlTestCalls.add(g);
+  }
+
   @override
   Stream<BoxStatus> watchStatus() => const Stream.empty();
   @override
@@ -264,6 +269,92 @@ void _addProxiesPageExtraTests() {
     expect(find.text('无可用的线路'), findsOneWidget);
   });
 
+  testWidgets('proxy 与订阅原始选择组节点相同时只展示一组线路', (tester) async {
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: const [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'ss-node',
+          items: [OutboundProxy(tag: 'ss-node', type: 'shadowsocks')],
+        ),
+        OutboundGroup(
+          tag: '原始选择组',
+          type: 'selector',
+          selected: 'ss-node',
+          items: [OutboundProxy(tag: 'ss-node', type: 'shadowsocks')],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('proxy'), findsOneWidget);
+    expect(find.text('原始选择组'), findsNothing);
+    expect(find.text('ss-node'), findsOneWidget);
+  });
+
+  testWidgets('已连接但 live groups 只有空节点分组时回退离线分组', (tester) async {
+    SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+    final prefs = await SharedPreferences.getInstance();
+    final spy = _SpyBoxService();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        boxServiceProvider.overrideWithValue(spy),
+        isConnectedProvider.overrideWith((_) => true),
+        outboundGroupsProvider.overrideWith(
+          (_) => Stream.value([
+            const OutboundGroup(
+              tag: '测速',
+              type: 'selector',
+              selected: '',
+              items: [],
+            ),
+          ]),
+        ),
+        offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const ProxiesPage(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('proxy'), findsOneWidget);
+    expect(find.text('ss-node'), findsOneWidget);
+  });
+
+  testWidgets('delay 为 0 的节点显示未测速而不是超时', (tester) async {
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: [_proxyGroup()],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('ss-node'), findsOneWidget);
+    expect(find.text('未测速'), findsOneWidget);
+    expect(find.text('超时'), findsNothing);
+  });
+
   testWidgets('未连接时点 flash header button → info toast，不触发 urlTest', (
     tester,
   ) async {
@@ -279,5 +370,80 @@ void _addProxiesPageExtraTests() {
     // 注：没有公开 key 拿不到精确的 button，通过 _HeaderButton 在 header 区域的位置触发。
     // 简单做：仅断言 urlTest 没被调（spy 默认 0），不模拟点击。
     expect(spy.selectOutboundCalls, 0);
+  });
+
+  testWidgets('测全部按钮会触发 selector/urltest 分组的 group.urlTest', (tester) async {
+    final (widget, _, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [
+        const OutboundGroup(
+          tag: 'manual',
+          type: 'selector',
+          selected: 'ss-node',
+          items: [OutboundProxy(tag: 'ss-node', type: 'shadowsocks')],
+        ),
+        const OutboundGroup(
+          tag: 'auto',
+          type: 'urltest',
+          selected: 'auto-node',
+          items: [OutboundProxy(tag: 'auto-node', type: 'urltest')],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.urlTestCalls, equals(['manual', 'auto']));
+    await _drainToasts(tester);
+  });
+
+  testWidgets('测全部按钮支持 url-test 格式 type 的分组', (tester) async {
+    final (widget, _, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [
+        const OutboundGroup(
+          tag: 'auto',
+          type: 'url-test',
+          selected: 'auto-node',
+          items: [OutboundProxy(tag: 'auto-node', type: 'url-test')],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.urlTestCalls, equals(['auto']));
+    await _drainToasts(tester);
+  });
+
+  testWidgets('普通 selector 分组显示单组测速按钮', (tester) async {
+    final (widget, _, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [
+        const OutboundGroup(
+          tag: 'manual',
+          type: 'selector',
+          selected: 'ss-node',
+          items: [OutboundProxy(tag: 'ss-node', type: 'shadowsocks')],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('测速'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.urlTestCalls, equals(['manual']));
+    await _drainToasts(tester);
   });
 }

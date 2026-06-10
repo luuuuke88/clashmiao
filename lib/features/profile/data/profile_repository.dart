@@ -33,6 +33,11 @@ class ProfileRepository {
 
   static const _profilesKey = 'clashmiao_profiles';
   static const _activeProfileKey = 'clashmiao_active_profile';
+  static Map<String, String>? _userAgentHeaders(String? customUserAgent) {
+    if (customUserAgent == null || customUserAgent.trim().isEmpty) return null;
+
+    return {'User-Agent': customUserAgent.trim()};
+  }
 
   /// 获取所有订阅
   List<ProfileEntity> getAll() {
@@ -88,7 +93,7 @@ class ProfileRepository {
     await configFile.parent.create(recursive: true);
     await _normalizeAndWrite(rawBody: content, output: configFile);
 
-    // 补齐 native parse 输出的"裸 outbounds"结构：
+    // 补齐 parse/raw JSON 输出中的配置结构：
     // ss:// / vless:// 单 URI 解析出来通常只有一个代理 outbound，没有 direct、
     // 没有 selector group、没有 route.final。RuntimeConfigBuilder 智能模式
     // 注入的 `outbound: 'direct'` 规则会找不到 direct outbound，整条路由失效，
@@ -131,50 +136,195 @@ class ProfileRepository {
     }
 
     final outbounds = (cfg['outbounds'] as List?)?.cast<dynamic>() ?? [];
-    final tagsSet = <String>{
-      for (final o in outbounds)
-        if (o is Map && o['tag'] is String) o['tag'] as String,
-    };
 
     var changed = false;
     final hasDirect = outbounds.any((o) => o is Map && o['type'] == 'direct');
     if (!hasDirect) {
       outbounds.add({'type': 'direct', 'tag': 'direct'});
-      tagsSet.add('direct');
       changed = true;
     }
 
-    final hasSelector = outbounds.any(
-      (o) => o is Map && o['type'] == 'selector',
-    );
-    if (!hasSelector) {
-      // proxy 候选 = 所有非 direct / 非 dns / 非 block 的 outbound tag
-      final proxyTags = outbounds
-          .where(
-            (o) =>
-                o is Map &&
-                o['tag'] is String &&
-                o['type'] != 'direct' &&
-                o['type'] != 'dns' &&
-                o['type'] != 'block',
-          )
-          .map((o) => (o as Map)['tag'] as String)
-          .toList();
-      if (proxyTags.isNotEmpty) {
+    const groupTypes = {'selector', 'urltest', 'url_test'};
+    final removedUrlTestTags = <String>{};
+    outbounds.removeWhere((o) {
+      if (o is! Map || !{'urltest', 'url_test'}.contains(o['type'])) {
+        return false;
+      }
+      final tag = o['tag'];
+      if (tag is String) removedUrlTestTags.add(tag);
+      return true;
+    });
+    if (removedUrlTestTags.isNotEmpty) {
+      changed = true;
+    }
+
+    final tagsSet = <String>{
+      for (final o in outbounds)
+        if (o is Map && o['tag'] is String) o['tag'] as String,
+    };
+    final tagTypes = <String, String>{
+      for (final o in outbounds)
+        if (o is Map && o['tag'] is String && o['type'] is String)
+          o['tag'] as String: o['type'] as String,
+    };
+    bool isLeafProxyTag(String tag) {
+      final type = tagTypes[tag];
+      return type != null &&
+          type != 'direct' &&
+          type != 'dns' &&
+          type != 'block' &&
+          !groupTypes.contains(type);
+    }
+
+    final proxyTags = outbounds
+        .where(
+          (o) =>
+              o is Map &&
+              o['tag'] is String &&
+              o['type'] != 'direct' &&
+              o['type'] != 'dns' &&
+              o['type'] != 'block' &&
+              !groupTypes.contains(o['type']),
+        )
+        .map((o) => (o as Map)['tag'] as String)
+        .toList();
+    String? preferredDefaultFor(List<String> tags) {
+      if (tags.isEmpty) return null;
+      return tags.firstWhere(
+        (tag) => !_isLikelyInformationalProxyTag(tag),
+        orElse: () => tags.first,
+      );
+    }
+
+    bool shouldReplaceDefault(Object? current, List<String> tags) {
+      if (current is! String || !tags.contains(current)) return true;
+      final preferred = preferredDefaultFor(tags);
+      return preferred != null &&
+          preferred != current &&
+          _isLikelyInformationalProxyTag(current);
+    }
+
+    Map? proxySelector;
+    for (final outbound in outbounds) {
+      if (outbound is! Map || !groupTypes.contains(outbound['type'])) {
+        continue;
+      }
+      final current =
+          (outbound['outbounds'] as List?)
+              ?.whereType<String>()
+              .where(tagsSet.contains)
+              .toList() ??
+          <String>[];
+      final currentLeafTags = current.where(isLeafProxyTag).toList();
+      if (outbound['type'] == 'selector' && outbound['tag'] == 'proxy') {
+        proxySelector = outbound;
+      }
+      if (currentLeafTags.length != current.length &&
+          outbound['type'] == 'selector') {
+        outbound['outbounds'] = currentLeafTags;
+        final currentDefault = outbound['default'];
+        if (shouldReplaceDefault(currentDefault, currentLeafTags)) {
+          outbound['default'] = preferredDefaultFor(currentLeafTags);
+        }
+        changed = true;
+      }
+      if (currentLeafTags.isEmpty && proxyTags.isNotEmpty) {
+        outbound['outbounds'] = proxyTags;
+        if (shouldReplaceDefault(outbound['default'], proxyTags)) {
+          outbound['default'] = preferredDefaultFor(proxyTags);
+        }
+        changed = true;
+      }
+    }
+
+    if (proxySelector != null && proxyTags.isNotEmpty) {
+      final current =
+          (proxySelector['outbounds'] as List?)
+              ?.whereType<String>()
+              .where(isLeafProxyTag)
+              .toList() ??
+          <String>[];
+      final currentDefault = proxySelector['default'];
+      if (!listEquals(current, proxyTags) ||
+          shouldReplaceDefault(currentDefault, proxyTags)) {
+        proxySelector['outbounds'] = proxyTags;
+        proxySelector['default'] =
+            shouldReplaceDefault(currentDefault, proxyTags)
+            ? preferredDefaultFor(proxyTags)
+            : currentDefault;
+        changed = true;
+      }
+    }
+
+    if (proxyTags.isNotEmpty) {
+      Map? existingProxy;
+      for (final outbound in outbounds) {
+        if (outbound is Map &&
+            outbound['tag'] == 'proxy' &&
+            outbound['type'] == 'selector') {
+          existingProxy = outbound;
+          break;
+        }
+      }
+      if (existingProxy != null) {
+        final current =
+            (existingProxy['outbounds'] as List?)
+                ?.whereType<String>()
+                .where(isLeafProxyTag)
+                .toList() ??
+            <String>[];
+        final currentDefault = existingProxy['default'];
+        if (!listEquals(current, proxyTags) ||
+            shouldReplaceDefault(currentDefault, proxyTags)) {
+          existingProxy['outbounds'] = proxyTags;
+          existingProxy['default'] =
+              shouldReplaceDefault(currentDefault, proxyTags)
+              ? preferredDefaultFor(proxyTags)
+              : currentDefault;
+          changed = true;
+        }
+      } else {
         outbounds.insert(0, {
           'type': 'selector',
           'tag': 'proxy',
           'outbounds': proxyTags,
-          'default': proxyTags.first,
+          'default': preferredDefaultFor(proxyTags),
         });
+        tagsSet.add('proxy');
+        tagTypes['proxy'] = 'selector';
         changed = true;
       }
+    }
+
+    String? normalizeOutboundReference(dynamic value) {
+      if (value is! String) return null;
+      final type = tagTypes[value];
+      final shouldUseProxy =
+          removedUrlTestTags.contains(value) ||
+          !tagsSet.contains(value) ||
+          type == 'urltest' ||
+          type == 'url_test' ||
+          (type == 'selector' && value != 'proxy');
+      if (!shouldUseProxy) return value;
+      if (proxyTags.isNotEmpty && tagsSet.contains('proxy')) return 'proxy';
+      if (tagsSet.contains('direct')) return 'direct';
+      return null;
     }
 
     final route = (cfg['route'] is Map<String, dynamic>)
         ? cfg['route'] as Map<String, dynamic>
         : <String, dynamic>{};
-    if (route['final'] == null) {
+    final finalTag = route['final'];
+    final finalType = finalTag is String ? tagTypes[finalTag] : null;
+    final shouldRouteViaProxy =
+        proxyTags.isNotEmpty &&
+        tagsSet.contains('proxy') &&
+        finalTag != 'proxy';
+    if (shouldRouteViaProxy ||
+        finalTag is! String ||
+        !tagsSet.contains(finalTag) ||
+        finalType == 'urltest' ||
+        finalType == 'url_test') {
       // 优先 proxy selector；没有就用第一个非 direct 的
       route['final'] = tagsSet.contains('proxy')
           ? 'proxy'
@@ -184,6 +334,30 @@ class ProfileRepository {
             )['tag'];
       cfg['route'] = route;
       changed = true;
+    }
+    final routeRules = route['rules'];
+    if (routeRules is List) {
+      for (final rule in routeRules) {
+        if (rule is! Map) continue;
+        final current = rule['outbound'];
+        final normalized = normalizeOutboundReference(current);
+        if (normalized != null && normalized != current) {
+          rule['outbound'] = normalized;
+          changed = true;
+        }
+      }
+    }
+    final routeRuleSet = route['rule_set'];
+    if (routeRuleSet is List) {
+      for (final ruleSet in routeRuleSet) {
+        if (ruleSet is! Map) continue;
+        final current = ruleSet['download_detour'];
+        final normalized = normalizeOutboundReference(current);
+        if (normalized != null && normalized != current) {
+          ruleSet['download_detour'] = normalized;
+          changed = true;
+        }
+      }
     }
 
     // dns.servers 缺失会让 RuntimeConfigBuilder 注入的 `server: "local"` 引用
@@ -210,16 +384,22 @@ class ProfileRepository {
       cfg['dns'] = dns;
       changed = true;
     }
+    for (final server in dnsServers) {
+      if (server is! Map) continue;
+      final current = server['detour'];
+      final normalized = normalizeOutboundReference(current);
+      if (normalized != null && normalized != current) {
+        server['detour'] = normalized;
+        changed = true;
+      }
+    }
 
-    final inbounds = (cfg['inbounds'] as List?)?.cast<dynamic>() ?? [];
-    if (inbounds.isEmpty) {
-      // tun + mixed 一并补。tun 配置抄上游 fork 的 default，最稳：
-      // - inet4 用 /28 不用 /30（auto_route 兼容性更好）
-      // - endpoint_independent_nat: true（关键：sing-box outbound 才能正确 NAT）
-      // - sniff: 让 TUN 解析 SNI/HTTP host，路由能按域名分流
-      //
-      // 桌面端这两条都会被 RuntimeConfigBuilder strip 掉，由 fork 自动 append。
-      inbounds.add({
+    // tun + mixed 一并使用 App 自己验证过的 schema。服务端 raw sing-box JSON
+    // 可能带 `address`、`users` 等当前 mobile core 不接受的字段。
+    //
+    // 桌面端这两条都会被 RuntimeConfigBuilder strip 掉，由 fork 自动 append。
+    final standardInbounds = <Map<String, dynamic>>[
+      {
         'type': 'tun',
         'tag': 'tun-in',
         'stack': 'mixed',
@@ -231,16 +411,18 @@ class ProfileRepository {
         'inet6_address': ['fdfe:dcba:9876::1/126'],
         'sniff': true,
         'sniff_override_destination': true,
-      });
-      inbounds.add({
+      },
+      {
         'type': 'mixed',
         'tag': 'mixed-in',
         'listen': '127.0.0.1',
         'listen_port': 2080,
         'sniff': true,
         'sniff_override_destination': true,
-      });
-      cfg['inbounds'] = inbounds;
+      },
+    ];
+    if (jsonEncode(cfg['inbounds'] ?? []) != jsonEncode(standardInbounds)) {
+      cfg['inbounds'] = standardInbounds;
       changed = true;
     }
 
@@ -255,6 +437,23 @@ class ProfileRepository {
     return stripped.length <= n ? stripped : '${stripped.substring(0, n)}...';
   }
 
+  static bool _isLikelyInformationalProxyTag(String tag) {
+    final lower = tag.toLowerCase();
+    return lower.contains('官网') ||
+        lower.contains('官方') ||
+        lower.contains('网址') ||
+        lower.contains('订阅') ||
+        lower.contains('套餐') ||
+        lower.contains('流量') ||
+        lower.contains('剩余') ||
+        lower.contains('到期') ||
+        lower.contains('过期') ||
+        lower.contains('expire') ||
+        lower.contains('traffic') ||
+        lower.contains('website') ||
+        lower.contains('official');
+  }
+
   /// 添加订阅（下载并解析）
   /// [customName] 用户自定义名称，不传则从响应头自动解析
   Future<ProfileEntity> addByUrl(String url, {String? customName}) async {
@@ -264,7 +463,7 @@ class ProfileRepository {
         responseType: ResponseType.plain,
         followRedirects: true,
         validateStatus: (status) => status != null && status < 400,
-        headers: {'User-Agent': 'ClashMiao/0.1.0 (sing-box)'},
+        headers: _userAgentHeaders(null),
       ),
     );
 
@@ -285,7 +484,13 @@ class ProfileRepository {
     // 解析（Clash YAML / base64 / sing-box JSON）后**写到** configFile（输出）。
     final configFile = File(configFilePath(profile.id));
     await configFile.parent.create(recursive: true);
-    await _normalizeAndWrite(rawBody: response.data ?? '', output: configFile);
+    final needsStructureRepair = await _normalizeAndWrite(
+      rawBody: response.data ?? '',
+      output: configFile,
+    );
+    if (needsStructureRepair) {
+      await _ensureMinimalProfileStructure(configFile);
+    }
 
     // 添加到列表
     final profiles = getAll();
@@ -313,11 +518,7 @@ class ProfileRepository {
       options: Options(
         responseType: ResponseType.plain,
         followRedirects: true,
-        headers: {
-          'User-Agent': current.customUserAgent?.isNotEmpty == true
-              ? current.customUserAgent!
-              : 'ClashMiao/0.1.0 (sing-box)',
-        },
+        headers: _userAgentHeaders(current.customUserAgent),
       ),
     );
 
@@ -332,7 +533,13 @@ class ProfileRepository {
 
     // 重新归一化（参见 addByUrl 注释）
     final configFile = File(configFilePath(profileId));
-    await _normalizeAndWrite(rawBody: response.data ?? '', output: configFile);
+    final needsStructureRepair = await _normalizeAndWrite(
+      rawBody: response.data ?? '',
+      output: configFile,
+    );
+    if (needsStructureRepair) {
+      await _ensureMinimalProfileStructure(configFile);
+    }
 
     final updated = current.copyWith(
       lastUpdate: DateTime.now(),
@@ -421,23 +628,27 @@ class ProfileRepository {
   /// 把订阅原始 body 归一化成 sing-box JSON 并写到 [output]。
   ///
   /// **优先**：如果 raw 是合法 sing-box JSON（`{` 开头，能 jsonDecode 出 outbounds），
-  /// 直接写出原文——保留 inbounds / dns / route / rule_set 等完整字段，
-  /// 让 fork 的 `enable-full-config: true` 路径能拿到完整 profile。
+  /// 先直接写出原文——保留 inbounds / dns / route / rule_set 等完整字段，
+  /// 再走结构修复，避免订阅自带的多级 selector / urltest 让 UI 和运行态退回
+  /// 不稳定分组。
   ///
   /// **否则**：调 native `parse(configPath, tempPath)`（Clash YAML / vless 链接 → sing-box JSON），
   /// 但 parse 后的输出只剩 outbounds，需要 RuntimeConfigBuilder 在 connect 时补全。
-  Future<void> _normalizeAndWrite({
+  Future<bool> _normalizeAndWrite({
     required String rawBody,
     required File output,
   }) async {
+    await output.parent.create(recursive: true);
+    final normalized = File('${output.path}.next');
     final trimmed = rawBody.trimLeft();
     if (trimmed.startsWith('{')) {
       try {
         final decoded = jsonDecode(trimmed) as Map<String, dynamic>;
-        if (decoded.containsKey('outbounds')) {
-          await output.writeAsString(rawBody);
+        final outbounds = decoded['outbounds'];
+        if (outbounds is List && outbounds.isNotEmpty) {
+          await _replaceAtomically(normalized, output, rawBody);
           debugPrint('[Profile] raw 已是 sing-box JSON，跳过 native parse');
-          return;
+          return true;
         }
       } catch (_) {
         // 不是合法 JSON 就 fallthrough 到 native parse
@@ -445,36 +656,69 @@ class ProfileRepository {
     }
 
     if (boxService is StubBoxService) {
-      await output.writeAsString(rawBody);
-      return;
+      await _replaceAtomically(normalized, output, rawBody);
+      return false;
     }
     final tempFile = File('${output.path}.tmp');
     try {
+      if (await normalized.exists()) await normalized.delete();
       await tempFile.writeAsString(rawBody);
-      final err = await boxService.validateConfig(output.path, tempFile.path);
+      final err = await boxService.validateConfig(
+        normalized.path,
+        tempFile.path,
+      );
       if (err != null && err.isNotEmpty) {
-        debugPrint('[Profile] validateConfig 失败，回退到原始内容: $err');
-        await output.writeAsString(rawBody);
-        return;
+        throw ProfileValidationException(err);
       }
-      if (!await output.exists()) {
-        debugPrint('[Profile] validateConfig 成功但未写出 output，回退');
-        await output.writeAsString(rawBody);
+      if (!await normalized.exists()) {
+        throw const ProfileValidationException(
+          'validateConfig did not write output',
+        );
       }
+      await _commitNormalized(normalized, output);
+      return true;
     } catch (e, st) {
       debugPrint('[Profile] _normalizeAndWrite 抛异常: $e\n$st');
-      await output.writeAsString(rawBody);
+      if (e is ProfileValidationException) rethrow;
+      throw ProfileValidationException(e.toString());
     } finally {
       if (await tempFile.exists()) {
         try {
           await tempFile.delete();
         } catch (_) {}
       }
+      if (await normalized.exists()) {
+        try {
+          await normalized.delete();
+        } catch (_) {}
+      }
     }
+  }
+
+  Future<void> _replaceAtomically(
+    File staging,
+    File output,
+    String content,
+  ) async {
+    await staging.writeAsString(content);
+    await _commitNormalized(staging, output);
+  }
+
+  Future<void> _commitNormalized(File staging, File output) async {
+    await staging.rename(output.path);
   }
 
   /// 配置文件路径
   String configFilePath(String profileId) {
     return p.join(configDir.path, 'profiles', '$profileId.json');
   }
+}
+
+class ProfileValidationException implements Exception {
+  const ProfileValidationException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => 'ProfileValidationException: $message';
 }

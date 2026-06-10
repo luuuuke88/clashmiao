@@ -102,9 +102,12 @@ class ProfileParser {
       }
     }
 
-    final upload = map['upload'];
-    final download = map['download'];
-    if (upload == null || download == null) return null;
+    // header 里至少要有一个已知字段才算有效 userinfo；部分机场只给
+    // total/expire 不给已用流量，缺的字段降级为 0 而不是丢弃整条
+    // （丢弃会连到期时间一起消失）。
+    if (map.isEmpty) return null;
+    final upload = map['upload'] ?? 0;
+    final download = map['download'] ?? 0;
 
     var total = map['total'] ?? 0;
     var expire = map['expire'] ?? 0;

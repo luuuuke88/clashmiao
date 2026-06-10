@@ -30,6 +30,10 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>ClashMiao uses the camera to scan proxy subscription QR codes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ClashMiao uses the photo library only when you choose files or images to import.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

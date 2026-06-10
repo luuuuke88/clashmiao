@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/onboarding/onboarding_state.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -158,12 +159,18 @@ class _ImportPage extends ConsumerWidget {
   }
 }
 
-class _ModePage extends StatelessWidget {
+class _ModePage extends ConsumerWidget {
   const _ModePage({required this.onDone});
   final VoidCallback onDone;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 索引语义跟 proxyModeProvider 一致：0 = 全局，1 = 智能。
+    Future<void> pick(int mode) async {
+      await ref.read(proxyModeProvider.notifier).updateMode(mode);
+      onDone();
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -183,7 +190,9 @@ class _ModePage extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 32),
-        FilledButton(onPressed: onDone, child: const Text('开始使用')),
+        FilledButton(onPressed: () => pick(1), child: const Text('智能模式（推荐）')),
+        const SizedBox(height: 12),
+        OutlinedButton(onPressed: () => pick(0), child: const Text('全局模式')),
       ],
     );
   }

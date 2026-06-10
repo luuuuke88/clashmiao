@@ -89,7 +89,7 @@ class _State extends ConsumerState<PerAppProxyPage> {
                                 label: Text('仅允许以下'),
                               ),
                               ButtonSegment(
-                                value: 'block',
+                                value: 'exclude',
                                 label: Text('全部，以下除外'),
                               ),
                             ],

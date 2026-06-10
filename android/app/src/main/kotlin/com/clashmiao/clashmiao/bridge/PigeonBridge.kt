@@ -1,5 +1,11 @@
 package com.clashmiao.clashmiao.bridge
 
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
+import com.clashmiao.clashmiao.Application
 import com.clashmiao.clashmiao.MainActivity
 import com.clashmiao.clashmiao.core.KernelStatus
 import com.clashmiao.clashmiao.core.Prefs
@@ -18,6 +24,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Pigeon 强类型 host API 桥 —— 跟 [MethodBridge] 并存的过渡形态。
@@ -32,6 +39,9 @@ import kotlinx.coroutines.launch
  *   - PigeonBridge: `dev.flutter.pigeon.clashmiao.BoxHostApi.<method>`（Pigeon 生成）
  */
 class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostApi {
+    companion object {
+        private const val TAG = "PigeonBridge"
+    }
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         BoxHostApi.setUp(binding.binaryMessenger, this)
@@ -103,19 +113,22 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
     }
 
     override fun restart(req: StartRequest, callback: (Result<Unit>) -> Unit) {
-        scope.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.IO) {
             Prefs.Profile.activeConfigPath = req.configPath
             Prefs.Profile.activeName = req.profileName
             val act = MainActivity.instance
-            if (act.serviceStatus.value != KernelStatus.Started) {
+            val isStarted = withContext(Dispatchers.Main) {
+                act.serviceStatus.value == KernelStatus.Started
+            }
+            if (!isStarted) {
                 callback(Result.success(Unit))
                 return@launch
             }
             if (Prefs.Engine.shouldRebuildService()) {
-                act.reconnect()
+                withContext(Dispatchers.Main) { act.reconnect() }
                 KernelHost.fireStop()
                 delay(1000L)
-                act.startService()
+                withContext(Dispatchers.Main) { act.startService() }
             } else {
                 Libbox.newStandaloneCommandClient().serviceReload()
             }
@@ -128,16 +141,66 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         callback: (Result<Unit>) -> Unit,
     ) {
         scope.launch(Dispatchers.IO) {
-            Libbox.newStandaloneCommandClient()
-                .selectOutbound(req.groupTag, req.outboundTag)
-            callback(Result.success(Unit))
+            val groupTag = req.groupTag.trim()
+            val outboundTag = req.outboundTag.trim()
+
+            if (groupTag.isBlank() || outboundTag.isBlank()) {
+                safeCallback(
+                    callback,
+                    Result.failure(
+                        IllegalArgumentException(
+                            "selectOutbound requires non-blank groupTag and outboundTag",
+                        ),
+                    ),
+                )
+                return@launch
+            }
+
+            kotlin.runCatching {
+                Libbox.newStandaloneCommandClient().selectOutbound(groupTag, outboundTag)
+            }.fold(
+                onSuccess = {
+                    safeCallback(callback, Result.success(Unit))
+                },
+                onFailure = { error ->
+                    Log.w(TAG, "selectOutbound($groupTag, $outboundTag) failed", error)
+                    safeCallback(
+                        callback,
+                        Result.failure(Exception(error.message ?: "selectOutbound failed")),
+                    )
+                },
+            )
         }
     }
 
     override fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit) {
         scope.launch(Dispatchers.IO) {
-            Libbox.newStandaloneCommandClient().urlTest(groupTag)
-            callback(Result.success(Unit))
+            val normalizedGroupTag = groupTag.trim()
+            if (normalizedGroupTag.isBlank()) {
+                safeCallback(
+                    callback,
+                    Result.failure(
+                        IllegalArgumentException("urlTest requires non-blank groupTag"),
+                    ),
+                )
+                return@launch
+            }
+
+            kotlin.runCatching {
+                Libbox.newStandaloneCommandClient().urlTest(normalizedGroupTag)
+            }.fold(
+                onSuccess = {
+                    safeCallback(callback, Result.success(Unit))
+                },
+                onFailure = { error ->
+                    Log.w(TAG, "urlTest($normalizedGroupTag) failed", error)
+                    // 使用标准 Exception 包装，避免异常对象直接穿透导致 Dart Native Host 崩溃。
+                    safeCallback(
+                        callback,
+                        Result.failure(Exception(error.message ?: "urlTest failed")),
+                    )
+                },
+            )
         }
     }
 
@@ -160,14 +223,48 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
 
     override fun getInstalledApps(callback: (Result<List<InstalledApp>>) -> Unit) {
         scope.launch(Dispatchers.IO) {
-            val pm = MainActivity.instance.packageManager
-            val apps = pm.getInstalledPackages(0).map { pkg ->
-                InstalledApp(
-                    packageName = pkg.packageName,
-                    appName = pkg.applicationInfo?.loadLabel(pm)?.toString() ?: pkg.packageName,
-                    isSystemApp = ((pkg.applicationInfo?.flags ?: 0) and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0,
+            val pm = Application.packageManager
+            val self = Application.application.packageName
+            val byPackage = LinkedHashMap<String, ApplicationInfo>()
+            fun addApp(appInfo: ApplicationInfo?) {
+                if (appInfo == null) return
+                val packageName = appInfo.packageName
+                if (packageName == self || packageName.isBlank()) return
+                byPackage[packageName] = appInfo
+            }
+
+            val applications = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getInstalledApplications(PackageManager.ApplicationInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getInstalledApplications(0)
+            }
+            applications.forEach(::addApp)
+
+            val launcherIntent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_LAUNCHER)
+            }
+            val launcherActivities = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.queryIntentActivities(
+                    launcherIntent,
+                    PackageManager.ResolveInfoFlags.of(0),
                 )
-            }.sortedBy { it.appName }
+            } else {
+                @Suppress("DEPRECATION")
+                pm.queryIntentActivities(launcherIntent, 0)
+            }
+            launcherActivities.forEach { addApp(it.activityInfo?.applicationInfo) }
+
+            val apps = byPackage.values.map { appInfo ->
+                InstalledApp(
+                    packageName = appInfo.packageName,
+                    appName = appInfo.loadLabel(pm)?.toString() ?: appInfo.packageName,
+                    isSystemApp = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                )
+            }.sortedWith(
+                compareBy<InstalledApp> { it.isSystemApp }
+                    .thenBy { it.appName.lowercase() },
+            )
             callback(Result.success(apps))
         }
     }
@@ -197,5 +294,16 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
 
     private fun <T> pending(callback: (Result<T>) -> Unit) {
         callback(Result.failure(NotImplementedError("not migrated to Pigeon yet")))
+    }
+
+    private fun <T> safeCallback(
+        callback: (Result<T>) -> Unit,
+        result: Result<T>,
+    ) {
+        try {
+            callback(result)
+        } catch (error: Exception) {
+            Log.w(TAG, "callback invocation failed", error)
+        }
     }
 }

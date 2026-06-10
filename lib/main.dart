@@ -100,7 +100,10 @@ void main() async {
   // dev-only / CI smoke：检测 ~/.clashmiao_dev_subscription_url 或
   // CLASHMIAO_TEST_SUB_URL env，自动添加订阅 + 自动连接，解放手动 UI 测试。
   // Debug build 默认走；release build 只在显式 env 有 secret 时才触发（CI smoke）。
-  final smokeEnv = Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '';
+  const smokeDefine = String.fromEnvironment('CLASHMIAO_TEST_SUB_URL');
+  final smokeEnv = smokeDefine.isNotEmpty
+      ? smokeDefine
+      : Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '';
   if (kDebugMode || smokeEnv.isNotEmpty) {
     // ignore: discarded_futures
     _devAutoBoot(container);
@@ -189,7 +192,10 @@ Future<void> _devAutoBoot(ProviderContainer container) async {
     //   2. ~/.clashmiao_dev_subscription_url 文件（unix dev 习惯）
     //   3. %USERPROFILE%\.clashmiao_dev_subscription_url（windows）
     final env = Platform.environment;
-    String url = (env['CLASHMIAO_TEST_SUB_URL'] ?? '').trim();
+    String url = const String.fromEnvironment('CLASHMIAO_TEST_SUB_URL').trim();
+    if (url.isEmpty) {
+      url = (env['CLASHMIAO_TEST_SUB_URL'] ?? '').trim();
+    }
     if (url.isEmpty) {
       final home = env['HOME'] ?? env['USERPROFILE'];
       if (home == null) return;

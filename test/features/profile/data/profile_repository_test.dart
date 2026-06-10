@@ -1,7 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
+import 'package:clashmiao/core/model/box_stats.dart';
+import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/model/directories.dart';
+import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +26,59 @@ Future<HttpServer> _serveOnce(
     await req.response.close();
   });
   return server;
+}
+
+class _ValidatingBoxService implements BoxService {
+  const _ValidatingBoxService({this.normalize});
+
+  final String Function(String raw)? normalize;
+
+  @override
+  Future<String?> validateConfig(
+    String path,
+    String tempPath, {
+    bool debug = false,
+  }) async {
+    final raw = await File(tempPath).readAsString();
+    if (raw.contains('invalid-subscription')) return 'invalid config';
+    await File(path).writeAsString(normalize?.call(raw) ?? raw);
+    return null;
+  }
+
+  @override
+  Future<void> init() async {}
+  @override
+  Future<void> setup(AppDirectories directories, {bool debug = false}) async {}
+  @override
+  Future<void> changeConfigOptions(String jsonOptions) async {}
+  @override
+  Future<void> start(String configPath, {String name = ''}) async {}
+  @override
+  Future<void> stop() async {}
+  @override
+  Future<void> restart(String configPath, {String name = ''}) async {}
+  @override
+  Future<void> selectOutbound(String groupTag, String outboundTag) async {}
+  @override
+  Future<void> urlTest(String groupTag) async {}
+  @override
+  Stream<BoxStatus> watchStatus() => const Stream.empty();
+  @override
+  Stream<BoxAlert> watchAlerts() => const Stream.empty();
+  @override
+  Stream<BoxStats> watchStats() => const Stream.empty();
+  @override
+  Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
+  @override
+  Future<String?> generateFullConfig(String path) async => null;
+  @override
+  Future<void> clearLogs() async {}
+  @override
+  Stream<List<String>> watchLogs(String path) => const Stream.empty();
+  @override
+  Stream<void> watchNetworkChanged() => const Stream.empty();
+  @override
+  Future<void> resetTunnel() async {}
 }
 
 void main() {
@@ -66,6 +125,121 @@ void main() {
       expect(out.containsKey('inbounds'), isTrue);
       expect(out.containsKey('route'), isTrue);
       expect(out['outbounds'] as List, isNotEmpty);
+    });
+
+    test('sing-box JSON 多级 selector 也会补出 flat proxy', () async {
+      final body = jsonEncode({
+        'outbounds': [
+          {
+            'type': 'selector',
+            'tag': '节点选择',
+            'outbounds': ['手动选择', '自动选择'],
+            'default': '手动选择',
+          },
+          {
+            'type': 'selector',
+            'tag': '手动选择',
+            'outbounds': ['HK-1', 'JP-1'],
+            'default': 'HK-1',
+          },
+          {
+            'type': 'urltest',
+            'tag': '自动选择',
+            'outbounds': ['HK-1', 'JP-1'],
+            'default': 'JP-1',
+          },
+          {'type': 'vless', 'tag': 'HK-1'},
+          {'type': 'vless', 'tag': 'JP-1'},
+        ],
+        'inbounds': [
+          {
+            'type': 'tun',
+            'address': ['172.19.0.1/30', '2001:0470:f9da:fdfa::1/64'],
+          },
+        ],
+        'dns': {
+          'servers': [
+            {
+              'tag': 'remote',
+              'address': 'https://1.1.1.1/dns-query',
+              'detour': '节点选择',
+            },
+          ],
+        },
+        'route': {
+          'final': '节点选择',
+          'rules': [
+            {'clash_mode': 'global', 'outbound': '节点选择'},
+            {'clash_mode': 'direct', 'outbound': 'direct'},
+          ],
+          'rule_set': [
+            {
+              'tag': 'geosite-cn',
+              'type': 'remote',
+              'format': 'binary',
+              'url': 'https://example.test/geosite-cn.srs',
+              'download_detour': '自动选择',
+            },
+          ],
+        },
+      });
+      final server = await _serveOnce(body, headers: {});
+      addTearDown(() => server.close(force: true));
+
+      final profile = await repo.addByUrl('http://localhost:${server.port}/');
+      final file = File(repo.configFilePath(profile.id));
+      final out = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
+      final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+
+      expect(proxy['outbounds'], ['HK-1', 'JP-1']);
+      expect(proxy['default'], 'HK-1');
+      expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
+      expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
+      expect(
+        (((out['route'] as Map<String, dynamic>)['rules'] as List).first
+            as Map<String, dynamic>)['outbound'],
+        'proxy',
+      );
+      expect(
+        (((out['route'] as Map<String, dynamic>)['rule_set'] as List).first
+            as Map<String, dynamic>)['download_detour'],
+        'proxy',
+      );
+      expect(
+        (((out['dns'] as Map<String, dynamic>)['servers'] as List).first
+            as Map<String, dynamic>)['detour'],
+        'proxy',
+      );
+      final inbounds = (out['inbounds'] as List).cast<Map<String, dynamic>>();
+      expect(inbounds.first.containsKey('address'), isFalse);
+      expect(inbounds.first['inet4_address'], ['172.19.0.1/28']);
+    });
+
+    test('默认订阅请求不强制透传 User-Agent', () async {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      // ignore: unawaited_futures
+      server.listen((req) async {
+        final ua = req.headers.value(HttpHeaders.userAgentHeader);
+        expect(ua == 'sing-box', isFalse);
+        req.response.write(
+          jsonEncode({
+            'outbounds': [
+              {'type': 'vless', 'tag': 'HK-1'},
+            ],
+          }),
+        );
+        await req.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      final profile = await repo.addByUrl('http://localhost:${server.port}/');
+      final file = File(repo.configFilePath(profile.id));
+      final out = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
+      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
+      final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+
+      expect(proxy['outbounds'], ['HK-1']);
     });
 
     test('非 JSON body → StubBoxService 路径直接写原文', () async {
@@ -268,6 +442,291 @@ void main() {
       expect(p1.active, isTrue);
       expect(p2.active, isFalse);
       expect(repo.getActive()?.id, p1.id);
+    });
+  });
+
+  group('ProfileRepository validation', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('repo_validate_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: const _ValidatingBoxService(),
+      );
+    });
+
+    tearDown(() async {
+      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+    });
+
+    test('update rejects invalid config and preserves previous file', () async {
+      final validBody = jsonEncode({
+        'outbounds': [
+          {'type': 'selector', 'tag': 'old', 'outbounds': <String>[]},
+        ],
+      });
+      final validServer = await _serveOnce(validBody, headers: {});
+      addTearDown(() => validServer.close(force: true));
+      final profile = await repo.addByUrl(
+        'http://localhost:${validServer.port}/',
+      );
+      final configFile = File(repo.configFilePath(profile.id));
+      final before = await configFile.readAsString();
+
+      final invalidServer = await _serveOnce(
+        'invalid-subscription',
+        headers: {},
+      );
+      addTearDown(() => invalidServer.close(force: true));
+      await repo.editProfile(
+        profile.id,
+        newUrl: 'http://localhost:${invalidServer.port}/',
+      );
+
+      await expectLater(
+        repo.update(profile.id),
+        throwsA(isA<ProfileValidationException>()),
+      );
+      expect(await configFile.readAsString(), before);
+    });
+
+    test(
+      'addByUrl repairs native parsed node lists into selectable groups',
+      () async {
+        final repoWithNativeOutput = ProfileRepository(
+          dio: Dio(),
+          configDir: tmpDir,
+          prefs: await SharedPreferences.getInstance(),
+          boxService: _ValidatingBoxService(
+            normalize: (_) => jsonEncode({
+              'outbounds': [
+                {'type': 'urltest', 'tag': '测速', 'outbounds': <String>[]},
+                {'type': 'vless', 'tag': 'HK-1'},
+                {'type': 'vless', 'tag': 'JP-1'},
+              ],
+            }),
+          ),
+        );
+        final server = await _serveOnce('native-subscription', headers: {});
+        addTearDown(() => server.close(force: true));
+
+        final profile = await repoWithNativeOutput.addByUrl(
+          'http://localhost:${server.port}/',
+        );
+        final out =
+            jsonDecode(
+                  await File(
+                    repoWithNativeOutput.configFilePath(profile.id),
+                  ).readAsString(),
+                )
+                as Map<String, dynamic>;
+        final outbounds = (out['outbounds'] as List)
+            .cast<Map<String, dynamic>>();
+        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+
+        expect(selector['outbounds'], ['HK-1', 'JP-1']);
+        expect(selector['default'], 'HK-1');
+        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
+        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
+      },
+    );
+
+    test(
+      'informational proxy tags are not selected as the default outbound',
+      () async {
+        final repoWithNativeOutput = ProfileRepository(
+          dio: Dio(),
+          configDir: tmpDir,
+          prefs: await SharedPreferences.getInstance(),
+          boxService: _ValidatingBoxService(
+            normalize: (_) => jsonEncode({
+              'outbounds': [
+                {'type': 'vless', 'tag': '🌐 官网地址：ncink.cc'},
+                {'type': 'vless', 'tag': '🇭🇰 香港01-BGP|IEPL中继'},
+                {'type': 'vless', 'tag': '🇯🇵 日本01-BGP|IEPL中继'},
+              ],
+            }),
+          ),
+        );
+        final server = await _serveOnce('native-subscription', headers: {});
+        addTearDown(() => server.close(force: true));
+
+        final profile = await repoWithNativeOutput.addByUrl(
+          'http://localhost:${server.port}/',
+        );
+        final out =
+            jsonDecode(
+                  await File(
+                    repoWithNativeOutput.configFilePath(profile.id),
+                  ).readAsString(),
+                )
+                as Map<String, dynamic>;
+        final outbounds = (out['outbounds'] as List)
+            .cast<Map<String, dynamic>>();
+        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+
+        expect(selector['outbounds'], [
+          '🌐 官网地址：ncink.cc',
+          '🇭🇰 香港01-BGP|IEPL中继',
+          '🇯🇵 日本01-BGP|IEPL中继',
+        ]);
+        expect(selector['default'], '🇭🇰 香港01-BGP|IEPL中继');
+      },
+    );
+
+    test(
+      'native auto/urltest group is not used as the default route',
+      () async {
+        final repoWithNativeOutput = ProfileRepository(
+          dio: Dio(),
+          configDir: tmpDir,
+          prefs: await SharedPreferences.getInstance(),
+          boxService: _ValidatingBoxService(
+            normalize: (_) => jsonEncode({
+              'outbounds': [
+                {
+                  'type': 'selector',
+                  'tag': 'proxy',
+                  'outbounds': ['auto', 'HK-1'],
+                  'default': 'auto',
+                },
+                {
+                  'type': 'urltest',
+                  'tag': 'auto',
+                  'outbounds': ['HK-1', 'JP-1'],
+                  'default': 'JP-1',
+                },
+                {'type': 'vless', 'tag': 'HK-1'},
+                {'type': 'vless', 'tag': 'JP-1'},
+              ],
+              'route': {'final': 'auto'},
+            }),
+          ),
+        );
+        final server = await _serveOnce('native-subscription', headers: {});
+        addTearDown(() => server.close(force: true));
+
+        final profile = await repoWithNativeOutput.addByUrl(
+          'http://localhost:${server.port}/',
+        );
+        final out =
+            jsonDecode(
+                  await File(
+                    repoWithNativeOutput.configFilePath(profile.id),
+                  ).readAsString(),
+                )
+                as Map<String, dynamic>;
+        final outbounds = (out['outbounds'] as List)
+            .cast<Map<String, dynamic>>();
+        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+
+        expect(selector['outbounds'], ['HK-1', 'JP-1']);
+        expect(selector['default'], 'HK-1');
+        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
+        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
+      },
+    );
+
+    test(
+      'native nested selectors still create a flat proxy selector',
+      () async {
+        final repoWithNativeOutput = ProfileRepository(
+          dio: Dio(),
+          configDir: tmpDir,
+          prefs: await SharedPreferences.getInstance(),
+          boxService: _ValidatingBoxService(
+            normalize: (_) => jsonEncode({
+              'outbounds': [
+                {
+                  'type': 'selector',
+                  'tag': '节点选择',
+                  'outbounds': ['手动选择', '自动选择'],
+                  'default': '手动选择',
+                },
+                {
+                  'type': 'selector',
+                  'tag': '手动选择',
+                  'outbounds': ['HK-1', 'JP-1'],
+                  'default': 'HK-1',
+                },
+                {
+                  'type': 'urltest',
+                  'tag': '自动选择',
+                  'outbounds': ['HK-1', 'JP-1'],
+                  'default': 'JP-1',
+                },
+                {'type': 'vless', 'tag': 'HK-1'},
+                {'type': 'vless', 'tag': 'JP-1'},
+              ],
+              'route': {'final': '节点选择'},
+            }),
+          ),
+        );
+        final server = await _serveOnce('native-subscription', headers: {});
+        addTearDown(() => server.close(force: true));
+
+        final profile = await repoWithNativeOutput.addByUrl(
+          'http://localhost:${server.port}/',
+        );
+        final out =
+            jsonDecode(
+                  await File(
+                    repoWithNativeOutput.configFilePath(profile.id),
+                  ).readAsString(),
+                )
+                as Map<String, dynamic>;
+        final outbounds = (out['outbounds'] as List)
+            .cast<Map<String, dynamic>>();
+        final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+        final manual = outbounds.firstWhere((o) => o['tag'] == '手动选择');
+
+        expect(proxy['outbounds'], ['HK-1', 'JP-1']);
+        expect(proxy['default'], 'HK-1');
+        expect(manual['outbounds'], ['HK-1', 'JP-1']);
+        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
+        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
+      },
+    );
+
+    test('update repairs native parsed subscriptions too', () async {
+      final repoWithNativeOutput = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: await SharedPreferences.getInstance(),
+        boxService: _ValidatingBoxService(
+          normalize: (_) => jsonEncode({
+            'outbounds': [
+              {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+              {'type': 'trojan', 'tag': 'SG-1'},
+            ],
+          }),
+        ),
+      );
+      final server = await _serveOnce('native-subscription', headers: {});
+      addTearDown(() => server.close(force: true));
+      final profile = await repoWithNativeOutput.addByUrl(
+        'http://localhost:${server.port}/',
+      );
+
+      await repoWithNativeOutput.update(profile.id);
+
+      final out =
+          jsonDecode(
+                await File(
+                  repoWithNativeOutput.configFilePath(profile.id),
+                ).readAsString(),
+              )
+              as Map<String, dynamic>;
+      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
+      final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+      expect(selector['outbounds'], ['SG-1']);
+      expect(selector['default'], 'SG-1');
     });
   });
 }

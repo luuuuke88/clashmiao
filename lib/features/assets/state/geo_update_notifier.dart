@@ -38,6 +38,15 @@ class GeoUpdateNotifier
   Future<void> update(GeoAsset asset) async {
     state = {...state, asset.type: const GeoUpdateState(isUpdating: true)};
     final service = GeoUpdateService();
+    // 下载进度从 service 的 broadcast stream 来，必须在 update() 前订上，
+    // 否则 UI 的 LinearProgressIndicator 一直停在 0%。
+    final progressSub = service.progress.listen((p) {
+      if (!mounted) return;
+      state = {
+        ...state,
+        asset.type: GeoUpdateState(isUpdating: true, progress: p),
+      };
+    });
     try {
       await service.update(asset);
       state = {
@@ -50,6 +59,7 @@ class GeoUpdateNotifier
     } catch (e) {
       state = {...state, asset.type: GeoUpdateState(error: e.toString())};
     } finally {
+      await progressSub.cancel();
       service.dispose();
     }
   }

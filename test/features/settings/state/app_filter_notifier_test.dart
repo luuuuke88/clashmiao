@@ -24,15 +24,16 @@ void main() {
       final notifier = AppFilterNotifier(prefs);
       await notifier.setEnabled(true);
       expect(notifier.state.enabled, isTrue);
-      expect(prefs.getBool('app_filter_enabled'), isTrue);
+      expect(prefs.getString('per_app_proxy_mode'), 'include');
     });
 
-    test('setMode persists and updates state', () async {
+    test('exclude mode persists native exclude value', () async {
       final prefs = await SharedPreferences.getInstance();
       final notifier = AppFilterNotifier(prefs);
-      await notifier.setMode('block');
-      expect(notifier.state.mode, 'block');
-      expect(prefs.getString('app_filter_mode'), 'block');
+      await notifier.setEnabled(true);
+      await notifier.setMode('exclude');
+      expect(notifier.state.mode, 'exclude');
+      expect(prefs.getString('per_app_proxy_mode'), 'exclude');
     });
 
     test('togglePackage adds then removes package', () async {
@@ -50,19 +51,21 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final notifier = AppFilterNotifier(prefs);
       await notifier.togglePackage('com.foo.bar');
-      expect(prefs.getStringList('app_filter_list'), contains('com.foo.bar'));
+      expect(
+        prefs.getStringList('per_app_proxy_include_list'),
+        contains('com.foo.bar'),
+      );
     });
 
     test('loads persisted state on init', () async {
       SharedPreferences.setMockInitialValues({
-        'app_filter_enabled': true,
-        'app_filter_mode': 'block',
-        'app_filter_list': ['com.example.a', 'com.example.b'],
+        'per_app_proxy_mode': 'exclude',
+        'per_app_proxy_exclude_list': ['com.example.a', 'com.example.b'],
       });
       final prefs = await SharedPreferences.getInstance();
       final notifier = AppFilterNotifier(prefs);
       expect(notifier.state.enabled, isTrue);
-      expect(notifier.state.mode, 'block');
+      expect(notifier.state.mode, 'exclude');
       expect(notifier.state.packages, hasLength(2));
     });
   });

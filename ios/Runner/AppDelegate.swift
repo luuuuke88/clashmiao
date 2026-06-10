@@ -18,6 +18,9 @@ import Libcore
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
 
+    private var generatedPluginsRegistered = false
+    private var clashMiaoHandlersRegistered = false
+
     override func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -36,7 +39,7 @@ import Libcore
         // Hand the auto-discovered plugins (Flutter standard set) over
         // to the implicit engine, then layer our native handlers on
         // top using the same registry.
-        GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
+        registerGeneratedPlugins(with: engineBridge.pluginRegistry)
         registerClashMiaoHandlers(with: engineBridge.pluginRegistry)
     }
 
@@ -60,7 +63,14 @@ import Libcore
     /// plugin to its own registrar. The plugin name string only needs
     /// to be unique within the registry – we use the type name for
     /// readability in crash reports.
+    private func registerGeneratedPlugins(with registry: FlutterPluginRegistry) {
+        guard !generatedPluginsRegistered else { return }
+        GeneratedPluginRegistrant.register(with: registry)
+        generatedPluginsRegistered = true
+    }
+
     private func registerClashMiaoHandlers(with registry: FlutterPluginRegistry) {
+        guard !clashMiaoHandlersRegistered else { return }
         ChannelMethodHandler.register(with: registry.registrar(forPlugin: "ChannelMethodHandler")!)
         TunnelStatusStream.register(with: registry.registrar(forPlugin: "TunnelStatusStream")!)
         BoxAlertsStream.register(with: registry.registrar(forPlugin: "BoxAlertsStream")!)
@@ -69,6 +79,7 @@ import Libcore
         LogLinesStream.register(with: registry.registrar(forPlugin: "LogLinesStream")!)
         let registrar = registry.registrar(forPlugin: "PigeonBridge")!
         BoxHostApiSetup.setUp(binaryMessenger: registrar.messenger(), api: PigeonBridge())
+        clashMiaoHandlersRegistered = true
     }
 
     /// Some Flutter templates ship with a UIWindowScene + root
@@ -79,6 +90,7 @@ import Libcore
         guard let controller = window?.rootViewController as? FlutterViewController else {
             return
         }
+        registerGeneratedPlugins(with: controller)
         registerClashMiaoHandlers(with: controller)
     }
 }

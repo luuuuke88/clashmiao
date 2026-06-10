@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/features/profile/model/advanced_config.dart';
 
 /// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
 ///
@@ -12,9 +13,14 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 ///
 /// [settings] 让用户从 SettingsPage 调的 port / TUN / system-proxy / LAN
 /// 等开关真正生效。`null` 时回退到平台默认值（旧行为）。
+///
+/// [advancedConfig] 当前激活订阅的 per-profile 高级配置。Fragment 在 TLS
+/// 拨号层全局生效，由内核按 `tls-tricks` 应用；Mux 不走这里（multiplex 由
+/// RuntimeConfigBuilder 注入各 outbound，避免内核与 runtime config 双写）。
 Map<String, dynamic> getDefaultConfigOptions({
   bool executeConfigAsIs = false,
   NetworkSettings? settings,
+  AdvancedConfig? advancedConfig,
 }) {
   // 移动端走 VpnService 接管流量 → TUN 必开、系统代理设置不可用（需 root）。
   // 桌面端反过来：系统代理设置 OK，TUN 默认关（需要 admin/root 才能 setup）。
@@ -77,8 +83,10 @@ Map<String, dynamic> getDefaultConfigOptions({
       'protocol': 'h2mux',
     },
     'tls-tricks': {
-      'enable-fragment': false,
-      'fragment-size': '10-100',
+      'enable-fragment': advancedConfig?.fragmentEnabled ?? false,
+      'fragment-size': (advancedConfig?.fragmentRange?.isNotEmpty == true)
+          ? advancedConfig!.fragmentRange!
+          : '10-100',
       'fragment-sleep': '50-200',
       'mixed-sni-case': false,
       'enable-padding': false,

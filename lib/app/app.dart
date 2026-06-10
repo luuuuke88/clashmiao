@@ -8,6 +8,7 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:toastification/toastification.dart';
 
 class ClashMiaoApp extends ConsumerWidget {
   const ClashMiaoApp({super.key});
@@ -22,18 +23,43 @@ class ClashMiaoApp extends ConsumerWidget {
 
     return DynamicColorBuilder(
       builder: (lightDynamic, darkDynamic) {
-        return MaterialApp.router(
-          title: '喵速',
-          debugShowCheckedModeBanner: false,
-          locale: locale.flutterLocale,
-          supportedLocales: AppLocaleUtils.supportedLocales,
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: theme.lightTheme(lightDynamic),
-          darkTheme: theme.darkTheme(darkDynamic),
-          themeMode: themeMode.flutterThemeMode,
-          routerConfig: appRouter,
+        return ToastificationWrapper(
+          config: _appToastConfig(context),
+          child: MaterialApp.router(
+            title: '喵速',
+            debugShowCheckedModeBanner: false,
+            locale: locale.flutterLocale,
+            supportedLocales: AppLocaleUtils.supportedLocales,
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            theme: theme.lightTheme(lightDynamic),
+            darkTheme: theme.darkTheme(darkDynamic),
+            themeMode: themeMode.flutterThemeMode,
+            routerConfig: appRouter,
+          ),
         );
       },
     );
   }
+}
+
+ToastificationConfig _appToastConfig(BuildContext context) {
+  final width = MediaQuery.of(context).size.width;
+  final toastWidth = width > 32 ? width - 32 : width;
+
+  return ToastificationConfig(
+    itemWidth: toastWidth,
+    marginBuilder: (context, alignment) {
+      final y = alignment.resolve(Directionality.of(context)).y;
+      if (y >= 0.5) {
+        final safeBottom = MediaQuery.of(context).padding.bottom;
+        // 把 toast 抬到底部导航条上方，避免覆盖底部 5 个 tab 按钮。
+        return EdgeInsets.only(left: 16, right: 16, bottom: safeBottom + 240);
+      }
+      if (y <= -0.5) {
+        return const EdgeInsets.only(top: 12);
+      }
+      return EdgeInsets.zero;
+    },
+    applyMediaQueryViewInsets: true,
+  );
 }

@@ -14,6 +14,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+const _urlTestType = 'urltest';
+
+String _normalizeGroupType(String type) {
+  final trimmed = type.trim().toLowerCase();
+  return trimmed.replaceAll('-', '').replaceAll('_', '');
+}
+
 class ProxiesPage extends ConsumerWidget {
   const ProxiesPage({super.key});
 
@@ -27,27 +34,27 @@ class ProxiesPage extends ConsumerWidget {
     // 已连接时优先使用实时数据，否则用离线解析
     final liveGroups = ref.watch(outboundGroupsProvider);
     final offlineGroups = ref.watch(offlineProxyGroupsProvider);
+    final offlineFallback = offlineGroups.valueOrNull ?? [];
 
     List<OutboundGroup> rawGroups;
     if (isConnected) {
       rawGroups = liveGroups.when<List<OutboundGroup>>(
-        data: (g) => g.isNotEmpty ? g : (offlineGroups.valueOrNull ?? []),
-        loading: () => offlineGroups.valueOrNull ?? [],
-        error: (_, __) => offlineGroups.valueOrNull ?? [],
+        data: (g) =>
+            g.any((group) => group.items.isNotEmpty) ? g : offlineFallback,
+        loading: () => offlineFallback,
+        error: (_, __) => offlineFallback,
       );
     } else {
-      rawGroups = offlineGroups.valueOrNull ?? [];
+      rawGroups = offlineFallback;
     }
 
-    // 过滤掉内部保留字分组并进行排序
+    // 过滤掉内部保留字分组，并把订阅原始 selector 与修复出的 proxy
+    // selector 这类等价分组折叠成一个可操作的主分组。
+    final List<OutboundGroup> visibleRawGroups = _collapseDuplicateGroups(
+      rawGroups.where(_isUserVisibleGroup).toList(),
+    );
     final List<OutboundGroup> groups = [];
-    for (final group in rawGroups) {
-      if (group.tag.toUpperCase() == 'GLOBAL' ||
-          group.tag.toUpperCase() == 'DIRECT' ||
-          group.tag.toUpperCase() == 'REJECT') {
-        continue;
-      }
-
+    for (final group in visibleRawGroups) {
       final sortedItems = List<OutboundProxy>.from(group.items);
       if (sortBy == ProxiesSort.name) {
         sortedItems.sort((a, b) => a.tag.compareTo(b.tag));
@@ -115,7 +122,7 @@ class ProxiesPage extends ConsumerWidget {
                       _HeaderButton(
                         icon: FluentIcons.flash_24_regular,
                         onTap: isConnected
-                            ? () => _testAll(context, ref, groups)
+                            ? () => _testDelayAll(context, ref, groups)
                             : () {
                                 AppToast.info(
                                   context,
@@ -142,8 +149,7 @@ class ProxiesPage extends ConsumerWidget {
                           final autoProxy =
                               group.items.firstWhereOrNull(
                                 (e) =>
-                                    e.type.toLowerCase() == 'urltest' ||
-                                    e.type.toLowerCase() == 'url_test',
+                                    _normalizeGroupType(e.type) == _urlTestType,
                               ) ??
                               group.items.firstWhereOrNull(
                                 (e) => e.tag.toLowerCase() == 'auto',
@@ -158,18 +164,8 @@ class ProxiesPage extends ConsumerWidget {
                               _GroupHeader(
                                 group: group,
                                 isConnected: isConnected,
-                                onTest: isConnected
-                                    ? () {
-                                        ref
-                                            .read(boxServiceProvider)
-                                            .urlTest(group.tag);
-                                        AppToast.info(
-                                          context,
-                                          t.proxies.testingDelayInfo(
-                                            name: group.tag,
-                                          ),
-                                        );
-                                      }
+                                onTest: isConnected && _canDelayTest(group)
+                                    ? () => _testDelay(context, ref, group)
                                     : null,
                               ),
                               if (autoProxy != null)
@@ -242,20 +238,80 @@ class ProxiesPage extends ConsumerWidget {
     }
   }
 
-  void _testAll(
+  void _testDelayAll(
     BuildContext context,
     WidgetRef ref,
     List<OutboundGroup> groups,
   ) {
-    for (final g in groups) {
-      ref.read(boxServiceProvider).urlTest(g.tag);
+    final testGroups = groups.where(_canDelayTest).toList();
+    if (testGroups.isEmpty) return;
+
+    for (final group in testGroups) {
+      _testDelay(context, ref, group);
     }
+
     final t = ref.read(translationsProvider);
     AppToast.info(
       context,
-      t.proxies.startDelayTestForGroups(count: groups.length.toString()),
+      t.proxies.startDelayTestForGroups(count: testGroups.length.toString()),
     );
   }
+
+  void _testDelay(BuildContext context, WidgetRef ref, OutboundGroup group) {
+    if (!_canDelayTest(group)) return;
+    final t = ref.read(translationsProvider);
+    ref.read(boxServiceProvider).urlTest(group.tag).catchError((error) {
+      if (!context.mounted) return;
+      AppToast.error(context, '${t.failure.unexpected}: $error');
+    });
+  }
+
+  bool _canDelayTest(OutboundGroup group) {
+    if (group.items.isEmpty) return false;
+
+    final groupType = _normalizeGroupType(group.type);
+    return groupType == _urlTestType ||
+        groupType == 'selector' ||
+        groupType == 'select';
+  }
+}
+
+bool _isUserVisibleGroup(OutboundGroup group) {
+  final tag = group.tag.toUpperCase();
+  return tag != 'GLOBAL' && tag != 'DIRECT' && tag != 'REJECT';
+}
+
+List<OutboundGroup> _collapseDuplicateGroups(List<OutboundGroup> groups) {
+  final proxy = groups.firstWhereOrNull(
+    (group) => group.tag == 'proxy' && group.items.isNotEmpty,
+  );
+  if (proxy == null) return groups;
+
+  final proxyItems = _itemTagSet(proxy);
+  if (proxyItems.isEmpty) return groups;
+
+  return groups.where((group) {
+    if (identical(group, proxy) || group.tag == proxy.tag) return true;
+    if (!_isSelectableGroup(group)) return true;
+    return !_sameItemTags(proxyItems, _itemTagSet(group));
+  }).toList();
+}
+
+bool _isSelectableGroup(OutboundGroup group) {
+  final type = _normalizeGroupType(group.type);
+  return type == 'selector' || type == 'select' || type == _urlTestType;
+}
+
+Set<String> _itemTagSet(OutboundGroup group) {
+  return group.items
+      .map((item) => item.tag)
+      .where((tag) => tag.isNotEmpty)
+      .toSet();
+}
+
+bool _sameItemTags(Set<String> left, Set<String> right) {
+  if (left.length != right.length) return false;
+  return left.containsAll(right);
 }
 
 class ProxiesSortModal extends HookConsumerWidget {
@@ -576,11 +632,10 @@ class _GroupHeader extends ConsumerWidget {
   }
 
   String _typeLabel(String type, TranslationsEn t) {
-    switch (type.toLowerCase()) {
+    switch (_normalizeGroupType(type)) {
       case 'selector':
         return t.proxies.manualSelect;
       case 'urltest':
-      case 'url_test':
         return t.proxies.autoTest;
       default:
         return type;
@@ -716,15 +771,15 @@ class _DelayBadge extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.red.withValues(alpha: 0.15),
+          color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(4),
         ),
-        child: const Text(
-          '超时',
+        child: Text(
+          '未测速',
           style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.red,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       );

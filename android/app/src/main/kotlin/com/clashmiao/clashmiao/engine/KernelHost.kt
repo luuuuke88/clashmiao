@@ -34,6 +34,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 
 /**
@@ -132,6 +134,7 @@ class KernelHost(
     private var commandServer: CommandServer? = null
     private var profileName = ""
     private var receiverRegistered = false
+    @Volatile private var reloading = false
 
     private val controlReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -216,7 +219,7 @@ class KernelHost(
             } catch (e: Exception) {
                 Log.w(TAG, "buildConfig failed", e)
                 return abortWithAlert(AlertCode.EmptyConfiguration)
-            }
+            }.withoutRuntimeUrlTestOutbounds()
 
             if (Prefs.Engine.debugMode) {
                 File(workingDir, "current-config.json").writeText(content)
@@ -258,12 +261,20 @@ class KernelHost(
     }
 
     override fun serviceReload() {
-        notice.close()
+        if (reloading) return
+        reloading = true
         statusLive.postValue(KernelStatus.Starting)
-        closeTunFd()
-        commandServer?.setService(null)
-        teardownLibboxService()
-        runBlocking { launchKernel(retryAfter = 1000L) }
+        GlobalScope.launch(Dispatchers.IO) {
+            try {
+                withContext(Dispatchers.Main) { notice.close() }
+                closeTunFd()
+                commandServer?.setService(null)
+                teardownLibboxService()
+                launchKernel(retryAfter = 1000L)
+            } finally {
+                reloading = false
+            }
+        }
     }
 
     override fun getSystemProxyStatus(): SystemProxyStatus {
@@ -342,5 +353,133 @@ class KernelHost(
         }
         Seq.destroyRef(running.refnum)
         libboxService = null
+    }
+
+    private fun String.withoutRuntimeUrlTestOutbounds(): String {
+        return try {
+            val root = JSONObject(this)
+            val outbounds = root.optJSONArray("outbounds") ?: return this
+            val removedTags = mutableSetOf<String>()
+            val kept = JSONArray()
+            for (i in 0 until outbounds.length()) {
+                val outbound = outbounds.optJSONObject(i)
+                if (outbound == null) {
+                    kept.put(outbounds.get(i))
+                    continue
+                }
+                val type = outbound.optString("type")
+                if (type == "urltest" || type == "url_test") {
+                    outbound.optString("tag").takeIf { it.isNotBlank() }?.let(removedTags::add)
+                    continue
+                }
+                kept.put(outbound)
+            }
+            if (removedTags.isEmpty()) return this
+
+            val tagTypes = mutableMapOf<String, String>()
+            for (i in 0 until kept.length()) {
+                val outbound = kept.optJSONObject(i) ?: continue
+                val tag = outbound.optString("tag")
+                val type = outbound.optString("type")
+                if (tag.isNotBlank() && type.isNotBlank()) tagTypes[tag] = type
+            }
+
+            fun isLeafProxy(tag: String): Boolean {
+                return when (tagTypes[tag]) {
+                    null, "direct", "dns", "block", "selector", "urltest", "url_test" -> false
+                    else -> true
+                }
+            }
+
+            val proxyTags = mutableListOf<String>()
+            for (i in 0 until kept.length()) {
+                val outbound = kept.optJSONObject(i) ?: continue
+                val tag = outbound.optString("tag")
+                if (tag.isNotBlank() && isLeafProxy(tag)) proxyTags.add(tag)
+            }
+
+        var hasUsableProxySelector = false
+        var hasUsableSelector = false
+        var proxySelector: JSONObject? = null
+        for (i in 0 until kept.length()) {
+            val outbound = kept.optJSONObject(i) ?: continue
+            if (outbound.optString("type") != "selector") continue
+            if (outbound.optString("tag") == "proxy") proxySelector = outbound
+
+            val current = outbound.optJSONArray("outbounds")
+            val cleanedTags = mutableListOf<String>()
+            if (current != null) {
+                for (j in 0 until current.length()) {
+                        val tag = current.optString(j)
+                        if (tag.isNotBlank() && isLeafProxy(tag)) cleanedTags.add(tag)
+                    }
+                }
+                val effectiveTags = if (cleanedTags.isNotEmpty()) cleanedTags else proxyTags
+                outbound.put("outbounds", JSONArray(effectiveTags))
+                val defaultTag = outbound.optString("default")
+                if (effectiveTags.isNotEmpty() && defaultTag !in effectiveTags) {
+                    outbound.put("default", effectiveTags.first())
+                }
+                if (effectiveTags.isNotEmpty()) {
+                    hasUsableSelector = true
+                if (outbound.optString("tag") == "proxy") hasUsableProxySelector = true
+            }
+        }
+
+        if (proxyTags.isNotEmpty() && proxySelector != null) {
+            proxySelector.put("outbounds", JSONArray(proxyTags))
+            val defaultTag = proxySelector.optString("default")
+            if (defaultTag !in proxyTags) proxySelector.put("default", proxyTags.first())
+            hasUsableSelector = true
+            hasUsableProxySelector = true
+        } else if (proxyTags.isNotEmpty()) {
+            kept.put(
+                JSONObject()
+                    .put("type", "selector")
+                    .put("tag", "proxy")
+                    .put("outbounds", JSONArray(proxyTags))
+                    .put("default", proxyTags.first()),
+            )
+            hasUsableSelector = true
+            hasUsableProxySelector = true
+            tagTypes["proxy"] = "selector"
+        }
+
+            val route = root.optJSONObject("route") ?: JSONObject().also { root.put("route", it) }
+            val finalTag = route.optString("final")
+            val finalType = tagTypes[finalTag]
+            if (finalTag.isBlank() ||
+                finalTag in removedTags ||
+                finalType == null ||
+                finalType == "urltest" ||
+                finalType == "url_test"
+            ) {
+                val fallback = when {
+                    hasUsableProxySelector -> "proxy"
+                    hasUsableSelector -> firstSelectorTag(kept)
+                    proxyTags.isNotEmpty() -> proxyTags.first()
+                    tagTypes.containsKey("direct") -> "direct"
+                    else -> finalTag
+                }
+                if (fallback.isNotBlank()) route.put("final", fallback)
+            }
+
+            root.put("outbounds", kept)
+            Log.d(TAG, "removed runtime urltest outbounds: ${removedTags.joinToString()}")
+            root.toString()
+        } catch (e: Exception) {
+            Log.w(TAG, "failed to sanitize runtime config", e)
+            this
+        }
+    }
+
+    private fun firstSelectorTag(outbounds: JSONArray): String {
+        for (i in 0 until outbounds.length()) {
+            val outbound = outbounds.optJSONObject(i) ?: continue
+            if (outbound.optString("type") == "selector") {
+                return outbound.optString("tag")
+            }
+        }
+        return ""
     }
 }

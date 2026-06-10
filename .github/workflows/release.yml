@@ -40,7 +40,7 @@ jobs:
             build/app/outputs/bundle/release/app-release.aab
 
   macos:
-    runs-on: macos-latest
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -75,8 +75,38 @@ jobs:
             build/clashmiao-macos.zip
           if-no-files-found: warn
 
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Fetch libcore (windows)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: bin/fetch-libcore.sh windows
+      - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
+      - run: flutter build windows --release
+      - name: Create installer
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+          $env:CLASHMIAO_VERSION = "${{ github.ref_name }}"
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\packaging\inno\clashmiao.iss"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            build/installer/ClashMiao-Windows-x64-Setup.exe
+            build/windows/x64/runner/Release/
+
   publish:
-    needs: [android, macos]
+    needs: [android, macos, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +118,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          ARTIFACTS=(artifacts/android/* artifacts/macos/*)
+          ARTIFACTS=(artifacts/android/* artifacts/macos/* artifacts/windows/*)
           gh release create "${GITHUB_REF_NAME}" \
             --generate-notes \
             "${ARTIFACTS[@]}"

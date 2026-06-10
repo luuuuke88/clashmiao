@@ -53,12 +53,14 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                     children: [
                       _HeaderButton(
                         icon: FluentIcons.arrow_sync_24_regular,
+                        tooltip: t.profile.actionButtons.updateAll,
                         isLoading: _isLoading,
                         onTap: _isLoading ? null : () => _updateAll(t),
                       ),
                       const SizedBox(width: 12),
                       _HeaderButton(
                         icon: FluentIcons.add_24_regular,
+                        tooltip: t.profile.add.shortBtnTxt,
                         filled: true,
                         onTap: () => _showAddDialog(context),
                       ),
@@ -154,6 +156,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       final repo = await ref.read(profileRepositoryProvider.future);
       await repo.update(id);
       ref.invalidate(profileListProvider);
+      ref.invalidate(activeProfileProvider);
+      ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
       if (mounted) {
@@ -210,6 +214,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       final repo = await ref.read(profileRepositoryProvider.future);
       await repo.updateAll();
       ref.invalidate(profileListProvider);
+      ref.invalidate(activeProfileProvider);
+      ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
       if (mounted) {
@@ -280,12 +286,14 @@ class _EmptyState extends ConsumerWidget {
 
 class _HeaderButton extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final bool filled;
   final bool isLoading;
   final VoidCallback? onTap;
 
   const _HeaderButton({
     required this.icon,
+    required this.tooltip,
     this.filled = false,
     this.isLoading = false,
     required this.onTap,
@@ -297,32 +305,41 @@ class _HeaderButton extends StatelessWidget {
     final aiUi = theme.aiUi;
     final isLight = theme.brightness == Brightness.light;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: filled ? theme.colorScheme.primary : aiUi.softBackgroundColor,
-          shape: BoxShape.circle,
-          border: filled ? null : Border.all(color: aiUi.borderColor),
-          boxShadow: filled ? aiUi.primaryShadow : null,
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        label: tooltip,
+        button: true,
+        child: GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: filled
+                  ? theme.colorScheme.primary
+                  : aiUi.softBackgroundColor,
+              shape: BoxShape.circle,
+              border: filled ? null : Border.all(color: aiUi.borderColor),
+              boxShadow: filled ? aiUi.primaryShadow : null,
+            ),
+            child: isLoading
+                ? Padding(
+                    padding: const EdgeInsets.all(10),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: filled ? Colors.white : aiUi.secondaryTextColor,
+                    ),
+                  )
+                : Icon(
+                    icon,
+                    size: 20,
+                    color: filled
+                        ? Colors.white
+                        : (isLight ? aiUi.secondaryTextColor : Colors.white70),
+                  ),
+          ),
         ),
-        child: isLoading
-            ? Padding(
-                padding: const EdgeInsets.all(10),
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: filled ? Colors.white : aiUi.secondaryTextColor,
-                ),
-              )
-            : Icon(
-                icon,
-                size: 20,
-                color: filled
-                    ? Colors.white
-                    : (isLight ? aiUi.secondaryTextColor : Colors.white70),
-              ),
       ),
     );
   }
@@ -524,11 +541,13 @@ class _ProfileCard extends ConsumerWidget {
               children: [
                 _SmallIconButton(
                   icon: FluentIcons.arrow_sync_20_regular,
+                  tooltip: '更新订阅',
                   onTap: onUpdate,
                 ),
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.share_20_regular,
+                  tooltip: t.profile.share.shareLink,
                   onTap: () async {
                     await Clipboard.setData(ClipboardData(text: profile.url));
                     if (context.mounted) {
@@ -542,21 +561,25 @@ class _ProfileCard extends ConsumerWidget {
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.edit_20_regular,
+                  tooltip: '编辑订阅',
                   onTap: onEdit,
                 ),
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.info_20_regular,
+                  tooltip: '订阅详情',
                   onTap: onDetails,
                 ),
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.settings_20_regular,
+                  tooltip: t.profile.actionButtons.editConfig,
                   onTap: onAdvancedConfig,
                 ),
                 const SizedBox(width: 8),
                 _SmallIconButton(
                   icon: FluentIcons.delete_20_regular,
+                  tooltip: t.profile.delete.buttonTxt,
                   color: Colors.redAccent.withValues(alpha: 0.8),
                   onTap: onDelete,
                 ),
@@ -582,26 +605,39 @@ class _ProfileCard extends ConsumerWidget {
 }
 
 class _SmallIconButton extends StatelessWidget {
-  const _SmallIconButton({required this.icon, required this.onTap, this.color});
+  const _SmallIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+    this.color,
+  });
 
   final IconData icon;
+  final String tooltip;
   final VoidCallback onTap;
   final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).aiUi.softBackgroundColor,
-      borderRadius: BorderRadius.circular(10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            size: 18,
-            color: color ?? Theme.of(context).aiUi.secondaryTextColor,
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        label: tooltip,
+        button: true,
+        child: Material(
+          color: Theme.of(context).aiUi.softBackgroundColor,
+          borderRadius: BorderRadius.circular(10),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              child: Icon(
+                icon,
+                size: 18,
+                color: color ?? Theme.of(context).aiUi.secondaryTextColor,
+              ),
+            ),
           ),
         ),
       ),

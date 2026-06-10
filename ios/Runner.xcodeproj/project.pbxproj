@@ -18,6 +18,8 @@
 		3B571B90507B733F7204CAB9 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C6ACD6E5FD15B310BE1D3FAD /* Pods_Runner.framework */; };
 		3B9EE95B3D40AFC70BB3AF60 /* TunnelStatusStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A35DC89447BF279AC8E03B0 /* TunnelStatusStream.swift */; };
 		3CD1417C8C537235ACB0F289 /* ProfilePathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3967CFEF70F984513C1DC678 /* ProfilePathResolver.swift */; };
+		4B7C99A34F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4B7C99A14F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */; };
+		4B7C99A44F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 4B7C99A24F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */; };
 		4C93AA9EBB65AE35514D8FB3 /* TunnelLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD4E365C2B5899F60D1186D9 /* TunnelLogger.swift */; };
 		510BC68166EC4F40F647F7F1 /* LogLinesStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A489F6935CBD46E3AD897A2 /* LogLinesStream.swift */; };
 		5970FCFD9FBA719BE3107B1E /* ProfilePathResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3967CFEF70F984513C1DC678 /* ProfilePathResolver.swift */; };
@@ -109,6 +111,8 @@
 		3E4F50BB4517F455AF7C45ED /* Pods-SingBoxPacketTunnel.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-SingBoxPacketTunnel.release.xcconfig"; path = "Target Support Files/Pods-SingBoxPacketTunnel/Pods-SingBoxPacketTunnel.release.xcconfig"; sourceTree = "<group>"; };
 		4080CC7D71A0BF216D35BC84 /* SingBoxPacketTunnel.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SingBoxPacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4B7189AE86C875C322E43803 /* BoxAlertsStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoxAlertsStream.swift; sourceTree = "<group>"; };
+		4B7C99A14F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4B7C99A24F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		5E249E5DF71BB97230373534 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
 		61565F0683492536320241F5 /* KernelEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelEngine.swift; sourceTree = "<group>"; };
 		62AF794B8AA9BF53FAFF248C /* ChannelMethodHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChannelMethodHandler.swift; sourceTree = "<group>"; };
@@ -197,14 +201,15 @@
 		};
 		4D626A3921CD01D176D42572 /* SingBoxPacketTunnel */ = {
 			isa = PBXGroup;
-			children = (
-				234CCAD97882DE94F0BB9F61 /* ClashMiaoTunnelProvider.swift */,
-				DD4E365C2B5899F60D1186D9 /* TunnelLogger.swift */,
-				D10A0897BD11BB066A8D3D6F /* TrafficStats.swift */,
-				9DC9D10E04D8DA31F2EAEF08 /* Info.plist */,
-				E545B94C1E1C511ABF5E7F9A /* SingBoxPacketTunnel.entitlements */,
-				B78EE3DE26AF7B42A3461250 /* Kernel */,
-			);
+				children = (
+					234CCAD97882DE94F0BB9F61 /* ClashMiaoTunnelProvider.swift */,
+					DD4E365C2B5899F60D1186D9 /* TunnelLogger.swift */,
+					D10A0897BD11BB066A8D3D6F /* TrafficStats.swift */,
+					9DC9D10E04D8DA31F2EAEF08 /* Info.plist */,
+					E545B94C1E1C511ABF5E7F9A /* SingBoxPacketTunnel.entitlements */,
+					4B7C99A24F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */,
+					B78EE3DE26AF7B42A3461250 /* Kernel */,
+				);
 			path = SingBoxPacketTunnel;
 			sourceTree = "<group>";
 		};
@@ -273,10 +278,11 @@
 			children = (
 				97C146FA1CF9000F007C117D /* Main.storyboard */,
 				97C146FD1CF9000F007C117D /* Assets.xcassets */,
-				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
-				97C147021CF9000F007C117D /* Info.plist */,
-				888C8ABFA11AA387A36A0878 /* Runner.entitlements */,
-				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
+					97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
+					97C147021CF9000F007C117D /* Info.plist */,
+					888C8ABFA11AA387A36A0878 /* Runner.entitlements */,
+					4B7C99A14F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy */,
+					1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
@@ -392,6 +398,7 @@
 			buildPhases = (
 				94FE4ED0070A780743936985 /* [CP] Check Pods Manifest.lock */,
 				9740EEB61CF901F6004384FC /* Run Script */,
+				D7F7C3A318E24F0E9CBA0001 /* Scrub Dev-Only Plugins */,
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
 				97C146EC1CF9000F007C117D /* Resources */,
@@ -399,6 +406,7 @@
 				027FE0E1A4BFA866303B17B7 /* Embed App Extensions */,
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				A7D95E0A93DE9B7711AEF2EC /* [CP] Embed Pods Frameworks */,
+				D7F7C3A318E24F0E9CBA0002 /* Remove Dev-Only Frameworks */,
 				EA8885D03FD435D7CDFF78DB /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
@@ -465,19 +473,21 @@
 		97C146EC1CF9000F007C117D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-				97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
-				3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
-				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
-				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
-			);
+				files = (
+					97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */,
+					3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */,
+					97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
+					97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
+					4B7C99A34F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy in Resources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		D09DDB88E4823101B487E45F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (
-			);
+				files = (
+					4B7C99A44F1E4F2AB9C8D771 /* PrivacyInfo.xcprivacy in Resources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -552,6 +562,36 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		D7F7C3A318E24F0E9CBA0001 /* Scrub Dev-Only Plugins */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Scrub Dev-Only Plugins";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${PROJECT_DIR}/scripts/scrub_dev_plugins.sh\"\n";
+		};
+		D7F7C3A318E24F0E9CBA0002 /* Remove Dev-Only Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Remove Dev-Only Frameworks";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/bin/sh \"${PROJECT_DIR}/scripts/remove_dev_frameworks.sh\"\n";
 		};
 		D44DA32B2589E209125FEBA6 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

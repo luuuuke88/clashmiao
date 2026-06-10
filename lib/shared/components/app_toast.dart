@@ -9,6 +9,12 @@ enum ToastType { info, success, error, warning }
 /// 全局 Toast 通知
 class AppToast {
   AppToast._();
+  static DateTime? _lastShowAt;
+  static String? _lastMessage;
+  static ToastificationItem? _lastItem;
+
+  /// 防止同一条文本在短时间内重复冒泡（避免 toast 堆叠把点击吃掉）。
+  static const _dedupeWindow = Duration(milliseconds: 800);
 
   static ToastificationItem show({
     required BuildContext context,
@@ -16,11 +22,31 @@ class AppToast {
     ToastType type = ToastType.info,
     Duration duration = const Duration(seconds: 3),
   }) {
+    final now = DateTime.now();
+    final normalized = message.trim();
+    if (_lastMessage == normalized &&
+        _lastShowAt != null &&
+        now.difference(_lastShowAt!) <= _dedupeWindow) {
+      return _lastItem ??
+          toastification.showCustom(
+            context: context,
+            autoCloseDuration: const Duration(seconds: 0),
+            alignment: Alignment.bottomCenter,
+            builder: (context, holder) => const SizedBox.shrink(),
+          );
+    }
+
+    _lastMessage = normalized;
+    _lastShowAt = now;
+
+    // 同时弹出的 toast 会增加 Overlay 拦截区域，直接“顶替”而不是叠加。
+    toastification.dismissAll(delayForAnimation: false);
+
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
     final (icon, color) = _iconAndColor(theme, type);
 
-    return toastification.showCustom(
+    return _lastItem = toastification.showCustom(
       context: context,
       autoCloseDuration: duration,
       alignment: Alignment.bottomCenter,

@@ -10,10 +10,18 @@ pluginManagement {
 
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
+    val isGitHubActions = System.getenv("GITHUB_ACTIONS") == "true"
+
     repositories {
         google()
         mavenCentral()
         gradlePluginPortal()
+        if (!isGitHubActions) {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+            maven("https://maven.aliyun.com/repository/central")
+            maven("https://maven.aliyun.com/repository/gradle-plugin")
+        }
     }
 }
 

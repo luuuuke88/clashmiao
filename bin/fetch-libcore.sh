@@ -46,6 +46,19 @@ fetch_android() {
 }
 fetch_macos() {
   dl libcore.dylib libcore/bin/libcore.dylib
+  if command -v lipo >/dev/null; then
+    local archs
+    archs="$(lipo -archs libcore/bin/libcore.dylib 2>/dev/null || true)"
+    local host_arch
+    host_arch="$(uname -m)"
+    case " $archs " in
+      *" $host_arch "*) ;;
+      *)
+        warn "macOS libcore.dylib must include $host_arch; got: ${archs:-unknown}"
+        exit 1
+        ;;
+    esac
+  fi
 }
 fetch_windows() {
   dl libcore.dll windows/libs/libcore.dll
@@ -53,6 +66,69 @@ fetch_windows() {
 fetch_linux() {
   dl libcore.so linux/libs/libcore.so
 }
+
+write_ios_framework_info_plist() {
+  local plist="$1"
+
+  cat >"$plist" <<'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleExecutable</key>
+	<string>Libcore</string>
+	<key>CFBundleIdentifier</key>
+	<string>ios.libcore.hiddify</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Libcore</string>
+	<key>CFBundlePackageType</key>
+	<string>FMWK</string>
+	<key>CFBundleShortVersionString</key>
+	<string>2.0.4</string>
+	<key>CFBundleVersion</key>
+	<string>2.0.4</string>
+	<key>MinimumOSVersion</key>
+	<string>15.0</string>
+</dict>
+</plist>
+PLIST
+}
+
+normalize_ios_framework_slice() {
+  local framework="$1"
+  [ -d "$framework" ] || return
+
+  if [ ! -f "$framework/Info.plist" ]; then
+    if [ -f "$framework/Resources/Info.plist" ]; then
+      cp -f "$framework/Resources/Info.plist" "$framework/Info.plist"
+    elif [ -f "$framework/Versions/A/Resources/Info.plist" ]; then
+      cp -f "$framework/Versions/A/Resources/Info.plist" "$framework/Info.plist"
+    else
+      warn "$framework 缺少 Info.plist"
+      exit 1
+    fi
+  fi
+
+  # iOS frameworks must be shallow bundles. Some libcore archives are built with
+  # macOS-style Versions/Resources directories, which Xcode rejects for iOS apps.
+  rm -rf "$framework/Versions" "$framework/Resources"
+  write_ios_framework_info_plist "$framework/Info.plist"
+}
+
+normalize_ios_xcframework() {
+  local xcframework="ios/Frameworks/Libcore.xcframework"
+  local framework
+
+  for framework in "$xcframework"/*/Libcore.framework; do
+    [ -d "$framework" ] || continue
+    normalize_ios_framework_slice "$framework"
+  done
+}
+
 fetch_ios() {
   local tmp="$REPO_ROOT/.cache/libcore-ios.zip"
   mkdir -p "$(dirname "$tmp")" ios/Frameworks
@@ -62,6 +138,7 @@ fetch_ios() {
   fi
   rm -rf ios/Frameworks/Libcore.xcframework
   unzip -q -o "$tmp" -d ios/Frameworks/
+  normalize_ios_xcframework
   log "解压完成：ios/Frameworks/Libcore.xcframework/"
 }
 

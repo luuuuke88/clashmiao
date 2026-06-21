@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUTTER_VERSION: '3.41.4'
+  FLUTTER_VERSION: '3.44.2'
   LIBCORE_TAG: libcore-v1.11.0
   LIBCORE_REPO: luuuuke88/clashmiao
 
@@ -60,6 +60,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -96,6 +99,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -193,23 +199,37 @@ jobs:
       - name: Package installer exe
         shell: pwsh
         run: |
+          $exe = Get-ChildItem -Path build/windows -Recurse -Filter clashmiao.exe |
+            Sort-Object FullName |
+            Select-Object -First 1
+          if (-not $exe) {
+            Get-ChildItem -Path build/windows -Recurse | Select-Object FullName
+            throw "clashmiao.exe was not produced"
+          }
+          $env:CLASHMIAO_BUNDLE_DIR = $exe.Directory.FullName
           choco install innosetup --no-progress -y
           $env:CLASHMIAO_VERSION = "0.1.0"
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\packaging\inno\clashmiao.iss"
       - name: Verify libcore.dll bundled next to exe
         shell: pwsh
         run: |
-          $bundled = "build/windows/x64/runner/Release/libcore.dll"
+          $exe = Get-ChildItem -Path build/windows -Recurse -Filter clashmiao.exe |
+            Sort-Object FullName |
+            Select-Object -First 1
+          if (-not $exe) { throw "clashmiao.exe was not produced" }
+          $bundled = Join-Path $exe.Directory.FullName "libcore.dll"
           if (!(Test-Path $bundled)) {
             Get-ChildItem -Recurse build/windows -Filter libcore.dll | ForEach-Object { Write-Host $_.FullName }
             Write-Error "libcore.dll not bundled into release output"
             exit 1
           }
           Write-Host "Verified: $bundled"
+          New-Item -ItemType Directory -Force -Path build/release/windows-bundle | Out-Null
+          Copy-Item -Path (Join-Path $exe.Directory.FullName '*') -Destination build/release/windows-bundle -Recurse -Force
       - uses: actions/upload-artifact@v4
         with:
           name: clashmiao-windows-release
-          path: build/windows/x64/runner/Release/
+          path: build/release/windows-bundle/
       - uses: actions/upload-artifact@v4
         with:
           name: clashmiao-windows-installer
@@ -383,6 +403,9 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}

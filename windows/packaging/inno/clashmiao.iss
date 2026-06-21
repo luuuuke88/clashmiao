@@ -6,6 +6,10 @@
   #define MyAppVersion "0.1.0"
 #endif
 #define RepoRoot AddBackslash(SourcePath) + "..\..\.."
+#define BundleDir GetEnv("CLASHMIAO_BUNDLE_DIR")
+#if BundleDir == ""
+  #define BundleDir RepoRoot + "\build\windows\x64\runner\Release"
+#endif
 
 [Setup]
 AppId={{6D63B72C-3FC9-496B-8C72-55A1B9C3DD10}
@@ -33,7 +37,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#RepoRoot}\build\windows\x64\runner\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#BundleDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"

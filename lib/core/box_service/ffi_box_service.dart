@@ -16,6 +16,8 @@ import 'package:ffi/ffi.dart';
 import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
 
+typedef GoUint8 = UnsignedChar;
+
 /// FFI 函数签名定义
 typedef SetupNative =
     Pointer<Char> Function(
@@ -23,7 +25,7 @@ typedef SetupNative =
       Pointer<Char>,
       Pointer<Char>,
       Int64,
-      Int32,
+      GoUint8,
     );
 typedef SetupDart =
     Pointer<Char> Function(
@@ -34,17 +36,17 @@ typedef SetupDart =
       int,
     );
 
-typedef StartNative = Pointer<Char> Function(Pointer<Char>, Int32);
+typedef StartNative = Pointer<Char> Function(Pointer<Char>, GoUint8);
 typedef StartDart = Pointer<Char> Function(Pointer<Char>, int);
 
 typedef StopNative = Pointer<Char> Function();
 typedef StopDart = Pointer<Char> Function();
 
-typedef RestartNative = Pointer<Char> Function(Pointer<Char>, Int32);
+typedef RestartNative = Pointer<Char> Function(Pointer<Char>, GoUint8);
 typedef RestartDart = Pointer<Char> Function(Pointer<Char>, int);
 
 typedef ParseNative =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, Int32);
+    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, GoUint8);
 typedef ParseDart = Pointer<Char> Function(Pointer<Char>, Pointer<Char>, int);
 
 typedef ChangeConfigOptionsNative = Pointer<Char> Function(Pointer<Char>);

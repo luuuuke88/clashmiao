@@ -55,15 +55,9 @@ class TrayController extends TrayListener {
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-  /// 不同状态用不同图标。assets/images/tray_*.png 由 asset bundle 提供。
-  /// 没找到对应文件就回退到通用 icon。
+  /// Use the bundled tray icon on desktop.
   String _iconPath(BoxStatus status) {
-    const base = 'assets/images/';
-    return switch (status) {
-      BoxStarted _ => '${base}tray_on.png',
-      BoxStarting _ || BoxStopping _ => '${base}tray_pending.png',
-      _ => '${base}tray_off.png',
-    };
+    return 'assets/images/tray_icon.png';
   }
 
   Future<void> _rebuildMenu(BoxStatus status) async {

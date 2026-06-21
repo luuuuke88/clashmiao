@@ -20,6 +20,7 @@ class RuntimeConfigBuilder {
   static const _ruleSetGeoip = 'geoip-cn';
   static const _ruleSetGeosite = 'geosite-cn';
   static const _runtimeFileName = 'runtime-config.json';
+  static const _directDomainSuffixes = <String>['cn', '中国', '公司', '网络'];
 
   /// 读 [baseProfile]，根据 [isSmart] 决定要不要注入 cn 分流，
   /// 写到 [workingDir]/runtime-config.json 并返回该 File。
@@ -227,6 +228,10 @@ class RuntimeConfigBuilder {
     final routeRules =
         (route['rules'] ??= <Map<String, dynamic>>[]) as List<dynamic>;
     routeRules.insert(0, <String, dynamic>{
+      'domain_suffix': _directDomainSuffixes,
+      'outbound': 'direct',
+    });
+    routeRules.insert(0, <String, dynamic>{
       'rule_set': <String>[_ruleSetGeoip, _ruleSetGeosite],
       'outbound': 'direct',
     });
@@ -235,6 +240,10 @@ class RuntimeConfigBuilder {
     final dns = (cfg['dns'] ??= <String, dynamic>{}) as Map<String, dynamic>;
     final dnsRules =
         (dns['rules'] ??= <Map<String, dynamic>>[]) as List<dynamic>;
+    dnsRules.insert(0, <String, dynamic>{
+      'domain_suffix': _directDomainSuffixes,
+      'server': 'local',
+    });
     dnsRules.insert(0, <String, dynamic>{
       'rule_set': <String>[_ruleSetGeosite],
       'server': 'local',

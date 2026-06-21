@@ -20,6 +20,54 @@ env:
   RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
 
 jobs:
+  report-start:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare release-status branch
+        run: |
+          git fetch origin release-status || true
+          if git show-ref --verify --quiet refs/remotes/origin/release-status; then
+            git checkout -B release-status origin/release-status
+          else
+            git checkout --orphan release-status
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+      - name: Write release start status
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          report = {
+              "status": "started",
+              "tag": os.environ["RELEASE_TAG"],
+              "sha": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "updated_at": datetime.now(timezone.utc).isoformat(),
+              "jobs": {},
+              "artifacts": [],
+          }
+
+          out_dir = Path(".release-status")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          (out_dir / f"{os.environ['RELEASE_TAG']}.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Push release start status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".release-status/${RELEASE_TAG}.json"
+          git commit -m "Record release start ${RELEASE_TAG}" || true
+          git push origin release-status
+
   quality:
     runs-on: ubuntu-latest
     steps:

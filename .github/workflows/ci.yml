@@ -62,6 +62,7 @@ jobs:
           java-version: '17'
       - name: Install Android SDK packages
         run: |
+          set +o pipefail
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
@@ -101,6 +102,7 @@ jobs:
           java-version: '17'
       - name: Install Android SDK packages
         run: |
+          set +o pipefail
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
@@ -405,6 +407,7 @@ jobs:
           java-version: '17'
       - name: Install Android SDK packages
         run: |
+          set +o pipefail
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:

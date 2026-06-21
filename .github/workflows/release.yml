@@ -49,6 +49,7 @@ jobs:
           java-version: '17'
       - name: Install Android SDK packages
         run: |
+          set +o pipefail
           yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
@@ -215,3 +216,75 @@ jobs:
             --generate-notes \
             "${ARTIFACTS[@]}" || \
           gh release upload "$RELEASE_TAG" "${ARTIFACTS[@]}" --clobber
+
+  report:
+    needs: [quality, android, macos, windows, publish]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare release-status branch
+        run: |
+          git fetch origin release-status || true
+          if git show-ref --verify --quiet refs/remotes/origin/release-status; then
+            git checkout -B release-status origin/release-status
+          else
+            git checkout --orphan release-status
+            git rm -rf . >/dev/null 2>&1 || true
+          fi
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          path: artifacts
+      - name: Write release status
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          ANDROID_RESULT: ${{ needs.android.result }}
+          MACOS_RESULT: ${{ needs.macos.result }}
+          WINDOWS_RESULT: ${{ needs.windows.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          artifacts = []
+          root = Path("artifacts")
+          if root.exists():
+              for path in sorted(p for p in root.rglob("*") if p.is_file()):
+                  artifacts.append({
+                      "path": path.as_posix(),
+                      "size": path.stat().st_size,
+                  })
+
+          report = {
+              "tag": os.environ["RELEASE_TAG"],
+              "sha": os.environ["GITHUB_SHA"],
+              "run_id": os.environ["GITHUB_RUN_ID"],
+              "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "run_url": f"{os.environ['GITHUB_SERVER_URL']}/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",
+              "jobs": {
+                  "quality": os.environ["QUALITY_RESULT"],
+                  "android": os.environ["ANDROID_RESULT"],
+                  "macos": os.environ["MACOS_RESULT"],
+                  "windows": os.environ["WINDOWS_RESULT"],
+                  "publish": os.environ["PUBLISH_RESULT"],
+              },
+              "artifacts": artifacts,
+          }
+
+          out_dir = Path(".release-status")
+          out_dir.mkdir(parents=True, exist_ok=True)
+          (out_dir / f"{os.environ['RELEASE_TAG']}.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+      - name: Push release status
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ".release-status/${RELEASE_TAG}.json"
+          git commit -m "Record release status ${RELEASE_TAG}" || true
+          git push origin release-status

@@ -37,6 +37,22 @@ Map<String, dynamic> getDefaultConfigOptions({
   final isSmoke =
       (Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '').isNotEmpty;
   final setSystemProxyFinal = (isMobile || isSmoke) ? false : s.setSystemProxy;
+  final isSmart = !executeConfigAsIs;
+  final smartRules = isSmart
+      ? <Map<String, dynamic>>[
+          {
+            // Keep the rule in libcore's config-options path, but avoid
+            // geosite/geoip here: this fork resolves those via legacy
+            // geoip.db/geosite.db files, while the app ships .srs rule-sets.
+            'domains': 'domain:.cn',
+            'ip': '',
+            'port': '',
+            'protocol': '',
+            'network': '',
+            'outbound': 'bypass',
+          },
+        ]
+      : <Map<String, dynamic>>[];
 
   return {
     // region 永远 'other'：sing-box 1.8 fork（上游 libcore fork）在 region != 'other'
@@ -44,8 +60,9 @@ Map<String, dynamic> getDefaultConfigOptions({
     // 让 sing-box 启动时 routing 不完整。我们改用 Dart 端注入 local rule-set
     // （RuntimeConfigBuilder）。
     'region': 'other',
-    // 不让 fork 自己注入 bypass rules，路由完全交给 RuntimeConfigBuilder。
-    'execute-config-as-is': true,
+    // Keep this aligned with the UI/upstream meaning:
+    // global = raw/as-is, smart = let libcore generate bypass rules.
+    'execute-config-as-is': executeConfigAsIs,
     // 关键：让 fork 用 profile 自带的 inbounds/dns/route，而不是自己 rebuild
     // 一份强制走 udp://1.1.1.1 / 强制 append remote rule-set 的 DNS 配置。
     'enable-full-config': true,
@@ -55,7 +72,7 @@ Map<String, dynamic> getDefaultConfigOptions({
     'ipv6-mode': 'ipv4_only',
     'remote-dns-address': s.remoteDnsAddress,
     'remote-dns-domain-strategy': '',
-    'direct-dns-address': '1.1.1.1',
+    'direct-dns-address': isSmart ? '223.5.5.5' : '1.1.1.1',
     'direct-dns-domain-strategy': '',
     'mixed-port': s.mixedPort,
     'tproxy-port': 2081,
@@ -73,9 +90,9 @@ Map<String, dynamic> getDefaultConfigOptions({
     'bypass-lan': false,
     'allow-connection-from-lan': s.allowConnectionFromLan,
     'enable-fake-dns': false,
-    'enable-dns-routing': s.enableDnsRouting,
+    'enable-dns-routing': isSmart || s.enableDnsRouting,
     'independent-dns-cache': true,
-    'rules': <Map<String, dynamic>>[],
+    'rules': smartRules,
     'mux': {
       'enable': false,
       'padding': false,

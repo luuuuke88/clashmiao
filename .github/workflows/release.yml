@@ -3,23 +3,53 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to package, for example v0.1.0'
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: '3.41.4'
+  FLUTTER_VERSION: '3.44.2'
   LIBCORE_TAG: libcore-v1.11.0
+  LIBCORE_REPO: luuuuke88/clashmiao
+  RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
 
 jobs:
-  android:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get
+      - run: dart format --set-exit-if-changed lib/ test/ integration_test/
+      - run: flutter analyze --fatal-warnings
+      - run: flutter test test/ --reporter expanded
+
+  android:
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -30,19 +60,47 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh android
       - run: flutter pub get
+      - name: Configure Android signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set; Android release artifacts will use the debug signing config."
+            exit 0
+          fi
+          test -n "$ANDROID_KEY_ALIAS"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_STORE_PASSWORD"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storePassword=$ANDROID_STORE_PASSWORD
+          keyPassword=$ANDROID_KEY_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          storeFile=upload-keystore.jks
+          EOF
       - run: flutter build apk --release
       - run: flutter build appbundle --release
+      - name: Verify Android artifacts
+        run: |
+          test -s build/app/outputs/flutter-apk/app-release.apk
+          test -s build/app/outputs/bundle/release/app-release.aab
       - uses: actions/upload-artifact@v4
         with:
-          name: android
+          name: release-android
           path: |
             build/app/outputs/flutter-apk/app-release.apk
             build/app/outputs/bundle/release/app-release.aab
 
   macos:
     runs-on: macos-15
+    needs: [quality]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -53,32 +111,43 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh macos
       - run: flutter pub get
-      - run: flutter build macos --release
-      - name: Create dmg
+      - run: flutter config --enable-macos-desktop
+      - run: flutter build macos --release --no-tree-shake-icons
+      - name: Verify macOS bundle
+        run: |
+          test -d build/macos/Build/Products/Release/clashmiao.app
+          test -s build/macos/Build/Products/Release/clashmiao.app/Contents/Frameworks/libcore.dylib
+      - name: Create macOS packages
         run: |
           brew install create-dmg
+          mkdir -p build/release
+          rm -f build/release/ClashMiao-macOS-arm64.dmg build/release/ClashMiao-macOS-arm64.zip
           create-dmg \
             --volname "ClashMiao" \
             --window-size 600 400 \
             --icon-size 100 \
             --app-drop-link 400 200 \
-            "build/clashmiao-macos.dmg" \
+            "build/release/ClashMiao-macOS-arm64.dmg" \
             "build/macos/Build/Products/Release/clashmiao.app" || \
-          (echo "dmg creation failed (likely codesign); zip instead" && \
-           cd build/macos/Build/Products/Release && \
-           zip -r ../../../../clashmiao-macos.zip clashmiao.app)
+          echo "::warning::dmg creation failed; zip artifact will still be uploaded"
+          cd build/macos/Build/Products/Release && \
+            ditto -c -k --keepParent clashmiao.app ../../../../release/ClashMiao-macOS-arm64.zip
+          test -s ../../../../release/ClashMiao-macOS-arm64.dmg || test -s ../../../../release/ClashMiao-macOS-arm64.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: macos
+          name: release-macos
           path: |
-            build/clashmiao-macos.dmg
-            build/clashmiao-macos.zip
+            build/release/ClashMiao-macOS-arm64.dmg
+            build/release/ClashMiao-macOS-arm64.zip
           if-no-files-found: warn
 
   windows:
     runs-on: windows-latest
+    needs: [quality]
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -91,25 +160,48 @@ jobs:
         run: bin/fetch-libcore.sh windows
       - run: flutter pub get
       - run: flutter config --enable-windows-desktop
-      - run: flutter build windows --release
-      - name: Create installer
+      - run: flutter build windows --release --no-tree-shake-icons
+      - name: Verify and stage Windows bundle
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem -Path build/windows -Recurse -Filter clashmiao.exe |
+            Sort-Object FullName |
+            Select-Object -First 1
+          if (-not $exe) {
+            Get-ChildItem -Path build/windows -Recurse | Select-Object FullName
+            throw "clashmiao.exe was not produced"
+          }
+          $bundle = $exe.Directory.FullName
+          $libcore = Join-Path $bundle "libcore.dll"
+          if (!(Test-Path $libcore)) {
+            Get-ChildItem -Path build/windows -Recurse -Filter libcore.dll | Select-Object FullName
+            throw "libcore.dll is not bundled next to clashmiao.exe"
+          }
+          New-Item -ItemType Directory -Force -Path build/release | Out-Null
+          $tag = "${env:RELEASE_TAG}"
+          $version = $tag.TrimStart("v")
+          "CLASHMIAO_BUNDLE_DIR=$bundle" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+          "CLASHMIAO_VERSION=$version" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
+          Compress-Archive -Path (Join-Path $bundle '*') -DestinationPath "build/release/ClashMiao-Windows-x64-$version.zip" -Force
+      - name: Create Windows installer
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
-          $env:CLASHMIAO_VERSION = "${{ github.ref_name }}"
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\packaging\inno\clashmiao.iss"
       - uses: actions/upload-artifact@v4
         with:
-          name: windows
+          name: release-windows
           path: |
             build/installer/ClashMiao-Windows-x64-Setup.exe
-            build/windows/x64/runner/Release/
+            build/release/ClashMiao-Windows-x64-*.zip
 
   publish:
     needs: [android, macos, windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -118,7 +210,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           shopt -s nullglob
-          ARTIFACTS=(artifacts/android/* artifacts/macos/* artifacts/windows/*)
-          gh release create "${GITHUB_REF_NAME}" \
+          ARTIFACTS=(artifacts/release-android/* artifacts/release-macos/* artifacts/release-windows/*)
+          gh release create "$RELEASE_TAG" \
             --generate-notes \
-            "${ARTIFACTS[@]}"
+            "${ARTIFACTS[@]}" || \
+          gh release upload "$RELEASE_TAG" "${ARTIFACTS[@]}" --clobber

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/config/runtime_config_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 
 Future<File> _writeProfile(Directory dir, Map<String, dynamic> cfg) async {
   final f = File('${dir.path}/profile.json');
@@ -53,7 +54,7 @@ void main() {
       // 相对路径会让 rule-set 静默失败，结果智能模式看起来跟全局一模一样。
       for (final rs in ruleSets) {
         expect(
-          (rs['path'] as String).startsWith('/'),
+          p.isAbsolute(rs['path'] as String),
           isTrue,
           reason: 'rule-set path 必须绝对：${rs['path']}',
         );
@@ -66,9 +67,19 @@ void main() {
         routeRules.first['rule_set'] as List,
         unorderedEquals(['geoip-cn', 'geosite-cn']),
       );
+      expect(routeRules[1]['outbound'], 'direct');
+      expect(
+        routeRules[1]['domain_suffix'] as List,
+        unorderedEquals(['cn', '中国', '公司', '网络']),
+      );
 
       final dnsRules = (cfg['dns']['rules'] as List).cast<Map>();
       expect(dnsRules.first['server'], 'local');
+      expect(dnsRules[1]['server'], 'local');
+      expect(
+        dnsRules[1]['domain_suffix'] as List,
+        unorderedEquals(['cn', '中国', '公司', '网络']),
+      );
     });
 
     test('global 模式剥离所有 rule_set 引用', () async {
@@ -165,6 +176,11 @@ void main() {
       expect(cfg['route']['rule_set'], hasLength(2));
       expect((cfg['route']['rules'] as List).first['outbound'], 'direct');
       expect((cfg['dns']['rules'] as List).first['server'], 'local');
+      expect(
+        (cfg['route']['rules'] as List)[1]['domain_suffix'],
+        contains('cn'),
+      );
+      expect((cfg['dns']['rules'] as List)[1]['domain_suffix'], contains('cn'));
     });
 
     test('输出文件名固定 runtime-config.json', () async {

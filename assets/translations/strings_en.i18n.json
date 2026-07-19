@@ -32,11 +32,11 @@
   },
   "home": {
     "pageTitle": "Home",
-    "emptyProfilesMsg": "Begin by Adding a Subscription Profile",
+    "emptyProfilesMsg": "No lines yet",
     "noActiveProfileMsg": "Choose a Profile",
     "routingMode": {
-      "global": "Global",
-      "smart": "Smart"
+      "global": "Global Proxy",
+      "smart": "Smart Routing"
     },
     "failedToSwitchMode": "Failed to switch mode: ${error}"
   },
@@ -159,7 +159,11 @@
       "invalidUrlMsg": "Invalid URL",
       "lastUpdate": "Last Update",
       "updateInterval": "Auto Update",
-      "updateIntervalDialogTitle": "Auto Update Interval (in Hours)"
+      "updateIntervalDialogTitle": "Auto Update Interval (in Hours)",
+      "userAgent": "User-Agent",
+      "userAgentNotSet": "Not Set",
+      "mux": "Mux",
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
     },
     "remoteProfile": "Remote Profile"
   },
@@ -192,7 +196,7 @@
     "switchedTo": "Switched to ${name}",
     "switchToFailed": "Failed to switch: ${error}",
     "connectBeforeSwitch": "Please connect before switching lines",
-    "startDelayTestForGroups": "Started delay test for ${count} groups",
+    "startDelayTestForGroups": "Started delay test for ${count} lines",
     "delayTestBtn": "Delay",
     "lineCount": "${count} lines",
     "manualSelect": "Manual Select",
@@ -250,7 +254,12 @@
       "ignoreBatteryOptimizationsMsg": "Remove Restrictions For Optimal VPN Performance",
       "dynamicNotification": "Display Speed in Notification",
       "hapticFeedback": "Haptic Feedback",
-      "autoIpCheck": "Automatically Check Connection IP"
+      "autoIpCheck": "Automatically Check Connection IP",
+      "batteryOptimizationStatus": {
+        "exempted": "Exempted",
+        "notExempted": "Not Exempted",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "Advanced",
@@ -270,6 +279,10 @@
         "exclude": "Bypass",
         "excludeMsg": "Do Not Route Selected Apps Through Line"
       },
+      "perAppProxyLoadFailedMsg": "Failed to load app list",
+      "perAppProxyRetry": "Retry",
+      "perAppProxyEmptyMsg": "No results found",
+      "perAppProxyAndroidOnlyMsg": "Per-app line mode is only supported on Android",
       "showSystemApps": "Show System Apps",
       "hideSystemApps": "Hide System Apps",
       "clearSelection": "Clear Selection"
@@ -316,6 +329,7 @@
     "dashboard": "Dashboard",
     "quit": "Quit",
     "open": "Open",
+    "hide": "Hide to Tray",
     "status": {
       "connect": "Connect",
       "connecting": "Connecting",
@@ -339,12 +353,14 @@
       "invalidConfigOptions": "Invalid Configuration Options",
       "invalidConfig": "Invalid Configuration",
       "create": "Service Creation Error",
-      "start": "Service Startup Error"
+      "start": "Service Startup Error",
+      "startTimeout": "Service Startup Timed Out"
     },
     "connectivity": {
       "unexpected": "Unexpected Failure",
       "missingVpnPermission": "Missing VPN Permission",
       "missingNotificationPermission": "Missing Notification Permission",
+      "networkUnavailable": "Network Unavailable",
       "core": "Core Error"
     },
     "profiles": {
@@ -369,7 +385,7 @@
   "play": {
     "title": "ClashMiao (Preview)",
     "short_description": "Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks",
-    "full_description": "The key goal of ClashMiao is to provide a secure, user-friendly and efficient tunneling client. It enables you to route all traffic or selected app traffic to a remote server of your choose, utilizing VPN-Service permission.\n\nNote: We do not provide any server; users are required to ensure their online activities stay private by using use their own self-hosted server or trusted servers. \n \nWe Support Servers With:\n- Normal V2Ray/XRay Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nWhat is our unique features?\n - User Friendly\n - Optimized and Fast\n - Automatically select LowestPing \n - Show user usage information\n - Easily import sublink by one click using deeplinking \n - Free and No ADS\n - Easily switch lines\n - More and more\n\nSupport:\n- All Protocols Supported by Sing-Box \n- VLESS + XTLS Reality, Vision\n- VMess\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2Ray\n- Hysteria2\n- TUICv5\n- SSH\n- ShadowTLS\n\n\nThe source code exist in https://github.com/yourname/clashmiao\nThe application core is based on open-source Sing-Box.\n\nPermission Description:\n- VPN Service: As the goal of this application is to provide a secure, user-friendly and efficient tunneling client, we need this permission to be able to route the traffic via tunnel to the remote server. \n- QUERY ALL PACKAGES: This permission is used to allow users to include or exclude specific applications for tunneling.\n- RECEIVE BOOT COMPLETED: This permission can be enabled or disabled from app settings to activate this application upon device boot.\n- POST NOTIFICATIONS: This permission is essential as we employ a foreground service to ensure the continuous operation of the VPN service.\n- This application is free from advertisements. The analytics and crash data only occurs with the explicit consent of the user in the first use of application."
+    "full_description": "The key goal of ClashMiao is to provide a secure, user-friendly and efficient tunneling client. It enables you to route all traffic or selected app traffic to a remote server of your choose, utilizing VPN-Service permission.\n\nNote: We do not provide any server; users are required to ensure their online activities stay private by using use their own self-hosted server or trusted servers. \n \nWe Support Servers With:\n- Normal V2Ray/XRay Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nWhat is our unique features?\n - User Friendly\n - Optimized and Fast\n - Automatically select LowestPing \n - Show user usage information\n - Easily import sublink by one click using deeplinking \n - Free and No ADS\n - Easily switch lines\n - More and more\n\nSupport:\n- All Protocols Supported by Sing-Box \n- VLESS + XTLS Reality, Vision\n- VMess\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2Ray\n- Hysteria2\n- TUICv5\n- SSH\n- ShadowTLS\n\n\nThe source code exist in https://github.com/clashmiao/clashmiao-client\nThe application core is based on open-source Sing-Box.\n\nPermission Description:\n- VPN Service: As the goal of this application is to provide a secure, user-friendly and efficient tunneling client, we need this permission to be able to route the traffic via tunnel to the remote server. \n- QUERY ALL PACKAGES: This permission is used to allow users to include or exclude specific applications for tunneling.\n- RECEIVE BOOT COMPLETED: This permission can be enabled or disabled from app settings to activate this application upon device boot.\n- POST NOTIFICATIONS: This permission is essential as we employ a foreground service to ensure the continuous operation of the VPN service.\n- This application is free from advertisements. The analytics and crash data only occurs with the explicit consent of the user in the first use of application."
   },
   "connection": {
     "tapToConnect": "Tap To Connect",

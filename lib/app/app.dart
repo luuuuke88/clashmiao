@@ -52,8 +52,8 @@ ToastificationConfig _appToastConfig(BuildContext context) {
       final y = alignment.resolve(Directionality.of(context)).y;
       if (y >= 0.5) {
         final safeBottom = MediaQuery.of(context).padding.bottom;
-        // 把 toast 抬到底部导航条上方，避免覆盖底部 5 个 tab 按钮。
-        return EdgeInsets.only(left: 16, right: 16, bottom: safeBottom + 240);
+        // 把 toast 放在底部导航条上方，但不要抬到屏幕中部。
+        return EdgeInsets.only(left: 16, right: 16, bottom: safeBottom + 88);
       }
       if (y <= -0.5) {
         return const EdgeInsets.only(top: 12);

@@ -129,41 +129,55 @@ class PlatformBoxService implements BoxService {
   @override
   Stream<BoxStatus> watchStatus() => _status;
 
-  @override
-  Stream<BoxAlert> watchAlerts() {
-    return _alertsChannel.receiveBroadcastStream().map((event) {
-      if (event is Map) {
-        return BoxAlert(
-          type: BoxAlertType.parse(event['alert'] as String?),
-          message: event['message'] as String?,
-        );
-      }
-      return const BoxAlert(type: BoxAlertType.unknown);
-    });
-  }
+  // watchAlerts/watchStats/watchGroups/watchNetworkChanged 必须缓存同一条
+  // 流：EventChannel 同一时刻只服务一个活跃的平台订阅，每次调用都新建
+  // receiveBroadcastStream() 的话，第二个订阅者一出现就把第一个的事件流
+  // 顶掉（静默、不报错）。真机实测：ConnectionController 和
+  // boxAlertsProvider 都订阅 alerts，其中一个永远收不到 fatal alert，
+  // 阻断式弹窗不弹。receiveBroadcastStream 返回的本身就是 broadcast 流，
+  // 同一条流上多个 listener 各自都能收到事件，且最后一个取消时才断开
+  // 平台订阅——缓存一份即可，跟上面 _status 的既有做法同源。
+  late final Stream<BoxAlert> _alerts = _alertsChannel
+      .receiveBroadcastStream()
+      .map((event) {
+        if (event is Map) {
+          return BoxAlert(
+            type: BoxAlertType.parse(event['alert'] as String?),
+            message: event['message'] as String?,
+          );
+        }
+        return const BoxAlert(type: BoxAlertType.unknown);
+      });
 
   @override
-  Stream<BoxStats> watchStats() {
-    return _statsChannel.receiveBroadcastStream().map((event) {
-      if (event is Map<String, dynamic>) {
-        return BoxStats.fromJson(event);
-      }
-      return BoxStats.empty;
-    });
-  }
+  Stream<BoxAlert> watchAlerts() => _alerts;
+
+  late final Stream<BoxStats> _stats = _statsChannel
+      .receiveBroadcastStream()
+      .map((event) {
+        if (event is Map<String, dynamic>) {
+          return BoxStats.fromJson(event);
+        }
+        return BoxStats.empty;
+      });
 
   @override
-  Stream<List<OutboundGroup>> watchGroups() {
-    return _groupsChannel.receiveBroadcastStream().map((event) {
-      if (event is String) {
-        final list = jsonDecode(event) as List;
-        return list
-            .map((e) => OutboundGroup.fromJson(e as Map<String, dynamic>))
-            .toList();
-      }
-      return <OutboundGroup>[];
-    });
-  }
+  Stream<BoxStats> watchStats() => _stats;
+
+  late final Stream<List<OutboundGroup>> _groups = _groupsChannel
+      .receiveBroadcastStream()
+      .map((event) {
+        if (event is String) {
+          final list = jsonDecode(event) as List;
+          return list
+              .map((e) => OutboundGroup.fromJson(e as Map<String, dynamic>))
+              .toList();
+        }
+        return <OutboundGroup>[];
+      });
+
+  @override
+  Stream<List<OutboundGroup>> watchGroups() => _groups;
 
   @override
   Future<String?> generateFullConfig(String path) async {
@@ -195,10 +209,12 @@ class PlatformBoxService implements BoxService {
     );
   }
 
+  late final Stream<void> _networkChanged = _networkChannel
+      .receiveBroadcastStream()
+      .map((_) {});
+
   @override
-  Stream<void> watchNetworkChanged() {
-    return _networkChannel.receiveBroadcastStream().map((_) {});
-  }
+  Stream<void> watchNetworkChanged() => _networkChanged;
 
   @override
   Future<void> resetTunnel() => _pigeonHost.resetTunnel();

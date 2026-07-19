@@ -1,0 +1,149 @@
+import 'package:clashmiao/core/config/default_config_options.dart';
+import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  group('getDefaultConfigOptions warp 字段映射', () {
+    test('默认 NetworkSettings 下 warp 块保持关闭 + 对齐推荐默认值', () {
+      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      final warp = options['warp'] as Map<String, dynamic>;
+
+      expect(warp['enable'], isFalse);
+      expect(warp['mode'], 'proxy_over_warp');
+      expect(warp['wireguard-config'], '');
+      expect(warp['license-key'], '');
+      expect(warp['account-id'], '');
+      expect(warp['access-token'], '');
+      // 以下 6 项对齐参照项目推荐默认值，而非全空/固定端口。
+      expect(warp['clean-ip'], 'auto');
+      expect(warp['clean-port'], 0); // NetworkSettings.warpPort 默认值
+      expect(warp['noise'], '1-3');
+      expect(warp['noise-size'], '10-30');
+      expect(warp['noise-delay'], '10-30');
+      expect(warp['noise-mode'], 'm6');
+    });
+
+    test('自定义 WARP 设置真正透传进 warp 块（不再是硬编码空串）', () {
+      const settings = NetworkSettings(
+        enableWarp: true,
+        warpDetourMode: 'proxyOverWarp',
+        warpLicenseKey: 'license-xyz',
+        warpCleanIp: '162.159.192.1',
+        warpPort: 2408,
+        warpNoise: '10-20',
+        warpNoiseSize: '5-15',
+        warpNoiseMode: 'm4',
+        warpNoiseDelay: '1-2',
+        warpAccountId: 'account-abc',
+        warpAccessToken: 'token-abc',
+        warpWireguardConfig: '{"private_key":"pk"}',
+      );
+
+      final options = getDefaultConfigOptions(settings: settings);
+      final warp = options['warp'] as Map<String, dynamic>;
+
+      expect(warp['enable'], isTrue);
+      expect(warp['mode'], 'proxy_over_warp');
+      expect(warp['wireguard-config'], '{"private_key":"pk"}');
+      expect(warp['license-key'], 'license-xyz');
+      expect(warp['account-id'], 'account-abc');
+      expect(warp['access-token'], 'token-abc');
+      expect(warp['clean-ip'], '162.159.192.1');
+      expect(warp['clean-port'], 2408);
+      expect(warp['noise'], '10-20');
+      expect(warp['noise-size'], '5-15');
+      expect(warp['noise-delay'], '1-2');
+      expect(warp['noise-mode'], 'm4');
+    });
+
+    test('warpDetourMode=warpOverProxy 映射成 mode=warp_over_proxy', () {
+      const settings = NetworkSettings(warpDetourMode: 'warpOverProxy');
+
+      final options = getDefaultConfigOptions(settings: settings);
+      final warp = options['warp'] as Map<String, dynamic>;
+
+      expect(warp['mode'], 'warp_over_proxy');
+    });
+
+    test('warp2 块保持原状（未接入设置，仍然是关闭 + 空值占位）', () {
+      const settings = NetworkSettings(
+        enableWarp: true,
+        warpLicenseKey: 'license-xyz',
+        warpAccountId: 'account-abc',
+      );
+
+      final options = getDefaultConfigOptions(settings: settings);
+      final warp2 = options['warp2'] as Map<String, dynamic>;
+
+      expect(warp2['enable'], isFalse);
+      expect(warp2['license-key'], '');
+      expect(warp2['account-id'], '');
+      expect(warp2['access-token'], '');
+      expect(warp2['wireguard-config'], '');
+    });
+
+    test('settings 为 null 时退回默认 NetworkSettings，warp 块不崩溃', () {
+      final options = getDefaultConfigOptions();
+      final warp = options['warp'] as Map<String, dynamic>;
+
+      expect(warp['enable'], isFalse);
+      expect(warp['mode'], 'proxy_over_warp');
+    });
+  });
+
+  // ===========================================================
+  // wave3: 高级配置字段不再是硬编码常量，而是来自 NetworkSettings —— 这是
+  // "数据模型接入 config 生成"这条链路的关键验证：默认 NetworkSettings 下
+  // 生成的值要跟此前的硬编码常量完全一致（不引入行为回归），而改一下
+  // NetworkSettings 里的值，生成的配置 JSON 必须跟着变（证明真的读的是
+  // settings 而不是常量）。
+  // ===========================================================
+  group('getDefaultConfigOptions 高级字段来自 NetworkSettings（不再硬编码）', () {
+    test('默认 NetworkSettings 下，高级字段的值等于此前的硬编码常量', () {
+      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      final tlsTricks = options['tls-tricks'] as Map<String, dynamic>;
+      final mux = options['mux'] as Map<String, dynamic>;
+
+      expect(options['mtu'], 9000);
+      expect(options['clash-api-port'], 6756);
+      expect(options['tproxy-port'], 2081);
+      expect(options['local-dns-port'], 6450);
+      expect(options['enable-fake-dns'], isFalse);
+      expect(options['independent-dns-cache'], isTrue);
+      expect(tlsTricks['fragment-sleep'], '50-200');
+      expect(tlsTricks['mixed-sni-case'], isFalse);
+      expect(tlsTricks['padding-size'], '100-200');
+      expect(mux['padding'], isFalse);
+    });
+
+    test('自定义 NetworkSettings 的高级字段真正透传进生成的配置（不再是硬编码常量）', () {
+      const settings = NetworkSettings(
+        mtu: 1400,
+        clashApiPort: 19001,
+        tproxyPort: 19002,
+        localDnsPort: 19003,
+        enableFakeDns: true,
+        independentDnsCache: false,
+        tlsFragmentSleep: '2-8',
+        enableTlsMixedSniCase: true,
+        tlsPaddingSize: '1-1500',
+        muxPadding: true,
+      );
+
+      final options = getDefaultConfigOptions(settings: settings);
+      final tlsTricks = options['tls-tricks'] as Map<String, dynamic>;
+      final mux = options['mux'] as Map<String, dynamic>;
+
+      expect(options['mtu'], 1400);
+      expect(options['clash-api-port'], 19001);
+      expect(options['tproxy-port'], 19002);
+      expect(options['local-dns-port'], 19003);
+      expect(options['enable-fake-dns'], isTrue);
+      expect(options['independent-dns-cache'], isFalse);
+      expect(tlsTricks['fragment-sleep'], '2-8');
+      expect(tlsTricks['mixed-sni-case'], isTrue);
+      expect(tlsTricks['padding-size'], '1-1500');
+      expect(mux['padding'], isTrue);
+    });
+  });
+}

@@ -73,10 +73,17 @@ class ProfileParser {
       }
     }
 
-    // 3. URL fragment
+    // 3. URL fragment（分享侧 `profiles_page.dart` 的 `profileShareUrl` 会把
+    // 订阅名编码进 fragment；Uri.fragment 返回的是未解码的 percent-encoded
+    // 原文，这里解码还原成人类可读的名称。解码失败（非法/截断的
+    // percent-encoding）时不抛异常，原样返回 fragment 兜底。）
     final uri = Uri.tryParse(url);
     if (uri != null && uri.fragment.isNotEmpty) {
-      return uri.fragment;
+      try {
+        return Uri.decodeComponent(uri.fragment);
+      } catch (_) {
+        return uri.fragment;
+      }
     }
 
     // 4. URL 最后一段路径（去掉扩展名）

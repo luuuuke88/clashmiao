@@ -456,9 +456,28 @@ class ProfileRepository {
 
   /// 添加订阅（下载并解析）
   /// [customName] 用户自定义名称，不传则从响应头自动解析
+  ///
+  /// 去重：同一 URL（trim 后比较）重复添加不会产生第二条记录——
+  /// 找到已有的那条，直接复用 [update] 触发一次真实的重新拉取（并按需
+  /// 更新名称），不新建 profile / 不新建配置文件。
   Future<ProfileEntity> addByUrl(String url, {String? customName}) async {
+    final normalizedUrl = url.trim();
+    ProfileEntity? existing;
+    for (final p in getAll()) {
+      if (p.url.trim() == normalizedUrl) {
+        existing = p;
+        break;
+      }
+    }
+    if (existing != null) {
+      if (customName != null && customName.trim().isNotEmpty) {
+        await editProfile(existing.id, newName: customName.trim());
+      }
+      return update(existing.id);
+    }
+
     final response = await dio.get<String>(
-      url,
+      normalizedUrl,
       options: Options(
         responseType: ResponseType.plain,
         followRedirects: true,
@@ -473,7 +492,7 @@ class ProfileRepository {
       headers[name.toLowerCase()] = values;
     });
 
-    var profile = ProfileParser.parse(url, headers);
+    var profile = ProfileParser.parse(normalizedUrl, headers);
 
     // 优先使用用户自定义名称
     if (customName != null && customName.trim().isNotEmpty) {
@@ -663,10 +682,14 @@ class ProfileRepository {
     try {
       if (await normalized.exists()) await normalized.delete();
       await tempFile.writeAsString(rawBody);
-      final err = await boxService.validateConfig(
-        normalized.path,
-        tempFile.path,
-      );
+      debugPrint('[Profile] native validateConfig start');
+      final err = await boxService
+          .validateConfig(normalized.path, tempFile.path)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw const ProfileValidationException('配置解析超时'),
+          );
+      debugPrint('[Profile] native validateConfig done');
       if (err != null && err.isNotEmpty) {
         throw ProfileValidationException(err);
       }

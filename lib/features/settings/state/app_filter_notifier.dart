@@ -13,15 +13,17 @@ const _excludeListKey = 'per_app_proxy_exclude_list';
 class AppFilterState {
   const AppFilterState({
     this.enabled = false,
-    this.mode = 'allow',
+    this.mode = 'include',
     this.packages = const [],
   });
 
   final bool enabled;
 
-  /// UI 语义：'allow' = 仅勾选的应用走代理，'exclude' = 勾选的应用绕过代理。
+  /// Native 语义：'include' = 仅勾选的应用走代理，'exclude' = 勾选的应用绕过代理。
   final String mode;
   final List<String> packages;
+
+  String get nativeMode => enabled ? mode : 'off';
 }
 
 class AppFilterNotifier extends StateNotifier<AppFilterState> {
@@ -32,21 +34,18 @@ class AppFilterNotifier extends StateNotifier<AppFilterState> {
   static AppFilterState _load(SharedPreferences p) {
     final nativeMode = p.getString(_modeKey) ?? 'off';
     final enabled = nativeMode != 'off';
-    final uiMode = nativeMode == 'exclude' ? 'exclude' : 'allow';
-    final listKey = uiMode == 'exclude' ? _excludeListKey : _includeListKey;
+    final mode = nativeMode == 'exclude' ? 'exclude' : 'include';
+    final listKey = mode == 'exclude' ? _excludeListKey : _includeListKey;
     return AppFilterState(
       enabled: enabled,
-      mode: uiMode,
+      mode: mode,
       packages: p.getStringList(listKey) ?? [],
     );
   }
 
-  /// 把当前 UI 状态写盘成 native 协议：mode=off 表示禁用；
-  /// 启用时按 UI mode 映射 include/exclude，名单写到对应 key。
+  /// 把当前 UI 状态写盘成 native 协议：mode=off 表示禁用。
   Future<void> _persist(AppFilterState s) async {
-    final nativeMode = !s.enabled
-        ? 'off'
-        : (s.mode == 'exclude' ? 'exclude' : 'include');
+    final nativeMode = s.nativeMode;
     await _prefs.setString(_modeKey, nativeMode);
     final listKey = s.mode == 'exclude' ? _excludeListKey : _includeListKey;
     await _prefs.setStringList(listKey, s.packages);
@@ -58,17 +57,35 @@ class AppFilterNotifier extends StateNotifier<AppFilterState> {
   );
 
   Future<void> setMode(String mode) async {
+    final normalized = mode == 'allow' ? 'include' : mode;
+    if (normalized == 'off') {
+      return _persist(
+        AppFilterState(
+          enabled: false,
+          mode: state.mode,
+          packages: state.packages,
+        ),
+      );
+    }
     // include / exclude 两份名单独立存：切换语义时沿用同一份勾选会让已选
     // 应用的行为瞬间反转，改为读回该模式各自上次保存的名单。
-    final listKey = mode == 'exclude' ? _excludeListKey : _includeListKey;
+    final listKey = normalized == 'exclude' ? _excludeListKey : _includeListKey;
     await _persist(
       AppFilterState(
-        enabled: state.enabled,
-        mode: mode,
+        enabled: true,
+        mode: normalized,
         packages: _prefs.getStringList(listKey) ?? [],
       ),
     );
   }
+
+  Future<void> clearSelection() => _persist(
+    AppFilterState(
+      enabled: state.enabled,
+      mode: state.mode,
+      packages: const [],
+    ),
+  );
 
   Future<void> togglePackage(String pkg) {
     final list = List<String>.from(state.packages);

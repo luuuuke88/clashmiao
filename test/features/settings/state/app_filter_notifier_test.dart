@@ -9,12 +9,12 @@ void main() {
     });
 
     test(
-      'initial state has disabled filter, allow mode, empty packages',
+      'initial state has disabled filter, include mode, empty packages',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final notifier = AppFilterNotifier(prefs);
         expect(notifier.state.enabled, isFalse);
-        expect(notifier.state.mode, 'allow');
+        expect(notifier.state.mode, 'include');
         expect(notifier.state.packages, isEmpty);
       },
     );

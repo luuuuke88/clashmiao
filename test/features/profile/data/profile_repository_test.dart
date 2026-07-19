@@ -72,6 +72,12 @@ class _ValidatingBoxService implements BoxService {
   @override
   Future<String?> generateFullConfig(String path) async => null;
   @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) async => null;
+  @override
   Future<void> clearLogs() async {}
   @override
   Stream<List<String>> watchLogs(String path) => const Stream.empty();
@@ -442,6 +448,89 @@ void main() {
       expect(p1.active, isTrue);
       expect(p2.active, isFalse);
       expect(repo.getActive()?.id, p1.id);
+    });
+  });
+
+  group('ProfileRepository.addByUrl 去重', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('dedupe_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: StubBoxService(),
+      );
+    });
+
+    tearDown(() async {
+      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+    });
+
+    test('重复添加同一 URL 更新已有记录而不是新增一条', () async {
+      var callCount = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      // ignore: unawaited_futures
+      server.listen((req) async {
+        callCount++;
+        req.response.write(
+          jsonEncode({
+            'outbounds': [
+              {'type': 'vless', 'tag': 'node-$callCount'},
+            ],
+          }),
+        );
+        await req.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      final url = 'http://localhost:${server.port}/sub';
+      final first = await repo.addByUrl(url, customName: 'A');
+      final second = await repo.addByUrl(url, customName: 'A2');
+
+      // 同一条记录，不是新增一条
+      expect(second.id, first.id);
+      expect(repo.getAll().length, 1);
+      // 第二次调用确实带来了新内容（触发了真实的重新拉取，不是原地空转）
+      expect(callCount, 2);
+      expect(repo.getAll().first.name, 'A2');
+
+      final out =
+          jsonDecode(await File(repo.configFilePath(first.id)).readAsString())
+              as Map<String, dynamic>;
+      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
+      final leaf = outbounds.firstWhere((o) => o['type'] == 'vless');
+      expect(leaf['tag'], 'node-2');
+    });
+
+    test('URL 前后空格不影响去重判断', () async {
+      var callCount = 0;
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      // ignore: unawaited_futures
+      server.listen((req) async {
+        callCount++;
+        req.response.write(
+          jsonEncode({
+            'outbounds': [
+              {'type': 'vless', 'tag': 'node'},
+            ],
+          }),
+        );
+        await req.response.close();
+      });
+      addTearDown(() => server.close(force: true));
+
+      final url = 'http://localhost:${server.port}/sub';
+      final first = await repo.addByUrl(url);
+      final second = await repo.addByUrl('  $url  ');
+
+      expect(second.id, first.id);
+      expect(repo.getAll().length, 1);
+      expect(callCount, 2);
     });
   });
 

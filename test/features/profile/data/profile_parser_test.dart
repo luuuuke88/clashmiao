@@ -28,6 +28,19 @@ void main() {
       expect(p.name, 'MyFragment');
     });
 
+    test('URL fragment 是 percent-encoded 中文时正确解码为原始名称', () {
+      final encoded = Uri.encodeComponent('我的订阅 123');
+      final p = ProfileParser.parse('https://example.com/sub#$encoded', {});
+      expect(p.name, '我的订阅 123');
+    });
+
+    test('URL fragment 是非法 percent-encoding 时降级返回原始 fragment 而不是抛异常', () {
+      // %E4%BD 是被截断的 UTF-8 字节序列（"你" = E4 BD A0 只给了前两字节），
+      // Uri.decodeComponent 对它会抛 FormatException——必须优雅降级而不是崩溃。
+      final p = ProfileParser.parse('https://example.com/sub#%E4%BD', {});
+      expect(p.name, '%E4%BD');
+    });
+
     test('全部都缺 fallback 到 "远程订阅"', () {
       final p = ProfileParser.parse('https://example.com/', {});
       expect(p.name, '远程订阅');

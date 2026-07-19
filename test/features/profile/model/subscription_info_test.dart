@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/utils/formatters.dart' as formatters;
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -55,6 +56,33 @@ void main() {
       expect(SubscriptionInfo.formatBytes(2048), '2.0 KB');
       expect(SubscriptionInfo.formatBytes(5 * 1024 * 1024), '5.0 MB');
       expect(SubscriptionInfo.formatBytes(3 * 1024 * 1024 * 1024), '3.00 GB');
+    });
+
+    test('是 core/utils/formatters.dart 顶层 formatBytes 的薄委托，不是各改各的第二份实现', () {
+      // 曾经这里和顶层 formatBytes 是两份逐字节相同的硬编码实现（重复代码，
+      // 容易日后各改各的漂移）。现在改成直接调用顶层实现——这个测试对着一批
+      // 跨边界的取值(B/KB/MB/GB 各档 + 边界值) 断言两边输出恒等，用来在未来
+      // 有人不小心把这里重新变回独立实现、悄悄改出偏差时能第一时间报红。
+      for (final bytes in [
+        0,
+        1,
+        1023,
+        1024,
+        1025,
+        2048,
+        1024 * 1024 - 1,
+        1024 * 1024,
+        5 * 1024 * 1024,
+        1024 * 1024 * 1024 - 1,
+        1024 * 1024 * 1024,
+        3 * 1024 * 1024 * 1024,
+      ]) {
+        expect(
+          SubscriptionInfo.formatBytes(bytes),
+          formatters.formatBytes(bytes),
+          reason: 'bytes=$bytes 时两边应产出完全相同的字符串',
+        );
+      }
     });
   });
 

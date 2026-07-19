@@ -14,7 +14,7 @@ Widget _host() {
       marginBuilder: (context, alignment) {
         if (alignment.resolve(Directionality.of(context)).y >= 0.5) {
           final safeBottom = MediaQuery.of(context).padding.bottom;
-          return EdgeInsets.only(left: 16, right: 16, bottom: safeBottom + 240);
+          return EdgeInsets.only(left: 16, right: 16, bottom: safeBottom + 88);
         }
         if (alignment.resolve(Directionality.of(context)).y <= -0.5) {
           return const EdgeInsets.only(top: 12);
@@ -92,6 +92,13 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('show-toast')));
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(
+      tester.getCenter(find.text('测速中，请稍候...')).dy,
+      greaterThan(screenHeight - 220),
+    );
 
     await tester.tap(find.byKey(const ValueKey('bottom_nav_3')));
     await tester.pumpAndSettle();

@@ -12,7 +12,6 @@ import com.clashmiao.clashmiao.core.AlertCode
 import com.clashmiao.clashmiao.core.EngineMode
 import com.clashmiao.clashmiao.core.KernelStatus
 import com.clashmiao.clashmiao.core.Prefs
-import com.clashmiao.clashmiao.engine.ForegroundNotice
 import com.clashmiao.clashmiao.engine.KernelConnection
 import com.clashmiao.clashmiao.engine.LogBuffer
 import com.clashmiao.clashmiao.engine.PermissionGate
@@ -52,6 +51,13 @@ class MainActivity : FlutterFragmentActivity(),
         super.configureFlutterEngine(flutterEngine)
         instance = this
         permissionGate.bindActivity(this)
+        // Android 13+ 通知权限：故意放在这里（跟 startService()/VPN 连接流程完全
+        // 无关的一次性 Activity 初始化点），而不是塞进 startService()。原因见
+        // startService() 上的注释——通知权限不是连接前置条件。这里调用不阻塞：
+        // askNotificationPermissionIfNeeded() 非 suspend，只是 fire-and-forget 地
+        // 弹系统权限 dialog（或在低版本 / 已授权时直接返回），结果异步走
+        // onNotificationConsented/onNotificationDenied 回调。
+        permissionGate.askNotificationPermissionIfNeeded()
         connection.resetBinding()
         // 三层 plugin：Dart→native RPC、native→Dart push streams、Pigeon 强类型迁移中。
         flutterEngine.plugins.add(MethodBridge(lifecycleScope))
@@ -65,15 +71,14 @@ class MainActivity : FlutterFragmentActivity(),
 
     /**
      * 启动 sing-box service：
-     *   1. 先确保有通知权限（13+ 要 runtime 权限，没的话弹 dialog 然后等回调）
-     *   2. 如果当前 mode 是 VPN，确保有 VPN 授权（首次弹 system consent）
-     *   3. 两个权限都拿到后，按 mode 决定 startForegroundService([Prefs.Engine.serviceClass]())
+     *   1. 如果当前 mode 是 VPN，确保有 VPN 授权（首次弹 system consent）
+     *   2. 权限检查完成后，按 mode 决定 startForegroundService([Prefs.Engine.serviceClass]())
+     *
+     * POST_NOTIFICATIONS 不能作为连接前置条件：Android 13+ 允许前台服务在通知
+     * 权限未授予时启动，只是通知不会展示在通知抽屉里。连接时弹通知权限会打断
+     * VPN 启动链路，甚至让 Dart 端长期停在 BoxStarting。
      */
     fun startService() {
-        if (!ForegroundNotice.canPostNotifications()) {
-            permissionGate.askNotificationPermissionIfNeeded()
-            return
-        }
         lifecycleScope.launch(Dispatchers.IO) {
             if (Prefs.Engine.shouldRebuildService()) reconnect()
             if (Prefs.Engine.mode == EngineMode.VPN) {
@@ -106,11 +111,13 @@ class MainActivity : FlutterFragmentActivity(),
     override fun onResetLogs(messages: MutableList<String>) = logBuffer.reset(messages)
 
     // === PermissionGate.Listener ==========================================
-    // 三种"用户授权完了"都重试 startService，让正常路径继续；拒绝走 alert 通知 UI。
+    // VPN 授权完成重试 startService，让正常路径继续；VPN/通知被拒绝都走 alert 通知 UI。
+    // 通知授权不是任何功能的前置条件（没有它前台服务照常启动，只是通知不展示），
+    // 所以 onNotificationConsented 没有像 onVpnConsented 那样需要重试的动作。
 
     override fun onVpnConsented() = startService()
     override fun onVpnDenied() = onAlert(AlertCode.RequestVPNPermission, null)
-    override fun onNotificationConsented() = startService()
+    override fun onNotificationConsented() = Unit
     override fun onNotificationDenied() = onAlert(AlertCode.RequestNotificationPermission, null)
     override fun onPreflightFailure(code: AlertCode, message: String?) = onAlert(code, message)
 

@@ -33,6 +33,14 @@ class PlatformBoxService implements BoxService {
     JSONMethodCodec(),
   );
 
+  /// 裸 MethodChannel —— `generate_warp_config` 是 Mobile SDK 特有能力，
+  /// 还没迁去 Pigeon（跟电池优化豁免走同一条 `$_channelPrefix/method` /
+  /// `.../platform` 裸 channel 的路子一样，见
+  /// `BatteryOptimizationService`）。方法名 / 参数键跟原生
+  /// `MethodBridge.kt` / `ChannelMethodHandler.swift` 的
+  /// `generate_warp_config` 逐字一致。
+  static const _methodChannel = MethodChannel('$_channelPrefix/method');
+
   late final ValueStream<BoxStatus> _status;
 
   /// Pigeon 强类型 host API — 全部 kernel method 已迁移，不再使用 MethodChannel。
@@ -44,8 +52,10 @@ class PlatformBoxService implements BoxService {
       _parseStatus,
     );
 
-    _status = ValueConnectableStream(statusStream).autoConnect();
-    await _status.first;
+    _status = ValueConnectableStream.seeded(
+      statusStream,
+      const BoxStopped(),
+    ).autoConnect();
   }
 
   @override
@@ -158,6 +168,19 @@ class PlatformBoxService implements BoxService {
   @override
   Future<String?> generateFullConfig(String path) async {
     return _pigeonHost.generateFullConfig(path);
+  }
+
+  @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) async {
+    return _methodChannel.invokeMethod<String>('generate_warp_config', {
+      'license-key': licenseKey,
+      'previous-account-id': previousAccountId ?? '',
+      'previous-access-token': previousAccessToken ?? '',
+    });
   }
 
   @override

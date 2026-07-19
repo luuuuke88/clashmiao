@@ -75,6 +75,26 @@ abstract interface class BoxService {
   /// 生成完整配置
   Future<String?> generateFullConfig(String path);
 
+  /// 生成一份新的 WARP 账号凭证 + WireGuard 配置（Cloudflare WARP 注册）。
+  ///
+  /// [licenseKey] 为空字符串表示走免费额度注册；非空则视为 WARP+ license。
+  /// [previousAccountId] / [previousAccessToken] 传入已有账号信息，native
+  /// 侧会尝试续用该账号而不是重新注册一个新的；首次生成留空/null 即可。
+  ///
+  /// 成功时返回 native 原始 JSON 字符串（形如
+  /// `{"account-id":..,"access-token":..,"log":..,"config":{...}}`），
+  /// 由调用方解析后写入 [NetworkSettings] 的 warpAccountId /
+  /// warpAccessToken / warpWireguardConfig 三个字段。
+  ///
+  /// 错误处理跟 [generateFullConfig] 一样并不统一：有的平台把失败包装成
+  /// 抛出的异常（例如 Android 的 `PlatformException`），有的用返回 null
+  /// 表示（桌面 FFI 的 error 前缀约定）——调用方需要同时处理这两种情况。
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  });
+
   /// 清除日志
   Future<void> clearLogs();
 

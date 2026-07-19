@@ -306,16 +306,7 @@ class KernelHost(
         notice.close()
 
         GlobalScope.launch(Dispatchers.IO) {
-            closeTunFd()
-            commandServer?.setService(null)
-            teardownLibboxService()
-            Libbox.registerLocalDNSTransport(null)
-            NetworkWatcher.disarm()
-            commandServer?.apply {
-                close()
-                Seq.destroyRef(refnum)
-            }
-            commandServer = null
+            teardownRuntime()
             Prefs.Engine.startedByUser = false
             withContext(Dispatchers.Main) {
                 statusLive.value = KernelStatus.Stopped
@@ -326,11 +317,21 @@ class KernelHost(
 
     private suspend fun abortWithAlert(code: AlertCode, message: String? = null) {
         Prefs.Engine.startedByUser = false
+        // 启动失败必须像 shutdown() 一样把运行时资源拆干净。tun 可能已在 start()
+        // 中途 establish()（见 TunnelService.openTun）接管了全设备流量，若只复位
+        // 状态而不关 tunFd / teardown libbox，就遗弃了一个孤儿 tun —— 设备黑洞
+        // 断网，且每次失败重试各泄漏一个。调用上下文与 shutdown() 保持一致：
+        // teardownRuntime() 跑在 IO（本 suspend 由 onStartCommand 的 IO 协程驱动），
+        // UI 相关的事仍在 Main。
+        teardownRuntime()
         withContext(Dispatchers.Main) {
             unregisterControlReceiver()
             notice.close()
             binder.fanOut { it.onServiceAlert(code.ordinal, message) }
             statusLive.value = KernelStatus.Stopped
+            // 这是"启动失败"而非用户主动停止，Service 组件不能继续无通知地挂着
+            // （参照 shutdown() 的 stopSelf）。
+            service.stopSelf()
         }
     }
 
@@ -338,6 +339,66 @@ class KernelHost(
         if (!receiverRegistered) return
         runCatching { service.unregisterReceiver(controlReceiver) }
         receiverRegistered = false
+    }
+
+    /**
+     * 拆除内核运行时资源：关闭 Android 侧原始 tun fd（撤销系统路由表）、断开
+     * command server 与 libbox service 的绑定、销毁 libbox service、注销本地
+     * DNS transport、disarm 默认网络监听、彻底关闭 command server 自身（native
+     * 引用一并 destroy）。
+     *
+     * [shutdown]（用户主动停止）与 [abortWithAlert]（启动失败兜底）共用这一整段，
+     * 消除"某个终结路径又漏了清理"的类别性风险——历史上 abortWithAlert 先是漏了
+     * tun fd / libbox service 这三件事（导致 tun 在 start() 中途 establish() 后
+     * 被原地遗弃、设备黑洞断网），后来这里补上前三件事之后，才发现 abort 仍然漏了
+     * 后三件事（DNS transport 注销 / NetworkWatcher disarm / commandServer 自身
+     * 关闭），导致启动失败重试时每次泄漏一个 CommandServer 的 native 资源
+     * （goroutine / fd / Seq ref），直到进程死亡才被系统回收。现在两条终结路径
+     * 都只经这一个函数收口，六件事逐字与旧 shutdown() 顺序一致。
+     *
+     * 因为 [NetworkWatcher.disarm] 是 suspend fun，这里整体升级成 suspend；跑在
+     * 调用方的协程上下文里（shutdown / abortWithAlert 均为 IO）。
+     *
+     * 安全性：launchKernel() 里最早的 abort 触发点（EmptyConfiguration，配置路径
+     * / options 为空或 buildConfig 失败）发生在 [NetworkWatcher.arm] 和
+     * `Libbox.registerLocalDNSTransport(SystemDnsBridge)` **之前**，此时 watcher
+     * 未 arm、DNS transport 未注册成 non-null。下面每个动作在这种"提前 abort"下
+     * 都必须是 null-safe / 幂等 no-op：
+     *   - [closeTunFd] / [teardownLibboxService]：内部先取字段，为 null 直接
+     *     return，不做任何事。
+     *   - `commandServer?.setService(null)` / `commandServer?.apply { ... }`：
+     *     safe-call，commandServer 为 null（如尚未 spawnCommandServer 成功）时
+     *     整个表达式跳过；commandServer 非 null 时，close() 前总是先经过本函数
+     *     前面的 `setService(null)`，所以无论走 shutdown 还是任一 abort 分支，
+     *     close() 看到的 commandServer 内部状态（service 引用已清空）都相同，
+     *     不存在"abort 独有的未定义状态"。
+     *   - `Libbox.registerLocalDNSTransport(null)`：单参数 setter 语义（把全局
+     *     transport 指针设成给定值），传 null 覆盖"从未注册过"的默认状态是幂等
+     *     操作，不依赖调用前是否曾经 non-null 过。
+     *   - [NetworkWatcher.disarm]：`actor.send(Op.Unsubscribe(watcherKey))` ->
+     *     `subs.remove(op.key)`；key 从未 subscribe（[NetworkWatcher.arm] 没被
+     *     调过）时 remove 返回 null，`had=false`，直接跳过 `unregister()`，是
+     *     纯粹的 no-op，不抛异常。
+     */
+    private suspend fun teardownRuntime() {
+        closeTunFd()
+        commandServer?.setService(null)
+        teardownLibboxService()
+        // 每个原生清理各自 runCatching 兜底：任一步抛异常（尤其闭源 libbox 的
+        // registerLocalDNSTransport、或 CommandServer.close）都不得中断后续清理，
+        // 更不能让调用方在 teardown 之后的 statusLive=Stopped / stopSelf / alert
+        // 收不了尾——那正是本函数要消除的"清理级联失败"。与 closeTunFd /
+        // teardownLibboxService 内部已有的 runCatching 保持一致。commandServer = null
+        // 是纯字段赋值不会抛，留在 runCatching 外，保证任何情况下都置空。
+        runCatching { Libbox.registerLocalDNSTransport(null) }
+        runCatching { NetworkWatcher.disarm() }
+        runCatching {
+            commandServer?.apply {
+                close()
+                Seq.destroyRef(refnum)
+            }
+        }
+        commandServer = null
     }
 
     private fun closeTunFd() {

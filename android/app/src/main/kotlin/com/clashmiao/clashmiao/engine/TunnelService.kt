@@ -96,6 +96,9 @@ class TunnelService : VpnService(), Runnable {
 
         val fd = builder.establish()
             ?: error("android: VpnService.Builder.establish() returned null")
+        // 防御性纵深：万一 openTun 被二次调用（新代码路径 / 未来重构），先关掉
+        // 上一个原始 fd 再覆盖，避免二次遗弃孤儿 tun。正常路径下 tunFd 已为 null。
+        host.tunFd?.let { runCatching { it.close() } }
         host.tunFd = fd
         return fd.fd
     }
@@ -168,7 +171,7 @@ class TunnelService : VpnService(), Runnable {
         if (mode == AppFilterMode.INCLUDE) {
             for (pkg in apps) runCatching { builder.addAllowedApplication(pkg) }
             // INCLUDE 时 clashmiao 本进程必须自己也走 VPN，否则 sing-box 自己拨号都被切。
-            // 等等：自己走 VPN 反而会 loop，应该 disallow。但 hiddify 历史代码就这样，
+            // 等等：自己走 VPN 反而会 loop，应该 disallow。但历史实现就是这样，
             // 实际 sing-box outbound socket 走 protect() 不会 loop，所以加进去是 OK 的。
             runCatching { builder.addAllowedApplication(packageName) }
         } else {

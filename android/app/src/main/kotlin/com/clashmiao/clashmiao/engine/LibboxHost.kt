@@ -21,7 +21,7 @@ import io.nekohasekai.libbox.NetworkInterface as LibboxIface
 /**
  * libbox `PlatformInterface` 的 Android 基类。
  *
- * 之前 hiddify 那边是个 `interface PlatformInterfaceWrapper : PlatformInterface`
+ * 之前上游实现是个 `interface PlatformInterfaceWrapper : PlatformInterface`
  * 用 default method 提供默认实现，TunnelService / PlainService 再实现它再加自己的
  * override。这里换成 **abstract class** —— libbox 暴露 ~13 个 method，绝大部分
  * Android 端答案是固定的（受 Android API 约束），用 abstract class 直接把那些

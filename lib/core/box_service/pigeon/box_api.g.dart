@@ -730,4 +730,47 @@ class BoxHostApi {
       return;
     }
   }
+
+  /// iOS 专用：查询 App Group 共享容器内、sing-box 运行时文件（provisioned 的
+  /// .srs rule-set、每次 connect 现场拼的 runtime-config.json）应该落地的目录。
+  ///
+  /// 背景：iOS 上 Runner 主 App 和 packet-tunnel extension 是两个独立沙盒
+  /// 进程；`RuntimeConfigBuilder` 往生成的 config JSON 里嵌的 rule_set 绝对
+  /// 路径最终要被 extension 进程读取，只有 App Group 共享容器两边都能访问
+  /// （`path_provider` 的 `getApplicationDocumentsDirectory()` 拿到的是
+  /// Runner 私有沙盒，extension 看不到）。
+  ///
+  /// Dart 侧只有 iOS 分支会调用这个方法（见
+  /// `lib/core/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
+  /// Android 走 `path_provider` 就够（单进程模型，没有这个问题），这里的
+  /// Android 实现只是为了满足接口契约，返回值不会被 Dart 消费。
+  Future<String> getAppGroupWorkingDirectory() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.getAppGroupWorkingDirectory$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as String?)!;
+    }
+  }
 }

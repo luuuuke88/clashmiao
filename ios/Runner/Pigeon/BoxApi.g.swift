@@ -385,6 +385,20 @@ protocol BoxHostApi {
   func getInstalledApps(completion: @escaping (Result<[InstalledApp], Error>) -> Void)
   func getAppIconBase64(packageName: String, completion: @escaping (Result<String?, Error>) -> Void)
   func resetTunnel(completion: @escaping (Result<Void, Error>) -> Void)
+  /// iOS 专用：查询 App Group 共享容器内、sing-box 运行时文件（provisioned 的
+  /// .srs rule-set、每次 connect 现场拼的 runtime-config.json）应该落地的目录。
+  ///
+  /// 背景：iOS 上 Runner 主 App 和 packet-tunnel extension 是两个独立沙盒
+  /// 进程；`RuntimeConfigBuilder` 往生成的 config JSON 里嵌的 rule_set 绝对
+  /// 路径最终要被 extension 进程读取，只有 App Group 共享容器两边都能访问
+  /// （`path_provider` 的 `getApplicationDocumentsDirectory()` 拿到的是
+  /// Runner 私有沙盒，extension 看不到）。
+  ///
+  /// Dart 侧只有 iOS 分支会调用这个方法（见
+  /// `lib/core/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
+  /// Android 走 `path_provider` 就够（单进程模型，没有这个问题），这里的
+  /// Android 实现只是为了满足接口契约，返回值不会被 Dart 消费。
+  func getAppGroupWorkingDirectory(completion: @escaping (Result<String, Error>) -> Void)
 }
 
 /// Generated setup class from Pigeon to handle messages through the `binaryMessenger`.
@@ -623,6 +637,34 @@ class BoxHostApiSetup {
       }
     } else {
       resetTunnelChannel.setMessageHandler(nil)
+    }
+    /// iOS 专用：查询 App Group 共享容器内、sing-box 运行时文件（provisioned 的
+    /// .srs rule-set、每次 connect 现场拼的 runtime-config.json）应该落地的目录。
+    ///
+    /// 背景：iOS 上 Runner 主 App 和 packet-tunnel extension 是两个独立沙盒
+    /// 进程；`RuntimeConfigBuilder` 往生成的 config JSON 里嵌的 rule_set 绝对
+    /// 路径最终要被 extension 进程读取，只有 App Group 共享容器两边都能访问
+    /// （`path_provider` 的 `getApplicationDocumentsDirectory()` 拿到的是
+    /// Runner 私有沙盒，extension 看不到）。
+    ///
+    /// Dart 侧只有 iOS 分支会调用这个方法（见
+    /// `lib/core/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
+    /// Android 走 `path_provider` 就够（单进程模型，没有这个问题），这里的
+    /// Android 实现只是为了满足接口契约，返回值不会被 Dart 消费。
+    let getAppGroupWorkingDirectoryChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.getAppGroupWorkingDirectory\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getAppGroupWorkingDirectoryChannel.setMessageHandler { _, reply in
+        api.getAppGroupWorkingDirectory { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getAppGroupWorkingDirectoryChannel.setMessageHandler(nil)
     }
   }
 }

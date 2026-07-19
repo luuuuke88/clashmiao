@@ -30,6 +30,20 @@ final class PigeonBridge: BoxHostApi {
         }
     }
 
+    /// `baseDir`/`workingDir`/`tempDir` 有意不消费：sing-box 内核真正落盘的
+    /// 位置由 `ProfilePathResolver` 统一计算（`AppDelegate.seedSharedFilesystem()`
+    /// 在进程启动时已经建好目录并 chdir 过），Runner 和 packet-tunnel extension
+    /// 是两个独立沙盒进程，必须共享同一份原生侧算出来的 App Group 容器路径，
+    /// 不能各自按 Dart 传来的值再算一遍——那样两边可能算出不一致的目录。
+    /// Android 侧 `PigeonBridge.kt.setup()` 同理忽略这三个参数（`Libbox.setup`
+    /// 走自己的 baseDir/getExternalFilesDir/cacheDir）。
+    ///
+    /// Dart 侧真正需要 App Group 路径时（`RuleSetProvisioner` 写 .srs、
+    /// `RuntimeConfigBuilder` 往 runtime-config.json 里嵌 rule_set 绝对路径），
+    /// 走 `getAppGroupWorkingDirectory()`，不依赖这里传入的值——下面的
+    /// assert 只是一道 DEBUG 期回归哨兵：如果 Dart 侧目录解析逻辑退化回
+    /// `path_provider` 的私有沙盒路径，这里能第一时间炸出来，而不是等到
+    /// "智能模式在 iOS 上读不到规则文件" 这种难排查的现象。
     func setup(
         baseDir: String,
         workingDir: String,
@@ -37,6 +51,13 @@ final class PigeonBridge: BoxHostApi {
         debug: Bool,
         completion: @escaping (Result<Void, Error>) -> Void
     ) {
+        #if DEBUG
+        assert(
+            workingDir.hasPrefix(ProfilePathResolver.sharedContainer.path),
+            "[ClashMiao] setup() 收到的 workingDir 不在 App Group 容器内: " +
+            "\(workingDir) —— iOS 目录解析是不是退回 path_provider 私有沙盒了？"
+        )
+        #endif
         Task {
             KernelBridge.bootOnce()
             do {
@@ -46,6 +67,17 @@ final class PigeonBridge: BoxHostApi {
                 completion(.failure(error))
             }
         }
+    }
+
+    /// 见 pigeons/box_api.dart 里的方法文档：Dart 侧 iOS 分支用这个查询
+    /// App Group 共享容器内 sing-box 运行时文件应该落地的目录。
+    /// `runtimeWorkingDirectory` 而不是 `sharedContainer` 根目录——跟
+    /// `AppDelegate.seedSharedFilesystem()` / `KernelProviderProxy` 用的是
+    /// 同一个目录常量，这里不需要额外 mkdir（进程启动时已经建好）。
+    func getAppGroupWorkingDirectory(
+        completion: @escaping (Result<String, Error>) -> Void
+    ) {
+        completion(.success(ProfilePathResolver.runtimeWorkingDirectory.path))
     }
 
     // MARK: - Config

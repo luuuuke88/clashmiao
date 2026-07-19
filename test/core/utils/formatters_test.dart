@@ -45,6 +45,18 @@ void main() {
       final future = DateTime.now().add(const Duration(days: 10, hours: 2));
       expect(formatExpireDate(future, zhCn), '剩余 10 天');
     });
+    test('剩余超过 365 天 → Unlimited（此前只有 profiles_page 私有实现才有这条规则，'
+        '合并成单一实现，避免同一订阅在首页/订阅列表两处显示不一致）', () {
+      final farFuture = DateTime.now().add(const Duration(days: 400));
+      expect(formatExpireDate(farFuture, en), 'Unlimited');
+      expect(formatExpireDate(farFuture, zhCn), '无限期');
+    });
+    test('剩余恰好 365 天以内仍正常显示天数，不提前判无限期', () {
+      final justUnder = DateTime.now().add(
+        const Duration(days: 365, hours: 2),
+      );
+      expect(formatExpireDate(justUnder, en), 'Remaining 365 days');
+    });
   });
 
   group('isValidUrl', () {

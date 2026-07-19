@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profile_details_page.dart';
 import 'package:clashmiao/features/profile/widget/profile_qr_dialog.dart';
@@ -961,7 +962,7 @@ class _ProfileCard extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    _formatExpire(profile.subInfo!.expire, t),
+                    formatExpireDate(profile.subInfo!.expire, t),
                     style: TextStyle(
                       fontSize: 12,
                       color: profile.subInfo!.isExpired
@@ -997,14 +998,6 @@ class _ProfileCard extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  String _formatExpire(DateTime? dt, TranslationsEn t) {
-    if (dt == null) return t.profile.details.unlimited;
-    final days = dt.difference(DateTime.now()).inDays;
-    if (days > 365) return t.profile.details.unlimited;
-    if (days < 0) return t.profile.subscription.expired;
-    return t.profile.overview.remainingDays(days: days);
   }
 }
 

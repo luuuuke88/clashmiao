@@ -773,7 +773,7 @@ void main() {
   group('connectionErrorProvider 写入分类后的本地化文案（而非原始异常/alert文本）', () {
     final en = Translations.build();
 
-    test('fatal alert（startService，原始 message 含内部堆栈信息）应归类为服务启动失败文案', () async {
+    test('fatal alert（startService）不写 connectionErrorProvider（阻断式弹窗负责提示）', () async {
       SharedPreferences.setMockInitialValues({'locale': 'en'});
       final prefs = await SharedPreferences.getInstance();
       final spy = _SpyBoxService();
@@ -792,23 +792,18 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      final err = container.read(connectionErrorProvider);
-      expect(err, isNotNull);
       expect(
-        err,
-        isNot(contains('0xdeadbeef')),
-        reason: '不应该把原生堆栈信息原样展示给用户',
-      );
-      expect(
-        err,
-        en.failure.singbox.start,
-        reason: 'startService alert 应归类为"服务启动失败"分类文案',
+        container.read(connectionErrorProvider),
+        isNull,
+        reason: '致命 alert 的用户提示由 ShellPage 的阻断式弹窗负责'
+            '（见 shell_page_test.dart），这里不能再写一份，否则 home_page '
+            '的 toast 会跟弹窗对同一个错误双重提示',
       );
 
       container.dispose();
     });
 
-    test('fatal alert（emptyConfiguration）应归类为配置无效文案', () async {
+    test('fatal alert（emptyConfiguration）不写 connectionErrorProvider', () async {
       SharedPreferences.setMockInitialValues({'locale': 'en'});
       final prefs = await SharedPreferences.getInstance();
       final spy = _SpyBoxService();
@@ -829,17 +824,16 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      final err = container.read(connectionErrorProvider);
       expect(
-        err,
-        en.failure.singbox.invalidConfig,
-        reason: 'emptyConfiguration alert 应归类为"配置无效"分类文案',
+        container.read(connectionErrorProvider),
+        isNull,
+        reason: '同 startService：致命 alert 由 ShellPage 阻断式弹窗负责提示',
       );
 
       container.dispose();
     });
 
-    test('fatal alert（createService）应归类为服务启动失败文案', () async {
+    test('fatal alert（createService）不写 connectionErrorProvider', () async {
       SharedPreferences.setMockInitialValues({'locale': 'en'});
       final prefs = await SharedPreferences.getInstance();
       final spy = _SpyBoxService();
@@ -862,7 +856,8 @@ void main() {
 
       expect(
         container.read(connectionErrorProvider),
-        en.failure.singbox.start,
+        isNull,
+        reason: '同 startService：致命 alert 由 ShellPage 阻断式弹窗负责提示',
       );
 
       container.dispose();

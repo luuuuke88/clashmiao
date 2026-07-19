@@ -41,7 +41,9 @@ class HomePage extends ConsumerWidget {
     final activeProfile = ref.watch(activeProfileProvider);
     final packageInfo = ref.watch(_packageInfoProvider);
 
-    // 连接错误反馈：错误出现 → 弹 toast（错误保留供重连按钮使用）
+    // 连接错误反馈：错误出现 → 弹 toast。只覆盖 connect()/disconnect() 的
+    // 异常路径（SocketException/超时等）——致命 alert（内核没起来）不走这里，
+    // 由 ShellPage 的 boxAlertsProvider 监听器弹阻断式弹窗，两边不重复提示。
     ref.listen<String?>(connectionErrorProvider, (prev, next) {
       if (next != null && next.isNotEmpty && context.mounted) {
         AppToast.error(context, next);

@@ -38,7 +38,8 @@
       "global": "全局代理",
       "smart": "智能分流"
     },
-    "failedToSwitchMode": "切换模式失败: ${error}"
+    "failedToSwitchMode": "切换模式失败: ${error}",
+    "connectionFailedTitle": "连接失败"
   },
   "stats": {
     "traffic": "流量",

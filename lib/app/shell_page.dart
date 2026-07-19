@@ -5,6 +5,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
+import 'package:clashmiao/core/model/connection_error_classifier.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/widget/about_page.dart';
 import 'package:clashmiao/features/assets/widget/assets_page.dart';
@@ -20,6 +21,7 @@ import 'package:clashmiao/features/settings/widget/per_app_proxy_page.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/blocking_alert_dialog.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -203,11 +205,26 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       });
     }
 
-    // sing-box 核心层推过来的非致命错误 → 全局 toast。
+    // sing-box 核心层推过来的 alert：内核压根没起来（isFatal）用阻断式弹窗
+    // ——必须点确认，不能被用户划走错过；其余（权限请求等，用户仍可重试/
+    // 手动处理）维持非阻断 toast。文案统一走 classifyBoxAlertMessage，跟
+    // ConnectionController 写 connectionErrorProvider 用的是同一份分类器，
+    // 不再各自维护一份（此前这里是硬编码中文 _alertLabel，跟分类器脱节）。
     ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
       final alert = next.valueOrNull;
       if (alert == null) return;
-      AppToast.error(context, _alertLabel(context, ref, alert));
+      final t = ref.read(translationsProvider);
+      final message = classifyBoxAlertMessage(alert, t);
+      if (alert.type.isFatal) {
+        showBlockingAlert(
+          context,
+          title: t.home.connectionFailedTitle,
+          message: message,
+          icon: FluentIcons.error_circle_24_regular,
+        );
+        return;
+      }
+      AppToast.error(context, message);
     });
 
     // 深链导入结果（DeepLinkService 解析 URI 并调用 addByUrl/addByContent
@@ -293,20 +310,6 @@ void _handleDeepLinkResult(
       AppToast.error(context, '导入订阅失败：$message');
   }
   ref.read(deepLinkImportResultProvider.notifier).state = null;
-}
-
-String _alertLabel(BuildContext context, WidgetRef ref, BoxAlert alert) {
-  final suffix = alert.message?.isNotEmpty == true ? ': ${alert.message}' : '';
-  final head = switch (alert.type) {
-    BoxAlertType.requestVpnPermission => 'VPN 权限被拒绝',
-    BoxAlertType.requestNotificationPermission => '通知权限被拒绝',
-    BoxAlertType.emptyConfiguration => '配置为空或解析失败',
-    BoxAlertType.startCommandServer => 'Command Server 启动失败',
-    BoxAlertType.createService => 'sing-box 创建失败',
-    BoxAlertType.startService => 'sing-box 启动失败',
-    BoxAlertType.unknown => '未知错误',
-  };
-  return '$head$suffix';
 }
 
 class _GlassBottomNav extends ConsumerWidget {

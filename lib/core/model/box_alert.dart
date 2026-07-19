@@ -42,3 +42,15 @@ class BoxAlert {
   @override
   String toString() => 'BoxAlert($type${message == null ? '' : ': $message'})';
 }
+
+/// 单一权威判定："致命"指内核压根没起来（建服务/起服务/空配置），
+/// UI 层必须让用户真正看到并确认，而不是能被划走错过的 toast。
+/// `ConnectionController`（强制回退 BoxStopped）和 `ShellPage`（选择
+/// toast 还是阻断式弹窗）两处都要用同一份判断，避免各自维护一份判据、
+/// 后续加新 alert 类型时两边判断悄悄漂移不一致。
+extension BoxAlertTypeFatality on BoxAlertType {
+  bool get isFatal =>
+      this == BoxAlertType.startService ||
+      this == BoxAlertType.createService ||
+      this == BoxAlertType.emptyConfiguration;
+}

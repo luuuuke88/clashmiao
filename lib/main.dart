@@ -6,10 +6,18 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/rule_set_provisioner.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
+import 'package:clashmiao/core/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/core/shortcuts/desktop_shortcuts.dart';
 import 'package:clashmiao/core/tray/tray_controller.dart';
+import 'package:clashmiao/core/update/startup_update_check.dart';
+import 'package:clashmiao/core/window/silent_start.dart';
+import 'package:clashmiao/features/profile/state/profiles_update_scheduler.dart';
+import 'package:clashmiao/shared/components/profile_form_dialog.dart'
+    show isHttpDownloadUrl;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -22,6 +30,12 @@ const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // App 层日志基础设施：FlutterError.onError / PlatformDispatcher.onError
+  // 兜底捕获写入本地 app.log，纯本地文件、不涉及上报，不受下面"数据分析"
+  // 开关影响——任何情况下都该记录，方便排障。必须尽早调用，尽量少漏掉
+  // 启动过程中的异常。
+  await initAppLogger();
+
   final container = ProviderContainer();
   // Ensure shared preferences are loaded before app runs
   await container.read(sharedPreferencesProvider.future);
@@ -31,7 +45,11 @@ void main() async {
   if (boxService is! StubBoxService) {
     try {
       await boxService.init();
-      final appDir = await getApplicationDocumentsDirectory();
+      // iOS 上 sing-box 运行时文件必须落在 App Group 共享容器（Runner 和
+      // packet-tunnel extension 是两个独立沙盒进程，只有共享容器两边都能
+      // 访问），其它平台维持原来的 path_provider Documents 目录不变——
+      // 详见 resolveSingBoxWorkingDirectory 的文档。
+      final appDir = await resolveSingBoxWorkingDirectory();
       final tempDir = await getTemporaryDirectory();
       final dirs = AppDirectories(
         baseDir: Directory(appDir.path),
@@ -40,8 +58,9 @@ void main() async {
       );
       await boxService.setup(dirs, debug: true);
 
-      // 把 bundled .srs rule-set 文件 provision 到 workingDir，
-      // smart 模式的 RuntimeConfigBuilder 引用相对路径 ./geoip-cn.srs / ./geosite-cn.srs。
+      // 把 bundled .srs rule-set 文件 provision 到 workingDir，smart 模式的
+      // RuntimeConfigBuilder 引用绝对路径 <workingDir>/geoip-cn.srs /
+      // <workingDir>/geosite-cn.srs（跨平台 CWD 不统一，相对路径不可靠）。
       await RuleSetProvisioner().ensureProvisioned(dirs.workingDir);
 
       // 启动时按 prefs 里持久化的 mode 推 changeConfigOptions
@@ -79,23 +98,50 @@ void main() async {
           : TitleBarStyle.normal,
     );
     await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
+      // 静默启动（设置页 clashmiao_silent_start 开关）：跳过 show()/focus()
+      // 让窗口保持初始隐藏状态，而不是"先 show 再 hide"避免闪烁。
+      await showWindowUnlessSilentStart(
+        container.read(sharedPreferencesProvider).requireValue,
+      );
       await windowManager.setResizable(false);
     });
 
     // 桌面端系统托盘（macOS 状态栏 / Windows 任务栏 / Linux indicator）
     await TrayController.instance.setup(container);
 
-    // 注册退出前钩子：用户关窗口时先停 sing-box，避免系统代理残留。
+    // 注册关窗口钩子：点击窗口关闭按钮只隐藏到托盘，不断开 VPN、不退出进程
+    // （真正退出走托盘菜单"退出"项，见 TrayController.onTrayMenuItemClick）。
     await windowManager.setPreventClose(true);
-    windowManager.addListener(_DesktopShutdownGuard(container));
+    windowManager.addListener(DesktopShutdownGuard());
   }
 
-  // 启动时尝试自动更新所有订阅（按 updateInterval 判断哪些过期了）。
-  // 失败不阻塞，让用户至少能用旧 profile。
+  // 深链导入：监听 sing-box:// clash:// clashmeta:// clashmiao:// 链接
+  // （AndroidManifest.xml 已注册好 intent-filter，点击这类链接能拉起 App）。
+  // 尽早 read 一次触发 DeepLinkService 创建——它在创建时自己发起监听
+  // （不 await，不阻塞这里；解析/导入结果由 ShellPage 监听后弹 toast）。
+  container.read(deepLinkServiceProvider);
+
+  // 订阅自动更新调度器：读每条订阅的 updateInterval，到期的用跟"立即更新"
+  // 按钮同一条刷新逻辑静默更新一次。触发时机三条：这里的启动时查一次
+  // （失败不阻塞，让用户至少能用旧 profile）、Timer.periodic 定期查一次、
+  // App 从后台恢复前台时再查一次（详见 ProfileUpdateScheduler 类文档）。
+  final profileUpdateScheduler = ProfileUpdateScheduler(
+    repositoryProvider: () => container.read(profileRepositoryProvider.future),
+    onChecked: (_) {
+      container.invalidate(profileListProvider);
+      container.invalidate(activeProfileProvider);
+    },
+  );
   // ignore: discarded_futures
-  _autoUpdateOnLaunch(container);
+  profileUpdateScheduler.checkAndRefreshDue();
+  profileUpdateScheduler.start();
+
+  // 启动静默自动检查更新：检查到新版本才弹「发现新版本」对话框（见
+  // core/update/startup_update_check.dart），没有新版本 / 网络失败 /
+  // GITHUB_REPO_SLUG 为空时什么都不做，不产生任何视觉噪音。跟上面订阅的
+  // 自动更新调度器、跟关于页手动点「检查更新」都相互独立，谁都不依赖谁。
+  // ignore: discarded_futures
+  runStartupUpdateCheck(container);
 
   // dev-only / CI smoke：检测 ~/.clashmiao_dev_subscription_url 或
   // CLASHMIAO_TEST_SUB_URL env，自动添加订阅 + 自动连接，解放手动 UI 测试。
@@ -109,77 +155,82 @@ void main() async {
     _devAutoBoot(container);
   }
 
-  if (_sentryDsn.isNotEmpty) {
-    await SentryFlutter.init(
-      (options) {
-        options.dsn = _sentryDsn;
-        options.tracesSampleRate = 0.05;
-        options.attachScreenshot = false;
-        options.sendDefaultPii = false;
-      },
-      appRunner: () => runApp(
-        UncontrolledProviderScope(
-          container: container,
-          child: const ClashMiaoApp(),
-        ),
-      ),
-    );
-  } else {
-    runApp(
+  // 数据分析开关（'clashmiao_analytics_enabled'，onboarding/settings 页共用同
+  // 一个 key，默认 false，opt-in——clashmiao 有意比参照项目更保守，这是既定
+  // 产品决策）决定 Sentry SDK 要不要真的初始化：之前只要编译期 SENTRY_DSN
+  // 非空就无条件 init，关掉开关后未处理异常/原生崩溃依然被自动上报，隐私
+  // 承诺和实际行为不符。prefs 在 main() 顶部已经 await 过 sharedPreferencesProvider.future，
+  // 这里读的是同一个已经 resolve 的值，requireValue 不会抛。
+  final analyticsEnabled =
+      container.read(sharedPreferencesProvider).requireValue.getBool(
+        'clashmiao_analytics_enabled',
+      ) ??
+      false;
+
+  await bootstrapSentryGatedApp(
+    dsn: _sentryDsn,
+    analyticsEnabled: analyticsEnabled,
+    initSentry: (dsn, appRunner) => SentryFlutter.init((options) {
+      options.dsn = dsn;
+      options.tracesSampleRate = 0.05;
+      options.attachScreenshot = false;
+      options.sendDefaultPii = false;
+    }, appRunner: appRunner),
+    // 桌面端全局键盘快捷键（Cmd/Ctrl+V 快速粘贴导入订阅是最高优先级的一个，
+    // 另外还有 macOS 的 Cmd+W/Cmd+,、Linux 的 Ctrl+Q，见
+    // core/shortcuts/desktop_shortcuts.dart 的文档）。必须包在
+    // `ClashMiaoApp`（内含 `MaterialApp.router`）外面——Flutter 处理键盘事件
+    // 时从聚焦节点往上找最近的 Shortcuts 祖先，文本框自身的复制/粘贴快捷键
+    // 由框架内置的 DefaultTextEditingShortcuts 提供（嵌在 MaterialApp 内部，
+    // 比这里更靠近文本框），会先一步命中，不会被这里的全局粘贴导入吞掉。
+    // 移动端不需要全局快捷键，维持原来直接 runApp(ClashMiaoApp()) 的行为。
+    appRunner: () => runApp(
       UncontrolledProviderScope(
         container: container,
-        child: const ClashMiaoApp(),
+        child: (Platform.isMacOS || Platform.isWindows || Platform.isLinux)
+            ? const DesktopShortcutsWrapper(child: ClashMiaoApp())
+            : const ClashMiaoApp(),
       ),
-    );
+    ),
+  );
+}
+
+/// Sentry SDK 初始化门控：只有编译期 `SENTRY_DSN` 非空 **且** 用户勾选了
+/// "数据分析"开关时才真正调用 [initSentry]；否则只跑 [appRunner]，SDK 完全
+/// 不会被初始化（连自动捕获未处理异常/原生崩溃的能力都不会挂载）。
+///
+/// 抽成可注入 [initSentry] / [appRunner] 的纯函数是为了能在 main_test.dart
+/// 里验证门控逻辑本身，不需要真的启动 Sentry SDK。
+@visibleForTesting
+Future<void> bootstrapSentryGatedApp({
+  required String dsn,
+  required bool analyticsEnabled,
+  required Future<void> Function(String dsn, VoidCallback appRunner)
+  initSentry,
+  required VoidCallback appRunner,
+}) async {
+  if (dsn.isNotEmpty && analyticsEnabled) {
+    await initSentry(dsn, appRunner);
+  } else {
+    appRunner();
   }
 }
 
-/// 桌面端关窗口时先停 sing-box，避免系统代理残留导致用户没网。
+/// 桌面端点击窗口关闭按钮时的行为：只隐藏窗口到系统托盘，
+/// **不**断开 VPN、**不**退出进程。
 ///
-/// window_manager 的 `setPreventClose(true)` 让 onWindowClose 变成可拦截事件；
-/// 我们 stop boxService 再 destroy。
-class _DesktopShutdownGuard with WindowListener {
-  _DesktopShutdownGuard(this._container);
-  final ProviderContainer _container;
-  bool _shuttingDown = false;
-
+/// 托盘（见 tray_controller.dart）存在的意义就是让用户能关掉窗口但保持
+/// VPN 连接和后台服务运行——真正退出程序走托盘菜单"退出 ClashMiao"项
+/// （TrayController.onTrayMenuItemClick 的 'quit' 分支），只有那里才会
+/// disconnect() + destroy()。
+///
+/// window_manager 的 `setPreventClose(true)` 让 onWindowClose 变成可拦截
+/// 事件（native 层已经在关闭时拦下真正的销毁），这里只需要 hide()，
+/// 把控制权交还给托盘。
+class DesktopShutdownGuard with WindowListener {
   @override
   void onWindowClose() async {
-    if (_shuttingDown) return;
-    _shuttingDown = true;
-    try {
-      await _container.read(connectionControllerProvider.notifier).disconnect();
-    } catch (_) {
-      // 即便停失败也得退，否则用户卡死
-    }
-    await TrayController.instance.dispose();
-    await windowManager.destroy();
-  }
-}
-
-/// 启动时按 `updateInterval` 自动更新过期的订阅。
-///
-/// `addByContent` 导入的本地节点（url 以 `content://` 开头）跳过 —— 它们
-/// 没有可 fetch 的 HTTP URL。
-Future<void> _autoUpdateOnLaunch(ProviderContainer container) async {
-  try {
-    final repo = await container.read(profileRepositoryProvider.future);
-    final profiles = repo.getAll();
-    final now = DateTime.now();
-    for (final p in profiles) {
-      if (p.url.startsWith('content://')) continue;
-      final last = p.lastUpdate;
-      if (last == null) continue;
-      if (now.difference(last) < p.updateInterval) continue;
-      try {
-        debugPrint('[AutoUpdate] 更新 ${p.name}...');
-        await repo.update(p.id);
-      } catch (e) {
-        debugPrint('[AutoUpdate] ${p.name} 更新失败: $e');
-      }
-    }
-  } catch (e) {
-    debugPrint('[AutoUpdate] 整体失败: $e');
+    await windowManager.hide();
   }
 }
 
@@ -210,22 +261,15 @@ Future<void> _devAutoBoot(ProviderContainer container) async {
     if (existing.isEmpty) {
       debugPrint('[DevBoot] 自动添加订阅...');
       try {
-        const proxyUriSchemes = [
-          'ss',
-          'vless',
-          'vmess',
-          'trojan',
-          'hysteria',
-          'hysteria2',
-          'tuic',
-        ];
-        final isProxyUri = proxyUriSchemes.any((s) => url.startsWith('$s://'));
-        if (isProxyUri) {
-          await repo.addByContent(url, name: 'dev');
-        } else {
+        if (isHttpDownloadUrl(url)) {
           await repo.addByUrl(url, customName: 'dev');
+        } else {
+          await repo.addByContent(url, name: 'dev');
         }
         debugPrint('[DevBoot] 订阅添加成功');
+        container.invalidate(profileListProvider);
+        container.invalidate(activeProfileProvider);
+        container.invalidate(offlineProxyGroupsProvider);
       } catch (e) {
         debugPrint('[DevBoot] 订阅添加失败: $e');
         return;

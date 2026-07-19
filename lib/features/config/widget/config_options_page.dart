@@ -1550,6 +1550,20 @@ String _networkSettingsJson(WidgetRef ref) {
     'enableTlsMixedSniCase': settings.enableTlsMixedSniCase,
     'tlsPaddingSize': settings.tlsPaddingSize,
     'muxPadding': settings.muxPadding,
+    // WARP 用户可调设置——故意不含 warpAccountId/warpAccessToken/
+    // warpWireguardConfig：这 3 个是 generateWarpConfig 生成写入的运行时凭证
+    // （设备/注册绑定的状态，不是用户设置），跟着"配置选项"备份走一是没意义
+    // （换设备/重装后大概率失效），二是会把半机密的生成态凭证摊平进剪贴板 JSON。
+    'enableWarp': settings.enableWarp,
+    'warpConsentGiven': settings.warpConsentGiven,
+    'warpDetourMode': settings.warpDetourMode,
+    'warpLicenseKey': settings.warpLicenseKey,
+    'warpCleanIp': settings.warpCleanIp,
+    'warpPort': settings.warpPort,
+    'warpNoise': settings.warpNoise,
+    'warpNoiseSize': settings.warpNoiseSize,
+    'warpNoiseMode': settings.warpNoiseMode,
+    'warpNoiseDelay': settings.warpNoiseDelay,
   });
 }
 

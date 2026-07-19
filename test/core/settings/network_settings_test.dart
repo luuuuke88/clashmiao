@@ -575,5 +575,102 @@ void main() {
       expect(fresh.state.muxPadding, isTrue);
       expect(fresh.state.tlsFragmentSleep, '9-19');
     });
+
+    test('包含 WARP 用户配置字段的 JSON 导入后正确写入 NetworkSettings', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = NetworkSettingsNotifier(prefs);
+
+      final json = jsonEncode({
+        'enableWarp': true,
+        'warpConsentGiven': true,
+        'warpDetourMode': 'warpOverProxy',
+        'warpLicenseKey': 'abcd-1234',
+        'warpCleanIp': '162.159.192.1',
+        'warpPort': 2408,
+        'warpNoise': '5-10',
+        'warpNoiseSize': '20-40',
+        'warpNoiseMode': 'm4',
+        'warpNoiseDelay': '15-35',
+      });
+
+      final result = await notifier.importJson(json);
+
+      expect(result.hasParseError, isFalse);
+      expect(result.skippedKeys, isEmpty);
+      expect(result.appliedKeys, contains('enableWarp'));
+      expect(result.appliedKeys, contains('warpNoiseDelay'));
+      expect(notifier.state.enableWarp, isTrue);
+      expect(notifier.state.warpConsentGiven, isTrue);
+      expect(notifier.state.warpDetourMode, 'warpOverProxy');
+      expect(notifier.state.warpLicenseKey, 'abcd-1234');
+      expect(notifier.state.warpCleanIp, '162.159.192.1');
+      expect(notifier.state.warpPort, 2408);
+      expect(notifier.state.warpNoise, '5-10');
+      expect(notifier.state.warpNoiseSize, '20-40');
+      expect(notifier.state.warpNoiseMode, 'm4');
+      expect(notifier.state.warpNoiseDelay, '15-35');
+      // 持久化也要跟着写，不能只改内存 state。
+      expect(prefs.getBool('clashmiao_enable_warp'), isTrue);
+      expect(prefs.getString('clashmiao_warp_license_key'), 'abcd-1234');
+    });
+
+    test(
+      '生成类 WARP 凭证字段（accountId/accessToken/wireguardConfig）不参与导入通道，'
+      '出现在 JSON 里也不会被当成可识别字段',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = NetworkSettingsNotifier(prefs);
+
+        final json = jsonEncode({
+          'warpAccountId': 'should-not-be-imported',
+          'mtu': 1300,
+        });
+        final result = await notifier.importJson(json);
+
+        expect(result.appliedKeys, ['mtu']);
+        expect(result.skippedKeys, isEmpty);
+        expect(notifier.state.warpAccountId, isEmpty);
+      },
+    );
+
+    test('WARP 用户配置字段导出的 JSON 可以原样导回（往返一致）', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final source = NetworkSettingsNotifier(prefs);
+      await source.setEnableWarp(true);
+      await source.setWarpDetourMode('warpOverProxy');
+      await source.setWarpLicenseKey('license-xyz');
+      await source.setWarpPort(4500);
+
+      // 跟 config_options_page._networkSettingsJson 的 WARP 字段集合保持一致——
+      // 只含用户可调的 10 个字段，不含 3 个"由 generateWarpConfig 生成写入"的
+      // 凭证字段（accountId/accessToken/wireguardConfig 是设备/注册绑定的运行时
+      // 状态，不是用户设置，不应该跟着"配置选项"备份走，避免把半机密的生成态
+      // 凭证摊平进剪贴板 JSON，也避免把可能已失效的旧注册覆盖到新设备/新装上）。
+      final exported = jsonEncode({
+        'enableWarp': source.state.enableWarp,
+        'warpConsentGiven': source.state.warpConsentGiven,
+        'warpDetourMode': source.state.warpDetourMode,
+        'warpLicenseKey': source.state.warpLicenseKey,
+        'warpCleanIp': source.state.warpCleanIp,
+        'warpPort': source.state.warpPort,
+        'warpNoise': source.state.warpNoise,
+        'warpNoiseSize': source.state.warpNoiseSize,
+        'warpNoiseMode': source.state.warpNoiseMode,
+        'warpNoiseDelay': source.state.warpNoiseDelay,
+      });
+
+      final fresh = NetworkSettingsNotifier(prefs);
+      await fresh.reset();
+      final result = await fresh.importJson(exported);
+
+      expect(result.hasParseError, isFalse);
+      expect(fresh.state.enableWarp, isTrue);
+      expect(fresh.state.warpDetourMode, 'warpOverProxy');
+      expect(fresh.state.warpLicenseKey, 'license-xyz');
+      expect(fresh.state.warpPort, 4500);
+    });
   });
 }

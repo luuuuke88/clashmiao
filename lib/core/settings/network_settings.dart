@@ -835,6 +835,21 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     await applyString('tlsPaddingSize', setTlsPaddingSize);
     await applyBool('muxPadding', setMuxPadding);
 
+    // WARP 用户可调设置——跟其余字段走同一条导入通道，否则备份/迁移会丢失
+    // WARP 配置。故意不含 warpAccountId/warpAccessToken/warpWireguardConfig：
+    // 这 3 个是 generateWarpConfig 生成写入的运行时凭证，不是用户设置，见
+    // _networkSettingsJson 的同款说明。
+    await applyBool('enableWarp', setEnableWarp);
+    await applyBool('warpConsentGiven', setWarpConsentGiven);
+    await applyString('warpDetourMode', setWarpDetourMode);
+    await applyString('warpLicenseKey', setWarpLicenseKey);
+    await applyString('warpCleanIp', setWarpCleanIp);
+    await applyInt('warpPort', setWarpPort);
+    await applyString('warpNoise', setWarpNoise);
+    await applyString('warpNoiseSize', setWarpNoiseSize);
+    await applyString('warpNoiseMode', setWarpNoiseMode);
+    await applyString('warpNoiseDelay', setWarpNoiseDelay);
+
     return NetworkSettingsImportResult(
       appliedKeys: applied,
       skippedKeys: skipped,

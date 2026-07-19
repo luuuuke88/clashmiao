@@ -292,6 +292,15 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         callback(Result.success(Unit))
     }
 
+    /// iOS 专用能力的 Android 桩实现——见 pigeons/box_api.dart 方法文档。
+    /// Android 是单进程模型，没有"另一个进程看不到私有沙盒"的问题，Dart 侧
+    /// 目录解析（`resolveSingBoxWorkingDirectory`）在 Android 上继续走
+    /// `path_provider`，根本不会调用这个方法；这里给一个合理值只是为了满足
+    /// Pigeon 生成的接口契约（不实现就编译不过），不影响 Android 现有行为。
+    override fun getAppGroupWorkingDirectory(callback: (Result<String>) -> Unit) {
+        callback(Result.success(Application.application.filesDir.absolutePath))
+    }
+
     private fun <T> pending(callback: (Result<T>) -> Unit) {
         callback(Result.failure(NotImplementedError("not migrated to Pigeon yet")))
     }

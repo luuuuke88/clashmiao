@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
@@ -7,7 +9,10 @@ import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/state/optimistic_proxy_selections_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -36,12 +41,24 @@ class _SpyBoxService implements BoxService {
   String? lastOutboundTag;
   final List<String> urlTestCalls = [];
   Future<void>? selectOutboundOverride;
+  Future<void>? urlTestOverride;
+  // 故意不用「预先构造好的 Future.error 塞进字段里、later await」这种写法：
+  // 那样 Future 在赋值的那一刻就已经完成为 error 态，如果之后隔了几个微任务
+  // 才被 await（比如经过 tester.tap 的手势识别),Dart 的 zone 会在 catchError
+  // 真正接住之前就把它当"unhandled"报出来，导致 flutter_test 判定用例失败,
+  // 即使产品代码里的 .catchError 完全接住了这个错误。
+  // 改成这个字段：只在 selectOutbound 被调用的那个同步栈里 `throw`,让错误
+  // 随着这次函数调用同步产生，调用方 `_selectProxy` 紧接着同步挂上的
+  // `.then().catchError()` 能在同一轮里接住，不会被 zone 误判。
+  Object? selectOutboundError;
 
   @override
   Future<void> selectOutbound(String groupTag, String outboundTag) async {
     selectOutboundCalls++;
     lastGroupTag = groupTag;
     lastOutboundTag = outboundTag;
+    final error = selectOutboundError;
+    if (error != null) throw error;
     final override = selectOutboundOverride;
     if (override != null) await override;
   }
@@ -68,6 +85,8 @@ class _SpyBoxService implements BoxService {
   @override
   Future<void> urlTest(String g) async {
     urlTestCalls.add(g);
+    final override = urlTestOverride;
+    if (override != null) await override;
   }
 
   @override
@@ -81,6 +100,12 @@ class _SpyBoxService implements BoxService {
   @override
   Future<String?> generateFullConfig(String p) async => null;
   @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) async => null;
+  @override
   Future<void> clearLogs() async {}
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
@@ -91,12 +116,30 @@ class _SpyBoxService implements BoxService {
 }
 
 const _ssNode = OutboundProxy(tag: 'ss-node', type: 'shadowsocks');
+const _activeProfile = ProfileEntity(
+  id: 'profile-1',
+  name: '测试订阅',
+  url: 'https://example.com/sub',
+  active: true,
+);
 
 OutboundGroup _proxyGroup({String selected = 'ss-node'}) => OutboundGroup(
   tag: 'proxy',
   type: 'selector',
   selected: selected,
   items: const [_ssNode],
+);
+
+// 回滚场景需要至少两个真实节点：点击「另一个」节点失败后，回滚才有意义
+// （单节点分组点自己没法区分"没切成功"和"本来就是它"）。
+const _nodeA = OutboundProxy(tag: 'node-a', type: 'shadowsocks');
+const _nodeB = OutboundProxy(tag: 'node-b', type: 'shadowsocks');
+
+OutboundGroup _twoNodeGroup({String selected = 'node-a'}) => OutboundGroup(
+  tag: 'proxy',
+  type: 'selector',
+  selected: selected,
+  items: const [_nodeA, _nodeB],
 );
 
 Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
@@ -108,6 +151,7 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
       // 离线 group 直接给一个：proxy / ss-node
       offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
@@ -116,6 +160,7 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
     ],
   );
   await container.read(sharedPreferencesProvider.future);
+  await container.read(activeProfileProvider.future);
   return (
     UncontrolledProviderScope(
       container: container,
@@ -177,10 +222,69 @@ void main() {
     await _drainToasts(tester);
   });
 
-  // 第 3 条 case（selectOutbound 失败 → catchError 兜住）的可靠测试需要 Dart zone
-  // 捕获 unhandled error，flutter_test 的 zone 会把任意 future.error 当 test failure
-  // 报告掉，即使被 .catchError 消费了。这场景在真机 / web 都没问题，所以不阻塞 PR
-  // —— 但单测里硬复现要换 runZonedGuarded 包一层，留给后续。
+  // 第 3 条 case（selectOutbound 失败 → catchError 兜住）：之前留了个注释说这个
+  // 场景不好测（担心 Dart zone 把 catchError 已消费的 future error 又当 unhandled
+  // 报出来）。绕开办法是别用「预先构造好的 Future.error 塞进字段、之后再 await」
+  // 这种写法（那样错误在赋值那一刻就已完成，如果之后隔了几个微任务/事件循环轮次
+  // 才被消费，Dart 会先判定为 unhandled）；改成 _SpyBoxService.selectOutboundError
+  // 那样在方法调用的同步栈里直接 throw，紧跟着 `_selectProxy` 里同步挂上的
+  // `.then().catchError()` 就能在同一条同步表达式内接住，不会被 zone 误判。
+  testWidgets('已连接时 selectOutbound 失败 → 回滚乐观选择，不留在错误节点上', (
+    tester,
+  ) async {
+    final (widget, container, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [_twoNodeGroup(selected: 'node-a')],
+    );
+    spy.selectOutboundError = Exception('native switch failed');
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 点击前没有任何乐观选择——UI 显示真实 selected：node-a。
+    expect(container.read(optimisticProxySelectionsProvider), isEmpty);
+
+    await tester.tap(find.text('node-b'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(spy.lastOutboundTag, 'node-b');
+    // 乐观更新曾经短暂写入 node-b，失败后必须被撤销，而不是永久停在 node-b。
+    expect(container.read(optimisticProxySelectionsProvider), isEmpty);
+    await _drainToasts(tester);
+  });
+
+  testWidgets('已连接时 selectOutbound 失败 → 回滚到点击前的乐观值而不是清空', (
+    tester,
+  ) async {
+    final (widget, container, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [_twoNodeGroup(selected: 'node-a')],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    // 模拟"之前已经乐观切换成功过一次"：group 的乐观值已经是 node-b。
+    container
+        .read(optimisticProxySelectionsProvider.notifier)
+        .update('proxy', 'node-b');
+    await tester.pump();
+
+    // 这次再点 node-a，但 native 调用失败。
+    spy.selectOutboundError = Exception('native switch failed');
+    await tester.tap(find.text('node-a'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(spy.lastOutboundTag, 'node-a');
+    // 应该回滚回点击前的乐观值 node-b，而不是被清空、也不是停在失败的 node-a。
+    expect(container.read(optimisticProxySelectionsProvider), {
+      'proxy': 'node-b',
+    });
+    await _drainToasts(tester);
+  });
 
   // empty state / reserved group filter / urlTest header 的覆盖在底下追加。
   _addProxiesPageExtraTests();
@@ -193,19 +297,22 @@ void main() {
 Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
   required bool connected,
   required List<OutboundGroup> groups,
+  Map<String, Object> initialPrefs = const {'locale': 'zhCn'},
 }) async {
-  SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+  SharedPreferences.setMockInitialValues(initialPrefs);
   final prefs = await SharedPreferences.getInstance();
   final spy = _SpyBoxService();
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
       offlineProxyGroupsProvider.overrideWith((_) async => groups),
       isConnectedProvider.overrideWith((_) => connected),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
+  await container.read(activeProfileProvider.future);
   return (
     UncontrolledProviderScope(
       container: container,
@@ -291,7 +398,7 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('proxy'), findsOneWidget);
+    expect(find.text('proxy'), findsNothing);
     expect(find.text('原始选择组'), findsNothing);
     expect(find.text('ss-node'), findsOneWidget);
   });
@@ -303,6 +410,7 @@ void _addProxiesPageExtraTests() {
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        activeProfileProvider.overrideWith((_) async => _activeProfile),
         boxServiceProvider.overrideWithValue(spy),
         isConnectedProvider.overrideWith((_) => true),
         outboundGroupsProvider.overrideWith(
@@ -320,6 +428,7 @@ void _addProxiesPageExtraTests() {
     );
     addTearDown(container.dispose);
     await container.read(sharedPreferencesProvider.future);
+    await container.read(activeProfileProvider.future);
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -337,11 +446,11 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('proxy'), findsOneWidget);
+    expect(find.text('proxy'), findsNothing);
     expect(find.text('ss-node'), findsOneWidget);
   });
 
-  testWidgets('delay 为 0 的节点显示未测速而不是超时', (tester) async {
+  testWidgets('delay 为 0 的节点显示 -- 而不是未测速/超时', (tester) async {
     final (widget, _, _) = await _hostWithGroups(
       connected: false,
       groups: [_proxyGroup()],
@@ -351,11 +460,30 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ss-node'), findsOneWidget);
-    expect(find.text('未测速'), findsOneWidget);
+    expect(find.text('--'), findsOneWidget);
+    expect(find.text('未测速'), findsNothing);
     expect(find.text('超时'), findsNothing);
   });
 
-  testWidgets('未连接时点 flash header button → info toast，不触发 urlTest', (
+  testWidgets('离线线路会合并当前订阅缓存的测速结果', (tester) async {
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: [_proxyGroup()],
+      initialPrefs: const {
+        'locale': 'zhCn',
+        'proxy_delays_profile-1': '{"ss-node":123}',
+      },
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('ss-node'), findsOneWidget);
+    expect(find.text('123ms'), findsOneWidget);
+    expect(find.text('--'), findsNothing);
+  });
+
+  testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (
     tester,
   ) async {
     final (widget, _, spy) = await _hostWithGroups(
@@ -366,13 +494,15 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    // flash 图标 = "测全部"，未连接时按了应该弹 toast 不调 urlTest
-    // 注：没有公开 key 拿不到精确的 button，通过 _HeaderButton 在 header 区域的位置触发。
-    // 简单做：仅断言 urlTest 没被调（spy 默认 0），不模拟点击。
-    expect(spy.selectOutboundCalls, 0);
+    await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.urlTestCalls, isEmpty);
+    expect(find.text('请连接后测速'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
-  testWidgets('测全部按钮会触发 selector/urltest 分组的 group.urlTest', (tester) async {
+  testWidgets('测速按钮只触发主分组的 group.urlTest', (tester) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: true,
       groups: [
@@ -397,7 +527,7 @@ void _addProxiesPageExtraTests() {
     await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(spy.urlTestCalls, equals(['manual', 'auto']));
+    expect(spy.urlTestCalls, equals(['manual']));
     await _drainToasts(tester);
   });
 
@@ -424,7 +554,193 @@ void _addProxiesPageExtraTests() {
     await _drainToasts(tester);
   });
 
-  testWidgets('普通 selector 分组显示单组测速按钮', (tester) async {
+  testWidgets('测速进行中节点卡片显示加载动画区域', (tester) async {
+    final (widget, _, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [_proxyGroup()],
+    );
+    final completer = Completer<void>();
+    spy.urlTestOverride = completer.future;
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('--'), findsOneWidget);
+
+    await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.urlTestCalls, equals(['proxy']));
+    expect(find.text('--'), findsNothing);
+
+    completer.complete();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('--'), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 1300));
+
+    expect(find.text('--'), findsOneWidget);
+  });
+
+  testWidgets('长按节点卡片弹出节点名称确认面板', (tester) async {
+    final (widget, _, _) = await _hostWithGroups(
+      connected: false,
+      groups: [_proxyGroup()],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('ss-node'), findsOneWidget);
+
+    await tester.longPress(find.text('ss-node'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('ss-node'), findsNWidgets(2));
+    expect(find.widgetWithText(ElevatedButton, 'OK'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(ElevatedButton, 'OK'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('线路节点隐藏内部标记并保留原始 tag 选择', (tester) async {
+    const taggedNode = '香港 01 §proxy§';
+    final (widget, _, spy) = await _hostWithGroups(
+      connected: true,
+      groups: const [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: taggedNode,
+          items: [
+            OutboundProxy(tag: taggedNode, type: 'shadowsocks'),
+            OutboundProxy(tag: '隐藏节点 §hide§', type: 'shadowsocks'),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('香港 01'), findsOneWidget);
+    expect(find.text(taggedNode), findsNothing);
+    expect(find.text('隐藏节点'), findsNothing);
+    expect(find.text('隐藏节点 §hide§'), findsNothing);
+
+    await tester.tap(find.text('香港 01'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(spy.lastOutboundTag, taggedNode);
+
+    await tester.longPress(find.text('香港 01'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('香港 01'), findsNWidgets(2));
+    expect(find.text(taggedNode), findsNothing);
+  });
+
+  testWidgets('测速结果缓存只写入当前订阅下的正数延迟', (tester) async {
+    SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        activeProfileProvider.overrideWith((_) async => _activeProfile),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+    await container.read(activeProfileProvider.future);
+
+    container.read(proxyDelayCacheProvider.notifier).persistFromGroups(const [
+      OutboundGroup(
+        tag: 'proxy',
+        type: 'selector',
+        selected: 'good',
+        items: [
+          OutboundProxy(tag: 'good', type: 'shadowsocks', delay: 88),
+          OutboundProxy(tag: 'zero', type: 'shadowsocks'),
+        ],
+      ),
+    ]);
+
+    expect(prefs.getString('proxy_delays_profile-1'), '{"good":88}');
+  });
+
+  testWidgets('name 排序时嵌套代理组排在普通节点前面（不管字母序）', (tester) async {
+    final (widget, container, _) = await _hostWithGroups(
+      connected: false,
+      groups: const [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'Node-A',
+          items: [
+            // 字母序上 Node-A 排在 Z-SubGroup 前面，但 Z-SubGroup 是嵌套代理组
+            // （type: selector），分组类型优先规则下应该排到 Node-A 前面。
+            OutboundProxy(tag: 'Node-A', type: 'shadowsocks'),
+            OutboundProxy(tag: 'Z-SubGroup', type: 'selector'),
+          ],
+        ),
+      ],
+    );
+    await container.read(proxiesSortProvider.notifier).updateSort(
+      ProxiesSort.name,
+    );
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final subGroupCenter = tester.getCenter(find.text('Z-SubGroup'));
+    final nodeCenter = tester.getCenter(find.text('Node-A'));
+    expect(
+      subGroupCenter.dy,
+      lessThan(nodeCenter.dy),
+      reason: '嵌套代理组应该排在普通节点前面，不受字母序影响',
+    );
+  });
+
+  testWidgets('delay 排序时嵌套代理组排在普通节点前面（不受延迟数值影响）', (tester) async {
+    final (widget, container, _) = await _hostWithGroups(
+      connected: false,
+      groups: const [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'Node-X',
+          items: [
+            // Node-X 有真实延迟（50ms），Sub-Group 没有测速数据（delay: 0）。
+            // 旧的"仅按延迟排序"规则会把 0 延迟推到最后；分组类型优先规则下
+            // Sub-Group 无论延迟数值如何都应该排在普通节点前面。
+            OutboundProxy(tag: 'Node-X', type: 'shadowsocks', delay: 50),
+            OutboundProxy(tag: 'Sub-Group', type: 'selector'),
+          ],
+        ),
+      ],
+    );
+    await container.read(proxiesSortProvider.notifier).updateSort(
+      ProxiesSort.delay,
+    );
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final subGroupCenter = tester.getCenter(find.text('Sub-Group'));
+    final nodeCenter = tester.getCenter(find.text('Node-X'));
+    expect(
+      subGroupCenter.dy,
+      lessThan(nodeCenter.dy),
+      reason: '嵌套代理组应该排在普通节点前面，不受延迟数值影响',
+    );
+  });
+
+  testWidgets('多分组时不显示分组头部，只保留主列表结构', (tester) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: true,
       groups: [
@@ -434,16 +750,23 @@ void _addProxiesPageExtraTests() {
           selected: 'ss-node',
           items: [OutboundProxy(tag: 'ss-node', type: 'shadowsocks')],
         ),
+        const OutboundGroup(
+          tag: 'other',
+          type: 'selector',
+          selected: 'other-node',
+          items: [OutboundProxy(tag: 'other-node', type: 'shadowsocks')],
+        ),
       ],
     );
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    await tester.tap(find.text('测速'));
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(spy.urlTestCalls, equals(['manual']));
+    expect(find.text('manual'), findsNothing);
+    expect(find.text('other'), findsNothing);
+    expect(find.text('ss-node'), findsOneWidget);
+    expect(find.text('other-node'), findsNothing);
+    expect(spy.urlTestCalls, isEmpty);
     await _drainToasts(tester);
   });
 }

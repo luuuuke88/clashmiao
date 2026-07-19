@@ -26,12 +26,12 @@ class GeoAsset {
 
   static GeoAsset get geoip => const GeoAsset(
     type: GeoAssetType.geoip,
-    filename: 'geoip.db',
+    filename: 'geoip-cn.srs',
     cdnUrl: defaultGeoipUrl,
   );
   static GeoAsset get geosite => const GeoAsset(
     type: GeoAssetType.geosite,
-    filename: 'geosite.db',
+    filename: 'geosite-cn.srs',
     cdnUrl: defaultGeositeUrl,
   );
 }

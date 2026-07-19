@@ -1,3 +1,5 @@
+import 'package:clashmiao/core/localization/translations.dart';
+
 /// 格式化字节数为可读字符串
 String formatBytes(int bytes) {
   if (bytes < 1024) return '$bytes B';
@@ -17,20 +19,16 @@ String formatSpeed(int bytesPerSecond) {
   return '${(bytesPerSecond / (1024 * 1024)).toStringAsFixed(1)} MB/s';
 }
 
-/// 格式化时间差
-String formatDuration(Duration duration) {
-  if (duration.inDays > 0) return '${duration.inDays}天';
-  if (duration.inHours > 0) return '${duration.inHours}小时';
-  if (duration.inMinutes > 0) return '${duration.inMinutes}分钟';
-  return '${duration.inSeconds}秒';
-}
-
 /// 格式化剩余天数
-String formatExpireDate(DateTime? expire) {
-  if (expire == null) return '永不过期';
+///
+/// 文案走 i18n，复用 profile 模块已有的 key（跟
+/// `lib/features/profile/widget/profiles_page.dart` 里的 `_formatExpire`
+/// 是同一套 [SubscriptionInfo] 语义，故意不重复造新 key）。
+String formatExpireDate(DateTime? expire, TranslationsEn t) {
+  if (expire == null) return t.profile.details.unlimited;
   final remaining = expire.difference(DateTime.now());
-  if (remaining.isNegative) return '已过期';
-  return '剩余 ${remaining.inDays} 天';
+  if (remaining.isNegative) return t.profile.subscription.expired;
+  return t.profile.overview.remainingDays(days: remaining.inDays);
 }
 
 /// 检查字符串是否为有效 URL

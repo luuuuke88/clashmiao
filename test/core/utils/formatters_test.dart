@@ -1,7 +1,11 @@
+import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  final en = Translations.build();
+  final zhCn = TranslationsZhCn.build();
+
   group('formatBytes', () {
     test('B 范围', () {
       expect(formatBytes(0), '0 B');
@@ -18,22 +22,28 @@ void main() {
     test('MB/s', () => expect(formatSpeed(5 * 1024 * 1024), '5.0 MB/s'));
   });
 
-  group('formatDuration', () {
-    test('秒', () => expect(formatDuration(const Duration(seconds: 30)), '30秒'));
-    test('分钟', () => expect(formatDuration(const Duration(minutes: 5)), '5分钟'));
-    test('小时', () => expect(formatDuration(const Duration(hours: 3)), '3小时'));
-    test('天', () => expect(formatDuration(const Duration(days: 7)), '7天'));
-  });
-
   group('formatExpireDate', () {
-    test('null → 永不过期', () => expect(formatExpireDate(null), '永不过期'));
-    test('过期', () {
-      final past = DateTime.now().subtract(const Duration(days: 1));
-      expect(formatExpireDate(past), '已过期');
+    test('null → Unlimited (en)', () {
+      expect(formatExpireDate(null, en), 'Unlimited');
     });
-    test('未过期 → 剩余 N 天', () {
+    test('null → 无限期 (zh-CN)', () {
+      expect(formatExpireDate(null, zhCn), '无限期');
+    });
+    test('过期 → Expired (en)', () {
+      final past = DateTime.now().subtract(const Duration(days: 1));
+      expect(formatExpireDate(past, en), 'Expired');
+    });
+    test('过期 → 已过期 (zh-CN)', () {
+      final past = DateTime.now().subtract(const Duration(days: 1));
+      expect(formatExpireDate(past, zhCn), '已过期');
+    });
+    test('未过期 → Remaining N days (en)', () {
       final future = DateTime.now().add(const Duration(days: 10, hours: 2));
-      expect(formatExpireDate(future), '剩余 10 天');
+      expect(formatExpireDate(future, en), 'Remaining 10 days');
+    });
+    test('未过期 → 剩余 N 天 (zh-CN)', () {
+      final future = DateTime.now().add(const Duration(days: 10, hours: 2));
+      expect(formatExpireDate(future, zhCn), '剩余 10 天');
     });
   });
 

@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/utils/formatters.dart' as formatters;
 import 'package:clashmiao/features/profile/model/advanced_config.dart';
 
 /// 订阅配置实体
@@ -137,14 +138,17 @@ class SubscriptionInfo {
   bool get isExpired => expire != null && expire!.isBefore(DateTime.now());
 
   /// 格式化流量显示
-  static String formatBytes(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
-  }
+  ///
+  /// 曾经和 `lib/core/utils/formatters.dart` 里的顶层 [formatters.formatBytes]
+  /// 是两份逐字节相同的重复实现。单位/进制规则已对照参考项目的 humanizer
+  /// 用法核实过：两边都是二进制进制（1024），跟 humanizer 默认的
+  /// `InformationUnits.iecBytes` 一致；humanizer 的默认格式是无空格 + 严格
+  /// IEC 单位名（`KiB`/`MiB`/`GiB`），而这里保留的是本项目一直在用、且被
+  /// `test/features/profile/model/subscription_info_test.dart` 锁定的
+  /// "数字 + 空格 + KB/MB/GB" 展示格式——这是既有 UI 文案，不属于这次去重
+  /// 该动的范围，所以只做"删重复实现改调用"，不改单位/空格展示规则。
+  /// 这里只保留一个函数体、转调用顶层实现，避免两边以后各改各的再次漂移。
+  static String formatBytes(int bytes) => formatters.formatBytes(bytes);
 
   SubscriptionInfo copyWith({
     int? upload,

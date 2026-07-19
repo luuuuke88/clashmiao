@@ -7,6 +7,7 @@ import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
@@ -901,21 +902,25 @@ class _ConnectionInfo extends ConsumerWidget {
     final isConnected = status is BoxStarted;
     final isDisconnected = status is BoxStopped;
 
-    // 我们尝试获取离线组或者在线组来展示节点名，临时用 fallback
-    final groups = ref.watch(outboundGroupsProvider).valueOrNull ?? [];
+    // 当前生效节点。两层修复（真机 VLESS+Reality 订阅实测：连接成功、线路页
+    // 正常，唯独首页显示"未知"）：
+    //   1. 数据源：核心 command server 的实时分组（outboundGroupsProvider）
+    //      有时是空的（还没订阅上 / 没推），首页此前只读它就只能显示"未知"。
+    //      线路页早有 offline 兜底——空时回退到从 profile 配置解析的分组
+    //      （offlineProxyGroupsProvider）。首页现在对齐同一套兜底。
+    //   2. 解析：不再直接取 `groups.first.selected`（第一条可能是 GLOBAL 或
+    //      selected 指向嵌套分组的选择器，解不到叶子），改用 resolveActiveProxy
+    //      跳过伪分组、优先主选择器 proxy、下钻到叶子节点。
+    final liveGroups = ref.watch(outboundGroupsProvider).valueOrNull ?? [];
+    final offlineGroups =
+        ref.watch(offlineProxyGroupsProvider).valueOrNull ?? [];
+    final groups = liveGroups.any((g) => g.items.isNotEmpty)
+        ? liveGroups
+        : offlineGroups;
     final t = ref.watch(translationsProvider);
-    String nodeName = t.general.unknown;
-    int delay = 0;
-    if (groups.isNotEmpty && groups.first.items.isNotEmpty) {
-      final selected = groups.first.selected;
-      final activeItem = groups.first.items
-          .where((i) => i.tag == selected)
-          .firstOrNull;
-      if (activeItem != null) {
-        nodeName = activeItem.tag;
-        delay = activeItem.delay;
-      }
-    }
+    final activeItem = resolveActiveProxy(groups);
+    final String nodeName = activeItem?.tag ?? t.general.unknown;
+    final int delay = activeItem?.delay ?? 0;
 
     return AnimatedSize(
       duration: 300.ms,

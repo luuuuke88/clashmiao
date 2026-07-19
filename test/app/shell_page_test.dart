@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:clashmiao/app/shell_page.dart';
 import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -163,4 +166,77 @@ void main() {
       await _drainToasts(tester);
     },
   );
+
+  group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {
+    testWidgets(
+      '致命 alert（sing-box 启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认',
+      (tester) async {
+        final alertController = StreamController<BoxAlert>();
+        addTearDown(alertController.close);
+        final (widget, container) = await _host(
+          extraOverrides: [
+            boxAlertsProvider.overrideWith((_) => alertController.stream),
+          ],
+        );
+        addTearDown(container.dispose);
+
+        await tester.pumpWidget(widget);
+        await tester.pumpAndSettle();
+
+        alertController.add(
+          const BoxAlert(
+            type: BoxAlertType.startService,
+            // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的
+            // 本地化文案，不应该把这段原始文本糊给用户看。
+            message: 'native stacktrace: goroutine 7 [running]',
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('连接失败'), findsOneWidget);
+        expect(find.text('服务启动错误'), findsOneWidget);
+        expect(
+          find.textContaining('goroutine'),
+          findsNothing,
+          reason: '不能把原生原始堆栈信息展示给用户',
+        );
+
+        // 点遮罩（对话框内容区域之外）不应该关闭。
+        await tester.tapAt(const Offset(5, 5));
+        await tester.pumpAndSettle();
+        expect(find.text('连接失败'), findsOneWidget);
+
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(find.text('连接失败'), findsNothing);
+      },
+    );
+
+    testWidgets('非致命 alert（VPN 权限被拒绝）→ 仍然是可自动消失的 toast，不弹阻断式对话框', (
+      tester,
+    ) async {
+      final alertController = StreamController<BoxAlert>();
+      addTearDown(alertController.close);
+      final (widget, container) = await _host(
+        extraOverrides: [
+          boxAlertsProvider.overrideWith((_) => alertController.stream),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      alertController.add(
+        const BoxAlert(type: BoxAlertType.requestVpnPermission),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('缺少 VPN 权限'), findsOneWidget);
+      // 阻断式弹窗的标题不应该出现——非致命场景不能升级成阻断式。
+      expect(find.text('连接失败'), findsNothing);
+
+      await _drainToasts(tester);
+    });
+  });
 }

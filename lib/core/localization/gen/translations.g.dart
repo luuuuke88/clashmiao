@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3138 (313 per locale)
+/// Strings: 3140 (314 per locale)
 ///
-/// Built on 2026-07-19 at 11:50 UTC
+/// Built on 2026-07-19 at 12:21 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -157,6 +157,7 @@ class TranslationsHomeEn {
 	String get noActiveProfileMsg => 'Choose a Profile';
 	late final TranslationsHomeRoutingModeEn routingMode = TranslationsHomeRoutingModeEn._(_root);
 	String failedToSwitchMode({required Object error}) => 'Failed to switch mode: ${error}';
+	String get connectionFailedTitle => 'Connection Failed';
 }
 
 // Path: stats
@@ -6834,6 +6835,7 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
 	@override String get noActiveProfileMsg => '选择配置文件';
 	@override late final TranslationsHomeRoutingModeZhCn routingMode = TranslationsHomeRoutingModeZhCn._(_root);
 	@override String failedToSwitchMode({required Object error}) => '切换模式失败: ${error}';
+	@override String get connectionFailedTitle => '连接失败';
 }
 
 // Path: stats
@@ -8595,6 +8597,7 @@ extension on Translations {
 			case 'home.routingMode.global': return 'Global Proxy';
 			case 'home.routingMode.smart': return 'Smart Routing';
 			case 'home.failedToSwitchMode': return ({required Object error}) => 'Failed to switch mode: ${error}';
+			case 'home.connectionFailedTitle': return 'Connection Failed';
 			case 'stats.traffic': return 'Traffic';
 			case 'stats.trafficLive': return 'Live Traffic';
 			case 'stats.trafficTotal': return 'Total Traffic';
@@ -11172,6 +11175,7 @@ extension on TranslationsZhCn {
 			case 'home.routingMode.global': return '全局代理';
 			case 'home.routingMode.smart': return '智能分流';
 			case 'home.failedToSwitchMode': return ({required Object error}) => '切换模式失败: ${error}';
+			case 'home.connectionFailedTitle': return '连接失败';
 			case 'stats.traffic': return '流量';
 			case 'stats.trafficLive': return '实时流量';
 			case 'stats.trafficTotal': return '总流量';

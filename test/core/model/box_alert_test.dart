@@ -40,4 +40,19 @@ void main() {
       expect(BoxAlertType.parse(''), BoxAlertType.unknown);
     });
   });
+
+  group('BoxAlertType.isFatal', () {
+    test('内核压根没起来的三种（建服务/起服务/空配置）判定为致命', () {
+      expect(BoxAlertType.startService.isFatal, isTrue);
+      expect(BoxAlertType.createService.isFatal, isTrue);
+      expect(BoxAlertType.emptyConfiguration.isFatal, isTrue);
+    });
+
+    test('权限请求/command server/未知类型不算致命', () {
+      expect(BoxAlertType.requestVpnPermission.isFatal, isFalse);
+      expect(BoxAlertType.requestNotificationPermission.isFatal, isFalse);
+      expect(BoxAlertType.startCommandServer.isFatal, isFalse);
+      expect(BoxAlertType.unknown.isFatal, isFalse);
+    });
+  });
 }

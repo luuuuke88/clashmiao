@@ -258,11 +258,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // 收到这类启动失败 alert 时强制回到 BoxStopped + 解锁 transition。
       _alertSub = service.watchAlerts().listen((alert) {
         if (!mounted) return;
-        final isFatal =
-            alert.type == BoxAlertType.startService ||
-            alert.type == BoxAlertType.createService ||
-            alert.type == BoxAlertType.emptyConfiguration;
-        if (!isFatal) return;
+        if (!alert.type.isFatal) return;
         // 设置页"数据分析"开关关闭时（默认即关闭）不应该真的上报，
         // 哪怕 Sentry SDK 已经编译进来（SENTRY_DSN 非空）。
         if (_shouldReportAnalytics()) {
@@ -276,8 +272,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         // 清理干净，这一次 stop() 是幂等空操作。与 disconnect() 里"绝不谎报
         // BoxStopped"的既有原则一致。
         unawaited(_boxService.stop());
-        _ref.read(connectionErrorProvider.notifier).state =
-            classifyBoxAlertMessage(alert, _ref.read(translationsProvider));
+        // 故意不写 connectionErrorProvider：致命 alert 的用户提示由
+        // ShellPage 的 boxAlertsProvider 监听器负责（阻断式弹窗，见
+        // shell_page.dart）。这里如果再写一份，home_page 的 toast 监听会
+        // 跟弹窗同时冒出来，同一个错误双重提示。connectionErrorProvider
+        // 保留给 connect()/disconnect() 的异常路径——那些没有 alert 流经过，
+        // toast 是唯一出口。
       });
 
       _networkSub = service.watchNetworkChanged().listen((_) {

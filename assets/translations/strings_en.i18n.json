@@ -38,7 +38,8 @@
       "global": "Global Proxy",
       "smart": "Smart Routing"
     },
-    "failedToSwitchMode": "Failed to switch mode: ${error}"
+    "failedToSwitchMode": "Failed to switch mode: ${error}",
+    "connectionFailedTitle": "Connection Failed"
   },
   "stats": {
     "traffic": "Traffic",

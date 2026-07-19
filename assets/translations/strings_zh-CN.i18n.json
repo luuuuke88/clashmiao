@@ -32,11 +32,11 @@
   },
   "home": {
     "pageTitle": "主页",
-    "emptyProfilesMsg": "从添加订阅配置文件开始",
+    "emptyProfilesMsg": "还没有线路喵",
     "noActiveProfileMsg": "选择配置文件",
     "routingMode": {
-      "global": "全局",
-      "smart": "智能"
+      "global": "全局代理",
+      "smart": "智能分流"
     },
     "failedToSwitchMode": "切换模式失败: ${error}"
   },
@@ -159,7 +159,11 @@
       "invalidUrlMsg": "无效的网址",
       "lastUpdate": "最后更新",
       "updateInterval": "自动更新",
-      "updateIntervalDialogTitle": "自动更新间隔（小时）"
+      "updateIntervalDialogTitle": "自动更新间隔（小时）",
+      "userAgent": "User-Agent",
+      "userAgentNotSet": "未设置",
+      "mux": "Mux 多路复用",
+      "muxDescription": "复用出站连接以减少握手开销"
     },
     "remoteProfile": "远程订阅"
   },
@@ -192,7 +196,7 @@
     "switchedTo": "已切换到 ${name}",
     "switchToFailed": "切换失败: ${error}",
     "connectBeforeSwitch": "请先连接后再切换节点",
-    "startDelayTestForGroups": "已对 ${count} 个分组发起测速",
+    "startDelayTestForGroups": "已开始测试当前订阅的 ${count} 个节点",
     "delayTestBtn": "测速",
     "lineCount": "${count} 个节点",
     "manualSelect": "手动选择",
@@ -250,7 +254,12 @@
       "ignoreBatteryOptimizationsMsg": "消除限制以获得最佳 VPN 性能",
       "dynamicNotification": "在通知中显示网络速度",
       "hapticFeedback": "触觉反馈",
-      "autoIpCheck": "自动检查连接的 IP"
+      "autoIpCheck": "自动检查连接的 IP",
+      "batteryOptimizationStatus": {
+        "exempted": "已豁免",
+        "notExempted": "未豁免",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "高级选项",
@@ -270,6 +279,10 @@
         "exclude": "绕过",
         "excludeMsg": "不代理选中的应用程序"
       },
+      "perAppProxyLoadFailedMsg": "加载应用列表失败",
+      "perAppProxyRetry": "重试",
+      "perAppProxyEmptyMsg": "未找到匹配的应用",
+      "perAppProxyAndroidOnlyMsg": "仅 Android 支持分应用线路",
       "showSystemApps": "显示系统应用程序",
       "hideSystemApps": "隐藏系统应用程序",
       "clearSelection": "清空选项"
@@ -316,6 +329,7 @@
     "dashboard": "仪表板",
     "quit": "退出",
     "open": "打开",
+    "hide": "隐藏到托盘",
     "status": {
       "connect": "连接",
       "connecting": "正在连接",
@@ -339,12 +353,14 @@
       "invalidConfigOptions": "配置选项无效",
       "invalidConfig": "无效配置",
       "create": "服务创建错误",
-      "start": "服务启动错误"
+      "start": "服务启动错误",
+      "startTimeout": "服务启动超时"
     },
     "connectivity": {
       "unexpected": "意外失败",
       "missingVpnPermission": "缺少 VPN 权限",
       "missingNotificationPermission": "缺少通知权限",
+      "networkUnavailable": "网络不可用",
       "core": "核心错误"
     },
     "profiles": {
@@ -369,7 +385,7 @@
   "play": {
     "title": "ClashMiao（预览）",
     "short_description": "自动，SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks",
-    "full_description": "ClashMiao 的主要目标是提供安全、用户友好且高效的隧道客户端。它使您能够利用 VPN 服务权限将所有流量或选定的应用程序流量路由到您选择的远程服务器。\n\n注：我们不提供任何服务器；用户需要使用自己托管的服务器或可信的服务器来确保您在线活动的私密性。\n \n我们支持以下类型的服务器：\n- 普通 V2ray/Xray 订阅链接\n- Clash 订阅链接\n- Sing-Box 订阅链接\n\n我们的特色是什么？\n\n- 用户友好\n- 优化和高速\n- 自动选择最低延迟\n- 显示用户使用信息\n- 通过一键链接轻松导入\n- 免费且无广告\n- 轻松切换线路\n- 等等\n\n支持：\n- Sing-Box 支持的所有协议\n- VLESS + XTLS Reality、Vision 协议\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\n源代码位于 https://github.com/yourname/clashmiao\n应用程序核心基于开源的 Sing-Box。\n\n权限说明：\n\n- VPN 服务：由于此应用程序的目标是提供安全、用户友好和高效的隧道客户端，我们需要此权限以能够通过隧道将流量路由到远程服务器。\n获取应用程序列表：此权限用于允许用户包括或排除特定应用程序以进行隧道传输。\n- 接收开机广播：可以从应用程序设置中启用或禁用此权限，以便在设备启动时激活此应用程序。\n- 发送通知：此权限是必需的，因为我们使用前台服务来确保 VPN 服务的持续运行。\n- 本应用程序没有广告。分析和崩溃数据仅在首次使用应用程序时经用户明确同意的情况下发生。"
+    "full_description": "ClashMiao 的主要目标是提供安全、用户友好且高效的隧道客户端。它使您能够利用 VPN 服务权限将所有流量或选定的应用程序流量路由到您选择的远程服务器。\n\n注：我们不提供任何服务器；用户需要使用自己托管的服务器或可信的服务器来确保您在线活动的私密性。\n \n我们支持以下类型的服务器：\n- 普通 V2ray/Xray 订阅链接\n- Clash 订阅链接\n- Sing-Box 订阅链接\n\n我们的特色是什么？\n\n- 用户友好\n- 优化和高速\n- 自动选择最低延迟\n- 显示用户使用信息\n- 通过一键链接轻松导入\n- 免费且无广告\n- 轻松切换线路\n- 等等\n\n支持：\n- Sing-Box 支持的所有协议\n- VLESS + XTLS Reality、Vision 协议\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\n源代码位于 https://github.com/clashmiao/clashmiao-client\n应用程序核心基于开源的 Sing-Box。\n\n权限说明：\n\n- VPN 服务：由于此应用程序的目标是提供安全、用户友好和高效的隧道客户端，我们需要此权限以能够通过隧道将流量路由到远程服务器。\n获取应用程序列表：此权限用于允许用户包括或排除特定应用程序以进行隧道传输。\n- 接收开机广播：可以从应用程序设置中启用或禁用此权限，以便在设备启动时激活此应用程序。\n- 发送通知：此权限是必需的，因为我们使用前台服务来确保 VPN 服务的持续运行。\n- 本应用程序没有广告。分析和崩溃数据仅在首次使用应用程序时经用户明确同意的情况下发生。"
   },
   "connection": {
     "tapToConnect": "点击连接",

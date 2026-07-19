@@ -33,7 +33,7 @@ ClashMiao 在 Windows 上的代理实现走 **FFI + 系统代理**：
 ## 已知 TODO
 
 - `default_config_options.dart` 的 `set-system-proxy: true`（桌面默认 true）在 Windows 需要管理员才能写 IE 注册表。如果失败，sing-box 会 fallback 到不设系统代理，用户需手动配 mixed proxy 127.0.0.1:2080。
-- Windows MSIX 打包：参考 baseproxy `windows/packaging/msix/` 的思路自己写，注意签名证书。
+- Windows MSIX 打包：参考同类 sing-box 客户端的桌面打包思路自己写，注意签名证书。
 - WinTun 全局 TUN 模式：以后单独 milestone，需要 WinTun driver + admin。
 
 ## 不验证的部分

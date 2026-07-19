@@ -78,7 +78,7 @@ PR 必须：
 ## 代码风格约定
 
 - **绝对不要在公开文档 / commit message 中提及上游具体项目名**
-  （hiddify / baseproxy / NekoBox 等）。用通用术语"上游 fork" / "sing-box 核心"。
+  用通用术语"上游 fork" / "sing-box 核心"。
   源码内部技术注释解释 fork 行为时也用脱敏术语。
 - 注释解释 **WHY**，不解释 WHAT。
 - 状态用 Riverpod（hooks_riverpod），不用 setState 跨 widget 共享。

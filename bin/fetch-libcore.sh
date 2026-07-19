@@ -80,7 +80,7 @@ write_ios_framework_info_plist() {
 	<key>CFBundleExecutable</key>
 	<string>Libcore</string>
 	<key>CFBundleIdentifier</key>
-	<string>ios.libcore.hiddify</string>
+	<string>ios.libcore.clashmiao</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>

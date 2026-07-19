@@ -28,6 +28,11 @@ String formatExpireDate(DateTime? expire, TranslationsEn t) {
   if (expire == null) return t.profile.details.unlimited;
   final remaining = expire.difference(DateTime.now());
   if (remaining.isNegative) return t.profile.subscription.expired;
+  // 剩余超过一年当"无限期"处理，不然会显示一个没什么实际意义的三位数天数
+  // （例如"还剩 730 天"）。此前只有 profiles_page.dart 的私有实现有这条规则，
+  // 首页footer走的是这里，两处对同一条订阅显示不一致；现在合并成这一份
+  // 唯一实现，两个调用点都受益。
+  if (remaining.inDays > 365) return t.profile.details.unlimited;
   return t.profile.overview.remainingDays(days: remaining.inDays);
 }
 

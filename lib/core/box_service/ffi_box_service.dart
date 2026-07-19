@@ -53,6 +53,11 @@ typedef ChangeConfigOptionsDart = Pointer<Char> Function(Pointer<Char>);
 typedef GenerateConfigNative = Pointer<Char> Function(Pointer<Char>);
 typedef GenerateConfigDart = Pointer<Char> Function(Pointer<Char>);
 
+typedef GenerateWarpConfigNative =
+    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, Pointer<Char>);
+typedef GenerateWarpConfigDart =
+    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, Pointer<Char>);
+
 typedef SelectOutboundNative =
     Pointer<Char> Function(Pointer<Char>, Pointer<Char>);
 typedef SelectOutboundDart =
@@ -82,6 +87,7 @@ class FFIBoxService implements BoxService {
   late final RestartDart _restart;
   late final ParseDart _parse;
   late final GenerateConfigDart _generateConfig;
+  late final GenerateWarpConfigDart _generateWarpConfig;
   late final SelectOutboundDart _selectOutbound;
   late final UrlTestDart _urlTest;
   late final SetupOnceDart _setupOnce;
@@ -119,6 +125,10 @@ class FFIBoxService implements BoxService {
     _generateConfig = _lib
         .lookupFunction<GenerateConfigNative, GenerateConfigDart>(
           'generateConfig',
+        );
+    _generateWarpConfig = _lib
+        .lookupFunction<GenerateWarpConfigNative, GenerateWarpConfigDart>(
+          'generateWarpConfig',
         );
     _selectOutbound = _lib
         .lookupFunction<SelectOutboundNative, SelectOutboundDart>(
@@ -314,6 +324,23 @@ class FFIBoxService implements BoxService {
   Future<String?> generateFullConfig(String path) async {
     final response = _generateConfig(
       path.toNativeUtf8().cast(),
+    ).cast<Utf8>().toDartString();
+    if (response.startsWith('error')) {
+      return null;
+    }
+    return response;
+  }
+
+  @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) async {
+    final response = _generateWarpConfig(
+      licenseKey.toNativeUtf8().cast(),
+      (previousAccountId ?? '').toNativeUtf8().cast(),
+      (previousAccessToken ?? '').toNativeUtf8().cast(),
     ).cast<Utf8>().toDartString();
     if (response.startsWith('error')) {
       return null;

@@ -57,6 +57,12 @@ class _SpyBoxService implements BoxService {
   @override
   Future<String?> generateFullConfig(String p) async => null;
   @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) async => null;
+  @override
   Future<void> clearLogs() async {}
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();

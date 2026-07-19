@@ -56,6 +56,13 @@ class StubBoxService implements BoxService {
   Future<String?> generateFullConfig(String path) async => null;
 
   @override
+  Future<String?> generateWarpConfig({
+    required String licenseKey,
+    String? previousAccountId,
+    String? previousAccessToken,
+  }) => throw UnsupportedError('generateWarpConfig: 核心库未加载');
+
+  @override
   Future<void> clearLogs() async {}
 
   @override

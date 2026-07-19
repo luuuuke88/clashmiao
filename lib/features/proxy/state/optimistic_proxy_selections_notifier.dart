@@ -17,4 +17,17 @@ class OptimisticProxySelectionsNotifier
   void update(String group, String proxy) {
     state = {...state, group: proxy};
   }
+
+  /// 撤销一次乐观选择：native `selectOutbound` 失败后调用，把 UI 恢复到用户
+  /// 点击前的状态，避免永久停留在"想选但实际没切成功"的错误节点上。
+  /// [previousProxy] 是点击前该 group 的乐观值快照——非空则恢复为它，
+  /// 为 null（点击前该 group 还没有任何乐观选择）则直接移除这条 group 记录，
+  /// 让 UI 回退去读取真实的 `group.selected`。
+  void revert(String group, String? previousProxy) {
+    if (previousProxy != null) {
+      state = {...state, group: previousProxy};
+    } else {
+      state = {...state}..remove(group);
+    }
+  }
 }

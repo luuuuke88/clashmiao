@@ -13,18 +13,27 @@ final appRouterNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: appRouterNavigatorKey,
   initialLocation: '/',
-  redirect: (context, state) {
-    final container = ProviderScope.containerOf(context);
-    final done = container.read(onboardingDoneProvider).valueOrNull;
-    if (done == null || done == true) return null;
-    if (state.matchedLocation == '/onboarding') return null;
-    return '/onboarding';
-  },
   routes: [
-    GoRoute(path: '/', builder: (context, state) => const ShellPage()),
+    GoRoute(path: '/', builder: (context, state) => const _RootGate()),
     GoRoute(
       path: '/onboarding',
       builder: (context, state) => const OnboardingPage(),
     ),
   ],
 );
+
+class _RootGate extends ConsumerWidget {
+  const _RootGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final onboardingDone = ref.watch(onboardingDoneProvider);
+    return onboardingDone.when(
+      data: (done) => done ? const ShellPage() : const OnboardingPage(),
+      loading: () => const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      ),
+      error: (_, _) => const OnboardingPage(),
+    );
+  }
+}

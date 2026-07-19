@@ -34,14 +34,39 @@ Future<void> waitForStatus<T extends BoxStatus>(
 Future<String> fetchEgressIp({
   Duration timeout = const Duration(seconds: 15),
 }) async {
+  final endpoints = [
+    Uri.parse('https://api.ipify.org'),
+    Uri.parse('https://ifconfig.me/ip'),
+    Uri.parse('https://icanhazip.com'),
+    Uri.parse('https://checkip.amazonaws.com'),
+  ];
+  final errors = <String>[];
+
   final client = HttpClient();
   client.findProxy = (_) => 'DIRECT';
   client.badCertificateCallback = (_, __, ___) => true;
   client.connectionTimeout = timeout;
   try {
-    final req = await client.getUrl(Uri.parse('https://api.ipify.org'));
-    final resp = await req.close().timeout(timeout);
-    return (await utf8.decodeStream(resp)).trim();
+    for (var attempt = 0; attempt < 3; attempt++) {
+      for (final endpoint in endpoints) {
+        try {
+          final req = await client.getUrl(endpoint).timeout(timeout);
+          final resp = await req.close().timeout(timeout);
+          final body = (await utf8.decodeStream(resp)).trim();
+          if (resp.statusCode == HttpStatus.ok && body.isNotEmpty) {
+            return body;
+          }
+          errors.add('${endpoint.host}: HTTP ${resp.statusCode} "$body"');
+        } catch (error) {
+          errors.add('${endpoint.host}: $error');
+        }
+      }
+      await Future<void>.delayed(const Duration(seconds: 1));
+    }
+
+    throw SocketException(
+      'All egress IP endpoints failed: ${errors.join(' | ')}',
+    );
   } finally {
     client.close(force: true);
   }

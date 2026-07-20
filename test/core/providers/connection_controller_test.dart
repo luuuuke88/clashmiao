@@ -23,18 +23,17 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 读一份 RuntimeConfigBuilder 写出的 runtime-config.json，判断它是不是
-/// "智能分流"模式产出的（注入了 cn rule-set 分流规则）。全局模式下
-/// `route.rules` 为空——profile 自带的兜底 selector 接管所有流量；智能模式
-/// 会额外插入基于 rule_set 的分流规则。
+/// 判断最近一次推给 native 的 configOptions 是不是"智能分流"模式产出的。
 ///
-/// 不能用 `changeConfigOptions` 的 `execute-config-as-is` 字段判断——那个
-/// 字段故意恒为 `true`（见 `default_config_options.dart` 注释：路由完全
-/// 交给 RuntimeConfigBuilder，fork 侧不再插手）。
-Future<bool> _isSmartRuntimeConfig(String? path) async {
-  if (path == null) return false;
-  final content = jsonDecode(await File(path).readAsString());
-  final rules = (content as Map<String, dynamic>)['route']?['rules'] as List?;
+/// 真正生效的智能/全局分流信号是这里的 `rules` 字段（driven by
+/// `getDefaultConfigOptions` 的 `isSmart` 参数）——**不是**
+/// `RuntimeConfigBuilder` 写的 runtime-config.json 的 `route` 块。真机验证过：
+/// 这个 sing-box fork 的 `config.BuildConfig()` 会无条件丢弃/重建 profile
+/// 自带的整个 `route` 块，之前那份注入到 runtime-config.json 里的 cn 分流
+/// 规则从未真正生效。也不能用 `execute-config-as-is` 字段判断——那个字段
+/// 故意恒为 `true`（见 `default_config_options.dart` 注释）。
+bool _isSmartConfigOptions(Map<String, dynamic>? json) {
+  final rules = json?['rules'] as List?;
   return rules != null && rules.isNotEmpty;
 }
 
@@ -503,9 +502,9 @@ void main() {
 
       expect(spy.restartCalls, 1, reason: '已连接时切模式应该真实 restart');
       expect(
-        await _isSmartRuntimeConfig(spy.lastRestartPath),
+        _isSmartConfigOptions(spy.lastChangeConfigJson),
         isFalse,
-        reason: '全局模式下 RuntimeConfigBuilder 不应该注入智能分流规则',
+        reason: '全局模式下推给 native 的 configOptions 不应该带智能分流的 rules',
       );
     });
 
@@ -579,12 +578,10 @@ void main() {
       await secondApply;
 
       expect(
-        await _isSmartRuntimeConfig(spy.lastRestartPath),
+        _isSmartConfigOptions(spy.lastChangeConfigJson),
         isTrue,
-        reason: '内核最终收到的 runtime-config 必须对应用户最后选择的"智能分流"'
-            '（注入了 cn 分流规则），不能停留在第一次点击的"全局代理"'
-            '（execute-config-as-is 恒为 true 不能用来判断——路由完全交给'
-            'RuntimeConfigBuilder，真正的信号是它写的文件内容）',
+        reason: '内核最终收到的 configOptions 必须对应用户最后选择的"智能分流"'
+            '（带 cn 分流的 rules），不能停留在第一次点击的"全局代理"',
       );
       expect(
         spy.restartCalls,

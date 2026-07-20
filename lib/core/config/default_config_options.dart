@@ -1,15 +1,23 @@
 import 'dart:io';
 
+import 'package:clashmiao/core/config/cn_direct_rules.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/features/profile/model/advanced_config.dart';
 
 /// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
 ///
-/// 注意：智能 / 全局分流由 `RuntimeConfigBuilder` 在 connect 时
-/// 现场写到 runtime-config.json，**不**依赖这里的 fork-side `region` / `rules`。
+/// 智能 / 全局分流由 [isSmart] 驱动的 `rules` 字段决定——**不是**
+/// `RuntimeConfigBuilder` 写进 runtime-config.json 的 profile `route` 块。
+/// 这是踩过坑才确认的：这个 sing-box fork 的 `config.BuildConfig()`
+/// （libcore/config/config.go:383）无条件丢弃/重建 profile 自带的整个 `route`
+/// 块，不管 `enable-full-config`/`execute-config-as-is` 传的是什么——真机验证过，
+/// runtime-config.json 里精心注入的 cn 分流规则从未真正生效，智能/全局分流
+/// 实际行为完全一样。这个 fork 真正认的自定义路由口子是这里的 `rules`
+/// 字段（对应 libcore/config/rules.go 的 `Rule.MakeRule()`），所以中国 IP/域名
+/// 直连的数据必须通过这里注入。
 ///
-/// [executeConfigAsIs] 现在只用于 Dart 端记录用户选择，
-/// 不再走 fork 的 cn 路径（避免 fork 强制 append 中国大陆下载不动的 remote rule-set）。
+/// [executeConfigAsIs] 只用于 Dart 端记录用户选择，不再走 fork 的 `region` 路径
+/// （避免 fork 强制 append 中国大陆下载不动的 remote rule-set）。
 ///
 /// [settings] 让用户从 SettingsPage 调的 port / TUN / system-proxy / LAN
 /// 等开关真正生效。`null` 时回退到平台默认值（旧行为）。
@@ -19,6 +27,7 @@ import 'package:clashmiao/features/profile/model/advanced_config.dart';
 /// RuntimeConfigBuilder 注入各 outbound，避免内核与 runtime config 双写）。
 Map<String, dynamic> getDefaultConfigOptions({
   bool executeConfigAsIs = false,
+  bool isSmart = false,
   NetworkSettings? settings,
   AdvancedConfig? advancedConfig,
 }) {
@@ -75,7 +84,17 @@ Map<String, dynamic> getDefaultConfigOptions({
     'enable-fake-dns': s.enableFakeDns,
     'enable-dns-routing': s.enableDnsRouting,
     'independent-dns-cache': s.independentDnsCache,
-    'rules': <Map<String, dynamic>>[],
+    'rules': isSmart
+        ? <Map<String, dynamic>>[
+            {'ip': cnDirectCidrRanges.join(','), 'outbound': 'bypass'},
+            {
+              'domains': cnDirectDomainSuffixes
+                  .map((d) => 'domain:$d')
+                  .join(','),
+              'outbound': 'bypass',
+            },
+          ]
+        : <Map<String, dynamic>>[],
     'mux': {
       'enable': false,
       'padding': s.muxPadding,

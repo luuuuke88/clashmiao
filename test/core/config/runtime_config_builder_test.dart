@@ -22,56 +22,12 @@ void main() {
       if (await tmp.exists()) await tmp.delete(recursive: true);
     });
 
-    test('smart 模式注入 cn rule-set + direct 路由 + local DNS', () async {
-      final base = await _writeProfile(tmp, {
-        'outbounds': [
-          {
-            'type': 'selector',
-            'tag': 'proxy',
-            'outbounds': ['n1'],
-          },
-        ],
-        'route': {'rules': <Map<String, dynamic>>[]},
-        'dns': {'rules': <Map<String, dynamic>>[]},
-      });
-
-      final out = await RuntimeConfigBuilder().build(
-        baseProfile: base,
-        isSmart: true,
-        workingDir: tmp,
-      );
-      final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
-
-      final ruleSets = (cfg['route']['rule_set'] as List).cast<Map>();
-      expect(ruleSets, hasLength(2));
-      expect(
-        ruleSets.map((e) => e['tag']),
-        containsAll(['geoip-cn', 'geosite-cn']),
-      );
-
-      // 路径必须绝对 —— Android 上 sing-box CWD 跟 Flutter workingDir 不一致，
-      // 相对路径会让 rule-set 静默失败，结果智能模式看起来跟全局一模一样。
-      for (final rs in ruleSets) {
-        expect(
-          (rs['path'] as String).startsWith('/'),
-          isTrue,
-          reason: 'rule-set path 必须绝对：${rs['path']}',
-        );
-        expect(rs['path'], contains(tmp.path));
-      }
-
-      final routeRules = (cfg['route']['rules'] as List).cast<Map>();
-      expect(routeRules.first['outbound'], 'direct');
-      expect(
-        routeRules.first['rule_set'] as List,
-        unorderedEquals(['geoip-cn', 'geosite-cn']),
-      );
-
-      final dnsRules = (cfg['dns']['rules'] as List).cast<Map>();
-      expect(dnsRules.first['server'], 'local');
-    });
-
-    test('global 模式剥离所有 rule_set 引用', () async {
+    // route/dns 的 rule_set 注入/剥离曾经在这里做，但真机验证证实这个 sing-box
+    // fork 的 config.BuildConfig() 无条件丢弃/重建 profile 自带的 route 块——
+    // 不管这里往 cfg['route'] 写什么都不会真正生效。真正生效的分流机制搬到了
+    // getDefaultConfigOptions 的 isSmart 参数（configOptions.rules），见
+    // default_config_options_test.dart。这里改成断言 route/dns 原样透传。
+    test('profile 自带的 route/dns 原样透传，不再被改写', () async {
       final base = await _writeProfile(tmp, {
         'outbounds': [
           {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
@@ -92,32 +48,18 @@ void main() {
             {'domain': 'example.com', 'outbound': 'proxy'},
           ],
         },
-        'dns': {
-          'rules': [
-            {
-              'rule_set': ['remote'],
-              'server': 'local',
-            },
-            {'domain': 'foo.bar', 'server': 'remote'},
-          ],
-        },
       });
 
       final out = await RuntimeConfigBuilder().build(
         baseProfile: base,
-        isSmart: false,
         workingDir: tmp,
       );
       final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
 
-      expect(cfg['route']['rule_set'], isEmpty);
+      expect(cfg['route']['rule_set'], hasLength(1));
       final routeRules = (cfg['route']['rules'] as List).cast<Map>();
-      expect(routeRules.any((r) => r['rule_set'] != null), isFalse);
+      expect(routeRules.any((r) => r['rule_set'] != null), isTrue);
       expect(routeRules.any((r) => r['domain'] == 'example.com'), isTrue);
-
-      final dnsRules = (cfg['dns']['rules'] as List).cast<Map>();
-      expect(dnsRules.any((r) => r['rule_set'] != null), isFalse);
-      expect(dnsRules.any((r) => r['domain'] == 'foo.bar'), isTrue);
     });
 
     test('桌面端剥离 tun + mixed inbound', () async {
@@ -136,7 +78,6 @@ void main() {
 
       final out = await RuntimeConfigBuilder().build(
         baseProfile: base,
-        isSmart: false,
         workingDir: tmp,
       );
       final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
@@ -145,26 +86,6 @@ void main() {
       expect(inbounds.any((i) => i['type'] == 'tun'), isFalse);
       expect(inbounds.any((i) => i['type'] == 'mixed'), isFalse);
       expect(inbounds.any((i) => i['type'] == 'socks'), isTrue);
-    });
-
-    test('smart 模式即使 route/dns 字段不存在也兜底创建', () async {
-      final base = await _writeProfile(tmp, {
-        'outbounds': [
-          {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
-        ],
-        // 故意不写 route / dns
-      });
-
-      final out = await RuntimeConfigBuilder().build(
-        baseProfile: base,
-        isSmart: true,
-        workingDir: tmp,
-      );
-      final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
-
-      expect(cfg['route']['rule_set'], hasLength(2));
-      expect((cfg['route']['rules'] as List).first['outbound'], 'direct');
-      expect((cfg['dns']['rules'] as List).first['server'], 'local');
     });
 
     test('输出文件名固定 runtime-config.json', () async {
@@ -176,7 +97,6 @@ void main() {
 
       final out = await RuntimeConfigBuilder().build(
         baseProfile: base,
-        isSmart: true,
         workingDir: tmp,
       );
 
@@ -189,11 +109,7 @@ void main() {
       await base.writeAsString('not json at all');
 
       expect(
-        () => RuntimeConfigBuilder().build(
-          baseProfile: base,
-          isSmart: true,
-          workingDir: tmp,
-        ),
+        () => RuntimeConfigBuilder().build(baseProfile: base, workingDir: tmp),
         throwsA(isA<FormatException>()),
       );
     });

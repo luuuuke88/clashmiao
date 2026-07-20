@@ -474,28 +474,28 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       final modeIndex = _ref.read(proxyModeProvider);
       final isGlobal = modeIndex == 0;
 
-      // 连接前推送 fork-side options（关键：region='other' 已经在 default 写死，
-      // 这里 executeConfigAsIs 跟用户选择对齐，留给后续可能扩展使用）。
+      // 连接前推送 fork-side options：智能/全局分流真正生效的口子在这里的
+      // isSmart（driven configOptions.rules），不是下面 RuntimeConfigBuilder
+      // 写的 runtime-config.json（那份 route 块会被 native 无条件丢弃重建，
+      // 见 getDefaultConfigOptions 文档）。
       await _boxService.changeConfigOptions(
         jsonEncode(
           getDefaultConfigOptions(
             executeConfigAsIs: isGlobal,
+            isSmart: !isGlobal,
             settings: _ref.read(networkSettingsProvider),
             advancedConfig: active.advancedConfig,
           ),
         ),
       );
 
-      // 现场组装 runtime-config.json（注入 / 剥离 rule-set），native 加载这个。
-      // iOS 上必须落在 App Group 共享容器，见
-      // resolveSingBoxWorkingDirectory 文档（main.dart 首次 provision
-      // rule-set 用的是同一个函数，两处目录必须一致，否则这里嵌进
-      // runtime-config.json 的 rule_set 绝对路径会指向不存在的文件）。
+      // 现场组装 runtime-config.json（剥离冲突 inbound / 补齐 DNS / 注入
+      // mux），native 加载这个。iOS 上必须落在 App Group 共享容器，见
+      // resolveSingBoxWorkingDirectory 文档。
       final workingDir = await resolveSingBoxWorkingDirectory();
       final settings = _ref.read(networkSettingsProvider);
       final runtimeConfig = await RuntimeConfigBuilder().build(
         baseProfile: configFile,
-        isSmart: !isGlobal,
         workingDir: workingDir,
         remoteDnsAddress: settings.remoteDnsAddress,
         advancedConfig: active.advancedConfig,
@@ -516,13 +516,11 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         try {
           await _boxService.stop();
           await Future.delayed(const Duration(milliseconds: 500));
-          // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失分流配置）
-          final modeIndex = _ref.read(proxyModeProvider);
+          // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失 inbound/DNS 处理）
           final workingDir = await resolveSingBoxWorkingDirectory();
           final settings = _ref.read(networkSettingsProvider);
           final runtimeConfig = await RuntimeConfigBuilder().build(
             baseProfile: configFile,
-            isSmart: modeIndex != 0,
             workingDir: workingDir,
             remoteDnsAddress: settings.remoteDnsAddress,
             advancedConfig: active.advancedConfig,
@@ -647,6 +645,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         jsonEncode(
           getDefaultConfigOptions(
             executeConfigAsIs: isGlobal,
+            isSmart: !isGlobal,
             settings: _ref.read(networkSettingsProvider),
             advancedConfig: active.advancedConfig,
           ),
@@ -656,7 +655,6 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       final settings = _ref.read(networkSettingsProvider);
       final runtimeConfig = await RuntimeConfigBuilder().build(
         baseProfile: configFile,
-        isSmart: !isGlobal,
         workingDir: workingDir,
         remoteDnsAddress: settings.remoteDnsAddress,
         advancedConfig: active.advancedConfig,
@@ -735,6 +733,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         jsonEncode(
           getDefaultConfigOptions(
             executeConfigAsIs: isGlobal,
+            isSmart: !isGlobal,
             settings: _ref.read(networkSettingsProvider),
             advancedConfig: active?.advancedConfig,
           ),

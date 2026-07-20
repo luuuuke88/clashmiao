@@ -53,8 +53,9 @@ Map<String, dynamic> getDefaultConfigOptions({
     // 让 sing-box 启动时 routing 不完整。我们改用 Dart 端注入 local rule-set
     // （RuntimeConfigBuilder）。
     'region': 'other',
-    // 不让 fork 自己注入 bypass rules，路由完全交给 RuntimeConfigBuilder。
-    'execute-config-as-is': true,
+    // Keep this aligned with the UI/upstream meaning:
+    // global = raw/as-is, smart = let libcore generate bypass rules.
+    'execute-config-as-is': executeConfigAsIs,
     // 关键：让 fork 用 profile 自带的 inbounds/dns/route，而不是自己 rebuild
     // 一份强制走 udp://1.1.1.1 / 强制 append remote rule-set 的 DNS 配置。
     'enable-full-config': true,
@@ -82,7 +83,11 @@ Map<String, dynamic> getDefaultConfigOptions({
     'bypass-lan': s.bypassLan,
     'allow-connection-from-lan': s.allowConnectionFromLan,
     'enable-fake-dns': s.enableFakeDns,
-    'enable-dns-routing': s.enableDnsRouting,
+    // isSmart 时强制开：下面 rules 里的中国 IP/域名直连规则要真正生效，
+    // 依赖 fork 侧 EnableDNSRouting 这个开关（config.go 里 DNS 规则的应用
+    // 整段被 `if opt.EnableDNSRouting` 包住）——不能让用户关闭的
+    // "DNS 路由"设置连带把智能分流的直连规则也一起废掉。
+    'enable-dns-routing': isSmart || s.enableDnsRouting,
     'independent-dns-cache': s.independentDnsCache,
     'rules': isSmart
         ? <Map<String, dynamic>>[

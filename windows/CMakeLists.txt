@@ -1,10 +1,19 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
+if(POLICY CMP0091)
+  cmake_policy(SET CMP0091 NEW)
+endif()
 project(clashmiao LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change
 # the on-disk name of your application.
 set(BINARY_NAME "clashmiao")
+
+# Portable Windows development environments usually do not include the
+# non-redistributable Visual Studio Debug CRT. Use the redistributable dynamic
+# CRT for every build mode so `flutter run -d windows` starts without a full
+# Visual Studio installation.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 
 # Explicitly opt in to modern CMake behaviors to avoid warnings with recent
 # versions of CMake.
@@ -39,10 +48,9 @@ add_definitions(-DUNICODE -D_UNICODE)
 # of modifying this function.
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_17)
-  target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
+  target_compile_options(${TARGET} PRIVATE /W4 /WX /wd4100)
   target_compile_options(${TARGET} PRIVATE /EHsc)
   target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
-  target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
 
 # Flutter library and tool build rules.

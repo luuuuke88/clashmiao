@@ -1,10 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:ui';
-import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
-import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
@@ -1022,30 +1019,11 @@ class _ModeSelector extends ConsumerWidget {
   Future<void> _onModeTap(int index, WidgetRef ref) async {
     final current = ref.read(proxyModeProvider);
     if (current == index) return;
+    // 同步更新，保证点击零延迟高亮——实际让内核用上新模式的逻辑（含连续
+    // 快速切换时的排队/收敛）在 ConnectionController.applyProxyMode 里，
+    // 见其文档注释（曾经真机实锤过 UI/内核路由模式静默错位的 bug）。
     ref.read(proxyModeProvider.notifier).updateMode(index);
-
-    // 全局 = execute-config-as-is: true（不走规则分流）
-    // 智能 = execute-config-as-is: false（走规则分流）
-    final isGlobal = index == 0;
-    try {
-      final service = ref.read(boxServiceProvider);
-      // 推 fork-side options（mode 状态对齐，但路由是 RuntimeConfigBuilder 决定的）
-      final options = getDefaultConfigOptions(
-        executeConfigAsIs: isGlobal,
-        settings: ref.read(networkSettingsProvider),
-      );
-      await service.changeConfigOptions(jsonEncode(options));
-
-      // 如果当前在连接中，需要 reconnect 让新的 runtime-config 生效
-      // —— 仅推 changeConfigOptions 不会让 sing-box 重读路由规则。
-      final connStatus = ref.read(connectionControllerProvider).valueOrNull;
-      if (connStatus is BoxStarted) {
-        await ref.read(connectionControllerProvider.notifier).reconnect();
-      }
-    } catch (e) {
-      final t = ref.read(translationsProvider);
-      debugPrint(t.home.failedToSwitchMode(error: e.toString()));
-    }
+    await ref.read(connectionControllerProvider.notifier).applyProxyMode();
   }
 
   @override

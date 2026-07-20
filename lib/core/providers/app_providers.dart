@@ -330,6 +330,55 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   StreamSubscription<void>? _networkSub;
   bool _transitioning = false;
 
+  /// 操作代际。connect()/disconnect()/reconnect() 每次发起时自增并快照，
+  /// 操作内部所有 **await 之后**的 state 写入都必须先确认自己仍是最新代际，
+  /// 否则放弃写入（已有更新的操作接管）。
+  ///
+  /// 真机实锤过的竞态（不加这个守卫时）：disconnect() 的 stop() 完成后还有
+  /// 1.5s 展示动画；用户在这个窗口内点了重连，connect() 已把 state 推进到
+  /// BoxStarted（native 推送穿透），随后 disconnect 那句迟到的
+  /// `state = BoxStopped` 把它覆盖——UI 显示"已断开"而 native 实际在跑，
+  /// 用户再点连接被 native 的重复启动 guard 静默忽略、等不到任何推送，
+  /// state 永卡 BoxStarting，此后所有点击都被 toggle 的中间态检查拦下，
+  /// 永久卡死在"正在连接"。
+  int _opEpoch = 0;
+
+  /// start()/restart() 发出后的收尾：先给 BoxStarting 动画一个最短展示窗口，
+  /// 然后**不**手动写 BoxStarted——真实状态由 watchStatus 推送穿透写入
+  /// （native 实际起来才算数，见 connect() 内注释）。但有一种真实存在的例外：
+  /// native 已经在运行、这次 start() 被它的重复启动 guard 静默忽略，状态
+  /// 无变化也就**永远不会有新的推送**。已知会命中这个例外的具体场景（不是
+  /// 假设）：Android `KernelBinder.registerCallback()` 只把新 IPC 回调加进
+  /// 广播列表、不会把"当前状态"立即回放给它——冷启动 Activity 重建、但
+  /// native TunnelService 组件仍存活（VPN 作为独立前台 service，生命周期
+  /// 不跟 Activity 绑定）时，新 Activity 绑定后第一次收不到任何状态直到
+  /// 下一次真实变化。这个缺口已经在原生层直接修了（补发当前状态），但这里
+  /// 保留一层平台无关的 Dart 侧兜底——iOS/macOS/Windows/Linux 各自独立的
+  /// native 绑定层是否也有同类"新订阅者不补发当前值"的缺口未逐一验证过，
+  /// 这层兜底代价极低（只在真卡在 BoxStarting 时才会读一次），不该只信任
+  /// 单一平台的单点修复。窗口结束后若仍停在 BoxStarting，主动读一次
+  /// watchStatus 的当前缓存值（PlatformBoxService/FFIBoxService 都是
+  /// ValueStream 语义，`.first` 立即返回最新值）对齐真实终态。
+  Future<void> _settleAfterStart(int epoch) async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (epoch != _opEpoch || state.valueOrNull is! BoxStarting) return;
+    final BoxStatus actual;
+    try {
+      // timeout 兜底：万一某个 BoxService 实现的流没有缓存值语义，
+      // 不能让 connect() 挂死在这里。
+      actual = await _boxService.watchStatus().first.timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => const BoxStarting(),
+      );
+    } catch (_) {
+      return; // 流异常时保持现状，等推送/alert 兜底
+    }
+    if (epoch != _opEpoch || state.valueOrNull is! BoxStarting) return;
+    if (actual is BoxStarted || actual is BoxStopped) {
+      state = AsyncData(actual);
+    }
+  }
+
   /// 用户主动断开的意图标志。disconnect() 置 true，connect() 置 false。
   /// 用于阻止 _autoReconnect 退避循环在网络切换重连窗口期内把用户刚断开的
   /// 连接顶回去——网络恢复和用户没断开是两件独立的事，不能只用
@@ -397,6 +446,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       return;
     }
 
+    final epoch = ++_opEpoch;
     _transitioning = true;
     state = const AsyncData(BoxStarting());
     try {
@@ -437,7 +487,9 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // 在 native sing-box 实际起来（VpnService 接管流量、TUN 建好）后推送。
       // 这之前如果 user 没点 VPN dialog / sing-box 启动失败，会停在 BoxStarting，
       // 由 watchAlerts 的 fatal alert 强制回到 BoxStopped。
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // 例外兜底见 _settleAfterStart：native 已在跑、重复启动被静默忽略、
+      // 没有任何推送时，主动对齐真实终态，避免永卡"正在连接"。
+      await _settleAfterStart(epoch);
     } catch (e) {
       final errMsg = e.toString();
       if (errMsg.contains('instance not stopped')) {
@@ -456,23 +508,28 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             advancedConfig: active.advancedConfig,
           );
           await _boxService.start(runtimeConfig.path, name: active.name);
-          await Future.delayed(const Duration(milliseconds: 1500));
-          // 同上：不手动写 BoxStarted，让 watchStatus 推真实状态。
+          // 同上：不手动写 BoxStarted，让 watchStatus 推真实状态；
+          // 同样的自愈兜底也要给这条重试路径，逻辑同 _settleAfterStart。
+          await _settleAfterStart(epoch);
           return;
         } catch (retryErr) {
-          _ref.read(connectionErrorProvider.notifier).state =
-              classifyExceptionMessage(
-                retryErr,
-                _ref.read(translationsProvider),
-              );
+          if (epoch == _opEpoch) {
+            _ref.read(connectionErrorProvider.notifier).state =
+                classifyExceptionMessage(
+                  retryErr,
+                  _ref.read(translationsProvider),
+                );
+          }
         }
       } else {
-        _ref.read(connectionErrorProvider.notifier).state =
-            classifyExceptionMessage(e, _ref.read(translationsProvider));
+        if (epoch == _opEpoch) {
+          _ref.read(connectionErrorProvider.notifier).state =
+              classifyExceptionMessage(e, _ref.read(translationsProvider));
+        }
       }
-      state = const AsyncData(BoxStopped());
+      if (epoch == _opEpoch) state = const AsyncData(BoxStopped());
     } finally {
-      _transitioning = false;
+      if (epoch == _opEpoch) _transitioning = false;
     }
   }
 
@@ -480,6 +537,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   Future<void> disconnect() async {
     if (_isStub) return;
 
+    final epoch = ++_opEpoch;
     _manualDisconnect = true; // 用户主动断开：阻止 autoReconnect 把连接顶回去
     _transitioning = true;
     state = const AsyncData(BoxStopping());
@@ -487,8 +545,15 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       await _boxService.stop();
       // 至少展示 1.5秒 断开中动画
       await Future.delayed(const Duration(milliseconds: 1500));
-      state = const AsyncData(BoxStopped());
-      unawaited(_ref.read(hapticServiceProvider).mediumImpact());
+      // 代际守卫：这 1.5s 窗口内用户可能已经点了重连——真机实锤过的竞态
+      // （见 connect() 里 _opEpoch 的文档）。如果 connect() 已经接管（更新的
+      // 代际），这句迟到的 BoxStopped 绝不能把它的 BoxStarted 覆盖掉，
+      // 否则 UI 显示"已断开"、native 实际在跑，用户再点连接会被 native 的
+      // 重复启动 guard 静默忽略，永卡"正在连接"。
+      if (epoch == _opEpoch) {
+        state = const AsyncData(BoxStopped());
+        unawaited(_ref.read(hapticServiceProvider).mediumImpact());
+      }
     } catch (e) {
       // stop 失败时内核可能还在跑：绝不能谎报 BoxStopped——那是本 App 最不能
       // 接受的故障形态（界面显示已断开，流量还在走）。错误必须可见（之前静默
@@ -497,33 +562,37 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // 已经 try/catch 吞掉异常直接销毁窗口/退出，用户没有"再点一次断开"的
       // 机会，所以不能只依赖用户手动重试，这里自己再兜底试一次 stop()。
       debugPrint('disconnect 失败: $e');
-      _ref.read(connectionErrorProvider.notifier).state = classifyExceptionMessage(
-        e,
-        _ref.read(translationsProvider),
-      );
+      if (epoch == _opEpoch) {
+        _ref.read(connectionErrorProvider.notifier).state =
+            classifyExceptionMessage(e, _ref.read(translationsProvider));
+      }
       try {
         await Future.delayed(const Duration(milliseconds: 300));
         await _boxService.stop();
-        // 重试确认停掉了，这时候设 BoxStopped 才是诚实的。
-        state = const AsyncData(BoxStopped());
-        unawaited(_ref.read(hapticServiceProvider).mediumImpact());
+        // 重试确认停掉了，这时候设 BoxStopped 才是诚实的（同上，代际守卫）。
+        if (epoch == _opEpoch) {
+          state = const AsyncData(BoxStopped());
+          unawaited(_ref.read(hapticServiceProvider).mediumImpact());
+        }
       } catch (retryErr) {
         debugPrint('disconnect 重试仍失败: $retryErr');
-        _ref.read(connectionErrorProvider.notifier).state =
-            classifyExceptionMessage(
-              retryErr,
-              _ref.read(translationsProvider),
-            );
-        // 重试也失败：仍然不能报 BoxStopped。诚实地倾向认为还连着，UI 会显示
-        // "仍连接 + 错误"，用户可以再点一次断开重试（disconnect 本身可重入，
-        // toggle() 里 currentStatus is BoxStarted 会再次走 disconnect 分支）。
-        // 如果 native 其实已经停了，watchStatus 之后会推真实的 BoxStopped
-        // 自动纠正（_transitioning 在 finally 解锁后，终态可以穿透
-        // _statusSub 对中间态的过滤）。
-        state = const AsyncData(BoxStarted());
+        if (epoch == _opEpoch) {
+          _ref.read(connectionErrorProvider.notifier).state =
+              classifyExceptionMessage(
+                retryErr,
+                _ref.read(translationsProvider),
+              );
+          // 重试也失败：仍然不能报 BoxStopped。诚实地倾向认为还连着，UI 会
+          // 显示"仍连接 + 错误"，用户可以再点一次断开重试（disconnect 本身
+          // 可重入，toggle() 里 currentStatus is BoxStarted 会再次走
+          // disconnect 分支）。如果 native 其实已经停了，watchStatus 之后
+          // 会推真实的 BoxStopped 自动纠正（_transitioning 在 finally 解锁
+          // 后，终态可以穿透 _statusSub 对中间态的过滤）。
+          state = const AsyncData(BoxStarted());
+        }
       }
     } finally {
-      _transitioning = false;
+      if (epoch == _opEpoch) _transitioning = false;
     }
   }
 
@@ -548,6 +617,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       return;
     }
 
+    final epoch = ++_opEpoch;
     state = const AsyncData(BoxStarting());
     try {
       final modeIndex = _ref.read(proxyModeProvider);
@@ -582,7 +652,13 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       await Future.delayed(const Duration(seconds: 2));
     } catch (e) {
       debugPrint('重连失败: $e');
-      state = const AsyncData(BoxStopped());
+      // 代际守卫同 connect()/disconnect()：这 2s 观察窗口内用户可能已经
+      // 手动断开或发起了新连接，不能让这句迟到的 BoxStopped 覆盖更新的
+      // 操作已经写入的状态。故意不在这里自愈成 BoxStarted（即使 native
+      // 可能其实起来了）——_autoReconnect 依赖 reconnect() 返回后检查
+      // state 是否为 BoxStarted 来判断"已恢复"，这里提前假装成功会让它
+      // 误判、过早放弃退避重试，见本函数上方注释。
+      if (epoch == _opEpoch) state = const AsyncData(BoxStopped());
     }
   }
 

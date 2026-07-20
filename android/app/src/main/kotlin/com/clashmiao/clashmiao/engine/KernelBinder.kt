@@ -67,6 +67,32 @@ class KernelBinder(status: MutableLiveData<KernelStatus>) : IService.Stub() {
 
     override fun registerCallback(callback: IServiceCallback) {
         callbacks.register(callback)
+        // 补发当前状态给这个刚注册的回调——不然它只能等下一次真实变化才知道
+        // 现在是什么状态。真实会命中的场景：Activity/Flutter engine 重建
+        // （例如冷启动、进程被系统回收后重新拉起）但 native TunnelService/
+        // PlainService 组件本身没死（前台 service 独立于 Activity 生命周期
+        // 存活），新绑定的客户端在这之前对"当前状态"一无所知，只能显示初始
+        // 默认值直到内核状态碰巧再变一次——如果内核已经稳定在 Started/
+        // Stopped，可能永远等不到下一次变化，UI 就卡在错误的初始猜测上。
+        // `status.observeForever` 那份镜像只在 `init` 时挂一次、不会替后来
+        // 才注册的每个新 callback 单独补发，所以这里要显式做一次。跟这个
+        // 仓库其它地方（LiveData replay-on-observe、ValueStream/
+        // BehaviorSubject replay-on-subscribe）统一遵守的"新订阅者立即拿到
+        // 当前值"惯例保持一致。
+        //
+        // 走 Dispatchers.Main（不是在当前 binder 线程上同步调用）是为了跟
+        // [fanOut] 的既有线程模型保持一致——所有 IPC callback 调用统一从
+        // 同一个线程发出，不给客户端引入"这次是 binder 线程、之后都是主
+        // 线程"的不一致假设。
+        GlobalScope.launch(Dispatchers.Main) {
+            try {
+                callback.onServiceStatusChanged(currentStatusOrdinal)
+            } catch (_: Exception) {
+                // 回调本身可能已经死了（binder 另一端进程刚好在这个瞬间
+                // 挂掉），不影响 register 本身成功，后续真实状态变化走
+                // fanOut 的 try/catch 隔离，这里没必要重复处理。
+            }
+        }
     }
 
     override fun unregisterCallback(callback: IServiceCallback?) {

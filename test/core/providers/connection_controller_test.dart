@@ -17,6 +17,7 @@ import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录。
@@ -32,7 +33,17 @@ Future<Directory> _mockPathProvider() async {
 
 /// 非 stub spy，控制 watchStatus/watchNetworkChanged 流，记录方法调用次数。
 class _SpyBoxService implements BoxService {
-  final statusStreamController = StreamController<BoxStatus>.broadcast();
+  /// `BehaviorSubject`（不是普通 broadcast `StreamController`）是故意的——
+  /// 匹配真实 `PlatformBoxService`/`FFIBoxService` 用 `ValueConnectableStream`
+  /// 实现的 ValueStream 语义：新订阅者（含 `.first`）立即同步拿到"当前缓存
+  /// 值"，不需要等下一次 `.add()`。这正是 connect() 的 `_settleAfterStart`
+  /// 自愈兜底所依赖的行为——native 已经在跑但不再推送新事件时，靠这个语义
+  /// 读到"当前真实状态"而不是永远等不到的下一条推送。
+  /// 用普通 broadcast controller 曾经踩过一个坑：手搓的 `async*` 包装会在
+  /// "新订阅者" 前引入一个微任务延迟，导致"构造后立即 add()"的既有测试
+  /// 时序被打破（事件在内部订阅真正接上之前就发出，广播流不补放，直接丢失）。
+  /// `BehaviorSubject` 是这个仓库生产代码已经在用的成熟方案，语义经过验证。
+  final statusStreamController = BehaviorSubject<BoxStatus>();
   final networkChangedController = StreamController<void>.broadcast();
   final alertStreamController = StreamController<BoxAlert>.broadcast();
 
@@ -298,6 +309,106 @@ void main() {
 
       container.dispose();
     });
+
+    test('快速"断开→重连"时，disconnect 的迟到收尾不得覆盖新连接的 BoxStarted（真机竞态回归）', () async {
+      // 真机实锤过的竞态（Pixel 4 XL，2026-07-20 12:36）：
+      //   1. 用户断开 → disconnect(): stop() 完成后还有 1.5s 展示动画
+      //   2. 动画窗口内用户点了重连 → connect(): start() 发出，native 推
+      //      Started，watchStatus 穿透写入 state=BoxStarted（UI 短暂正确）
+      //   3. disconnect 的 1.5s 到期，迟到的收尾无条件 state=BoxStopped，
+      //      把已建立的连接状态覆盖回"已断开"
+      //   4. 用户看着"已断开"再点连接 → native onStartCommand 因"已在运行"
+      //      静默忽略、不再推送 → state 永卡 BoxStarting，UI 永远"正在连接"
+      // 修复：操作代际（epoch）——旧操作 await 之后的所有 state 写入先确认
+      // 自己仍是最新操作，否则放弃（新操作已接管）。
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      const profileId = 'race-profile';
+      await repo.upsert({
+        'id': profileId,
+        'name': '竞态测试',
+        'url': 'https://example.com/sub',
+      });
+      await repo.setActive(profileId);
+      final configFile = File(repo.configFilePath(profileId));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString(
+        jsonEncode({
+          'outbounds': [
+            {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+          ],
+        }),
+      );
+
+      final controller = container.read(connectionControllerProvider.notifier);
+
+      // 进入已连接态
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarted>(),
+      );
+
+      // 1. 断开（不 await——让它的 1.5s 收尾在后台悬着）
+      final disconnectFuture = controller.disconnect();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // native 确认停止
+      spy.statusStreamController.add(const BoxStopped());
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+
+      // 2. 动画窗口内用户重连
+      final connectFuture = controller.connect();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(spy.startCalls, 1, reason: '重连应真实调用 start');
+      // native 起来了
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarted>(),
+        reason: 'BoxStarted 应穿透 _transitioning 写入',
+      );
+
+      // 3. 等两个操作全部收尾（disconnect 的 1.5s 迟到写点在这期间执行）
+      await disconnectFuture;
+      await connectFuture;
+
+      // 4. 核心断言：迟到的 disconnect 收尾不得把 Started 覆盖回 Stopped
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarted>(),
+        reason: 'disconnect 的迟到收尾覆盖了新连接的状态——真机上这会导致 UI '
+            '显示已断开、native 实际在跑，用户再点连接被 native 静默忽略后'
+            '永卡"正在连接"',
+      );
+    });
+
+    // 注：connect() 里 `_settleAfterStart` 那层"读一次当前缓存值对齐真实
+    // 终态"的自愈兜底，在这个测试文件的 spy 架构下没法诚实地单独测出来——
+    // `_SpyBoxService.watchStatus()` 是单一共享的 `BehaviorSubject`，任何
+    // 会被自愈读到的值，必然也已经被 ConnectionController 构造时挂上的
+    // 持久监听器同步收到（两者读的是同一个源）。它真正防的场景是"整个
+    // BoxService 实例都是全新的、其原生绑定层第一次订阅时错过了已经发生
+    // 过的状态变化"（例如 Android `KernelBinder.registerCallback()` 不给
+    // 新回调补发当前状态——这个具体缺口已经在原生层直接修了，见
+    // `KernelBinder.kt`），这个量级的场景已经超出单个 ConnectionController
+    // 单测能构造的范围，真实验证见真机复测记录。
 
     test(
       'disconnect 持续失败时，state 绝不能谎报 BoxStopped（核心不变量）',

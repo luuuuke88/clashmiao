@@ -21,6 +21,7 @@ import 'package:clashmiao/core/config/runtime_config_builder.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
 
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -245,6 +246,10 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             // 保护在 StoreReviewService 内部完成，这里跟触觉反馈一样，每次
             // 真正"进入" BoxStarted 都调用，不在这一层重复判断。
             unawaited(_ref.read(storeReviewServiceProvider).maybeRequestReview());
+            // sing-box 的 selector 只在运行中的实例内存里记住"当前选中项"，
+            // 每次重连/切换分流模式都会用 runtime-config 的静态 default 重新起
+            // 一个全新实例——这里必须重放用户手选的结果，否则会静默回退到默认值。
+            unawaited(_reapplyPersistedSelections());
           }
         },
         onError: (e) {
@@ -322,6 +327,21 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     final prefs = _ref.read(sharedPreferencesProvider).valueOrNull;
     if (prefs == null) return false;
     return prefs.getBool('clashmiao_analytics_enabled') ?? false;
+  }
+
+  /// 重放当前订阅所有已持久化的手选代理（见 [ProxySelectionStoreNotifier]）。
+  /// 单条重放失败（比如订阅更新后 tag 已不存在）只记日志，不影响其它条
+  /// 继续重放，也不影响连接本身可用性。
+  Future<void> _reapplyPersistedSelections() async {
+    final selections = _ref.read(proxySelectionStoreProvider);
+    if (selections.isEmpty) return;
+    for (final entry in selections.entries) {
+      try {
+        await _boxService.selectOutbound(entry.key, entry.value);
+      } catch (e) {
+        debugPrint('重放手选代理失败 [${entry.key} -> ${entry.value}]: $e');
+      }
+    }
   }
 
   final Ref _ref;

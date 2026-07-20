@@ -14,11 +14,27 @@ import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
+import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// 读一份 RuntimeConfigBuilder 写出的 runtime-config.json，判断它是不是
+/// "智能分流"模式产出的（注入了 cn rule-set 分流规则）。全局模式下
+/// `route.rules` 为空——profile 自带的兜底 selector 接管所有流量；智能模式
+/// 会额外插入基于 rule_set 的分流规则。
+///
+/// 不能用 `changeConfigOptions` 的 `execute-config-as-is` 字段判断——那个
+/// 字段故意恒为 `true`（见 `default_config_options.dart` 注释：路由完全
+/// 交给 RuntimeConfigBuilder，fork 侧不再插手）。
+Future<bool> _isSmartRuntimeConfig(String? path) async {
+  if (path == null) return false;
+  final content = jsonDecode(await File(path).readAsString());
+  final rules = (content as Map<String, dynamic>)['route']?['rules'] as List?;
+  return rules != null && rules.isNotEmpty;
+}
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录。
 Future<Directory> _mockPathProvider() async {
@@ -51,6 +67,11 @@ class _SpyBoxService implements BoxService {
   int stopCalls = 0;
   int changeConfigCalls = 0;
   int restartCalls = 0;
+
+  /// 最近一次 changeConfigOptions 收到的 JSON——用来断言"最终真正生效的是
+  /// 哪个路由模式"，而不是只数调用次数（真机上的静默错位 bug就是调用次数
+  /// 正常、但内容对应的是过时的模式）。
+  Map<String, dynamic>? lastChangeConfigJson;
 
   /// 若非 null，每次调用 stop() 都会 throw 这个异常（模拟 stop 持续失败，
   /// 用于测试 disconnect() "重试也失败" 时绝不能谎报 BoxStopped 的核心不变量）。
@@ -86,14 +107,24 @@ class _SpyBoxService implements BoxService {
     }
   }
 
+  /// 最近一次 restart() 收到的 runtime-config 路径——真正决定智能/全局分流
+  /// 的信号在这份文件的内容里（`RuntimeConfigBuilder.isSmart`），不在
+  /// `changeConfigOptions` 的 JSON（`execute-config-as-is` 故意恒为
+  /// `true`，见 `default_config_options.dart` 注释：路由完全交给
+  /// RuntimeConfigBuilder，fork 侧不再插手，避免 fork 强制 append 国内
+  /// 下载不了的 remote rule-set）。
+  String? lastRestartPath;
+
   @override
   Future<void> restart(String path, {String name = ''}) async {
     restartCalls++;
+    lastRestartPath = path;
   }
 
   @override
   Future<void> changeConfigOptions(String json) async {
     changeConfigCalls++;
+    lastChangeConfigJson = jsonDecode(json) as Map<String, dynamic>;
   }
 
   // 其余方法最小实现
@@ -409,6 +440,140 @@ void main() {
     // 新回调补发当前状态——这个具体缺口已经在原生层直接修了，见
     // `KernelBinder.kt`），这个量级的场景已经超出单个 ConnectionController
     // 单测能构造的范围，真实验证见真机复测记录。
+
+    test('applyProxyMode 已连接时真实 reconnect，内核收到的模式与最终选择一致', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      const profileId = 'mode-profile';
+      await repo.upsert({
+        'id': profileId,
+        'name': '模式测试',
+        'url': 'https://example.com/sub',
+      });
+      await repo.setActive(profileId);
+      final configFile = File(repo.configFilePath(profileId));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString(
+        jsonEncode({
+          'outbounds': [
+            {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+          ],
+        }),
+      );
+
+      final controller = container.read(connectionControllerProvider.notifier);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      container.read(proxyModeProvider.notifier).state = 0; // 全局
+      await controller.applyProxyMode();
+
+      expect(spy.restartCalls, 1, reason: '已连接时切模式应该真实 restart');
+      expect(
+        await _isSmartRuntimeConfig(spy.lastRestartPath),
+        isFalse,
+        reason: '全局模式下 RuntimeConfigBuilder 不应该注入智能分流规则',
+      );
+    });
+
+    test('快速连续切换模式（第二次点击落在第一次 reconnect 的 BoxStarting 窗口内）'
+        '——最终内核必须用最后一次选择的模式，不能被静默吞掉（真机竞态回归）', () async {
+      // 真机实锤（Pixel 4 XL，2026-07-20）：连续点"智能→全局"，间隔 300ms。
+      // 旧实现（home_page.dart `_ModeSelector._onModeTap` 自己手写判断）用
+      // `connStatus is BoxStarted` 决定要不要 reconnect——第二次点击执行到
+      // 这一行时，第一次点击触发的 reconnect() 早已把 state 同步写成了
+      // BoxStarting（还没跑完），判断为 false，第二次点击被完全跳过：UI 显示
+      // 用户最后选的模式，但拉出真机 runtime-config.json 一看，
+      // `route.final` 和规则数对应的是第一次（也就是过时那次）的模式。
+      // 修复：改到 ConnectionController.applyProxyMode()，用忙时合并 + 收敛
+      // 到最新值的排队，不再要求"此刻精确是 BoxStarted"。
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      const profileId = 'rapid-mode-profile';
+      await repo.upsert({
+        'id': profileId,
+        'name': '快速模式切换测试',
+        'url': 'https://example.com/sub',
+      });
+      await repo.setActive(profileId);
+      final configFile = File(repo.configFilePath(profileId));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString(
+        jsonEncode({
+          'outbounds': [
+            {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+          ],
+        }),
+      );
+
+      final controller = container.read(connectionControllerProvider.notifier);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      spy.restartCalls = 0; // 只关心这次切换动作触发的调用
+
+      // 第一次点击：智能 → 全局（不 await，模拟点击后立刻发生第二次点击）
+      container.read(proxyModeProvider.notifier).state = 0; // 全局
+      final firstApply = controller.applyProxyMode();
+      // 落在第一次 reconnect() 的 BoxStarting 窗口内（restart 之后、2s 展示
+      // 窗口结束之前）。
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarting>(),
+        reason: '前置条件：第二次点击必须真的落在第一次 reconnect 还没跑完的窗口里',
+      );
+
+      // 第二次点击：全局 → 智能（用户最终想要的模式）
+      container.read(proxyModeProvider.notifier).state = 1; // 智能
+      final secondApply = controller.applyProxyMode();
+
+      await firstApply;
+      await secondApply;
+
+      expect(
+        await _isSmartRuntimeConfig(spy.lastRestartPath),
+        isTrue,
+        reason: '内核最终收到的 runtime-config 必须对应用户最后选择的"智能分流"'
+            '（注入了 cn 分流规则），不能停留在第一次点击的"全局代理"'
+            '（execute-config-as-is 恒为 true 不能用来判断——路由完全交给'
+            'RuntimeConfigBuilder，真正的信号是它写的文件内容）',
+      );
+      expect(
+        spy.restartCalls,
+        greaterThanOrEqualTo(1),
+        reason: '第二次点击不能被完全吞掉——用户最后选择的模式必须真的下发给内核',
+      );
+    });
 
     test(
       'disconnect 持续失败时，state 绝不能谎报 BoxStopped（核心不变量）',

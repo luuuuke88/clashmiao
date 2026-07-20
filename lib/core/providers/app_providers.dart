@@ -662,6 +662,79 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     }
   }
 
+  bool _modeApplyInFlight = false;
+  bool _modeApplyPending = false;
+
+  /// 把 [proxyModeProvider] 的当前值应用到运行中的内核：推 fork-side options
+  /// + （已连接/连接中则）reconnect 让新的 runtime-config 生效。UI 层
+  /// （`_ModeSelector`）在**同步**更新完 `proxyModeProvider`（保证点击零延迟
+  /// 高亮）之后调这个方法，不需要自己传 index——执行时永远读 provider 的
+  /// 最新值。
+  ///
+  /// 真机实锤过的静默错位 bug（不是理论推演）：旧实现直接写在
+  /// `_ModeSelector._onModeTap` 里，判断"要不要 reconnect"用
+  /// `connStatus is BoxStarted`。连续快速切换（第二次点击落在第一次
+  /// reconnect() 还没跑完的 BoxStarting 窗口内）时，第二次读到的
+  /// state 是 BoxStarting 不是 BoxStarted，判断为 false，整次点击被
+  /// 静默吞掉——UI 显示用户最后选的模式，但内核实际还在跑第一次点击
+  /// （过时）那个模式的 runtime-config。真机拉取 `runtime-config.json`
+  /// 核实过：`route.final`/规则数对应的确实是旧模式，不是 UI 显示的那个。
+  ///
+  /// 修复用"忙时合并 + 收敛到最新值"的排队，而不是单纯放宽判断条件——放宽
+  /// 成"BoxStarting 也算"会导致两次点击各自独立调用 `reconnect()`，两个
+  /// `_boxService.restart()` 请求几乎同时发给 native，谁先谁后不确定，
+  /// 依然可能不是用户最后选择的模式生效，还多引入了一次没必要的 restart。
+  /// 这里保证任意时刻只有一个 `_applyProxyModeOnce` 在跑，且跑完后如果
+  /// 期间又有新请求到达，会再跑一轮直到没有新请求——最终必然收敛到调用
+  /// 这个方法时 `proxyModeProvider` 的最新值，且只在真正需要变化时才
+  /// 触发 reconnect。
+  Future<void> applyProxyMode() async {
+    if (_modeApplyInFlight) {
+      _modeApplyPending = true;
+      return;
+    }
+    _modeApplyInFlight = true;
+    try {
+      do {
+        _modeApplyPending = false;
+        await _applyProxyModeOnce();
+      } while (_modeApplyPending);
+    } finally {
+      _modeApplyInFlight = false;
+    }
+  }
+
+  Future<void> _applyProxyModeOnce() async {
+    if (_isStub) return;
+    final repoAsync = _ref.read(profileRepositoryProvider);
+    final active = repoAsync.valueOrNull?.getActive();
+    final modeIndex = _ref.read(proxyModeProvider);
+    final isGlobal = modeIndex == 0;
+    try {
+      await _boxService.changeConfigOptions(
+        jsonEncode(
+          getDefaultConfigOptions(
+            executeConfigAsIs: isGlobal,
+            settings: _ref.read(networkSettingsProvider),
+            advancedConfig: active?.advancedConfig,
+          ),
+        ),
+      );
+      // 只要不是彻底断开/正在断开，都应该让新模式的 runtime-config 生效——
+      // 不能像旧实现那样严格要求"此刻精确是 BoxStarted"，那正是静默错位
+      // bug 的根源（见上方类文档注释）。BoxStopped/BoxStopping 时确实不该
+      // reconnect：还没连接或正在断开，下次真正 connect() 会自然用上
+      // 当时最新的模式。
+      final s = state.valueOrNull;
+      if (s is BoxStarted || s is BoxStarting) {
+        await reconnect();
+      }
+    } catch (e) {
+      final t = _ref.read(translationsProvider);
+      debugPrint(t.home.failedToSwitchMode(error: e.toString()));
+    }
+  }
+
   bool _autoReconnecting = false;
 
   Future<void> _autoReconnect() async {

@@ -17,6 +17,7 @@ endif()
 
 # === Flutter Library ===
 set(FLUTTER_LIBRARY "${EPHEMERAL_DIR}/flutter_windows.dll")
+set(FLUTTER_LIBRARY_LINK_LIBRARY "${FLUTTER_LIBRARY}.lib")
 
 # Published to parent scope for install step.
 set(FLUTTER_LIBRARY ${FLUTTER_LIBRARY} PARENT_SCOPE)
@@ -36,7 +37,7 @@ add_library(flutter INTERFACE)
 target_include_directories(flutter INTERFACE
   "${EPHEMERAL_DIR}"
 )
-target_link_libraries(flutter INTERFACE "${FLUTTER_LIBRARY}.lib")
+target_link_libraries(flutter INTERFACE "${FLUTTER_LIBRARY_LINK_LIBRARY}")
 add_dependencies(flutter flutter_assemble)
 
 # === Wrapper ===
@@ -90,7 +91,7 @@ add_dependencies(flutter_wrapper_app flutter_assemble)
 set(PHONY_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/_phony_")
 set_source_files_properties("${PHONY_OUTPUT}" PROPERTIES SYMBOLIC TRUE)
 add_custom_command(
-  OUTPUT ${FLUTTER_LIBRARY} ${FLUTTER_LIBRARY_HEADERS}
+  OUTPUT ${FLUTTER_LIBRARY} ${FLUTTER_LIBRARY_LINK_LIBRARY} ${FLUTTER_LIBRARY_HEADERS}
     ${CPP_WRAPPER_SOURCES_CORE} ${CPP_WRAPPER_SOURCES_PLUGIN}
     ${CPP_WRAPPER_SOURCES_APP}
     ${PHONY_OUTPUT}
@@ -102,6 +103,7 @@ add_custom_command(
 )
 add_custom_target(flutter_assemble DEPENDS
   "${FLUTTER_LIBRARY}"
+  "${FLUTTER_LIBRARY_LINK_LIBRARY}"
   ${FLUTTER_LIBRARY_HEADERS}
   ${CPP_WRAPPER_SOURCES_CORE}
   ${CPP_WRAPPER_SOURCES_PLUGIN}

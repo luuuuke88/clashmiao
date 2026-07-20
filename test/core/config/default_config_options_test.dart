@@ -211,5 +211,31 @@ void main() {
       final options = getDefaultConfigOptions(settings: const NetworkSettings());
       expect(options['rules'], isEmpty);
     });
+
+    // 这个 sing-box fork 的 DNS 规则应用整段被 `if opt.EnableDNSRouting` 包住
+    // （libcore/config/config.go），isSmart=true 时上面那两条直连规则要真正
+    // 生效，enable-dns-routing 必须为 true——即使用户在设置页把"DNS 路由"
+    // 这个开关关掉了，也不能连带把智能分流的直连规则一起废掉。
+    test('isSmart=true 时 enable-dns-routing 强制为 true，不受用户设置开关影响', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(enableDnsRouting: false),
+      );
+      expect(options['enable-dns-routing'], isTrue);
+    });
+
+    test('isSmart=false 时 enable-dns-routing 仍然听用户设置开关', () {
+      final optionsOff = getDefaultConfigOptions(
+        isSmart: false,
+        settings: const NetworkSettings(enableDnsRouting: false),
+      );
+      expect(optionsOff['enable-dns-routing'], isFalse);
+
+      final optionsOn = getDefaultConfigOptions(
+        isSmart: false,
+        settings: const NetworkSettings(enableDnsRouting: true),
+      );
+      expect(optionsOn['enable-dns-routing'], isTrue);
+    });
   });
 }

@@ -71,6 +71,7 @@ void main() async {
         jsonEncode(
           getDefaultConfigOptions(
             executeConfigAsIs: modeIndex == 0,
+            isSmart: modeIndex != 0,
             settings: container.read(networkSettingsProvider),
           ),
         ),

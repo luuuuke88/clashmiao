@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/config/cn_direct_rules.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -144,6 +145,71 @@ void main() {
       expect(tlsTricks['mixed-sni-case'], isTrue);
       expect(tlsTricks['padding-size'], '1-1500');
       expect(mux['padding'], isTrue);
+    });
+  });
+
+  // ===========================================================
+  // 智能分流真正生效的信号搬到了这里：这个 sing-box fork 的
+  // config.BuildConfig()（libcore/config/config.go）无条件丢弃/重建 profile
+  // 自带的 route 块，RuntimeConfigBuilder 原来写进 runtime-config.json 的
+  // route.rules 从未真正生效过。这个 fork 真正认的自定义路由口子是
+  // configOptions.rules（对应 libcore/config/rules.go 的 Rule.MakeRule()），
+  // 所以智能分流数据必须通过这里注入，而不是 runtime-config.json 的 route 块。
+  // ===========================================================
+  group('getDefaultConfigOptions isSmart 驱动 rules（真正生效的智能分流口子）', () {
+    test('isSmart=true 时，rules 里包含中国 IP 段直连规则', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      final rules = (options['rules'] as List).cast<Map<String, dynamic>>();
+
+      final ipRule = rules.firstWhere(
+        (r) => r['ip'] != null,
+        orElse: () => <String, dynamic>{},
+      );
+      expect(ipRule, isNotEmpty, reason: 'isSmart=true 必须有一条基于 IP 的直连规则');
+      expect(ipRule['outbound'], 'bypass');
+      final ipList = (ipRule['ip'] as String).split(',');
+      expect(
+        ipList.length,
+        cnDirectCidrRanges.length,
+        reason: 'IP 规则必须包含反编译自 geoip-cn.srs 的完整 CIDR 列表',
+      );
+      expect(ipList, contains('1.0.1.0/24'));
+    });
+
+    test('isSmart=true 时，rules 里包含中国主流域名直连规则', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      final rules = (options['rules'] as List).cast<Map<String, dynamic>>();
+
+      final domainRule = rules.firstWhere(
+        (r) => r['domains'] != null,
+        orElse: () => <String, dynamic>{},
+      );
+      expect(domainRule, isNotEmpty, reason: 'isSmart=true 必须有一条基于域名的直连规则');
+      expect(domainRule['outbound'], 'bypass');
+      final domains = (domainRule['domains'] as String).split(',');
+      expect(
+        domains,
+        containsAll(['domain:cn', 'domain:baidu.com', 'domain:qq.com']),
+      );
+    });
+
+    test('isSmart=false（全局模式）时，rules 为空——不做任何直连兜底', () {
+      final options = getDefaultConfigOptions(
+        isSmart: false,
+        settings: const NetworkSettings(),
+      );
+      expect(options['rules'], isEmpty);
+    });
+
+    test('不传 isSmart 时默认等同 false（不破坏现有调用点）', () {
+      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      expect(options['rules'], isEmpty);
     });
   });
 }

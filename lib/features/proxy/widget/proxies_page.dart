@@ -8,6 +8,7 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/proxy/state/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/features/proxy/state/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/state/proxies_sort_notifier.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -81,11 +82,19 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       });
     }
 
+    // 是否真的在用实时分组数据——只有这个为 false 时才需要拿本地缓存的历史
+    // 延迟兜底展示。已连接且实时数据非空时必须信任实时数据本身：这个分支下
+    // 哪怕某个节点延迟还是 0（没测出来），也不能用缓存里冻结的旧数值顶替，
+    // 否则会显示一个永远不变的假数字（"每次都是同一个数字"那个 bug 的根因）。
+    bool isLiveData = false;
     List<OutboundGroup> rawGroups;
     if (isConnected) {
       rawGroups = liveGroups.when<List<OutboundGroup>>(
-        data: (g) =>
-            g.any((group) => group.items.isNotEmpty) ? g : offlineFallback,
+        data: (g) {
+          final hasData = g.any((group) => group.items.isNotEmpty);
+          isLiveData = hasData;
+          return hasData ? g : offlineFallback;
+        },
         loading: () => offlineFallback,
         error: (_, __) => offlineFallback,
       );
@@ -95,10 +104,12 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
 
     // 过滤掉内部保留字分组，并把订阅原始 selector 与修复出的 proxy
     // selector 这类等价分组折叠成一个可操作的主分组。
-    final List<OutboundGroup> visibleRawGroups = _applyCachedDelays(
-      _collapseDuplicateGroups(rawGroups.where(_isUserVisibleGroup).toList()),
-      cachedDelays,
+    final collapsedGroups = _collapseDuplicateGroups(
+      rawGroups.where(_isUserVisibleGroup).toList(),
     );
+    final List<OutboundGroup> visibleRawGroups = isLiveData
+        ? collapsedGroups
+        : _applyCachedDelays(collapsedGroups, cachedDelays);
     final List<OutboundGroup> groups = [];
     for (final group in visibleRawGroups) {
       final sortedItems = group.items.where(_isVisibleProxy).toList();
@@ -299,6 +310,14 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           .read(boxServiceProvider)
           .selectOutbound(groupTag, outboundTag)
           .then((_) {
+            // 只有 native 真正切换成功才记为"用户手选的节点"，供下次重连重放
+            // （见 ProxySelectionStoreNotifier 注释：selector 的选中状态只活在
+            // 运行中的实例内存里，重连会用 config 的静态 default 重新起）。
+            unawaited(
+              ref
+                  .read(proxySelectionStoreProvider.notifier)
+                  .persist(groupTag, outboundTag),
+            );
             // Toast can be annoying on fast switches, removed or keep brief
             // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
           })

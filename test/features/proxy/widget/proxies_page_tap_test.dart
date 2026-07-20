@@ -12,6 +12,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/state/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/features/proxy/state/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/state/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -286,6 +287,52 @@ void main() {
     await _drainToasts(tester);
   });
 
+  testWidgets('已连接时 tap ss-node tile 选中成功后，持久化选择供下次重连重放', (
+    tester,
+  ) async {
+    final (widget, container, spy) = await _host(connected: true);
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('ss-node'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(
+      container.read(proxySelectionStoreProvider),
+      {'proxy': 'ss-node'},
+      reason:
+          'sing-box 的 selector 只在运行中实例内存里记住当前选中项，每次重连都会用'
+          'runtime-config 的静态 default 重新起一个全新实例——手选结果必须持久化，'
+          '否则下次重连会静默回退到默认值',
+    );
+    await _drainToasts(tester);
+  });
+
+  testWidgets('已连接时 selectOutbound 失败 → 不持久化这次失败的选择', (tester) async {
+    final (widget, container, spy) = await _hostWithGroups(
+      connected: true,
+      groups: [_twoNodeGroup(selected: 'node-a')],
+    );
+    spy.selectOutboundError = Exception('native switch failed');
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('node-b'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(
+      container.read(proxySelectionStoreProvider),
+      isEmpty,
+      reason: 'native 切换失败时，这次点击并不是"用户真正选中的节点"，不该被当成手选结果持久化',
+    );
+    await _drainToasts(tester);
+  });
+
   // empty state / reserved group filter / urlTest header 的覆盖在底下追加。
   _addProxiesPageExtraTests();
 }
@@ -481,6 +528,60 @@ void _addProxiesPageExtraTests() {
     expect(find.text('ss-node'), findsOneWidget);
     expect(find.text('123ms'), findsOneWidget);
     expect(find.text('--'), findsNothing);
+  });
+
+  testWidgets('已连接且拿到真实实时分组时（延迟未测出=0），不该用缓存的旧延迟顶替显示', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({
+      'locale': 'zhCn',
+      // 这个缓存值模拟"之前某次真实测速留下的旧数据"——已连接、拿到了真实
+      // 的实时分组数据时，绝不应该被用来顶替显示，否则会冻结成一个永远不变
+      // 的假数字（用户反馈过的"每次都是87"那个 bug 的根因）。
+      'proxy_delays_profile-1': '{"ss-node":999}',
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final spy = _SpyBoxService();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        activeProfileProvider.overrideWith((_) async => _activeProfile),
+        boxServiceProvider.overrideWithValue(spy),
+        isConnectedProvider.overrideWith((_) => true),
+        // 真实的实时分组：ss-node 存在但还没测出延迟（默认 delay: 0）。
+        outboundGroupsProvider.overrideWith(
+          (_) => Stream.value([_proxyGroup()]),
+        ),
+        offlineProxyGroupsProvider.overrideWith((_) async => []),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+    await container.read(activeProfileProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const ProxiesPage(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('ss-node'), findsOneWidget);
+    expect(
+      find.text('999ms'),
+      findsNothing,
+      reason: '已连接且实时分组数据非空时应该信任实时数据本身，不该拿离线缓存覆盖',
+    );
+    expect(find.text('--'), findsOneWidget);
   });
 
   testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (

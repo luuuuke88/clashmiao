@@ -15,6 +15,8 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -138,8 +140,24 @@ class _SpyBoxService implements BoxService {
     String b, {
     bool debug = false,
   }) async => null;
+
+  /// 记录每次 selectOutbound 调用的 "groupTag->outboundTag"——用来断言
+  /// "进入 BoxStarted 后重放持久化选择"这个副作用真的发生了，而不是只数次数。
+  /// 用格式化字符串而非 MapEntry：MapEntry 没有覆写 `==`，直接拿来做列表相等
+  /// 断言会按对象identity比较，即使内容相同也会判不等。
+  final List<String> selectOutboundCalls = [];
+
+  /// 若非空，groupTag 命中这个集合时 selectOutbound 会 throw——模拟"某个
+  /// group 的持久化选择已经失效（tag 不存在）"，验证单条失败不影响其它条重放。
+  final Set<String> selectOutboundFailFor = {};
+
   @override
-  Future<void> selectOutbound(String g, String o) async {}
+  Future<void> selectOutbound(String g, String o) async {
+    if (selectOutboundFailFor.contains(g)) {
+      throw Exception('mock selectOutbound failure for group $g');
+    }
+    selectOutboundCalls.add('$g->$o');
+  }
   @override
   Future<void> urlTest(String g) async {}
   @override
@@ -896,6 +914,162 @@ void main() {
       );
 
       container.dispose();
+    });
+  });
+
+  group('进入 BoxStarted 后重放持久化的手选代理', () {
+    test('有持久化选择时，真正进入 BoxStarted 后逐条重放到 boxService.selectOutbound', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(
+              const ProfileEntity(
+                id: 'profile-1',
+                name: 'p1',
+                url: 'https://example.com/p1',
+                active: true,
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      await container
+          .read(proxySelectionStoreProvider.notifier)
+          .persist('proxy', 'JP-Reality-Stable');
+      container.read(connectionControllerProvider.notifier);
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        spy.selectOutboundCalls,
+        ['proxy->JP-Reality-Stable'],
+        reason:
+            'sing-box 的 selector 只在运行中的实例内存里记住当前选中项，'
+            '每次重连都会用 runtime-config 的静态 default 重新起一个全新实例——'
+            '不主动重放持久化选择的话，用户手选的节点会静默回退到默认值',
+      );
+    });
+
+    test('没有任何持久化选择时，进入 BoxStarted 不调用 selectOutbound', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(
+              const ProfileEntity(
+                id: 'profile-1',
+                name: 'p1',
+                url: 'https://example.com/p1',
+                active: true,
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      container.read(connectionControllerProvider.notifier);
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        spy.selectOutboundCalls,
+        isEmpty,
+        reason: '全新订阅/从没手选过节点时，重放应该是空操作，不该凭空调用 selectOutbound',
+      );
+    });
+
+    test('某个 group 的持久化选择重放失败，不影响其它 group 继续重放', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService()..selectOutboundFailFor.add('stale-group');
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(
+              const ProfileEntity(
+                id: 'profile-1',
+                name: 'p1',
+                url: 'https://example.com/p1',
+                active: true,
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      final store = container.read(proxySelectionStoreProvider.notifier);
+      await store.persist('stale-group', 'gone-tag');
+      await store.persist('proxy', 'JP-Reality-Stable');
+      container.read(connectionControllerProvider.notifier);
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        spy.selectOutboundCalls,
+        contains('proxy->JP-Reality-Stable'),
+        reason: '一个 group 的悬空引用重放失败，不应该阻止其它仍然有效的 group 重放',
+      );
+    });
+
+    test('同一次连接内重复推送 BoxStarted → 不重复重放（wasStarted 守卫）', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(
+              const ProfileEntity(
+                id: 'profile-1',
+                name: 'p1',
+                url: 'https://example.com/p1',
+                active: true,
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      await container
+          .read(proxySelectionStoreProvider.notifier)
+          .persist('proxy', 'JP-Reality-Stable');
+      container.read(connectionControllerProvider.notifier);
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        spy.selectOutboundCalls.length,
+        1,
+        reason: '同一段连接内重复推送同样的 BoxStarted 不应该重复重放',
+      );
     });
   });
 

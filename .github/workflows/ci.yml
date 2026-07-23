@@ -60,6 +60,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # runner image 更新后 cmdline-tools 不再默认进 PATH，裸调 sdkmanager 会
+      # command not found（见 actions/runner-images#13674）。这一步把含
+      # sdkmanager 的 cmdline-tools 装好并加进 PATH；packages: '' 表示不让它
+      # 自动装包，具体 SDK 包由下一步显式装。
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
       - name: Install Android SDK packages
         run: |
           set +o pipefail
@@ -100,6 +107,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # runner image 更新后 cmdline-tools 不再默认进 PATH，裸调 sdkmanager 会
+      # command not found（见 actions/runner-images#13674）。这一步把含
+      # sdkmanager 的 cmdline-tools 装好并加进 PATH；packages: '' 表示不让它
+      # 自动装包，具体 SDK 包由下一步显式装。
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
       - name: Install Android SDK packages
         run: |
           set +o pipefail
@@ -405,6 +419,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      # runner image 更新后 cmdline-tools 不再默认进 PATH，裸调 sdkmanager 会
+      # command not found（见 actions/runner-images#13674）。这一步把含
+      # sdkmanager 的 cmdline-tools 装好并加进 PATH；packages: '' 表示不让它
+      # 自动装包，具体 SDK 包由下一步显式装。
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: ''
       - name: Install Android SDK packages
         run: |
           set +o pipefail

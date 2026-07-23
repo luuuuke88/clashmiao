@@ -259,9 +259,7 @@ void main() {
       await _drainToasts(tester);
     });
 
-    testWidgets('同意 WARP 条款后 native 不支持时优雅报错而不是崩溃（桌面无核心库场景）', (
-      tester,
-    ) async {
+    testWidgets('同意 WARP 条款后 native 不支持时优雅报错而不是崩溃（桌面无核心库场景）', (tester) async {
       SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();
       final container = ProviderContainer(
@@ -489,8 +487,7 @@ void main() {
       expect(find.text('删除'), findsOneWidget);
       expect(
         find.byWidgetPredicate(
-          (widget) =>
-              widget is ModalBarrier && widget.color == Colors.black54,
+          (widget) => widget is ModalBarrier && widget.color == Colors.black54,
         ),
         findsOneWidget,
       );
@@ -626,9 +623,7 @@ void main() {
       expect(parsed.name, '我的订阅 123');
     });
 
-    testWidgets('长按远程配置卡点击分享链接把带名称 fragment 的 URL 写入剪贴板', (
-      tester,
-    ) async {
+    testWidgets('长按远程配置卡点击分享链接把带名称 fragment 的 URL 写入剪贴板', (tester) async {
       SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();
       const profile = ProfileEntity(

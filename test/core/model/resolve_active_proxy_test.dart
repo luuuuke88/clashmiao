@@ -41,7 +41,11 @@ void main() {
         ),
       ];
       final active = resolveActiveProxy(groups);
-      expect(active?.tag, 'JP-Reality-Stable', reason: '不能显示 GLOBAL 的 selected(proxy)，要下钻到真实叶子');
+      expect(
+        active?.tag,
+        'JP-Reality-Stable',
+        reason: '不能显示 GLOBAL 的 selected(proxy)，要下钻到真实叶子',
+      );
       expect(active?.delay, 88);
     });
 

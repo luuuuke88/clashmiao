@@ -105,9 +105,7 @@ Future<void> _enableWarp(WidgetTester tester) async {
 
 void main() {
   group('ConfigOptionsPage smoke', () {
-    testWidgets('渲染分组的配置选项列表', (
-      tester,
-    ) async {
+    testWidgets('渲染分组的配置选项列表', (tester) async {
       await _pumpPage(tester);
 
       // 顶部的实验性功能提示应该用共享的 TipCard 组件（跟 assets_page 用
@@ -170,9 +168,7 @@ void main() {
       expect(find.text('OK'), findsOneWidget);
     });
 
-    testWidgets('url test interval opens slider modal', (
-      tester,
-    ) async {
+    testWidgets('url test interval opens slider modal', (tester) async {
       await _pumpPage(
         tester,
         home: const ConfigOptionsPage(debugOpenUrlTestIntervalSlider: true),
@@ -185,9 +181,7 @@ void main() {
       expect(find.text('OK'), findsOneWidget);
     });
 
-    testWidgets('WARP enable opens consent modal', (
-      tester,
-    ) async {
+    testWidgets('WARP enable opens consent modal', (tester) async {
       await _pumpPage(tester);
 
       await tester.scrollUntilVisible(find.text('启用 WARP'), 600);
@@ -204,9 +198,7 @@ void main() {
       expect(find.text('同意'), findsOneWidget);
     });
 
-    testWidgets('more button opens actions modal', (
-      tester,
-    ) async {
+    testWidgets('more button opens actions modal', (tester) async {
       await _pumpPage(tester);
 
       // flutter test 默认把 defaultTargetPlatform 判定为 android（见
@@ -238,7 +230,10 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       await _pumpPage(tester);
 
-      expect(find.byIcon(FluentIcons.more_horizontal_24_regular), findsOneWidget);
+      expect(
+        find.byIcon(FluentIcons.more_horizontal_24_regular),
+        findsOneWidget,
+      );
       expect(find.byIcon(FluentIcons.more_vertical_24_regular), findsNothing);
 
       debugDefaultTargetPlatformOverride = null;
@@ -406,10 +401,7 @@ void main() {
       final container = await _containerWith(prefs);
       addTearDown(container.dispose);
 
-      mockClipboardText(
-        tester,
-        jsonEncode({'mtu': 1300, 'muxPadding': true}),
-      );
+      mockClipboardText(tester, jsonEncode({'mtu': 1300, 'muxPadding': true}));
 
       await tester.pumpWidget(
         UncontrolledProviderScope(

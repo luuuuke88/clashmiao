@@ -105,13 +105,16 @@ void main() {
       await n.toggle();
       expect(n.state, isTrue);
     });
-
   });
 
   group('WindowsAutoStartBackend（真正的 Windows 开机自启动实现）', () {
     test('构造时用 appName/appPath 调 launch_at_startup 的 setup', () {
       final api = _FakeWindowsLaunchAtStartupApi();
-      WindowsAutoStartBackend(api: api, appName: 'ClashMiao', appPath: 'C:\\x.exe');
+      WindowsAutoStartBackend(
+        api: api,
+        appName: 'ClashMiao',
+        appPath: 'C:\\x.exe',
+      );
       expect(api.setupAppName, 'ClashMiao');
       expect(api.setupAppPath, 'C:\\x.exe');
     });

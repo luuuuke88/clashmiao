@@ -42,7 +42,11 @@ typedef LogFileResolver = Future<File> Function();
 /// resolver（以及可选的更小 maxBytes/maxLines，方便验证截断逻辑不用真的
 /// 写几 MB 数据）。
 class AppLogger {
-  AppLogger._(this._resolveLogFile, {required this.maxBytes, required this.maxLines});
+  AppLogger._(
+    this._resolveLogFile, {
+    required this.maxBytes,
+    required this.maxLines,
+  });
 
   static AppLogger? _instance;
 
@@ -162,9 +166,7 @@ Future<void> initAppLogger() async {
 
   final previousPlatformOnError = PlatformDispatcher.instance.onError;
   PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    unawaited(
-      AppLogger.instance.append('[PlatformDispatcher] $error\n$stack'),
-    );
+    unawaited(AppLogger.instance.append('[PlatformDispatcher] $error\n$stack'));
     return previousPlatformOnError?.call(error, stack) ?? true;
   };
 }

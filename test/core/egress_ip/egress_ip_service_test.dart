@@ -73,7 +73,9 @@ Future<EgressIpService> _service({
   SharedPreferences.setMockInitialValues(prefs);
   final sp = await SharedPreferences.getInstance();
   final container = ProviderContainer(
-    overrides: [sharedPreferencesProvider.overrideWith((_) => Future.value(sp))],
+    overrides: [
+      sharedPreferencesProvider.overrideWith((_) => Future.value(sp)),
+    ],
   );
   addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
@@ -190,7 +192,9 @@ void main() {
     });
 
     test('响应体是合法 JSON 但不是 object（数组）返回 unknown', () async {
-      final service = await _service(dio: _dioReturning(jsonEncode([1, 2, 3]), 200));
+      final service = await _service(
+        dio: _dioReturning(jsonEncode([1, 2, 3]), 200),
+      );
 
       final result = await service.fetch();
 

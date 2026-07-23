@@ -73,39 +73,36 @@ Future<void> _drainToasts(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-    'ShellPage 保持 4 项玻璃底部导航',
-    (tester) async {
-      tester.view.physicalSize = const Size(430, 932);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
+  testWidgets('ShellPage 保持 4 项玻璃底部导航', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
 
-      final (widget, container) = await _host();
-      addTearDown(container.dispose);
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
 
-      await tester.pumpWidget(widget);
-      await tester.pump(const Duration(milliseconds: 300));
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
 
-      for (var i = 0; i < 4; i++) {
-        expect(find.byKey(ValueKey('bottom_nav_$i')), findsOneWidget);
-      }
-      expect(find.byKey(const ValueKey('bottom_nav_4')), findsNothing);
-      expect(container.read(selectedTabProvider), AppTab.home);
+    for (var i = 0; i < 4; i++) {
+      expect(find.byKey(ValueKey('bottom_nav_$i')), findsOneWidget);
+    }
+    expect(find.byKey(const ValueKey('bottom_nav_4')), findsNothing);
+    expect(container.read(selectedTabProvider), AppTab.home);
 
-      await tester.tap(find.byKey(const ValueKey('bottom_nav_1')));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(container.read(selectedTabProvider), AppTab.proxies);
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_1')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(container.read(selectedTabProvider), AppTab.proxies);
 
-      await tester.tap(find.byKey(const ValueKey('bottom_nav_2')));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(container.read(selectedTabProvider), AppTab.settings);
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_2')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(container.read(selectedTabProvider), AppTab.settings);
 
-      await tester.tap(find.byKey(const ValueKey('bottom_nav_3')));
-      await tester.pump(const Duration(milliseconds: 200));
-      expect(container.read(selectedTabProvider), AppTab.about);
-    },
-  );
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_3')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(container.read(selectedTabProvider), AppTab.about);
+  });
 
   testWidgets('深链运行时导入成功 → ShellPage 弹出成功 toast', (tester) async {
     final (widget, container) = await _host();
@@ -142,75 +139,69 @@ void main() {
     await _drainToasts(tester);
   });
 
-  testWidgets(
-    '冷启动时序兜底：ShellPage 挂载前就已经产生的深链结果，'
-    '首次 build 后也会补显示 toast',
-    (tester) async {
-      // 覆盖成"挂载前就已经有一个待展示的结果"，模拟 DeepLinkService 在
-      // ShellPage 完成挂载之前就已经处理完冷启动链接的时序竞争。
+  testWidgets('冷启动时序兜底：ShellPage 挂载前就已经产生的深链结果，'
+      '首次 build 后也会补显示 toast', (tester) async {
+    // 覆盖成"挂载前就已经有一个待展示的结果"，模拟 DeepLinkService 在
+    // ShellPage 完成挂载之前就已经处理完冷启动链接的时序竞争。
+    final (widget, container) = await _host(
+      extraOverrides: [
+        deepLinkImportResultProvider.overrideWith(
+          (ref) => const DeepLinkImportSuccess('冷启动订阅'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+    expect(find.text('已导入订阅：冷启动订阅'), findsOneWidget);
+    expect(container.read(deepLinkImportResultProvider), isNull);
+
+    await _drainToasts(tester);
+  });
+
+  group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {
+    testWidgets('致命 alert（sing-box 启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认', (tester) async {
+      final alertController = StreamController<BoxAlert>();
+      addTearDown(alertController.close);
       final (widget, container) = await _host(
         extraOverrides: [
-          deepLinkImportResultProvider.overrideWith(
-            (ref) => const DeepLinkImportSuccess('冷启动订阅'),
-          ),
+          boxAlertsProvider.overrideWith((_) => alertController.stream),
         ],
       );
       addTearDown(container.dispose);
 
       await tester.pumpWidget(widget);
-      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
 
-      expect(find.text('已导入订阅：冷启动订阅'), findsOneWidget);
-      expect(container.read(deepLinkImportResultProvider), isNull);
+      alertController.add(
+        const BoxAlert(
+          type: BoxAlertType.startService,
+          // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的
+          // 本地化文案，不应该把这段原始文本糊给用户看。
+          message: 'native stacktrace: goroutine 7 [running]',
+        ),
+      );
+      await tester.pumpAndSettle();
 
-      await _drainToasts(tester);
-    },
-  );
+      expect(find.text('连接失败'), findsOneWidget);
+      expect(find.text('服务启动错误'), findsOneWidget);
+      expect(
+        find.textContaining('goroutine'),
+        findsNothing,
+        reason: '不能把原生原始堆栈信息展示给用户',
+      );
 
-  group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {
-    testWidgets(
-      '致命 alert（sing-box 启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认',
-      (tester) async {
-        final alertController = StreamController<BoxAlert>();
-        addTearDown(alertController.close);
-        final (widget, container) = await _host(
-          extraOverrides: [
-            boxAlertsProvider.overrideWith((_) => alertController.stream),
-          ],
-        );
-        addTearDown(container.dispose);
+      // 点遮罩（对话框内容区域之外）不应该关闭。
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsOneWidget);
 
-        await tester.pumpWidget(widget);
-        await tester.pumpAndSettle();
-
-        alertController.add(
-          const BoxAlert(
-            type: BoxAlertType.startService,
-            // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的
-            // 本地化文案，不应该把这段原始文本糊给用户看。
-            message: 'native stacktrace: goroutine 7 [running]',
-          ),
-        );
-        await tester.pumpAndSettle();
-
-        expect(find.text('连接失败'), findsOneWidget);
-        expect(find.text('服务启动错误'), findsOneWidget);
-        expect(
-          find.textContaining('goroutine'),
-          findsNothing,
-          reason: '不能把原生原始堆栈信息展示给用户',
-        );
-
-        // 点遮罩（对话框内容区域之外）不应该关闭。
-        await tester.tapAt(const Offset(5, 5));
-        await tester.pumpAndSettle();
-        expect(find.text('连接失败'), findsOneWidget);
-
-        await tester.tap(find.text('OK'));
-        await tester.pumpAndSettle();
-        expect(find.text('连接失败'), findsNothing);
-      },
-    );
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsNothing);
+    });
 
     testWidgets('非致命 alert（VPN 权限被拒绝）→ 仍然是可自动消失的 toast，不弹阻断式对话框', (
       tester,

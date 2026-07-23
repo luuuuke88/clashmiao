@@ -44,10 +44,7 @@ Future<HttpServer> _countingServer(void Function() onRequest) async {
 /// 另外 `TestWidgetsFlutterBinding` 会全局装一个 `_MockHttpOverrides`——任何
 /// `HttpClient()`（包括 dio 的 IOHttpClientAdapter 内部创建的）不打真实网络、
 /// 一律返回 400。这里用 [_disableHttpMock] 在本文件级别关掉它（见其文档）。
-Future<T?> _withRealNetwork<T>(
-  WidgetTester tester,
-  Future<T> Function() body,
-) {
+Future<T?> _withRealNetwork<T>(WidgetTester tester, Future<T> Function() body) {
   return tester.runAsync(body);
 }
 
@@ -160,10 +157,7 @@ void main() {
           (w) => w is TextField && w.keyboardType == TextInputType.url,
         );
         expect(urlField, findsOneWidget);
-        await tester.enterText(
-          urlField,
-          'http://localhost:${server.port}/new',
-        );
+        await tester.enterText(urlField, 'http://localhost:${server.port}/new');
         await tester.tap(find.text('保存'));
         await tester.pump();
         await _pumpUntil(tester, () => requestCount > 0);

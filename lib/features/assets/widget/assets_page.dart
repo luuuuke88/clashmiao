@@ -49,9 +49,7 @@ class AssetsPage extends ConsumerWidget {
           ),
           if (hasMissingAsset)
             SliverToBoxAdapter(
-              child: TipCard(
-                message: t.settings.geoAssets.missingGeoAssetsMsg,
-              ),
+              child: TipCard(message: t.settings.geoAssets.missingGeoAssetsMsg),
             ),
           _AssetSection(
             title: t.settings.geoAssets.geoip,

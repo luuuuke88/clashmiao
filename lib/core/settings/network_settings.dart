@@ -806,15 +806,9 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     await applyBool('allowConnectionFromLan', setAllowLan);
     await applyBool('enableDnsRouting', setEnableDnsRouting);
     await applyString('remoteDnsAddress', setRemoteDnsAddress);
-    await applyString(
-      'remoteDnsDomainStrategy',
-      setRemoteDnsDomainStrategy,
-    );
+    await applyString('remoteDnsDomainStrategy', setRemoteDnsDomainStrategy);
     await applyString('directDnsAddress', setDirectDnsAddress);
-    await applyString(
-      'directDnsDomainStrategy',
-      setDirectDnsDomainStrategy,
-    );
+    await applyString('directDnsDomainStrategy', setDirectDnsDomainStrategy);
     await applyString('tunImplementation', setTunImplementation);
     await applyBool('strictRoute', setStrictRoute);
     await applyBool('enableTlsFragment', setEnableTlsFragment);

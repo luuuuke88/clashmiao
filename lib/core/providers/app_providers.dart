@@ -245,7 +245,9 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             // 首次成功连接后请求一次商店评分弹窗。"这辈子只弹一次"的持久化
             // 保护在 StoreReviewService 内部完成，这里跟触觉反馈一样，每次
             // 真正"进入" BoxStarted 都调用，不在这一层重复判断。
-            unawaited(_ref.read(storeReviewServiceProvider).maybeRequestReview());
+            unawaited(
+              _ref.read(storeReviewServiceProvider).maybeRequestReview(),
+            );
             // sing-box 的 selector 只在运行中的实例内存里记住"当前选中项"，
             // 每次重连/切换分流模式都会用 runtime-config 的静态 default 重新起
             // 一个全新实例——这里必须重放用户手选的结果，否则会静默回退到默认值。
@@ -532,11 +534,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
           return;
         } catch (retryErr) {
           if (epoch == _opEpoch) {
-            _ref.read(connectionErrorProvider.notifier).state =
-                classifyExceptionMessage(
-                  retryErr,
-                  _ref.read(translationsProvider),
-                );
+            _ref
+                .read(connectionErrorProvider.notifier)
+                .state = classifyExceptionMessage(
+              retryErr,
+              _ref.read(translationsProvider),
+            );
           }
         }
       } else {
@@ -595,11 +598,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       } catch (retryErr) {
         debugPrint('disconnect 重试仍失败: $retryErr');
         if (epoch == _opEpoch) {
-          _ref.read(connectionErrorProvider.notifier).state =
-              classifyExceptionMessage(
-                retryErr,
-                _ref.read(translationsProvider),
-              );
+          _ref
+              .read(connectionErrorProvider.notifier)
+              .state = classifyExceptionMessage(
+            retryErr,
+            _ref.read(translationsProvider),
+          );
           // 重试也失败：仍然不能报 BoxStopped。诚实地倾向认为还连着，UI 会
           // 显示"仍连接 + 错误"，用户可以再点一次断开重试（disconnect 本身
           // 可重入，toggle() 里 currentStatus is BoxStarted 会再次走

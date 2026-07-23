@@ -26,16 +26,14 @@ void main() {
       await containerA.read(sharedPreferencesProvider.future);
       await containerA.read(activeProfileProvider.future);
 
-      containerA
-          .read(proxyDelayCacheProvider.notifier)
-          .persistFromGroups([
-            const OutboundGroup(
-              tag: 'proxy',
-              type: 'selector',
-              selected: '香港01',
-              items: [OutboundProxy(tag: '香港01', type: 'ss', delay: 111)],
-            ),
-          ]);
+      containerA.read(proxyDelayCacheProvider.notifier).persistFromGroups([
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: '香港01',
+          items: [OutboundProxy(tag: '香港01', type: 'ss', delay: 111)],
+        ),
+      ]);
 
       expect(containerA.read(proxyDelayCacheProvider), {'香港01': 111});
 
@@ -80,16 +78,14 @@ void main() {
       addTearDown(container1.dispose);
       await container1.read(sharedPreferencesProvider.future);
       await container1.read(activeProfileProvider.future);
-      container1
-          .read(proxyDelayCacheProvider.notifier)
-          .persistFromGroups([
-            const OutboundGroup(
-              tag: 'proxy',
-              type: 'selector',
-              selected: 'US',
-              items: [OutboundProxy(tag: 'US', type: 'vmess', delay: 88)],
-            ),
-          ]);
+      container1.read(proxyDelayCacheProvider.notifier).persistFromGroups([
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'US',
+          items: [OutboundProxy(tag: 'US', type: 'vmess', delay: 88)],
+        ),
+      ]);
 
       final container2 = ProviderContainer(
         overrides: [

@@ -171,52 +171,49 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ConnectionButton 实验性功能确认弹窗门禁', () {
-    testWidgets(
-      '命中实验性字段 + 未设置"不再提示" → 点击连接先弹窗，不立即调用底层 start()',
-      (tester) async {
-        await tester.runAsync(() async {
-          final tmp = await _mockPathProvider();
-          addTearDown(() async {
-            if (await tmp.exists()) await tmp.delete(recursive: true);
-          });
-          SharedPreferences.setMockInitialValues({
-            'locale': 'zhCn',
-            // TLS fragment 是既定的实验性字段之一。
-            'clashmiao_enable_tls_fragment': true,
-          });
-          final prefs = await SharedPreferences.getInstance();
-          final spy = _SpyBoxService();
-          final container = ProviderContainer(
-            overrides: [
-              sharedPreferencesProvider.overrideWith(
-                (_) => Future.value(prefs),
-              ),
-              boxServiceProvider.overrideWithValue(spy),
-            ],
-          );
-          addTearDown(container.dispose);
-          await container.read(sharedPreferencesProvider.future);
-          await _seedActiveProfile(container);
-
-          await tester.pumpWidget(_wrap(container, const BoxStopped()));
-          await tester.pump(const Duration(milliseconds: 200));
-
-          await tester.tap(find.byType(ConnectionButton));
-          await _settleModal(tester);
-
-          expect(
-            find.byType(ExperimentalFeatureNoticeDialog),
-            findsOneWidget,
-            reason: '命中实验性字段且未勾选不再提示时，点击连接应该先弹确认框',
-          );
-          expect(
-            spy.startCalls,
-            0,
-            reason: '弹窗还没确认之前，不应该调用底层 _boxService.start()',
-          );
+    testWidgets('命中实验性字段 + 未设置"不再提示" → 点击连接先弹窗，不立即调用底层 start()', (
+      tester,
+    ) async {
+      await tester.runAsync(() async {
+        final tmp = await _mockPathProvider();
+        addTearDown(() async {
+          if (await tmp.exists()) await tmp.delete(recursive: true);
         });
-      },
-    );
+        SharedPreferences.setMockInitialValues({
+          'locale': 'zhCn',
+          // TLS fragment 是既定的实验性字段之一。
+          'clashmiao_enable_tls_fragment': true,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final spy = _SpyBoxService();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+            boxServiceProvider.overrideWithValue(spy),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(sharedPreferencesProvider.future);
+        await _seedActiveProfile(container);
+
+        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pump(const Duration(milliseconds: 200));
+
+        await tester.tap(find.byType(ConnectionButton));
+        await _settleModal(tester);
+
+        expect(
+          find.byType(ExperimentalFeatureNoticeDialog),
+          findsOneWidget,
+          reason: '命中实验性字段且未勾选不再提示时，点击连接应该先弹确认框',
+        );
+        expect(
+          spy.startCalls,
+          0,
+          reason: '弹窗还没确认之前，不应该调用底层 _boxService.start()',
+        );
+      });
+    });
 
     testWidgets('弹窗确认后应该真正调用连接（_boxService.start() 被调用）', (tester) async {
       await tester.runAsync(() async {
@@ -232,9 +229,7 @@ void main() {
         final spy = _SpyBoxService();
         final container = ProviderContainer(
           overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
           ],
         );
@@ -278,9 +273,7 @@ void main() {
         final spy = _SpyBoxService();
         final container = ProviderContainer(
           overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
           ],
         );
@@ -322,9 +315,7 @@ void main() {
         final spy = _SpyBoxService();
         final container = ProviderContainer(
           overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
           ],
         );
@@ -362,9 +353,7 @@ void main() {
         final spy = _SpyBoxService();
         final container = ProviderContainer(
           overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
           ],
         );

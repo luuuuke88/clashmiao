@@ -70,33 +70,30 @@ void main() {
     if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
   });
 
-  test(
-    'install-sub 深链：解析 → 真实 HTTP 抓取 → 落地为订阅 → 成功反馈 '
-    '（?name= 覆盖 URL fragment 派生的名称）',
-    () async {
-      final server = await _serveOnce(_validSingBoxJsonBody);
-      addTearDown(() => server.close(force: true));
+  test('install-sub 深链：解析 → 真实 HTTP 抓取 → 落地为订阅 → 成功反馈 '
+      '（?name= 覆盖 URL fragment 派生的名称）', () async {
+    final server = await _serveOnce(_validSingBoxJsonBody);
+    addTearDown(() => server.close(force: true));
 
-      final ref = container.read(_refProvider);
-      final subUrl = 'http://localhost:${server.port}/sub#来自URL的名字';
-      final uri = Uri.parse(
-        'clashmiao://install-sub'
-        '?url=${Uri.encodeComponent(subUrl)}'
-        '&name=${Uri.encodeComponent('自定义名称')}',
-      );
+    final ref = container.read(_refProvider);
+    final subUrl = 'http://localhost:${server.port}/sub#来自URL的名字';
+    final uri = Uri.parse(
+      'clashmiao://install-sub'
+      '?url=${Uri.encodeComponent(subUrl)}'
+      '&name=${Uri.encodeComponent('自定义名称')}',
+    );
 
-      await handleDeepLink(uri, ref);
+    await handleDeepLink(uri, ref);
 
-      final result = container.read(deepLinkImportResultProvider);
-      expect(result, isA<DeepLinkImportSuccess>());
-      expect((result as DeepLinkImportSuccess).profileName, '自定义名称');
+    final result = container.read(deepLinkImportResultProvider);
+    expect(result, isA<DeepLinkImportSuccess>());
+    expect((result as DeepLinkImportSuccess).profileName, '自定义名称');
 
-      final profiles = await container.read(profileListProvider.future);
-      expect(profiles, hasLength(1));
-      expect(profiles.single.name, '自定义名称');
-      expect(profiles.single.url, subUrl);
-    },
-  );
+    final profiles = await container.read(profileListProvider.future);
+    expect(profiles, hasLength(1));
+    expect(profiles.single.name, '自定义名称');
+    expect(profiles.single.url, subUrl);
+  });
 
   test('clash://install-config 深链：与 install-sub 走相同的 addByUrl 路径', () async {
     final server = await _serveOnce(_validSingBoxJsonBody);
@@ -145,29 +142,27 @@ void main() {
     expect(profiles, isEmpty);
   });
 
-  test(
-    'clashmiao://import 携带单节点代理 URI → addByContent 落地，'
-    '全程不发起网络请求',
-    () async {
-      final ref = container.read(_refProvider);
-      // host:port 用明显不可达的地址：如果实现误走了 addByUrl 网络请求分支，
-      // 这条 test 会因为连接失败/超时而不是"成功"收场，从而暴露问题。
-      const proxyUri = 'vless://11111111-2222-3333-4444-555555555555'
-          '@127.0.0.1:1?encryption=none#测试节点';
-      final uri = Uri.parse(
-        'clashmiao://import?url=${Uri.encodeComponent(proxyUri)}',
-      );
+  test('clashmiao://import 携带单节点代理 URI → addByContent 落地，'
+      '全程不发起网络请求', () async {
+    final ref = container.read(_refProvider);
+    // host:port 用明显不可达的地址：如果实现误走了 addByUrl 网络请求分支，
+    // 这条 test 会因为连接失败/超时而不是"成功"收场，从而暴露问题。
+    const proxyUri =
+        'vless://11111111-2222-3333-4444-555555555555'
+        '@127.0.0.1:1?encryption=none#测试节点';
+    final uri = Uri.parse(
+      'clashmiao://import?url=${Uri.encodeComponent(proxyUri)}',
+    );
 
-      await handleDeepLink(uri, ref);
+    await handleDeepLink(uri, ref);
 
-      final result = container.read(deepLinkImportResultProvider);
-      expect(result, isA<DeepLinkImportSuccess>());
+    final result = container.read(deepLinkImportResultProvider);
+    expect(result, isA<DeepLinkImportSuccess>());
 
-      final profiles = await container.read(profileListProvider.future);
-      expect(profiles, hasLength(1));
-      expect(profiles.single.url, startsWith('content://'));
-    },
-  );
+    final profiles = await container.read(profileListProvider.future);
+    expect(profiles, hasLength(1));
+    expect(profiles.single.url, startsWith('content://'));
+  });
 
   test('clashmiao://import 携带 http(s) URL → 当订阅处理，走真实 HTTP 抓取', () async {
     final server = await _serveOnce(_validSingBoxJsonBody);

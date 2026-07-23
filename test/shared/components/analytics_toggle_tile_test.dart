@@ -75,11 +75,7 @@ void main() {
 
   testWidgets('点击整行会以取反后的值调用 onChanged', (tester) async {
     bool? received;
-    await pumpTile(
-      tester,
-      value: false,
-      onChanged: (v) => received = v,
-    );
+    await pumpTile(tester, value: false, onChanged: (v) => received = v);
 
     await tester.tap(find.byType(AnalyticsToggleTile));
     await tester.pump();
@@ -89,11 +85,7 @@ void main() {
 
   testWidgets('点击开关本身也会以取反后的值调用 onChanged', (tester) async {
     bool? received;
-    await pumpTile(
-      tester,
-      value: true,
-      onChanged: (v) => received = v,
-    );
+    await pumpTile(tester, value: true, onChanged: (v) => received = v);
 
     await tester.tap(find.byType(Switch));
     await tester.pump();

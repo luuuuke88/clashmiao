@@ -79,11 +79,7 @@ class AnalyticsToggleTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Icon(
-              FluentIcons.bug_24_regular,
-              size: 20,
-              color: _iconColor,
-            ),
+            const Icon(FluentIcons.bug_24_regular, size: 20, color: _iconColor),
             const SizedBox(width: 16),
             Expanded(child: labelColumn),
             Switch(

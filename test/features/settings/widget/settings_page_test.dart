@@ -193,8 +193,9 @@ void main() {
       expect(find.text('消除限制以获得最佳 VPN 性能'), findsOneWidget);
       expect(find.text('未豁免'), findsOneWidget);
       expect(
-        platformCalls
-            .where((c) => c.method == 'is_ignoring_battery_optimizations'),
+        platformCalls.where(
+          (c) => c.method == 'is_ignoring_battery_optimizations',
+        ),
         isNotEmpty,
       );
     });
@@ -209,8 +210,9 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        platformCalls
-            .where((c) => c.method == 'request_ignore_battery_optimizations'),
+        platformCalls.where(
+          (c) => c.method == 'request_ignore_battery_optimizations',
+        ),
         hasLength(1),
       );
       expect(find.text('已豁免'), findsOneWidget);
@@ -227,38 +229,28 @@ void main() {
     // 电池优化豁免状态徽标（已豁免/未豁免/…）曾经是硬编码中文字面量，跟
     // locale 无关——切到英文 locale 后其它文案都会跟着变、唯独这个徽标
     // 纹丝不动，还停在中文。这里钉住状态徽标必须跟随 locale 走 i18n。
-    testWidgets(
-      '英文 locale 下电池优化豁免状态徽标走 i18n（初始未豁免）',
-      (tester) async {
-        await tester.pumpWidget(
-          await _host(debugIsAndroid: true, locale: 'en'),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('英文 locale 下电池优化豁免状态徽标走 i18n（初始未豁免）', (tester) async {
+      await tester.pumpWidget(await _host(debugIsAndroid: true, locale: 'en'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Disable Battery Optimization'), findsOneWidget);
-        expect(find.text('Not Exempted'), findsOneWidget);
-        expect(find.text('未豁免'), findsNothing);
-      },
-    );
+      expect(find.text('Disable Battery Optimization'), findsOneWidget);
+      expect(find.text('Not Exempted'), findsOneWidget);
+      expect(find.text('未豁免'), findsNothing);
+    });
 
-    testWidgets(
-      '英文 locale 下点击豁免入口后徽标刷新为 Exempted',
-      (tester) async {
-        await tester.pumpWidget(
-          await _host(debugIsAndroid: true, locale: 'en'),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('英文 locale 下点击豁免入口后徽标刷新为 Exempted', (tester) async {
+      await tester.pumpWidget(await _host(debugIsAndroid: true, locale: 'en'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Not Exempted'), findsOneWidget);
+      expect(find.text('Not Exempted'), findsOneWidget);
 
-        await tester.tap(find.text('Disable Battery Optimization'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Disable Battery Optimization'));
+      await tester.pumpAndSettle();
 
-        expect(find.text('Exempted'), findsOneWidget);
-        expect(find.text('Not Exempted'), findsNothing);
-        expect(find.text('已豁免'), findsNothing);
-      },
-    );
+      expect(find.text('Exempted'), findsOneWidget);
+      expect(find.text('Not Exempted'), findsNothing);
+      expect(find.text('已豁免'), findsNothing);
+    });
 
     testWidgets('iOS 上显示重置 VPN 配置文件入口', (tester) async {
       await tester.pumpWidget(await _host(debugIsIOS: true));

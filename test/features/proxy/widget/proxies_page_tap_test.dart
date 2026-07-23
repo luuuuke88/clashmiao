@@ -230,9 +230,7 @@ void main() {
   // 才被消费，Dart 会先判定为 unhandled）；改成 _SpyBoxService.selectOutboundError
   // 那样在方法调用的同步栈里直接 throw，紧跟着 `_selectProxy` 里同步挂上的
   // `.then().catchError()` 就能在同一条同步表达式内接住，不会被 zone 误判。
-  testWidgets('已连接时 selectOutbound 失败 → 回滚乐观选择，不留在错误节点上', (
-    tester,
-  ) async {
+  testWidgets('已连接时 selectOutbound 失败 → 回滚乐观选择，不留在错误节点上', (tester) async {
     final (widget, container, spy) = await _hostWithGroups(
       connected: true,
       groups: [_twoNodeGroup(selected: 'node-a')],
@@ -256,9 +254,7 @@ void main() {
     await _drainToasts(tester);
   });
 
-  testWidgets('已连接时 selectOutbound 失败 → 回滚到点击前的乐观值而不是清空', (
-    tester,
-  ) async {
+  testWidgets('已连接时 selectOutbound 失败 → 回滚到点击前的乐观值而不是清空', (tester) async {
     final (widget, container, spy) = await _hostWithGroups(
       connected: true,
       groups: [_twoNodeGroup(selected: 'node-a')],
@@ -287,9 +283,7 @@ void main() {
     await _drainToasts(tester);
   });
 
-  testWidgets('已连接时 tap ss-node tile 选中成功后，持久化选择供下次重连重放', (
-    tester,
-  ) async {
+  testWidgets('已连接时 tap ss-node tile 选中成功后，持久化选择供下次重连重放', (tester) async {
     final (widget, container, spy) = await _host(connected: true);
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
@@ -530,9 +524,7 @@ void _addProxiesPageExtraTests() {
     expect(find.text('--'), findsNothing);
   });
 
-  testWidgets('已连接且拿到真实实时分组时（延迟未测出=0），不该用缓存的旧延迟顶替显示', (
-    tester,
-  ) async {
+  testWidgets('已连接且拿到真实实时分组时（延迟未测出=0），不该用缓存的旧延迟顶替显示', (tester) async {
     SharedPreferences.setMockInitialValues({
       'locale': 'zhCn',
       // 这个缓存值模拟"之前某次真实测速留下的旧数据"——已连接、拿到了真实
@@ -584,9 +576,7 @@ void _addProxiesPageExtraTests() {
     expect(find.text('--'), findsOneWidget);
   });
 
-  testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (
-    tester,
-  ) async {
+  testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (tester) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: false,
       groups: [_proxyGroup()],
@@ -789,9 +779,9 @@ void _addProxiesPageExtraTests() {
         ),
       ],
     );
-    await container.read(proxiesSortProvider.notifier).updateSort(
-      ProxiesSort.name,
-    );
+    await container
+        .read(proxiesSortProvider.notifier)
+        .updateSort(ProxiesSort.name);
 
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
@@ -824,9 +814,9 @@ void _addProxiesPageExtraTests() {
         ),
       ],
     );
-    await container.read(proxiesSortProvider.notifier).updateSort(
-      ProxiesSort.delay,
-    );
+    await container
+        .read(proxiesSortProvider.notifier)
+        .updateSort(ProxiesSort.delay);
 
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));

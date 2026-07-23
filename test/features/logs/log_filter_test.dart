@@ -38,27 +38,24 @@ void main() {
       expect(container.read(logFilterProvider).lines.length, 5);
     });
 
-    test(
-      'level=warn cascades to more severe levels (warn/error/fatal shown, '
-      'debug/info hidden)',
-      () async {
-        final container = _makeContainer(Stream.value(testLines));
-        final sub = container.listen(logFilterProvider, (_, __) {});
-        addTearDown(sub.close);
-        await container.pump();
-        await Future<void>.delayed(Duration.zero);
+    test('level=warn cascades to more severe levels (warn/error/fatal shown, '
+        'debug/info hidden)', () async {
+      final container = _makeContainer(Stream.value(testLines));
+      final sub = container.listen(logFilterProvider, (_, __) {});
+      addTearDown(sub.close);
+      await container.pump();
+      await Future<void>.delayed(Duration.zero);
 
-        container.read(logFilterProvider.notifier).setLevel(LogLevel.warn);
+      container.read(logFilterProvider.notifier).setLevel(LogLevel.warn);
 
-        final result = container.read(logFilterProvider).lines;
-        expect(result.any((l) => l.contains('WARN')), isTrue);
-        expect(result.any((l) => l.contains('ERROR')), isTrue);
-        expect(result.any((l) => l.contains('FATAL')), isTrue);
-        expect(result.any((l) => l.contains('DEBUG')), isFalse);
-        expect(result.any((l) => l.contains('INFO')), isFalse);
-        expect(result.length, 3);
-      },
-    );
+      final result = container.read(logFilterProvider).lines;
+      expect(result.any((l) => l.contains('WARN')), isTrue);
+      expect(result.any((l) => l.contains('ERROR')), isTrue);
+      expect(result.any((l) => l.contains('FATAL')), isTrue);
+      expect(result.any((l) => l.contains('DEBUG')), isFalse);
+      expect(result.any((l) => l.contains('INFO')), isFalse);
+      expect(result.length, 3);
+    });
 
     test('level=error only cascades to error/fatal', () async {
       final container = _makeContainer(Stream.value(testLines));

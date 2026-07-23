@@ -32,9 +32,7 @@ Future<Widget> _host() async {
 }
 
 void main() {
-  testWidgets('AssetsPage renders geo asset overview', (
-    tester,
-  ) async {
+  testWidgets('AssetsPage renders geo asset overview', (tester) async {
     await tester.pumpWidget(await _host());
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -50,9 +48,7 @@ void main() {
     expect(find.byType(TipCard), findsOneWidget);
   });
 
-  testWidgets('AssetsPage add recommended menu is enabled', (
-    tester,
-  ) async {
+  testWidgets('AssetsPage add recommended menu is enabled', (tester) async {
     await tester.pumpWidget(await _host());
     await tester.pump(const Duration(milliseconds: 200));
 

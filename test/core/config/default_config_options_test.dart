@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('getDefaultConfigOptions warp 字段映射', () {
     test('默认 NetworkSettings 下 warp 块保持关闭 + 对齐推荐默认值', () {
-      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(),
+      );
       final warp = options['warp'] as Map<String, dynamic>;
 
       expect(warp['enable'], isFalse);
@@ -101,7 +103,9 @@ void main() {
   // ===========================================================
   group('getDefaultConfigOptions 高级字段来自 NetworkSettings（不再硬编码）', () {
     test('默认 NetworkSettings 下，高级字段的值等于此前的硬编码常量', () {
-      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(),
+      );
       final tlsTricks = options['tls-tricks'] as Map<String, dynamic>;
       final mux = options['mux'] as Map<String, dynamic>;
 
@@ -208,7 +212,9 @@ void main() {
     });
 
     test('不传 isSmart 时默认等同 false（不破坏现有调用点）', () {
-      final options = getDefaultConfigOptions(settings: const NetworkSettings());
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(),
+      );
       expect(options['rules'], isEmpty);
     });
 

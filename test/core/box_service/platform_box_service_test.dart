@@ -36,20 +36,23 @@ void main() {
       expect(args['previous-access-token'], 'token-1');
     });
 
-    test('previousAccountId / previousAccessToken 省略时用空字符串占位（native 端 as String 强转不接受 null）', () async {
-      MethodCall? received;
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(_channel, (call) async {
-            received = call;
-            return '{"account-id":"a","access-token":"b","config":{}}';
-          });
+    test(
+      'previousAccountId / previousAccessToken 省略时用空字符串占位（native 端 as String 强转不接受 null）',
+      () async {
+        MethodCall? received;
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(_channel, (call) async {
+              received = call;
+              return '{"account-id":"a","access-token":"b","config":{}}';
+            });
 
-      await PlatformBoxService().generateWarpConfig(licenseKey: '');
+        await PlatformBoxService().generateWarpConfig(licenseKey: '');
 
-      final args = received?.arguments as Map;
-      expect(args['previous-account-id'], '');
-      expect(args['previous-access-token'], '');
-    });
+        final args = received?.arguments as Map;
+        expect(args['previous-account-id'], '');
+        expect(args['previous-access-token'], '');
+      },
+    );
 
     test('透传 native 返回的原始 JSON 字符串', () async {
       const rawResponse =
@@ -112,7 +115,10 @@ void main() {
       MockStreamHandlerEventSink? sink;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockStreamHandler(
-            const EventChannel('com.clashmiao.app/service.alerts', JSONMethodCodec()),
+            const EventChannel(
+              'com.clashmiao.app/service.alerts',
+              JSONMethodCodec(),
+            ),
             MockStreamHandler.inline(
               onListen: (arguments, events) {
                 sink = events;
@@ -122,7 +128,10 @@ void main() {
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
             .setMockStreamHandler(
-              const EventChannel('com.clashmiao.app/service.alerts', JSONMethodCodec()),
+              const EventChannel(
+                'com.clashmiao.app/service.alerts',
+                JSONMethodCodec(),
+              ),
               null,
             );
       });
@@ -148,27 +157,29 @@ void main() {
       });
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        received1,
-        ['startService'],
-        reason: '第一个订阅者不能因为第二个订阅者的出现而被顶掉',
-      );
+      expect(received1, ['startService'], reason: '第一个订阅者不能因为第二个订阅者的出现而被顶掉');
       expect(received2, ['startService'], reason: '第二个订阅者也要能收到事件');
     });
 
-    test('watchAlerts/watchStats/watchGroups/watchNetworkChanged 重复调用返回同一条流', () {
-      final service = PlatformBoxService();
-      expect(
-        identical(service.watchAlerts(), service.watchAlerts()),
-        isTrue,
-        reason: '每次调用新建 receiveBroadcastStream 会让先订阅者被平台顶掉',
-      );
-      expect(identical(service.watchStats(), service.watchStats()), isTrue);
-      expect(identical(service.watchGroups(), service.watchGroups()), isTrue);
-      expect(
-        identical(service.watchNetworkChanged(), service.watchNetworkChanged()),
-        isTrue,
-      );
-    });
+    test(
+      'watchAlerts/watchStats/watchGroups/watchNetworkChanged 重复调用返回同一条流',
+      () {
+        final service = PlatformBoxService();
+        expect(
+          identical(service.watchAlerts(), service.watchAlerts()),
+          isTrue,
+          reason: '每次调用新建 receiveBroadcastStream 会让先订阅者被平台顶掉',
+        );
+        expect(identical(service.watchStats(), service.watchStats()), isTrue);
+        expect(identical(service.watchGroups(), service.watchGroups()), isTrue);
+        expect(
+          identical(
+            service.watchNetworkChanged(),
+            service.watchNetworkChanged(),
+          ),
+          isTrue,
+        );
+      },
+    );
   });
 }

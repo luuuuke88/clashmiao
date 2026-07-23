@@ -267,10 +267,7 @@ void main() {
     expect(imageFinder, findsOneWidget);
     final image = tester.widget<Image>(imageFinder);
     expect(image.image, isA<MemoryImage>());
-    expect(
-      (image.image as MemoryImage).bytes,
-      base64Decode(_minimalPngBase64),
-    );
+    expect((image.image as MemoryImage).bytes, base64Decode(_minimalPngBase64));
     expect(find.byIcon(FluentIcons.apps_24_regular), findsNothing);
   });
 

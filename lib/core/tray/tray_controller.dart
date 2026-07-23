@@ -11,8 +11,12 @@ import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// [buildTrayMenuLabels] 的返回值：托盘菜单四个条目当前该显示的文案。
-typedef TrayMenuLabels =
-    ({String toggle, String show, String hide, String quit});
+typedef TrayMenuLabels = ({
+  String toggle,
+  String show,
+  String hide,
+  String quit,
+});
 
 /// 根据当前连接状态 + 当前语言的 [Translations]，算出托盘菜单四个条目的文案。
 ///
@@ -33,7 +37,12 @@ TrayMenuLabels buildTrayMenuLabels(BoxStatus status, Translations t) {
   } else {
     toggle = t.tray.status.connect;
   }
-  return (toggle: toggle, show: t.tray.open, hide: t.tray.hide, quit: t.tray.quit);
+  return (
+    toggle: toggle,
+    show: t.tray.open,
+    hide: t.tray.hide,
+    quit: t.tray.quit,
+  );
 }
 
 /// "服务模式"子菜单自身的标题（不是子菜单里"智能/全局"两个选项的文案，那两个走
@@ -389,15 +398,18 @@ class TrayController extends TrayListener {
       await performProxyModeSwitch(
         targetMode: targetMode,
         currentMode: () => c.read(proxyModeProvider),
-        updateMode: (mode) => c.read(proxyModeProvider.notifier).updateMode(mode),
+        updateMode: (mode) =>
+            c.read(proxyModeProvider.notifier).updateMode(mode),
         isConnected: () =>
             c.read(connectionControllerProvider).valueOrNull is BoxStarted,
-        reconnect: () => c.read(connectionControllerProvider.notifier).reconnect(),
+        reconnect: () =>
+            c.read(connectionControllerProvider.notifier).reconnect(),
       );
     } catch (e) {
       if (kDebugMode) debugPrint('[Tray] switch proxy mode failed: $e');
     }
-    final status = c.read(connectionControllerProvider).valueOrNull ?? const BoxStopped();
+    final status =
+        c.read(connectionControllerProvider).valueOrNull ?? const BoxStopped();
     await _rebuildMenu(status);
   }
 }

@@ -150,7 +150,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         onTap: () => _showThemeDialog(context, ref, t),
                       ),
                       const _Divider(),
-                      _AnalyticsToggle(label: t.settings.general.enableAnalytics),
+                      _AnalyticsToggle(
+                        label: t.settings.general.enableAnalytics,
+                      ),
                       const _Divider(),
                       _BoolPreferenceTile(
                         iconColor: const Color(0xFF10B981),
@@ -379,7 +381,10 @@ class _AnalyticsToggle extends ConsumerWidget {
 
   final String label;
 
-  static const _spec = (key: 'clashmiao_analytics_enabled', defaultValue: false);
+  static const _spec = (
+    key: 'clashmiao_analytics_enabled',
+    defaultValue: false,
+  );
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

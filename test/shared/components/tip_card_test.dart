@@ -53,9 +53,7 @@ void main() {
     expect(find.byIcon(FluentIcons.lightbulb_24_regular), findsNothing);
   });
 
-  testWidgets('视觉参数：玻璃拟态背景色来自 aiUi.glassColor、圆角16、外边距 h12/v4', (
-    tester,
-  ) async {
+  testWidgets('视觉参数：玻璃拟态背景色来自 aiUi.glassColor、圆角16、外边距 h12/v4', (tester) async {
     await pumpTipCard(tester);
 
     final container = tester.widget<Container>(
@@ -66,7 +64,10 @@ void main() {
     );
     final decoration = container.decoration! as BoxDecoration;
 
-    expect(container.margin, const EdgeInsets.symmetric(horizontal: 12, vertical: 4));
+    expect(
+      container.margin,
+      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+    );
     expect(decoration.borderRadius, BorderRadius.circular(16));
     expect(decoration.color, AiUiTheme.light.glassColor);
     expect(

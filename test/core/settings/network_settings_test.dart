@@ -288,22 +288,25 @@ void main() {
       expect(notifier.state.mtu, 9000);
     });
 
-    test('setClashApiPort/setTproxyPort/setLocalDnsPort 更新 state 并持久化', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final notifier = NetworkSettingsNotifier(prefs);
+    test(
+      'setClashApiPort/setTproxyPort/setLocalDnsPort 更新 state 并持久化',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = NetworkSettingsNotifier(prefs);
 
-      await notifier.setClashApiPort(17000);
-      await notifier.setTproxyPort(17001);
-      await notifier.setLocalDnsPort(17002);
+        await notifier.setClashApiPort(17000);
+        await notifier.setTproxyPort(17001);
+        await notifier.setLocalDnsPort(17002);
 
-      expect(notifier.state.clashApiPort, 17000);
-      expect(notifier.state.tproxyPort, 17001);
-      expect(notifier.state.localDnsPort, 17002);
-      expect(prefs.getInt('clashmiao_clash_api_port'), 17000);
-      expect(prefs.getInt('clashmiao_tproxy_port'), 17001);
-      expect(prefs.getInt('clashmiao_local_dns_port'), 17002);
-    });
+        expect(notifier.state.clashApiPort, 17000);
+        expect(notifier.state.tproxyPort, 17001);
+        expect(notifier.state.localDnsPort, 17002);
+        expect(prefs.getInt('clashmiao_clash_api_port'), 17000);
+        expect(prefs.getInt('clashmiao_tproxy_port'), 17001);
+        expect(prefs.getInt('clashmiao_local_dns_port'), 17002);
+      },
+    );
 
     test('端口类字段拒绝越界端口，state 保持原值', () async {
       SharedPreferences.setMockInitialValues({});
@@ -352,10 +355,7 @@ void main() {
           notifier.setTlsFragmentSleep('   '),
           throwsArgumentError,
         );
-        await expectLater(
-          notifier.setTlsPaddingSize(''),
-          throwsArgumentError,
-        );
+        await expectLater(notifier.setTlsPaddingSize(''), throwsArgumentError);
       },
     );
 
@@ -512,10 +512,7 @@ void main() {
       final prefs = await SharedPreferences.getInstance();
       final notifier = NetworkSettingsNotifier(prefs);
 
-      final json = jsonEncode({
-        'mtu': 'not-a-number',
-        'clashApiPort': 17756,
-      });
+      final json = jsonEncode({'mtu': 'not-a-number', 'clashApiPort': 17756});
       final result = await notifier.importJson(json);
 
       expect(result.skippedKeys, contains('mtu'));
@@ -615,25 +612,22 @@ void main() {
       expect(prefs.getString('clashmiao_warp_license_key'), 'abcd-1234');
     });
 
-    test(
-      '生成类 WARP 凭证字段（accountId/accessToken/wireguardConfig）不参与导入通道，'
-      '出现在 JSON 里也不会被当成可识别字段',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final notifier = NetworkSettingsNotifier(prefs);
+    test('生成类 WARP 凭证字段（accountId/accessToken/wireguardConfig）不参与导入通道，'
+        '出现在 JSON 里也不会被当成可识别字段', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = NetworkSettingsNotifier(prefs);
 
-        final json = jsonEncode({
-          'warpAccountId': 'should-not-be-imported',
-          'mtu': 1300,
-        });
-        final result = await notifier.importJson(json);
+      final json = jsonEncode({
+        'warpAccountId': 'should-not-be-imported',
+        'mtu': 1300,
+      });
+      final result = await notifier.importJson(json);
 
-        expect(result.appliedKeys, ['mtu']);
-        expect(result.skippedKeys, isEmpty);
-        expect(notifier.state.warpAccountId, isEmpty);
-      },
-    );
+      expect(result.appliedKeys, ['mtu']);
+      expect(result.skippedKeys, isEmpty);
+      expect(notifier.state.warpAccountId, isEmpty);
+    });
 
     test('WARP 用户配置字段导出的 JSON 可以原样导回（往返一致）', () async {
       SharedPreferences.setMockInitialValues({});

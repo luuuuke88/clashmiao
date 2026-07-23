@@ -54,9 +54,7 @@ Future<Widget> _host({bool? debugShowShareMenu}) async {
 }
 
 void main() {
-  testWidgets('LogsPage renders log controls and rows', (
-    tester,
-  ) async {
+  testWidgets('LogsPage renders log controls and rows', (tester) async {
     await tester.pumpWidget(await _host(debugShowShareMenu: false));
     await tester.pump(const Duration(milliseconds: 250));
 
@@ -75,27 +73,26 @@ void main() {
     expect(find.text('复制全部'), findsNothing);
   });
 
-  testWidgets(
-    'LogsPage desktop share menu 同时暴露"分享核心日志"和"分享应用日志"两个选项',
-    (tester) async {
-      await tester.pumpWidget(await _host(debugShowShareMenu: true));
-      await tester.pump(const Duration(milliseconds: 250));
+  testWidgets('LogsPage desktop share menu 同时暴露"分享核心日志"和"分享应用日志"两个选项', (
+    tester,
+  ) async {
+    await tester.pumpWidget(await _host(debugShowShareMenu: true));
+    await tester.pump(const Duration(milliseconds: 250));
 
-      // flutter test 默认把 defaultTargetPlatform 判定为 android（见
-      // adaptive_icon_test.dart 的说明），所以"更多"菜单图标在这里渲染的
-      // 是纵向三点（more_vertical），而不是之前硬编码的横向三点。
-      await tester.tap(find.byIcon(FluentIcons.more_vertical_20_regular));
-      await tester.pumpAndSettle();
+    // flutter test 默认把 defaultTargetPlatform 判定为 android（见
+    // adaptive_icon_test.dart 的说明），所以"更多"菜单图标在这里渲染的
+    // 是纵向三点（more_vertical），而不是之前硬编码的横向三点。
+    await tester.tap(find.byIcon(FluentIcons.more_vertical_20_regular));
+    await tester.pumpAndSettle();
 
-      // 核心验证点：这必须是两个真正不同的入口，而不是同一份数据挂两个
-      // 名字——"分享核心日志"分享 sing-box 核心日志，"分享应用日志"分享
-      // AppLogger 落地的本地 app.log（见下面 writeCoreLogsTempFile /
-      // resolveAppLogSharePath 的单测，验证两者数据源不同）。
-      expect(find.text('分享核心日志'), findsOneWidget);
-      expect(find.text('分享应用日志'), findsOneWidget);
-      expect(find.text('复制全部'), findsNothing);
-    },
-  );
+    // 核心验证点：这必须是两个真正不同的入口，而不是同一份数据挂两个
+    // 名字——"分享核心日志"分享 sing-box 核心日志，"分享应用日志"分享
+    // AppLogger 落地的本地 app.log（见下面 writeCoreLogsTempFile /
+    // resolveAppLogSharePath 的单测，验证两者数据源不同）。
+    expect(find.text('分享核心日志'), findsOneWidget);
+    expect(find.text('分享应用日志'), findsOneWidget);
+    expect(find.text('复制全部'), findsNothing);
+  });
 
   group('核心日志 vs 应用日志分享：两个真正不同的数据源', () {
     late Directory tempDir;

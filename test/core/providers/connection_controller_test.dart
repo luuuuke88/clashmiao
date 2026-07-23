@@ -157,6 +157,7 @@ class _SpyBoxService implements BoxService {
     }
     selectOutboundCalls.add('$g->$o');
   }
+
   @override
   Future<void> urlTest(String g) async {}
   @override
@@ -441,7 +442,8 @@ void main() {
       expect(
         container.read(connectionControllerProvider).valueOrNull,
         isA<BoxStarted>(),
-        reason: 'disconnect 的迟到收尾覆盖了新连接的状态——真机上这会导致 UI '
+        reason:
+            'disconnect 的迟到收尾覆盖了新连接的状态——真机上这会导致 UI '
             '显示已断开、native 实际在跑，用户再点连接被 native 静默忽略后'
             '永卡"正在连接"',
       );
@@ -580,7 +582,8 @@ void main() {
       expect(
         _isSmartConfigOptions(spy.lastChangeConfigJson),
         isTrue,
-        reason: '内核最终收到的 configOptions 必须对应用户最后选择的"智能分流"'
+        reason:
+            '内核最终收到的 configOptions 必须对应用户最后选择的"智能分流"'
             '（带 cn 分流的 rules），不能停留在第一次点击的"全局代理"',
       );
       expect(
@@ -590,151 +593,126 @@ void main() {
       );
     });
 
-    test(
-      'disconnect 持续失败时，state 绝不能谎报 BoxStopped（核心不变量）',
-      () async {
-        final tmp = await _mockPathProvider();
-        addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
-        });
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final spy = _SpyBoxService();
-        spy.stopError = Exception('mock stop failure (persistent)');
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
-            boxServiceProvider.overrideWithValue(spy),
-          ],
-        );
-        await container.read(sharedPreferencesProvider.future);
-        await container.read(profileRepositoryProvider.future);
-        final controller = container.read(
-          connectionControllerProvider.notifier,
-        );
+    test('disconnect 持续失败时，state 绝不能谎报 BoxStopped（核心不变量）', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      spy.stopError = Exception('mock stop failure (persistent)');
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(profileRepositoryProvider.future);
+      final controller = container.read(connectionControllerProvider.notifier);
 
-        // 模拟已连接态（跳过真实 connect 流程，直接推流，绕开配置/权限等无关前提）
-        spy.statusStreamController.add(const BoxStarted());
-        await Future<void>.delayed(Duration.zero);
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStarted>(),
-          reason: '前置条件：必须先进入已连接态才能测试断开失败',
-        );
+      // 模拟已连接态（跳过真实 connect 流程，直接推流，绕开配置/权限等无关前提）
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarted>(),
+        reason: '前置条件：必须先进入已连接态才能测试断开失败',
+      );
 
-        await controller.disconnect();
+      await controller.disconnect();
 
-        // 断言顺序刻意把 "state 不能是 BoxStopped" 放在最前面：
-        // 修复前的代码会在这里失败，失败原因精确对应 bug 本身
-        // （catch 分支谎报 state = BoxStopped）。
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isNot(isA<BoxStopped>()),
-          reason:
-              'stop 持续失败时内核可能还在跑，UI 绝不能谎报已断开——'
-              '这是本 App 最不能接受的故障形态（界面显示断开，流量还在走）',
-        );
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStarted>(),
-          reason: '诚实的兜底状态应该是仍连接，让用户能再次点击断开重试',
-        );
-        expect(
-          container.read(connectionErrorProvider),
-          isNotNull,
-          reason: '断开失败必须让用户能看到错误，不能静默吞掉',
-        );
-        expect(
-          spy.stopCalls,
-          2,
-          reason: '强制清理应该自动重试恰好一次（初次 + 1 次重试），不是无限重试',
-        );
+      // 断言顺序刻意把 "state 不能是 BoxStopped" 放在最前面：
+      // 修复前的代码会在这里失败，失败原因精确对应 bug 本身
+      // （catch 分支谎报 state = BoxStopped）。
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isNot(isA<BoxStopped>()),
+        reason:
+            'stop 持续失败时内核可能还在跑，UI 绝不能谎报已断开——'
+            '这是本 App 最不能接受的故障形态（界面显示断开，流量还在走）',
+      );
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStarted>(),
+        reason: '诚实的兜底状态应该是仍连接，让用户能再次点击断开重试',
+      );
+      expect(
+        container.read(connectionErrorProvider),
+        isNotNull,
+        reason: '断开失败必须让用户能看到错误，不能静默吞掉',
+      );
+      expect(spy.stopCalls, 2, reason: '强制清理应该自动重试恰好一次（初次 + 1 次重试），不是无限重试');
 
-        container.dispose();
-      },
-    );
+      container.dispose();
+    });
 
-    test(
-      'disconnect 首次失败但重试成功时，强制清理生效，诚实回到 BoxStopped',
-      () async {
-        final tmp = await _mockPathProvider();
-        addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
-        });
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final spy = _SpyBoxService();
-        spy.stopFailTimes = 1; // 只有第一次调用失败，重试那次会成功
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
-            boxServiceProvider.overrideWithValue(spy),
-          ],
-        );
-        await container.read(sharedPreferencesProvider.future);
-        await container.read(profileRepositoryProvider.future);
-        final controller = container.read(
-          connectionControllerProvider.notifier,
-        );
+    test('disconnect 首次失败但重试成功时，强制清理生效，诚实回到 BoxStopped', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      spy.stopFailTimes = 1; // 只有第一次调用失败，重试那次会成功
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(profileRepositoryProvider.future);
+      final controller = container.read(connectionControllerProvider.notifier);
 
-        spy.statusStreamController.add(const BoxStarted());
-        await Future<void>.delayed(Duration.zero);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
 
-        await controller.disconnect();
+      await controller.disconnect();
 
-        expect(spy.stopCalls, 2, reason: '第一次失败后应该自动重试一次');
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStopped>(),
-          reason: '重试确认停掉了，应该诚实地报告 BoxStopped',
-        );
+      expect(spy.stopCalls, 2, reason: '第一次失败后应该自动重试一次');
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStopped>(),
+        reason: '重试确认停掉了，应该诚实地报告 BoxStopped',
+      );
 
-        container.dispose();
-      },
-    );
+      container.dispose();
+    });
 
-    test(
-      'disconnect 一次成功时 state 应该是 BoxStopped（回归：正常路径不能被改坏）',
-      () async {
-        final tmp = await _mockPathProvider();
-        addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
-        });
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final spy = _SpyBoxService();
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
-            boxServiceProvider.overrideWithValue(spy),
-          ],
-        );
-        await container.read(sharedPreferencesProvider.future);
-        await container.read(profileRepositoryProvider.future);
-        final controller = container.read(
-          connectionControllerProvider.notifier,
-        );
+    test('disconnect 一次成功时 state 应该是 BoxStopped（回归：正常路径不能被改坏）', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(profileRepositoryProvider.future);
+      final controller = container.read(connectionControllerProvider.notifier);
 
-        spy.statusStreamController.add(const BoxStarted());
-        await Future<void>.delayed(Duration.zero);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
 
-        await controller.disconnect();
+      await controller.disconnect();
 
-        expect(spy.stopCalls, 1, reason: '正常路径不应该触发任何重试');
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStopped>(),
-        );
+      expect(spy.stopCalls, 1, reason: '正常路径不应该触发任何重试');
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStopped>(),
+      );
 
-        container.dispose();
-      },
-    );
+      container.dispose();
+    });
   });
 
   group('配置变更触发的自动重连应该让 UI 能感知到（不是纯静默）', () {
@@ -766,9 +744,9 @@ void main() {
 
       final before = container.read(configChangeReconnectNoticeProvider);
 
-      await container.read(networkSettingsProvider.notifier).setMixedPort(
-        23456,
-      );
+      await container
+          .read(networkSettingsProvider.notifier)
+          .setMixedPort(23456);
       await Future<void>.delayed(Duration.zero);
 
       final after = container.read(configChangeReconnectNoticeProvider);
@@ -799,9 +777,9 @@ void main() {
 
       final before = container.read(configChangeReconnectNoticeProvider);
 
-      await container.read(networkSettingsProvider.notifier).setMixedPort(
-        34567,
-      );
+      await container
+          .read(networkSettingsProvider.notifier)
+          .setMixedPort(34567);
       await Future<void>.delayed(Duration.zero);
 
       final after = container.read(configChangeReconnectNoticeProvider);
@@ -812,36 +790,39 @@ void main() {
   });
 
   group('首次成功连接触发商店评分请求', () {
-    test('watchStatus 推 BoxStarted（首次进入已连接态）→ 调用一次 maybeRequestReview', () async {
-      SharedPreferences.setMockInitialValues({});
-      final prefs = await SharedPreferences.getInstance();
-      final spy = _SpyBoxService();
-      late _FakeStoreReviewService fakeReview;
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(spy),
-          storeReviewServiceProvider.overrideWith((ref) {
-            fakeReview = _FakeStoreReviewService(ref);
-            return fakeReview;
-          }),
-        ],
-      );
-      await container.read(sharedPreferencesProvider.future);
-      // 触发 ConnectionController 构造，订阅 watchStatus。
-      container.read(connectionControllerProvider.notifier);
+    test(
+      'watchStatus 推 BoxStarted（首次进入已连接态）→ 调用一次 maybeRequestReview',
+      () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final spy = _SpyBoxService();
+        late _FakeStoreReviewService fakeReview;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+            boxServiceProvider.overrideWithValue(spy),
+            storeReviewServiceProvider.overrideWith((ref) {
+              fakeReview = _FakeStoreReviewService(ref);
+              return fakeReview;
+            }),
+          ],
+        );
+        await container.read(sharedPreferencesProvider.future);
+        // 触发 ConnectionController 构造，订阅 watchStatus。
+        container.read(connectionControllerProvider.notifier);
 
-      spy.statusStreamController.add(const BoxStarted());
-      await Future<void>.delayed(Duration.zero);
+        spy.statusStreamController.add(const BoxStarted());
+        await Future<void>.delayed(Duration.zero);
 
-      expect(
-        fakeReview.maybeRequestReviewCalls,
-        1,
-        reason: '首次真正进入 BoxStarted（跟触觉反馈同一个触发点）应该请求一次商店评分',
-      );
+        expect(
+          fakeReview.maybeRequestReviewCalls,
+          1,
+          reason: '首次真正进入 BoxStarted（跟触觉反馈同一个触发点）应该请求一次商店评分',
+        );
 
-      container.dispose();
-    });
+        container.dispose();
+      },
+    );
 
     test('同一次连接内重复推送 BoxStarted → 不应该重复调用（wasStarted 守卫）', () async {
       SharedPreferences.setMockInitialValues({});
@@ -1106,88 +1087,74 @@ void main() {
       container.dispose();
     });
 
-    test(
-      '数据分析开关开启时，fatal alert 仍然正常触发上报（回归：不能把该上报的场景误判为不上报）',
-      () async {
-        SharedPreferences.setMockInitialValues({
-          'clashmiao_analytics_enabled': true,
-        });
-        final prefs = await SharedPreferences.getInstance();
-        final spy = _SpyBoxService();
-        final reported = <BoxAlert>[];
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
-            boxServiceProvider.overrideWithValue(spy),
-            fatalAlertReporterProvider.overrideWithValue(reported.add),
-          ],
-        );
-        await container.read(sharedPreferencesProvider.future);
-        container.read(connectionControllerProvider.notifier);
+    test('数据分析开关开启时，fatal alert 仍然正常触发上报（回归：不能把该上报的场景误判为不上报）', () async {
+      SharedPreferences.setMockInitialValues({
+        'clashmiao_analytics_enabled': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final reported = <BoxAlert>[];
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          fatalAlertReporterProvider.overrideWithValue(reported.add),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      container.read(connectionControllerProvider.notifier);
 
-        spy.alertStreamController.add(
-          const BoxAlert(type: BoxAlertType.createService, message: 'boom'),
-        );
-        await Future<void>.delayed(Duration.zero);
+      spy.alertStreamController.add(
+        const BoxAlert(type: BoxAlertType.createService, message: 'boom'),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-        expect(
-          reported,
-          hasLength(1),
-          reason: '数据分析开关开启时，fatal alert 应该正常上报一次',
-        );
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStopped>(),
-        );
+      expect(reported, hasLength(1), reason: '数据分析开关开启时，fatal alert 应该正常上报一次');
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStopped>(),
+      );
 
-        container.dispose();
-      },
-    );
+      container.dispose();
+    });
   });
 
   group('ConnectionController fatal alert fail-safe 拆除（Dart 侧纵深兜底）', () {
-    test(
-      '收到启动失败 alert 时，除了回到 BoxStopped，还必须主动要求内核 stop()（幂等兜底）',
-      () async {
-        SharedPreferences.setMockInitialValues({});
-        final prefs = await SharedPreferences.getInstance();
-        final spy = _SpyBoxService();
-        final container = ProviderContainer(
-          overrides: [
-            sharedPreferencesProvider.overrideWith(
-              (_) => Future.value(prefs),
-            ),
-            boxServiceProvider.overrideWithValue(spy),
-          ],
-        );
-        await container.read(sharedPreferencesProvider.future);
-        // 触发 ConnectionController 构造，订阅 watchAlerts。
-        container.read(connectionControllerProvider.notifier);
+    test('收到启动失败 alert 时，除了回到 BoxStopped，还必须主动要求内核 stop()（幂等兜底）', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      // 触发 ConnectionController 构造，订阅 watchAlerts。
+      container.read(connectionControllerProvider.notifier);
 
-        spy.alertStreamController.add(
-          const BoxAlert(type: BoxAlertType.startService, message: 'boom'),
-        );
-        await Future<void>.delayed(Duration.zero);
+      spy.alertStreamController.add(
+        const BoxAlert(type: BoxAlertType.startService, message: 'boom'),
+      );
+      await Future<void>.delayed(Duration.zero);
 
-        expect(
-          container.read(connectionControllerProvider).valueOrNull,
-          isA<BoxStopped>(),
-          reason: '启动失败 alert 必须把 UI 状态强制回到 BoxStopped',
-        );
-        expect(
-          spy.stopCalls,
-          1,
-          reason:
-              '仅把 UI 掰回 BoxStopped 不够：底层某个终结路径若又漏了清理，'
-              'Dart 必须主动要求内核收尾（拆 tun），否则会复现"UI 显示已断开'
-              '但设备仍被黑洞"这一最隐蔽的故障形态。',
-        );
+      expect(
+        container.read(connectionControllerProvider).valueOrNull,
+        isA<BoxStopped>(),
+        reason: '启动失败 alert 必须把 UI 状态强制回到 BoxStopped',
+      );
+      expect(
+        spy.stopCalls,
+        1,
+        reason:
+            '仅把 UI 掰回 BoxStopped 不够：底层某个终结路径若又漏了清理，'
+            'Dart 必须主动要求内核收尾（拆 tun），否则会复现"UI 显示已断开'
+            '但设备仍被黑洞"这一最隐蔽的故障形态。',
+      );
 
-        container.dispose();
-      },
-    );
+      container.dispose();
+    });
 
     test('非致命 alert（如 VPN 权限请求）不应该触发 stop()，也不改动状态', () async {
       SharedPreferences.setMockInitialValues({});
@@ -1207,11 +1174,7 @@ void main() {
       );
       await Future<void>.delayed(Duration.zero);
 
-      expect(
-        spy.stopCalls,
-        0,
-        reason: '非启动失败类 alert 不应触发兜底 stop()，避免误伤正常授权流程',
-      );
+      expect(spy.stopCalls, 0, reason: '非启动失败类 alert 不应触发兜底 stop()，避免误伤正常授权流程');
 
       container.dispose();
     });
@@ -1220,35 +1183,39 @@ void main() {
   group('connectionErrorProvider 写入分类后的本地化文案（而非原始异常/alert文本）', () {
     final en = Translations.build();
 
-    test('fatal alert（startService）不写 connectionErrorProvider（阻断式弹窗负责提示）', () async {
-      SharedPreferences.setMockInitialValues({'locale': 'en'});
-      final prefs = await SharedPreferences.getInstance();
-      final spy = _SpyBoxService();
-      final container = ProviderContainer(
-        overrides: [
-          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(spy),
-        ],
-      );
-      await container.read(sharedPreferencesProvider.future);
-      container.read(connectionControllerProvider.notifier);
+    test(
+      'fatal alert（startService）不写 connectionErrorProvider（阻断式弹窗负责提示）',
+      () async {
+        SharedPreferences.setMockInitialValues({'locale': 'en'});
+        final prefs = await SharedPreferences.getInstance();
+        final spy = _SpyBoxService();
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+            boxServiceProvider.overrideWithValue(spy),
+          ],
+        );
+        await container.read(sharedPreferencesProvider.future);
+        container.read(connectionControllerProvider.notifier);
 
-      const rawMessage = 'native stack: 0xdeadbeef at sing_box.rs:123';
-      spy.alertStreamController.add(
-        const BoxAlert(type: BoxAlertType.startService, message: rawMessage),
-      );
-      await Future<void>.delayed(Duration.zero);
+        const rawMessage = 'native stack: 0xdeadbeef at sing_box.rs:123';
+        spy.alertStreamController.add(
+          const BoxAlert(type: BoxAlertType.startService, message: rawMessage),
+        );
+        await Future<void>.delayed(Duration.zero);
 
-      expect(
-        container.read(connectionErrorProvider),
-        isNull,
-        reason: '致命 alert 的用户提示由 ShellPage 的阻断式弹窗负责'
-            '（见 shell_page_test.dart），这里不能再写一份，否则 home_page '
-            '的 toast 会跟弹窗对同一个错误双重提示',
-      );
+        expect(
+          container.read(connectionErrorProvider),
+          isNull,
+          reason:
+              '致命 alert 的用户提示由 ShellPage 的阻断式弹窗负责'
+              '（见 shell_page_test.dart），这里不能再写一份，否则 home_page '
+              '的 toast 会跟弹窗对同一个错误双重提示',
+        );
 
-      container.dispose();
-    });
+        container.dispose();
+      },
+    );
 
     test('fatal alert（emptyConfiguration）不写 connectionErrorProvider', () async {
       SharedPreferences.setMockInitialValues({'locale': 'en'});
@@ -1425,9 +1392,7 @@ void main() {
       );
       await container.read(sharedPreferencesProvider.future);
       await container.read(profileRepositoryProvider.future);
-      final controller = container.read(
-        connectionControllerProvider.notifier,
-      );
+      final controller = container.read(connectionControllerProvider.notifier);
 
       spy.statusStreamController.add(const BoxStarted());
       await Future<void>.delayed(Duration.zero);

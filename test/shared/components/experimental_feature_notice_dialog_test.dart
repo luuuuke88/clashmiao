@@ -25,9 +25,7 @@ void main() {
     });
 
     test('enableTlsPadding 开启 → 实验性', () {
-      final settings = const NetworkSettings().copyWith(
-        enableTlsPadding: true,
-      );
+      final settings = const NetworkSettings().copyWith(enableTlsPadding: true);
       expect(hasExperimentalFeatures(settings: settings), isTrue);
     });
 
@@ -115,9 +113,8 @@ void main() {
                   return Center(
                     child: TextButton(
                       onPressed: () async {
-                        final result = await showExperimentalFeatureNoticeDialog(
-                          context,
-                        );
+                        final result =
+                            await showExperimentalFeatureNoticeDialog(context);
                         onResult(result);
                       },
                       child: const Text('open-experimental-notice'),

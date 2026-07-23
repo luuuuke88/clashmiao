@@ -90,33 +90,33 @@ void main() {
       expect(calls, ['disconnect', 'disposeTray', 'destroyWindow']);
     });
 
-    test('disconnect 抛异常时不影响后续托盘清理和窗口销毁（跟原有 disconnect try/catch 行为一致）', () async {
-      final calls = <String>[];
-      await performQuitSequence(
-        disconnect: () async => throw Exception('disconnect failed'),
-        disposeTray: () async => calls.add('disposeTray'),
-        destroyWindow: () async => calls.add('destroyWindow'),
-      );
-      expect(calls, ['disposeTray', 'destroyWindow']);
-    });
-
     test(
-      'disposeTray 抛异常（托盘图标已经不存在等）时记录日志，但仍然继续销毁窗口退出，而不是卡住/中止退出流程',
+      'disconnect 抛异常时不影响后续托盘清理和窗口销毁（跟原有 disconnect try/catch 行为一致）',
       () async {
         final calls = <String>[];
         await performQuitSequence(
-          disconnect: () async {},
-          disposeTray: () async => throw Exception('tray dispose failed'),
+          disconnect: () async => throw Exception('disconnect failed'),
+          disposeTray: () async => calls.add('disposeTray'),
           destroyWindow: () async => calls.add('destroyWindow'),
         );
-        expect(calls, ['destroyWindow']);
-        expect(
-          logs,
-          anyElement(contains('[Tray] dispose failed during quit')),
-          reason: '托盘清理失败不该被静默吞掉，退出前的失败也要留日志，跟 setIcon 失败的日志约定一致',
-        );
+        expect(calls, ['disposeTray', 'destroyWindow']);
       },
     );
+
+    test('disposeTray 抛异常（托盘图标已经不存在等）时记录日志，但仍然继续销毁窗口退出，而不是卡住/中止退出流程', () async {
+      final calls = <String>[];
+      await performQuitSequence(
+        disconnect: () async {},
+        disposeTray: () async => throw Exception('tray dispose failed'),
+        destroyWindow: () async => calls.add('destroyWindow'),
+      );
+      expect(calls, ['destroyWindow']);
+      expect(
+        logs,
+        anyElement(contains('[Tray] dispose failed during quit')),
+        reason: '托盘清理失败不该被静默吞掉，退出前的失败也要留日志，跟 setIcon 失败的日志约定一致',
+      );
+    });
   });
 
   group('setTrayIconWithLogging', () {
@@ -183,7 +183,11 @@ void main() {
     test('toggle/show/hide/quit 文案跟 buildTrayMenuLabels 保持一致（不破坏既有回归）', () {
       final t = AppLocale.zhCn.build();
       final labels = buildTrayMenuLabels(const BoxStarted(), t);
-      final menu = buildTrayMenu(status: const BoxStarted(), t: t, proxyMode: 1);
+      final menu = buildTrayMenu(
+        status: const BoxStarted(),
+        t: t,
+        proxyMode: 1,
+      );
 
       expect(menu.getMenuItem('toggle')!.label, labels.toggle);
       expect(menu.getMenuItem('show')!.label, labels.show);
@@ -243,7 +247,10 @@ void main() {
 
       final subItems = proxyModeItem.submenu!.items!;
       expect(subItems, hasLength(2));
-      expect(subItems.map((e) => e.key).toList(), ['mode_global', 'mode_smart']);
+      expect(subItems.map((e) => e.key).toList(), [
+        'mode_global',
+        'mode_smart',
+      ]);
       expect(subItems[0].label, t.home.routingMode.global);
       expect(subItems[1].label, t.home.routingMode.smart);
       expect(subItems[0].type, 'checkbox');

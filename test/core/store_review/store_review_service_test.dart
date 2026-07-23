@@ -59,11 +59,10 @@ void main() {
 
       await container.read(storeReviewServiceProvider).maybeRequestReview();
 
-      expect(
-        calls.map((c) => c.method),
-        ['isAvailable', 'requestReview'],
-        reason: '先确认设备可用，再真正弹出评分请求',
-      );
+      expect(calls.map((c) => c.method), [
+        'isAvailable',
+        'requestReview',
+      ], reason: '先确认设备可用，再真正弹出评分请求');
 
       final prefs = await container.read(sharedPreferencesProvider.future);
       expect(
@@ -80,11 +79,7 @@ void main() {
 
       await container.read(storeReviewServiceProvider).maybeRequestReview();
 
-      expect(
-        calls,
-        isEmpty,
-        reason: '这辈子只弹一次：已经标记过就不该再触碰原生评分 API',
-      );
+      expect(calls, isEmpty, reason: '这辈子只弹一次：已经标记过就不该再触碰原生评分 API');
     });
 
     test('isAvailable 返回 false 时 → 不调用 requestReview，也不持久化标记', () async {
@@ -93,17 +88,16 @@ void main() {
 
       await container.read(storeReviewServiceProvider).maybeRequestReview();
 
-      expect(
-        calls.map((c) => c.method),
-        ['isAvailable'],
-        reason: '设备当前不可用时不应该尝试弹窗',
-      );
+      expect(calls.map((c) => c.method), [
+        'isAvailable',
+      ], reason: '设备当前不可用时不应该尝试弹窗');
 
       final prefs = await container.read(sharedPreferencesProvider.future);
       expect(
         prefs.getBool('clashmiao_store_review_requested'),
         isNot(isTrue),
-        reason: '这次没有真正弹出过评分请求，不应该被当成"已经弹过"，'
+        reason:
+            '这次没有真正弹出过评分请求，不应该被当成"已经弹过"，'
             '否则以后设备变得可用了也再也没有机会弹',
       );
     });
@@ -115,11 +109,7 @@ void main() {
       expect(calls, hasLength(2)); // isAvailable + requestReview
 
       await container.read(storeReviewServiceProvider).maybeRequestReview();
-      expect(
-        calls,
-        hasLength(2),
-        reason: '第二次调用应该被持久化标记挡住，调用次数不应该增加',
-      );
+      expect(calls, hasLength(2), reason: '第二次调用应该被持久化标记挡住，调用次数不应该增加');
     });
   });
 }

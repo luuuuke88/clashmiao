@@ -40,27 +40,24 @@ void main() {
       expect((result as DeepLinkFetchUrl).url, 'https://example.com/s/abc');
     });
 
-    test(
-      'scheme 对行为没有影响：clashmeta://install-sub 与 '
-      'clash://install-sub 效果与 clashmiao://install-sub 一致'
-      '（Android intent-filter 里多个 <data> 是并集不是配对，'
-      '真正决定行为的是 host）',
-      () {
-        const url = 'https://example.com/s/xyz';
-        final encoded = Uri.encodeComponent(url);
-        for (final scheme in ['clashmeta', 'clash', 'sing-box', 'clashmiao']) {
-          final result = parseDeepLink(
-            Uri.parse('$scheme://install-sub?url=$encoded'),
-          );
-          expect(
-            result,
-            isA<DeepLinkFetchUrl>(),
-            reason: 'scheme=$scheme 应该和 host 无关地被识别',
-          );
-          expect((result as DeepLinkFetchUrl).url, url);
-        }
-      },
-    );
+    test('scheme 对行为没有影响：clashmeta://install-sub 与 '
+        'clash://install-sub 效果与 clashmiao://install-sub 一致'
+        '（Android intent-filter 里多个 <data> 是并集不是配对，'
+        '真正决定行为的是 host）', () {
+      const url = 'https://example.com/s/xyz';
+      final encoded = Uri.encodeComponent(url);
+      for (final scheme in ['clashmeta', 'clash', 'sing-box', 'clashmiao']) {
+        final result = parseDeepLink(
+          Uri.parse('$scheme://install-sub?url=$encoded'),
+        );
+        expect(
+          result,
+          isA<DeepLinkFetchUrl>(),
+          reason: 'scheme=$scheme 应该和 host 无关地被识别',
+        );
+        expect((result as DeepLinkFetchUrl).url, url);
+      }
+    });
   });
 
   group('parseDeepLink — import host 的智能判定', () {
@@ -76,20 +73,15 @@ void main() {
     });
 
     for (final scheme in kDeepLinkProxyUriSchemes) {
-      test(
-        'import?url=<$scheme:// 单节点 URI> → 当字面内容处理'
-        '（DeepLinkImportContent）',
-        () {
-          final proxyUri = '$scheme://payload@host:443#name';
-          final result = parseDeepLink(
-            Uri.parse(
-              'clashmiao://import?url=${Uri.encodeComponent(proxyUri)}',
-            ),
-          );
-          expect(result, isA<DeepLinkImportContent>());
-          expect((result as DeepLinkImportContent).content, proxyUri);
-        },
-      );
+      test('import?url=<$scheme:// 单节点 URI> → 当字面内容处理'
+          '（DeepLinkImportContent）', () {
+        final proxyUri = '$scheme://payload@host:443#name';
+        final result = parseDeepLink(
+          Uri.parse('clashmiao://import?url=${Uri.encodeComponent(proxyUri)}'),
+        );
+        expect(result, isA<DeepLinkImportContent>());
+        expect((result as DeepLinkImportContent).content, proxyUri);
+      });
     }
 
     test('import?url=<既不是 http(s) 也不是代理 URI 的内容> → 兜底当字面内容', () {

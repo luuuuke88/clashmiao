@@ -186,23 +186,20 @@ void main() {
       );
     });
 
-    test(
-      '手动设置过标记（manuallySet=true）-> false，即使 region 仍是 other 且 '
-      'onboarding 未完成（核心新断言：修复"用户手选 other 后被打断、下次重启'
-      '自动识别把手选结果覆盖回去"的跨会话 bug——manuallySet 是唯一能拦住它的'
-      '信号，光靠 currentRegion/onboardingDone 这两个旧条件区分不出"手选了'
-      ' other"和"从没碰过、还是默认值"）',
-      () {
-        expect(
-          shouldAutoDetectRegion(
-            currentRegion: 'other',
-            onboardingDone: false,
-            manuallySet: true,
-          ),
-          isFalse,
-        );
-      },
-    );
+    test('手动设置过标记（manuallySet=true）-> false，即使 region 仍是 other 且 '
+        'onboarding 未完成（核心新断言：修复"用户手选 other 后被打断、下次重启'
+        '自动识别把手选结果覆盖回去"的跨会话 bug——manuallySet 是唯一能拦住它的'
+        '信号，光靠 currentRegion/onboardingDone 这两个旧条件区分不出"手选了'
+        ' other"和"从没碰过、还是默认值"）', () {
+      expect(
+        shouldAutoDetectRegion(
+          currentRegion: 'other',
+          onboardingDone: false,
+          manuallySet: true,
+        ),
+        isFalse,
+      );
+    });
 
     test('手动设置过标记 + onboarding 也已完成 -> 仍是 false（多重负向条件不会互相抵消）', () {
       expect(
@@ -253,33 +250,25 @@ void main() {
       timeout: const Timeout(Duration(seconds: 10)),
     );
 
-    test(
-      'IP 兜底 HTTP 错误状态码 -> 返回 null',
-      () async {
-        final service = RegionDetectionService(
-          dio: _dioReturning('internal error', 500, contentType: 'text/plain'),
-        );
+    test('IP 兜底 HTTP 错误状态码 -> 返回 null', () async {
+      final service = RegionDetectionService(
+        dio: _dioReturning('internal error', 500, contentType: 'text/plain'),
+      );
 
-        final code = await service.detectCountryCode();
+      final code = await service.detectCountryCode();
 
-        expect(code, isNull);
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+      expect(code, isNull);
+    }, timeout: const Timeout(Duration(seconds: 10)));
 
-    test(
-      'IP 兜底响应体不是合法 JSON -> 返回 null',
-      () async {
-        final service = RegionDetectionService(
-          dio: _dioReturning('not-json-at-all-{{{', 200),
-        );
+    test('IP 兜底响应体不是合法 JSON -> 返回 null', () async {
+      final service = RegionDetectionService(
+        dio: _dioReturning('not-json-at-all-{{{', 200),
+      );
 
-        final code = await service.detectCountryCode();
+      final code = await service.detectCountryCode();
 
-        expect(code, isNull);
-      },
-      timeout: const Timeout(Duration(seconds: 10)),
-    );
+      expect(code, isNull);
+    }, timeout: const Timeout(Duration(seconds: 10)));
 
     test(
       'IP 兜底响应体缺失 country_code 字段 -> 返回 null',

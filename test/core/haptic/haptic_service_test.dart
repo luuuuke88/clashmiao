@@ -68,7 +68,11 @@ void main() {
     test('pref 未设置时默认开启（与 settings 页 defaultValue: true 一致）', () async {
       final c = await _container({});
       await c.read(hapticServiceProvider).heavyImpact();
-      expect(calls, hasLength(1), reason: '默认值应和 settings_page 的 defaultValue: true 一致');
+      expect(
+        calls,
+        hasLength(1),
+        reason: '默认值应和 settings_page 的 defaultValue: true 一致',
+      );
     });
 
     test('pref 关闭时 heavyImpact 零调用', () async {

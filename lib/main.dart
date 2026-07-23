@@ -163,9 +163,10 @@ void main() async {
   // 承诺和实际行为不符。prefs 在 main() 顶部已经 await 过 sharedPreferencesProvider.future，
   // 这里读的是同一个已经 resolve 的值，requireValue 不会抛。
   final analyticsEnabled =
-      container.read(sharedPreferencesProvider).requireValue.getBool(
-        'clashmiao_analytics_enabled',
-      ) ??
+      container
+          .read(sharedPreferencesProvider)
+          .requireValue
+          .getBool('clashmiao_analytics_enabled') ??
       false;
 
   await bootstrapSentryGatedApp(
@@ -206,8 +207,7 @@ void main() async {
 Future<void> bootstrapSentryGatedApp({
   required String dsn,
   required bool analyticsEnabled,
-  required Future<void> Function(String dsn, VoidCallback appRunner)
-  initSentry,
+  required Future<void> Function(String dsn, VoidCallback appRunner) initSentry,
   required VoidCallback appRunner,
 }) async {
   if (dsn.isNotEmpty && analyticsEnabled) {

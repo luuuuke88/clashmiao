@@ -138,25 +138,24 @@ void main() {
   });
 
   group('OnboardingPage 首帧地区自动识别', () {
-    testWidgets(
-      '初始默认态（region=other 且 onboarding 未完成）识别成功后写入 region+locale',
-      (tester) async {
-        // 初始 prefs 故意不设 clashmiao_region/onboarding_done，落在
-        // network_settings.dart 的默认值 region='other' + onboarding 未完成，
-        // 即 shouldAutoDetectRegion 判定为"应该自动识别"的那个状态。locale 种子
-        // 用 zhCn，跟 IR 识别结果映射到的 fa 不同，保证下面的断言不会因为
-        // "本来就是这个值"而变成假阳性。
-        final (widget, prefs) = await _host(
-          prefs: const {'locale': 'zhCn'},
-          regionDetectionResult: 'IR',
-        );
-        await tester.pumpWidget(widget);
-        await tester.pumpAndSettle();
+    testWidgets('初始默认态（region=other 且 onboarding 未完成）识别成功后写入 region+locale', (
+      tester,
+    ) async {
+      // 初始 prefs 故意不设 clashmiao_region/onboarding_done，落在
+      // network_settings.dart 的默认值 region='other' + onboarding 未完成，
+      // 即 shouldAutoDetectRegion 判定为"应该自动识别"的那个状态。locale 种子
+      // 用 zhCn，跟 IR 识别结果映射到的 fa 不同，保证下面的断言不会因为
+      // "本来就是这个值"而变成假阳性。
+      final (widget, prefs) = await _host(
+        prefs: const {'locale': 'zhCn'},
+        regionDetectionResult: 'IR',
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
 
-        expect(prefs.getString('clashmiao_region'), 'ir');
-        expect(prefs.getString('locale'), 'fa');
-      },
-    );
+      expect(prefs.getString('clashmiao_region'), 'ir');
+      expect(prefs.getString('locale'), 'fa');
+    });
 
     testWidgets('已手选过 region（非 other）时不自动识别，不覆盖用户选择', (tester) async {
       // 用户已经手动选过 'ru'；就算识别服务"识别到"了 IR，也不应该生效。
@@ -196,35 +195,32 @@ void main() {
       expect(prefs.getString('locale'), 'zhCn');
     });
 
-    testWidgets(
-      '跨会话覆盖场景：上次手选过 other 但被打断（clashmiao_region==other 且 '
-      'clashmiao_region_manually_set==true，onboarding 未完成）-> 重新挂载后'
-      '不再自动识别，region/locale 保持手选结果，不被识别结果覆盖',
-      (tester) async {
-        // 复现真实 bug：用户在 onboarding 手选了"其它"——_applyRegion 已经把
-        // clashmiao_region 持久化成 'other'，manuallySet 写入路径也已经把
-        // clashmiao_region_manually_set 持久化成 true——但用户没点"开始"就被
-        // 打断（来电/通知/后台被系统回收，移动端很常见），onboarding_done
-        // 仍是 false。下次重开 App，OnboardingPage 重新 initState：只看
-        // region=='other' && !onboardingDone 这两个条件的旧版本，看到的状态
-        // 跟"第一次启动、什么都没选过"完全一样，会被误判成"应该自动识别"，
-        // 把用户刚手选的"其它"覆盖成识别结果 IR。这个测试断言修复后不会
-        // 再发生——manuallySet 标记必须能拦住这次自动识别。
-        final (widget, prefs) = await _host(
-          prefs: const {
-            'locale': 'zhCn',
-            'clashmiao_region': 'other',
-            'clashmiao_region_manually_set': true,
-          },
-          regionDetectionResult: 'IR',
-        );
-        await tester.pumpWidget(widget);
-        await tester.pumpAndSettle();
+    testWidgets('跨会话覆盖场景：上次手选过 other 但被打断（clashmiao_region==other 且 '
+        'clashmiao_region_manually_set==true，onboarding 未完成）-> 重新挂载后'
+        '不再自动识别，region/locale 保持手选结果，不被识别结果覆盖', (tester) async {
+      // 复现真实 bug：用户在 onboarding 手选了"其它"——_applyRegion 已经把
+      // clashmiao_region 持久化成 'other'，manuallySet 写入路径也已经把
+      // clashmiao_region_manually_set 持久化成 true——但用户没点"开始"就被
+      // 打断（来电/通知/后台被系统回收，移动端很常见），onboarding_done
+      // 仍是 false。下次重开 App，OnboardingPage 重新 initState：只看
+      // region=='other' && !onboardingDone 这两个条件的旧版本，看到的状态
+      // 跟"第一次启动、什么都没选过"完全一样，会被误判成"应该自动识别"，
+      // 把用户刚手选的"其它"覆盖成识别结果 IR。这个测试断言修复后不会
+      // 再发生——manuallySet 标记必须能拦住这次自动识别。
+      final (widget, prefs) = await _host(
+        prefs: const {
+          'locale': 'zhCn',
+          'clashmiao_region': 'other',
+          'clashmiao_region_manually_set': true,
+        },
+        regionDetectionResult: 'IR',
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
 
-        expect(prefs.getString('clashmiao_region'), 'other');
-        expect(prefs.getString('locale'), 'zhCn');
-      },
-    );
+      expect(prefs.getString('clashmiao_region'), 'other');
+      expect(prefs.getString('locale'), 'zhCn');
+    });
 
     testWidgets('手选地区会写入"手动选过"标记，且不影响手选本身正常生效', (tester) async {
       // 只验证写入侧：手选弹窗选中任意地区后，clashmiao_region_manually_set

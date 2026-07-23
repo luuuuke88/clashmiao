@@ -70,8 +70,10 @@ class RuntimeConfigBuilder {
     final out = File('${workingDir.path}/$_runtimeFileName');
     await out.writeAsString(jsonEncode(cfg), flush: true);
     if (kDebugMode) {
-      debugPrint('[RuntimeConfigBuilder] wrote ${out.path} '
-          '(${(await out.length()) ~/ 1024} KB)');
+      debugPrint(
+        '[RuntimeConfigBuilder] wrote ${out.path} '
+        '(${(await out.length()) ~/ 1024} KB)',
+      );
     }
     return out;
   }

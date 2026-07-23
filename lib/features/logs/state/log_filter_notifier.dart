@@ -147,8 +147,6 @@ class LogFilterNotifier extends StateNotifier<LogFilterState> {
 // 之外唯一能停止后台日志处理的手段消失（之前非 autoDispose 时，离开日志页
 // 后这个 provider 会一直存活，持续消耗 CPU）。
 final logFilterProvider =
-    StateNotifierProvider.autoDispose<LogFilterNotifier, LogFilterState>((
-      ref,
-    ) {
+    StateNotifierProvider.autoDispose<LogFilterNotifier, LogFilterState>((ref) {
       return LogFilterNotifier(ref);
     });

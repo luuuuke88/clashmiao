@@ -45,9 +45,7 @@ void main() {
     });
 
     test('clashmiao_silent_start=false 时 show + focus', () async {
-      SharedPreferences.setMockInitialValues({
-        'clashmiao_silent_start': false,
-      });
+      SharedPreferences.setMockInitialValues({'clashmiao_silent_start': false});
       final prefs = await SharedPreferences.getInstance();
 
       await showWindowUnlessSilentStart(prefs);
@@ -56,9 +54,7 @@ void main() {
     });
 
     test('clashmiao_silent_start=true 时窗口保持隐藏，绝不调用 show/focus', () async {
-      SharedPreferences.setMockInitialValues({
-        'clashmiao_silent_start': true,
-      });
+      SharedPreferences.setMockInitialValues({'clashmiao_silent_start': true});
       final prefs = await SharedPreferences.getInstance();
 
       await showWindowUnlessSilentStart(prefs);

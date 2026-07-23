@@ -60,9 +60,7 @@ void main() {
     await pumpAndOpen(tester);
 
     final barrier = tester.widget<ModalBarrier>(
-      find
-          .byWidgetPredicate((w) => w is ModalBarrier)
-          .last,
+      find.byWidgetPredicate((w) => w is ModalBarrier).last,
     );
 
     expect(barrier.dismissible, isFalse);

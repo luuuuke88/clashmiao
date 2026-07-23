@@ -16,7 +16,10 @@ bool isApplePlatform() =>
 /// 用来替代散落在各调用点的 `Platform.isIOS ? a : b` 判断；供需要裸
 /// [IconData]（而不是 [Widget]）的调用点使用，例如自定义按钮组件的
 /// `icon: IconData` 字段。
-IconData resolveAdaptiveIcon({required IconData apple, required IconData other}) {
+IconData resolveAdaptiveIcon({
+  required IconData apple,
+  required IconData other,
+}) {
   return isApplePlatform() ? apple : other;
 }
 

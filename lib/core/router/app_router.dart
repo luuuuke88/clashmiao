@@ -30,9 +30,8 @@ class _RootGate extends ConsumerWidget {
     final onboardingDone = ref.watch(onboardingDoneProvider);
     return onboardingDone.when(
       data: (done) => done ? const ShellPage() : const OnboardingPage(),
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (_, _) => const OnboardingPage(),
     );
   }

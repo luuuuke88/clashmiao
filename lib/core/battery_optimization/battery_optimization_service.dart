@@ -52,7 +52,8 @@ class BatteryOptimizationService {
   }
 }
 
-final batteryOptimizationServiceProvider =
-    Provider<BatteryOptimizationService>((ref) {
-      return BatteryOptimizationService();
-    });
+final batteryOptimizationServiceProvider = Provider<BatteryOptimizationService>(
+  (ref) {
+    return BatteryOptimizationService();
+  },
+);

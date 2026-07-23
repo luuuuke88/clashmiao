@@ -23,9 +23,7 @@ Future<Widget> _host(Widget child) async {
 }
 
 void main() {
-  testWidgets('QrScannerPage renders permission denied state', (
-    tester,
-  ) async {
+  testWidgets('QrScannerPage renders permission denied state', (tester) async {
     await tester.pumpWidget(
       await _host(
         const QrScannerPage(initialPermissionStatus: PermissionStatus.denied),

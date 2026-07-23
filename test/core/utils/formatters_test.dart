@@ -52,9 +52,7 @@ void main() {
       expect(formatExpireDate(farFuture, zhCn), '无限期');
     });
     test('剩余恰好 365 天以内仍正常显示天数，不提前判无限期', () {
-      final justUnder = DateTime.now().add(
-        const Duration(days: 365, hours: 2),
-      );
+      final justUnder = DateTime.now().add(const Duration(days: 365, hours: 2));
       expect(formatExpireDate(justUnder, en), 'Remaining 365 days');
     });
   });

@@ -303,8 +303,9 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       );
       // 记录点击前的乐观值快照，native 切换失败时用它回滚，而不是把错误节点
       // 永久留在 UI 上。
-      final previousSelection =
-          ref.read(optimisticProxySelectionsProvider)[groupTag];
+      final previousSelection = ref.read(
+        optimisticProxySelectionsProvider,
+      )[groupTag];
       optimisticNotifier.update(groupTag, outboundTag);
       ref
           .read(boxServiceProvider)

@@ -129,24 +129,27 @@ void main() {
   });
 
   group('订阅刷新场景的 Dio 不再硬编码 DIRECT（回归验证 app_providers.dart 的 bug 修复）', () {
-    test('createAppHttpClient(preferTunnel: true) 构造出的 adapter 不会强制 DIRECT', () async {
-      final proxyServer = await _startServer('via-proxy');
-      addTearDown(() => proxyServer.close(force: true));
-      final directServer = await _startServer('via-direct');
-      addTearDown(() => directServer.close(force: true));
+    test(
+      'createAppHttpClient(preferTunnel: true) 构造出的 adapter 不会强制 DIRECT',
+      () async {
+        final proxyServer = await _startServer('via-proxy');
+        addTearDown(() => proxyServer.close(force: true));
+        final directServer = await _startServer('via-direct');
+        addTearDown(() => directServer.close(force: true));
 
-      // 这是订阅刷新此前的 bug：无论 preferTunnel 设成什么，请求永远直连，
-      // 完全绕不过本地隧道。这里用跟 profileRepositoryProvider 完全一致的
-      // 调用方式（preferTunnel: true）验证它确实会先尝试 mixed 端口。
-      final dio = createAppHttpClient(
-        preferTunnel: true,
-        mixedPort: proxyServer.port,
-      );
-      final response = await dio.get<String>(
-        'http://127.0.0.1:${directServer.port}/',
-      );
-      expect(response.data, 'via-proxy');
-    });
+        // 这是订阅刷新此前的 bug：无论 preferTunnel 设成什么，请求永远直连，
+        // 完全绕不过本地隧道。这里用跟 profileRepositoryProvider 完全一致的
+        // 调用方式（preferTunnel: true）验证它确实会先尝试 mixed 端口。
+        final dio = createAppHttpClient(
+          preferTunnel: true,
+          mixedPort: proxyServer.port,
+        );
+        final response = await dio.get<String>(
+          'http://127.0.0.1:${directServer.port}/',
+        );
+        expect(response.data, 'via-proxy');
+      },
+    );
   });
 
   group('重试拦截器：网络类错误重试，业务错误不重试', () {

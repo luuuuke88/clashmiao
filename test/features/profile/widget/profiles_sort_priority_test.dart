@@ -122,10 +122,12 @@ void main() {
       );
 
       // 打乱输入顺序，tiebreaker 按名称升序。
-      final sorted = sortProfilesByPriority(
-        [expired, normalZ, active, normalA],
-        (a, b) => a.name.compareTo(b.name),
-      );
+      final sorted = sortProfilesByPriority([
+        expired,
+        normalZ,
+        active,
+        normalA,
+      ], (a, b) => a.name.compareTo(b.name));
 
       expect(sorted.map((p) => p.id).toList(), [
         'active',
@@ -137,11 +139,7 @@ void main() {
 
     test('不改变入参列表（返回新列表）', () {
       final original = [
-        const ProfileEntity(
-          id: 'x',
-          name: 'X',
-          url: 'https://example.com/x',
-        ),
+        const ProfileEntity(id: 'x', name: 'X', url: 'https://example.com/x'),
         const ProfileEntity(
           id: 'y',
           name: 'Y',

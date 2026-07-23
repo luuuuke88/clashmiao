@@ -296,8 +296,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
     // 保存前先记下 URL 是否真的变了——决定要不要触发下面的重新拉取。
     // 用原始 profile.url（trim 后）比较，而不是 _urlController 的初始值，
     // 避免受 _syncControllers 时序影响。
-    final urlChanged =
-        _isRemoteProfile(profile) && url != profile.url.trim();
+    final urlChanged = _isRemoteProfile(profile) && url != profile.url.trim();
 
     setState(() => _busy = true);
     try {

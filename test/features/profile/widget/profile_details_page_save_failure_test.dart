@@ -105,7 +105,9 @@ void main() {
     HttpOverrides.global = null; // 关掉 TestWidgetsFlutterBinding 的全局 HTTP mock
 
     await tester.runAsync(() async {
-      final tmpDir = await Directory.systemTemp.createTemp('details_save_fail_');
+      final tmpDir = await Directory.systemTemp.createTemp(
+        'details_save_fail_',
+      );
       addTearDown(() async {
         if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
       });

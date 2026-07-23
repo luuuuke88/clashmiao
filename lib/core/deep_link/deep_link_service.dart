@@ -36,8 +36,9 @@ final class DeepLinkImportFailure extends DeepLinkImportResult {
 }
 
 /// 最近一次深链导入的结果；`null` 表示"没有待展示的结果"。
-final deepLinkImportResultProvider =
-    StateProvider<DeepLinkImportResult?>((ref) => null);
+final deepLinkImportResultProvider = StateProvider<DeepLinkImportResult?>(
+  (ref) => null,
+);
 
 /// 深链导入的薄封装：监听 AppLinks → [parseDeepLink] 解析 → 调
 /// [ProfileRepository] 对应方法导入 → 把结果写进

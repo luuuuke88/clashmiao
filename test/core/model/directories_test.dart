@@ -46,36 +46,34 @@ void main() {
       );
     });
 
-    test('非 iOS（Android / 桌面）：维持原状，走 getApplicationDocumentsDirectory', () async {
-      var appGroupCalls = 0;
-      var documentsDirCalls = 0;
+    test(
+      '非 iOS（Android / 桌面）：维持原状，走 getApplicationDocumentsDirectory',
+      () async {
+        var appGroupCalls = 0;
+        var documentsDirCalls = 0;
 
-      final result = await resolveSingBoxWorkingDirectoryImpl(
-        isIOS: false,
-        getAppGroupPath: () async {
-          appGroupCalls++;
-          return '/should/not/be/used';
-        },
-        getDocumentsDirectory: () async {
-          documentsDirCalls++;
-          return Directory('/data/user/0/com.clashmiao.clashmiao/app_flutter');
-        },
-      );
+        final result = await resolveSingBoxWorkingDirectoryImpl(
+          isIOS: false,
+          getAppGroupPath: () async {
+            appGroupCalls++;
+            return '/should/not/be/used';
+          },
+          getDocumentsDirectory: () async {
+            documentsDirCalls++;
+            return Directory(
+              '/data/user/0/com.clashmiao.clashmiao/app_flutter',
+            );
+          },
+        );
 
-      expect(
-        documentsDirCalls,
-        1,
-        reason: 'Android / 桌面现有行为不能受影响，必须继续走 path_provider',
-      );
-      expect(
-        appGroupCalls,
-        0,
-        reason: '非 iOS 平台没有 App Group 概念，不应该调用这个查询',
-      );
-      expect(
-        result.path,
-        '/data/user/0/com.clashmiao.clashmiao/app_flutter',
-      );
-    });
+        expect(
+          documentsDirCalls,
+          1,
+          reason: 'Android / 桌面现有行为不能受影响，必须继续走 path_provider',
+        );
+        expect(appGroupCalls, 0, reason: '非 iOS 平台没有 App Group 概念，不应该调用这个查询');
+        expect(result.path, '/data/user/0/com.clashmiao.clashmiao/app_flutter');
+      },
+    );
   });
 }

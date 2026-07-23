@@ -160,8 +160,7 @@ class _ExperimentalFeatureNoticeDialogState
                     children: [
                       Checkbox(
                         value: _dontShowAgain,
-                        onChanged: (value) =>
-                            _setDontShowAgain(value ?? false),
+                        onChanged: (value) => _setDontShowAgain(value ?? false),
                       ),
                       const SizedBox(width: 4),
                       const Text('不再提示'),

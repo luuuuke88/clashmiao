@@ -110,9 +110,10 @@ class _State extends ConsumerState<OnboardingPage> {
     // valueOrNull ?? false：默认"没手动设置过"，跟 fix 之前的行为保持一致
     // （不会因为 prefs 意外未就绪就反过来拦住正常的首次启动自动识别）。
     final manuallySet =
-        ref.read(sharedPreferencesProvider).valueOrNull?.getBool(
-          _kRegionManuallySet,
-        ) ??
+        ref
+            .read(sharedPreferencesProvider)
+            .valueOrNull
+            ?.getBool(_kRegionManuallySet) ??
         false;
     return shouldAutoDetectRegion(
       currentRegion: currentRegion,
@@ -133,7 +134,9 @@ class _State extends ConsumerState<OnboardingPage> {
   Future<void> _applyRegion(String region) async {
     final notifier = ref.read(networkSettingsProvider.notifier);
     await notifier.setRegion(region);
-    await notifier.setDirectDnsAddress(region == 'cn' ? '223.5.5.5' : '1.1.1.1');
+    await notifier.setDirectDnsAddress(
+      region == 'cn' ? '223.5.5.5' : '1.1.1.1',
+    );
   }
 
   /// 手选弹窗（[_showRegionDialog]）专属：写 region（[_applyRegion]）的同时，

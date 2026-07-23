@@ -55,7 +55,10 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Material(
-            child: AdaptiveIcon(apple: Icons.more_horiz, other: Icons.more_vert),
+            child: AdaptiveIcon(
+              apple: Icons.more_horiz,
+              other: Icons.more_vert,
+            ),
           ),
         ),
       );
@@ -75,7 +78,10 @@ void main() {
       await tester.pumpWidget(
         const MaterialApp(
           home: Material(
-            child: AdaptiveIcon(apple: Icons.more_horiz, other: Icons.more_vert),
+            child: AdaptiveIcon(
+              apple: Icons.more_horiz,
+              other: Icons.more_vert,
+            ),
           ),
         ),
       );

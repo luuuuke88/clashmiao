@@ -50,9 +50,7 @@ Future<Widget> _host() async {
 }
 
 void main() {
-  testWidgets('SettingsInputDialog keeps modal controls', (
-    tester,
-  ) async {
+  testWidgets('SettingsInputDialog keeps modal controls', (tester) async {
     await tester.pumpWidget(await _host());
     await tester.pump(const Duration(milliseconds: 200));
 

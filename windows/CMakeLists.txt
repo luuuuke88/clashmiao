@@ -41,6 +41,14 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# permission_handler_windows still includes the deprecated <experimental/coroutine>
+# header; the newer MSVC toolchain on the GitHub windows runner turned its
+# deprecation notice into a hard error (STL1011). Microsoft's documented interim
+# suppression is this define — set it directory-wide (before the add_subdirectory
+# calls below) so it also applies to the plugin targets pulled in by
+# generated_plugins.cmake, not just the runner.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by

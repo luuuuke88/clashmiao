@@ -19,3 +19,6 @@ if (-not $FlutterBat) {
 
 Set-Location $RepoRoot
 & $FlutterBat @FlutterArgs
+if ($LASTEXITCODE -ne 0) {
+  exit $LASTEXITCODE
+}

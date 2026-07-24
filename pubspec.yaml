@@ -38,8 +38,6 @@ dependencies:
 
   # 本地存储
   shared_preferences: ^2.2.3
-  drift: ^2.18.0
-  sqlite3_flutter_libs: ^0.5.21
 
   # FFI
   ffi: ^2.1.2
@@ -107,7 +105,6 @@ dev_dependencies:
   json_serializable: ^6.8.0
   freezed: ^2.5.2
   riverpod_generator: ^2.4.0
-  drift_dev: ^2.18.0
   go_router_builder: ^2.7.0
   slang_build_runner: ^3.32.0
   pigeon: ^26.1.0

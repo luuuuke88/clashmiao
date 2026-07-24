@@ -41,7 +41,10 @@
     "failedToSwitchMode": "Failed to switch mode: ${error}",
     "connectionFailedTitle": "Connection Failed",
     "coreMissingTitle": "Core Library Not Found",
-    "coreMissingMsg": "The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable."
+    "coreMissingMsg": "The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.",
+    "degradedTitle": "Connected, but no internet access",
+    "degradedMsg": "The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.",
+    "degradedRetry": "Check again"
   },
   "stats": {
     "traffic": "Traffic",

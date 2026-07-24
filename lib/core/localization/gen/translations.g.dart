@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3148 (314 per locale)
+/// Strings: 3154 (315 per locale)
 ///
-/// Built on 2026-07-24 at 18:54 UTC
+/// Built on 2026-07-24 at 19:00 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -199,6 +199,10 @@ class TranslationsHomeEn {
   String get coreMissingTitle => 'Core Library Not Found';
   String get coreMissingMsg =>
       'The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.';
+  String get degradedTitle => 'Connected, but no internet access';
+  String get degradedMsg =>
+      'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
+  String get degradedRetry => 'Check again';
 }
 
 // Path: stats
@@ -11132,6 +11136,12 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
   String get coreMissingTitle => '未找到核心库';
   @override
   String get coreMissingMsg => '应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。';
+  @override
+  String get degradedTitle => '已连接，但无法访问网络';
+  @override
+  String get degradedMsg => '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
+  @override
+  String get degradedRetry => '重新检测';
 }
 
 // Path: stats
@@ -14174,6 +14184,12 @@ extension on Translations {
         return 'Core Library Not Found';
       case 'home.coreMissingMsg':
         return 'The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.';
+      case 'home.degradedTitle':
+        return 'Connected, but no internet access';
+      case 'home.degradedMsg':
+        return 'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
+      case 'home.degradedRetry':
+        return 'Check again';
       case 'stats.traffic':
         return 'Traffic';
       case 'stats.trafficLive':
@@ -19304,6 +19320,12 @@ extension on TranslationsZhCn {
         return '未找到核心库';
       case 'home.coreMissingMsg':
         return '应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。';
+      case 'home.degradedTitle':
+        return '已连接，但无法访问网络';
+      case 'home.degradedMsg':
+        return '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
+      case 'home.degradedRetry':
+        return '重新检测';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':

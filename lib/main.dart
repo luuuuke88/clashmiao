@@ -7,6 +7,7 @@ import 'package:clashmiao/core/box_service/rule_set_provisioner.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -121,6 +122,11 @@ void main() async {
   // 尽早 read 一次触发 DeepLinkService 创建——它在创建时自己发起监听
   // （不 await，不阻塞这里；解析/导入结果由 ShellPage 监听后弹 toast）。
   container.read(deepLinkServiceProvider);
+
+  // 连接健康探测（"已连接但实际不通"的黑洞检测）。周期探测只由这里显式激活，
+  // 不会因为首页 watch 了这个 provider 就自动开始——探测该活多久取决于 App，
+  // 不取决于某个页面在不在（详见 ConnectionHealthMonitor 类文档）。
+  container.read(connectionHealthProvider.notifier).start();
 
   // 订阅自动更新调度器：读每条订阅的 updateInterval，到期的用跟"立即更新"
   // 按钮同一条刷新逻辑静默更新一次。触发时机三条：这里的启动时查一次

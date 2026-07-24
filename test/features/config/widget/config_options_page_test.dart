@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -109,8 +110,15 @@ void main() {
       await _pumpPage(tester);
 
       // 顶部的实验性功能提示应该用共享的 TipCard 组件（跟 assets_page 用
-      // 的是同一个组件，风格统一——见 tip_card_test.dart）。
-      expect(find.byType(TipCard), findsOneWidget);
+      // 的是同一个组件，风格统一——见 tip_card_test.dart）。桌面端在服务模式
+      // 那一栏还有第二张 TipCard，说明"只有遵循系统代理的程序会走隧道"这个
+      // 泄漏面（桌面没有 TUN，见 _serviceModeChoices）。
+      expect(
+        find.byType(TipCard),
+        Platform.isAndroid || Platform.isIOS
+            ? findsOneWidget
+            : findsNWidgets(2),
+      );
 
       expect(find.text('配置选项'), findsOneWidget);
       expect(find.text('路由选项'), findsOneWidget);
@@ -153,7 +161,12 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('系统线路'), findsWidgets);
-      expect(find.text('VPN'), findsOneWidget);
+      // 桌面端不提供 VPN(TUN) 档：没有 wintun 驱动、没有网络扩展权限，
+      // 选了只会让内核起 tun 设备失败（见 _serviceModeChoices）。
+      expect(
+        find.text('VPN'),
+        Platform.isAndroid || Platform.isIOS ? findsOneWidget : findsNothing,
+      );
     });
 
     testWidgets('value tile opens input modal', (tester) async {

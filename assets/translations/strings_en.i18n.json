@@ -498,6 +498,7 @@
     "warpNoise": "Noise Count",
     "warpNoiseSize": "Noise Size",
     "warpNoiseMode": "Noise Mode",
-    "warpNoiseDelay": "Noise Delay"
+    "warpNoiseDelay": "Noise Delay",
+    "desktopProxyScopeNotice": "On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP."
   }
 }

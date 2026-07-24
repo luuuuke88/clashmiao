@@ -12,11 +12,14 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 enum _QuickServiceMode { proxy, systemProxy, tun }
 
+/// 桌面端不给 TUN 档，理由见 `config_options_page.dart` 里同名函数
+/// `_serviceModeChoices` 的文档（没有 wintun 驱动、没有网络扩展权限，
+/// 选了必定失败）。两处必须保持一致，否则用户能从快捷设置绕过这条限制。
 List<_QuickServiceMode> get _quickServiceModeChoices {
   if (Platform.isAndroid || Platform.isIOS) {
     return const [_QuickServiceMode.proxy, _QuickServiceMode.tun];
   }
-  return _QuickServiceMode.values;
+  return const [_QuickServiceMode.proxy, _QuickServiceMode.systemProxy];
 }
 
 _QuickServiceMode _quickServiceModeOf(NetworkSettings settings) {

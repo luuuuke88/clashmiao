@@ -826,18 +826,36 @@ final connectionControllerProvider =
       // 必须 reconnect 才生效——之前要求用户手动断开重连，跟设置页
       // "改完即生效"的预期不符。listen 放 provider 体内（StateNotifier 内部
       // 拿不到 ref.listen），连接中才触发，未连接时改设置无副作用。
+      // 防抖：把一串密集的设置变更合并成**一次**重连 + 一条提示。
+      //
+      // 不防抖的话，`NetworkSettingsNotifier.importJson`（剪贴板导入配置）会
+      // 逐字段 `await setter(...)`，一份完整导出有约 30 个字段，就是 30 次
+      // 状态变更 → 30 次 reconnect() 互相踩踏 + 30 条 toast 连响。滑杆拖动
+      // 同理（每动一格触发一次重连）。
+      //
+      // 副作用是单次改设置要多等一个防抖窗口才重连，但 400ms 用户无感，
+      // 而且"等用户改完再重连"本来就比"边改边重连"更合理。
+      Timer? settingsDebounce;
+      ref.onDispose(() => settingsDebounce?.cancel());
       ref.listen(networkSettingsProvider, (prev, next) {
         if (prev == null || identical(prev, next)) return;
-        if (controller.isStarted) {
+        if (!controller.isStarted) return;
+        settingsDebounce?.cancel();
+        settingsDebounce = Timer(kConfigChangeReconnectDebounce, () {
+          // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
+          if (!controller.isStarted) return;
           // 静默重连之前完全没有提示，用户容易把这次自动重连误当成网络抖动。
           // 递增这个 nonce 让 UI（HomePage）能感知到"这次重连是配置变更触发
           // 的"，从而弹一条轻提示，而不是阻断式弹窗。
           ref.read(configChangeReconnectNoticeProvider.notifier).state++;
           unawaited(controller.reconnect());
-        }
+        });
       });
       return controller;
     });
+
+/// 配置变更触发自动重连前的防抖窗口，见 [connectionControllerProvider] 里的用法。
+const kConfigChangeReconnectDebounce = Duration(milliseconds: 400);
 
 /// 最近一次 connect/reconnect 失败的错误信息（人类可读 string）。
 ///

@@ -89,13 +89,20 @@ Map<String, dynamic> getDefaultConfigOptions({
     // "DNS 路由"设置连带把智能分流的直连规则也一起废掉。
     'enable-dns-routing': isSmart || s.enableDnsRouting,
     'independent-dns-cache': s.independentDnsCache,
+    // 智能分流的全部数据都在这里注入。内核在 region:"other" 下不支持任何
+    // rule-set，所以只能走明文列表——数据来源和反编译方式见
+    // `cn_direct_rules.dart` 的文件头。
+    //
+    // 前缀是内核 makeDomainRule() 认的语法：`full:` 进 Domain（精确匹配），
+    // `domain:` 进 DomainSuffix（后缀匹配）。两者语义不同，不能混用。
     'rules': isSmart
         ? <Map<String, dynamic>>[
             {'ip': cnDirectCidrRanges.join(','), 'outbound': 'bypass'},
             {
-              'domains': cnDirectDomainSuffixes
-                  .map((d) => 'domain:$d')
-                  .join(','),
+              'domains': [
+                ...cnDirectDomains.map((d) => 'full:$d'),
+                ...cnDirectDomainSuffixes.map((d) => 'domain:$d'),
+              ].join(','),
               'outbound': 'bypass',
             },
           ]

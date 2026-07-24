@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
@@ -6,7 +7,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-const _repoSlug = String.fromEnvironment('GITHUB_REPO_SLUG');
+/// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+const _repoSlug = githubRepoSlug;
 const _disabled = bool.fromEnvironment('CLASHMIAO_DISABLE_UPDATE_CHECK');
 const _checkIntervalMs = 24 * 60 * 60 * 1000;
 const _lastCheckKey = 'update_last_check_ms';

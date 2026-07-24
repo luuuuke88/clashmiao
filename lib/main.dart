@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/app/app.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/rule_set_provisioner.dart';
@@ -26,7 +27,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
-const _sentryDsn = String.fromEnvironment('SENTRY_DSN');
+/// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+const _sentryDsn = sentryDsn;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

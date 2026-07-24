@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -203,7 +204,7 @@ typedef FatalAlertReporter = void Function(BoxAlert alert);
 /// [ConnectionController._shouldReportAnalytics] 完成，这里不重复读取。
 final fatalAlertReporterProvider = Provider<FatalAlertReporter>((ref) {
   return (alert) {
-    const dsn = String.fromEnvironment('SENTRY_DSN');
+    const dsn = sentryDsn;
     if (dsn.isEmpty) return;
     unawaited(
       Sentry.captureMessage(

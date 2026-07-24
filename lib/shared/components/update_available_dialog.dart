@@ -2,6 +2,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,10 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// 更新下载页外链——跟关于页"源代码"入口用的是同一个 dart-define
 /// （`GITHUB_REPO_URL`），没有配置真实地址时兜底跳去项目主页，逻辑跟
 /// `about_page.dart` 里的 `_tryLaunch` 完全一致，这里不重新发明一套。
-const kUpdateDownloadUrl = String.fromEnvironment(
-  'GITHUB_REPO_URL',
-  defaultValue: 'https://github.com/clashmiao/clashmiao-client',
-);
+const kUpdateDownloadUrl = githubRepoUrl;
 
 /// 「发现新版本」弹窗：只在 `UpdateChecker.checkOnce` 确认存在新版本时展示。
 ///

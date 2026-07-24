@@ -25,7 +25,7 @@
 //
 // srs.Read(reader, recovery=true)：recovery 为 true 时内核 common/srs/binary.go
 // 会对域名规则调用 matcher.Dump()，把 succinct trie 还原成 Domain/DomainSuffix
-// 两个字符串列表——域名数据是能导出的。工具源码见 core/sing-box/cmd/srsdump。
+// 两个字符串列表——域名数据是能导出的。工具源码与用法见 tools/srsdump/。
 //
 //   docker run --rm -v "$PWD/core/sing-box:/src" \
 //     -v "$PWD/assets/rule-sets:/geo:ro" -v "$PWD/out:/out" \

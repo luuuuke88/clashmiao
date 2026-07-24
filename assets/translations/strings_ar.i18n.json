@@ -273,7 +273,8 @@
       "debugModeMsg": "أعد تشغيل التطبيق لتطبيق هذا التغيير",
       "memoryLimit": "حد الذاكرة",
       "memoryLimitMsg": "قم بتمكين هذه الميزة إذا كنت تواجه أخطاء «عدم كفاية الذاكرة» أو تعطل التطبيق بشكل متكرر",
-      "resetTunnel": "إعادة تعيين ملف تعريف VPN"
+      "resetTunnel": "إعادة تعيين ملف تعريف VPN",
+      "resetTunnelSuccess": "تمت إعادة تعيين ملف VPN"
     },
     "network": {
       "perAppProxyPageTitle": "الوكيل لكل تطبيق",

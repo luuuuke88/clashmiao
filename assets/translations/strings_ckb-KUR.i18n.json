@@ -273,7 +273,8 @@
       "debugModeMsg": "بۆ جێبەجێکردنی ئەم گۆڕانکارییە ئەپەکە دووبارە دابمەزرێنەرەوە",
       "memoryLimit": "سنووری بیرگه‌",
       "memoryLimitMsg": "ئەگەر تووشی هەڵەی دەرەوەی بیرگە یان زۆرجار تێکچوونی ئەپەکە بوویت چالاکی بکە",
-      "resetTunnel": "ڕێستکردنی پڕۆفایلی VPN"
+      "resetTunnel": "ڕێستکردنی پڕۆفایلی VPN",
+      "resetTunnelSuccess": "پەڕگەی VPN ڕێکخرایەوە"
     },
     "network": {
       "perAppProxyPageTitle": "پرۆکسی بۆ هەر ئەپێک",

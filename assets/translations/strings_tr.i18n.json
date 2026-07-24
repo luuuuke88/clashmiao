@@ -269,7 +269,8 @@
       "debugModeMsg": "Bu değişikliği uygulamak için uygulamayı yeniden başlatın",
       "memoryLimit": "Bellek Sınırı",
       "memoryLimitMsg": "Yetersiz bellek hataları veya sık sık uygulama çökmesi yaşıyorsanız etkinleştirin",
-      "resetTunnel": "VPN Profilini Sıfırla"
+      "resetTunnel": "VPN Profilini Sıfırla",
+      "resetTunnelSuccess": "VPN profili sıfırlandı"
     },
     "network": {
       "perAppProxyPageTitle": "Uygulama başına Proxy",

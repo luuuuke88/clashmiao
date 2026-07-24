@@ -273,7 +273,8 @@
       "debugModeMsg": "Restart the app for applying this change",
       "memoryLimit": "Memory Limit",
       "memoryLimitMsg": "Enable if you're experiencing out of memory errors or frequent app crash",
-      "resetTunnel": "Reset VPN Profile"
+      "resetTunnel": "Reset VPN Profile",
+      "resetTunnelSuccess": "VPN profile reset"
     },
     "network": {
       "perAppProxyPageTitle": "Per-App Line Mode",

@@ -3,6 +3,7 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/about/widget/about_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -11,7 +12,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
-Future<Widget> _host() async {
+Future<Widget> _host({List<Override> extraOverrides = const []}) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
     appName: 'ClashMiao',
@@ -25,6 +26,7 @@ Future<Widget> _host() async {
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
+      ...extraOverrides,
     ],
   );
   await container.read(sharedPreferencesProvider.future);
@@ -101,5 +103,64 @@ void main() {
       hasTelegramChannel ? findsOneWidget : findsNothing,
     );
     expect(find.text('隐私政策'), hasPrivacyPolicy ? findsOneWidget : findsNothing);
+  });
+
+  // 「检查更新」的点击交互此前零测试覆盖（parity 追踪表里记为 Important
+  // backlog）。两条分支都要锁：没有新版本时给一条"已是最新"轻提示，
+  // 有新版本时弹更新对话框——后者是这个功能存在的意义，不能只测到
+  // "点了不崩溃"。
+  group('检查更新的点击交互', () {
+    testWidgets('没有新版本时提示"已是最新"，不弹对话框', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        await _host(
+          extraOverrides: [
+            updateAvailableProvider.overrideWith((_) async => null),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('检查更新'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('已是最新版本'), findsOneWidget);
+      expect(find.text('现在更新'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 6));
+      toastification.dismissAll(delayForAnimation: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
+    testWidgets('有新版本时弹出更新对话框（带版本号对比）', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        await _host(
+          extraOverrides: [
+            updateAvailableProvider.overrideWith((_) async => 'v9.9.9'),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('检查更新'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('现在更新'), findsOneWidget);
+      // 当前版本来自 _host 里 mock 的 PackageInfo(1.2.3)，新版本去掉 v 前缀
+      expect(find.textContaining('9.9.9'), findsWidgets);
+
+      // 关掉对话框，别把它留给后面的用例
+      await tester.tap(find.text('以后再说'));
+      await tester.pumpAndSettle();
+    });
   });
 }

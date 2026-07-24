@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
+import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -91,6 +92,9 @@ Future<Widget> _host(ProfileEntity profile) async {
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   await container.read(activeProfileProvider.future);
   return UncontrolledProviderScope(
@@ -131,6 +135,9 @@ Future<(Widget, ProviderContainer)> _hostWithContainer(
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   await container.read(activeProfileProvider.future);
   final widget = UncontrolledProviderScope(
@@ -171,6 +178,9 @@ Future<Widget> _hostWithProfiles({
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   await container.read(activeProfileProvider.future);
   await container.read(profileListProvider.future);
@@ -201,6 +211,9 @@ Future<Widget> _hostConnectionInfo({
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   return UncontrolledProviderScope(
     container: container,
@@ -225,6 +238,9 @@ Future<Widget> _hostFooterStats({required Dio dio}) async {
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   return UncontrolledProviderScope(
     container: container,
@@ -272,6 +288,9 @@ Future<(Widget, ProviderContainer)> _hostForEgressRace({
       ),
     ],
   );
+  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+  addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
   await container.read(activeProfileProvider.future);
   final widget = UncontrolledProviderScope(
@@ -687,6 +706,9 @@ void main() {
           ),
         ],
       );
+      // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
+      // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
+      addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
       await container.read(activeProfileProvider.future);
       return UncontrolledProviderScope(
@@ -729,4 +751,92 @@ void main() {
       );
     });
   });
+
+  // ===========================================================
+  // "已连接但实际不通"（黑洞）此前在界面上完全没有反馈：内核报 BoxStarted
+  // 之后 UI 就一直显示已连接，哪怕整机流量早已被黑洞掉。
+  // ===========================================================
+  group('黑洞告警条', () {
+    Future<Widget> hostWithHealth(ConnectionHealth health) async {
+      SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+      PackageInfo.setMockInitialValues(
+        appName: 'ClashMiao',
+        packageName: 'com.clashmiao.app',
+        version: '1.2.3',
+        buildNumber: '45',
+        buildSignature: '',
+      );
+      final prefs = await SharedPreferences.getInstance();
+      const profile = ProfileEntity(
+        id: 'health-profile',
+        name: '健康度测试',
+        url: 'https://example.com/sub',
+        active: true,
+      );
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
+          activeProfileProvider.overrideWith((_) => Future.value(profile)),
+          outboundGroupsProvider.overrideWith(
+            (_) => Stream<List<OutboundGroup>>.value(const []),
+          ),
+          connectionHealthProvider.overrideWith(
+            (ref) => _FixedHealthMonitor(ref, health),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      return UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const HomePage(),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('degraded 时明确告诉用户"已连接但无法访问网络"', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(await hostWithHealth(ConnectionHealth.degraded));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('已连接，但无法访问网络'), findsOneWidget);
+      expect(find.text('重新检测'), findsOneWidget);
+    });
+
+    testWidgets('healthy 时不显示告警条（不能误报）', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(await hostWithHealth(ConnectionHealth.healthy));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('已连接，但无法访问网络'), findsNothing);
+    });
+  });
+}
+
+/// 把健康度钉死在某个值的 monitor，让 widget 测试能独立验证渲染，
+/// 不用去真的跑一遍探测流程（探测逻辑本身由
+/// `test/core/health/connection_health_monitor_test.dart` 覆盖）。
+class _FixedHealthMonitor extends ConnectionHealthMonitor {
+  _FixedHealthMonitor(super.ref, ConnectionHealth health) {
+    state = health;
+  }
+
+  @override
+  void start() {} // 不起定时器：渲染一个 widget 不该启动后台任务
 }

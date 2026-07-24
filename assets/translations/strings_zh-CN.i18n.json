@@ -41,7 +41,10 @@
     "failedToSwitchMode": "切换模式失败: ${error}",
     "connectionFailedTitle": "连接失败",
     "coreMissingTitle": "未找到核心库",
-    "coreMissingMsg": "应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。"
+    "coreMissingMsg": "应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。",
+    "degradedTitle": "已连接，但无法访问网络",
+    "degradedMsg": "隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。",
+    "degradedRetry": "重新检测"
   },
   "stats": {
     "traffic": "流量",

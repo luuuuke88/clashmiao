@@ -8,6 +8,7 @@ import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
+import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/quick_settings_modal.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
@@ -224,6 +225,7 @@ class HomePage extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 24),
                                   _ConnectionInfo(status: status),
+                                  const _DegradedConnectionNotice(),
                                   const SizedBox(height: 24),
                                   _ModeSelector(aiUi: aiUi),
                                   const Spacer(flex: 6),
@@ -1109,6 +1111,88 @@ class _SegmentTab extends StatelessWidget {
                 : theme.aiUi.secondaryTextColor,
           ),
           child: Text(text),
+        ),
+      ),
+    );
+  }
+}
+
+/// "已连接但实际不通"（黑洞）的告警条。
+///
+/// 这是这个 App 此前完全缺失的一层反馈：内核报 `BoxStarted` 之后 UI 就一直
+/// 显示"已连接"，哪怕真实 egress 早已不通、整机流量被黑洞掉，用户看到的还是
+/// "VPN 连着呢"。判定逻辑见 [ConnectionHealthMonitor]。
+///
+/// 这里只提示、不自动断开——误杀一条健康连接比让用户自己决定要糟糕得多，
+/// 理由详见 [ConnectionHealthMonitor] 的类文档。
+class _DegradedConnectionNotice extends ConsumerWidget {
+  const _DegradedConnectionNotice();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(connectionHealthProvider);
+    if (health != ConnectionHealth.degraded) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final t = ref.watch(translationsProvider);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: theme.colorScheme.errorContainer.withValues(alpha: 0.35),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: theme.colorScheme.error.withValues(alpha: 0.35),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              FluentIcons.warning_20_filled,
+              size: 20,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    t.home.degradedTitle,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.error,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    t.home.degradedMsg,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 32),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () => unawaited(
+                      ref.read(connectionHealthProvider.notifier).probeNow(),
+                    ),
+                    child: Text(t.home.degradedRetry),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );

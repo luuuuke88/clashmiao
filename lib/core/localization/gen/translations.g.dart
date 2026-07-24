@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3154 (315 per locale)
+/// Strings: 3156 (315 per locale)
 ///
-/// Built on 2026-07-24 at 19:00 UTC
+/// Built on 2026-07-24 at 19:07 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -543,6 +543,8 @@ class TranslationsConfigEn {
   String get warpNoiseSize => 'Noise Size';
   String get warpNoiseMode => 'Noise Mode';
   String get warpNoiseDelay => 'Noise Delay';
+  String get desktopProxyScopeNotice =>
+      'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
 }
 
 // Path: general.toggle
@@ -11680,6 +11682,9 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   String get warpNoise => '噪音计数';
   @override
   String get warpNoiseDelay => '噪音延延迟';
+  @override
+  String get desktopProxyScopeNotice =>
+      '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
 }
 
 // Path: general.toggle
@@ -14918,6 +14923,8 @@ extension on Translations {
         return 'Noise Mode';
       case 'config.warpNoiseDelay':
         return 'Noise Delay';
+      case 'config.desktopProxyScopeNotice':
+        return 'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
       default:
         return null;
     }
@@ -20048,6 +20055,8 @@ extension on TranslationsZhCn {
         return '噪音计数';
       case 'config.warpNoiseDelay':
         return '噪音延延迟';
+      case 'config.desktopProxyScopeNotice':
+        return '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
       default:
         return null;
     }

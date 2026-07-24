@@ -324,6 +324,21 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                 onSelected: (value) =>
                                     _setServiceMode(ref, context, t, value),
                               ),
+                              // 桌面端只做到"系统代理级接管"，不遵循系统代理
+                              // 的程序会直连、暴露真实 IP。这是当前架构的边界，
+                              // 作为 VPN 产品必须让用户知道，不能藏着。
+                              if (!Platform.isAndroid && !Platform.isIOS)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
+                                  ),
+                                  child: TipCard(
+                                    message: t.config.desktopProxyScopeNotice,
+                                  ),
+                                ),
                               _ConfigSwitchTile(
                                 title: t.config.strictRoute,
                                 value: settings.strictRoute,
@@ -451,11 +466,17 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
   }
 }
 
+/// 桌面端**没有** TUN 档：仓库里不带 wintun 驱动，macOS 的 entitlements 也只有
+/// `network.client/server`，既没有网络扩展权限、也没有特权 helper。选了 TUN
+/// 只会让内核起 tun 设备失败——给用户一个必定失败的选项，比不给这个选项糟糕。
+///
+/// 桌面因此只做到"系统代理级接管"，泄漏面（不遵循系统代理的程序会直连）
+/// 由 `t.config.desktopProxyScopeNotice` 明确告知，不藏着。
 List<_ServiceMode> get _serviceModeChoices {
   if (Platform.isIOS || Platform.isAndroid) {
     return const [_ServiceMode.proxy, _ServiceMode.tun];
   }
-  return _ServiceMode.values;
+  return const [_ServiceMode.proxy, _ServiceMode.systemProxy];
 }
 
 _ServiceMode _serviceModeOf(NetworkSettings settings) {

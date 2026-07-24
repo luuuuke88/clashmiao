@@ -273,7 +273,8 @@
       "debugModeMsg": "重新啟動應用程式以套用此變更",
       "memoryLimit": "記憶體限制",
       "memoryLimitMsg": "如果您遇到記憶體不足錯誤或頻繁應用程式崩潰，請啟用",
-      "resetTunnel": "重置 VPN 設定檔"
+      "resetTunnel": "重置 VPN 設定檔",
+      "resetTunnelSuccess": "VPN 設定檔已重設"
     },
     "network": {
       "perAppProxyPageTitle": "應用程式線路模式",

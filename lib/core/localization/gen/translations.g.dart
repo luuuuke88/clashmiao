@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3919 (391 per locale)
+/// Strings: 3929 (392 per locale)
 ///
-/// Built on 2026-07-24 at 19:34 UTC
+/// Built on 2026-07-24 at 21:03 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -857,6 +857,7 @@ class TranslationsSettingsAdvancedEn {
   String get memoryLimitMsg =>
       'Enable if you\'re experiencing out of memory errors or frequent app crash';
   String get resetTunnel => 'Reset VPN Profile';
+  String get resetTunnelSuccess => 'VPN profile reset';
 }
 
 // Path: settings.network
@@ -2384,6 +2385,8 @@ class TranslationsSettingsAdvancedAr extends TranslationsSettingsAdvancedEn {
       'قم بتمكين هذه الميزة إذا كنت تواجه أخطاء «عدم كفاية الذاكرة» أو تعطل التطبيق بشكل متكرر';
   @override
   String get resetTunnel => 'إعادة تعيين ملف تعريف VPN';
+  @override
+  String get resetTunnelSuccess => 'تمت إعادة تعيين ملف VPN';
 }
 
 // Path: settings.network
@@ -4099,6 +4102,8 @@ class TranslationsSettingsAdvancedEs extends TranslationsSettingsAdvancedEn {
       'Habilítelo si experimenta errores de falta de memoria o fallas frecuentes de la aplicación';
   @override
   String get resetTunnel => 'Restablecer perfil VPN';
+  @override
+  String get resetTunnelSuccess => 'Perfil VPN restablecido';
 }
 
 // Path: settings.network
@@ -5811,6 +5816,8 @@ class TranslationsSettingsAdvancedFa extends TranslationsSettingsAdvancedEn {
       'اگر با خطاهای کمبود حافظه یا خرابی مکرر برنامه مواجه می‌شوید، این گزینه را فعال کنید';
   @override
   String get resetTunnel => '‌بازنشانی پروفایل VPN';
+  @override
+  String get resetTunnelSuccess => 'پروفایل VPN بازنشانی شد';
 }
 
 // Path: settings.network
@@ -7515,6 +7522,8 @@ class TranslationsSettingsAdvancedId extends TranslationsSettingsAdvancedEn {
       'Aktifkan jika kamu mendapatkan error habis memori atau error aplikasi yang sering';
   @override
   String get resetTunnel => 'Set ulang profil VPN';
+  @override
+  String get resetTunnelSuccess => 'Profil VPN telah direset';
 }
 
 // Path: settings.network
@@ -9241,6 +9250,8 @@ class TranslationsSettingsAdvancedPtBr extends TranslationsSettingsAdvancedEn {
       'Ative se você estiver enfrentando erros de falta de memória ou travamentos frequentes do aplicativo';
   @override
   String get resetTunnel => 'Redefinir perfil VPN';
+  @override
+  String get resetTunnelSuccess => 'Perfil de VPN redefinido';
 }
 
 // Path: settings.network
@@ -10958,6 +10969,8 @@ class TranslationsSettingsAdvancedRu extends TranslationsSettingsAdvancedEn {
       'Включите, если у вас возникают ошибки нехватки памяти или частые сбои приложения.';
   @override
   String get resetTunnel => 'Сбросить профиль VPN';
+  @override
+  String get resetTunnelSuccess => 'Профиль VPN сброшен';
 }
 
 // Path: settings.network
@@ -12671,6 +12684,8 @@ class TranslationsSettingsAdvancedTr extends TranslationsSettingsAdvancedEn {
       'Yetersiz bellek hataları veya sık sık uygulama çökmesi yaşıyorsanız etkinleştirin';
   @override
   String get resetTunnel => 'VPN Profilini Sıfırla';
+  @override
+  String get resetTunnelSuccess => 'VPN profili sıfırlandı';
 }
 
 // Path: settings.network
@@ -14366,6 +14381,8 @@ class TranslationsSettingsAdvancedZhCn extends TranslationsSettingsAdvancedEn {
   String get memoryLimitMsg => '如果您遇到内存不足错误或频繁应用程序崩溃，请启用';
   @override
   String get resetTunnel => '重置 VPN 配置文件';
+  @override
+  String get resetTunnelSuccess => 'VPN 配置文件已重置';
 }
 
 // Path: settings.network
@@ -16062,6 +16079,8 @@ class TranslationsSettingsAdvancedZhTw extends TranslationsSettingsAdvancedEn {
   String get memoryLimitMsg => '如果您遇到記憶體不足錯誤或頻繁應用程式崩潰，請啟用';
   @override
   String get resetTunnel => '重置 VPN 設定檔';
+  @override
+  String get resetTunnelSuccess => 'VPN 設定檔已重設';
 }
 
 // Path: settings.network
@@ -16982,6 +17001,8 @@ extension on Translations {
         return 'Enable if you\'re experiencing out of memory errors or frequent app crash';
       case 'settings.advanced.resetTunnel':
         return 'Reset VPN Profile';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'VPN profile reset';
       case 'settings.network.perAppProxyPageTitle':
         return 'Per-App Line Mode';
       case 'settings.network.perAppProxyModes.off':
@@ -17795,6 +17816,8 @@ extension on TranslationsAr {
         return 'قم بتمكين هذه الميزة إذا كنت تواجه أخطاء «عدم كفاية الذاكرة» أو تعطل التطبيق بشكل متكرر';
       case 'settings.advanced.resetTunnel':
         return 'إعادة تعيين ملف تعريف VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'تمت إعادة تعيين ملف VPN';
       case 'settings.network.perAppProxyPageTitle':
         return 'الوكيل لكل تطبيق';
       case 'settings.network.perAppProxyModes.off':
@@ -18584,6 +18607,8 @@ extension on TranslationsEs {
         return 'Habilítelo si experimenta errores de falta de memoria o fallas frecuentes de la aplicación';
       case 'settings.advanced.resetTunnel':
         return 'Restablecer perfil VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'Perfil VPN restablecido';
       case 'settings.network.perAppProxyPageTitle':
         return 'Proxy por aplicación';
       case 'settings.network.perAppProxyModes.off':
@@ -19428,6 +19453,8 @@ extension on TranslationsFa {
         return 'اگر با خطاهای کمبود حافظه یا خرابی مکرر برنامه مواجه می‌شوید، این گزینه را فعال کنید';
       case 'settings.advanced.resetTunnel':
         return '‌بازنشانی پروفایل VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'پروفایل VPN بازنشانی شد';
       case 'settings.network.perAppProxyPageTitle':
         return 'پروکسی براساس برنامه';
       case 'settings.network.perAppProxyModes.off':
@@ -20235,6 +20262,8 @@ extension on TranslationsId {
         return 'Aktifkan jika kamu mendapatkan error habis memori atau error aplikasi yang sering';
       case 'settings.advanced.resetTunnel':
         return 'Set ulang profil VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'Profil VPN telah direset';
       case 'settings.network.perAppProxyPageTitle':
         return 'Per-app Proxy';
       case 'settings.network.perAppProxyModes.off':
@@ -21051,6 +21080,8 @@ extension on TranslationsPtBr {
         return 'Ative se você estiver enfrentando erros de falta de memória ou travamentos frequentes do aplicativo';
       case 'settings.advanced.resetTunnel':
         return 'Redefinir perfil VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'Perfil de VPN redefinido';
       case 'settings.network.perAppProxyPageTitle':
         return 'Proxy por aplicativo';
       case 'settings.network.perAppProxyModes.off':
@@ -21869,6 +21900,8 @@ extension on TranslationsRu {
         return 'Включите, если у вас возникают ошибки нехватки памяти или частые сбои приложения.';
       case 'settings.advanced.resetTunnel':
         return 'Сбросить профиль VPN';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'Профиль VPN сброшен';
       case 'settings.network.perAppProxyPageTitle':
         return 'Раздельное проксирование';
       case 'settings.network.perAppProxyModes.off':
@@ -22681,6 +22714,8 @@ extension on TranslationsTr {
         return 'Yetersiz bellek hataları veya sık sık uygulama çökmesi yaşıyorsanız etkinleştirin';
       case 'settings.advanced.resetTunnel':
         return 'VPN Profilini Sıfırla';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'VPN profili sıfırlandı';
       case 'settings.network.perAppProxyPageTitle':
         return 'Uygulama başına Proxy';
       case 'settings.network.perAppProxyModes.off':
@@ -23502,6 +23537,8 @@ extension on TranslationsZhCn {
         return '如果您遇到内存不足错误或频繁应用程序崩溃，请启用';
       case 'settings.advanced.resetTunnel':
         return '重置 VPN 配置文件';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'VPN 配置文件已重置';
       case 'settings.network.perAppProxyPageTitle':
         return '分应用线路';
       case 'settings.network.perAppProxyModes.off':
@@ -24314,6 +24351,8 @@ extension on TranslationsZhTw {
         return '如果您遇到記憶體不足錯誤或頻繁應用程式崩潰，請啟用';
       case 'settings.advanced.resetTunnel':
         return '重置 VPN 設定檔';
+      case 'settings.advanced.resetTunnelSuccess':
+        return 'VPN 設定檔已重設';
       case 'settings.network.perAppProxyPageTitle':
         return '應用程式線路模式';
       case 'settings.network.perAppProxyModes.off':

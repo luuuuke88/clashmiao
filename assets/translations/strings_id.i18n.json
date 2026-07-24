@@ -269,7 +269,8 @@
       "debugModeMsg": "Restart aplikasi untuk menerapkan perubahan",
       "memoryLimit": "Limit Memori",
       "memoryLimitMsg": "Aktifkan jika kamu mendapatkan error habis memori atau error aplikasi yang sering",
-      "resetTunnel": "Set ulang profil VPN"
+      "resetTunnel": "Set ulang profil VPN",
+      "resetTunnelSuccess": "Profil VPN telah direset"
     },
     "network": {
       "perAppProxyPageTitle": "Per-app Proxy",

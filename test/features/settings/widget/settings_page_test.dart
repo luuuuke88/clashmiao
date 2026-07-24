@@ -268,7 +268,9 @@ void main() {
       expect(find.text('重置 VPN 配置文件'), findsNothing);
     });
 
-    testWidgets('点击重置 VPN 配置文件入口调用 boxService.resetTunnel()', (tester) async {
+    testWidgets('点击重置 VPN 配置文件入口调用 boxService.resetTunnel() 并提示成功', (
+      tester,
+    ) async {
       final spy = _ResetTunnelSpyBoxService();
       await tester.pumpWidget(await _host(debugIsIOS: true, boxService: spy));
       await tester.pump(const Duration(milliseconds: 200));
@@ -277,6 +279,15 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(spy.resetTunnelCalls, 1);
+      // 成功也必须给反馈：重置是瞬时的，页面上没有任何可见状态跟着变，
+      // 只在失败时提示的话，用户点完看到的就是"什么都没发生"，无法区分
+      // "成功了"和"这个按钮是坏的"。
+      expect(find.text('VPN 配置文件已重置'), findsOneWidget);
+
+      // 收尾：drain toast 的 auto-close timer，否则会污染后面的用例。
+      await tester.pump(const Duration(seconds: 6));
+      toastification.dismissAll(delayForAnimation: false);
+      await tester.pump(const Duration(milliseconds: 500));
     });
 
     testWidgets('重置 VPN 配置文件失败时展示错误提示，而不是静默吞掉', (tester) async {

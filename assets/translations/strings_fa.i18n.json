@@ -273,7 +273,8 @@
       "debugModeMsg": "برنامه را برای اعمال این تغییر دوباره راه‌اندازی کنید",
       "memoryLimit": "محدودیت حافظه",
       "memoryLimitMsg": "اگر با خطاهای کمبود حافظه یا خرابی مکرر برنامه مواجه می‌شوید، این گزینه را فعال کنید",
-      "resetTunnel": "‌بازنشانی پروفایل VPN"
+      "resetTunnel": "‌بازنشانی پروفایل VPN",
+      "resetTunnelSuccess": "پروفایل VPN بازنشانی شد"
     },
     "network": {
       "perAppProxyPageTitle": "پروکسی براساس برنامه",

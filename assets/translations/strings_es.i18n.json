@@ -257,7 +257,8 @@
       "debugModeMsg": "Reinicie la aplicación para aplicar este cambio.",
       "memoryLimit": "Limite de memoria",
       "memoryLimitMsg": "Habilítelo si experimenta errores de falta de memoria o fallas frecuentes de la aplicación",
-      "resetTunnel": "Restablecer perfil VPN"
+      "resetTunnel": "Restablecer perfil VPN",
+      "resetTunnelSuccess": "Perfil VPN restablecido"
     },
     "network": {
       "perAppProxyPageTitle": "Proxy por aplicación",

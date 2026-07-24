@@ -316,10 +316,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   /// iOS 专用：强制重置隧道（取消用户主动断开标记，触发重连）。
-  /// 后端 `resetTunnel` 早已接好（[BoxService.resetTunnel] /
-  /// `platform_box_service.dart`），此前没有任何页面提供入口。跟其它设置项
-  /// 的即时反馈不同，这里没有持久化状态可展示，失败时用 toast 报错，避免
-  /// 静默吞掉——成功与否用户自己能感知到隧道是否恢复，不需要额外的成功提示。
+  ///
+  /// 成功也要给 toast。这里原本只在失败时提示，理由是"成功与否用户自己能
+  /// 感知到隧道是否恢复"——但这个理由站不住：重置是瞬时的，设置页上没有任何
+  /// 可见状态跟着变，用户点完看到的就是**什么都没发生**，无法区分"成功了"
+  /// 和"这个按钮是坏的"。项目其它地方的一次性动作（导出、复制、生成 WARP
+  /// 配置）成功时都有 toast，这里不该例外。
   Future<void> _resetTunnel(
     BuildContext context,
     WidgetRef ref,
@@ -327,6 +329,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   ) async {
     try {
       await ref.read(boxServiceProvider).resetTunnel();
+      if (context.mounted) {
+        AppToast.success(context, t.settings.advanced.resetTunnelSuccess);
+      }
     } catch (e) {
       if (context.mounted) {
         AppToast.error(context, '${t.failure.unexpected}: $e');

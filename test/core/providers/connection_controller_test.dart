@@ -747,7 +747,10 @@ void main() {
       await container
           .read(networkSettingsProvider.notifier)
           .setMixedPort(23456);
-      await Future<void>.delayed(Duration.zero);
+      // 现在有防抖窗口（见 kConfigChangeReconnectDebounce），要等它过去
+      await Future<void>.delayed(
+        kConfigChangeReconnectDebounce + const Duration(milliseconds: 100),
+      );
 
       final after = container.read(configChangeReconnectNoticeProvider);
       expect(
@@ -760,6 +763,116 @@ void main() {
       );
 
       container.dispose();
+    });
+
+    // 剪贴板导入配置（NetworkSettingsNotifier.importJson）是逐字段
+    // `await setter(...)` 应用的，一份完整导出约 30 个字段。没有防抖的话
+    // 就是 30 次状态变更 → 30 次 reconnect() 互相踩踏 + 30 条 toast 连响。
+    // 滑杆拖动同理（每动一格触发一次）。
+    test('密集的连续设置变更只合并成一次重连 + 一条提示', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      // 种一个可用订阅，否则 reconnect() 会在前置校验就早返回，
+      // restartCalls 永远是 0，测试会因为"根本没走到"而假通过。
+      const profileId = 'debounce-profile';
+      await repo.upsert({
+        'id': profileId,
+        'name': '防抖测试',
+        'url': 'https://example.com/sub',
+      });
+      await repo.setActive(profileId);
+      final configFile = File(repo.configFilePath(profileId));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString(
+        jsonEncode({
+          'outbounds': [
+            {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+          ],
+        }),
+      );
+
+      container.read(connectionControllerProvider.notifier);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      final noticeBefore = container.read(configChangeReconnectNoticeProvider);
+      final restartsBefore = spy.restartCalls;
+
+      // 模拟批量导入：连着改 6 项设置，间隔远小于防抖窗口
+      final settings = container.read(networkSettingsProvider.notifier);
+      await settings.setMixedPort(23456);
+      await settings.setStrictRoute(true);
+      await settings.setEnableTlsFragment(true);
+      await settings.setIndependentDnsCache(false);
+      await settings.setMtu(1400);
+      await settings.setClashApiPort(19001);
+
+      await Future<void>.delayed(
+        kConfigChangeReconnectDebounce + const Duration(milliseconds: 300),
+      );
+
+      expect(
+        container.read(configChangeReconnectNoticeProvider) - noticeBefore,
+        1,
+        reason: '6 次密集变更只该弹一条提示，不是 6 条连响',
+      );
+      expect(
+        spy.restartCalls - restartsBefore,
+        1,
+        reason: '6 次密集变更只该重连一次——多次并发 reconnect 会互相踩踏',
+      );
+    });
+
+    test('防抖窗口内用户断开连接 → 不把连接顶回去', () async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(profileRepositoryProvider.future);
+      container.read(connectionControllerProvider.notifier);
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      final restartsBefore = spy.restartCalls;
+      await container.read(networkSettingsProvider.notifier).setMtu(1400);
+      // 防抖还没到点就断开
+      spy.statusStreamController.add(const BoxStopped());
+      await Future<void>.delayed(
+        kConfigChangeReconnectDebounce + const Duration(milliseconds: 300),
+      );
+
+      expect(
+        spy.restartCalls,
+        restartsBefore,
+        reason: '用户已经断开了，延迟触发的重连不该把连接顶回去',
+      );
     });
 
     test('未连接时网络设置变更 → 不触发重连通知（保持既有"未连接时改设置无副作用"行为）', () async {

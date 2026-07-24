@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -436,9 +437,9 @@ class _SubscriptionStatusCard extends ConsumerWidget {
     final t = ref.watch(translationsProvider);
     final subInfo = profile.subInfo!;
     final expire = subInfo.expire;
-    final expireText = expire == null || expire.year > 2099
-        ? t.profile.details.unlimited
-        : '${expire.year}年 ${expire.month}月${expire.day}号';
+    // 展示形态跟首页/列表不同（这里给绝对日期，那边给剩余天数），但"什么算
+    // 无限期"共用同一条规则——见 formatters.dart 的 isEffectivelyUnlimited。
+    final expireText = formatExpireAbsolute(expire, t);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),

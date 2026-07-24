@@ -240,21 +240,27 @@ class _State extends ConsumerState<OnboardingPage> {
                               .update(value),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text.rich(
-                          t.intro.termsAndPolicyCaution(
-                            tap: (text) => TextSpan(
-                              text: text,
-                              style: const TextStyle(color: Colors.blue),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = _openTerms,
+                      // 没配置条款链接时整行不显示。显示一个点了没反应的死链已经
+                      // 够糟，而"继续即表示您同意条款"这句话在拿不出条款文档的
+                      // 情况下更是不该说——那不是缺个链接，是在声称一份不存在的
+                      // 协议已经生效。构建期怎么注入见 core/config/build_config.dart。
+                      if (hasTermsAndConditions) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Text.rich(
+                            t.intro.termsAndPolicyCaution(
+                              tap: (text) => TextSpan(
+                                text: text,
+                                style: const TextStyle(color: Colors.blue),
+                                recognizer: TapGestureRecognizer()
+                                  ..onTap = _openTerms,
+                              ),
                             ),
+                            style: theme.textTheme.bodySmall,
                           ),
-                          style: theme.textTheme.bodySmall,
                         ),
-                      ),
+                      ],
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,

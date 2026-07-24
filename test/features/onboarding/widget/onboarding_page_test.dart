@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/region/region_detection_service.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -65,7 +66,11 @@ void main() {
       expect(find.text('语言'), findsOneWidget);
       expect(find.text('地区'), findsOneWidget);
       expect(find.text('启用分析'), findsOneWidget);
-      expect(find.textContaining('继续即表示您同意'), findsOneWidget);
+      // 条款那一行只在真的配置了链接时才渲染，见下方专门的用例。
+      expect(
+        find.textContaining('继续即表示您同意'),
+        hasTermsAndConditions ? findsOneWidget : findsNothing,
+      );
       expect(find.text('开始'), findsOneWidget);
       expect(find.text('代理模式'), findsNothing);
       expect(find.text('添加订阅'), findsNothing);
@@ -242,6 +247,27 @@ void main() {
 
       expect(prefs.getString('clashmiao_region'), 'cn');
       expect(prefs.getBool('clashmiao_region_manually_set'), isTrue);
+    });
+
+    // 模拟器 E2E 时发现的：没配置条款链接时，这一行仍然渲染，点了没反应。
+    // 比死链更糟的是这句话本身——在拿不出条款文档的情况下声称"继续即表示
+    // 您同意条款"，那不是缺个链接，是在声称一份不存在的协议已经生效。
+    // 测试环境里 TERMS_AND_CONDITIONS_URL 天然为空，正好覆盖这条分支。
+    testWidgets('未配置条款链接时整行不显示（不声称一份不存在的协议）', (tester) async {
+      expect(
+        hasTermsAndConditions,
+        isFalse,
+        reason: '前置条件：测试环境不该注入这个 dart-define，否则断言没有意义',
+      );
+
+      final (widget, _) = await _host();
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('条款'), findsNothing);
+      // 其余引导项必须照常在，确认不是整页没渲染
+      expect(find.text('语言'), findsOneWidget);
+      expect(find.text('开始'), findsOneWidget);
     });
   });
 }

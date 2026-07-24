@@ -114,6 +114,11 @@ class MethodBridge(
 
     override fun onDetachedFromActivity() {
         activity = null
+        // Activity 没了，onActivityResult 不会再来。不在这里回复的话，Dart 侧
+        // 那个 Future 永远挂着，而且单槽被永久占住、后续请求全被挡在
+        // "已有请求在飞" 分支上。
+        pendingBatteryResult?.success(false)
+        pendingBatteryResult = null
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
@@ -187,12 +192,38 @@ class MethodBridge(
             result.success(true)
             return
         }
+
+        // pendingBatteryResult 是单槽不是队列：直接覆盖会让前一次请求的 Dart
+        // Future **永远不会完成**（onActivityResult 只会回复最后写进去的那个）。
+        // 系统同时也只可能有一个电池豁免弹窗，所以重复请求直接回 false——
+        // "这一次调用没有拿到豁免"是诚实的答案，而且不影响仍在飞行的那次。
+        if (pendingBatteryResult != null) {
+            result.success(false)
+            return
+        }
+
+        // activity 为 null（App 在后台 / Activity 已解绑）时如果只存不启动，
+        // onActivityResult 永远不会来，Dart 侧同样永久挂起。必须当场回复。
+        val currentActivity = activity
+        if (currentActivity == null) {
+            result.success(false)
+            return
+        }
+
         val intent = Intent(
             android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
             Uri.parse("package:${Application.application.packageName}"),
         )
         pendingBatteryResult = result
-        activity?.startActivityForResult(intent, REQ_BATTERY_OPTIMIZATION)
+        try {
+            currentActivity.startActivityForResult(intent, REQ_BATTERY_OPTIMIZATION)
+        } catch (e: Exception) {
+            // 部分定制 ROM 没有这个 Settings Activity，startActivityForResult 会抛
+            // ActivityNotFoundException——不清空 pending 的话这个槽会被永久占住，
+            // 后续所有请求都会命中上面那个 "已有请求在飞" 的分支。
+            pendingBatteryResult = null
+            result.success(false)
+        }
     }
 
     @OptIn(DelicateCoroutinesApi::class)

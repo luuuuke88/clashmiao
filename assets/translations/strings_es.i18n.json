@@ -20,7 +20,11 @@
     "timeout": "Se acabó el tiempo",
     "showMore": "Mostrar más",
     "showLess": "Muestra menos",
-    "grantPermission": "Conceder permiso"
+    "grantPermission": "Conceder permiso",
+    "clipboardExportSuccessMsg": "Copiado al portapapeles",
+    "openAppSettings": "Abrir ajustes de la app",
+    "underDevelopment": "En desarrollo",
+    "confirm": "Confirmar"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "al continuar, aceptas ${tap(@:about.termsAndConditions)}",
@@ -29,7 +33,18 @@
   "home": {
     "pageTitle": "Hogar",
     "emptyProfilesMsg": "Comience agregando un perfil de suscripción",
-    "noActiveProfileMsg": "Elige un perfil"
+    "noActiveProfileMsg": "Elige un perfil",
+    "routingMode": {
+      "global": "Proxy global",
+      "smart": "Enrutamiento inteligente"
+    },
+    "failedToSwitchMode": "Error al cambiar de modo: ${error}",
+    "connectionFailedTitle": "Error de conexión",
+    "coreMissingTitle": "No se encontró la biblioteca del núcleo",
+    "coreMissingMsg": "La aplicación no pudo cargar su núcleo de red. La conexión no está disponible. Reinstala la aplicación o asegúrate de que el archivo de la biblioteca del núcleo esté junto al ejecutable.",
+    "degradedTitle": "Conectado, pero sin acceso a Internet",
+    "degradedMsg": "El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.",
+    "degradedRetry": "Comprobar de nuevo"
   },
   "profile": {
     "overviewPageTitle": "Perfiles",
@@ -43,7 +58,11 @@
       "remainingDuration": "${duration} días restantes",
       "remainingTrafficSemanticLabel": "${consumed} de ${total} Tráfico Consumido",
       "expired": "Caducado",
-      "noTraffic": "Fuera de cuota"
+      "noTraffic": "Fuera de cuota",
+      "upload": "Subida",
+      "download": "Descarga",
+      "total": "Tráfico total",
+      "expireDate": "Fecha de vencimiento"
     },
     "sortBy": {
       "lastUpdate": "Recientemente actualizado",
@@ -58,11 +77,17 @@
         "permissionDeniedError": "Permiso Denegado",
         "unexpectedError": "Algo salió mal",
         "torchSemanticLabel": "Linterna",
-        "facingSemanticLabel": "Frente a la cámara"
+        "facingSemanticLabel": "Frente a la cámara",
+        "permissionRequest": "Permiso de cámara para escanear el código QR"
       },
       "manually": "Entrada manual",
       "addingProfileMsg": "Agregar perfil",
-      "failureMsg": "No se pudo agregar el perfil"
+      "failureMsg": "No se pudo agregar el perfil",
+      "modalSubtitle": "Elige cómo añadir el archivo de configuración",
+      "manuallyDescription": "Introduce la configuración del servidor manualmente",
+      "addWarp": "Añadir WARP",
+      "warpDescription": "Aceleración gratuita con Cloudflare WARP",
+      "addingWarpMsg": "Espera mientras registramos WARP."
     },
     "update": {
       "buttonTxt": "Actualizar",
@@ -79,7 +104,11 @@
       "exportSubLinkToClipboard": "Exportar enlace de suscripción al portapapeles",
       "subLinkQrCode": "Código QR del enlace de suscripción",
       "exportConfigToClipboard": "Exportar configuración al portapapeles",
-      "exportConfigToClipboardSuccess": "Configuración copiada al portapapeles"
+      "exportConfigToClipboardSuccess": "Configuración copiada al portapapeles",
+      "shareLink": "Compartir enlace",
+      "subscriptionLinkCopied": "Enlace de suscripción copiado",
+      "configCopied": "Configuración copiada",
+      "copyFailed": "Error al copiar"
     },
     "edit": {
       "buttonTxt": "Editar",
@@ -109,7 +138,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "Añadir",
+      "updateAll": "Actualizar todo",
+      "sort": "Ordenar",
+      "copyConfigSuccess": "Configuración copiada",
+      "editConfig": "Editar configuración"
+    },
+    "details": {
+      "basicInfo": "Información básica",
+      "subscriptionStatus": "Estado de la suscripción",
+      "options": "Opciones",
+      "updateNow": "Actualizar ahora",
+      "updateNowDescription": "Obtener la configuración más reciente del servidor",
+      "expireDate": "Fecha de vencimiento",
+      "unlimited": "Ilimitado"
+    },
+    "overview": {
+      "currentlyUsing": "En uso",
+      "remainingDays": "Quedan ${days} días"
+    },
+    "remoteProfile": "Perfil remoto"
   },
   "proxies": {
     "pageTitle": "Proxies",
@@ -120,7 +170,31 @@
       "unsorted": "Por Defecto",
       "name": "Alfabéticamente",
       "delay": "Por retraso"
-    }
+    },
+    "checkIp": "Comprobar IP",
+    "unknownIp": "IP desconocida",
+    "autoSelect": "Selección automática",
+    "autoSelectDescription": "Conectar automáticamente al nodo más rápido",
+    "sortModalTitle": "Elige el método de ordenación",
+    "activeProxySemanticLabel": "Línea activa",
+    "delaySemantics": {
+      "result": "Latencia: ${delay} ms",
+      "timeout": "Tiempo de prueba de latencia agotado",
+      "testing": "Latencia: probando..."
+    },
+    "ipInfoSemantics": {
+      "address": "Dirección IP",
+      "country": "País"
+    },
+    "testingDelayInfo": "Probando latencia de: ${name}",
+    "switchedTo": "Cambiado a ${name}",
+    "switchToFailed": "Error al cambiar: ${error}",
+    "connectBeforeSwitch": "Conéctate antes de cambiar de línea",
+    "startDelayTestForGroups": "Prueba de latencia iniciada para ${count} líneas",
+    "delayTestBtn": "Latencia",
+    "lineCount": "${count} líneas",
+    "manualSelect": "Selección manual",
+    "autoTest": "Prueba automática"
   },
   "logs": {
     "pageTitle": "Registros",
@@ -130,7 +204,11 @@
     "shareAppLogs": "Compartir registros de aplicaciones",
     "pauseTooltip": "Pausa",
     "resumeTooltip": "reanudar",
-    "clearTooltip": "Claro"
+    "clearTooltip": "Claro",
+    "logsCleared": "Registros borrados",
+    "logsCopied": "Registros copiados",
+    "logsUnderDevelopment": "La función de registros está en desarrollo",
+    "noLogsWhenDisconnected": "Sin conexión, no hay registros"
   },
   "settings": {
     "pageTitle": "Ajustes",
@@ -164,7 +242,14 @@
       "openWorkingDir": "Abrir directorio de trabajo",
       "ignoreBatteryOptimizations": "Deshabilitar la optimización de la batería",
       "ignoreBatteryOptimizationsMsg": "Elimine las restricciones para un rendimiento VPN óptimo",
-      "dynamicNotification": "Mostrar velocidad en la notificación"
+      "dynamicNotification": "Mostrar velocidad en la notificación",
+      "hapticFeedback": "Respuesta háptica",
+      "autoIpCheck": "Comprobar automáticamente la IP de conexión",
+      "batteryOptimizationStatus": {
+        "exempted": "Exento",
+        "notExempted": "No exento",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "Avanzado",
@@ -186,7 +271,11 @@
       },
       "showSystemApps": "Mostrar aplicaciones del sistema",
       "hideSystemApps": "Ocultar aplicaciones del sistema",
-      "clearSelection": "Selección clara"
+      "clearSelection": "Selección clara",
+      "perAppProxyLoadFailedMsg": "Error al cargar la lista de aplicaciones",
+      "perAppProxyRetry": "Reintentar",
+      "perAppProxyEmptyMsg": "No se encontraron resultados",
+      "perAppProxyAndroidOnlyMsg": "El modo de línea por aplicación solo es compatible con Android"
     },
     "geoAssets": {
       "pageTitle": "Activos de enrutamiento",
@@ -200,7 +289,15 @@
       "successMsg": "Activo actualizado correctamente",
       "addRecommended": "Agregar activos recomendados",
       "missingGeoAssetsMsg": "Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes."
-    }
+    },
+    "exportOptions": "Copiar opciones anónimas al portapapeles",
+    "exportAllOptions": "Copiar todas las opciones al portapapeles",
+    "importOptions": "Importar opciones desde el portapapeles",
+    "importOptionsMsg": "Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?",
+    "systemProxyEnabled": "Proxy del sistema activado",
+    "systemProxyDisabled": "Proxy del sistema desactivado (reconecta para aplicar)",
+    "adminPrivilegesRequired": "Se requieren privilegios de administrador en macOS",
+    "portChangeNotice": "Los cambios de puerto requieren reconectar para aplicarse"
   },
   "about": {
     "pageTitle": "Acerca de",
@@ -209,7 +306,8 @@
     "telegramChannel": "Canal de telegramas",
     "checkForUpdate": "Buscar actualizaciones",
     "privacyPolicy": "Política de privacidad",
-    "termsAndConditions": "Términos y condiciones"
+    "termsAndConditions": "Términos y condiciones",
+    "appDescription": "Un cliente proxy multiplataforma basado en el núcleo sing-box"
   },
   "appUpdate": {
     "notAvailableMsg": "Ya estas usando la última versión.",
@@ -230,7 +328,8 @@
       "connecting": "Conectando",
       "disconnect": "Desconectado",
       "disconnecting": "Desconectando"
-    }
+    },
+    "hide": "Ocultar"
   },
   "failure": {
     "unexpected": "Error inesperado",
@@ -248,19 +347,23 @@
       "invalidConfigOptions": "Opciones de configuración no válidas",
       "invalidConfig": "Configuración no válida",
       "create": "Error de creación del servicio",
-      "start": "Error de inicio del servicio"
+      "start": "Error de inicio del servicio",
+      "coreLibraryMissing": "Biblioteca del núcleo no instalada",
+      "startTimeout": "Tiempo de inicio del servicio agotado"
     },
     "connectivity": {
       "unexpected": "Falla inesperada",
       "missingVpnPermission": "Permiso VPN faltante",
       "missingNotificationPermission": "Permiso de notificación faltante",
-      "core": "Error central"
+      "core": "Error central",
+      "networkUnavailable": "Red no disponible"
     },
     "profiles": {
       "unexpected": "Error Inesperado",
       "notFound": "Perfil no encontrado",
       "invalidConfig": "Configuracion Invalida",
-      "invalidUrl": "URL Invalido"
+      "invalidUrl": "URL Invalido",
+      "noActive": "Sin perfil activo"
     },
     "connection": {
       "unexpected": "Error de conexión inesperado",
@@ -287,7 +390,10 @@
     "connected": "Conectado",
     "experimentalNotice": "Funciones experimentales en uso",
     "experimentalNoticeMsg": "Ha habilitado algunas funciones experimentales que podrían afectar la calidad de la conexión y provocar errores inesperados. Siempre puede cambiar o restablecer estas opciones desde la página de opciones de configuración.",
-    "disableExperimentalNotice": "No volver a mostrar"
+    "disableExperimentalNotice": "No volver a mostrar",
+    "reconnect": "Reconectar",
+    "connectAnyWay": "Conectar",
+    "reconnectMsg": "Reconectando para aplicar los cambios..."
   },
   "config": {
     "resetBtn": "Restablecer opciones",
@@ -295,7 +401,8 @@
     "serviceModes": {
       "proxy": "Proxy",
       "systemProxy": "Sistema Proxy",
-      "tun": "VPN"
+      "tun": "VPN",
+      "tunService": "Servicio VPN"
     },
     "section": {
       "route": "Opciones de ruta",
@@ -353,11 +460,45 @@
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",
-      "outbound": "Detour proxies through WARP"
+      "outbound": "Detour proxies through WARP",
+      "proxyOverWarp": "Desviar líneas a través de WARP",
+      "warpOverProxy": "Desviar WARP a través de las líneas"
     },
     "warpLicenseKey": "License Key",
     "warpCleanIp": "Clean IP",
     "warpPort": "Port",
-    "warpNoise": "Noise"
+    "warpNoise": "Noise",
+    "quickSettings": "Ajustes rápidos",
+    "quickSettingsSubtitle": "Personaliza tu experiencia de conexión",
+    "setupWarp": "Configurar WARP",
+    "allOptions": "Todas las opciones de configuración",
+    "allAdvancedOptions": "Todas las opciones avanzadas",
+    "shortServiceModes": {
+      "proxy": "Solo línea",
+      "systemProxy": "Línea del sistema",
+      "tun": "VPN",
+      "tunService": "Servicio VPN"
+    },
+    "generateWarpConfig": "Generar configuración WARP",
+    "missingWarpConfig": "Falta la configuración WARP",
+    "warpConfigGenerated": "Configuración WARP generada",
+    "blockAds": "Bloquear anuncios",
+    "tproxyPort": "Puerto de línea transparente",
+    "warpNoiseSize": "Tamaño del ruido",
+    "warpNoiseMode": "Modo de ruido",
+    "warpNoiseDelay": "Retardo de ruido",
+    "desktopProxyScopeNotice": "En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real."
+  },
+  "stats": {
+    "traffic": "Tráfico",
+    "trafficLive": "Tráfico en vivo",
+    "trafficTotal": "Tráfico total",
+    "trafficUsage": "Uso de tráfico",
+    "liveSpeed": "Velocidad en vivo",
+    "uplink": "Subida",
+    "downlink": "Bajada",
+    "connection": "Conexión",
+    "speed": "Velocidad",
+    "totalTransferred": "Total transferido"
   }
 }

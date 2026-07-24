@@ -497,6 +497,8 @@
     "warpPort": "端口",
     "warpNoise": "噪音计数",
     "warpNoiseDelay": "噪音延延迟",
-    "desktopProxyScopeNotice": "桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。"
+    "desktopProxyScopeNotice": "桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。",
+    "warpNoiseSize": "噪音大小",
+    "warpNoiseMode": "噪音模式"
   }
 }

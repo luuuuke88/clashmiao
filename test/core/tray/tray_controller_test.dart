@@ -55,12 +55,19 @@ void main() {
       expect(labels.quit, '退出');
     });
 
-    test('其它未翻译 hide 的语言按既定处理方式兜底显示英文', () {
-      // tray.hide 目前只在 en/zh-CN 的 i18n 源文件里翻译过，其它语言靠
-      // build.yaml 的 fallback_strategy: base_locale 自动兜底英文——不是漏翻，
-      // 是既定处理方式（见任务要求：其它语言保留兜底显示英文）。
+    test('其它语言的 hide 已经是真翻译，不再兜底显示英文', () {
+      // 这条断言以前锁的是"tray.hide 只翻了 en/zh-CN，其它语言靠
+      // fallback_strategy: base_locale 兜底英文"——那是把翻译缺口当成预期行为
+      // 记了下来。现在 10 个语言的 UI key 已全部补齐（见
+      // translations_completeness_test.dart 的门禁），兜底路径不再被触发。
       final t = AppLocale.ar.build();
-      expect(buildTrayMenuLabels(const BoxStopped(), t).hide, 'Hide to Tray');
+      final hide = buildTrayMenuLabels(const BoxStopped(), t).hide;
+      expect(hide, isNotEmpty);
+      expect(
+        hide,
+        isNot('Hide to Tray'),
+        reason: '还等于英文原文说明 ar 的 tray.hide 又缺了，翻译门禁应该已经先报警',
+      );
     });
   });
 

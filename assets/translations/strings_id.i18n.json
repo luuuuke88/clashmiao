@@ -17,7 +17,14 @@
     "decline": "Tolak",
     "unknown": "Tidak Dikenal",
     "hidden": "Tersembunyi",
-    "timeout": "Waktu habis"
+    "timeout": "Waktu habis",
+    "clipboardExportSuccessMsg": "Disalin ke papan klip",
+    "showMore": "Tampilkan Lebih Banyak",
+    "showLess": "Tampilkan Lebih Sedikit",
+    "openAppSettings": "Buka Pengaturan Aplikasi",
+    "grantPermission": "Berikan Izin",
+    "underDevelopment": "Dalam Pengembangan",
+    "confirm": "Konfirmasi"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "lanjut berarti setuju dengan ${tap(@:about.termsAndConditions)}",
@@ -26,14 +33,30 @@
   "home": {
     "pageTitle": "Utama",
     "emptyProfilesMsg": "Mulai menambahkan langganan profil",
-    "noActiveProfileMsg": "Pilih profil"
+    "noActiveProfileMsg": "Pilih profil",
+    "routingMode": {
+      "global": "Proxy Global",
+      "smart": "Perutean Cerdas"
+    },
+    "failedToSwitchMode": "Gagal mengganti mode: ${error}",
+    "connectionFailedTitle": "Koneksi Gagal",
+    "coreMissingTitle": "Pustaka Inti Tidak Ditemukan",
+    "coreMissingMsg": "Aplikasi tidak dapat memuat inti jaringannya. Koneksi tidak tersedia. Pasang ulang aplikasi, atau pastikan berkas pustaka inti berada di samping berkas eksekusi.",
+    "degradedTitle": "Tersambung, tetapi tidak ada akses internet",
+    "degradedMsg": "Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.",
+    "degradedRetry": "Periksa Lagi"
   },
   "stats": {
     "traffic": "Trafik Langsung",
     "trafficTotal": "Total Trafik",
     "uplink": "Uplink",
     "downlink": "Downlink",
-    "connection": "Sambungan"
+    "connection": "Sambungan",
+    "trafficLive": "Lalu Lintas Langsung",
+    "trafficUsage": "Penggunaan Lalu Lintas",
+    "liveSpeed": "Kecepatan Langsung",
+    "speed": "Kecepatan",
+    "totalTransferred": "Total Ditransfer"
   },
   "profile": {
     "overviewPageTitle": "Beberapa Profil",
@@ -47,7 +70,11 @@
       "remainingDuration": "Tersisa ${duration} hari lagi",
       "remainingTrafficSemanticLabel": "${consumed}/${total} trafik terpakai",
       "expired": "Kadaluarsa",
-      "noTraffic": "Kuota Habis"
+      "noTraffic": "Kuota Habis",
+      "upload": "Unggah",
+      "download": "Unduh",
+      "total": "Total Lalu Lintas",
+      "expireDate": "Tanggal Kedaluwarsa"
     },
     "sortBy": {
       "lastUpdate": "Baru diperbaharui",
@@ -62,11 +89,17 @@
         "permissionDeniedError": "Izin ditolak",
         "unexpectedError": "Terjadi masalah",
         "torchSemanticLabel": "Lampu Flash",
-        "facingSemanticLabel": "Hadap Kamera"
+        "facingSemanticLabel": "Hadap Kamera",
+        "permissionRequest": "Izin kamera untuk memindai Kode QR"
       },
       "manually": "Isian Manual",
       "addingProfileMsg": "Tambahkan Profil",
-      "failureMsg": "Gagal tambahkan profil"
+      "failureMsg": "Gagal tambahkan profil",
+      "modalSubtitle": "Pilih cara menambahkan berkas konfigurasi",
+      "manuallyDescription": "Masukkan konfigurasi server secara manual",
+      "addWarp": "Tambah WARP",
+      "warpDescription": "Akselerasi gratis dengan Cloudflare WARP",
+      "addingWarpMsg": "Mohon tunggu, kami sedang mendaftarkan WARP."
     },
     "update": {
       "buttonTxt": "Perbarui",
@@ -83,7 +116,11 @@
       "exportSubLinkToClipboard": "Taruh link langganan ke clipboard",
       "subLinkQrCode": "Link Langganan QR",
       "exportConfigToClipboard": "Taruh konfigurasi ke clipboard",
-      "exportConfigToClipboardSuccess": "Salin konfigurasi ke clipboard"
+      "exportConfigToClipboardSuccess": "Salin konfigurasi ke clipboard",
+      "shareLink": "Bagikan Tautan",
+      "subscriptionLinkCopied": "Tautan langganan disalin",
+      "configCopied": "Konfigurasi disalin",
+      "copyFailed": "Gagal menyalin"
     },
     "edit": {
       "buttonTxt": "Ubah",
@@ -113,7 +150,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "Tambah",
+      "updateAll": "Perbarui Semua",
+      "sort": "Urutkan",
+      "copyConfigSuccess": "Konfigurasi disalin",
+      "editConfig": "Edit Konfigurasi"
+    },
+    "details": {
+      "basicInfo": "Informasi Dasar",
+      "subscriptionStatus": "Status Langganan",
+      "options": "Opsi",
+      "updateNow": "Perbarui Sekarang",
+      "updateNowDescription": "Ambil konfigurasi terbaru dari server",
+      "expireDate": "Tanggal Kedaluwarsa",
+      "unlimited": "Tanpa Batas"
+    },
+    "overview": {
+      "currentlyUsing": "Sedang Digunakan",
+      "remainingDays": "Sisa ${days} hari"
+    },
+    "remoteProfile": "Profil Jarak Jauh"
   },
   "proxies": {
     "pageTitle": "Proxy",
@@ -124,7 +182,31 @@
       "unsorted": "Awal",
       "name": "Alfabetikal",
       "delay": "Berdasarkan Delay"
-    }
+    },
+    "checkIp": "Periksa IP",
+    "unknownIp": "IP Tidak Diketahui",
+    "autoSelect": "Pilih Otomatis",
+    "autoSelectDescription": "Sambungkan otomatis ke node tercepat",
+    "sortModalTitle": "Pilih metode pengurutan",
+    "activeProxySemanticLabel": "Jalur Aktif",
+    "delaySemantics": {
+      "result": "Jeda: ${delay}ms",
+      "timeout": "Waktu Uji Jeda Habis",
+      "testing": "Jeda: Menguji..."
+    },
+    "ipInfoSemantics": {
+      "address": "Alamat IP",
+      "country": "Negara"
+    },
+    "testingDelayInfo": "Menguji jeda untuk: ${name}",
+    "switchedTo": "Beralih ke ${name}",
+    "switchToFailed": "Gagal beralih: ${error}",
+    "connectBeforeSwitch": "Sambungkan terlebih dahulu sebelum mengganti jalur",
+    "startDelayTestForGroups": "Uji jeda dimulai untuk ${count} jalur",
+    "delayTestBtn": "Jeda",
+    "lineCount": "${count} jalur",
+    "manualSelect": "Pilih Manual",
+    "autoTest": "Tes Otomatis"
   },
   "logs": {
     "pageTitle": "Log",
@@ -134,7 +216,11 @@
     "shareAppLogs": "Bagikan Log Aplikasi",
     "pauseTooltip": "Jeda",
     "resumeTooltip": "Lanjut",
-    "clearTooltip": "Bersih"
+    "clearTooltip": "Bersih",
+    "logsCleared": "Log dihapus",
+    "logsCopied": "Log disalin",
+    "logsUnderDevelopment": "Fitur log sedang dikembangkan",
+    "noLogsWhenDisconnected": "Tidak tersambung, tidak ada log"
   },
   "settings": {
     "pageTitle": "Setting",
@@ -168,7 +254,14 @@
       "openWorkingDir": "Buka Direktori Kerja",
       "ignoreBatteryOptimizations": "Menonaktifkan Optimisasi Baterai",
       "ignoreBatteryOptimizationsMsg": "Hapus batasan untuk performa VPN yang optimal",
-      "dynamicNotification": "Tampilkan Kecepatan di notifikasi"
+      "dynamicNotification": "Tampilkan Kecepatan di notifikasi",
+      "hapticFeedback": "Umpan Balik Haptik",
+      "autoIpCheck": "Periksa IP Koneksi Otomatis",
+      "batteryOptimizationStatus": {
+        "exempted": "Dikecualikan",
+        "notExempted": "Tidak Dikecualikan",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "Mode Lanjut",
@@ -190,7 +283,11 @@
       },
       "showSystemApps": "Tampil aplikasi sistem",
       "hideSystemApps": "Sembunyikan aplikasi sistem",
-      "clearSelection": "Bersihkan seleksi"
+      "clearSelection": "Bersihkan seleksi",
+      "perAppProxyLoadFailedMsg": "Gagal memuat daftar aplikasi",
+      "perAppProxyRetry": "Coba Lagi",
+      "perAppProxyEmptyMsg": "Tidak ada hasil",
+      "perAppProxyAndroidOnlyMsg": "Mode jalur per aplikasi hanya didukung di Android"
     },
     "geoAssets": {
       "pageTitle": "Rute Aset",
@@ -204,7 +301,15 @@
       "successMsg": "Sukses perbarui aset",
       "addRecommended": "Tambah aset rekomendasi",
       "missingGeoAssetsMsg": "Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada"
-    }
+    },
+    "exportOptions": "Salin Opsi Anonim ke Papan Klip",
+    "exportAllOptions": "Salin Semua Opsi ke Papan Klip",
+    "importOptions": "Impor Opsi dari Papan Klip",
+    "importOptionsMsg": "Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?",
+    "systemProxyEnabled": "Proxy sistem diaktifkan",
+    "systemProxyDisabled": "Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)",
+    "adminPrivilegesRequired": "Memerlukan hak administrator di macOS",
+    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku"
   },
   "about": {
     "pageTitle": "Tentang",
@@ -213,7 +318,8 @@
     "telegramChannel": "Kanal Telegram",
     "checkForUpdate": "Periksa perbaruan",
     "privacyPolicy": "Kebijakan Privasi",
-    "termsAndConditions": "Syarat dan Ketentuan Umum"
+    "termsAndConditions": "Syarat dan Ketentuan Umum",
+    "appDescription": "Klien proxy lintas platform berbasis inti sing-box"
   },
   "appUpdate": {
     "notAvailableMsg": "Sudah menggunakan versi terakhir",
@@ -234,7 +340,8 @@
       "connecting": "Menyambungkan",
       "disconnect": "Putus",
       "disconnecting": "Memutuskan"
-    }
+    },
+    "hide": "Sembunyikan"
   },
   "failure": {
     "unexpected": "Error Tidak Terduga",
@@ -252,19 +359,23 @@
       "invalidConfigOptions": "Pilihan konfigurasi tidak valid",
       "invalidConfig": "Konfigurasi tidak valid",
       "create": "Pembuatan Servis Error",
-      "start": "Jalankan Servis Error"
+      "start": "Jalankan Servis Error",
+      "coreLibraryMissing": "Pustaka Inti Belum Terpasang",
+      "startTimeout": "Waktu Mulai Layanan Habis"
     },
     "connectivity": {
       "unexpected": "Kegagalan tidak terduga",
       "missingVpnPermission": "Izin VPN Hilang",
       "missingNotificationPermission": "Izin Notifikasi Hilang",
-      "core": "Error Inti"
+      "core": "Error Inti",
+      "networkUnavailable": "Jaringan Tidak Tersedia"
     },
     "profiles": {
       "unexpected": "Error Tidak Terduga",
       "notFound": "Profil tidak ditemukan",
       "invalidConfig": "Konfigurasi tidak valid",
-      "invalidUrl": "URL tidak valid"
+      "invalidUrl": "URL tidak valid",
+      "noActive": "Tidak Ada Profil Aktif"
     },
     "connection": {
       "unexpected": "Sambungan error tidak terduga",
@@ -291,7 +402,10 @@
     "connected": "Tersambung",
     "experimentalNotice": "Fitur Experimental digunakan",
     "experimentalNoticeMsg": "Kamu telah mengaktifkan fitur experimental yang mungkin mempengaruhi kualitas sambungan dan error tidak terduga. Kamu tetap bisa merubah atau set ulang opsi dari Halaman Konfigurasi",
-    "disableExperimentalNotice": "Jangan tampil lagi"
+    "disableExperimentalNotice": "Jangan tampil lagi",
+    "reconnect": "Sambungkan Ulang",
+    "connectAnyWay": "Sambungkan",
+    "reconnectMsg": "Menyambungkan ulang untuk menerapkan perubahan..."
   },
   "config": {
     "resetBtn": "Set Ulang Opsi",
@@ -299,7 +413,8 @@
     "serviceModes": {
       "proxy": "Proxy",
       "systemProxy": "Sistem Proxy",
-      "tun": "VPN"
+      "tun": "VPN",
+      "tunService": "Layanan VPN"
     },
     "section": {
       "route": "Opsi Route",
@@ -357,11 +472,33 @@
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",
-      "outbound": "Detour proxies through WARP"
+      "outbound": "Detour proxies through WARP",
+      "proxyOverWarp": "Alihkan Jalur Melalui WARP",
+      "warpOverProxy": "Alihkan WARP Melalui Jalur"
     },
     "warpLicenseKey": "License Key",
     "warpCleanIp": "Clean IP",
     "warpPort": "Port",
-    "warpNoise": "Noise"
+    "warpNoise": "Noise",
+    "quickSettings": "Pengaturan Cepat",
+    "quickSettingsSubtitle": "Sesuaikan pengalaman koneksi Anda",
+    "setupWarp": "Siapkan WARP",
+    "allOptions": "Semua Opsi Konfigurasi",
+    "allAdvancedOptions": "Semua Opsi Lanjutan",
+    "shortServiceModes": {
+      "proxy": "Hanya Jalur",
+      "systemProxy": "Jalur Sistem",
+      "tun": "VPN",
+      "tunService": "Layanan VPN"
+    },
+    "generateWarpConfig": "Buat Konfigurasi WARP",
+    "missingWarpConfig": "Konfigurasi WARP Tidak Ada",
+    "warpConfigGenerated": "Konfigurasi WARP Dibuat",
+    "blockAds": "Blokir Iklan",
+    "tproxyPort": "Port Jalur Transparan",
+    "warpNoiseSize": "Ukuran Noise",
+    "warpNoiseMode": "Mode Noise",
+    "warpNoiseDelay": "Penundaan Noise",
+    "desktopProxyScopeNotice": "Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda."
   }
 }

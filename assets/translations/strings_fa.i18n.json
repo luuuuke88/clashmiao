@@ -22,7 +22,9 @@
     "showMore": "نمایش بیشتر",
     "showLess": "نمایش کمتر",
     "openAppSettings": "باز کردن تنظیمات برنامه",
-    "grantPermission": "اجازه دادن"
+    "grantPermission": "اجازه دادن",
+    "underDevelopment": "در حال توسعه",
+    "confirm": "تأیید"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "در صورت ادامه با ${tap(@:about.termsAndConditions)} موافقت می‌کنید",
@@ -31,7 +33,18 @@
   "home": {
     "pageTitle": "خانه",
     "emptyProfilesMsg": "با افزودن یک پروفایل اشتراک شروع کنید",
-    "noActiveProfileMsg": "یک پروفایل انتخاب کنید"
+    "noActiveProfileMsg": "یک پروفایل انتخاب کنید",
+    "routingMode": {
+      "global": "پروکسی سراسری",
+      "smart": "مسیریابی هوشمند"
+    },
+    "failedToSwitchMode": "تغییر حالت ناموفق بود: ${error}",
+    "connectionFailedTitle": "اتصال ناموفق",
+    "coreMissingTitle": "کتابخانهٔ هسته پیدا نشد",
+    "coreMissingMsg": "برنامه نتوانست هستهٔ شبکهٔ خود را بارگذاری کند. اتصال در دسترس نیست. برنامه را دوباره نصب کنید یا مطمئن شوید فایل کتابخانهٔ هسته کنار فایل اجرایی قرار دارد.",
+    "degradedTitle": "متصل است، اما دسترسی به اینترنت وجود ندارد",
+    "degradedMsg": "تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.",
+    "degradedRetry": "بررسی مجدد"
   },
   "stats": {
     "traffic": "مصرف",
@@ -41,7 +54,9 @@
     "downlink": "دریافت",
     "connection": "اتصال",
     "speed": "سرعت",
-    "totalTransferred": "کل تبادل"
+    "totalTransferred": "کل تبادل",
+    "trafficUsage": "مصرف ترافیک",
+    "liveSpeed": "سرعت لحظه‌ای"
   },
   "profile": {
     "overviewPageTitle": "پروفایل‌ها",
@@ -81,7 +96,10 @@
       "addWarp": "افزودن وارپ",
       "addingWarpMsg": "لطفا صبر کنید تا وارپ ثبت شود",
       "addingProfileMsg": "در حال افزودن پروفایل",
-      "failureMsg": "افزودن پروفایل ناموفق بود"
+      "failureMsg": "افزودن پروفایل ناموفق بود",
+      "modalSubtitle": "نحوهٔ افزودن فایل پیکربندی را انتخاب کنید",
+      "manuallyDescription": "پیکربندی سرور را دستی وارد کنید",
+      "warpDescription": "شتاب‌دهی رایگان با Cloudflare WARP"
     },
     "update": {
       "buttonTxt": "به‌روزرسانی",
@@ -98,7 +116,11 @@
       "exportSubLinkToClipboard": "صادر کردن لینک اشتراک به کلیپ‌بورد",
       "subLinkQrCode": "کد QR لینک اشتراک",
       "exportConfigToClipboard": "افزودن پیکربندی به کلیپ‌بورد",
-      "exportConfigToClipboardSuccess": "پیکربندی در کلیپ‌بورد کپی شد"
+      "exportConfigToClipboardSuccess": "پیکربندی در کلیپ‌بورد کپی شد",
+      "shareLink": "اشتراک‌گذاری پیوند",
+      "subscriptionLinkCopied": "پیوند اشتراک کپی شد",
+      "configCopied": "پیکربندی کپی شد",
+      "copyFailed": "کپی ناموفق بود"
     },
     "edit": {
       "buttonTxt": "ویرایش",
@@ -128,7 +150,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "افزودن",
+      "updateAll": "به‌روزرسانی همه",
+      "sort": "مرتب‌سازی",
+      "copyConfigSuccess": "پیکربندی کپی شد",
+      "editConfig": "ویرایش پیکربندی"
+    },
+    "details": {
+      "basicInfo": "اطلاعات پایه",
+      "subscriptionStatus": "وضعیت اشتراک",
+      "options": "گزینه‌ها",
+      "updateNow": "اکنون به‌روزرسانی کن",
+      "updateNowDescription": "دریافت آخرین پیکربندی از سرور",
+      "expireDate": "تاریخ انقضا",
+      "unlimited": "نامحدود"
+    },
+    "overview": {
+      "currentlyUsing": "در حال استفاده",
+      "remainingDays": "${days} روز باقی مانده"
+    },
+    "remoteProfile": "پروفایل راه دور"
   },
   "proxies": {
     "pageTitle": "پروکسی‌ها",
@@ -151,7 +194,19 @@
     "ipInfoSemantics": {
       "address": "آدرس آی‌پی",
       "country": "کشور"
-    }
+    },
+    "autoSelect": "انتخاب خودکار",
+    "autoSelectDescription": "اتصال خودکار به سریع‌ترین نود",
+    "sortModalTitle": "روش مرتب‌سازی را انتخاب کنید",
+    "testingDelayInfo": "در حال آزمایش تأخیر: ${name}",
+    "switchedTo": "به ${name} تغییر یافت",
+    "switchToFailed": "تعویض ناموفق بود: ${error}",
+    "connectBeforeSwitch": "پیش از تعویض خط، متصل شوید",
+    "startDelayTestForGroups": "آزمایش تأخیر برای ${count} خط آغاز شد",
+    "delayTestBtn": "تأخیر",
+    "lineCount": "${count} خط",
+    "manualSelect": "انتخاب دستی",
+    "autoTest": "تست خودکار"
   },
   "logs": {
     "pageTitle": "گزارش‌ها",
@@ -161,7 +216,11 @@
     "shareAppLogs": "اشتراک‌گذاری گزارش‌های برنامه",
     "pauseTooltip": "مکث",
     "resumeTooltip": "ادامه دادن",
-    "clearTooltip": "پاک‌سازی"
+    "clearTooltip": "پاک‌سازی",
+    "logsCleared": "گزارش‌ها پاک شد",
+    "logsCopied": "گزارش‌ها کپی شد",
+    "logsUnderDevelopment": "قابلیت گزارش‌گیری در حال توسعه است",
+    "noLogsWhenDisconnected": "متصل نیست، گزارشی وجود ندارد"
   },
   "settings": {
     "pageTitle": "تنظیمات",
@@ -201,7 +260,12 @@
       "ignoreBatteryOptimizationsMsg": "برطرف کردن محدودیت‌ها برای عملکرد بهینه‌ی VPN",
       "dynamicNotification": "نمایش سرعت در نوار اعلان",
       "hapticFeedback": "بازخورد لمسی",
-      "autoIpCheck": "بررسی خودکار آی‌پی اتصال"
+      "autoIpCheck": "بررسی خودکار آی‌پی اتصال",
+      "batteryOptimizationStatus": {
+        "exempted": "مستثنی",
+        "notExempted": "مستثنی نشده",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "پیشرفته",
@@ -223,7 +287,11 @@
       },
       "showSystemApps": "نمایش برنامه‌های سیستمی",
       "hideSystemApps": "پنهان کردن برنامه‌های سیستمی",
-      "clearSelection": "پاک کردن انتخاب‌ها"
+      "clearSelection": "پاک کردن انتخاب‌ها",
+      "perAppProxyLoadFailedMsg": "بارگذاری فهرست برنامه‌ها ناموفق بود",
+      "perAppProxyRetry": "تلاش مجدد",
+      "perAppProxyEmptyMsg": "نتیجه‌ای یافت نشد",
+      "perAppProxyAndroidOnlyMsg": "حالت خط برای هر برنامه فقط در Android پشتیبانی می‌شود"
     },
     "geoAssets": {
       "pageTitle": "فایل‌های مسیریابی",
@@ -237,7 +305,11 @@
       "successMsg": "فایل‌ با موفقیت به‌روزرسانی شد",
       "addRecommended": "افزودن فایل‌های توصیه‌شده",
       "missingGeoAssetsMsg": "فایل‌های مسیریابی انتخاب شده وجود ندارند. یا آن‌ها را دانلود کنید و یا یکی از موارد موجود را انتخاب کنید"
-    }
+    },
+    "systemProxyEnabled": "پروکسی سیستم فعال شد",
+    "systemProxyDisabled": "پروکسی سیستم غیرفعال شد (برای اعمال، دوباره وصل شوید)",
+    "adminPrivilegesRequired": "در macOS به دسترسی مدیر نیاز است",
+    "portChangeNotice": "تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد"
   },
   "about": {
     "pageTitle": "درباره",
@@ -246,7 +318,8 @@
     "telegramChannel": "کانال تلگرام",
     "checkForUpdate": "بررسی برای به‌روزرسانی",
     "privacyPolicy": "سیاست‌های حفظ حریم خصوصی",
-    "termsAndConditions": "شرایط و ضوابط استفاده"
+    "termsAndConditions": "شرایط و ضوابط استفاده",
+    "appDescription": "یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box"
   },
   "appUpdate": {
     "notAvailableMsg": "در حال استفاده از آخرین نسخه هستید",
@@ -267,7 +340,8 @@
       "connecting": "در حال اتصال",
       "disconnect": "قطع اتصال",
       "disconnecting": "در حال قطع اتصال"
-    }
+    },
+    "hide": "پنهان کردن"
   },
   "failure": {
     "unexpected": "خطای غیرمنتظره",
@@ -285,19 +359,23 @@
       "invalidConfigOptions": "تنظیمات پیکربندی نامعتبر",
       "invalidConfig": "پیکربندی نامعتبر",
       "create": "خطای ایجاد سرویس",
-      "start": "خطای راه‌اندازی سرویس"
+      "start": "خطای راه‌اندازی سرویس",
+      "coreLibraryMissing": "کتابخانهٔ هسته نصب نشده است",
+      "startTimeout": "زمان راه‌اندازی سرویس به پایان رسید"
     },
     "connectivity": {
       "unexpected": "خطای غیرمنتظره",
       "missingVpnPermission": "مجوز VPN وجود ندارد",
       "missingNotificationPermission": "مجوز اعلان وجود ندارد",
-      "core": "خطای هسته"
+      "core": "خطای هسته",
+      "networkUnavailable": "شبکه در دسترس نیست"
     },
     "profiles": {
       "unexpected": "خطای غیرمنتظره",
       "notFound": "پروفایل یافت نشد",
       "invalidConfig": "پیکربندی‌ها نامعتبر هستند",
-      "invalidUrl": "لینک نامعتبر است"
+      "invalidUrl": "لینک نامعتبر است",
+      "noActive": "هیچ پروفایل فعالی وجود ندارد"
     },
     "connection": {
       "unexpected": " خطای غیرمنتظره در اتصال",
@@ -418,6 +496,9 @@
     "warpNoise": "تعداد نویز",
     "warpNoiseSize": "اندازه نویز",
     "warpNoiseMode": "حالت نویز",
-    "warpNoiseDelay": "تأخیر نویز"
+    "warpNoiseDelay": "تأخیر نویز",
+    "quickSettingsSubtitle": "تجربهٔ اتصال خود را سفارشی کنید",
+    "allAdvancedOptions": "همهٔ گزینه‌های پیشرفته",
+    "desktopProxyScopeNotice": "در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند."
   }
 }

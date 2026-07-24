@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3156 (315 per locale)
+/// Strings: 3919 (391 per locale)
 ///
-/// Built on 2026-07-24 at 19:07 UTC
+/// Built on 2026-07-24 at 19:34 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -1291,6 +1291,10 @@ class TranslationsGeneralAr extends TranslationsGeneralEn {
   String get openAppSettings => 'فتح إعدادات التطبيق';
   @override
   String get grantPermission => 'منح الإذن';
+  @override
+  String get underDevelopment => 'قيد التطوير';
+  @override
+  String get confirm => 'تأكيد';
 }
 
 // Path: intro
@@ -1326,6 +1330,26 @@ class TranslationsHomeAr extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'ابدأ بإضافة ملف تعريف اشتراك';
   @override
   String get noActiveProfileMsg => 'اختر ملف تعريف';
+  @override
+  late final TranslationsHomeRoutingModeAr routingMode =
+      TranslationsHomeRoutingModeAr._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'فشل تبديل الوضع: ${error}';
+  @override
+  String get connectionFailedTitle => 'فشل الاتصال';
+  @override
+  String get coreMissingTitle => 'لم يتم العثور على مكتبة النواة';
+  @override
+  String get coreMissingMsg =>
+      'تعذّر على التطبيق تحميل نواة الشبكة. الاتصال غير متاح. أعد تثبيت التطبيق أو تأكد من وجود ملف مكتبة النواة بجوار الملف التنفيذي.';
+  @override
+  String get degradedTitle => 'متصل، لكن لا يوجد وصول إلى الإنترنت';
+  @override
+  String get degradedMsg =>
+      'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
+  @override
+  String get degradedRetry => 'إعادة الفحص';
 }
 
 // Path: stats
@@ -1352,6 +1376,10 @@ class TranslationsStatsAr extends TranslationsStatsEn {
   String get speed => 'السرعة';
   @override
   String get totalTransferred => 'إجمالي البيانات المنقولة';
+  @override
+  String get trafficUsage => 'استخدام البيانات';
+  @override
+  String get liveSpeed => 'السرعة الحالية';
 }
 
 // Path: profile
@@ -1408,6 +1436,17 @@ class TranslationsProfileAr extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormAr detailsForm =
       TranslationsProfileDetailsFormAr._(_root);
+  @override
+  late final TranslationsProfileActionButtonsAr actionButtons =
+      TranslationsProfileActionButtonsAr._(_root);
+  @override
+  late final TranslationsProfileDetailsAr details =
+      TranslationsProfileDetailsAr._(_root);
+  @override
+  late final TranslationsProfileOverviewAr overview =
+      TranslationsProfileOverviewAr._(_root);
+  @override
+  String get remoteProfile => 'اشتراك بعيد';
 }
 
 // Path: proxies
@@ -1443,6 +1482,32 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesIpInfoSemanticsAr ipInfoSemantics =
       TranslationsProxiesIpInfoSemanticsAr._(_root);
+  @override
+  String get autoSelect => 'اختيار تلقائي';
+  @override
+  String get autoSelectDescription => 'الاتصال تلقائياً بأسرع خادم';
+  @override
+  String get sortModalTitle => 'اختر طريقة الترتيب';
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'جارٍ اختبار التأخير لـ: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'تم التبديل إلى ${name}';
+  @override
+  String switchToFailed({required Object error}) => 'فشل التبديل: ${error}';
+  @override
+  String get connectBeforeSwitch => 'يرجى الاتصال قبل تبديل الخطوط';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'بدأ اختبار التأخير لـ ${count} خط';
+  @override
+  String get delayTestBtn => 'التأخير';
+  @override
+  String lineCount({required Object count}) => '${count} خط';
+  @override
+  String get manualSelect => 'اختيار يدوي';
+  @override
+  String get autoTest => 'اختبار تلقائي';
 }
 
 // Path: logs
@@ -1469,6 +1534,14 @@ class TranslationsLogsAr extends TranslationsLogsEn {
   String get resumeTooltip => 'استئناف';
   @override
   String get clearTooltip => 'مسح';
+  @override
+  String get logsCleared => 'تم مسح السجلات';
+  @override
+  String get logsCopied => 'تم نسخ السجلات';
+  @override
+  String get logsUnderDevelopment => 'ميزة السجلات قيد التطوير';
+  @override
+  String get noLogsWhenDisconnected => 'غير متصل، لا توجد سجلات';
 }
 
 // Path: settings
@@ -1512,6 +1585,15 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsAr geoAssets =
       TranslationsSettingsGeoAssetsAr._(_root);
+  @override
+  String get systemProxyEnabled => 'تم تفعيل بروكسي النظام';
+  @override
+  String get systemProxyDisabled =>
+      'تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)';
+  @override
+  String get adminPrivilegesRequired => 'يتطلب صلاحيات المسؤول على macOS';
+  @override
+  String get portChangeNotice => 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
 }
 
 // Path: about
@@ -1536,6 +1618,9 @@ class TranslationsAboutAr extends TranslationsAboutEn {
   String get privacyPolicy => 'سياسة الخصوصية';
   @override
   String get termsAndConditions => 'الشروط والأحكام';
+  @override
+  String get appDescription =>
+      'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
 }
 
 // Path: appUpdate
@@ -1585,6 +1670,8 @@ class TranslationsTrayAr extends TranslationsTrayEn {
   late final TranslationsTrayStatusAr status = TranslationsTrayStatusAr._(
     _root,
   );
+  @override
+  String get hide => 'إخفاء';
 }
 
 // Path: failure
@@ -1795,6 +1882,19 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   String get warpNoise => 'عدد الضوضاء';
   @override
   String get warpNoiseDelay => 'تأخير الضوضاء';
+  @override
+  String get quickSettingsSubtitle => 'خصص تجربة الاتصال';
+  @override
+  String get allAdvancedOptions => 'جميع الخيارات المتقدمة';
+  @override
+  String get blockAds => 'حظر الإعلانات';
+  @override
+  String get warpNoiseSize => 'حجم الضجيج';
+  @override
+  String get warpNoiseMode => 'وضع الضجيج';
+  @override
+  String get desktopProxyScopeNotice =>
+      'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
 }
 
 // Path: general.toggle
@@ -1825,6 +1925,22 @@ class TranslationsGeneralStateAr extends TranslationsGeneralStateEn {
   // Translations
   @override
   String get disable => 'تعطيل';
+}
+
+// Path: home.routingMode
+class TranslationsHomeRoutingModeAr extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'بروكسي عام';
+  @override
+  String get smart => 'توجيه ذكي';
 }
 
 // Path: profile.subscription
@@ -1908,6 +2024,16 @@ class TranslationsProfileAddAr extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'إضافة ملف التعريف';
   @override
   String get failureMsg => 'فشل في إضافة ملف التعريف';
+  @override
+  String get modalSubtitle => 'اختر طريقة إضافة ملف الإعداد';
+  @override
+  String get manuallyDescription => 'أدخل إعداد الخادم يدوياً';
+  @override
+  String get addWarp => 'إضافة WARP';
+  @override
+  String get warpDescription => 'تسريع مجاني عبر Cloudflare WARP';
+  @override
+  String get addingWarpMsg => 'يرجى الانتظار أثناء تسجيل WARP.';
 }
 
 // Path: profile.update
@@ -1958,6 +2084,14 @@ class TranslationsProfileShareAr extends TranslationsProfileShareEn {
   String get exportConfigToClipboard => 'تصدير التكوين إلى الحافظة';
   @override
   String get exportConfigToClipboardSuccess => 'تم نسخ التكوين إلى الحافظة';
+  @override
+  String get shareLink => 'مشاركة الرابط';
+  @override
+  String get subscriptionLinkCopied => 'تم نسخ رابط الاشتراك';
+  @override
+  String get configCopied => 'تم نسخ الإعداد';
+  @override
+  String get copyFailed => 'فشل النسخ';
 }
 
 // Path: profile.edit
@@ -2050,6 +2184,71 @@ class TranslationsProfileDetailsFormAr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+}
+
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsAr
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'إضافة';
+  @override
+  String get updateAll => 'تحديث الكل';
+  @override
+  String get sort => 'ترتيب';
+  @override
+  String get copyConfigSuccess => 'تم نسخ الإعداد';
+  @override
+  String get editConfig => 'تحرير الإعداد';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsAr extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'معلومات أساسية';
+  @override
+  String get subscriptionStatus => 'حالة الاشتراك';
+  @override
+  String get options => 'خيارات';
+  @override
+  String get updateNow => 'تحديث الآن';
+  @override
+  String get updateNowDescription => 'جلب أحدث إعداد من الخادم';
+  @override
+  String get expireDate => 'تاريخ الانتهاء';
+  @override
+  String get unlimited => 'غير محدود';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewAr extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'قيد الاستخدام حالياً';
+  @override
+  String remainingDays({required Object days}) => 'متبقٍ ${days} يوماً';
 }
 
 // Path: proxies.sortOptions
@@ -2156,6 +2355,10 @@ class TranslationsSettingsGeneralAr extends TranslationsSettingsGeneralEn {
   String get hapticFeedback => 'ردود فعل اللمس';
   @override
   String get autoIpCheck => 'التحقق من عنوان IP للاتصال تلقائيًا';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusAr
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusAr._(_root);
 }
 
 // Path: settings.advanced
@@ -2204,6 +2407,15 @@ class TranslationsSettingsNetworkAr extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'إخفاء تطبيقات النظام';
   @override
   String get clearSelection => 'مسح الاختيار';
+  @override
+  String get perAppProxyLoadFailedMsg => 'فشل تحميل قائمة التطبيقات';
+  @override
+  String get perAppProxyRetry => 'إعادة المحاولة';
+  @override
+  String get perAppProxyEmptyMsg => 'لا توجد نتائج';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'وضع الخط لكل تطبيق مدعوم على Android فقط';
 }
 
 // Path: settings.geoAssets
@@ -2309,6 +2521,10 @@ class TranslationsFailureSingboxAr extends TranslationsFailureSingboxEn {
   String get create => 'خطأ في إنشاء الخدمة';
   @override
   String get start => 'خطأ في بدء تشغيل الخدمة';
+  @override
+  String get coreLibraryMissing => 'مكتبة النواة غير مثبتة';
+  @override
+  String get startTimeout => 'انتهت مهلة بدء الخدمة';
 }
 
 // Path: failure.connectivity
@@ -2330,6 +2546,8 @@ class TranslationsFailureConnectivityAr
   String get missingNotificationPermission => 'غياب إذن الإشعارات';
   @override
   String get core => 'خطأ في النواة';
+  @override
+  String get networkUnavailable => 'الشبكة غير متاحة';
 }
 
 // Path: failure.profiles
@@ -2350,6 +2568,8 @@ class TranslationsFailureProfilesAr extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'تكوينات غير صحيحة';
   @override
   String get invalidUrl => 'عنوان URL غير صالح';
+  @override
+  String get noActive => 'لا يوجد اشتراك مفعّل';
 }
 
 // Path: failure.connection
@@ -2602,6 +2822,25 @@ class TranslationsSettingsGeneralThemeModesAr
   String get black => 'الوضع الأسود';
 }
 
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusAr
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'مُستثنى';
+  @override
+  String get notExempted => 'غير مُستثنى';
+  @override
+  String get pending => '…';
+}
+
 // Path: settings.network.perAppProxyModes
 class TranslationsSettingsNetworkPerAppProxyModesAr
     extends TranslationsSettingsNetworkPerAppProxyModesEn {
@@ -2700,6 +2939,8 @@ class TranslationsEs extends Translations {
   );
   @override
   late final TranslationsConfigEs config = TranslationsConfigEs._(_root);
+  @override
+  late final TranslationsStatsEs stats = TranslationsStatsEs._(_root);
 }
 
 // Path: general
@@ -2748,6 +2989,14 @@ class TranslationsGeneralEs extends TranslationsGeneralEn {
   String get showLess => 'Muestra menos';
   @override
   String get grantPermission => 'Conceder permiso';
+  @override
+  String get clipboardExportSuccessMsg => 'Copiado al portapapeles';
+  @override
+  String get openAppSettings => 'Abrir ajustes de la app';
+  @override
+  String get underDevelopment => 'En desarrollo';
+  @override
+  String get confirm => 'Confirmar';
 }
 
 // Path: intro
@@ -2783,6 +3032,26 @@ class TranslationsHomeEs extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'Comience agregando un perfil de suscripción';
   @override
   String get noActiveProfileMsg => 'Elige un perfil';
+  @override
+  late final TranslationsHomeRoutingModeEs routingMode =
+      TranslationsHomeRoutingModeEs._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'Error al cambiar de modo: ${error}';
+  @override
+  String get connectionFailedTitle => 'Error de conexión';
+  @override
+  String get coreMissingTitle => 'No se encontró la biblioteca del núcleo';
+  @override
+  String get coreMissingMsg =>
+      'La aplicación no pudo cargar su núcleo de red. La conexión no está disponible. Reinstala la aplicación o asegúrate de que el archivo de la biblioteca del núcleo esté junto al ejecutable.';
+  @override
+  String get degradedTitle => 'Conectado, pero sin acceso a Internet';
+  @override
+  String get degradedMsg =>
+      'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
+  @override
+  String get degradedRetry => 'Comprobar de nuevo';
 }
 
 // Path: profile
@@ -2839,6 +3108,17 @@ class TranslationsProfileEs extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormEs detailsForm =
       TranslationsProfileDetailsFormEs._(_root);
+  @override
+  late final TranslationsProfileActionButtonsEs actionButtons =
+      TranslationsProfileActionButtonsEs._(_root);
+  @override
+  late final TranslationsProfileDetailsEs details =
+      TranslationsProfileDetailsEs._(_root);
+  @override
+  late final TranslationsProfileOverviewEs overview =
+      TranslationsProfileOverviewEs._(_root);
+  @override
+  String get remoteProfile => 'Perfil remoto';
 }
 
 // Path: proxies
@@ -2862,6 +3142,46 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesSortOptionsEs sortOptions =
       TranslationsProxiesSortOptionsEs._(_root);
+  @override
+  String get checkIp => 'Comprobar IP';
+  @override
+  String get unknownIp => 'IP desconocida';
+  @override
+  String get autoSelect => 'Selección automática';
+  @override
+  String get autoSelectDescription =>
+      'Conectar automáticamente al nodo más rápido';
+  @override
+  String get sortModalTitle => 'Elige el método de ordenación';
+  @override
+  String get activeProxySemanticLabel => 'Línea activa';
+  @override
+  late final TranslationsProxiesDelaySemanticsEs delaySemantics =
+      TranslationsProxiesDelaySemanticsEs._(_root);
+  @override
+  late final TranslationsProxiesIpInfoSemanticsEs ipInfoSemantics =
+      TranslationsProxiesIpInfoSemanticsEs._(_root);
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'Probando latencia de: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'Cambiado a ${name}';
+  @override
+  String switchToFailed({required Object error}) =>
+      'Error al cambiar: ${error}';
+  @override
+  String get connectBeforeSwitch => 'Conéctate antes de cambiar de línea';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'Prueba de latencia iniciada para ${count} líneas';
+  @override
+  String get delayTestBtn => 'Latencia';
+  @override
+  String lineCount({required Object count}) => '${count} líneas';
+  @override
+  String get manualSelect => 'Selección manual';
+  @override
+  String get autoTest => 'Prueba automática';
 }
 
 // Path: logs
@@ -2888,6 +3208,15 @@ class TranslationsLogsEs extends TranslationsLogsEn {
   String get resumeTooltip => 'reanudar';
   @override
   String get clearTooltip => 'Claro';
+  @override
+  String get logsCleared => 'Registros borrados';
+  @override
+  String get logsCopied => 'Registros copiados';
+  @override
+  String get logsUnderDevelopment =>
+      'La función de registros está en desarrollo';
+  @override
+  String get noLogsWhenDisconnected => 'Sin conexión, no hay registros';
 }
 
 // Path: settings
@@ -2922,6 +3251,26 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsEs geoAssets =
       TranslationsSettingsGeoAssetsEs._(_root);
+  @override
+  String get exportOptions => 'Copiar opciones anónimas al portapapeles';
+  @override
+  String get exportAllOptions => 'Copiar todas las opciones al portapapeles';
+  @override
+  String get importOptions => 'Importar opciones desde el portapapeles';
+  @override
+  String get importOptionsMsg =>
+      'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
+  @override
+  String get systemProxyEnabled => 'Proxy del sistema activado';
+  @override
+  String get systemProxyDisabled =>
+      'Proxy del sistema desactivado (reconecta para aplicar)';
+  @override
+  String get adminPrivilegesRequired =>
+      'Se requieren privilegios de administrador en macOS';
+  @override
+  String get portChangeNotice =>
+      'Los cambios de puerto requieren reconectar para aplicarse';
 }
 
 // Path: about
@@ -2946,6 +3295,9 @@ class TranslationsAboutEs extends TranslationsAboutEn {
   String get privacyPolicy => 'Política de privacidad';
   @override
   String get termsAndConditions => 'Términos y condiciones';
+  @override
+  String get appDescription =>
+      'Un cliente proxy multiplataforma basado en el núcleo sing-box';
 }
 
 // Path: appUpdate
@@ -2995,6 +3347,8 @@ class TranslationsTrayEs extends TranslationsTrayEn {
   late final TranslationsTrayStatusEs status = TranslationsTrayStatusEs._(
     _root,
   );
+  @override
+  String get hide => 'Ocultar';
 }
 
 // Path: failure
@@ -3073,6 +3427,12 @@ class TranslationsConnectionEs extends TranslationsConnectionEn {
       'Ha habilitado algunas funciones experimentales que podrían afectar la calidad de la conexión y provocar errores inesperados. Siempre puede cambiar o restablecer estas opciones desde la página de opciones de configuración.';
   @override
   String get disableExperimentalNotice => 'No volver a mostrar';
+  @override
+  String get reconnect => 'Reconectar';
+  @override
+  String get connectAnyWay => 'Conectar';
+  @override
+  String get reconnectMsg => 'Reconectando para aplicar los cambios...';
 }
 
 // Path: config
@@ -3180,6 +3540,68 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   String get warpPort => 'Port';
   @override
   String get warpNoise => 'Noise';
+  @override
+  String get quickSettings => 'Ajustes rápidos';
+  @override
+  String get quickSettingsSubtitle => 'Personaliza tu experiencia de conexión';
+  @override
+  String get setupWarp => 'Configurar WARP';
+  @override
+  String get allOptions => 'Todas las opciones de configuración';
+  @override
+  String get allAdvancedOptions => 'Todas las opciones avanzadas';
+  @override
+  late final TranslationsConfigShortServiceModesEs shortServiceModes =
+      TranslationsConfigShortServiceModesEs._(_root);
+  @override
+  String get generateWarpConfig => 'Generar configuración WARP';
+  @override
+  String get missingWarpConfig => 'Falta la configuración WARP';
+  @override
+  String get warpConfigGenerated => 'Configuración WARP generada';
+  @override
+  String get blockAds => 'Bloquear anuncios';
+  @override
+  String get tproxyPort => 'Puerto de línea transparente';
+  @override
+  String get warpNoiseSize => 'Tamaño del ruido';
+  @override
+  String get warpNoiseMode => 'Modo de ruido';
+  @override
+  String get warpNoiseDelay => 'Retardo de ruido';
+  @override
+  String get desktopProxyScopeNotice =>
+      'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+}
+
+// Path: stats
+class TranslationsStatsEs extends TranslationsStatsEn {
+  TranslationsStatsEs._(TranslationsEs root) : this._root = root, super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get traffic => 'Tráfico';
+  @override
+  String get trafficLive => 'Tráfico en vivo';
+  @override
+  String get trafficTotal => 'Tráfico total';
+  @override
+  String get trafficUsage => 'Uso de tráfico';
+  @override
+  String get liveSpeed => 'Velocidad en vivo';
+  @override
+  String get uplink => 'Subida';
+  @override
+  String get downlink => 'Bajada';
+  @override
+  String get connection => 'Conexión';
+  @override
+  String get speed => 'Velocidad';
+  @override
+  String get totalTransferred => 'Total transferido';
 }
 
 // Path: general.toggle
@@ -3212,6 +3634,22 @@ class TranslationsGeneralStateEs extends TranslationsGeneralStateEn {
   String get disable => 'Desactivar';
 }
 
+// Path: home.routingMode
+class TranslationsHomeRoutingModeEs extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'Proxy global';
+  @override
+  String get smart => 'Enrutamiento inteligente';
+}
+
 // Path: profile.subscription
 class TranslationsProfileSubscriptionEs
     extends TranslationsProfileSubscriptionEn {
@@ -3239,6 +3677,14 @@ class TranslationsProfileSubscriptionEs
   String get expired => 'Caducado';
   @override
   String get noTraffic => 'Fuera de cuota';
+  @override
+  String get upload => 'Subida';
+  @override
+  String get download => 'Descarga';
+  @override
+  String get total => 'Tráfico total';
+  @override
+  String get expireDate => 'Fecha de vencimiento';
 }
 
 // Path: profile.sortBy
@@ -3284,6 +3730,17 @@ class TranslationsProfileAddEs extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'Agregar perfil';
   @override
   String get failureMsg => 'No se pudo agregar el perfil';
+  @override
+  String get modalSubtitle => 'Elige cómo añadir el archivo de configuración';
+  @override
+  String get manuallyDescription =>
+      'Introduce la configuración del servidor manualmente';
+  @override
+  String get addWarp => 'Añadir WARP';
+  @override
+  String get warpDescription => 'Aceleración gratuita con Cloudflare WARP';
+  @override
+  String get addingWarpMsg => 'Espera mientras registramos WARP.';
 }
 
 // Path: profile.update
@@ -3339,6 +3796,14 @@ class TranslationsProfileShareEs extends TranslationsProfileShareEn {
   @override
   String get exportConfigToClipboardSuccess =>
       'Configuración copiada al portapapeles';
+  @override
+  String get shareLink => 'Compartir enlace';
+  @override
+  String get subscriptionLinkCopied => 'Enlace de suscripción copiado';
+  @override
+  String get configCopied => 'Configuración copiada';
+  @override
+  String get copyFailed => 'Error al copiar';
 }
 
 // Path: profile.edit
@@ -3434,6 +3899,72 @@ class TranslationsProfileDetailsFormEs
       'Multiplex outbound connections to reduce handshake overhead';
 }
 
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsEs
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'Añadir';
+  @override
+  String get updateAll => 'Actualizar todo';
+  @override
+  String get sort => 'Ordenar';
+  @override
+  String get copyConfigSuccess => 'Configuración copiada';
+  @override
+  String get editConfig => 'Editar configuración';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsEs extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'Información básica';
+  @override
+  String get subscriptionStatus => 'Estado de la suscripción';
+  @override
+  String get options => 'Opciones';
+  @override
+  String get updateNow => 'Actualizar ahora';
+  @override
+  String get updateNowDescription =>
+      'Obtener la configuración más reciente del servidor';
+  @override
+  String get expireDate => 'Fecha de vencimiento';
+  @override
+  String get unlimited => 'Ilimitado';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewEs extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'En uso';
+  @override
+  String remainingDays({required Object days}) => 'Quedan ${days} días';
+}
+
 // Path: proxies.sortOptions
 class TranslationsProxiesSortOptionsEs
     extends TranslationsProxiesSortOptionsEn {
@@ -3451,6 +3982,42 @@ class TranslationsProxiesSortOptionsEs
   String get name => 'Alfabéticamente';
   @override
   String get delay => 'Por retraso';
+}
+
+// Path: proxies.delaySemantics
+class TranslationsProxiesDelaySemanticsEs
+    extends TranslationsProxiesDelaySemanticsEn {
+  TranslationsProxiesDelaySemanticsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String result({required Object delay}) => 'Latencia: ${delay} ms';
+  @override
+  String get timeout => 'Tiempo de prueba de latencia agotado';
+  @override
+  String get testing => 'Latencia: probando...';
+}
+
+// Path: proxies.ipInfoSemantics
+class TranslationsProxiesIpInfoSemanticsEs
+    extends TranslationsProxiesIpInfoSemanticsEn {
+  TranslationsProxiesIpInfoSemanticsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get address => 'Dirección IP';
+  @override
+  String get country => 'País';
 }
 
 // Path: settings.general
@@ -3499,6 +4066,14 @@ class TranslationsSettingsGeneralEs extends TranslationsSettingsGeneralEn {
       'Elimine las restricciones para un rendimiento VPN óptimo';
   @override
   String get dynamicNotification => 'Mostrar velocidad en la notificación';
+  @override
+  String get hapticFeedback => 'Respuesta háptica';
+  @override
+  String get autoIpCheck => 'Comprobar automáticamente la IP de conexión';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusEs
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusEs._(_root);
 }
 
 // Path: settings.advanced
@@ -3547,6 +4122,16 @@ class TranslationsSettingsNetworkEs extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'Ocultar aplicaciones del sistema';
   @override
   String get clearSelection => 'Selección clara';
+  @override
+  String get perAppProxyLoadFailedMsg =>
+      'Error al cargar la lista de aplicaciones';
+  @override
+  String get perAppProxyRetry => 'Reintentar';
+  @override
+  String get perAppProxyEmptyMsg => 'No se encontraron resultados';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'El modo de línea por aplicación solo es compatible con Android';
 }
 
 // Path: settings.geoAssets
@@ -3652,6 +4237,10 @@ class TranslationsFailureSingboxEs extends TranslationsFailureSingboxEn {
   String get create => 'Error de creación del servicio';
   @override
   String get start => 'Error de inicio del servicio';
+  @override
+  String get coreLibraryMissing => 'Biblioteca del núcleo no instalada';
+  @override
+  String get startTimeout => 'Tiempo de inicio del servicio agotado';
 }
 
 // Path: failure.connectivity
@@ -3674,6 +4263,8 @@ class TranslationsFailureConnectivityEs
       'Permiso de notificación faltante';
   @override
   String get core => 'Error central';
+  @override
+  String get networkUnavailable => 'Red no disponible';
 }
 
 // Path: failure.profiles
@@ -3694,6 +4285,8 @@ class TranslationsFailureProfilesEs extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'Configuracion Invalida';
   @override
   String get invalidUrl => 'URL Invalido';
+  @override
+  String get noActive => 'Sin perfil activo';
 }
 
 // Path: failure.connection
@@ -3753,6 +4346,8 @@ class TranslationsConfigServiceModesEs
   String get systemProxy => 'Sistema Proxy';
   @override
   String get tun => 'VPN';
+  @override
+  String get tunService => 'Servicio VPN';
 }
 
 // Path: config.section
@@ -3848,6 +4443,31 @@ class TranslationsConfigWarpDetourModesEs
   String get inbound => 'Detour WARP through proxies';
   @override
   String get outbound => 'Detour proxies through WARP';
+  @override
+  String get proxyOverWarp => 'Desviar líneas a través de WARP';
+  @override
+  String get warpOverProxy => 'Desviar WARP a través de las líneas';
+}
+
+// Path: config.shortServiceModes
+class TranslationsConfigShortServiceModesEs
+    extends TranslationsConfigShortServiceModesEn {
+  TranslationsConfigShortServiceModesEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get proxy => 'Solo línea';
+  @override
+  String get systemProxy => 'Línea del sistema';
+  @override
+  String get tun => 'VPN';
+  @override
+  String get tunService => 'Servicio VPN';
 }
 
 // Path: profile.add.qrScanner
@@ -3869,6 +4489,9 @@ class TranslationsProfileAddQrScannerEs
   String get torchSemanticLabel => 'Linterna';
   @override
   String get facingSemanticLabel => 'Frente a la cámara';
+  @override
+  String get permissionRequest =>
+      'Permiso de cámara para escanear el código QR';
 }
 
 // Path: settings.general.regions
@@ -3915,6 +4538,25 @@ class TranslationsSettingsGeneralThemeModesEs
   String get light => 'Modo Claro';
   @override
   String get black => 'Modo Negro';
+}
+
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusEs
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'Exento';
+  @override
+  String get notExempted => 'No exento';
+  @override
+  String get pending => '…';
 }
 
 // Path: settings.network.perAppProxyModes
@@ -4069,6 +4711,10 @@ class TranslationsGeneralFa extends TranslationsGeneralEn {
   String get openAppSettings => 'باز کردن تنظیمات برنامه';
   @override
   String get grantPermission => 'اجازه دادن';
+  @override
+  String get underDevelopment => 'در حال توسعه';
+  @override
+  String get confirm => 'تأیید';
 }
 
 // Path: intro
@@ -4105,6 +4751,26 @@ class TranslationsHomeFa extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'با افزودن یک پروفایل اشتراک شروع کنید';
   @override
   String get noActiveProfileMsg => 'یک پروفایل انتخاب کنید';
+  @override
+  late final TranslationsHomeRoutingModeFa routingMode =
+      TranslationsHomeRoutingModeFa._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'تغییر حالت ناموفق بود: ${error}';
+  @override
+  String get connectionFailedTitle => 'اتصال ناموفق';
+  @override
+  String get coreMissingTitle => 'کتابخانهٔ هسته پیدا نشد';
+  @override
+  String get coreMissingMsg =>
+      'برنامه نتوانست هستهٔ شبکهٔ خود را بارگذاری کند. اتصال در دسترس نیست. برنامه را دوباره نصب کنید یا مطمئن شوید فایل کتابخانهٔ هسته کنار فایل اجرایی قرار دارد.';
+  @override
+  String get degradedTitle => 'متصل است، اما دسترسی به اینترنت وجود ندارد';
+  @override
+  String get degradedMsg =>
+      'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
+  @override
+  String get degradedRetry => 'بررسی مجدد';
 }
 
 // Path: stats
@@ -4131,6 +4797,10 @@ class TranslationsStatsFa extends TranslationsStatsEn {
   String get speed => 'سرعت';
   @override
   String get totalTransferred => 'کل تبادل';
+  @override
+  String get trafficUsage => 'مصرف ترافیک';
+  @override
+  String get liveSpeed => 'سرعت لحظه‌ای';
 }
 
 // Path: profile
@@ -4187,6 +4857,17 @@ class TranslationsProfileFa extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormFa detailsForm =
       TranslationsProfileDetailsFormFa._(_root);
+  @override
+  late final TranslationsProfileActionButtonsFa actionButtons =
+      TranslationsProfileActionButtonsFa._(_root);
+  @override
+  late final TranslationsProfileDetailsFa details =
+      TranslationsProfileDetailsFa._(_root);
+  @override
+  late final TranslationsProfileOverviewFa overview =
+      TranslationsProfileOverviewFa._(_root);
+  @override
+  String get remoteProfile => 'پروفایل راه دور';
 }
 
 // Path: proxies
@@ -4222,6 +4903,33 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesIpInfoSemanticsFa ipInfoSemantics =
       TranslationsProxiesIpInfoSemanticsFa._(_root);
+  @override
+  String get autoSelect => 'انتخاب خودکار';
+  @override
+  String get autoSelectDescription => 'اتصال خودکار به سریع‌ترین نود';
+  @override
+  String get sortModalTitle => 'روش مرتب‌سازی را انتخاب کنید';
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'در حال آزمایش تأخیر: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'به ${name} تغییر یافت';
+  @override
+  String switchToFailed({required Object error}) =>
+      'تعویض ناموفق بود: ${error}';
+  @override
+  String get connectBeforeSwitch => 'پیش از تعویض خط، متصل شوید';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'آزمایش تأخیر برای ${count} خط آغاز شد';
+  @override
+  String get delayTestBtn => 'تأخیر';
+  @override
+  String lineCount({required Object count}) => '${count} خط';
+  @override
+  String get manualSelect => 'انتخاب دستی';
+  @override
+  String get autoTest => 'تست خودکار';
 }
 
 // Path: logs
@@ -4248,6 +4956,14 @@ class TranslationsLogsFa extends TranslationsLogsEn {
   String get resumeTooltip => 'ادامه دادن';
   @override
   String get clearTooltip => 'پاک‌سازی';
+  @override
+  String get logsCleared => 'گزارش‌ها پاک شد';
+  @override
+  String get logsCopied => 'گزارش‌ها کپی شد';
+  @override
+  String get logsUnderDevelopment => 'قابلیت گزارش‌گیری در حال توسعه است';
+  @override
+  String get noLogsWhenDisconnected => 'متصل نیست، گزارشی وجود ندارد';
 }
 
 // Path: settings
@@ -4291,6 +5007,16 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsFa geoAssets =
       TranslationsSettingsGeoAssetsFa._(_root);
+  @override
+  String get systemProxyEnabled => 'پروکسی سیستم فعال شد';
+  @override
+  String get systemProxyDisabled =>
+      'پروکسی سیستم غیرفعال شد (برای اعمال، دوباره وصل شوید)';
+  @override
+  String get adminPrivilegesRequired => 'در macOS به دسترسی مدیر نیاز است';
+  @override
+  String get portChangeNotice =>
+      'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
 }
 
 // Path: about
@@ -4315,6 +5041,9 @@ class TranslationsAboutFa extends TranslationsAboutEn {
   String get privacyPolicy => 'سیاست‌های حفظ حریم خصوصی';
   @override
   String get termsAndConditions => 'شرایط و ضوابط استفاده';
+  @override
+  String get appDescription =>
+      'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
 }
 
 // Path: appUpdate
@@ -4364,6 +5093,8 @@ class TranslationsTrayFa extends TranslationsTrayEn {
   late final TranslationsTrayStatusFa status = TranslationsTrayStatusFa._(
     _root,
   );
+  @override
+  String get hide => 'پنهان کردن';
 }
 
 // Path: failure
@@ -4580,6 +5311,13 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   String get warpNoiseMode => 'حالت نویز';
   @override
   String get warpNoiseDelay => 'تأخیر نویز';
+  @override
+  String get quickSettingsSubtitle => 'تجربهٔ اتصال خود را سفارشی کنید';
+  @override
+  String get allAdvancedOptions => 'همهٔ گزینه‌های پیشرفته';
+  @override
+  String get desktopProxyScopeNotice =>
+      'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
 }
 
 // Path: general.toggle
@@ -4610,6 +5348,22 @@ class TranslationsGeneralStateFa extends TranslationsGeneralStateEn {
   // Translations
   @override
   String get disable => 'غیرفعال';
+}
+
+// Path: home.routingMode
+class TranslationsHomeRoutingModeFa extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'پروکسی سراسری';
+  @override
+  String get smart => 'مسیریابی هوشمند';
 }
 
 // Path: profile.subscription
@@ -4697,6 +5451,12 @@ class TranslationsProfileAddFa extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'در حال افزودن پروفایل';
   @override
   String get failureMsg => 'افزودن پروفایل ناموفق بود';
+  @override
+  String get modalSubtitle => 'نحوهٔ افزودن فایل پیکربندی را انتخاب کنید';
+  @override
+  String get manuallyDescription => 'پیکربندی سرور را دستی وارد کنید';
+  @override
+  String get warpDescription => 'شتاب‌دهی رایگان با Cloudflare WARP';
 }
 
 // Path: profile.update
@@ -4749,6 +5509,14 @@ class TranslationsProfileShareFa extends TranslationsProfileShareEn {
   String get exportConfigToClipboard => 'افزودن پیکربندی به کلیپ‌بورد';
   @override
   String get exportConfigToClipboardSuccess => 'پیکربندی در کلیپ‌بورد کپی شد';
+  @override
+  String get shareLink => 'اشتراک‌گذاری پیوند';
+  @override
+  String get subscriptionLinkCopied => 'پیوند اشتراک کپی شد';
+  @override
+  String get configCopied => 'پیکربندی کپی شد';
+  @override
+  String get copyFailed => 'کپی ناموفق بود';
 }
 
 // Path: profile.edit
@@ -4842,6 +5610,71 @@ class TranslationsProfileDetailsFormFa
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+}
+
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsFa
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'افزودن';
+  @override
+  String get updateAll => 'به‌روزرسانی همه';
+  @override
+  String get sort => 'مرتب‌سازی';
+  @override
+  String get copyConfigSuccess => 'پیکربندی کپی شد';
+  @override
+  String get editConfig => 'ویرایش پیکربندی';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsFa extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'اطلاعات پایه';
+  @override
+  String get subscriptionStatus => 'وضعیت اشتراک';
+  @override
+  String get options => 'گزینه‌ها';
+  @override
+  String get updateNow => 'اکنون به‌روزرسانی کن';
+  @override
+  String get updateNowDescription => 'دریافت آخرین پیکربندی از سرور';
+  @override
+  String get expireDate => 'تاریخ انقضا';
+  @override
+  String get unlimited => 'نامحدود';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewFa extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'در حال استفاده';
+  @override
+  String remainingDays({required Object days}) => '${days} روز باقی مانده';
 }
 
 // Path: proxies.sortOptions
@@ -4948,6 +5781,10 @@ class TranslationsSettingsGeneralFa extends TranslationsSettingsGeneralEn {
   String get hapticFeedback => 'بازخورد لمسی';
   @override
   String get autoIpCheck => 'بررسی خودکار آی‌پی اتصال';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusFa
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusFa._(_root);
 }
 
 // Path: settings.advanced
@@ -4997,6 +5834,15 @@ class TranslationsSettingsNetworkFa extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'پنهان کردن برنامه‌های سیستمی';
   @override
   String get clearSelection => 'پاک کردن انتخاب‌ها';
+  @override
+  String get perAppProxyLoadFailedMsg => 'بارگذاری فهرست برنامه‌ها ناموفق بود';
+  @override
+  String get perAppProxyRetry => 'تلاش مجدد';
+  @override
+  String get perAppProxyEmptyMsg => 'نتیجه‌ای یافت نشد';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'حالت خط برای هر برنامه فقط در Android پشتیبانی می‌شود';
 }
 
 // Path: settings.geoAssets
@@ -5102,6 +5948,10 @@ class TranslationsFailureSingboxFa extends TranslationsFailureSingboxEn {
   String get create => 'خطای ایجاد سرویس';
   @override
   String get start => 'خطای راه‌اندازی سرویس';
+  @override
+  String get coreLibraryMissing => 'کتابخانهٔ هسته نصب نشده است';
+  @override
+  String get startTimeout => 'زمان راه‌اندازی سرویس به پایان رسید';
 }
 
 // Path: failure.connectivity
@@ -5123,6 +5973,8 @@ class TranslationsFailureConnectivityFa
   String get missingNotificationPermission => 'مجوز اعلان وجود ندارد';
   @override
   String get core => 'خطای هسته';
+  @override
+  String get networkUnavailable => 'شبکه در دسترس نیست';
 }
 
 // Path: failure.profiles
@@ -5143,6 +5995,8 @@ class TranslationsFailureProfilesFa extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'پیکربندی‌ها نامعتبر هستند';
   @override
   String get invalidUrl => 'لینک نامعتبر است';
+  @override
+  String get noActive => 'هیچ پروفایل فعالی وجود ندارد';
 }
 
 // Path: failure.connection
@@ -5395,6 +6249,25 @@ class TranslationsSettingsGeneralThemeModesFa
   String get black => 'حالت سیاه';
 }
 
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusFa
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'مستثنی';
+  @override
+  String get notExempted => 'مستثنی نشده';
+  @override
+  String get pending => '…';
+}
+
 // Path: settings.network.perAppProxyModes
 class TranslationsSettingsNetworkPerAppProxyModesFa
     extends TranslationsSettingsNetworkPerAppProxyModesEn {
@@ -5537,6 +6410,20 @@ class TranslationsGeneralId extends TranslationsGeneralEn {
   String get hidden => 'Tersembunyi';
   @override
   String get timeout => 'Waktu habis';
+  @override
+  String get clipboardExportSuccessMsg => 'Disalin ke papan klip';
+  @override
+  String get showMore => 'Tampilkan Lebih Banyak';
+  @override
+  String get showLess => 'Tampilkan Lebih Sedikit';
+  @override
+  String get openAppSettings => 'Buka Pengaturan Aplikasi';
+  @override
+  String get grantPermission => 'Berikan Izin';
+  @override
+  String get underDevelopment => 'Dalam Pengembangan';
+  @override
+  String get confirm => 'Konfirmasi';
 }
 
 // Path: intro
@@ -5572,6 +6459,26 @@ class TranslationsHomeId extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'Mulai menambahkan langganan profil';
   @override
   String get noActiveProfileMsg => 'Pilih profil';
+  @override
+  late final TranslationsHomeRoutingModeId routingMode =
+      TranslationsHomeRoutingModeId._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'Gagal mengganti mode: ${error}';
+  @override
+  String get connectionFailedTitle => 'Koneksi Gagal';
+  @override
+  String get coreMissingTitle => 'Pustaka Inti Tidak Ditemukan';
+  @override
+  String get coreMissingMsg =>
+      'Aplikasi tidak dapat memuat inti jaringannya. Koneksi tidak tersedia. Pasang ulang aplikasi, atau pastikan berkas pustaka inti berada di samping berkas eksekusi.';
+  @override
+  String get degradedTitle => 'Tersambung, tetapi tidak ada akses internet';
+  @override
+  String get degradedMsg =>
+      'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
+  @override
+  String get degradedRetry => 'Periksa Lagi';
 }
 
 // Path: stats
@@ -5592,6 +6499,16 @@ class TranslationsStatsId extends TranslationsStatsEn {
   String get downlink => 'Downlink';
   @override
   String get connection => 'Sambungan';
+  @override
+  String get trafficLive => 'Lalu Lintas Langsung';
+  @override
+  String get trafficUsage => 'Penggunaan Lalu Lintas';
+  @override
+  String get liveSpeed => 'Kecepatan Langsung';
+  @override
+  String get speed => 'Kecepatan';
+  @override
+  String get totalTransferred => 'Total Ditransfer';
 }
 
 // Path: profile
@@ -5648,6 +6565,17 @@ class TranslationsProfileId extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormId detailsForm =
       TranslationsProfileDetailsFormId._(_root);
+  @override
+  late final TranslationsProfileActionButtonsId actionButtons =
+      TranslationsProfileActionButtonsId._(_root);
+  @override
+  late final TranslationsProfileDetailsId details =
+      TranslationsProfileDetailsId._(_root);
+  @override
+  late final TranslationsProfileOverviewId overview =
+      TranslationsProfileOverviewId._(_root);
+  @override
+  String get remoteProfile => 'Profil Jarak Jauh';
 }
 
 // Path: proxies
@@ -5671,6 +6599,45 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesSortOptionsId sortOptions =
       TranslationsProxiesSortOptionsId._(_root);
+  @override
+  String get checkIp => 'Periksa IP';
+  @override
+  String get unknownIp => 'IP Tidak Diketahui';
+  @override
+  String get autoSelect => 'Pilih Otomatis';
+  @override
+  String get autoSelectDescription => 'Sambungkan otomatis ke node tercepat';
+  @override
+  String get sortModalTitle => 'Pilih metode pengurutan';
+  @override
+  String get activeProxySemanticLabel => 'Jalur Aktif';
+  @override
+  late final TranslationsProxiesDelaySemanticsId delaySemantics =
+      TranslationsProxiesDelaySemanticsId._(_root);
+  @override
+  late final TranslationsProxiesIpInfoSemanticsId ipInfoSemantics =
+      TranslationsProxiesIpInfoSemanticsId._(_root);
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'Menguji jeda untuk: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'Beralih ke ${name}';
+  @override
+  String switchToFailed({required Object error}) => 'Gagal beralih: ${error}';
+  @override
+  String get connectBeforeSwitch =>
+      'Sambungkan terlebih dahulu sebelum mengganti jalur';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'Uji jeda dimulai untuk ${count} jalur';
+  @override
+  String get delayTestBtn => 'Jeda';
+  @override
+  String lineCount({required Object count}) => '${count} jalur';
+  @override
+  String get manualSelect => 'Pilih Manual';
+  @override
+  String get autoTest => 'Tes Otomatis';
 }
 
 // Path: logs
@@ -5697,6 +6664,14 @@ class TranslationsLogsId extends TranslationsLogsEn {
   String get resumeTooltip => 'Lanjut';
   @override
   String get clearTooltip => 'Bersih';
+  @override
+  String get logsCleared => 'Log dihapus';
+  @override
+  String get logsCopied => 'Log disalin';
+  @override
+  String get logsUnderDevelopment => 'Fitur log sedang dikembangkan';
+  @override
+  String get noLogsWhenDisconnected => 'Tidak tersambung, tidak ada log';
 }
 
 // Path: settings
@@ -5730,6 +6705,25 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsId geoAssets =
       TranslationsSettingsGeoAssetsId._(_root);
+  @override
+  String get exportOptions => 'Salin Opsi Anonim ke Papan Klip';
+  @override
+  String get exportAllOptions => 'Salin Semua Opsi ke Papan Klip';
+  @override
+  String get importOptions => 'Impor Opsi dari Papan Klip';
+  @override
+  String get importOptionsMsg =>
+      'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
+  @override
+  String get systemProxyEnabled => 'Proxy sistem diaktifkan';
+  @override
+  String get systemProxyDisabled =>
+      'Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)';
+  @override
+  String get adminPrivilegesRequired => 'Memerlukan hak administrator di macOS';
+  @override
+  String get portChangeNotice =>
+      'Perubahan port memerlukan sambung ulang agar berlaku';
 }
 
 // Path: about
@@ -5754,6 +6748,9 @@ class TranslationsAboutId extends TranslationsAboutEn {
   String get privacyPolicy => 'Kebijakan Privasi';
   @override
   String get termsAndConditions => 'Syarat dan Ketentuan Umum';
+  @override
+  String get appDescription =>
+      'Klien proxy lintas platform berbasis inti sing-box';
 }
 
 // Path: appUpdate
@@ -5803,6 +6800,8 @@ class TranslationsTrayId extends TranslationsTrayEn {
   late final TranslationsTrayStatusId status = TranslationsTrayStatusId._(
     _root,
   );
+  @override
+  String get hide => 'Sembunyikan';
 }
 
 // Path: failure
@@ -5881,6 +6880,13 @@ class TranslationsConnectionId extends TranslationsConnectionEn {
       'Kamu telah mengaktifkan fitur experimental yang mungkin mempengaruhi kualitas sambungan dan error tidak terduga. Kamu tetap bisa merubah atau set ulang opsi dari Halaman Konfigurasi';
   @override
   String get disableExperimentalNotice => 'Jangan tampil lagi';
+  @override
+  String get reconnect => 'Sambungkan Ulang';
+  @override
+  String get connectAnyWay => 'Sambungkan';
+  @override
+  String get reconnectMsg =>
+      'Menyambungkan ulang untuk menerapkan perubahan...';
 }
 
 // Path: config
@@ -5988,6 +6994,38 @@ class TranslationsConfigId extends TranslationsConfigEn {
   String get warpPort => 'Port';
   @override
   String get warpNoise => 'Noise';
+  @override
+  String get quickSettings => 'Pengaturan Cepat';
+  @override
+  String get quickSettingsSubtitle => 'Sesuaikan pengalaman koneksi Anda';
+  @override
+  String get setupWarp => 'Siapkan WARP';
+  @override
+  String get allOptions => 'Semua Opsi Konfigurasi';
+  @override
+  String get allAdvancedOptions => 'Semua Opsi Lanjutan';
+  @override
+  late final TranslationsConfigShortServiceModesId shortServiceModes =
+      TranslationsConfigShortServiceModesId._(_root);
+  @override
+  String get generateWarpConfig => 'Buat Konfigurasi WARP';
+  @override
+  String get missingWarpConfig => 'Konfigurasi WARP Tidak Ada';
+  @override
+  String get warpConfigGenerated => 'Konfigurasi WARP Dibuat';
+  @override
+  String get blockAds => 'Blokir Iklan';
+  @override
+  String get tproxyPort => 'Port Jalur Transparan';
+  @override
+  String get warpNoiseSize => 'Ukuran Noise';
+  @override
+  String get warpNoiseMode => 'Mode Noise';
+  @override
+  String get warpNoiseDelay => 'Penundaan Noise';
+  @override
+  String get desktopProxyScopeNotice =>
+      'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
 }
 
 // Path: general.toggle
@@ -6020,6 +7058,22 @@ class TranslationsGeneralStateId extends TranslationsGeneralStateEn {
   String get disable => 'Menonaktifkan';
 }
 
+// Path: home.routingMode
+class TranslationsHomeRoutingModeId extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'Proxy Global';
+  @override
+  String get smart => 'Perutean Cerdas';
+}
+
 // Path: profile.subscription
 class TranslationsProfileSubscriptionId
     extends TranslationsProfileSubscriptionEn {
@@ -6047,6 +7101,14 @@ class TranslationsProfileSubscriptionId
   String get expired => 'Kadaluarsa';
   @override
   String get noTraffic => 'Kuota Habis';
+  @override
+  String get upload => 'Unggah';
+  @override
+  String get download => 'Unduh';
+  @override
+  String get total => 'Total Lalu Lintas';
+  @override
+  String get expireDate => 'Tanggal Kedaluwarsa';
 }
 
 // Path: profile.sortBy
@@ -6092,6 +7154,16 @@ class TranslationsProfileAddId extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'Tambahkan Profil';
   @override
   String get failureMsg => 'Gagal tambahkan profil';
+  @override
+  String get modalSubtitle => 'Pilih cara menambahkan berkas konfigurasi';
+  @override
+  String get manuallyDescription => 'Masukkan konfigurasi server secara manual';
+  @override
+  String get addWarp => 'Tambah WARP';
+  @override
+  String get warpDescription => 'Akselerasi gratis dengan Cloudflare WARP';
+  @override
+  String get addingWarpMsg => 'Mohon tunggu, kami sedang mendaftarkan WARP.';
 }
 
 // Path: profile.update
@@ -6142,6 +7214,14 @@ class TranslationsProfileShareId extends TranslationsProfileShareEn {
   String get exportConfigToClipboard => 'Taruh konfigurasi ke clipboard';
   @override
   String get exportConfigToClipboardSuccess => 'Salin konfigurasi ke clipboard';
+  @override
+  String get shareLink => 'Bagikan Tautan';
+  @override
+  String get subscriptionLinkCopied => 'Tautan langganan disalin';
+  @override
+  String get configCopied => 'Konfigurasi disalin';
+  @override
+  String get copyFailed => 'Gagal menyalin';
 }
 
 // Path: profile.edit
@@ -6237,6 +7317,71 @@ class TranslationsProfileDetailsFormId
       'Multiplex outbound connections to reduce handshake overhead';
 }
 
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsId
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'Tambah';
+  @override
+  String get updateAll => 'Perbarui Semua';
+  @override
+  String get sort => 'Urutkan';
+  @override
+  String get copyConfigSuccess => 'Konfigurasi disalin';
+  @override
+  String get editConfig => 'Edit Konfigurasi';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsId extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'Informasi Dasar';
+  @override
+  String get subscriptionStatus => 'Status Langganan';
+  @override
+  String get options => 'Opsi';
+  @override
+  String get updateNow => 'Perbarui Sekarang';
+  @override
+  String get updateNowDescription => 'Ambil konfigurasi terbaru dari server';
+  @override
+  String get expireDate => 'Tanggal Kedaluwarsa';
+  @override
+  String get unlimited => 'Tanpa Batas';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewId extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'Sedang Digunakan';
+  @override
+  String remainingDays({required Object days}) => 'Sisa ${days} hari';
+}
+
 // Path: proxies.sortOptions
 class TranslationsProxiesSortOptionsId
     extends TranslationsProxiesSortOptionsEn {
@@ -6254,6 +7399,42 @@ class TranslationsProxiesSortOptionsId
   String get name => 'Alfabetikal';
   @override
   String get delay => 'Berdasarkan Delay';
+}
+
+// Path: proxies.delaySemantics
+class TranslationsProxiesDelaySemanticsId
+    extends TranslationsProxiesDelaySemanticsEn {
+  TranslationsProxiesDelaySemanticsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String result({required Object delay}) => 'Jeda: ${delay}ms';
+  @override
+  String get timeout => 'Waktu Uji Jeda Habis';
+  @override
+  String get testing => 'Jeda: Menguji...';
+}
+
+// Path: proxies.ipInfoSemantics
+class TranslationsProxiesIpInfoSemanticsId
+    extends TranslationsProxiesIpInfoSemanticsEn {
+  TranslationsProxiesIpInfoSemanticsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get address => 'Alamat IP';
+  @override
+  String get country => 'Negara';
 }
 
 // Path: settings.general
@@ -6301,6 +7482,14 @@ class TranslationsSettingsGeneralId extends TranslationsSettingsGeneralEn {
       'Hapus batasan untuk performa VPN yang optimal';
   @override
   String get dynamicNotification => 'Tampilkan Kecepatan di notifikasi';
+  @override
+  String get hapticFeedback => 'Umpan Balik Haptik';
+  @override
+  String get autoIpCheck => 'Periksa IP Koneksi Otomatis';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusId
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusId._(_root);
 }
 
 // Path: settings.advanced
@@ -6349,6 +7538,15 @@ class TranslationsSettingsNetworkId extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'Sembunyikan aplikasi sistem';
   @override
   String get clearSelection => 'Bersihkan seleksi';
+  @override
+  String get perAppProxyLoadFailedMsg => 'Gagal memuat daftar aplikasi';
+  @override
+  String get perAppProxyRetry => 'Coba Lagi';
+  @override
+  String get perAppProxyEmptyMsg => 'Tidak ada hasil';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'Mode jalur per aplikasi hanya didukung di Android';
 }
 
 // Path: settings.geoAssets
@@ -6454,6 +7652,10 @@ class TranslationsFailureSingboxId extends TranslationsFailureSingboxEn {
   String get create => 'Pembuatan Servis Error';
   @override
   String get start => 'Jalankan Servis Error';
+  @override
+  String get coreLibraryMissing => 'Pustaka Inti Belum Terpasang';
+  @override
+  String get startTimeout => 'Waktu Mulai Layanan Habis';
 }
 
 // Path: failure.connectivity
@@ -6475,6 +7677,8 @@ class TranslationsFailureConnectivityId
   String get missingNotificationPermission => 'Izin Notifikasi Hilang';
   @override
   String get core => 'Error Inti';
+  @override
+  String get networkUnavailable => 'Jaringan Tidak Tersedia';
 }
 
 // Path: failure.profiles
@@ -6495,6 +7699,8 @@ class TranslationsFailureProfilesId extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'Konfigurasi tidak valid';
   @override
   String get invalidUrl => 'URL tidak valid';
+  @override
+  String get noActive => 'Tidak Ada Profil Aktif';
 }
 
 // Path: failure.connection
@@ -6554,6 +7760,8 @@ class TranslationsConfigServiceModesId
   String get systemProxy => 'Sistem Proxy';
   @override
   String get tun => 'VPN';
+  @override
+  String get tunService => 'Layanan VPN';
 }
 
 // Path: config.section
@@ -6649,6 +7857,31 @@ class TranslationsConfigWarpDetourModesId
   String get inbound => 'Detour WARP through proxies';
   @override
   String get outbound => 'Detour proxies through WARP';
+  @override
+  String get proxyOverWarp => 'Alihkan Jalur Melalui WARP';
+  @override
+  String get warpOverProxy => 'Alihkan WARP Melalui Jalur';
+}
+
+// Path: config.shortServiceModes
+class TranslationsConfigShortServiceModesId
+    extends TranslationsConfigShortServiceModesEn {
+  TranslationsConfigShortServiceModesId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get proxy => 'Hanya Jalur';
+  @override
+  String get systemProxy => 'Jalur Sistem';
+  @override
+  String get tun => 'VPN';
+  @override
+  String get tunService => 'Layanan VPN';
 }
 
 // Path: profile.add.qrScanner
@@ -6670,6 +7903,8 @@ class TranslationsProfileAddQrScannerId
   String get torchSemanticLabel => 'Lampu Flash';
   @override
   String get facingSemanticLabel => 'Hadap Kamera';
+  @override
+  String get permissionRequest => 'Izin kamera untuk memindai Kode QR';
 }
 
 // Path: settings.general.regions
@@ -6716,6 +7951,25 @@ class TranslationsSettingsGeneralThemeModesId
   String get light => 'Tema Cerah';
   @override
   String get black => 'Tema Hitam';
+}
+
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusId
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'Dikecualikan';
+  @override
+  String get notExempted => 'Tidak Dikecualikan';
+  @override
+  String get pending => '…';
 }
 
 // Path: settings.network.perAppProxyModes
@@ -6865,6 +8119,15 @@ class TranslationsGeneralPtBr extends TranslationsGeneralEn {
   String get showLess => 'Mostre menos';
   @override
   String get grantPermission => 'Conceder permissão';
+  @override
+  String get clipboardExportSuccessMsg =>
+      'Copiado para a área de transferência';
+  @override
+  String get openAppSettings => 'Abrir configurações do app';
+  @override
+  String get underDevelopment => 'Em desenvolvimento';
+  @override
+  String get confirm => 'Confirmar';
 }
 
 // Path: intro
@@ -6904,6 +8167,26 @@ class TranslationsHomePtBr extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'Comece adicionando um perfil de assinatura';
   @override
   String get noActiveProfileMsg => 'Escolha um perfil';
+  @override
+  late final TranslationsHomeRoutingModePtBr routingMode =
+      TranslationsHomeRoutingModePtBr._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'Falha ao alternar o modo: ${error}';
+  @override
+  String get connectionFailedTitle => 'Falha na conexão';
+  @override
+  String get coreMissingTitle => 'Biblioteca do núcleo não encontrada';
+  @override
+  String get coreMissingMsg =>
+      'O aplicativo não conseguiu carregar seu núcleo de rede. A conexão não está disponível. Reinstale o aplicativo ou verifique se o arquivo da biblioteca do núcleo está junto do executável.';
+  @override
+  String get degradedTitle => 'Conectado, mas sem acesso à internet';
+  @override
+  String get degradedMsg =>
+      'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
+  @override
+  String get degradedRetry => 'Verificar novamente';
 }
 
 // Path: stats
@@ -6930,6 +8213,12 @@ class TranslationsStatsPtBr extends TranslationsStatsEn {
   String get speed => 'Velocidade';
   @override
   String get totalTransferred => 'Total Transferido';
+  @override
+  String get traffic => 'Tráfego';
+  @override
+  String get trafficUsage => 'Uso de tráfego';
+  @override
+  String get liveSpeed => 'Velocidade ao vivo';
 }
 
 // Path: profile
@@ -6984,6 +8273,17 @@ class TranslationsProfilePtBr extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormPtBr detailsForm =
       TranslationsProfileDetailsFormPtBr._(_root);
+  @override
+  late final TranslationsProfileActionButtonsPtBr actionButtons =
+      TranslationsProfileActionButtonsPtBr._(_root);
+  @override
+  late final TranslationsProfileDetailsPtBr details =
+      TranslationsProfileDetailsPtBr._(_root);
+  @override
+  late final TranslationsProfileOverviewPtBr overview =
+      TranslationsProfileOverviewPtBr._(_root);
+  @override
+  String get remoteProfile => 'Perfil remoto';
 }
 
 // Path: proxies
@@ -7019,6 +8319,33 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesIpInfoSemanticsPtBr ipInfoSemantics =
       TranslationsProxiesIpInfoSemanticsPtBr._(_root);
+  @override
+  String get autoSelect => 'Seleção automática';
+  @override
+  String get autoSelectDescription =>
+      'Conectar automaticamente ao nó mais rápido';
+  @override
+  String get sortModalTitle => 'Escolha o método de ordenação';
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'Testando latência de: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'Alterado para ${name}';
+  @override
+  String switchToFailed({required Object error}) => 'Falha ao trocar: ${error}';
+  @override
+  String get connectBeforeSwitch => 'Conecte-se antes de trocar de linha';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'Teste de latência iniciado para ${count} linhas';
+  @override
+  String get delayTestBtn => 'Latência';
+  @override
+  String lineCount({required Object count}) => '${count} linhas';
+  @override
+  String get manualSelect => 'Seleção manual';
+  @override
+  String get autoTest => 'Teste automático';
 }
 
 // Path: logs
@@ -7047,6 +8374,15 @@ class TranslationsLogsPtBr extends TranslationsLogsEn {
   String get resumeTooltip => 'Resumir';
   @override
   String get clearTooltip => 'Limpar';
+  @override
+  String get logsCleared => 'Registros limpos';
+  @override
+  String get logsCopied => 'Registros copiados';
+  @override
+  String get logsUnderDevelopment =>
+      'O recurso de registros está em desenvolvimento';
+  @override
+  String get noLogsWhenDisconnected => 'Desconectado, sem registros';
 }
 
 // Path: settings
@@ -7081,6 +8417,28 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsPtBr geoAssets =
       TranslationsSettingsGeoAssetsPtBr._(_root);
+  @override
+  String get exportOptions =>
+      'Copiar opções anônimas para a área de transferência';
+  @override
+  String get exportAllOptions =>
+      'Copiar todas as opções para a área de transferência';
+  @override
+  String get importOptions => 'Importar opções da área de transferência';
+  @override
+  String get importOptionsMsg =>
+      'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
+  @override
+  String get systemProxyEnabled => 'Proxy do sistema ativado';
+  @override
+  String get systemProxyDisabled =>
+      'Proxy do sistema desativado (reconecte para aplicar)';
+  @override
+  String get adminPrivilegesRequired =>
+      'Requer privilégios de administrador no macOS';
+  @override
+  String get portChangeNotice =>
+      'Alterações de porta exigem reconexão para serem aplicadas';
 }
 
 // Path: about
@@ -7107,6 +8465,9 @@ class TranslationsAboutPtBr extends TranslationsAboutEn {
   String get privacyPolicy => 'Política de Privacidade';
   @override
   String get termsAndConditions => 'Termos e Condições';
+  @override
+  String get appDescription =>
+      'Um cliente proxy multiplataforma baseado no núcleo sing-box';
 }
 
 // Path: appUpdate
@@ -7158,6 +8519,8 @@ class TranslationsTrayPtBr extends TranslationsTrayEn {
   late final TranslationsTrayStatusPtBr status = TranslationsTrayStatusPtBr._(
     _root,
   );
+  @override
+  String get hide => 'Ocultar';
 }
 
 // Path: failure
@@ -7234,6 +8597,12 @@ class TranslationsConnectionPtBr extends TranslationsConnectionEn {
       'Você ativou alguns recursos experimentais que podem afetar a qualidade da conexão e causar erros inesperados. Você sempre pode alterar ou redefinir essas opções na página de opções de configuração.';
   @override
   String get disableExperimentalNotice => 'Não mostrar novamente';
+  @override
+  String get reconnect => 'Reconectar';
+  @override
+  String get connectAnyWay => 'Conectar';
+  @override
+  String get reconnectMsg => 'Reconectando para aplicar as alterações...';
 }
 
 // Path: config
@@ -7349,6 +8718,30 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   String get warpNoise => 'Contagem de ruído';
   @override
   String get warpNoiseDelay => 'Atraso de ruído';
+  @override
+  String get quickSettings => 'Configurações rápidas';
+  @override
+  String get quickSettingsSubtitle => 'Personalize sua experiência de conexão';
+  @override
+  String get setupWarp => 'Configurar WARP';
+  @override
+  String get allOptions => 'Todas as opções de configuração';
+  @override
+  String get allAdvancedOptions => 'Todas as opções avançadas';
+  @override
+  late final TranslationsConfigShortServiceModesPtBr shortServiceModes =
+      TranslationsConfigShortServiceModesPtBr._(_root);
+  @override
+  String get blockAds => 'Bloquear anúncios';
+  @override
+  String get tproxyPort => 'Porta de linha transparente';
+  @override
+  String get warpNoiseSize => 'Tamanho do ruído';
+  @override
+  String get warpNoiseMode => 'Modo de ruído';
+  @override
+  String get desktopProxyScopeNotice =>
+      'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
 }
 
 // Path: general.toggle
@@ -7379,6 +8772,22 @@ class TranslationsGeneralStatePtBr extends TranslationsGeneralStateEn {
   // Translations
   @override
   String get disable => 'Desabilitar';
+}
+
+// Path: home.routingMode
+class TranslationsHomeRoutingModePtBr extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModePtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'Proxy global';
+  @override
+  String get smart => 'Roteamento inteligente';
 }
 
 // Path: profile.subscription
@@ -7461,6 +8870,18 @@ class TranslationsProfileAddPtBr extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'Adicionando Perfil';
   @override
   String get failureMsg => 'Falha ao adicionar perfil';
+  @override
+  String get modalSubtitle =>
+      'Escolha como adicionar o arquivo de configuração';
+  @override
+  String get manuallyDescription =>
+      'Insira a configuração do servidor manualmente';
+  @override
+  String get addWarp => 'Adicionar WARP';
+  @override
+  String get warpDescription => 'Aceleração gratuita com Cloudflare WARP';
+  @override
+  String get addingWarpMsg => 'Aguarde enquanto registramos o WARP.';
 }
 
 // Path: profile.update
@@ -7517,6 +8938,14 @@ class TranslationsProfileSharePtBr extends TranslationsProfileShareEn {
   @override
   String get exportConfigToClipboardSuccess =>
       'Configuração copiada para a área de transferência';
+  @override
+  String get shareLink => 'Compartilhar link';
+  @override
+  String get subscriptionLinkCopied => 'Link de assinatura copiado';
+  @override
+  String get configCopied => 'Configuração copiada';
+  @override
+  String get copyFailed => 'Falha ao copiar';
 }
 
 // Path: profile.edit
@@ -7610,6 +9039,72 @@ class TranslationsProfileDetailsFormPtBr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+}
+
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsPtBr
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'Adicionar';
+  @override
+  String get updateAll => 'Atualizar tudo';
+  @override
+  String get sort => 'Ordenar';
+  @override
+  String get copyConfigSuccess => 'Configuração copiada';
+  @override
+  String get editConfig => 'Editar configuração';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsPtBr extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'Informações básicas';
+  @override
+  String get subscriptionStatus => 'Status da assinatura';
+  @override
+  String get options => 'Opções';
+  @override
+  String get updateNow => 'Atualizar agora';
+  @override
+  String get updateNowDescription =>
+      'Buscar a configuração mais recente no servidor';
+  @override
+  String get expireDate => 'Data de expiração';
+  @override
+  String get unlimited => 'Ilimitado';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewPtBr extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'Em uso';
+  @override
+  String remainingDays({required Object days}) => 'Restam ${days} dias';
 }
 
 // Path: proxies.sortOptions
@@ -7716,6 +9211,10 @@ class TranslationsSettingsGeneralPtBr extends TranslationsSettingsGeneralEn {
   String get hapticFeedback => 'Feedback tátil';
   @override
   String get autoIpCheck => 'Verifique automaticamente o IP da conexão';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusPtBr
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusPtBr._(_root);
 }
 
 // Path: settings.advanced
@@ -7765,6 +9264,16 @@ class TranslationsSettingsNetworkPtBr extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'Ocultar aplicativos do sistema';
   @override
   String get clearSelection => 'Limpar seleção';
+  @override
+  String get perAppProxyLoadFailedMsg =>
+      'Falha ao carregar a lista de aplicativos';
+  @override
+  String get perAppProxyRetry => 'Tentar novamente';
+  @override
+  String get perAppProxyEmptyMsg => 'Nenhum resultado encontrado';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'O modo de linha por aplicativo é compatível apenas com Android';
 }
 
 // Path: settings.geoAssets
@@ -7871,6 +9380,10 @@ class TranslationsFailureSingboxPtBr extends TranslationsFailureSingboxEn {
   String get create => 'Erro ao criar serviço';
   @override
   String get start => 'Erro de inicialização do serviço';
+  @override
+  String get coreLibraryMissing => 'Biblioteca do núcleo não instalada';
+  @override
+  String get startTimeout => 'Tempo de inicialização do serviço esgotado';
 }
 
 // Path: failure.connectivity
@@ -7893,6 +9406,8 @@ class TranslationsFailureConnectivityPtBr
       'Permissão de notificação ausente';
   @override
   String get core => 'Erro central';
+  @override
+  String get networkUnavailable => 'Rede indisponível';
 }
 
 // Path: failure.profiles
@@ -7913,6 +9428,8 @@ class TranslationsFailureProfilesPtBr extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'Configurações inválidas';
   @override
   String get invalidUrl => 'URL inválida';
+  @override
+  String get noActive => 'Nenhum perfil ativo';
 }
 
 // Path: failure.connection
@@ -8071,6 +9588,31 @@ class TranslationsConfigWarpDetourModesPtBr
   String get inbound => 'Desvie o WARP através de proxies';
   @override
   String get outbound => 'Desviar proxies através do WARP';
+  @override
+  String get proxyOverWarp => 'Desviar linhas através do WARP';
+  @override
+  String get warpOverProxy => 'Desviar WARP através das linhas';
+}
+
+// Path: config.shortServiceModes
+class TranslationsConfigShortServiceModesPtBr
+    extends TranslationsConfigShortServiceModesEn {
+  TranslationsConfigShortServiceModesPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get proxy => 'Somente linha';
+  @override
+  String get systemProxy => 'Linha do sistema';
+  @override
+  String get tun => 'VPN';
+  @override
+  String get tunService => 'Serviço VPN';
 }
 
 // Path: profile.add.qrScanner
@@ -8092,6 +9634,8 @@ class TranslationsProfileAddQrScannerPtBr
   String get torchSemanticLabel => 'Luz do flash';
   @override
   String get facingSemanticLabel => 'Câmera voltada';
+  @override
+  String get permissionRequest => 'Permissão de câmera para ler o código QR';
 }
 
 // Path: settings.general.regions
@@ -8138,6 +9682,26 @@ class TranslationsSettingsGeneralThemeModesPtBr
   String get light => 'Modo Claro';
   @override
   String get black => 'Modo Preto';
+}
+
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusPtBr
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusPtBr._(
+    TranslationsPtBr root,
+  ) : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'Isento';
+  @override
+  String get notExempted => 'Não isento';
+  @override
+  String get pending => '…';
 }
 
 // Path: settings.network.perAppProxyModes
@@ -8292,6 +9856,10 @@ class TranslationsGeneralRu extends TranslationsGeneralEn {
   String get openAppSettings => 'Открыть настройки';
   @override
   String get grantPermission => 'Дать права доступа';
+  @override
+  String get underDevelopment => 'В разработке';
+  @override
+  String get confirm => 'Подтвердить';
 }
 
 // Path: intro
@@ -8327,6 +9895,26 @@ class TranslationsHomeRu extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'Начните с добавления профиля подписки';
   @override
   String get noActiveProfileMsg => 'Выберите профиль';
+  @override
+  late final TranslationsHomeRoutingModeRu routingMode =
+      TranslationsHomeRoutingModeRu._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'Не удалось сменить режим: ${error}';
+  @override
+  String get connectionFailedTitle => 'Не удалось подключиться';
+  @override
+  String get coreMissingTitle => 'Библиотека ядра не найдена';
+  @override
+  String get coreMissingMsg =>
+      'Приложению не удалось загрузить сетевое ядро. Подключение недоступно. Переустановите приложение или убедитесь, что файл библиотеки ядра находится рядом с исполняемым файлом.';
+  @override
+  String get degradedTitle => 'Подключено, но нет доступа в интернет';
+  @override
+  String get degradedMsg =>
+      'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
+  @override
+  String get degradedRetry => 'Проверить ещё раз';
 }
 
 // Path: stats
@@ -8353,6 +9941,10 @@ class TranslationsStatsRu extends TranslationsStatsEn {
   String get speed => 'Скорость';
   @override
   String get totalTransferred => 'Всего передано';
+  @override
+  String get trafficUsage => 'Использование трафика';
+  @override
+  String get liveSpeed => 'Текущая скорость';
 }
 
 // Path: profile
@@ -8409,6 +10001,17 @@ class TranslationsProfileRu extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormRu detailsForm =
       TranslationsProfileDetailsFormRu._(_root);
+  @override
+  late final TranslationsProfileActionButtonsRu actionButtons =
+      TranslationsProfileActionButtonsRu._(_root);
+  @override
+  late final TranslationsProfileDetailsRu details =
+      TranslationsProfileDetailsRu._(_root);
+  @override
+  late final TranslationsProfileOverviewRu overview =
+      TranslationsProfileOverviewRu._(_root);
+  @override
+  String get remoteProfile => 'Удалённый профиль';
 }
 
 // Path: proxies
@@ -8444,6 +10047,34 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesIpInfoSemanticsRu ipInfoSemantics =
       TranslationsProxiesIpInfoSemanticsRu._(_root);
+  @override
+  String get autoSelect => 'Автовыбор';
+  @override
+  String get autoSelectDescription =>
+      'Автоматически подключаться к самому быстрому узлу';
+  @override
+  String get sortModalTitle => 'Выберите способ сортировки';
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'Проверка задержки: ${name}';
+  @override
+  String switchedTo({required Object name}) => 'Переключено на ${name}';
+  @override
+  String switchToFailed({required Object error}) =>
+      'Не удалось переключить: ${error}';
+  @override
+  String get connectBeforeSwitch => 'Подключитесь перед сменой линии';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      'Запущена проверка задержки для ${count} линий';
+  @override
+  String get delayTestBtn => 'Задержка';
+  @override
+  String lineCount({required Object count}) => 'Линий: ${count}';
+  @override
+  String get manualSelect => 'Ручной выбор';
+  @override
+  String get autoTest => 'Автотест';
 }
 
 // Path: logs
@@ -8470,6 +10101,14 @@ class TranslationsLogsRu extends TranslationsLogsEn {
   String get resumeTooltip => 'Возобновить';
   @override
   String get clearTooltip => 'Очистить';
+  @override
+  String get logsCleared => 'Журналы очищены';
+  @override
+  String get logsCopied => 'Журналы скопированы';
+  @override
+  String get logsUnderDevelopment => 'Функция журналов в разработке';
+  @override
+  String get noLogsWhenDisconnected => 'Нет подключения, журналы отсутствуют';
 }
 
 // Path: settings
@@ -8509,6 +10148,21 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsRu geoAssets =
       TranslationsSettingsGeoAssetsRu._(_root);
+  @override
+  String get exportOptions => 'Копировать анонимные параметры в буфер обмена';
+  @override
+  String get exportAllOptions => 'Копировать все параметры в буфер обмена';
+  @override
+  String get systemProxyEnabled => 'Системный прокси включён';
+  @override
+  String get systemProxyDisabled =>
+      'Системный прокси отключён (переподключитесь для применения)';
+  @override
+  String get adminPrivilegesRequired =>
+      'На macOS требуются права администратора';
+  @override
+  String get portChangeNotice =>
+      'Изменения порта применяются после переподключения';
 }
 
 // Path: about
@@ -8533,6 +10187,9 @@ class TranslationsAboutRu extends TranslationsAboutEn {
   String get privacyPolicy => 'Политика конфиденциальности';
   @override
   String get termsAndConditions => 'Условия и положения';
+  @override
+  String get appDescription =>
+      'Кроссплатформенный прокси-клиент на основе ядра sing-box';
 }
 
 // Path: appUpdate
@@ -8582,6 +10239,8 @@ class TranslationsTrayRu extends TranslationsTrayEn {
   late final TranslationsTrayStatusRu status = TranslationsTrayStatusRu._(
     _root,
   );
+  @override
+  String get hide => 'Скрыть';
 }
 
 // Path: failure
@@ -8790,6 +10449,21 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   String get warpPort => 'Port';
   @override
   String get warpNoise => 'Noise';
+  @override
+  String get quickSettingsSubtitle => 'Настройте подключение под себя';
+  @override
+  String get allAdvancedOptions => 'Все дополнительные настройки';
+  @override
+  String get blockAds => 'Блокировать рекламу';
+  @override
+  String get warpNoiseSize => 'Размер шума';
+  @override
+  String get warpNoiseMode => 'Режим шума';
+  @override
+  String get warpNoiseDelay => 'Задержка шума';
+  @override
+  String get desktopProxyScopeNotice =>
+      'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
 }
 
 // Path: general.toggle
@@ -8820,6 +10494,22 @@ class TranslationsGeneralStateRu extends TranslationsGeneralStateEn {
   // Translations
   @override
   String get disable => 'Отключить';
+}
+
+// Path: home.routingMode
+class TranslationsHomeRoutingModeRu extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'Глобальный прокси';
+  @override
+  String get smart => 'Умная маршрутизация';
 }
 
 // Path: profile.subscription
@@ -8901,6 +10591,16 @@ class TranslationsProfileAddRu extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'Добавление профиля';
   @override
   String get failureMsg => 'Не удалось добавить профиль';
+  @override
+  String get modalSubtitle => 'Выберите способ добавления файла конфигурации';
+  @override
+  String get manuallyDescription => 'Введите конфигурацию сервера вручную';
+  @override
+  String get addWarp => 'Добавить WARP';
+  @override
+  String get warpDescription => 'Бесплатное ускорение через Cloudflare WARP';
+  @override
+  String get addingWarpMsg => 'Подождите, идёт регистрация WARP.';
 }
 
 // Path: profile.update
@@ -8956,6 +10656,14 @@ class TranslationsProfileShareRu extends TranslationsProfileShareEn {
   @override
   String get exportConfigToClipboardSuccess =>
       'Конфигурация скопирована в буфер обмена';
+  @override
+  String get shareLink => 'Поделиться ссылкой';
+  @override
+  String get subscriptionLinkCopied => 'Ссылка на подписку скопирована';
+  @override
+  String get configCopied => 'Конфигурация скопирована';
+  @override
+  String get copyFailed => 'Не удалось скопировать';
 }
 
 // Path: profile.edit
@@ -9048,6 +10756,72 @@ class TranslationsProfileDetailsFormRu
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+}
+
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsRu
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'Добавить';
+  @override
+  String get updateAll => 'Обновить все';
+  @override
+  String get sort => 'Сортировать';
+  @override
+  String get copyConfigSuccess => 'Конфигурация скопирована';
+  @override
+  String get editConfig => 'Изменить конфигурацию';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsRu extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'Основные сведения';
+  @override
+  String get subscriptionStatus => 'Состояние подписки';
+  @override
+  String get options => 'Параметры';
+  @override
+  String get updateNow => 'Обновить сейчас';
+  @override
+  String get updateNowDescription =>
+      'Загрузить актуальную конфигурацию с сервера';
+  @override
+  String get expireDate => 'Дата окончания';
+  @override
+  String get unlimited => 'Безлимитно';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewRu extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'Используется сейчас';
+  @override
+  String remainingDays({required Object days}) => 'Осталось ${days} дн.';
 }
 
 // Path: proxies.sortOptions
@@ -9152,6 +10926,12 @@ class TranslationsSettingsGeneralRu extends TranslationsSettingsGeneralEn {
   String get dynamicNotification => 'Отображение скорости в уведомлении';
   @override
   String get autoIpCheck => 'Автоматически проверять IP-адрес соединения';
+  @override
+  String get hapticFeedback => 'Тактильная отдача';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusRu
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusRu._(_root);
 }
 
 // Path: settings.advanced
@@ -9201,6 +10981,16 @@ class TranslationsSettingsNetworkRu extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'Скрыть системные приложения';
   @override
   String get clearSelection => 'Очистить выбор';
+  @override
+  String get perAppProxyLoadFailedMsg =>
+      'Не удалось загрузить список приложений';
+  @override
+  String get perAppProxyRetry => 'Повторить';
+  @override
+  String get perAppProxyEmptyMsg => 'Ничего не найдено';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'Режим линий для отдельных приложений поддерживается только на Android';
 }
 
 // Path: settings.geoAssets
@@ -9306,6 +11096,10 @@ class TranslationsFailureSingboxRu extends TranslationsFailureSingboxEn {
   String get create => 'Ошибка создания сервиса';
   @override
   String get start => 'Ошибка запуска сервиса';
+  @override
+  String get coreLibraryMissing => 'Библиотека ядра не установлена';
+  @override
+  String get startTimeout => 'Истекло время запуска службы';
 }
 
 // Path: failure.connectivity
@@ -9328,6 +11122,8 @@ class TranslationsFailureConnectivityRu
       'Отсутствует разрешение на показ уведомлений';
   @override
   String get core => 'Ошибка ядра';
+  @override
+  String get networkUnavailable => 'Сеть недоступна';
 }
 
 // Path: failure.profiles
@@ -9348,6 +11144,8 @@ class TranslationsFailureProfilesRu extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'Неправильная конфигурация';
   @override
   String get invalidUrl => 'Неправильный URL';
+  @override
+  String get noActive => 'Нет активного профиля';
 }
 
 // Path: failure.connection
@@ -9601,6 +11399,25 @@ class TranslationsSettingsGeneralThemeModesRu
   String get black => 'Чёрная тема';
 }
 
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusRu
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'Исключено';
+  @override
+  String get notExempted => 'Не исключено';
+  @override
+  String get pending => '…';
+}
+
 // Path: settings.network.perAppProxyModes
 class TranslationsSettingsNetworkPerAppProxyModesRu
     extends TranslationsSettingsNetworkPerAppProxyModesEn {
@@ -9749,6 +11566,14 @@ class TranslationsGeneralTr extends TranslationsGeneralEn {
   String get showLess => 'Daha az göster';
   @override
   String get grantPermission => 'İzin Ver';
+  @override
+  String get clipboardExportSuccessMsg => 'Panoya kopyalandı';
+  @override
+  String get openAppSettings => 'Uygulama Ayarlarını Aç';
+  @override
+  String get underDevelopment => 'Geliştirme Aşamasında';
+  @override
+  String get confirm => 'Onayla';
 }
 
 // Path: intro
@@ -9785,6 +11610,26 @@ class TranslationsHomeTr extends TranslationsHomeEn {
   String get emptyProfilesMsg => 'Aboneliği profili ekleyerek başlayın';
   @override
   String get noActiveProfileMsg => 'Profil seçin';
+  @override
+  late final TranslationsHomeRoutingModeTr routingMode =
+      TranslationsHomeRoutingModeTr._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) =>
+      'Mod değiştirilemedi: ${error}';
+  @override
+  String get connectionFailedTitle => 'Bağlantı Başarısız';
+  @override
+  String get coreMissingTitle => 'Çekirdek Kitaplığı Bulunamadı';
+  @override
+  String get coreMissingMsg =>
+      'Uygulama ağ çekirdeğini yükleyemedi. Bağlantı kullanılamıyor. Uygulamayı yeniden kurun ya da çekirdek kitaplık dosyasının çalıştırılabilir dosyanın yanında olduğundan emin olun.';
+  @override
+  String get degradedTitle => 'Bağlandı, ancak internet erişimi yok';
+  @override
+  String get degradedMsg =>
+      'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
+  @override
+  String get degradedRetry => 'Yeniden Denetle';
 }
 
 // Path: stats
@@ -9803,6 +11648,18 @@ class TranslationsStatsTr extends TranslationsStatsEn {
   String get uplink => 'Çıkış Yolu';
   @override
   String get downlink => 'Giriş Yolu';
+  @override
+  String get traffic => 'Trafik';
+  @override
+  String get trafficUsage => 'Trafik Kullanımı';
+  @override
+  String get liveSpeed => 'Anlık Hız';
+  @override
+  String get connection => 'Bağlantı';
+  @override
+  String get speed => 'Hız';
+  @override
+  String get totalTransferred => 'Toplam Aktarılan';
 }
 
 // Path: profile
@@ -9859,6 +11716,17 @@ class TranslationsProfileTr extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormTr detailsForm =
       TranslationsProfileDetailsFormTr._(_root);
+  @override
+  late final TranslationsProfileActionButtonsTr actionButtons =
+      TranslationsProfileActionButtonsTr._(_root);
+  @override
+  late final TranslationsProfileDetailsTr details =
+      TranslationsProfileDetailsTr._(_root);
+  @override
+  late final TranslationsProfileOverviewTr overview =
+      TranslationsProfileOverviewTr._(_root);
+  @override
+  String get remoteProfile => 'Uzak Profil';
 }
 
 // Path: proxies
@@ -9882,6 +11750,44 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesSortOptionsTr sortOptions =
       TranslationsProxiesSortOptionsTr._(_root);
+  @override
+  String get checkIp => 'IP\'yi Denetle';
+  @override
+  String get unknownIp => 'Bilinmeyen IP';
+  @override
+  String get autoSelect => 'Otomatik Seçim';
+  @override
+  String get autoSelectDescription => 'En hızlı sunucuya otomatik bağlan';
+  @override
+  String get sortModalTitle => 'Sıralama yöntemini seçin';
+  @override
+  String get activeProxySemanticLabel => 'Etkin Hat';
+  @override
+  late final TranslationsProxiesDelaySemanticsTr delaySemantics =
+      TranslationsProxiesDelaySemanticsTr._(_root);
+  @override
+  late final TranslationsProxiesIpInfoSemanticsTr ipInfoSemantics =
+      TranslationsProxiesIpInfoSemanticsTr._(_root);
+  @override
+  String testingDelayInfo({required Object name}) =>
+      'Gecikme test ediliyor: ${name}';
+  @override
+  String switchedTo({required Object name}) => '${name} olarak değiştirildi';
+  @override
+  String switchToFailed({required Object error}) => 'Geçiş başarısız: ${error}';
+  @override
+  String get connectBeforeSwitch => 'Hat değiştirmeden önce bağlanın';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      '${count} hat için gecikme testi başlatıldı';
+  @override
+  String get delayTestBtn => 'Gecikme';
+  @override
+  String lineCount({required Object count}) => '${count} hat';
+  @override
+  String get manualSelect => 'Elle Seçim';
+  @override
+  String get autoTest => 'Otomatik Test';
 }
 
 // Path: logs
@@ -9908,6 +11814,14 @@ class TranslationsLogsTr extends TranslationsLogsEn {
   String get resumeTooltip => 'Devam et';
   @override
   String get clearTooltip => 'Temizle';
+  @override
+  String get logsCleared => 'Günlükler temizlendi';
+  @override
+  String get logsCopied => 'Günlükler kopyalandı';
+  @override
+  String get logsUnderDevelopment => 'Günlük özelliği geliştirme aşamasında';
+  @override
+  String get noLogsWhenDisconnected => 'Bağlı değil, günlük yok';
 }
 
 // Path: settings
@@ -9942,6 +11856,26 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsTr geoAssets =
       TranslationsSettingsGeoAssetsTr._(_root);
+  @override
+  String get exportOptions => 'Anonim Seçenekleri Panoya Kopyala';
+  @override
+  String get exportAllOptions => 'Tüm Seçenekleri Panoya Kopyala';
+  @override
+  String get importOptions => 'Seçenekleri Panodan İçe Aktar';
+  @override
+  String get importOptionsMsg =>
+      'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
+  @override
+  String get systemProxyEnabled => 'Sistem proxy’si etkin';
+  @override
+  String get systemProxyDisabled =>
+      'Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)';
+  @override
+  String get adminPrivilegesRequired =>
+      'macOS\'ta yönetici ayrıcalıkları gerekir';
+  @override
+  String get portChangeNotice =>
+      'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
 }
 
 // Path: about
@@ -9966,6 +11900,9 @@ class TranslationsAboutTr extends TranslationsAboutEn {
   String get privacyPolicy => 'Gizlilik Politikası';
   @override
   String get termsAndConditions => 'Şartlar ve koşullar';
+  @override
+  String get appDescription =>
+      'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
 }
 
 // Path: appUpdate
@@ -10015,6 +11952,8 @@ class TranslationsTrayTr extends TranslationsTrayEn {
   late final TranslationsTrayStatusTr status = TranslationsTrayStatusTr._(
     _root,
   );
+  @override
+  String get hide => 'Gizle';
 }
 
 // Path: failure
@@ -10093,6 +12032,13 @@ class TranslationsConnectionTr extends TranslationsConnectionEn {
       'Bağlantı kalitesini etkileyebilecek ve beklenmeyen hatalara neden olabilecek bazı deneysel özellikleri etkinleştirdiniz. Bu seçenekleri istediğiniz zaman Yapılandırma seçenekleri sayfasından değiştirebilir veya sıfırlayabilirsiniz.';
   @override
   String get disableExperimentalNotice => 'Bir daha gösterme';
+  @override
+  String get reconnect => 'Yeniden Bağlan';
+  @override
+  String get connectAnyWay => 'Bağlan';
+  @override
+  String get reconnectMsg =>
+      'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
 }
 
 // Path: config
@@ -10200,6 +12146,38 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   String get warpPort => 'Port';
   @override
   String get warpNoise => 'Noise';
+  @override
+  String get quickSettings => 'Hızlı Ayarlar';
+  @override
+  String get quickSettingsSubtitle => 'Bağlantı deneyiminizi özelleştirin';
+  @override
+  String get setupWarp => 'WARP Kurulumu';
+  @override
+  String get allOptions => 'Tüm Yapılandırma Seçenekleri';
+  @override
+  String get allAdvancedOptions => 'Tüm Gelişmiş Seçenekler';
+  @override
+  late final TranslationsConfigShortServiceModesTr shortServiceModes =
+      TranslationsConfigShortServiceModesTr._(_root);
+  @override
+  String get generateWarpConfig => 'WARP Yapılandırması Oluştur';
+  @override
+  String get missingWarpConfig => 'WARP Yapılandırması Eksik';
+  @override
+  String get warpConfigGenerated => 'WARP Yapılandırması Oluşturuldu';
+  @override
+  String get blockAds => 'Reklamları Engelle';
+  @override
+  String get tproxyPort => 'Şeffaf Hat Bağlantı Noktası';
+  @override
+  String get warpNoiseSize => 'Gürültü Boyutu';
+  @override
+  String get warpNoiseMode => 'Gürültü Modu';
+  @override
+  String get warpNoiseDelay => 'Gürültü Gecikmesi';
+  @override
+  String get desktopProxyScopeNotice =>
+      'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
 }
 
 // Path: general.toggle
@@ -10232,6 +12210,22 @@ class TranslationsGeneralStateTr extends TranslationsGeneralStateEn {
   String get disable => 'Devre dışı bırak';
 }
 
+// Path: home.routingMode
+class TranslationsHomeRoutingModeTr extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => 'Genel Proxy';
+  @override
+  String get smart => 'Akıllı Yönlendirme';
+}
+
 // Path: profile.subscription
 class TranslationsProfileSubscriptionTr
     extends TranslationsProfileSubscriptionEn {
@@ -10259,6 +12253,14 @@ class TranslationsProfileSubscriptionTr
   String get expired => 'Süresi Doldu';
   @override
   String get noTraffic => 'Kotal Doldu';
+  @override
+  String get upload => 'Yükleme';
+  @override
+  String get download => 'İndirme';
+  @override
+  String get total => 'Toplam Trafik';
+  @override
+  String get expireDate => 'Son Kullanma Tarihi';
 }
 
 // Path: profile.sortBy
@@ -10304,6 +12306,17 @@ class TranslationsProfileAddTr extends TranslationsProfileAddEn {
   String get addingProfileMsg => 'Profil Ekleniyor';
   @override
   String get failureMsg => 'Profil eklenemedi';
+  @override
+  String get modalSubtitle =>
+      'Yapılandırma dosyasını nasıl ekleyeceğinizi seçin';
+  @override
+  String get manuallyDescription => 'Sunucu yapılandırmasını elle girin';
+  @override
+  String get addWarp => 'WARP Ekle';
+  @override
+  String get warpDescription => 'Cloudflare WARP ile ücretsiz hızlandırma';
+  @override
+  String get addingWarpMsg => 'WARP kaydedilirken lütfen bekleyin.';
 }
 
 // Path: profile.update
@@ -10355,6 +12368,14 @@ class TranslationsProfileShareTr extends TranslationsProfileShareEn {
   String get exportConfigToClipboard => 'Yapılandırmayı panoya aktar';
   @override
   String get exportConfigToClipboardSuccess => 'Yapılandırma panoya kopyalandı';
+  @override
+  String get shareLink => 'Bağlantıyı Paylaş';
+  @override
+  String get subscriptionLinkCopied => 'Abonelik bağlantısı kopyalandı';
+  @override
+  String get configCopied => 'Yapılandırma kopyalandı';
+  @override
+  String get copyFailed => 'Kopyalama başarısız';
 }
 
 // Path: profile.edit
@@ -10450,6 +12471,71 @@ class TranslationsProfileDetailsFormTr
       'Multiplex outbound connections to reduce handshake overhead';
 }
 
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsTr
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => 'Ekle';
+  @override
+  String get updateAll => 'Tümünü Güncelle';
+  @override
+  String get sort => 'Sırala';
+  @override
+  String get copyConfigSuccess => 'Yapılandırma kopyalandı';
+  @override
+  String get editConfig => 'Yapılandırmayı Düzenle';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsTr extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => 'Temel Bilgiler';
+  @override
+  String get subscriptionStatus => 'Abonelik Durumu';
+  @override
+  String get options => 'Seçenekler';
+  @override
+  String get updateNow => 'Şimdi Güncelle';
+  @override
+  String get updateNowDescription => 'Sunucudan en güncel yapılandırmayı al';
+  @override
+  String get expireDate => 'Son Kullanma Tarihi';
+  @override
+  String get unlimited => 'Sınırsız';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewTr extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => 'Şu Anda Kullanılıyor';
+  @override
+  String remainingDays({required Object days}) => '${days} gün kaldı';
+}
+
 // Path: proxies.sortOptions
 class TranslationsProxiesSortOptionsTr
     extends TranslationsProxiesSortOptionsEn {
@@ -10467,6 +12553,42 @@ class TranslationsProxiesSortOptionsTr
   String get name => 'Alfabetik olarak';
   @override
   String get delay => 'Gecikmeyle';
+}
+
+// Path: proxies.delaySemantics
+class TranslationsProxiesDelaySemanticsTr
+    extends TranslationsProxiesDelaySemanticsEn {
+  TranslationsProxiesDelaySemanticsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String result({required Object delay}) => 'Gecikme: ${delay} ms';
+  @override
+  String get timeout => 'Gecikme Testi Zaman Aşımı';
+  @override
+  String get testing => 'Gecikme: Test ediliyor...';
+}
+
+// Path: proxies.ipInfoSemantics
+class TranslationsProxiesIpInfoSemanticsTr
+    extends TranslationsProxiesIpInfoSemanticsEn {
+  TranslationsProxiesIpInfoSemanticsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get address => 'IP Adresi';
+  @override
+  String get country => 'Ülke';
 }
 
 // Path: settings.general
@@ -10515,6 +12637,14 @@ class TranslationsSettingsGeneralTr extends TranslationsSettingsGeneralEn {
       'Optimum VPN performansı için kısıtlamaları kaldırın';
   @override
   String get dynamicNotification => 'Bildirimde hızı göster';
+  @override
+  String get hapticFeedback => 'Dokunsal Geri Bildirim';
+  @override
+  String get autoIpCheck => 'Bağlantı IP’sini Otomatik Denetle';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusTr
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusTr._(_root);
 }
 
 // Path: settings.advanced
@@ -10564,6 +12694,15 @@ class TranslationsSettingsNetworkTr extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => 'Sistem uygulamalarını gizle';
   @override
   String get clearSelection => 'Seçimi temizle';
+  @override
+  String get perAppProxyLoadFailedMsg => 'Uygulama listesi yüklenemedi';
+  @override
+  String get perAppProxyRetry => 'Yeniden Dene';
+  @override
+  String get perAppProxyEmptyMsg => 'Sonuç bulunamadı';
+  @override
+  String get perAppProxyAndroidOnlyMsg =>
+      'Uygulama başına hat modu yalnızca Android’de desteklenir';
 }
 
 // Path: settings.geoAssets
@@ -10669,6 +12808,10 @@ class TranslationsFailureSingboxTr extends TranslationsFailureSingboxEn {
   String get create => 'Servis oluşturma hatası';
   @override
   String get start => 'Servis başlatma hatası';
+  @override
+  String get coreLibraryMissing => 'Çekirdek Kitaplığı Yüklü Değil';
+  @override
+  String get startTimeout => 'Servis Başlatma Zaman Aşımı';
 }
 
 // Path: failure.connectivity
@@ -10690,6 +12833,8 @@ class TranslationsFailureConnectivityTr
   String get missingNotificationPermission => 'Eksik Bildirim İzni';
   @override
   String get core => 'Temel Hata';
+  @override
+  String get networkUnavailable => 'Ağ Kullanılamıyor';
 }
 
 // Path: failure.profiles
@@ -10710,6 +12855,8 @@ class TranslationsFailureProfilesTr extends TranslationsFailureProfilesEn {
   String get invalidConfig => 'Geçersiz Yapılandırmalar';
   @override
   String get invalidUrl => 'Geçersiz URL';
+  @override
+  String get noActive => 'Etkin Profil Yok';
 }
 
 // Path: failure.connection
@@ -10769,6 +12916,8 @@ class TranslationsConfigServiceModesTr
   String get systemProxy => 'Sistem Proxy';
   @override
   String get tun => 'VPN';
+  @override
+  String get tunService => 'VPN Servisi';
 }
 
 // Path: config.section
@@ -10864,6 +13013,31 @@ class TranslationsConfigWarpDetourModesTr
   String get inbound => 'Detour WARP through proxies';
   @override
   String get outbound => 'Detour proxies through WARP';
+  @override
+  String get proxyOverWarp => 'Hatları WARP Üzerinden Geçir';
+  @override
+  String get warpOverProxy => 'WARP\'ı Hatlar Üzerinden Geçir';
+}
+
+// Path: config.shortServiceModes
+class TranslationsConfigShortServiceModesTr
+    extends TranslationsConfigShortServiceModesEn {
+  TranslationsConfigShortServiceModesTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get proxy => 'Yalnızca Hat';
+  @override
+  String get systemProxy => 'Sistem Hattı';
+  @override
+  String get tun => 'VPN';
+  @override
+  String get tunService => 'VPN Servisi';
 }
 
 // Path: profile.add.qrScanner
@@ -10885,6 +13059,8 @@ class TranslationsProfileAddQrScannerTr
   String get torchSemanticLabel => 'El feneri';
   @override
   String get facingSemanticLabel => 'Kameraya önü';
+  @override
+  String get permissionRequest => 'QR Kodu taramak için kamera izni';
 }
 
 // Path: settings.general.regions
@@ -10931,6 +13107,25 @@ class TranslationsSettingsGeneralThemeModesTr
   String get light => 'Işık modu';
   @override
   String get black => 'Siyah mod';
+}
+
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusTr
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => 'Muaf';
+  @override
+  String get notExempted => 'Muaf Değil';
+  @override
+  String get pending => '…';
 }
 
 // Path: settings.network.perAppProxyModes
@@ -11685,6 +13880,10 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
+  @override
+  String get warpNoiseSize => '噪音大小';
+  @override
+  String get warpNoiseMode => '噪音模式';
 }
 
 // Path: general.toggle
@@ -12774,6 +14973,10 @@ class TranslationsGeneralZhTw extends TranslationsGeneralEn {
   String get openAppSettings => '開啟應用程式設定';
   @override
   String get grantPermission => '授予權限';
+  @override
+  String get underDevelopment => '功能開發中';
+  @override
+  String get confirm => '確認';
 }
 
 // Path: intro
@@ -12813,6 +15016,24 @@ class TranslationsHomeZhTw extends TranslationsHomeEn {
   String get emptyProfilesMsg => '首先新增訂閱設定檔';
   @override
   String get noActiveProfileMsg => '選擇設定檔';
+  @override
+  late final TranslationsHomeRoutingModeZhTw routingMode =
+      TranslationsHomeRoutingModeZhTw._(_root);
+  @override
+  String failedToSwitchMode({required Object error}) => '切換模式失敗：${error}';
+  @override
+  String get connectionFailedTitle => '連線失敗';
+  @override
+  String get coreMissingTitle => '找不到核心程式庫';
+  @override
+  String get coreMissingMsg =>
+      '應用程式未能載入網路核心程式庫，無法建立連線。請重新安裝應用程式，或確認核心程式庫檔案與主程式在同一目錄下。';
+  @override
+  String get degradedTitle => '已連線，但無法存取網路';
+  @override
+  String get degradedMsg => '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
+  @override
+  String get degradedRetry => '重新檢測';
 }
 
 // Path: stats
@@ -12841,6 +15062,10 @@ class TranslationsStatsZhTw extends TranslationsStatsEn {
   String get speed => '速度';
   @override
   String get totalTransferred => '總傳輸量';
+  @override
+  String get trafficUsage => '流量使用';
+  @override
+  String get liveSpeed => '即時速度';
 }
 
 // Path: profile
@@ -12895,6 +15120,17 @@ class TranslationsProfileZhTw extends TranslationsProfileEn {
   @override
   late final TranslationsProfileDetailsFormZhTw detailsForm =
       TranslationsProfileDetailsFormZhTw._(_root);
+  @override
+  late final TranslationsProfileActionButtonsZhTw actionButtons =
+      TranslationsProfileActionButtonsZhTw._(_root);
+  @override
+  late final TranslationsProfileDetailsZhTw details =
+      TranslationsProfileDetailsZhTw._(_root);
+  @override
+  late final TranslationsProfileOverviewZhTw overview =
+      TranslationsProfileOverviewZhTw._(_root);
+  @override
+  String get remoteProfile => '遠端訂閱';
 }
 
 // Path: proxies
@@ -12930,6 +15166,31 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
   @override
   late final TranslationsProxiesIpInfoSemanticsZhTw ipInfoSemantics =
       TranslationsProxiesIpInfoSemanticsZhTw._(_root);
+  @override
+  String get autoSelect => '自動選擇';
+  @override
+  String get autoSelectDescription => '自動連線到最快的節點';
+  @override
+  String get sortModalTitle => '選擇排序方式';
+  @override
+  String testingDelayInfo({required Object name}) => '正在檢測延遲：${name}';
+  @override
+  String switchedTo({required Object name}) => '已切換到 ${name}';
+  @override
+  String switchToFailed({required Object error}) => '切換失敗：${error}';
+  @override
+  String get connectBeforeSwitch => '請先連線再切換線路';
+  @override
+  String startDelayTestForGroups({required Object count}) =>
+      '已開始檢測 ${count} 條線路的延遲';
+  @override
+  String get delayTestBtn => '延遲';
+  @override
+  String lineCount({required Object count}) => '${count} 條線路';
+  @override
+  String get manualSelect => '手動選擇';
+  @override
+  String get autoTest => '自動測速';
 }
 
 // Path: logs
@@ -12958,6 +15219,14 @@ class TranslationsLogsZhTw extends TranslationsLogsEn {
   String get resumeTooltip => '恢復';
   @override
   String get clearTooltip => '清除';
+  @override
+  String get logsCleared => '日誌已清空';
+  @override
+  String get logsCopied => '日誌已複製';
+  @override
+  String get logsUnderDevelopment => '日誌功能開發中';
+  @override
+  String get noLogsWhenDisconnected => '未連線，無日誌';
 }
 
 // Path: settings
@@ -12998,6 +15267,14 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGeoAssetsZhTw geoAssets =
       TranslationsSettingsGeoAssetsZhTw._(_root);
+  @override
+  String get systemProxyEnabled => '系統代理已啟用';
+  @override
+  String get systemProxyDisabled => '系統代理已停用（重新連線後生效）';
+  @override
+  String get adminPrivilegesRequired => 'macOS 上需要管理員權限';
+  @override
+  String get portChangeNotice => '連接埠變更需要重新連線才會生效';
 }
 
 // Path: about
@@ -13024,6 +15301,8 @@ class TranslationsAboutZhTw extends TranslationsAboutEn {
   String get privacyPolicy => '隱私政策';
   @override
   String get termsAndConditions => '條款與條件';
+  @override
+  String get appDescription => '基於 sing-box 核心的跨平台代理用戶端';
 }
 
 // Path: appUpdate
@@ -13074,6 +15353,8 @@ class TranslationsTrayZhTw extends TranslationsTrayEn {
   late final TranslationsTrayStatusZhTw status = TranslationsTrayStatusZhTw._(
     _root,
   );
+  @override
+  String get hide => '隱藏';
 }
 
 // Path: failure
@@ -13285,6 +15566,19 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   String get warpNoise => '噪音計數';
   @override
   String get warpNoiseDelay => '噪音延遲';
+  @override
+  String get quickSettingsSubtitle => '自訂您的連線體驗';
+  @override
+  String get allAdvancedOptions => '所有進階選項';
+  @override
+  String get blockAds => '封鎖廣告';
+  @override
+  String get warpNoiseSize => '雜訊大小';
+  @override
+  String get warpNoiseMode => '雜訊模式';
+  @override
+  String get desktopProxyScopeNotice =>
+      '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
 }
 
 // Path: general.toggle
@@ -13315,6 +15609,22 @@ class TranslationsGeneralStateZhTw extends TranslationsGeneralStateEn {
   // Translations
   @override
   String get disable => '停用';
+}
+
+// Path: home.routingMode
+class TranslationsHomeRoutingModeZhTw extends TranslationsHomeRoutingModeEn {
+  TranslationsHomeRoutingModeZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get global => '全域代理';
+  @override
+  String get smart => '智慧分流';
 }
 
 // Path: profile.subscription
@@ -13400,6 +15710,12 @@ class TranslationsProfileAddZhTw extends TranslationsProfileAddEn {
   String get addingProfileMsg => '新增設定檔';
   @override
   String get failureMsg => '新增設定檔失敗';
+  @override
+  String get modalSubtitle => '選擇新增設定檔的方式';
+  @override
+  String get manuallyDescription => '手動輸入伺服器設定';
+  @override
+  String get warpDescription => '使用 Cloudflare WARP 免費加速';
 }
 
 // Path: profile.update
@@ -13450,6 +15766,14 @@ class TranslationsProfileShareZhTw extends TranslationsProfileShareEn {
   String get exportConfigToClipboard => '將配置匯出到剪貼簿';
   @override
   String get exportConfigToClipboardSuccess => '配置已複製到剪貼簿';
+  @override
+  String get shareLink => '分享連結';
+  @override
+  String get subscriptionLinkCopied => '訂閱連結已複製';
+  @override
+  String get configCopied => '設定已複製';
+  @override
+  String get copyFailed => '複製失敗';
 }
 
 // Path: profile.edit
@@ -13542,6 +15866,71 @@ class TranslationsProfileDetailsFormZhTw
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+}
+
+// Path: profile.actionButtons
+class TranslationsProfileActionButtonsZhTw
+    extends TranslationsProfileActionButtonsEn {
+  TranslationsProfileActionButtonsZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get add => '新增';
+  @override
+  String get updateAll => '全部更新';
+  @override
+  String get sort => '排序';
+  @override
+  String get copyConfigSuccess => '設定已複製';
+  @override
+  String get editConfig => '編輯設定';
+}
+
+// Path: profile.details
+class TranslationsProfileDetailsZhTw extends TranslationsProfileDetailsEn {
+  TranslationsProfileDetailsZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get basicInfo => '基本資訊';
+  @override
+  String get subscriptionStatus => '訂閱狀態';
+  @override
+  String get options => '選項';
+  @override
+  String get updateNow => '立即更新';
+  @override
+  String get updateNowDescription => '從伺服器取得最新設定';
+  @override
+  String get expireDate => '到期日期';
+  @override
+  String get unlimited => '無限制';
+}
+
+// Path: profile.overview
+class TranslationsProfileOverviewZhTw extends TranslationsProfileOverviewEn {
+  TranslationsProfileOverviewZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get currentlyUsing => '目前使用中';
+  @override
+  String remainingDays({required Object days}) => '剩餘 ${days} 天';
 }
 
 // Path: proxies.sortOptions
@@ -13645,6 +16034,10 @@ class TranslationsSettingsGeneralZhTw extends TranslationsSettingsGeneralEn {
   String get hapticFeedback => '觸覺回饋';
   @override
   String get autoIpCheck => '自動檢查連線的 IP';
+  @override
+  late final TranslationsSettingsGeneralBatteryOptimizationStatusZhTw
+  batteryOptimizationStatus =
+      TranslationsSettingsGeneralBatteryOptimizationStatusZhTw._(_root);
 }
 
 // Path: settings.advanced
@@ -13692,6 +16085,14 @@ class TranslationsSettingsNetworkZhTw extends TranslationsSettingsNetworkEn {
   String get hideSystemApps => '隱藏系統應用程式';
   @override
   String get clearSelection => '清空選項';
+  @override
+  String get perAppProxyLoadFailedMsg => '載入應用程式清單失敗';
+  @override
+  String get perAppProxyRetry => '重試';
+  @override
+  String get perAppProxyEmptyMsg => '找不到結果';
+  @override
+  String get perAppProxyAndroidOnlyMsg => '分應用線路模式僅支援 Android';
 }
 
 // Path: settings.geoAssets
@@ -13795,6 +16196,10 @@ class TranslationsFailureSingboxZhTw extends TranslationsFailureSingboxEn {
   String get create => '服務建立錯誤';
   @override
   String get start => '服務啟動錯誤';
+  @override
+  String get coreLibraryMissing => '核心程式庫未安裝';
+  @override
+  String get startTimeout => '服務啟動逾時';
 }
 
 // Path: failure.connectivity
@@ -13816,6 +16221,8 @@ class TranslationsFailureConnectivityZhTw
   String get missingNotificationPermission => '缺少通知權限';
   @override
   String get core => '核心錯誤';
+  @override
+  String get networkUnavailable => '網路無法使用';
 }
 
 // Path: failure.profiles
@@ -13836,6 +16243,8 @@ class TranslationsFailureProfilesZhTw extends TranslationsFailureProfilesEn {
   String get invalidConfig => '無效配置';
   @override
   String get invalidUrl => '無效網址';
+  @override
+  String get noActive => '沒有啟用的訂閱';
 }
 
 // Path: failure.connection
@@ -14087,6 +16496,26 @@ class TranslationsSettingsGeneralThemeModesZhTw
   String get light => '淺色';
   @override
   String get black => '黑色';
+}
+
+// Path: settings.general.batteryOptimizationStatus
+class TranslationsSettingsGeneralBatteryOptimizationStatusZhTw
+    extends TranslationsSettingsGeneralBatteryOptimizationStatusEn {
+  TranslationsSettingsGeneralBatteryOptimizationStatusZhTw._(
+    TranslationsZhTw root,
+  ) : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get exempted => '已豁免';
+  @override
+  String get notExempted => '未豁免';
+  @override
+  String get pending => '…';
 }
 
 // Path: settings.network.perAppProxyModes
@@ -14972,6 +17401,10 @@ extension on TranslationsAr {
         return 'فتح إعدادات التطبيق';
       case 'general.grantPermission':
         return 'منح الإذن';
+      case 'general.underDevelopment':
+        return 'قيد التطوير';
+      case 'general.confirm':
+        return 'تأكيد';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -14987,6 +17420,24 @@ extension on TranslationsAr {
         return 'ابدأ بإضافة ملف تعريف اشتراك';
       case 'home.noActiveProfileMsg':
         return 'اختر ملف تعريف';
+      case 'home.routingMode.global':
+        return 'بروكسي عام';
+      case 'home.routingMode.smart':
+        return 'توجيه ذكي';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) => 'فشل تبديل الوضع: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'فشل الاتصال';
+      case 'home.coreMissingTitle':
+        return 'لم يتم العثور على مكتبة النواة';
+      case 'home.coreMissingMsg':
+        return 'تعذّر على التطبيق تحميل نواة الشبكة. الاتصال غير متاح. أعد تثبيت التطبيق أو تأكد من وجود ملف مكتبة النواة بجوار الملف التنفيذي.';
+      case 'home.degradedTitle':
+        return 'متصل، لكن لا يوجد وصول إلى الإنترنت';
+      case 'home.degradedMsg':
+        return 'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
+      case 'home.degradedRetry':
+        return 'إعادة الفحص';
       case 'stats.traffic':
         return 'حركة المرور';
       case 'stats.trafficLive':
@@ -15003,6 +17454,10 @@ extension on TranslationsAr {
         return 'السرعة';
       case 'stats.totalTransferred':
         return 'إجمالي البيانات المنقولة';
+      case 'stats.trafficUsage':
+        return 'استخدام البيانات';
+      case 'stats.liveSpeed':
+        return 'السرعة الحالية';
       case 'profile.overviewPageTitle':
         return 'الملفات الشخصية';
       case 'profile.detailsPageTitle':
@@ -15062,6 +17517,16 @@ extension on TranslationsAr {
         return 'إضافة ملف التعريف';
       case 'profile.add.failureMsg':
         return 'فشل في إضافة ملف التعريف';
+      case 'profile.add.modalSubtitle':
+        return 'اختر طريقة إضافة ملف الإعداد';
+      case 'profile.add.manuallyDescription':
+        return 'أدخل إعداد الخادم يدوياً';
+      case 'profile.add.addWarp':
+        return 'إضافة WARP';
+      case 'profile.add.warpDescription':
+        return 'تسريع مجاني عبر Cloudflare WARP';
+      case 'profile.add.addingWarpMsg':
+        return 'يرجى الانتظار أثناء تسجيل WARP.';
       case 'profile.update.buttonTxt':
         return 'تحديث';
       case 'profile.update.tooltip':
@@ -15088,6 +17553,14 @@ extension on TranslationsAr {
         return 'تصدير التكوين إلى الحافظة';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'تم نسخ التكوين إلى الحافظة';
+      case 'profile.share.shareLink':
+        return 'مشاركة الرابط';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'تم نسخ رابط الاشتراك';
+      case 'profile.share.configCopied':
+        return 'تم نسخ الإعداد';
+      case 'profile.share.copyFailed':
+        return 'فشل النسخ';
       case 'profile.edit.buttonTxt':
         return 'تحرير';
       case 'profile.edit.selectActiveTxt':
@@ -15130,6 +17603,36 @@ extension on TranslationsAr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'إضافة';
+      case 'profile.actionButtons.updateAll':
+        return 'تحديث الكل';
+      case 'profile.actionButtons.sort':
+        return 'ترتيب';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'تم نسخ الإعداد';
+      case 'profile.actionButtons.editConfig':
+        return 'تحرير الإعداد';
+      case 'profile.details.basicInfo':
+        return 'معلومات أساسية';
+      case 'profile.details.subscriptionStatus':
+        return 'حالة الاشتراك';
+      case 'profile.details.options':
+        return 'خيارات';
+      case 'profile.details.updateNow':
+        return 'تحديث الآن';
+      case 'profile.details.updateNowDescription':
+        return 'جلب أحدث إعداد من الخادم';
+      case 'profile.details.expireDate':
+        return 'تاريخ الانتهاء';
+      case 'profile.details.unlimited':
+        return 'غير محدود';
+      case 'profile.overview.currentlyUsing':
+        return 'قيد الاستخدام حالياً';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => 'متبقٍ ${days} يوماً';
+      case 'profile.remoteProfile':
+        return 'اشتراك بعيد';
       case 'proxies.pageTitle':
         return 'الخوادم الوكيلية';
       case 'proxies.emptyProxiesMsg':
@@ -15160,6 +17663,30 @@ extension on TranslationsAr {
         return 'عنوان IP';
       case 'proxies.ipInfoSemantics.country':
         return 'الدولة';
+      case 'proxies.autoSelect':
+        return 'اختيار تلقائي';
+      case 'proxies.autoSelectDescription':
+        return 'الاتصال تلقائياً بأسرع خادم';
+      case 'proxies.sortModalTitle':
+        return 'اختر طريقة الترتيب';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'جارٍ اختبار التأخير لـ: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'تم التبديل إلى ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'فشل التبديل: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'يرجى الاتصال قبل تبديل الخطوط';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) => 'بدأ اختبار التأخير لـ ${count} خط';
+      case 'proxies.delayTestBtn':
+        return 'التأخير';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} خط';
+      case 'proxies.manualSelect':
+        return 'اختيار يدوي';
+      case 'proxies.autoTest':
+        return 'اختبار تلقائي';
       case 'logs.pageTitle':
         return 'السجلات';
       case 'logs.filterHint':
@@ -15176,6 +17703,14 @@ extension on TranslationsAr {
         return 'استئناف';
       case 'logs.clearTooltip':
         return 'مسح';
+      case 'logs.logsCleared':
+        return 'تم مسح السجلات';
+      case 'logs.logsCopied':
+        return 'تم نسخ السجلات';
+      case 'logs.logsUnderDevelopment':
+        return 'ميزة السجلات قيد التطوير';
+      case 'logs.noLogsWhenDisconnected':
+        return 'غير متصل، لا توجد سجلات';
       case 'settings.pageTitle':
         return 'الإعدادات';
       case 'settings.requiresRestartMsg':
@@ -15242,6 +17777,12 @@ extension on TranslationsAr {
         return 'ردود فعل اللمس';
       case 'settings.general.autoIpCheck':
         return 'التحقق من عنوان IP للاتصال تلقائيًا';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'مُستثنى';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'غير مُستثنى';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'متقدم';
       case 'settings.advanced.debugMode':
@@ -15274,6 +17815,14 @@ extension on TranslationsAr {
         return 'إخفاء تطبيقات النظام';
       case 'settings.network.clearSelection':
         return 'مسح الاختيار';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'فشل تحميل قائمة التطبيقات';
+      case 'settings.network.perAppProxyRetry':
+        return 'إعادة المحاولة';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'لا توجد نتائج';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'وضع الخط لكل تطبيق مدعوم على Android فقط';
       case 'settings.geoAssets.pageTitle':
         return 'أصول التوجيه';
       case 'settings.geoAssets.geoip':
@@ -15296,6 +17845,14 @@ extension on TranslationsAr {
         return 'إضافة الأصول الموصى بها';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'ملفات أصول التوجيه المحددة مفقودة. قم بتنزيلها أو اختر ملفات موجودة';
+      case 'settings.systemProxyEnabled':
+        return 'تم تفعيل بروكسي النظام';
+      case 'settings.systemProxyDisabled':
+        return 'تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)';
+      case 'settings.adminPrivilegesRequired':
+        return 'يتطلب صلاحيات المسؤول على macOS';
+      case 'settings.portChangeNotice':
+        return 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
       case 'about.pageTitle':
         return 'حول\nتعريب:م. ابراهيم قاسم';
       case 'about.version':
@@ -15310,6 +17867,8 @@ extension on TranslationsAr {
         return 'سياسة الخصوصية';
       case 'about.termsAndConditions':
         return 'الشروط والأحكام';
+      case 'about.appDescription':
+        return 'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'أنت تستخدم أحدث إصدار بالفعل';
       case 'appUpdate.dialogTitle':
@@ -15340,6 +17899,8 @@ extension on TranslationsAr {
         return 'فصم الاتصال';
       case 'tray.status.disconnecting':
         return 'جار فصم الاتصال';
+      case 'tray.hide':
+        return 'إخفاء';
       case 'failure.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.clash.unexpected':
@@ -15366,6 +17927,10 @@ extension on TranslationsAr {
         return 'خطأ في إنشاء الخدمة';
       case 'failure.singbox.start':
         return 'خطأ في بدء تشغيل الخدمة';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'مكتبة النواة غير مثبتة';
+      case 'failure.singbox.startTimeout':
+        return 'انتهت مهلة بدء الخدمة';
       case 'failure.connectivity.unexpected':
         return 'فشل غير متوقع';
       case 'failure.connectivity.missingVpnPermission':
@@ -15374,6 +17939,8 @@ extension on TranslationsAr {
         return 'غياب إذن الإشعارات';
       case 'failure.connectivity.core':
         return 'خطأ في النواة';
+      case 'failure.connectivity.networkUnavailable':
+        return 'الشبكة غير متاحة';
       case 'failure.profiles.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.profiles.notFound':
@@ -15382,6 +17949,8 @@ extension on TranslationsAr {
         return 'تكوينات غير صحيحة';
       case 'failure.profiles.invalidUrl':
         return 'عنوان URL غير صالح';
+      case 'failure.profiles.noActive':
+        return 'لا يوجد اشتراك مفعّل';
       case 'failure.connection.unexpected':
         return 'خطأ في الاتصال غير متوقع';
       case 'failure.connection.timeout':
@@ -15586,6 +18155,18 @@ extension on TranslationsAr {
         return 'عدد الضوضاء';
       case 'config.warpNoiseDelay':
         return 'تأخير الضوضاء';
+      case 'config.quickSettingsSubtitle':
+        return 'خصص تجربة الاتصال';
+      case 'config.allAdvancedOptions':
+        return 'جميع الخيارات المتقدمة';
+      case 'config.blockAds':
+        return 'حظر الإعلانات';
+      case 'config.warpNoiseSize':
+        return 'حجم الضجيج';
+      case 'config.warpNoiseMode':
+        return 'وضع الضجيج';
+      case 'config.desktopProxyScopeNotice':
+        return 'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
       default:
         return null;
     }
@@ -15629,6 +18210,14 @@ extension on TranslationsEs {
         return 'Muestra menos';
       case 'general.grantPermission':
         return 'Conceder permiso';
+      case 'general.clipboardExportSuccessMsg':
+        return 'Copiado al portapapeles';
+      case 'general.openAppSettings':
+        return 'Abrir ajustes de la app';
+      case 'general.underDevelopment':
+        return 'En desarrollo';
+      case 'general.confirm':
+        return 'Confirmar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -15644,6 +18233,25 @@ extension on TranslationsEs {
         return 'Comience agregando un perfil de suscripción';
       case 'home.noActiveProfileMsg':
         return 'Elige un perfil';
+      case 'home.routingMode.global':
+        return 'Proxy global';
+      case 'home.routingMode.smart':
+        return 'Enrutamiento inteligente';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) =>
+            'Error al cambiar de modo: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'Error de conexión';
+      case 'home.coreMissingTitle':
+        return 'No se encontró la biblioteca del núcleo';
+      case 'home.coreMissingMsg':
+        return 'La aplicación no pudo cargar su núcleo de red. La conexión no está disponible. Reinstala la aplicación o asegúrate de que el archivo de la biblioteca del núcleo esté junto al ejecutable.';
+      case 'home.degradedTitle':
+        return 'Conectado, pero sin acceso a Internet';
+      case 'home.degradedMsg':
+        return 'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
+      case 'home.degradedRetry':
+        return 'Comprobar de nuevo';
       case 'profile.overviewPageTitle':
         return 'Perfiles';
       case 'profile.detailsPageTitle':
@@ -15669,6 +18277,14 @@ extension on TranslationsEs {
         return 'Caducado';
       case 'profile.subscription.noTraffic':
         return 'Fuera de cuota';
+      case 'profile.subscription.upload':
+        return 'Subida';
+      case 'profile.subscription.download':
+        return 'Descarga';
+      case 'profile.subscription.total':
+        return 'Tráfico total';
+      case 'profile.subscription.expireDate':
+        return 'Fecha de vencimiento';
       case 'profile.sortBy.lastUpdate':
         return 'Recientemente actualizado';
       case 'profile.sortBy.name':
@@ -15689,12 +18305,24 @@ extension on TranslationsEs {
         return 'Linterna';
       case 'profile.add.qrScanner.facingSemanticLabel':
         return 'Frente a la cámara';
+      case 'profile.add.qrScanner.permissionRequest':
+        return 'Permiso de cámara para escanear el código QR';
       case 'profile.add.manually':
         return 'Entrada manual';
       case 'profile.add.addingProfileMsg':
         return 'Agregar perfil';
       case 'profile.add.failureMsg':
         return 'No se pudo agregar el perfil';
+      case 'profile.add.modalSubtitle':
+        return 'Elige cómo añadir el archivo de configuración';
+      case 'profile.add.manuallyDescription':
+        return 'Introduce la configuración del servidor manualmente';
+      case 'profile.add.addWarp':
+        return 'Añadir WARP';
+      case 'profile.add.warpDescription':
+        return 'Aceleración gratuita con Cloudflare WARP';
+      case 'profile.add.addingWarpMsg':
+        return 'Espera mientras registramos WARP.';
       case 'profile.update.buttonTxt':
         return 'Actualizar';
       case 'profile.update.tooltip':
@@ -15721,6 +18349,14 @@ extension on TranslationsEs {
         return 'Exportar configuración al portapapeles';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'Configuración copiada al portapapeles';
+      case 'profile.share.shareLink':
+        return 'Compartir enlace';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'Enlace de suscripción copiado';
+      case 'profile.share.configCopied':
+        return 'Configuración copiada';
+      case 'profile.share.copyFailed':
+        return 'Error al copiar';
       case 'profile.edit.buttonTxt':
         return 'Editar';
       case 'profile.edit.selectActiveTxt':
@@ -15763,6 +18399,36 @@ extension on TranslationsEs {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'Añadir';
+      case 'profile.actionButtons.updateAll':
+        return 'Actualizar todo';
+      case 'profile.actionButtons.sort':
+        return 'Ordenar';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'Configuración copiada';
+      case 'profile.actionButtons.editConfig':
+        return 'Editar configuración';
+      case 'profile.details.basicInfo':
+        return 'Información básica';
+      case 'profile.details.subscriptionStatus':
+        return 'Estado de la suscripción';
+      case 'profile.details.options':
+        return 'Opciones';
+      case 'profile.details.updateNow':
+        return 'Actualizar ahora';
+      case 'profile.details.updateNowDescription':
+        return 'Obtener la configuración más reciente del servidor';
+      case 'profile.details.expireDate':
+        return 'Fecha de vencimiento';
+      case 'profile.details.unlimited':
+        return 'Ilimitado';
+      case 'profile.overview.currentlyUsing':
+        return 'En uso';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => 'Quedan ${days} días';
+      case 'profile.remoteProfile':
+        return 'Perfil remoto';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -15777,6 +18443,47 @@ extension on TranslationsEs {
         return 'Alfabéticamente';
       case 'proxies.sortOptions.delay':
         return 'Por retraso';
+      case 'proxies.checkIp':
+        return 'Comprobar IP';
+      case 'proxies.unknownIp':
+        return 'IP desconocida';
+      case 'proxies.autoSelect':
+        return 'Selección automática';
+      case 'proxies.autoSelectDescription':
+        return 'Conectar automáticamente al nodo más rápido';
+      case 'proxies.sortModalTitle':
+        return 'Elige el método de ordenación';
+      case 'proxies.activeProxySemanticLabel':
+        return 'Línea activa';
+      case 'proxies.delaySemantics.result':
+        return ({required Object delay}) => 'Latencia: ${delay} ms';
+      case 'proxies.delaySemantics.timeout':
+        return 'Tiempo de prueba de latencia agotado';
+      case 'proxies.delaySemantics.testing':
+        return 'Latencia: probando...';
+      case 'proxies.ipInfoSemantics.address':
+        return 'Dirección IP';
+      case 'proxies.ipInfoSemantics.country':
+        return 'País';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'Probando latencia de: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'Cambiado a ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'Error al cambiar: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'Conéctate antes de cambiar de línea';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            'Prueba de latencia iniciada para ${count} líneas';
+      case 'proxies.delayTestBtn':
+        return 'Latencia';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} líneas';
+      case 'proxies.manualSelect':
+        return 'Selección manual';
+      case 'proxies.autoTest':
+        return 'Prueba automática';
       case 'logs.pageTitle':
         return 'Registros';
       case 'logs.filterHint':
@@ -15793,6 +18500,14 @@ extension on TranslationsEs {
         return 'reanudar';
       case 'logs.clearTooltip':
         return 'Claro';
+      case 'logs.logsCleared':
+        return 'Registros borrados';
+      case 'logs.logsCopied':
+        return 'Registros copiados';
+      case 'logs.logsUnderDevelopment':
+        return 'La función de registros está en desarrollo';
+      case 'logs.noLogsWhenDisconnected':
+        return 'Sin conexión, no hay registros';
       case 'settings.pageTitle':
         return 'Ajustes';
       case 'settings.requiresRestartMsg':
@@ -15847,6 +18562,16 @@ extension on TranslationsEs {
         return 'Elimine las restricciones para un rendimiento VPN óptimo';
       case 'settings.general.dynamicNotification':
         return 'Mostrar velocidad en la notificación';
+      case 'settings.general.hapticFeedback':
+        return 'Respuesta háptica';
+      case 'settings.general.autoIpCheck':
+        return 'Comprobar automáticamente la IP de conexión';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'Exento';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'No exento';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'Avanzado';
       case 'settings.advanced.debugMode':
@@ -15879,6 +18604,14 @@ extension on TranslationsEs {
         return 'Ocultar aplicaciones del sistema';
       case 'settings.network.clearSelection':
         return 'Selección clara';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'Error al cargar la lista de aplicaciones';
+      case 'settings.network.perAppProxyRetry':
+        return 'Reintentar';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'No se encontraron resultados';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'El modo de línea por aplicación solo es compatible con Android';
       case 'settings.geoAssets.pageTitle':
         return 'Activos de enrutamiento';
       case 'settings.geoAssets.geoip':
@@ -15901,6 +18634,22 @@ extension on TranslationsEs {
         return 'Agregar activos recomendados';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes.';
+      case 'settings.exportOptions':
+        return 'Copiar opciones anónimas al portapapeles';
+      case 'settings.exportAllOptions':
+        return 'Copiar todas las opciones al portapapeles';
+      case 'settings.importOptions':
+        return 'Importar opciones desde el portapapeles';
+      case 'settings.importOptionsMsg':
+        return 'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
+      case 'settings.systemProxyEnabled':
+        return 'Proxy del sistema activado';
+      case 'settings.systemProxyDisabled':
+        return 'Proxy del sistema desactivado (reconecta para aplicar)';
+      case 'settings.adminPrivilegesRequired':
+        return 'Se requieren privilegios de administrador en macOS';
+      case 'settings.portChangeNotice':
+        return 'Los cambios de puerto requieren reconectar para aplicarse';
       case 'about.pageTitle':
         return 'Acerca de';
       case 'about.version':
@@ -15915,6 +18664,8 @@ extension on TranslationsEs {
         return 'Política de privacidad';
       case 'about.termsAndConditions':
         return 'Términos y condiciones';
+      case 'about.appDescription':
+        return 'Un cliente proxy multiplataforma basado en el núcleo sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'Ya estas usando la última versión.';
       case 'appUpdate.dialogTitle':
@@ -15945,6 +18696,8 @@ extension on TranslationsEs {
         return 'Desconectado';
       case 'tray.status.disconnecting':
         return 'Desconectando';
+      case 'tray.hide':
+        return 'Ocultar';
       case 'failure.unexpected':
         return 'Error inesperado';
       case 'failure.clash.unexpected':
@@ -15971,6 +18724,10 @@ extension on TranslationsEs {
         return 'Error de creación del servicio';
       case 'failure.singbox.start':
         return 'Error de inicio del servicio';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Biblioteca del núcleo no instalada';
+      case 'failure.singbox.startTimeout':
+        return 'Tiempo de inicio del servicio agotado';
       case 'failure.connectivity.unexpected':
         return 'Falla inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -15979,6 +18736,8 @@ extension on TranslationsEs {
         return 'Permiso de notificación faltante';
       case 'failure.connectivity.core':
         return 'Error central';
+      case 'failure.connectivity.networkUnavailable':
+        return 'Red no disponible';
       case 'failure.profiles.unexpected':
         return 'Error Inesperado';
       case 'failure.profiles.notFound':
@@ -15987,6 +18746,8 @@ extension on TranslationsEs {
         return 'Configuracion Invalida';
       case 'failure.profiles.invalidUrl':
         return 'URL Invalido';
+      case 'failure.profiles.noActive':
+        return 'Sin perfil activo';
       case 'failure.connection.unexpected':
         return 'Error de conexión inesperado';
       case 'failure.connection.timeout':
@@ -16023,6 +18784,12 @@ extension on TranslationsEs {
         return 'Ha habilitado algunas funciones experimentales que podrían afectar la calidad de la conexión y provocar errores inesperados. Siempre puede cambiar o restablecer estas opciones desde la página de opciones de configuración.';
       case 'connection.disableExperimentalNotice':
         return 'No volver a mostrar';
+      case 'connection.reconnect':
+        return 'Reconectar';
+      case 'connection.connectAnyWay':
+        return 'Conectar';
+      case 'connection.reconnectMsg':
+        return 'Reconectando para aplicar los cambios...';
       case 'config.resetBtn':
         return 'Restablecer opciones';
       case 'config.serviceMode':
@@ -16033,6 +18800,8 @@ extension on TranslationsEs {
         return 'Sistema Proxy';
       case 'config.serviceModes.tun':
         return 'VPN';
+      case 'config.serviceModes.tunService':
+        return 'Servicio VPN';
       case 'config.section.route':
         return 'Opciones de ruta';
       case 'config.section.dns':
@@ -16147,6 +18916,10 @@ extension on TranslationsEs {
         return 'Detour WARP through proxies';
       case 'config.warpDetourModes.outbound':
         return 'Detour proxies through WARP';
+      case 'config.warpDetourModes.proxyOverWarp':
+        return 'Desviar líneas a través de WARP';
+      case 'config.warpDetourModes.warpOverProxy':
+        return 'Desviar WARP a través de las líneas';
       case 'config.warpLicenseKey':
         return 'License Key';
       case 'config.warpCleanIp':
@@ -16155,6 +18928,62 @@ extension on TranslationsEs {
         return 'Port';
       case 'config.warpNoise':
         return 'Noise';
+      case 'config.quickSettings':
+        return 'Ajustes rápidos';
+      case 'config.quickSettingsSubtitle':
+        return 'Personaliza tu experiencia de conexión';
+      case 'config.setupWarp':
+        return 'Configurar WARP';
+      case 'config.allOptions':
+        return 'Todas las opciones de configuración';
+      case 'config.allAdvancedOptions':
+        return 'Todas las opciones avanzadas';
+      case 'config.shortServiceModes.proxy':
+        return 'Solo línea';
+      case 'config.shortServiceModes.systemProxy':
+        return 'Línea del sistema';
+      case 'config.shortServiceModes.tun':
+        return 'VPN';
+      case 'config.shortServiceModes.tunService':
+        return 'Servicio VPN';
+      case 'config.generateWarpConfig':
+        return 'Generar configuración WARP';
+      case 'config.missingWarpConfig':
+        return 'Falta la configuración WARP';
+      case 'config.warpConfigGenerated':
+        return 'Configuración WARP generada';
+      case 'config.blockAds':
+        return 'Bloquear anuncios';
+      case 'config.tproxyPort':
+        return 'Puerto de línea transparente';
+      case 'config.warpNoiseSize':
+        return 'Tamaño del ruido';
+      case 'config.warpNoiseMode':
+        return 'Modo de ruido';
+      case 'config.warpNoiseDelay':
+        return 'Retardo de ruido';
+      case 'config.desktopProxyScopeNotice':
+        return 'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+      case 'stats.traffic':
+        return 'Tráfico';
+      case 'stats.trafficLive':
+        return 'Tráfico en vivo';
+      case 'stats.trafficTotal':
+        return 'Tráfico total';
+      case 'stats.trafficUsage':
+        return 'Uso de tráfico';
+      case 'stats.liveSpeed':
+        return 'Velocidad en vivo';
+      case 'stats.uplink':
+        return 'Subida';
+      case 'stats.downlink':
+        return 'Bajada';
+      case 'stats.connection':
+        return 'Conexión';
+      case 'stats.speed':
+        return 'Velocidad';
+      case 'stats.totalTransferred':
+        return 'Total transferido';
       default:
         return null;
     }
@@ -16202,6 +19031,10 @@ extension on TranslationsFa {
         return 'باز کردن تنظیمات برنامه';
       case 'general.grantPermission':
         return 'اجازه دادن';
+      case 'general.underDevelopment':
+        return 'در حال توسعه';
+      case 'general.confirm':
+        return 'تأیید';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -16218,6 +19051,24 @@ extension on TranslationsFa {
         return 'با افزودن یک پروفایل اشتراک شروع کنید';
       case 'home.noActiveProfileMsg':
         return 'یک پروفایل انتخاب کنید';
+      case 'home.routingMode.global':
+        return 'پروکسی سراسری';
+      case 'home.routingMode.smart':
+        return 'مسیریابی هوشمند';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) => 'تغییر حالت ناموفق بود: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'اتصال ناموفق';
+      case 'home.coreMissingTitle':
+        return 'کتابخانهٔ هسته پیدا نشد';
+      case 'home.coreMissingMsg':
+        return 'برنامه نتوانست هستهٔ شبکهٔ خود را بارگذاری کند. اتصال در دسترس نیست. برنامه را دوباره نصب کنید یا مطمئن شوید فایل کتابخانهٔ هسته کنار فایل اجرایی قرار دارد.';
+      case 'home.degradedTitle':
+        return 'متصل است، اما دسترسی به اینترنت وجود ندارد';
+      case 'home.degradedMsg':
+        return 'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
+      case 'home.degradedRetry':
+        return 'بررسی مجدد';
       case 'stats.traffic':
         return 'مصرف';
       case 'stats.trafficLive':
@@ -16234,6 +19085,10 @@ extension on TranslationsFa {
         return 'سرعت';
       case 'stats.totalTransferred':
         return 'کل تبادل';
+      case 'stats.trafficUsage':
+        return 'مصرف ترافیک';
+      case 'stats.liveSpeed':
+        return 'سرعت لحظه‌ای';
       case 'profile.overviewPageTitle':
         return 'پروفایل‌ها';
       case 'profile.detailsPageTitle':
@@ -16298,6 +19153,12 @@ extension on TranslationsFa {
         return 'در حال افزودن پروفایل';
       case 'profile.add.failureMsg':
         return 'افزودن پروفایل ناموفق بود';
+      case 'profile.add.modalSubtitle':
+        return 'نحوهٔ افزودن فایل پیکربندی را انتخاب کنید';
+      case 'profile.add.manuallyDescription':
+        return 'پیکربندی سرور را دستی وارد کنید';
+      case 'profile.add.warpDescription':
+        return 'شتاب‌دهی رایگان با Cloudflare WARP';
       case 'profile.update.buttonTxt':
         return 'به‌روزرسانی';
       case 'profile.update.tooltip':
@@ -16324,6 +19185,14 @@ extension on TranslationsFa {
         return 'افزودن پیکربندی به کلیپ‌بورد';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'پیکربندی در کلیپ‌بورد کپی شد';
+      case 'profile.share.shareLink':
+        return 'اشتراک‌گذاری پیوند';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'پیوند اشتراک کپی شد';
+      case 'profile.share.configCopied':
+        return 'پیکربندی کپی شد';
+      case 'profile.share.copyFailed':
+        return 'کپی ناموفق بود';
       case 'profile.edit.buttonTxt':
         return 'ویرایش';
       case 'profile.edit.selectActiveTxt':
@@ -16366,6 +19235,36 @@ extension on TranslationsFa {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'افزودن';
+      case 'profile.actionButtons.updateAll':
+        return 'به‌روزرسانی همه';
+      case 'profile.actionButtons.sort':
+        return 'مرتب‌سازی';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'پیکربندی کپی شد';
+      case 'profile.actionButtons.editConfig':
+        return 'ویرایش پیکربندی';
+      case 'profile.details.basicInfo':
+        return 'اطلاعات پایه';
+      case 'profile.details.subscriptionStatus':
+        return 'وضعیت اشتراک';
+      case 'profile.details.options':
+        return 'گزینه‌ها';
+      case 'profile.details.updateNow':
+        return 'اکنون به‌روزرسانی کن';
+      case 'profile.details.updateNowDescription':
+        return 'دریافت آخرین پیکربندی از سرور';
+      case 'profile.details.expireDate':
+        return 'تاریخ انقضا';
+      case 'profile.details.unlimited':
+        return 'نامحدود';
+      case 'profile.overview.currentlyUsing':
+        return 'در حال استفاده';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => '${days} روز باقی مانده';
+      case 'profile.remoteProfile':
+        return 'پروفایل راه دور';
       case 'proxies.pageTitle':
         return 'پروکسی‌ها';
       case 'proxies.emptyProxiesMsg':
@@ -16396,6 +19295,31 @@ extension on TranslationsFa {
         return 'آدرس آی‌پی';
       case 'proxies.ipInfoSemantics.country':
         return 'کشور';
+      case 'proxies.autoSelect':
+        return 'انتخاب خودکار';
+      case 'proxies.autoSelectDescription':
+        return 'اتصال خودکار به سریع‌ترین نود';
+      case 'proxies.sortModalTitle':
+        return 'روش مرتب‌سازی را انتخاب کنید';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'در حال آزمایش تأخیر: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'به ${name} تغییر یافت';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'تعویض ناموفق بود: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'پیش از تعویض خط، متصل شوید';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            'آزمایش تأخیر برای ${count} خط آغاز شد';
+      case 'proxies.delayTestBtn':
+        return 'تأخیر';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} خط';
+      case 'proxies.manualSelect':
+        return 'انتخاب دستی';
+      case 'proxies.autoTest':
+        return 'تست خودکار';
       case 'logs.pageTitle':
         return 'گزارش‌ها';
       case 'logs.filterHint':
@@ -16412,6 +19336,14 @@ extension on TranslationsFa {
         return 'ادامه دادن';
       case 'logs.clearTooltip':
         return 'پاک‌سازی';
+      case 'logs.logsCleared':
+        return 'گزارش‌ها پاک شد';
+      case 'logs.logsCopied':
+        return 'گزارش‌ها کپی شد';
+      case 'logs.logsUnderDevelopment':
+        return 'قابلیت گزارش‌گیری در حال توسعه است';
+      case 'logs.noLogsWhenDisconnected':
+        return 'متصل نیست، گزارشی وجود ندارد';
       case 'settings.pageTitle':
         return 'تنظیمات';
       case 'settings.requiresRestartMsg':
@@ -16478,6 +19410,12 @@ extension on TranslationsFa {
         return 'بازخورد لمسی';
       case 'settings.general.autoIpCheck':
         return 'بررسی خودکار آی‌پی اتصال';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'مستثنی';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'مستثنی نشده';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'پیشرفته';
       case 'settings.advanced.debugMode':
@@ -16510,6 +19448,14 @@ extension on TranslationsFa {
         return 'پنهان کردن برنامه‌های سیستمی';
       case 'settings.network.clearSelection':
         return 'پاک کردن انتخاب‌ها';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'بارگذاری فهرست برنامه‌ها ناموفق بود';
+      case 'settings.network.perAppProxyRetry':
+        return 'تلاش مجدد';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'نتیجه‌ای یافت نشد';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'حالت خط برای هر برنامه فقط در Android پشتیبانی می‌شود';
       case 'settings.geoAssets.pageTitle':
         return 'فایل‌های مسیریابی';
       case 'settings.geoAssets.geoip':
@@ -16532,6 +19478,14 @@ extension on TranslationsFa {
         return 'افزودن فایل‌های توصیه‌شده';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'فایل‌های مسیریابی انتخاب شده وجود ندارند. یا آن‌ها را دانلود کنید و یا یکی از موارد موجود را انتخاب کنید';
+      case 'settings.systemProxyEnabled':
+        return 'پروکسی سیستم فعال شد';
+      case 'settings.systemProxyDisabled':
+        return 'پروکسی سیستم غیرفعال شد (برای اعمال، دوباره وصل شوید)';
+      case 'settings.adminPrivilegesRequired':
+        return 'در macOS به دسترسی مدیر نیاز است';
+      case 'settings.portChangeNotice':
+        return 'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
       case 'about.pageTitle':
         return 'درباره';
       case 'about.version':
@@ -16546,6 +19500,8 @@ extension on TranslationsFa {
         return 'سیاست‌های حفظ حریم خصوصی';
       case 'about.termsAndConditions':
         return 'شرایط و ضوابط استفاده';
+      case 'about.appDescription':
+        return 'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'در حال استفاده از آخرین نسخه هستید';
       case 'appUpdate.dialogTitle':
@@ -16576,6 +19532,8 @@ extension on TranslationsFa {
         return 'قطع اتصال';
       case 'tray.status.disconnecting':
         return 'در حال قطع اتصال';
+      case 'tray.hide':
+        return 'پنهان کردن';
       case 'failure.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.clash.unexpected':
@@ -16602,6 +19560,10 @@ extension on TranslationsFa {
         return 'خطای ایجاد سرویس';
       case 'failure.singbox.start':
         return 'خطای راه‌اندازی سرویس';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'کتابخانهٔ هسته نصب نشده است';
+      case 'failure.singbox.startTimeout':
+        return 'زمان راه‌اندازی سرویس به پایان رسید';
       case 'failure.connectivity.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.connectivity.missingVpnPermission':
@@ -16610,6 +19572,8 @@ extension on TranslationsFa {
         return 'مجوز اعلان وجود ندارد';
       case 'failure.connectivity.core':
         return 'خطای هسته';
+      case 'failure.connectivity.networkUnavailable':
+        return 'شبکه در دسترس نیست';
       case 'failure.profiles.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.profiles.notFound':
@@ -16618,6 +19582,8 @@ extension on TranslationsFa {
         return 'پیکربندی‌ها نامعتبر هستند';
       case 'failure.profiles.invalidUrl':
         return 'لینک نامعتبر است';
+      case 'failure.profiles.noActive':
+        return 'هیچ پروفایل فعالی وجود ندارد';
       case 'failure.connection.unexpected':
         return ' خطای غیرمنتظره در اتصال';
       case 'failure.connection.timeout':
@@ -16828,6 +19794,12 @@ extension on TranslationsFa {
         return 'حالت نویز';
       case 'config.warpNoiseDelay':
         return 'تأخیر نویز';
+      case 'config.quickSettingsSubtitle':
+        return 'تجربهٔ اتصال خود را سفارشی کنید';
+      case 'config.allAdvancedOptions':
+        return 'همهٔ گزینه‌های پیشرفته';
+      case 'config.desktopProxyScopeNotice':
+        return 'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
       default:
         return null;
     }
@@ -16865,6 +19837,20 @@ extension on TranslationsId {
         return 'Tersembunyi';
       case 'general.timeout':
         return 'Waktu habis';
+      case 'general.clipboardExportSuccessMsg':
+        return 'Disalin ke papan klip';
+      case 'general.showMore':
+        return 'Tampilkan Lebih Banyak';
+      case 'general.showLess':
+        return 'Tampilkan Lebih Sedikit';
+      case 'general.openAppSettings':
+        return 'Buka Pengaturan Aplikasi';
+      case 'general.grantPermission':
+        return 'Berikan Izin';
+      case 'general.underDevelopment':
+        return 'Dalam Pengembangan';
+      case 'general.confirm':
+        return 'Konfirmasi';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -16880,6 +19866,24 @@ extension on TranslationsId {
         return 'Mulai menambahkan langganan profil';
       case 'home.noActiveProfileMsg':
         return 'Pilih profil';
+      case 'home.routingMode.global':
+        return 'Proxy Global';
+      case 'home.routingMode.smart':
+        return 'Perutean Cerdas';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) => 'Gagal mengganti mode: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'Koneksi Gagal';
+      case 'home.coreMissingTitle':
+        return 'Pustaka Inti Tidak Ditemukan';
+      case 'home.coreMissingMsg':
+        return 'Aplikasi tidak dapat memuat inti jaringannya. Koneksi tidak tersedia. Pasang ulang aplikasi, atau pastikan berkas pustaka inti berada di samping berkas eksekusi.';
+      case 'home.degradedTitle':
+        return 'Tersambung, tetapi tidak ada akses internet';
+      case 'home.degradedMsg':
+        return 'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
+      case 'home.degradedRetry':
+        return 'Periksa Lagi';
       case 'stats.traffic':
         return 'Trafik Langsung';
       case 'stats.trafficTotal':
@@ -16890,6 +19894,16 @@ extension on TranslationsId {
         return 'Downlink';
       case 'stats.connection':
         return 'Sambungan';
+      case 'stats.trafficLive':
+        return 'Lalu Lintas Langsung';
+      case 'stats.trafficUsage':
+        return 'Penggunaan Lalu Lintas';
+      case 'stats.liveSpeed':
+        return 'Kecepatan Langsung';
+      case 'stats.speed':
+        return 'Kecepatan';
+      case 'stats.totalTransferred':
+        return 'Total Ditransfer';
       case 'profile.overviewPageTitle':
         return 'Beberapa Profil';
       case 'profile.detailsPageTitle':
@@ -16914,6 +19928,14 @@ extension on TranslationsId {
         return 'Kadaluarsa';
       case 'profile.subscription.noTraffic':
         return 'Kuota Habis';
+      case 'profile.subscription.upload':
+        return 'Unggah';
+      case 'profile.subscription.download':
+        return 'Unduh';
+      case 'profile.subscription.total':
+        return 'Total Lalu Lintas';
+      case 'profile.subscription.expireDate':
+        return 'Tanggal Kedaluwarsa';
       case 'profile.sortBy.lastUpdate':
         return 'Baru diperbaharui';
       case 'profile.sortBy.name':
@@ -16934,12 +19956,24 @@ extension on TranslationsId {
         return 'Lampu Flash';
       case 'profile.add.qrScanner.facingSemanticLabel':
         return 'Hadap Kamera';
+      case 'profile.add.qrScanner.permissionRequest':
+        return 'Izin kamera untuk memindai Kode QR';
       case 'profile.add.manually':
         return 'Isian Manual';
       case 'profile.add.addingProfileMsg':
         return 'Tambahkan Profil';
       case 'profile.add.failureMsg':
         return 'Gagal tambahkan profil';
+      case 'profile.add.modalSubtitle':
+        return 'Pilih cara menambahkan berkas konfigurasi';
+      case 'profile.add.manuallyDescription':
+        return 'Masukkan konfigurasi server secara manual';
+      case 'profile.add.addWarp':
+        return 'Tambah WARP';
+      case 'profile.add.warpDescription':
+        return 'Akselerasi gratis dengan Cloudflare WARP';
+      case 'profile.add.addingWarpMsg':
+        return 'Mohon tunggu, kami sedang mendaftarkan WARP.';
       case 'profile.update.buttonTxt':
         return 'Perbarui';
       case 'profile.update.tooltip':
@@ -16966,6 +20000,14 @@ extension on TranslationsId {
         return 'Taruh konfigurasi ke clipboard';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'Salin konfigurasi ke clipboard';
+      case 'profile.share.shareLink':
+        return 'Bagikan Tautan';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'Tautan langganan disalin';
+      case 'profile.share.configCopied':
+        return 'Konfigurasi disalin';
+      case 'profile.share.copyFailed':
+        return 'Gagal menyalin';
       case 'profile.edit.buttonTxt':
         return 'Ubah';
       case 'profile.edit.selectActiveTxt':
@@ -17008,6 +20050,36 @@ extension on TranslationsId {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'Tambah';
+      case 'profile.actionButtons.updateAll':
+        return 'Perbarui Semua';
+      case 'profile.actionButtons.sort':
+        return 'Urutkan';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'Konfigurasi disalin';
+      case 'profile.actionButtons.editConfig':
+        return 'Edit Konfigurasi';
+      case 'profile.details.basicInfo':
+        return 'Informasi Dasar';
+      case 'profile.details.subscriptionStatus':
+        return 'Status Langganan';
+      case 'profile.details.options':
+        return 'Opsi';
+      case 'profile.details.updateNow':
+        return 'Perbarui Sekarang';
+      case 'profile.details.updateNowDescription':
+        return 'Ambil konfigurasi terbaru dari server';
+      case 'profile.details.expireDate':
+        return 'Tanggal Kedaluwarsa';
+      case 'profile.details.unlimited':
+        return 'Tanpa Batas';
+      case 'profile.overview.currentlyUsing':
+        return 'Sedang Digunakan';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => 'Sisa ${days} hari';
+      case 'profile.remoteProfile':
+        return 'Profil Jarak Jauh';
       case 'proxies.pageTitle':
         return 'Proxy';
       case 'proxies.emptyProxiesMsg':
@@ -17022,6 +20094,47 @@ extension on TranslationsId {
         return 'Alfabetikal';
       case 'proxies.sortOptions.delay':
         return 'Berdasarkan Delay';
+      case 'proxies.checkIp':
+        return 'Periksa IP';
+      case 'proxies.unknownIp':
+        return 'IP Tidak Diketahui';
+      case 'proxies.autoSelect':
+        return 'Pilih Otomatis';
+      case 'proxies.autoSelectDescription':
+        return 'Sambungkan otomatis ke node tercepat';
+      case 'proxies.sortModalTitle':
+        return 'Pilih metode pengurutan';
+      case 'proxies.activeProxySemanticLabel':
+        return 'Jalur Aktif';
+      case 'proxies.delaySemantics.result':
+        return ({required Object delay}) => 'Jeda: ${delay}ms';
+      case 'proxies.delaySemantics.timeout':
+        return 'Waktu Uji Jeda Habis';
+      case 'proxies.delaySemantics.testing':
+        return 'Jeda: Menguji...';
+      case 'proxies.ipInfoSemantics.address':
+        return 'Alamat IP';
+      case 'proxies.ipInfoSemantics.country':
+        return 'Negara';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'Menguji jeda untuk: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'Beralih ke ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'Gagal beralih: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'Sambungkan terlebih dahulu sebelum mengganti jalur';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            'Uji jeda dimulai untuk ${count} jalur';
+      case 'proxies.delayTestBtn':
+        return 'Jeda';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} jalur';
+      case 'proxies.manualSelect':
+        return 'Pilih Manual';
+      case 'proxies.autoTest':
+        return 'Tes Otomatis';
       case 'logs.pageTitle':
         return 'Log';
       case 'logs.filterHint':
@@ -17038,6 +20151,14 @@ extension on TranslationsId {
         return 'Lanjut';
       case 'logs.clearTooltip':
         return 'Bersih';
+      case 'logs.logsCleared':
+        return 'Log dihapus';
+      case 'logs.logsCopied':
+        return 'Log disalin';
+      case 'logs.logsUnderDevelopment':
+        return 'Fitur log sedang dikembangkan';
+      case 'logs.noLogsWhenDisconnected':
+        return 'Tidak tersambung, tidak ada log';
       case 'settings.pageTitle':
         return 'Setting';
       case 'settings.requiresRestartMsg':
@@ -17092,6 +20213,16 @@ extension on TranslationsId {
         return 'Hapus batasan untuk performa VPN yang optimal';
       case 'settings.general.dynamicNotification':
         return 'Tampilkan Kecepatan di notifikasi';
+      case 'settings.general.hapticFeedback':
+        return 'Umpan Balik Haptik';
+      case 'settings.general.autoIpCheck':
+        return 'Periksa IP Koneksi Otomatis';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'Dikecualikan';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'Tidak Dikecualikan';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'Mode Lanjut';
       case 'settings.advanced.debugMode':
@@ -17124,6 +20255,14 @@ extension on TranslationsId {
         return 'Sembunyikan aplikasi sistem';
       case 'settings.network.clearSelection':
         return 'Bersihkan seleksi';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'Gagal memuat daftar aplikasi';
+      case 'settings.network.perAppProxyRetry':
+        return 'Coba Lagi';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'Tidak ada hasil';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'Mode jalur per aplikasi hanya didukung di Android';
       case 'settings.geoAssets.pageTitle':
         return 'Rute Aset';
       case 'settings.geoAssets.geoip':
@@ -17146,6 +20285,22 @@ extension on TranslationsId {
         return 'Tambah aset rekomendasi';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada';
+      case 'settings.exportOptions':
+        return 'Salin Opsi Anonim ke Papan Klip';
+      case 'settings.exportAllOptions':
+        return 'Salin Semua Opsi ke Papan Klip';
+      case 'settings.importOptions':
+        return 'Impor Opsi dari Papan Klip';
+      case 'settings.importOptionsMsg':
+        return 'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
+      case 'settings.systemProxyEnabled':
+        return 'Proxy sistem diaktifkan';
+      case 'settings.systemProxyDisabled':
+        return 'Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)';
+      case 'settings.adminPrivilegesRequired':
+        return 'Memerlukan hak administrator di macOS';
+      case 'settings.portChangeNotice':
+        return 'Perubahan port memerlukan sambung ulang agar berlaku';
       case 'about.pageTitle':
         return 'Tentang';
       case 'about.version':
@@ -17160,6 +20315,8 @@ extension on TranslationsId {
         return 'Kebijakan Privasi';
       case 'about.termsAndConditions':
         return 'Syarat dan Ketentuan Umum';
+      case 'about.appDescription':
+        return 'Klien proxy lintas platform berbasis inti sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'Sudah menggunakan versi terakhir';
       case 'appUpdate.dialogTitle':
@@ -17190,6 +20347,8 @@ extension on TranslationsId {
         return 'Putus';
       case 'tray.status.disconnecting':
         return 'Memutuskan';
+      case 'tray.hide':
+        return 'Sembunyikan';
       case 'failure.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.clash.unexpected':
@@ -17216,6 +20375,10 @@ extension on TranslationsId {
         return 'Pembuatan Servis Error';
       case 'failure.singbox.start':
         return 'Jalankan Servis Error';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Pustaka Inti Belum Terpasang';
+      case 'failure.singbox.startTimeout':
+        return 'Waktu Mulai Layanan Habis';
       case 'failure.connectivity.unexpected':
         return 'Kegagalan tidak terduga';
       case 'failure.connectivity.missingVpnPermission':
@@ -17224,6 +20387,8 @@ extension on TranslationsId {
         return 'Izin Notifikasi Hilang';
       case 'failure.connectivity.core':
         return 'Error Inti';
+      case 'failure.connectivity.networkUnavailable':
+        return 'Jaringan Tidak Tersedia';
       case 'failure.profiles.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.profiles.notFound':
@@ -17232,6 +20397,8 @@ extension on TranslationsId {
         return 'Konfigurasi tidak valid';
       case 'failure.profiles.invalidUrl':
         return 'URL tidak valid';
+      case 'failure.profiles.noActive':
+        return 'Tidak Ada Profil Aktif';
       case 'failure.connection.unexpected':
         return 'Sambungan error tidak terduga';
       case 'failure.connection.timeout':
@@ -17268,6 +20435,12 @@ extension on TranslationsId {
         return 'Kamu telah mengaktifkan fitur experimental yang mungkin mempengaruhi kualitas sambungan dan error tidak terduga. Kamu tetap bisa merubah atau set ulang opsi dari Halaman Konfigurasi';
       case 'connection.disableExperimentalNotice':
         return 'Jangan tampil lagi';
+      case 'connection.reconnect':
+        return 'Sambungkan Ulang';
+      case 'connection.connectAnyWay':
+        return 'Sambungkan';
+      case 'connection.reconnectMsg':
+        return 'Menyambungkan ulang untuk menerapkan perubahan...';
       case 'config.resetBtn':
         return 'Set Ulang Opsi';
       case 'config.serviceMode':
@@ -17278,6 +20451,8 @@ extension on TranslationsId {
         return 'Sistem Proxy';
       case 'config.serviceModes.tun':
         return 'VPN';
+      case 'config.serviceModes.tunService':
+        return 'Layanan VPN';
       case 'config.section.route':
         return 'Opsi Route';
       case 'config.section.dns':
@@ -17392,6 +20567,10 @@ extension on TranslationsId {
         return 'Detour WARP through proxies';
       case 'config.warpDetourModes.outbound':
         return 'Detour proxies through WARP';
+      case 'config.warpDetourModes.proxyOverWarp':
+        return 'Alihkan Jalur Melalui WARP';
+      case 'config.warpDetourModes.warpOverProxy':
+        return 'Alihkan WARP Melalui Jalur';
       case 'config.warpLicenseKey':
         return 'License Key';
       case 'config.warpCleanIp':
@@ -17400,6 +20579,42 @@ extension on TranslationsId {
         return 'Port';
       case 'config.warpNoise':
         return 'Noise';
+      case 'config.quickSettings':
+        return 'Pengaturan Cepat';
+      case 'config.quickSettingsSubtitle':
+        return 'Sesuaikan pengalaman koneksi Anda';
+      case 'config.setupWarp':
+        return 'Siapkan WARP';
+      case 'config.allOptions':
+        return 'Semua Opsi Konfigurasi';
+      case 'config.allAdvancedOptions':
+        return 'Semua Opsi Lanjutan';
+      case 'config.shortServiceModes.proxy':
+        return 'Hanya Jalur';
+      case 'config.shortServiceModes.systemProxy':
+        return 'Jalur Sistem';
+      case 'config.shortServiceModes.tun':
+        return 'VPN';
+      case 'config.shortServiceModes.tunService':
+        return 'Layanan VPN';
+      case 'config.generateWarpConfig':
+        return 'Buat Konfigurasi WARP';
+      case 'config.missingWarpConfig':
+        return 'Konfigurasi WARP Tidak Ada';
+      case 'config.warpConfigGenerated':
+        return 'Konfigurasi WARP Dibuat';
+      case 'config.blockAds':
+        return 'Blokir Iklan';
+      case 'config.tproxyPort':
+        return 'Port Jalur Transparan';
+      case 'config.warpNoiseSize':
+        return 'Ukuran Noise';
+      case 'config.warpNoiseMode':
+        return 'Mode Noise';
+      case 'config.warpNoiseDelay':
+        return 'Penundaan Noise';
+      case 'config.desktopProxyScopeNotice':
+        return 'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
       default:
         return null;
     }
@@ -17443,6 +20658,14 @@ extension on TranslationsPtBr {
         return 'Mostre menos';
       case 'general.grantPermission':
         return 'Conceder permissão';
+      case 'general.clipboardExportSuccessMsg':
+        return 'Copiado para a área de transferência';
+      case 'general.openAppSettings':
+        return 'Abrir configurações do app';
+      case 'general.underDevelopment':
+        return 'Em desenvolvimento';
+      case 'general.confirm':
+        return 'Confirmar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -17458,6 +20681,25 @@ extension on TranslationsPtBr {
         return 'Comece adicionando um perfil de assinatura';
       case 'home.noActiveProfileMsg':
         return 'Escolha um perfil';
+      case 'home.routingMode.global':
+        return 'Proxy global';
+      case 'home.routingMode.smart':
+        return 'Roteamento inteligente';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) =>
+            'Falha ao alternar o modo: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'Falha na conexão';
+      case 'home.coreMissingTitle':
+        return 'Biblioteca do núcleo não encontrada';
+      case 'home.coreMissingMsg':
+        return 'O aplicativo não conseguiu carregar seu núcleo de rede. A conexão não está disponível. Reinstale o aplicativo ou verifique se o arquivo da biblioteca do núcleo está junto do executável.';
+      case 'home.degradedTitle':
+        return 'Conectado, mas sem acesso à internet';
+      case 'home.degradedMsg':
+        return 'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
+      case 'home.degradedRetry':
+        return 'Verificar novamente';
       case 'stats.trafficLive':
         return 'Tráfego ao vivo';
       case 'stats.trafficTotal':
@@ -17472,6 +20714,12 @@ extension on TranslationsPtBr {
         return 'Velocidade';
       case 'stats.totalTransferred':
         return 'Total Transferido';
+      case 'stats.traffic':
+        return 'Tráfego';
+      case 'stats.trafficUsage':
+        return 'Uso de tráfego';
+      case 'stats.liveSpeed':
+        return 'Velocidade ao vivo';
       case 'profile.overviewPageTitle':
         return 'Perfis';
       case 'profile.detailsPageTitle':
@@ -17524,12 +20772,24 @@ extension on TranslationsPtBr {
         return 'Luz do flash';
       case 'profile.add.qrScanner.facingSemanticLabel':
         return 'Câmera voltada';
+      case 'profile.add.qrScanner.permissionRequest':
+        return 'Permissão de câmera para ler o código QR';
       case 'profile.add.manually':
         return 'Entrada manual';
       case 'profile.add.addingProfileMsg':
         return 'Adicionando Perfil';
       case 'profile.add.failureMsg':
         return 'Falha ao adicionar perfil';
+      case 'profile.add.modalSubtitle':
+        return 'Escolha como adicionar o arquivo de configuração';
+      case 'profile.add.manuallyDescription':
+        return 'Insira a configuração do servidor manualmente';
+      case 'profile.add.addWarp':
+        return 'Adicionar WARP';
+      case 'profile.add.warpDescription':
+        return 'Aceleração gratuita com Cloudflare WARP';
+      case 'profile.add.addingWarpMsg':
+        return 'Aguarde enquanto registramos o WARP.';
       case 'profile.update.buttonTxt':
         return 'Atualizar';
       case 'profile.update.tooltip':
@@ -17556,6 +20816,14 @@ extension on TranslationsPtBr {
         return 'Exportar configuração para a área de transferência';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'Configuração copiada para a área de transferência';
+      case 'profile.share.shareLink':
+        return 'Compartilhar link';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'Link de assinatura copiado';
+      case 'profile.share.configCopied':
+        return 'Configuração copiada';
+      case 'profile.share.copyFailed':
+        return 'Falha ao copiar';
       case 'profile.edit.buttonTxt':
         return 'Editar';
       case 'profile.edit.selectActiveTxt':
@@ -17598,6 +20866,36 @@ extension on TranslationsPtBr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'Adicionar';
+      case 'profile.actionButtons.updateAll':
+        return 'Atualizar tudo';
+      case 'profile.actionButtons.sort':
+        return 'Ordenar';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'Configuração copiada';
+      case 'profile.actionButtons.editConfig':
+        return 'Editar configuração';
+      case 'profile.details.basicInfo':
+        return 'Informações básicas';
+      case 'profile.details.subscriptionStatus':
+        return 'Status da assinatura';
+      case 'profile.details.options':
+        return 'Opções';
+      case 'profile.details.updateNow':
+        return 'Atualizar agora';
+      case 'profile.details.updateNowDescription':
+        return 'Buscar a configuração mais recente no servidor';
+      case 'profile.details.expireDate':
+        return 'Data de expiração';
+      case 'profile.details.unlimited':
+        return 'Ilimitado';
+      case 'profile.overview.currentlyUsing':
+        return 'Em uso';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => 'Restam ${days} dias';
+      case 'profile.remoteProfile':
+        return 'Perfil remoto';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -17628,6 +20926,31 @@ extension on TranslationsPtBr {
         return 'Endereço de IP';
       case 'proxies.ipInfoSemantics.country':
         return 'País';
+      case 'proxies.autoSelect':
+        return 'Seleção automática';
+      case 'proxies.autoSelectDescription':
+        return 'Conectar automaticamente ao nó mais rápido';
+      case 'proxies.sortModalTitle':
+        return 'Escolha o método de ordenação';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'Testando latência de: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'Alterado para ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'Falha ao trocar: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'Conecte-se antes de trocar de linha';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            'Teste de latência iniciado para ${count} linhas';
+      case 'proxies.delayTestBtn':
+        return 'Latência';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} linhas';
+      case 'proxies.manualSelect':
+        return 'Seleção manual';
+      case 'proxies.autoTest':
+        return 'Teste automático';
       case 'logs.pageTitle':
         return 'Histórico';
       case 'logs.filterHint':
@@ -17644,6 +20967,14 @@ extension on TranslationsPtBr {
         return 'Resumir';
       case 'logs.clearTooltip':
         return 'Limpar';
+      case 'logs.logsCleared':
+        return 'Registros limpos';
+      case 'logs.logsCopied':
+        return 'Registros copiados';
+      case 'logs.logsUnderDevelopment':
+        return 'O recurso de registros está em desenvolvimento';
+      case 'logs.noLogsWhenDisconnected':
+        return 'Desconectado, sem registros';
       case 'settings.pageTitle':
         return 'Configurações';
       case 'settings.requiresRestartMsg':
@@ -17702,6 +21033,12 @@ extension on TranslationsPtBr {
         return 'Feedback tátil';
       case 'settings.general.autoIpCheck':
         return 'Verifique automaticamente o IP da conexão';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'Isento';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'Não isento';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'Avançado';
       case 'settings.advanced.debugMode':
@@ -17734,6 +21071,14 @@ extension on TranslationsPtBr {
         return 'Ocultar aplicativos do sistema';
       case 'settings.network.clearSelection':
         return 'Limpar seleção';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'Falha ao carregar a lista de aplicativos';
+      case 'settings.network.perAppProxyRetry':
+        return 'Tentar novamente';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'Nenhum resultado encontrado';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'O modo de linha por aplicativo é compatível apenas com Android';
       case 'settings.geoAssets.pageTitle':
         return 'Ativos de roteamento';
       case 'settings.geoAssets.geoip':
@@ -17756,6 +21101,22 @@ extension on TranslationsPtBr {
         return 'Adicionar recursos recomendados';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'Os arquivos dos ativos de roteamento selecionados estão ausentes. Baixe-os ou escolha os existentes.';
+      case 'settings.exportOptions':
+        return 'Copiar opções anônimas para a área de transferência';
+      case 'settings.exportAllOptions':
+        return 'Copiar todas as opções para a área de transferência';
+      case 'settings.importOptions':
+        return 'Importar opções da área de transferência';
+      case 'settings.importOptionsMsg':
+        return 'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
+      case 'settings.systemProxyEnabled':
+        return 'Proxy do sistema ativado';
+      case 'settings.systemProxyDisabled':
+        return 'Proxy do sistema desativado (reconecte para aplicar)';
+      case 'settings.adminPrivilegesRequired':
+        return 'Requer privilégios de administrador no macOS';
+      case 'settings.portChangeNotice':
+        return 'Alterações de porta exigem reconexão para serem aplicadas';
       case 'about.pageTitle':
         return 'Sobre';
       case 'about.version':
@@ -17770,6 +21131,8 @@ extension on TranslationsPtBr {
         return 'Política de Privacidade';
       case 'about.termsAndConditions':
         return 'Termos e Condições';
+      case 'about.appDescription':
+        return 'Um cliente proxy multiplataforma baseado no núcleo sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'Já usando a versão mais recente';
       case 'appUpdate.dialogTitle':
@@ -17800,6 +21163,8 @@ extension on TranslationsPtBr {
         return 'desconectar';
       case 'tray.status.disconnecting':
         return 'Desconectando';
+      case 'tray.hide':
+        return 'Ocultar';
       case 'failure.unexpected':
         return 'Erro inesperado';
       case 'failure.clash.unexpected':
@@ -17826,6 +21191,10 @@ extension on TranslationsPtBr {
         return 'Erro ao criar serviço';
       case 'failure.singbox.start':
         return 'Erro de inicialização do serviço';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Biblioteca do núcleo não instalada';
+      case 'failure.singbox.startTimeout':
+        return 'Tempo de inicialização do serviço esgotado';
       case 'failure.connectivity.unexpected':
         return 'Falha inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -17834,6 +21203,8 @@ extension on TranslationsPtBr {
         return 'Permissão de notificação ausente';
       case 'failure.connectivity.core':
         return 'Erro central';
+      case 'failure.connectivity.networkUnavailable':
+        return 'Rede indisponível';
       case 'failure.profiles.unexpected':
         return 'Erro inesperado';
       case 'failure.profiles.notFound':
@@ -17842,6 +21213,8 @@ extension on TranslationsPtBr {
         return 'Configurações inválidas';
       case 'failure.profiles.invalidUrl':
         return 'URL inválida';
+      case 'failure.profiles.noActive':
+        return 'Nenhum perfil ativo';
       case 'failure.connection.unexpected':
         return 'Erro de conexão inesperado';
       case 'failure.connection.timeout':
@@ -17876,6 +21249,12 @@ extension on TranslationsPtBr {
         return 'Você ativou alguns recursos experimentais que podem afetar a qualidade da conexão e causar erros inesperados. Você sempre pode alterar ou redefinir essas opções na página de opções de configuração.';
       case 'connection.disableExperimentalNotice':
         return 'Não mostrar novamente';
+      case 'connection.reconnect':
+        return 'Reconectar';
+      case 'connection.connectAnyWay':
+        return 'Conectar';
+      case 'connection.reconnectMsg':
+        return 'Reconectando para aplicar as alterações...';
       case 'config.resetBtn':
         return 'Redefinir opções';
       case 'config.serviceMode':
@@ -18008,6 +21387,10 @@ extension on TranslationsPtBr {
         return 'Desvie o WARP através de proxies';
       case 'config.warpDetourModes.outbound':
         return 'Desviar proxies através do WARP';
+      case 'config.warpDetourModes.proxyOverWarp':
+        return 'Desviar linhas através do WARP';
+      case 'config.warpDetourModes.warpOverProxy':
+        return 'Desviar WARP através das linhas';
       case 'config.warpLicenseKey':
         return 'Chave de licença';
       case 'config.warpCleanIp':
@@ -18018,6 +21401,34 @@ extension on TranslationsPtBr {
         return 'Contagem de ruído';
       case 'config.warpNoiseDelay':
         return 'Atraso de ruído';
+      case 'config.quickSettings':
+        return 'Configurações rápidas';
+      case 'config.quickSettingsSubtitle':
+        return 'Personalize sua experiência de conexão';
+      case 'config.setupWarp':
+        return 'Configurar WARP';
+      case 'config.allOptions':
+        return 'Todas as opções de configuração';
+      case 'config.allAdvancedOptions':
+        return 'Todas as opções avançadas';
+      case 'config.shortServiceModes.proxy':
+        return 'Somente linha';
+      case 'config.shortServiceModes.systemProxy':
+        return 'Linha do sistema';
+      case 'config.shortServiceModes.tun':
+        return 'VPN';
+      case 'config.shortServiceModes.tunService':
+        return 'Serviço VPN';
+      case 'config.blockAds':
+        return 'Bloquear anúncios';
+      case 'config.tproxyPort':
+        return 'Porta de linha transparente';
+      case 'config.warpNoiseSize':
+        return 'Tamanho do ruído';
+      case 'config.warpNoiseMode':
+        return 'Modo de ruído';
+      case 'config.desktopProxyScopeNotice':
+        return 'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
       default:
         return null;
     }
@@ -18065,6 +21476,10 @@ extension on TranslationsRu {
         return 'Открыть настройки';
       case 'general.grantPermission':
         return 'Дать права доступа';
+      case 'general.underDevelopment':
+        return 'В разработке';
+      case 'general.confirm':
+        return 'Подтвердить';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18080,6 +21495,25 @@ extension on TranslationsRu {
         return 'Начните с добавления профиля подписки';
       case 'home.noActiveProfileMsg':
         return 'Выберите профиль';
+      case 'home.routingMode.global':
+        return 'Глобальный прокси';
+      case 'home.routingMode.smart':
+        return 'Умная маршрутизация';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) =>
+            'Не удалось сменить режим: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'Не удалось подключиться';
+      case 'home.coreMissingTitle':
+        return 'Библиотека ядра не найдена';
+      case 'home.coreMissingMsg':
+        return 'Приложению не удалось загрузить сетевое ядро. Подключение недоступно. Переустановите приложение или убедитесь, что файл библиотеки ядра находится рядом с исполняемым файлом.';
+      case 'home.degradedTitle':
+        return 'Подключено, но нет доступа в интернет';
+      case 'home.degradedMsg':
+        return 'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
+      case 'home.degradedRetry':
+        return 'Проверить ещё раз';
       case 'stats.traffic':
         return 'Трафик';
       case 'stats.trafficLive':
@@ -18096,6 +21530,10 @@ extension on TranslationsRu {
         return 'Скорость';
       case 'stats.totalTransferred':
         return 'Всего передано';
+      case 'stats.trafficUsage':
+        return 'Использование трафика';
+      case 'stats.liveSpeed':
+        return 'Текущая скорость';
       case 'profile.overviewPageTitle':
         return 'Профили';
       case 'profile.detailsPageTitle':
@@ -18156,6 +21594,16 @@ extension on TranslationsRu {
         return 'Добавление профиля';
       case 'profile.add.failureMsg':
         return 'Не удалось добавить профиль';
+      case 'profile.add.modalSubtitle':
+        return 'Выберите способ добавления файла конфигурации';
+      case 'profile.add.manuallyDescription':
+        return 'Введите конфигурацию сервера вручную';
+      case 'profile.add.addWarp':
+        return 'Добавить WARP';
+      case 'profile.add.warpDescription':
+        return 'Бесплатное ускорение через Cloudflare WARP';
+      case 'profile.add.addingWarpMsg':
+        return 'Подождите, идёт регистрация WARP.';
       case 'profile.update.buttonTxt':
         return 'Обновить';
       case 'profile.update.tooltip':
@@ -18182,6 +21630,14 @@ extension on TranslationsRu {
         return 'Скопировать конфигурацию в буфер обмена';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'Конфигурация скопирована в буфер обмена';
+      case 'profile.share.shareLink':
+        return 'Поделиться ссылкой';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'Ссылка на подписку скопирована';
+      case 'profile.share.configCopied':
+        return 'Конфигурация скопирована';
+      case 'profile.share.copyFailed':
+        return 'Не удалось скопировать';
       case 'profile.edit.buttonTxt':
         return 'Изменить';
       case 'profile.edit.selectActiveTxt':
@@ -18224,6 +21680,36 @@ extension on TranslationsRu {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'Добавить';
+      case 'profile.actionButtons.updateAll':
+        return 'Обновить все';
+      case 'profile.actionButtons.sort':
+        return 'Сортировать';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'Конфигурация скопирована';
+      case 'profile.actionButtons.editConfig':
+        return 'Изменить конфигурацию';
+      case 'profile.details.basicInfo':
+        return 'Основные сведения';
+      case 'profile.details.subscriptionStatus':
+        return 'Состояние подписки';
+      case 'profile.details.options':
+        return 'Параметры';
+      case 'profile.details.updateNow':
+        return 'Обновить сейчас';
+      case 'profile.details.updateNowDescription':
+        return 'Загрузить актуальную конфигурацию с сервера';
+      case 'profile.details.expireDate':
+        return 'Дата окончания';
+      case 'profile.details.unlimited':
+        return 'Безлимитно';
+      case 'profile.overview.currentlyUsing':
+        return 'Используется сейчас';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => 'Осталось ${days} дн.';
+      case 'profile.remoteProfile':
+        return 'Удалённый профиль';
       case 'proxies.pageTitle':
         return 'Прокси';
       case 'proxies.emptyProxiesMsg':
@@ -18254,6 +21740,31 @@ extension on TranslationsRu {
         return 'IP адрес';
       case 'proxies.ipInfoSemantics.country':
         return 'Страна';
+      case 'proxies.autoSelect':
+        return 'Автовыбор';
+      case 'proxies.autoSelectDescription':
+        return 'Автоматически подключаться к самому быстрому узлу';
+      case 'proxies.sortModalTitle':
+        return 'Выберите способ сортировки';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'Проверка задержки: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => 'Переключено на ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'Не удалось переключить: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'Подключитесь перед сменой линии';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            'Запущена проверка задержки для ${count} линий';
+      case 'proxies.delayTestBtn':
+        return 'Задержка';
+      case 'proxies.lineCount':
+        return ({required Object count}) => 'Линий: ${count}';
+      case 'proxies.manualSelect':
+        return 'Ручной выбор';
+      case 'proxies.autoTest':
+        return 'Автотест';
       case 'logs.pageTitle':
         return 'Журналы';
       case 'logs.filterHint':
@@ -18270,6 +21781,14 @@ extension on TranslationsRu {
         return 'Возобновить';
       case 'logs.clearTooltip':
         return 'Очистить';
+      case 'logs.logsCleared':
+        return 'Журналы очищены';
+      case 'logs.logsCopied':
+        return 'Журналы скопированы';
+      case 'logs.logsUnderDevelopment':
+        return 'Функция журналов в разработке';
+      case 'logs.noLogsWhenDisconnected':
+        return 'Нет подключения, журналы отсутствуют';
       case 'settings.pageTitle':
         return 'Настройки';
       case 'settings.requiresRestartMsg':
@@ -18330,6 +21849,14 @@ extension on TranslationsRu {
         return 'Отображение скорости в уведомлении';
       case 'settings.general.autoIpCheck':
         return 'Автоматически проверять IP-адрес соединения';
+      case 'settings.general.hapticFeedback':
+        return 'Тактильная отдача';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'Исключено';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'Не исключено';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'Расширенные';
       case 'settings.advanced.debugMode':
@@ -18362,6 +21889,14 @@ extension on TranslationsRu {
         return 'Скрыть системные приложения';
       case 'settings.network.clearSelection':
         return 'Очистить выбор';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'Не удалось загрузить список приложений';
+      case 'settings.network.perAppProxyRetry':
+        return 'Повторить';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'Ничего не найдено';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'Режим линий для отдельных приложений поддерживается только на Android';
       case 'settings.geoAssets.pageTitle':
         return 'Активы маршрутизации';
       case 'settings.geoAssets.geoip':
@@ -18384,6 +21919,18 @@ extension on TranslationsRu {
         return 'Добавить рекомендуемые активы';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'Файлы выбранных ресурсов маршрутизации отсутствуют. Либо скачайте их, либо выберите существующие.';
+      case 'settings.exportOptions':
+        return 'Копировать анонимные параметры в буфер обмена';
+      case 'settings.exportAllOptions':
+        return 'Копировать все параметры в буфер обмена';
+      case 'settings.systemProxyEnabled':
+        return 'Системный прокси включён';
+      case 'settings.systemProxyDisabled':
+        return 'Системный прокси отключён (переподключитесь для применения)';
+      case 'settings.adminPrivilegesRequired':
+        return 'На macOS требуются права администратора';
+      case 'settings.portChangeNotice':
+        return 'Изменения порта применяются после переподключения';
       case 'about.pageTitle':
         return 'О программе';
       case 'about.version':
@@ -18398,6 +21945,8 @@ extension on TranslationsRu {
         return 'Политика конфиденциальности';
       case 'about.termsAndConditions':
         return 'Условия и положения';
+      case 'about.appDescription':
+        return 'Кроссплатформенный прокси-клиент на основе ядра sing-box';
       case 'appUpdate.notAvailableMsg':
         return 'Установлена последняя версия';
       case 'appUpdate.dialogTitle':
@@ -18428,6 +21977,8 @@ extension on TranslationsRu {
         return 'Отключиться';
       case 'tray.status.disconnecting':
         return 'Отключение';
+      case 'tray.hide':
+        return 'Скрыть';
       case 'failure.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.clash.unexpected':
@@ -18454,6 +22005,10 @@ extension on TranslationsRu {
         return 'Ошибка создания сервиса';
       case 'failure.singbox.start':
         return 'Ошибка запуска сервиса';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Библиотека ядра не установлена';
+      case 'failure.singbox.startTimeout':
+        return 'Истекло время запуска службы';
       case 'failure.connectivity.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.connectivity.missingVpnPermission':
@@ -18462,6 +22017,8 @@ extension on TranslationsRu {
         return 'Отсутствует разрешение на показ уведомлений';
       case 'failure.connectivity.core':
         return 'Ошибка ядра';
+      case 'failure.connectivity.networkUnavailable':
+        return 'Сеть недоступна';
       case 'failure.profiles.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.profiles.notFound':
@@ -18470,6 +22027,8 @@ extension on TranslationsRu {
         return 'Неправильная конфигурация';
       case 'failure.profiles.invalidUrl':
         return 'Неправильный URL';
+      case 'failure.profiles.noActive':
+        return 'Нет активного профиля';
       case 'failure.connection.unexpected':
         return 'Неожиданная ошибка подключения';
       case 'failure.connection.timeout':
@@ -18672,6 +22231,20 @@ extension on TranslationsRu {
         return 'Port';
       case 'config.warpNoise':
         return 'Noise';
+      case 'config.quickSettingsSubtitle':
+        return 'Настройте подключение под себя';
+      case 'config.allAdvancedOptions':
+        return 'Все дополнительные настройки';
+      case 'config.blockAds':
+        return 'Блокировать рекламу';
+      case 'config.warpNoiseSize':
+        return 'Размер шума';
+      case 'config.warpNoiseMode':
+        return 'Режим шума';
+      case 'config.warpNoiseDelay':
+        return 'Задержка шума';
+      case 'config.desktopProxyScopeNotice':
+        return 'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
       default:
         return null;
     }
@@ -18715,6 +22288,14 @@ extension on TranslationsTr {
         return 'Daha az göster';
       case 'general.grantPermission':
         return 'İzin Ver';
+      case 'general.clipboardExportSuccessMsg':
+        return 'Panoya kopyalandı';
+      case 'general.openAppSettings':
+        return 'Uygulama Ayarlarını Aç';
+      case 'general.underDevelopment':
+        return 'Geliştirme Aşamasında';
+      case 'general.confirm':
+        return 'Onayla';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18731,6 +22312,24 @@ extension on TranslationsTr {
         return 'Aboneliği profili ekleyerek başlayın';
       case 'home.noActiveProfileMsg':
         return 'Profil seçin';
+      case 'home.routingMode.global':
+        return 'Genel Proxy';
+      case 'home.routingMode.smart':
+        return 'Akıllı Yönlendirme';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) => 'Mod değiştirilemedi: ${error}';
+      case 'home.connectionFailedTitle':
+        return 'Bağlantı Başarısız';
+      case 'home.coreMissingTitle':
+        return 'Çekirdek Kitaplığı Bulunamadı';
+      case 'home.coreMissingMsg':
+        return 'Uygulama ağ çekirdeğini yükleyemedi. Bağlantı kullanılamıyor. Uygulamayı yeniden kurun ya da çekirdek kitaplık dosyasının çalıştırılabilir dosyanın yanında olduğundan emin olun.';
+      case 'home.degradedTitle':
+        return 'Bağlandı, ancak internet erişimi yok';
+      case 'home.degradedMsg':
+        return 'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
+      case 'home.degradedRetry':
+        return 'Yeniden Denetle';
       case 'stats.trafficLive':
         return 'Canlı Trafik';
       case 'stats.trafficTotal':
@@ -18739,6 +22338,18 @@ extension on TranslationsTr {
         return 'Çıkış Yolu';
       case 'stats.downlink':
         return 'Giriş Yolu';
+      case 'stats.traffic':
+        return 'Trafik';
+      case 'stats.trafficUsage':
+        return 'Trafik Kullanımı';
+      case 'stats.liveSpeed':
+        return 'Anlık Hız';
+      case 'stats.connection':
+        return 'Bağlantı';
+      case 'stats.speed':
+        return 'Hız';
+      case 'stats.totalTransferred':
+        return 'Toplam Aktarılan';
       case 'profile.overviewPageTitle':
         return 'Profiller';
       case 'profile.detailsPageTitle':
@@ -18763,6 +22374,14 @@ extension on TranslationsTr {
         return 'Süresi Doldu';
       case 'profile.subscription.noTraffic':
         return 'Kotal Doldu';
+      case 'profile.subscription.upload':
+        return 'Yükleme';
+      case 'profile.subscription.download':
+        return 'İndirme';
+      case 'profile.subscription.total':
+        return 'Toplam Trafik';
+      case 'profile.subscription.expireDate':
+        return 'Son Kullanma Tarihi';
       case 'profile.sortBy.lastUpdate':
         return 'Yakın zamanda güncellendi';
       case 'profile.sortBy.name':
@@ -18783,12 +22402,24 @@ extension on TranslationsTr {
         return 'El feneri';
       case 'profile.add.qrScanner.facingSemanticLabel':
         return 'Kameraya önü';
+      case 'profile.add.qrScanner.permissionRequest':
+        return 'QR Kodu taramak için kamera izni';
       case 'profile.add.manually':
         return 'Manuel giriş';
       case 'profile.add.addingProfileMsg':
         return 'Profil Ekleniyor';
       case 'profile.add.failureMsg':
         return 'Profil eklenemedi';
+      case 'profile.add.modalSubtitle':
+        return 'Yapılandırma dosyasını nasıl ekleyeceğinizi seçin';
+      case 'profile.add.manuallyDescription':
+        return 'Sunucu yapılandırmasını elle girin';
+      case 'profile.add.addWarp':
+        return 'WARP Ekle';
+      case 'profile.add.warpDescription':
+        return 'Cloudflare WARP ile ücretsiz hızlandırma';
+      case 'profile.add.addingWarpMsg':
+        return 'WARP kaydedilirken lütfen bekleyin.';
       case 'profile.update.buttonTxt':
         return 'Güncelle';
       case 'profile.update.tooltip':
@@ -18815,6 +22446,14 @@ extension on TranslationsTr {
         return 'Yapılandırmayı panoya aktar';
       case 'profile.share.exportConfigToClipboardSuccess':
         return 'Yapılandırma panoya kopyalandı';
+      case 'profile.share.shareLink':
+        return 'Bağlantıyı Paylaş';
+      case 'profile.share.subscriptionLinkCopied':
+        return 'Abonelik bağlantısı kopyalandı';
+      case 'profile.share.configCopied':
+        return 'Yapılandırma kopyalandı';
+      case 'profile.share.copyFailed':
+        return 'Kopyalama başarısız';
       case 'profile.edit.buttonTxt':
         return 'Düzenle';
       case 'profile.edit.selectActiveTxt':
@@ -18857,6 +22496,36 @@ extension on TranslationsTr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return 'Ekle';
+      case 'profile.actionButtons.updateAll':
+        return 'Tümünü Güncelle';
+      case 'profile.actionButtons.sort':
+        return 'Sırala';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return 'Yapılandırma kopyalandı';
+      case 'profile.actionButtons.editConfig':
+        return 'Yapılandırmayı Düzenle';
+      case 'profile.details.basicInfo':
+        return 'Temel Bilgiler';
+      case 'profile.details.subscriptionStatus':
+        return 'Abonelik Durumu';
+      case 'profile.details.options':
+        return 'Seçenekler';
+      case 'profile.details.updateNow':
+        return 'Şimdi Güncelle';
+      case 'profile.details.updateNowDescription':
+        return 'Sunucudan en güncel yapılandırmayı al';
+      case 'profile.details.expireDate':
+        return 'Son Kullanma Tarihi';
+      case 'profile.details.unlimited':
+        return 'Sınırsız';
+      case 'profile.overview.currentlyUsing':
+        return 'Şu Anda Kullanılıyor';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => '${days} gün kaldı';
+      case 'profile.remoteProfile':
+        return 'Uzak Profil';
       case 'proxies.pageTitle':
         return 'Proxyler';
       case 'proxies.emptyProxiesMsg':
@@ -18871,6 +22540,47 @@ extension on TranslationsTr {
         return 'Alfabetik olarak';
       case 'proxies.sortOptions.delay':
         return 'Gecikmeyle';
+      case 'proxies.checkIp':
+        return 'IP\'yi Denetle';
+      case 'proxies.unknownIp':
+        return 'Bilinmeyen IP';
+      case 'proxies.autoSelect':
+        return 'Otomatik Seçim';
+      case 'proxies.autoSelectDescription':
+        return 'En hızlı sunucuya otomatik bağlan';
+      case 'proxies.sortModalTitle':
+        return 'Sıralama yöntemini seçin';
+      case 'proxies.activeProxySemanticLabel':
+        return 'Etkin Hat';
+      case 'proxies.delaySemantics.result':
+        return ({required Object delay}) => 'Gecikme: ${delay} ms';
+      case 'proxies.delaySemantics.timeout':
+        return 'Gecikme Testi Zaman Aşımı';
+      case 'proxies.delaySemantics.testing':
+        return 'Gecikme: Test ediliyor...';
+      case 'proxies.ipInfoSemantics.address':
+        return 'IP Adresi';
+      case 'proxies.ipInfoSemantics.country':
+        return 'Ülke';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => 'Gecikme test ediliyor: ${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => '${name} olarak değiştirildi';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => 'Geçiş başarısız: ${error}';
+      case 'proxies.connectBeforeSwitch':
+        return 'Hat değiştirmeden önce bağlanın';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) =>
+            '${count} hat için gecikme testi başlatıldı';
+      case 'proxies.delayTestBtn':
+        return 'Gecikme';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} hat';
+      case 'proxies.manualSelect':
+        return 'Elle Seçim';
+      case 'proxies.autoTest':
+        return 'Otomatik Test';
       case 'logs.pageTitle':
         return 'Log';
       case 'logs.filterHint':
@@ -18887,6 +22597,14 @@ extension on TranslationsTr {
         return 'Devam et';
       case 'logs.clearTooltip':
         return 'Temizle';
+      case 'logs.logsCleared':
+        return 'Günlükler temizlendi';
+      case 'logs.logsCopied':
+        return 'Günlükler kopyalandı';
+      case 'logs.logsUnderDevelopment':
+        return 'Günlük özelliği geliştirme aşamasında';
+      case 'logs.noLogsWhenDisconnected':
+        return 'Bağlı değil, günlük yok';
       case 'settings.pageTitle':
         return 'Ayarlar';
       case 'settings.requiresRestartMsg':
@@ -18941,6 +22659,16 @@ extension on TranslationsTr {
         return 'Optimum VPN performansı için kısıtlamaları kaldırın';
       case 'settings.general.dynamicNotification':
         return 'Bildirimde hızı göster';
+      case 'settings.general.hapticFeedback':
+        return 'Dokunsal Geri Bildirim';
+      case 'settings.general.autoIpCheck':
+        return 'Bağlantı IP’sini Otomatik Denetle';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return 'Muaf';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return 'Muaf Değil';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return 'Gelişmiş';
       case 'settings.advanced.debugMode':
@@ -18973,6 +22701,14 @@ extension on TranslationsTr {
         return 'Sistem uygulamalarını gizle';
       case 'settings.network.clearSelection':
         return 'Seçimi temizle';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return 'Uygulama listesi yüklenemedi';
+      case 'settings.network.perAppProxyRetry':
+        return 'Yeniden Dene';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return 'Sonuç bulunamadı';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return 'Uygulama başına hat modu yalnızca Android’de desteklenir';
       case 'settings.geoAssets.pageTitle':
         return 'Varlıkları Yönlendirme';
       case 'settings.geoAssets.geoip':
@@ -18995,6 +22731,22 @@ extension on TranslationsTr {
         return 'Önerilen Varlıkları Ekle';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return 'Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin.';
+      case 'settings.exportOptions':
+        return 'Anonim Seçenekleri Panoya Kopyala';
+      case 'settings.exportAllOptions':
+        return 'Tüm Seçenekleri Panoya Kopyala';
+      case 'settings.importOptions':
+        return 'Seçenekleri Panodan İçe Aktar';
+      case 'settings.importOptionsMsg':
+        return 'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
+      case 'settings.systemProxyEnabled':
+        return 'Sistem proxy’si etkin';
+      case 'settings.systemProxyDisabled':
+        return 'Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)';
+      case 'settings.adminPrivilegesRequired':
+        return 'macOS\'ta yönetici ayrıcalıkları gerekir';
+      case 'settings.portChangeNotice':
+        return 'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
       case 'about.pageTitle':
         return 'Hakkında';
       case 'about.version':
@@ -19009,6 +22761,8 @@ extension on TranslationsTr {
         return 'Gizlilik Politikası';
       case 'about.termsAndConditions':
         return 'Şartlar ve koşullar';
+      case 'about.appDescription':
+        return 'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
       case 'appUpdate.notAvailableMsg':
         return ' En son sürümü kullanıyorsunuz';
       case 'appUpdate.dialogTitle':
@@ -19039,6 +22793,8 @@ extension on TranslationsTr {
         return 'Bağlantıyı kes';
       case 'tray.status.disconnecting':
         return 'Bağlantı kesiliyor';
+      case 'tray.hide':
+        return 'Gizle';
       case 'failure.unexpected':
         return 'Beklenmeyen hata';
       case 'failure.clash.unexpected':
@@ -19065,6 +22821,10 @@ extension on TranslationsTr {
         return 'Servis oluşturma hatası';
       case 'failure.singbox.start':
         return 'Servis başlatma hatası';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Çekirdek Kitaplığı Yüklü Değil';
+      case 'failure.singbox.startTimeout':
+        return 'Servis Başlatma Zaman Aşımı';
       case 'failure.connectivity.unexpected':
         return 'Beklenmedik Hata';
       case 'failure.connectivity.missingVpnPermission':
@@ -19073,6 +22833,8 @@ extension on TranslationsTr {
         return 'Eksik Bildirim İzni';
       case 'failure.connectivity.core':
         return 'Temel Hata';
+      case 'failure.connectivity.networkUnavailable':
+        return 'Ağ Kullanılamıyor';
       case 'failure.profiles.unexpected':
         return 'Beklenmedik hata';
       case 'failure.profiles.notFound':
@@ -19081,6 +22843,8 @@ extension on TranslationsTr {
         return 'Geçersiz Yapılandırmalar';
       case 'failure.profiles.invalidUrl':
         return 'Geçersiz URL';
+      case 'failure.profiles.noActive':
+        return 'Etkin Profil Yok';
       case 'failure.connection.unexpected':
         return 'Beklenmeyen bağlantı hatası';
       case 'failure.connection.timeout':
@@ -19117,6 +22881,12 @@ extension on TranslationsTr {
         return 'Bağlantı kalitesini etkileyebilecek ve beklenmeyen hatalara neden olabilecek bazı deneysel özellikleri etkinleştirdiniz. Bu seçenekleri istediğiniz zaman Yapılandırma seçenekleri sayfasından değiştirebilir veya sıfırlayabilirsiniz.';
       case 'connection.disableExperimentalNotice':
         return 'Bir daha gösterme';
+      case 'connection.reconnect':
+        return 'Yeniden Bağlan';
+      case 'connection.connectAnyWay':
+        return 'Bağlan';
+      case 'connection.reconnectMsg':
+        return 'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
       case 'config.resetBtn':
         return 'Ayarları sıfırla';
       case 'config.serviceMode':
@@ -19127,6 +22897,8 @@ extension on TranslationsTr {
         return 'Sistem Proxy';
       case 'config.serviceModes.tun':
         return 'VPN';
+      case 'config.serviceModes.tunService':
+        return 'VPN Servisi';
       case 'config.section.route':
         return 'Rota Seçenekleri';
       case 'config.section.dns':
@@ -19241,6 +23013,10 @@ extension on TranslationsTr {
         return 'Detour WARP through proxies';
       case 'config.warpDetourModes.outbound':
         return 'Detour proxies through WARP';
+      case 'config.warpDetourModes.proxyOverWarp':
+        return 'Hatları WARP Üzerinden Geçir';
+      case 'config.warpDetourModes.warpOverProxy':
+        return 'WARP\'ı Hatlar Üzerinden Geçir';
       case 'config.warpLicenseKey':
         return 'License Key';
       case 'config.warpCleanIp':
@@ -19249,6 +23025,42 @@ extension on TranslationsTr {
         return 'Port';
       case 'config.warpNoise':
         return 'Noise';
+      case 'config.quickSettings':
+        return 'Hızlı Ayarlar';
+      case 'config.quickSettingsSubtitle':
+        return 'Bağlantı deneyiminizi özelleştirin';
+      case 'config.setupWarp':
+        return 'WARP Kurulumu';
+      case 'config.allOptions':
+        return 'Tüm Yapılandırma Seçenekleri';
+      case 'config.allAdvancedOptions':
+        return 'Tüm Gelişmiş Seçenekler';
+      case 'config.shortServiceModes.proxy':
+        return 'Yalnızca Hat';
+      case 'config.shortServiceModes.systemProxy':
+        return 'Sistem Hattı';
+      case 'config.shortServiceModes.tun':
+        return 'VPN';
+      case 'config.shortServiceModes.tunService':
+        return 'VPN Servisi';
+      case 'config.generateWarpConfig':
+        return 'WARP Yapılandırması Oluştur';
+      case 'config.missingWarpConfig':
+        return 'WARP Yapılandırması Eksik';
+      case 'config.warpConfigGenerated':
+        return 'WARP Yapılandırması Oluşturuldu';
+      case 'config.blockAds':
+        return 'Reklamları Engelle';
+      case 'config.tproxyPort':
+        return 'Şeffaf Hat Bağlantı Noktası';
+      case 'config.warpNoiseSize':
+        return 'Gürültü Boyutu';
+      case 'config.warpNoiseMode':
+        return 'Gürültü Modu';
+      case 'config.warpNoiseDelay':
+        return 'Gürültü Gecikmesi';
+      case 'config.desktopProxyScopeNotice':
+        return 'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
       default:
         return null;
     }
@@ -20057,6 +23869,10 @@ extension on TranslationsZhCn {
         return '噪音延延迟';
       case 'config.desktopProxyScopeNotice':
         return '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
+      case 'config.warpNoiseSize':
+        return '噪音大小';
+      case 'config.warpNoiseMode':
+        return '噪音模式';
       default:
         return null;
     }
@@ -20104,6 +23920,10 @@ extension on TranslationsZhTw {
         return '開啟應用程式設定';
       case 'general.grantPermission':
         return '授予權限';
+      case 'general.underDevelopment':
+        return '功能開發中';
+      case 'general.confirm':
+        return '確認';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20119,6 +23939,24 @@ extension on TranslationsZhTw {
         return '首先新增訂閱設定檔';
       case 'home.noActiveProfileMsg':
         return '選擇設定檔';
+      case 'home.routingMode.global':
+        return '全域代理';
+      case 'home.routingMode.smart':
+        return '智慧分流';
+      case 'home.failedToSwitchMode':
+        return ({required Object error}) => '切換模式失敗：${error}';
+      case 'home.connectionFailedTitle':
+        return '連線失敗';
+      case 'home.coreMissingTitle':
+        return '找不到核心程式庫';
+      case 'home.coreMissingMsg':
+        return '應用程式未能載入網路核心程式庫，無法建立連線。請重新安裝應用程式，或確認核心程式庫檔案與主程式在同一目錄下。';
+      case 'home.degradedTitle':
+        return '已連線，但無法存取網路';
+      case 'home.degradedMsg':
+        return '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
+      case 'home.degradedRetry':
+        return '重新檢測';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -20135,6 +23973,10 @@ extension on TranslationsZhTw {
         return '速度';
       case 'stats.totalTransferred':
         return '總傳輸量';
+      case 'stats.trafficUsage':
+        return '流量使用';
+      case 'stats.liveSpeed':
+        return '即時速度';
       case 'profile.overviewPageTitle':
         return '設定檔';
       case 'profile.detailsPageTitle':
@@ -20198,6 +24040,12 @@ extension on TranslationsZhTw {
         return '新增設定檔';
       case 'profile.add.failureMsg':
         return '新增設定檔失敗';
+      case 'profile.add.modalSubtitle':
+        return '選擇新增設定檔的方式';
+      case 'profile.add.manuallyDescription':
+        return '手動輸入伺服器設定';
+      case 'profile.add.warpDescription':
+        return '使用 Cloudflare WARP 免費加速';
       case 'profile.update.buttonTxt':
         return '更新';
       case 'profile.update.tooltip':
@@ -20224,6 +24072,14 @@ extension on TranslationsZhTw {
         return '將配置匯出到剪貼簿';
       case 'profile.share.exportConfigToClipboardSuccess':
         return '配置已複製到剪貼簿';
+      case 'profile.share.shareLink':
+        return '分享連結';
+      case 'profile.share.subscriptionLinkCopied':
+        return '訂閱連結已複製';
+      case 'profile.share.configCopied':
+        return '設定已複製';
+      case 'profile.share.copyFailed':
+        return '複製失敗';
       case 'profile.edit.buttonTxt':
         return '編輯';
       case 'profile.edit.selectActiveTxt':
@@ -20266,6 +24122,36 @@ extension on TranslationsZhTw {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.actionButtons.add':
+        return '新增';
+      case 'profile.actionButtons.updateAll':
+        return '全部更新';
+      case 'profile.actionButtons.sort':
+        return '排序';
+      case 'profile.actionButtons.copyConfigSuccess':
+        return '設定已複製';
+      case 'profile.actionButtons.editConfig':
+        return '編輯設定';
+      case 'profile.details.basicInfo':
+        return '基本資訊';
+      case 'profile.details.subscriptionStatus':
+        return '訂閱狀態';
+      case 'profile.details.options':
+        return '選項';
+      case 'profile.details.updateNow':
+        return '立即更新';
+      case 'profile.details.updateNowDescription':
+        return '從伺服器取得最新設定';
+      case 'profile.details.expireDate':
+        return '到期日期';
+      case 'profile.details.unlimited':
+        return '無限制';
+      case 'profile.overview.currentlyUsing':
+        return '目前使用中';
+      case 'profile.overview.remainingDays':
+        return ({required Object days}) => '剩餘 ${days} 天';
+      case 'profile.remoteProfile':
+        return '遠端訂閱';
       case 'proxies.pageTitle':
         return '線路';
       case 'proxies.emptyProxiesMsg':
@@ -20296,6 +24182,30 @@ extension on TranslationsZhTw {
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
         return '國家';
+      case 'proxies.autoSelect':
+        return '自動選擇';
+      case 'proxies.autoSelectDescription':
+        return '自動連線到最快的節點';
+      case 'proxies.sortModalTitle':
+        return '選擇排序方式';
+      case 'proxies.testingDelayInfo':
+        return ({required Object name}) => '正在檢測延遲：${name}';
+      case 'proxies.switchedTo':
+        return ({required Object name}) => '已切換到 ${name}';
+      case 'proxies.switchToFailed':
+        return ({required Object error}) => '切換失敗：${error}';
+      case 'proxies.connectBeforeSwitch':
+        return '請先連線再切換線路';
+      case 'proxies.startDelayTestForGroups':
+        return ({required Object count}) => '已開始檢測 ${count} 條線路的延遲';
+      case 'proxies.delayTestBtn':
+        return '延遲';
+      case 'proxies.lineCount':
+        return ({required Object count}) => '${count} 條線路';
+      case 'proxies.manualSelect':
+        return '手動選擇';
+      case 'proxies.autoTest':
+        return '自動測速';
       case 'logs.pageTitle':
         return '記錄檔';
       case 'logs.filterHint':
@@ -20312,6 +24222,14 @@ extension on TranslationsZhTw {
         return '恢復';
       case 'logs.clearTooltip':
         return '清除';
+      case 'logs.logsCleared':
+        return '日誌已清空';
+      case 'logs.logsCopied':
+        return '日誌已複製';
+      case 'logs.logsUnderDevelopment':
+        return '日誌功能開發中';
+      case 'logs.noLogsWhenDisconnected':
+        return '未連線，無日誌';
       case 'settings.pageTitle':
         return '設定';
       case 'settings.requiresRestartMsg':
@@ -20378,6 +24296,12 @@ extension on TranslationsZhTw {
         return '觸覺回饋';
       case 'settings.general.autoIpCheck':
         return '自動檢查連線的 IP';
+      case 'settings.general.batteryOptimizationStatus.exempted':
+        return '已豁免';
+      case 'settings.general.batteryOptimizationStatus.notExempted':
+        return '未豁免';
+      case 'settings.general.batteryOptimizationStatus.pending':
+        return '…';
       case 'settings.advanced.sectionTitle':
         return '進階設定';
       case 'settings.advanced.debugMode':
@@ -20410,6 +24334,14 @@ extension on TranslationsZhTw {
         return '隱藏系統應用程式';
       case 'settings.network.clearSelection':
         return '清空選項';
+      case 'settings.network.perAppProxyLoadFailedMsg':
+        return '載入應用程式清單失敗';
+      case 'settings.network.perAppProxyRetry':
+        return '重試';
+      case 'settings.network.perAppProxyEmptyMsg':
+        return '找不到結果';
+      case 'settings.network.perAppProxyAndroidOnlyMsg':
+        return '分應用線路模式僅支援 Android';
       case 'settings.geoAssets.pageTitle':
         return '路由資源文件';
       case 'settings.geoAssets.geoip':
@@ -20432,6 +24364,14 @@ extension on TranslationsZhTw {
         return '新增推薦的資源文件';
       case 'settings.geoAssets.missingGeoAssetsMsg':
         return '所選路由資源的檔案遺失。下載它們或選擇現有的。';
+      case 'settings.systemProxyEnabled':
+        return '系統代理已啟用';
+      case 'settings.systemProxyDisabled':
+        return '系統代理已停用（重新連線後生效）';
+      case 'settings.adminPrivilegesRequired':
+        return 'macOS 上需要管理員權限';
+      case 'settings.portChangeNotice':
+        return '連接埠變更需要重新連線才會生效';
       case 'about.pageTitle':
         return '關於';
       case 'about.version':
@@ -20446,6 +24386,8 @@ extension on TranslationsZhTw {
         return '隱私政策';
       case 'about.termsAndConditions':
         return '條款與條件';
+      case 'about.appDescription':
+        return '基於 sing-box 核心的跨平台代理用戶端';
       case 'appUpdate.notAvailableMsg':
         return '已經是最新版本';
       case 'appUpdate.dialogTitle':
@@ -20476,6 +24418,8 @@ extension on TranslationsZhTw {
         return '中斷連線';
       case 'tray.status.disconnecting':
         return '中斷連線中';
+      case 'tray.hide':
+        return '隱藏';
       case 'failure.unexpected':
         return '意外錯誤';
       case 'failure.clash.unexpected':
@@ -20502,6 +24446,10 @@ extension on TranslationsZhTw {
         return '服務建立錯誤';
       case 'failure.singbox.start':
         return '服務啟動錯誤';
+      case 'failure.singbox.coreLibraryMissing':
+        return '核心程式庫未安裝';
+      case 'failure.singbox.startTimeout':
+        return '服務啟動逾時';
       case 'failure.connectivity.unexpected':
         return '意外失敗';
       case 'failure.connectivity.missingVpnPermission':
@@ -20510,6 +24458,8 @@ extension on TranslationsZhTw {
         return '缺少通知權限';
       case 'failure.connectivity.core':
         return '核心錯誤';
+      case 'failure.connectivity.networkUnavailable':
+        return '網路無法使用';
       case 'failure.profiles.unexpected':
         return '意外錯誤';
       case 'failure.profiles.notFound':
@@ -20518,6 +24468,8 @@ extension on TranslationsZhTw {
         return '無效配置';
       case 'failure.profiles.invalidUrl':
         return '無效網址';
+      case 'failure.profiles.noActive':
+        return '沒有啟用的訂閱';
       case 'failure.connection.unexpected':
         return '意外連線錯誤';
       case 'failure.connection.timeout':
@@ -20721,6 +24673,18 @@ extension on TranslationsZhTw {
         return '噪音計數';
       case 'config.warpNoiseDelay':
         return '噪音延遲';
+      case 'config.quickSettingsSubtitle':
+        return '自訂您的連線體驗';
+      case 'config.allAdvancedOptions':
+        return '所有進階選項';
+      case 'config.blockAds':
+        return '封鎖廣告';
+      case 'config.warpNoiseSize':
+        return '雜訊大小';
+      case 'config.warpNoiseMode':
+        return '雜訊模式';
+      case 'config.desktopProxyScopeNotice':
+        return '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
       default:
         return null;
     }

@@ -22,7 +22,9 @@
     "showMore": "Развернуть ",
     "showLess": "Свернуть ",
     "openAppSettings": "Открыть настройки",
-    "grantPermission": "Дать права доступа"
+    "grantPermission": "Дать права доступа",
+    "underDevelopment": "В разработке",
+    "confirm": "Подтвердить"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "Продолжая, Вы соглашаетесь с ${tap(@:about.termsAndConditions)}",
@@ -31,7 +33,18 @@
   "home": {
     "pageTitle": "Главная",
     "emptyProfilesMsg": "Начните с добавления профиля подписки",
-    "noActiveProfileMsg": "Выберите профиль"
+    "noActiveProfileMsg": "Выберите профиль",
+    "routingMode": {
+      "global": "Глобальный прокси",
+      "smart": "Умная маршрутизация"
+    },
+    "failedToSwitchMode": "Не удалось сменить режим: ${error}",
+    "connectionFailedTitle": "Не удалось подключиться",
+    "coreMissingTitle": "Библиотека ядра не найдена",
+    "coreMissingMsg": "Приложению не удалось загрузить сетевое ядро. Подключение недоступно. Переустановите приложение или убедитесь, что файл библиотеки ядра находится рядом с исполняемым файлом.",
+    "degradedTitle": "Подключено, но нет доступа в интернет",
+    "degradedMsg": "Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.",
+    "degradedRetry": "Проверить ещё раз"
   },
   "stats": {
     "traffic": "Трафик",
@@ -41,7 +54,9 @@
     "downlink": "Скорость загрузки",
     "connection": "Соединение ",
     "speed": "Скорость",
-    "totalTransferred": "Всего передано"
+    "totalTransferred": "Всего передано",
+    "trafficUsage": "Использование трафика",
+    "liveSpeed": "Текущая скорость"
   },
   "profile": {
     "overviewPageTitle": "Профили",
@@ -79,7 +94,12 @@
       },
       "manually": "Ввести вручную",
       "addingProfileMsg": "Добавление профиля",
-      "failureMsg": "Не удалось добавить профиль"
+      "failureMsg": "Не удалось добавить профиль",
+      "modalSubtitle": "Выберите способ добавления файла конфигурации",
+      "manuallyDescription": "Введите конфигурацию сервера вручную",
+      "addWarp": "Добавить WARP",
+      "warpDescription": "Бесплатное ускорение через Cloudflare WARP",
+      "addingWarpMsg": "Подождите, идёт регистрация WARP."
     },
     "update": {
       "buttonTxt": "Обновить",
@@ -96,7 +116,11 @@
       "exportSubLinkToClipboard": "Скопировать ссылку на подписку в буфер обмена",
       "subLinkQrCode": "QR-код ссылки на подписку",
       "exportConfigToClipboard": "Скопировать конфигурацию в буфер обмена",
-      "exportConfigToClipboardSuccess": "Конфигурация скопирована в буфер обмена"
+      "exportConfigToClipboardSuccess": "Конфигурация скопирована в буфер обмена",
+      "shareLink": "Поделиться ссылкой",
+      "subscriptionLinkCopied": "Ссылка на подписку скопирована",
+      "configCopied": "Конфигурация скопирована",
+      "copyFailed": "Не удалось скопировать"
     },
     "edit": {
       "buttonTxt": "Изменить",
@@ -126,7 +150,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "Добавить",
+      "updateAll": "Обновить все",
+      "sort": "Сортировать",
+      "copyConfigSuccess": "Конфигурация скопирована",
+      "editConfig": "Изменить конфигурацию"
+    },
+    "details": {
+      "basicInfo": "Основные сведения",
+      "subscriptionStatus": "Состояние подписки",
+      "options": "Параметры",
+      "updateNow": "Обновить сейчас",
+      "updateNowDescription": "Загрузить актуальную конфигурацию с сервера",
+      "expireDate": "Дата окончания",
+      "unlimited": "Безлимитно"
+    },
+    "overview": {
+      "currentlyUsing": "Используется сейчас",
+      "remainingDays": "Осталось ${days} дн."
+    },
+    "remoteProfile": "Удалённый профиль"
   },
   "proxies": {
     "pageTitle": "Прокси",
@@ -149,7 +194,19 @@
     "ipInfoSemantics": {
       "address": "IP адрес",
       "country": "Страна"
-    }
+    },
+    "autoSelect": "Автовыбор",
+    "autoSelectDescription": "Автоматически подключаться к самому быстрому узлу",
+    "sortModalTitle": "Выберите способ сортировки",
+    "testingDelayInfo": "Проверка задержки: ${name}",
+    "switchedTo": "Переключено на ${name}",
+    "switchToFailed": "Не удалось переключить: ${error}",
+    "connectBeforeSwitch": "Подключитесь перед сменой линии",
+    "startDelayTestForGroups": "Запущена проверка задержки для ${count} линий",
+    "delayTestBtn": "Задержка",
+    "lineCount": "Линий: ${count}",
+    "manualSelect": "Ручной выбор",
+    "autoTest": "Автотест"
   },
   "logs": {
     "pageTitle": "Журналы",
@@ -159,7 +216,11 @@
     "shareAppLogs": "Поделиться журналами приложения",
     "pauseTooltip": "Приостановить",
     "resumeTooltip": "Возобновить",
-    "clearTooltip": "Очистить"
+    "clearTooltip": "Очистить",
+    "logsCleared": "Журналы очищены",
+    "logsCopied": "Журналы скопированы",
+    "logsUnderDevelopment": "Функция журналов в разработке",
+    "noLogsWhenDisconnected": "Нет подключения, журналы отсутствуют"
   },
   "settings": {
     "pageTitle": "Настройки",
@@ -196,7 +257,13 @@
       "ignoreBatteryOptimizations": "Отключить оптимизацию батареи",
       "ignoreBatteryOptimizationsMsg": "Отключение ограничений для оптимальной производительности VPN.",
       "dynamicNotification": "Отображение скорости в уведомлении",
-      "autoIpCheck": "Автоматически проверять IP-адрес соединения"
+      "autoIpCheck": "Автоматически проверять IP-адрес соединения",
+      "hapticFeedback": "Тактильная отдача",
+      "batteryOptimizationStatus": {
+        "exempted": "Исключено",
+        "notExempted": "Не исключено",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "Расширенные",
@@ -218,7 +285,11 @@
       },
       "showSystemApps": "Показать системные приложения",
       "hideSystemApps": "Скрыть системные приложения",
-      "clearSelection": "Очистить выбор"
+      "clearSelection": "Очистить выбор",
+      "perAppProxyLoadFailedMsg": "Не удалось загрузить список приложений",
+      "perAppProxyRetry": "Повторить",
+      "perAppProxyEmptyMsg": "Ничего не найдено",
+      "perAppProxyAndroidOnlyMsg": "Режим линий для отдельных приложений поддерживается только на Android"
     },
     "geoAssets": {
       "pageTitle": "Активы маршрутизации",
@@ -232,7 +303,13 @@
       "successMsg": "Объект успешно обновлен",
       "addRecommended": "Добавить рекомендуемые активы",
       "missingGeoAssetsMsg": "Файлы выбранных ресурсов маршрутизации отсутствуют. Либо скачайте их, либо выберите существующие."
-    }
+    },
+    "exportOptions": "Копировать анонимные параметры в буфер обмена",
+    "exportAllOptions": "Копировать все параметры в буфер обмена",
+    "systemProxyEnabled": "Системный прокси включён",
+    "systemProxyDisabled": "Системный прокси отключён (переподключитесь для применения)",
+    "adminPrivilegesRequired": "На macOS требуются права администратора",
+    "portChangeNotice": "Изменения порта применяются после переподключения"
   },
   "about": {
     "pageTitle": "О программе",
@@ -241,7 +318,8 @@
     "telegramChannel": "Telegram-канал",
     "checkForUpdate": "Проверка обновления",
     "privacyPolicy": "Политика конфиденциальности",
-    "termsAndConditions": "Условия и положения"
+    "termsAndConditions": "Условия и положения",
+    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box"
   },
   "appUpdate": {
     "notAvailableMsg": "Установлена последняя версия",
@@ -262,7 +340,8 @@
       "connecting": "Подключение",
       "disconnect": "Отключиться",
       "disconnecting": "Отключение"
-    }
+    },
+    "hide": "Скрыть"
   },
   "failure": {
     "unexpected": "Непредвиденная ошибка",
@@ -280,19 +359,23 @@
       "invalidConfigOptions": "Неправильные параметры конфигурации",
       "invalidConfig": "Неправильная конфигурация",
       "create": "Ошибка создания сервиса",
-      "start": "Ошибка запуска сервиса"
+      "start": "Ошибка запуска сервиса",
+      "coreLibraryMissing": "Библиотека ядра не установлена",
+      "startTimeout": "Истекло время запуска службы"
     },
     "connectivity": {
       "unexpected": "Непредвиденная ошибка",
       "missingVpnPermission": "Отсутствует разрешение VPN",
       "missingNotificationPermission": "Отсутствует разрешение на показ уведомлений",
-      "core": "Ошибка ядра"
+      "core": "Ошибка ядра",
+      "networkUnavailable": "Сеть недоступна"
     },
     "profiles": {
       "unexpected": "Непредвиденная ошибка",
       "notFound": "Профиль не найден",
       "invalidConfig": "Неправильная конфигурация",
-      "invalidUrl": "Неправильный URL"
+      "invalidUrl": "Неправильный URL",
+      "noActive": "Нет активного профиля"
     },
     "connection": {
       "unexpected": "Неожиданная ошибка подключения",
@@ -409,6 +492,13 @@
     "warpLicenseKey": "License Key",
     "warpCleanIp": "Clean IP",
     "warpPort": "Port",
-    "warpNoise": "Noise"
+    "warpNoise": "Noise",
+    "quickSettingsSubtitle": "Настройте подключение под себя",
+    "allAdvancedOptions": "Все дополнительные настройки",
+    "blockAds": "Блокировать рекламу",
+    "warpNoiseSize": "Размер шума",
+    "warpNoiseMode": "Режим шума",
+    "warpNoiseDelay": "Задержка шума",
+    "desktopProxyScopeNotice": "На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP."
   }
 }

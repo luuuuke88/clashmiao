@@ -203,6 +203,56 @@ void main() {
       );
     });
 
+    // 这条曾经只有 66 个手写域名后缀——国内 IP 上的站靠 IP 规则能兜住，但用
+    // 海外 CDN 的国内服务、以及 DNS 解析阶段都会走代理。现在改成完整反编译
+    // 自 geosite-cn.srs 的清单。
+    test('域名规则用的是完整反编译清单，不是手写摘要', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      final rules = (options['rules'] as List).cast<Map<String, dynamic>>();
+      final domains =
+          (rules.firstWhere((r) => r['domains'] != null)['domains'] as String)
+              .split(',');
+
+      expect(
+        domains.length,
+        cnDirectDomains.length + cnDirectDomainSuffixes.length,
+        reason: '两个清单必须完整注入，不能有截断',
+      );
+      expect(
+        cnDirectDomainSuffixes.length,
+        greaterThan(5000),
+        reason: '完整的 geosite-cn 后缀清单是数千条量级；掉回三位数说明退回了手写摘要',
+      );
+      expect(cnDirectDomains, isNotEmpty, reason: '精确匹配清单不能为空');
+    });
+
+    // 前缀语义不同不能混用：`full:` 进内核的 Domain（精确匹配），
+    // `domain:` 进 DomainSuffix（后缀匹配）。搞反了会让精确规则变成后缀规则，
+    // 把不该直连的子域一起放走。
+    test('精确域名用 full: 前缀，后缀用 domain: 前缀', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      final rules = (options['rules'] as List).cast<Map<String, dynamic>>();
+      final domains =
+          (rules.firstWhere((r) => r['domains'] != null)['domains'] as String)
+              .split(',');
+
+      expect(domains, contains('full:${cnDirectDomains.first}'));
+      expect(domains, contains('domain:${cnDirectDomainSuffixes.first}'));
+      expect(
+        domains.where(
+          (d) => !d.startsWith('full:') && !d.startsWith('domain:'),
+        ),
+        isEmpty,
+        reason: '每一条都必须带前缀，裸域名会被内核的 makeDomainRule 直接忽略',
+      );
+    });
+
     test('isSmart=false（全局模式）时，rules 为空——不做任何直连兜底', () {
       final options = getDefaultConfigOptions(
         isSmart: false,

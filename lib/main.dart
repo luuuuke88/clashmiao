@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/app/app.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/box_service/rule_set_provisioner.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/deep_link/deep_link_service.dart';
@@ -60,11 +59,6 @@ void main() async {
         tempDir: Directory(tempDir.path),
       );
       await boxService.setup(dirs, debug: true);
-
-      // 把 bundled .srs rule-set 文件 provision 到 workingDir，smart 模式的
-      // RuntimeConfigBuilder 引用绝对路径 <workingDir>/geoip-cn.srs /
-      // <workingDir>/geosite-cn.srs（跨平台 CWD 不统一，相对路径不可靠）。
-      await RuleSetProvisioner().ensureProvisioned(dirs.workingDir);
 
       // 启动时按 prefs 里持久化的 mode 推 changeConfigOptions
       // （之前默认 false，导致用户切到全局后被启动覆盖回 cn）。

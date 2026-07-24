@@ -24,6 +24,22 @@ Before publishing, the workflow runs formatting, analysis, and unit/widget
 tests, then verifies that each platform produced the expected package files.
 Windows and macOS also verify that `libcore` is bundled into the app output.
 
+## 版本号来自 tag，不是 pubspec
+
+`pubspec.yaml` 里的 `version:` **不参与**发布产物的版本号。CI 从 tag 推导：
+
+- `--build-name` = tag 去掉 `v` 前缀和 prerelease 后缀（`v1.2.3` → `1.2.3`，
+  `v2.0.0-beta.1` → `2.0.0`，因为 Flutter 的 `--build-name` 不接受 prerelease 段）
+- `--build-number` = `github.run_number`（仓库级严格递增）
+
+tag 推导不出合法的 `x.y.z` 时，`quality` job 直接失败——它是其它 job 的
+`needs`，所以在这里 fail 比让三个 build job 并行跑一半再各炸一次好。
+
+**为什么不能省这一步**：产物版本如果用 pubspec 里写死的 `0.1.0+1`，会有两个
+硬性后果——① versionCode 恒为 1，Play Store 要求严格递增，第二个包直接被拒；
+② App 里报的版本永远比 tag 旧，「检查更新」（比较 `PackageInfo.version` 与
+最新 tag）会对所有用户**永久误报**有新版本，因为更新完新包报的还是老版本号。
+
 ---
 
 ## 构建期参数（`--dart-define`）

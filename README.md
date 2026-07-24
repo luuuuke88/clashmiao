@@ -6,15 +6,52 @@
 
 ## 平台支持
 
-| 平台 | 状态 | 实现方式 | 验证情况 |
-|------|------|---------|---------|
-| Android | ✅ 可用 | VpnService + `libcore.aar` | tun0 接管流量、模拟器 ping 通、订阅 / ss-uri 都能加载 |
-| macOS | ✅ 可用 | FFI + `libcore.dylib` + 系统代理 | 154.83.95.148 → 45.202.255.184 验证通过，烟雾 36s 跑完 |
-| iOS | 🟡 代码脚手架完成 | NetworkExtension PacketTunnelProvider | 阻塞：Apple Developer 账号 + 真机签名，见 `ios/SCAFFOLDING.md` |
-| Windows | 🟡 lib 就绪 / 待真机验证 | FFI + `libcore.dll` (LFS) + 系统代理 (Wininet) | `flutter build windows` 可出 release，需 Windows 机器走一次连接 smoke |
-| Linux | 🟡 lib 就绪 / 待真机验证 | FFI + `libcore.so` (LFS) + 系统代理 (GNOME 手动设) | `flutter build linux` 可出 release，需 Linux 机器走一次连接 smoke |
+| 平台 | 状态 | 流量接管方式 |
+|------|------|---------|
+| Android | ✅ 可用 | VpnService（TUN，**全局接管**） |
+| macOS | ✅ 可用 | 系统代理（见下方"桌面端的接管范围"） |
+| Windows | ✅ 可出包 / 待真机验证 | 系统代理（同上） |
+| Linux | 🟡 可出包 / 待真机验证 | 系统代理（同上） |
+| iOS | 🟡 代码就绪，未上真机 | NetworkExtension；阻塞于付费 Apple 开发者账号 |
+
+### ⚠️ 桌面端的接管范围
+
+桌面端（macOS / Windows / Linux）**只做到系统代理级接管，不是全局 TUN**。
+这意味着：
+
+- ✅ 遵循系统代理设置的程序（浏览器、多数应用）会走隧道
+- ❌ **不遵循的程序会直连并暴露你的真实 IP** —— 部分游戏、命令行工具、
+  自带代理设置的客户端都属于这一类
+
+这是当前架构的边界，不是 bug。桌面端因此**不提供 VPN(TUN) 服务模式**——
+仓库里没有 wintun 驱动、macOS 也没有网络扩展权限，给出这个选项只会让连接必定
+失败。需要全局接管请用 Android 端。
 
 详见 [docs/ROADMAP.md](docs/ROADMAP.md)。
+
+## 安装
+
+### macOS
+
+安装包**未经 Apple 公证**（需要付费开发者账号），首次打开会被 Gatekeeper 拦下，
+提示"无法验证开发者"。通过方式：
+
+1. 在「访达」里**右键点击** ClashMiao.app → 选择「打开」
+2. 弹窗里再点一次「打开」
+
+之后就能正常双击启动了。dmg 是 universal 包，Intel 和 Apple Silicon 都能原生跑。
+
+### Windows
+
+安装包**未经代码签名**，SmartScreen 会弹「Windows 已保护你的电脑」。通过方式：
+
+1. 点击「更多信息」
+2. 点击「仍要运行」
+
+### Android
+
+直接安装 APK 即可（需在系统里允许"安装未知来源应用"）。首次连接会请求
+VPN 权限，这是 Android 建立 TUN 隧道的必要授权。
 
 ## 特性
 
@@ -22,7 +59,8 @@
 - 🔗 订阅管理：支持 base64 / clash / singbox 格式
 - ⚡ 延迟测试与自动选择
 - 📊 实时流量统计
-- 🌐 智能 / 全局模式切换（智能模式自带中国大陆 IP / 域名分流规则）
+- 🌐 智能 / 全局模式切换（智能模式内置完整的中国大陆 IP 段与域名直连规则）
+- 🩺 连接健康探测：检测到"已连上但实际不通"时会明确告知，而不是一直显示已连接
 
 ## 技术栈
 
@@ -78,7 +116,8 @@ bash bin/test-all.sh     # 加 format + analyze + 可选 E2E
 bash bin/test-e2e.sh     # Android emulator E2E（需 adb 可见设备）
 ```
 
-测试覆盖：~30 个 unit/widget + 1 个 Android E2E（真实出流量验证）。
+测试覆盖：684 个 unit/widget + Android 模拟器 E2E。翻译完整性、连接前置校验、
+黑洞检测等关键路径都有回归测试锁定。
 
 ## 许可证
 

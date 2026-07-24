@@ -79,6 +79,23 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      - name: Derive version from tag
+        id: version
+        run: |
+          # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
+          # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
+          #
+          # quality job 里也跑这一步（虽然它不用结果）：它是其它 job 的 needs，
+          # tag 格式不对时在这里就 fail，而不是等三个 build job 并行跑到一半
+          # 才各自炸一次。
+          NAME="${RELEASE_TAG#v}"
+          NAME="${NAME%%-*}"
+          case "$NAME" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$RELEASE_TAG' 推导不出合法版本号（需要 vX.Y.Z 形式）"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "推导版本: $NAME (build ${{ github.run_number }})"
       - run: flutter pub get
       - run: dart format --set-exit-if-changed lib/ test/ integration_test/
       - run: flutter analyze --fatal-warnings
@@ -108,6 +125,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh android
+      - name: Derive version from tag
+        id: version
+        run: |
+          # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
+          # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
+          NAME="${RELEASE_TAG#v}"
+          NAME="${NAME%%-*}"
+          case "$NAME" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$RELEASE_TAG' 推导不出合法版本号（需要 vX.Y.Z 形式）"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "推导版本: $NAME (build ${{ github.run_number }})"
       - run: flutter pub get
       - name: Configure Android signing
         env:
@@ -147,9 +177,21 @@ jobs:
             --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
             --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
             --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+          # 产物版本必须来自 tag，不能用 pubspec 里那个写死的 0.1.0+1：
+          #   - versionCode 恒为 1 → Play Store 第二次上传会被拒（要求严格递增）
+          #   - App 里报的版本永远比 tag 旧 → 「检查更新」对所有用户永久误报
+          #     有新版本（更新完还是提示，因为新包报的还是老版本号）
+          # build-number 用 github.run_number：仓库级严格递增。
+          VERSION_ARGS: >-
+            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ github.run_number }}
         run: |
-          flutter build apk --release $DART_DEFINES
-          flutter build appbundle --release $DART_DEFINES
+          # shellcheck disable=SC2086  # 故意不加引号：DART_DEFINES 是一串空格
+          # 分隔的 --dart-define=...，必须发生 word splitting 才能变成多个参数。
+          # 加引号会把整串当成单个参数传给 flutter，构建直接失败。
+          flutter build apk --release $VERSION_ARGS $DART_DEFINES
+          # shellcheck disable=SC2086  # 同上
+          flutter build appbundle --release $VERSION_ARGS $DART_DEFINES
       - name: Verify Android artifacts
         run: |
           test -s build/app/outputs/flutter-apk/app-release.apk
@@ -177,6 +219,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh macos
+      - name: Derive version from tag
+        id: version
+        run: |
+          # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
+          # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
+          NAME="${RELEASE_TAG#v}"
+          NAME="${NAME%%-*}"
+          case "$NAME" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$RELEASE_TAG' 推导不出合法版本号（需要 vX.Y.Z 形式）"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "推导版本: $NAME (build ${{ github.run_number }})"
       - run: flutter pub get
       - run: flutter config --enable-macos-desktop
       - name: Build macOS release
@@ -190,7 +245,17 @@ jobs:
             --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
             --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
             --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
-        run: flutter build macos --release --no-tree-shake-icons $DART_DEFINES
+          # 产物版本必须来自 tag，不能用 pubspec 里那个写死的 0.1.0+1：
+          #   - versionCode 恒为 1 → Play Store 第二次上传会被拒（要求严格递增）
+          #   - App 里报的版本永远比 tag 旧 → 「检查更新」对所有用户永久误报
+          #     有新版本（更新完还是提示，因为新包报的还是老版本号）
+          # build-number 用 github.run_number：仓库级严格递增。
+          VERSION_ARGS: >-
+            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ github.run_number }}
+        run: |
+          # shellcheck disable=SC2086  # 同 android job：必须 word splitting
+          flutter build macos --release --no-tree-shake-icons $VERSION_ARGS $DART_DEFINES
       - name: Verify macOS bundle (must be universal)
         run: |
           APP=build/macos/Build/Products/Release/clashmiao.app
@@ -298,6 +363,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: bin/fetch-libcore.sh windows
+      - name: Derive version from tag
+        id: version
+        run: |
+          # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
+          # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
+          NAME="${RELEASE_TAG#v}"
+          NAME="${NAME%%-*}"
+          case "$NAME" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$RELEASE_TAG' 推导不出合法版本号（需要 vX.Y.Z 形式）"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "推导版本: $NAME (build ${{ github.run_number }})"
       - run: flutter pub get
       - run: flutter config --enable-windows-desktop
       - name: Build Windows release
@@ -311,12 +389,21 @@ jobs:
             --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
             --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
             --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+          # 产物版本必须来自 tag，不能用 pubspec 里那个写死的 0.1.0+1：
+          #   - versionCode 恒为 1 → Play Store 第二次上传会被拒（要求严格递增）
+          #   - App 里报的版本永远比 tag 旧 → 「检查更新」对所有用户永久误报
+          #     有新版本（更新完还是提示，因为新包报的还是老版本号）
+          # build-number 用 github.run_number：仓库级严格递增。
+          VERSION_ARGS: >-
+            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ github.run_number }}
         shell: pwsh
         run: |
           # DART_DEFINES 是一个空格分隔的字符串（YAML 折叠标量），pwsh 不做
           # word splitting，必须显式拆成数组再 splat，否则会被当成单个参数。
           $defines = $env:DART_DEFINES -split '\s+' | Where-Object { $_ }
-          flutter build windows --release --no-tree-shake-icons @defines
+          $versionArgs = $env:VERSION_ARGS -split '\s+' | Where-Object { $_ }
+          flutter build windows --release --no-tree-shake-icons @versionArgs @defines
       - name: Verify and stage Windows bundle
         shell: pwsh
         run: |

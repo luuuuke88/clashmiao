@@ -75,24 +75,31 @@ void main() {
 
   // 这些外链靠编译期 --dart-define 注入。以前没配置时行为是"入口还在、点了
   // 什么都不发生"——用户会认为这个 App 有坏按钮，而不是"这个功能没提供"。
-  // 现在改成没配置就不显示入口。测试环境里这些 dart-define 天然是空的，
-  // 正好覆盖"未配置"这条分支。
-  testWidgets('未配置外链时不显示对应入口（不给死链）', (tester) async {
+  // 现在改成没配置就不显示入口。
+  //
+  // 这条测试是**双向**的：断言跟着 `hasXxx` 走，而不是写死某一边。
+  // - 默认（CI）跑：dart-define 为空 → 验证"未配置就不显示"
+  // - 注入后跑：`flutter test test/features/about/ \
+  //     --dart-define=PRIVACY_POLICY_URL=https://example.com/privacy \
+  //     --dart-define=TELEGRAM_CHANNEL_URL=https://t.me/example`
+  //   → 验证"配置了就显示"，同时证明 dart-define 名字跟 build_config.dart
+  //   真的对得上（写错名字这一侧就会红）
+  //
+  // 两个方向都实跑验证过。只锁一边的话，"名字打错导致永远走未配置分支"
+  // 这种错误会完全测不出来——而那正是这套机制最容易出的错。
+  testWidgets('外链入口跟随 dart-define 配置状态显示/隐藏', (tester) async {
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    expect(
-      hasTelegramChannel || hasPrivacyPolicy,
-      isFalse,
-      reason: '前置条件：测试环境不该注入这些 dart-define，否则下面的断言没有意义',
-    );
-
     await tester.pumpWidget(await _host());
     await tester.pumpAndSettle();
 
-    expect(find.text('Telegram 频道'), findsNothing);
-    expect(find.text('隐私政策'), findsNothing);
+    expect(
+      find.text('Telegram 频道'),
+      hasTelegramChannel ? findsOneWidget : findsNothing,
+    );
+    expect(find.text('隐私政策'), hasPrivacyPolicy ? findsOneWidget : findsNothing);
   });
 }

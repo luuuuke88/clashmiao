@@ -253,18 +253,21 @@ void main() {
     // 比死链更糟的是这句话本身——在拿不出条款文档的情况下声称"继续即表示
     // 您同意条款"，那不是缺个链接，是在声称一份不存在的协议已经生效。
     // 测试环境里 TERMS_AND_CONDITIONS_URL 天然为空，正好覆盖这条分支。
-    testWidgets('未配置条款链接时整行不显示（不声称一份不存在的协议）', (tester) async {
-      expect(
-        hasTermsAndConditions,
-        isFalse,
-        reason: '前置条件：测试环境不该注入这个 dart-define，否则断言没有意义',
-      );
-
+    // 双向断言，跟 about_page_test 的外链测试同一套路：断言跟着
+    // `hasTermsAndConditions` 走，而不是写死某一边。
+    //   flutter test test/features/onboarding/ \
+    //     --dart-define=TERMS_AND_CONDITIONS_URL=https://example.com/terms
+    // 两个方向都实跑验证过。只锁"未配置"那一边的话，dart-define 名字打错
+    // 导致永远走隐藏分支这种错误会完全测不出来。
+    testWidgets('条款行跟随 dart-define 配置状态显示/隐藏', (tester) async {
       final (widget, _) = await _host();
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('条款'), findsNothing);
+      expect(
+        find.textContaining('条款'),
+        hasTermsAndConditions ? findsWidgets : findsNothing,
+      );
       // 其余引导项必须照常在，确认不是整页没渲染
       expect(find.text('语言'), findsOneWidget);
       expect(find.text('开始'), findsOneWidget);

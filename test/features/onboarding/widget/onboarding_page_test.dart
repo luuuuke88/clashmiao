@@ -33,7 +33,7 @@ Future<(Widget, SharedPreferences)> _host({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(sp)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       regionDetectionServiceProvider.overrideWithValue(
         _FakeRegionDetectionService(regionDetectionResult),
       ),

@@ -212,7 +212,7 @@ void main() {
       container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -1407,6 +1407,170 @@ void main() {
       );
       expect(err, en.failure.unexpected, reason: '未归类异常应兜底为"未知错误"分类文案');
 
+      container.dispose();
+    });
+  });
+
+  // ===========================================================
+  // connect() 的前置校验分支曾经**只 debugPrint 就 return**，用户点了"连接"
+  // 什么都不会发生、也看不到任何提示——就是一个死按钮。而且桌面托盘的
+  // "连接"菜单项（tray_controller.dart）不经过首页 _EmptyHomeBody 那层空态
+  // 守卫，会直接命中这些分支。
+  //
+  // 这些测试锁定"每个前置校验失败都必须给用户一个可见的、分类过的本地化
+  // 提示"，而不是静默返回。
+  // ===========================================================
+  group('connect() 前置校验失败必须可见（不能静默返回）', () {
+    final en = Translations.build();
+
+    /// 建一个 repo 已就绪、但按参数决定"有没有激活订阅 / 配置文件存不存在"
+    /// 的容器。
+    Future<ProviderContainer> makeContainer(
+      BoxService service, {
+      required bool withActiveProfile,
+      required bool withConfigFile,
+    }) async {
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(service),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      if (withActiveProfile) {
+        const id = 'precheck-profile';
+        await repo.upsert({
+          'id': id,
+          'name': '前置校验测试',
+          // 指向一个不可解析的域名：自愈逻辑真的会去拉取，但必定失败，
+          // 从而验证"自愈失败后仍然要报错"这条路径。
+          'url': 'https://precheck.example.invalid/sub',
+        });
+        await repo.setActive(id);
+        if (withConfigFile) {
+          final configFile = File(repo.configFilePath(id));
+          await configFile.parent.create(recursive: true);
+          await configFile.writeAsString(
+            jsonEncode({
+              'outbounds': [
+                {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+              ],
+            }),
+          );
+        }
+      }
+      return container;
+    }
+
+    test('桌面核心库缺失（降级到 StubBoxService）时必须给出可见提示', () async {
+      final container = await makeContainer(
+        const StubBoxService(),
+        withActiveProfile: true,
+        withConfigFile: true,
+      );
+
+      await container.read(connectionControllerProvider.notifier).connect();
+
+      expect(
+        container.read(connectionErrorProvider),
+        en.failure.singbox.coreLibraryMissing,
+        reason: '核心库没装是个用户完全无法从界面上察觉的状态，必须明确告知',
+      );
+      container.dispose();
+    });
+
+    test('无激活订阅时必须给出可见提示（托盘菜单会绕过首页空态）', () async {
+      final spy = _SpyBoxService();
+      final container = await makeContainer(
+        spy,
+        withActiveProfile: false,
+        withConfigFile: false,
+      );
+
+      await container.read(connectionControllerProvider.notifier).connect();
+
+      expect(spy.startCalls, 0, reason: '无激活订阅不应该调 start');
+      expect(
+        container.read(connectionErrorProvider),
+        en.failure.profiles.noActive,
+        reason: '不能只是早返回——用户点了连接必须知道为什么没连上',
+      );
+      container.dispose();
+    });
+
+    test('配置文件缺失时先自愈重拉订阅，拉不到才报错', () async {
+      final spy = _SpyBoxService();
+      final container = await makeContainer(
+        spy,
+        withActiveProfile: true,
+        withConfigFile: false, // 磁盘上没有配置文件：模拟订阅更新失败/备份恢复后的状态
+      );
+
+      await container.read(connectionControllerProvider.notifier).connect();
+
+      expect(spy.startCalls, 0, reason: '自愈拉取用的是不可解析域名，必定失败，所以不该真的起内核');
+      expect(
+        container.read(connectionErrorProvider),
+        en.failure.profiles.notFound,
+        reason: '自愈失败后必须报"未找到配置文件"，不能静默什么都不做',
+      );
+      container.dispose();
+    });
+
+    test('配置文件缺失但自愈重拉成功时，应该继续完成连接', () async {
+      final spy = _SpyBoxService();
+      final tmp = await _mockPathProvider();
+      addTearDown(() async {
+        if (await tmp.exists()) await tmp.delete(recursive: true);
+      });
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      final repo = await container.read(profileRepositoryProvider.future);
+
+      const id = 'selfheal-profile';
+      await repo.upsert({
+        'id': id,
+        'name': '自愈测试',
+        'url': 'https://selfheal.example.invalid/sub',
+      });
+      await repo.setActive(id);
+      // 故意不建配置文件——但用 repo 的 update 被调用后会写入的那条路径无法在
+      // 单测里联网，所以这里换一种诚实的构造方式：让"自愈"这一步观察到文件
+      // 已经存在（模拟重拉成功的结果），验证 connect() 在自愈成功后不会误报
+      // 错误、而是继续往下走真正的启动流程。
+      final configFile = File(repo.configFilePath(id));
+      await configFile.parent.create(recursive: true);
+      await configFile.writeAsString(
+        jsonEncode({
+          'outbounds': [
+            {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+          ],
+        }),
+      );
+
+      await container.read(connectionControllerProvider.notifier).connect();
+
+      expect(spy.startCalls, 1, reason: '配置文件可用时必须真的起内核');
+      expect(
+        container.read(connectionErrorProvider),
+        isNull,
+        reason: '成功路径不该留下任何错误提示',
+      );
       container.dispose();
     });
   });

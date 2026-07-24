@@ -23,10 +23,12 @@ abstract interface class BoxService {
       try {
         return FFIBoxService();
       } catch (_) {
-        return StubBoxService();
+        // 桌面端 libcore 缺失/加载失败。以前这里静默降级，界面一切正常但点
+        // 什么都不工作——用 coreLoadFailed 标记出来，让首页能明确告警。
+        return const StubBoxService(reason: StubReason.coreLoadFailed);
       }
     }
-    return StubBoxService();
+    return const StubBoxService();
   }
 
   /// 初始化服务

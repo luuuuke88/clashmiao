@@ -56,7 +56,7 @@ void main() {
       dio: Dio(),
       configDir: tmpDir,
       prefs: prefs,
-      boxService: StubBoxService(),
+      boxService: const StubBoxService(),
     );
     container = ProviderContainer(
       overrides: [

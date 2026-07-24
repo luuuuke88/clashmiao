@@ -55,7 +55,7 @@ Future<Widget> _host() async {
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
@@ -95,7 +95,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -147,7 +147,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -267,7 +267,7 @@ void main() {
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           // StubBoxService.generateWarpConfig 抛 UnsupportedError——模拟桌面
           // 端加载核心库失败回退到桩实现的场景。
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -325,7 +325,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -377,7 +377,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
         ],
       );
       await container.read(sharedPreferencesProvider.future);
@@ -413,7 +413,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value(const [])),
         ],
       );
@@ -455,7 +455,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -506,7 +506,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -561,7 +561,7 @@ void main() {
         dio: Dio(),
         configDir: tempDir,
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
       final file = File(repo.configFilePath(profile.id));
       await file.parent.create(recursive: true);
@@ -647,7 +647,7 @@ void main() {
         dio: Dio(),
         configDir: Directory('/tmp/unused-profile-share-link-test'),
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
 
       // Clipboard.setData/getData 走 SystemChannels.platform，flutter_test
@@ -676,7 +676,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
           profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
         ],
@@ -733,7 +733,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -791,7 +791,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -835,7 +835,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -884,7 +884,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -929,7 +929,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );
@@ -982,7 +982,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileListProvider.overrideWith((_) => Future.value([profile])),
         ],
       );

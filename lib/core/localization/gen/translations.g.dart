@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3140 (314 per locale)
+/// Strings: 3148 (314 per locale)
 ///
-/// Built on 2026-07-19 at 12:21 UTC
+/// Built on 2026-07-24 at 18:54 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -196,6 +196,9 @@ class TranslationsHomeEn {
   String failedToSwitchMode({required Object error}) =>
       'Failed to switch mode: ${error}';
   String get connectionFailedTitle => 'Connection Failed';
+  String get coreMissingTitle => 'Core Library Not Found';
+  String get coreMissingMsg =>
+      'The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.';
 }
 
 // Path: stats
@@ -924,6 +927,7 @@ class TranslationsFailureSingboxEn {
   // Translations
   String get unexpected => 'Unexpected Service Error';
   String get serviceNotRunning => 'Service is Not Running';
+  String get coreLibraryMissing => 'Core Library Not Installed';
   String get missingPrivilege => 'Missing Privilege';
   String get missingPrivilegeMsg =>
       'VPN Mode Requires Administrator Privileges. Either relaunch the app as administrator or change service mode.';
@@ -960,6 +964,7 @@ class TranslationsFailureProfilesEn {
   // Translations
   String get unexpected => 'Unexpected Error';
   String get notFound => 'Profile Not Found';
+  String get noActive => 'No Active Profile';
   String get invalidConfig => 'Invalid Configs';
   String get invalidUrl => 'Invalid URL';
 }
@@ -11123,6 +11128,10 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
   String failedToSwitchMode({required Object error}) => '切换模式失败: ${error}';
   @override
   String get connectionFailedTitle => '连接失败';
+  @override
+  String get coreMissingTitle => '未找到核心库';
+  @override
+  String get coreMissingMsg => '应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。';
 }
 
 // Path: stats
@@ -12262,6 +12271,8 @@ class TranslationsFailureSingboxZhCn extends TranslationsFailureSingboxEn {
   @override
   String get serviceNotRunning => '服务未运行';
   @override
+  String get coreLibraryMissing => '核心库未安装';
+  @override
   String get missingPrivilege => '缺少权限';
   @override
   String get missingPrivilegeMsg => 'VPN 模式需要管理员权限。以管理员身份重新启动应用程序或更改服务模式';
@@ -12318,6 +12329,8 @@ class TranslationsFailureProfilesZhCn extends TranslationsFailureProfilesEn {
   String get unexpected => '意外错误';
   @override
   String get notFound => '未找到配置文件';
+  @override
+  String get noActive => '没有激活的订阅';
   @override
   String get invalidConfig => '无效配置';
   @override
@@ -14157,6 +14170,10 @@ extension on Translations {
         return ({required Object error}) => 'Failed to switch mode: ${error}';
       case 'home.connectionFailedTitle':
         return 'Connection Failed';
+      case 'home.coreMissingTitle':
+        return 'Core Library Not Found';
+      case 'home.coreMissingMsg':
+        return 'The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.';
       case 'stats.traffic':
         return 'Traffic';
       case 'stats.trafficLive':
@@ -14631,6 +14648,8 @@ extension on Translations {
         return 'Unexpected Service Error';
       case 'failure.singbox.serviceNotRunning':
         return 'Service is Not Running';
+      case 'failure.singbox.coreLibraryMissing':
+        return 'Core Library Not Installed';
       case 'failure.singbox.missingPrivilege':
         return 'Missing Privilege';
       case 'failure.singbox.missingPrivilegeMsg':
@@ -14663,6 +14682,8 @@ extension on Translations {
         return 'Unexpected Error';
       case 'failure.profiles.notFound':
         return 'Profile Not Found';
+      case 'failure.profiles.noActive':
+        return 'No Active Profile';
       case 'failure.profiles.invalidConfig':
         return 'Invalid Configs';
       case 'failure.profiles.invalidUrl':
@@ -19279,6 +19300,10 @@ extension on TranslationsZhCn {
         return ({required Object error}) => '切换模式失败: ${error}';
       case 'home.connectionFailedTitle':
         return '连接失败';
+      case 'home.coreMissingTitle':
+        return '未找到核心库';
+      case 'home.coreMissingMsg':
+        return '应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -19752,6 +19777,8 @@ extension on TranslationsZhCn {
         return '意外服务错误';
       case 'failure.singbox.serviceNotRunning':
         return '服务未运行';
+      case 'failure.singbox.coreLibraryMissing':
+        return '核心库未安装';
       case 'failure.singbox.missingPrivilege':
         return '缺少权限';
       case 'failure.singbox.missingPrivilegeMsg':
@@ -19784,6 +19811,8 @@ extension on TranslationsZhCn {
         return '意外错误';
       case 'failure.profiles.notFound':
         return '未找到配置文件';
+      case 'failure.profiles.noActive':
+        return '没有激活的订阅';
       case 'failure.profiles.invalidConfig':
         return '无效配置';
       case 'failure.profiles.invalidUrl':

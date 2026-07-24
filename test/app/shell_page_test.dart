@@ -33,7 +33,7 @@ Future<(Widget, ProviderContainer)> _host({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       profileListProvider.overrideWith((_) => Future.value(const [])),
       activeProfileProvider.overrideWith((_) => Future.value(null)),
       offlineProxyGroupsProvider.overrideWith((_) => Future.value(const [])),

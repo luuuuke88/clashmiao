@@ -180,6 +180,13 @@ class HomePage extends ConsumerWidget {
                           hasScrollBody: false,
                           child: activeProfile.when(
                             data: (profile) {
+                              // 核心库都没加载起来的时候，订阅有没有、连不连得上
+                              // 都是次要的——整个 App 就是个空壳。这一层守卫要在
+                              // 所有其它状态之前，否则用户看到的是一个完全正常的
+                              // 界面加一个点了没反应的连接按钮。
+                              if (ref.watch(coreLibraryMissingProvider)) {
+                                return const _CoreMissingBody();
+                              }
                               if (profile == null) {
                                 return _EmptyHomeBody(
                                   onAdd: () {
@@ -1102,6 +1109,55 @@ class _SegmentTab extends StatelessWidget {
                 : theme.aiUi.secondaryTextColor,
           ),
           child: Text(text),
+        ),
+      ),
+    );
+  }
+}
+
+/// 桌面端 libcore 加载失败时的阻断态。
+///
+/// 修复前这个状态在界面上**完全不可见**：`BoxService` 工厂 catch 住加载异常、
+/// 静默降级成桩实现，首页照常渲染连接按钮，用户点了没有任何反应也没有任何
+/// 解释。这里换成一个说清楚"出了什么事、怎么办"的阻断页。
+class _CoreMissingBody extends ConsumerWidget {
+  const _CoreMissingBody();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final t = ref.watch(translationsProvider);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              FluentIcons.plug_disconnected_24_filled,
+              size: 72,
+              color: theme.colorScheme.error.withValues(alpha: 0.85),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              t.home.coreMissingTitle,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              t.home.coreMissingMsg,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
+            ),
+          ],
         ),
       ),
     );

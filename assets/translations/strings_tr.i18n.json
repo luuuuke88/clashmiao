@@ -20,7 +20,11 @@
     "timeout": "Zaman aşımı",
     "showMore": "Daha fazla göster",
     "showLess": "Daha az göster",
-    "grantPermission": "İzin Ver"
+    "grantPermission": "İzin Ver",
+    "clipboardExportSuccessMsg": "Panoya kopyalandı",
+    "openAppSettings": "Uygulama Ayarlarını Aç",
+    "underDevelopment": "Geliştirme Aşamasında",
+    "confirm": "Onayla"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "devam ederek ${tap(@:about.termsAndConditions)} kabul etmiş olursunuz",
@@ -29,13 +33,30 @@
   "home": {
     "pageTitle": "Ana Sayfa",
     "emptyProfilesMsg": "Aboneliği profili ekleyerek başlayın",
-    "noActiveProfileMsg": "Profil seçin"
+    "noActiveProfileMsg": "Profil seçin",
+    "routingMode": {
+      "global": "Genel Proxy",
+      "smart": "Akıllı Yönlendirme"
+    },
+    "failedToSwitchMode": "Mod değiştirilemedi: ${error}",
+    "connectionFailedTitle": "Bağlantı Başarısız",
+    "coreMissingTitle": "Çekirdek Kitaplığı Bulunamadı",
+    "coreMissingMsg": "Uygulama ağ çekirdeğini yükleyemedi. Bağlantı kullanılamıyor. Uygulamayı yeniden kurun ya da çekirdek kitaplık dosyasının çalıştırılabilir dosyanın yanında olduğundan emin olun.",
+    "degradedTitle": "Bağlandı, ancak internet erişimi yok",
+    "degradedMsg": "Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.",
+    "degradedRetry": "Yeniden Denetle"
   },
   "stats": {
     "trafficLive": "Canlı Trafik",
     "trafficTotal": "Toplam Trafik",
     "uplink": "Çıkış Yolu",
-    "downlink": "Giriş Yolu"
+    "downlink": "Giriş Yolu",
+    "traffic": "Trafik",
+    "trafficUsage": "Trafik Kullanımı",
+    "liveSpeed": "Anlık Hız",
+    "connection": "Bağlantı",
+    "speed": "Hız",
+    "totalTransferred": "Toplam Aktarılan"
   },
   "profile": {
     "overviewPageTitle": "Profiller",
@@ -49,7 +70,11 @@
       "remainingDuration": "${duration} Gün Kaldı",
       "remainingTrafficSemanticLabel": "${consumed}/${total} trafik tüketildi",
       "expired": "Süresi Doldu",
-      "noTraffic": "Kotal Doldu"
+      "noTraffic": "Kotal Doldu",
+      "upload": "Yükleme",
+      "download": "İndirme",
+      "total": "Toplam Trafik",
+      "expireDate": "Son Kullanma Tarihi"
     },
     "sortBy": {
       "lastUpdate": "Yakın zamanda güncellendi",
@@ -64,11 +89,17 @@
         "permissionDeniedError": "İzin reddedildi",
         "unexpectedError": "Bir şeyler yanlış gitti",
         "torchSemanticLabel": "El feneri",
-        "facingSemanticLabel": "Kameraya önü"
+        "facingSemanticLabel": "Kameraya önü",
+        "permissionRequest": "QR Kodu taramak için kamera izni"
       },
       "manually": "Manuel giriş",
       "addingProfileMsg": "Profil Ekleniyor",
-      "failureMsg": "Profil eklenemedi"
+      "failureMsg": "Profil eklenemedi",
+      "modalSubtitle": "Yapılandırma dosyasını nasıl ekleyeceğinizi seçin",
+      "manuallyDescription": "Sunucu yapılandırmasını elle girin",
+      "addWarp": "WARP Ekle",
+      "warpDescription": "Cloudflare WARP ile ücretsiz hızlandırma",
+      "addingWarpMsg": "WARP kaydedilirken lütfen bekleyin."
     },
     "update": {
       "buttonTxt": "Güncelle",
@@ -85,7 +116,11 @@
       "exportSubLinkToClipboard": "Abonelik bağlantısını panoya aktar",
       "subLinkQrCode": "QR kodun abonelik bağlantısı ",
       "exportConfigToClipboard": "Yapılandırmayı panoya aktar",
-      "exportConfigToClipboardSuccess": "Yapılandırma panoya kopyalandı"
+      "exportConfigToClipboardSuccess": "Yapılandırma panoya kopyalandı",
+      "shareLink": "Bağlantıyı Paylaş",
+      "subscriptionLinkCopied": "Abonelik bağlantısı kopyalandı",
+      "configCopied": "Yapılandırma kopyalandı",
+      "copyFailed": "Kopyalama başarısız"
     },
     "edit": {
       "buttonTxt": "Düzenle",
@@ -115,7 +150,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "Ekle",
+      "updateAll": "Tümünü Güncelle",
+      "sort": "Sırala",
+      "copyConfigSuccess": "Yapılandırma kopyalandı",
+      "editConfig": "Yapılandırmayı Düzenle"
+    },
+    "details": {
+      "basicInfo": "Temel Bilgiler",
+      "subscriptionStatus": "Abonelik Durumu",
+      "options": "Seçenekler",
+      "updateNow": "Şimdi Güncelle",
+      "updateNowDescription": "Sunucudan en güncel yapılandırmayı al",
+      "expireDate": "Son Kullanma Tarihi",
+      "unlimited": "Sınırsız"
+    },
+    "overview": {
+      "currentlyUsing": "Şu Anda Kullanılıyor",
+      "remainingDays": "${days} gün kaldı"
+    },
+    "remoteProfile": "Uzak Profil"
   },
   "proxies": {
     "pageTitle": "Proxyler",
@@ -126,7 +182,31 @@
       "unsorted": "Varsayılan",
       "name": "Alfabetik olarak",
       "delay": "Gecikmeyle"
-    }
+    },
+    "checkIp": "IP'yi Denetle",
+    "unknownIp": "Bilinmeyen IP",
+    "autoSelect": "Otomatik Seçim",
+    "autoSelectDescription": "En hızlı sunucuya otomatik bağlan",
+    "sortModalTitle": "Sıralama yöntemini seçin",
+    "activeProxySemanticLabel": "Etkin Hat",
+    "delaySemantics": {
+      "result": "Gecikme: ${delay} ms",
+      "timeout": "Gecikme Testi Zaman Aşımı",
+      "testing": "Gecikme: Test ediliyor..."
+    },
+    "ipInfoSemantics": {
+      "address": "IP Adresi",
+      "country": "Ülke"
+    },
+    "testingDelayInfo": "Gecikme test ediliyor: ${name}",
+    "switchedTo": "${name} olarak değiştirildi",
+    "switchToFailed": "Geçiş başarısız: ${error}",
+    "connectBeforeSwitch": "Hat değiştirmeden önce bağlanın",
+    "startDelayTestForGroups": "${count} hat için gecikme testi başlatıldı",
+    "delayTestBtn": "Gecikme",
+    "lineCount": "${count} hat",
+    "manualSelect": "Elle Seçim",
+    "autoTest": "Otomatik Test"
   },
   "logs": {
     "pageTitle": "Log",
@@ -136,7 +216,11 @@
     "shareAppLogs": "Uygulama Loglarını paylaş",
     "pauseTooltip": "Duraklat",
     "resumeTooltip": "Devam et",
-    "clearTooltip": "Temizle"
+    "clearTooltip": "Temizle",
+    "logsCleared": "Günlükler temizlendi",
+    "logsCopied": "Günlükler kopyalandı",
+    "logsUnderDevelopment": "Günlük özelliği geliştirme aşamasında",
+    "noLogsWhenDisconnected": "Bağlı değil, günlük yok"
   },
   "settings": {
     "pageTitle": "Ayarlar",
@@ -170,7 +254,14 @@
       "openWorkingDir": "Çalışma Dizinini Aç",
       "ignoreBatteryOptimizations": "Pil Optimizasyonunu Devre Dışı Bırak",
       "ignoreBatteryOptimizationsMsg": "Optimum VPN performansı için kısıtlamaları kaldırın",
-      "dynamicNotification": "Bildirimde hızı göster"
+      "dynamicNotification": "Bildirimde hızı göster",
+      "hapticFeedback": "Dokunsal Geri Bildirim",
+      "autoIpCheck": "Bağlantı IP’sini Otomatik Denetle",
+      "batteryOptimizationStatus": {
+        "exempted": "Muaf",
+        "notExempted": "Muaf Değil",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "Gelişmiş",
@@ -192,7 +283,11 @@
       },
       "showSystemApps": "Sistem uygulamalarını göster",
       "hideSystemApps": "Sistem uygulamalarını gizle",
-      "clearSelection": "Seçimi temizle"
+      "clearSelection": "Seçimi temizle",
+      "perAppProxyLoadFailedMsg": "Uygulama listesi yüklenemedi",
+      "perAppProxyRetry": "Yeniden Dene",
+      "perAppProxyEmptyMsg": "Sonuç bulunamadı",
+      "perAppProxyAndroidOnlyMsg": "Uygulama başına hat modu yalnızca Android’de desteklenir"
     },
     "geoAssets": {
       "pageTitle": "Varlıkları Yönlendirme",
@@ -206,7 +301,15 @@
       "successMsg": "Öğe başarıyla güncellendi",
       "addRecommended": "Önerilen Varlıkları Ekle",
       "missingGeoAssetsMsg": "Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin."
-    }
+    },
+    "exportOptions": "Anonim Seçenekleri Panoya Kopyala",
+    "exportAllOptions": "Tüm Seçenekleri Panoya Kopyala",
+    "importOptions": "Seçenekleri Panodan İçe Aktar",
+    "importOptionsMsg": "Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?",
+    "systemProxyEnabled": "Sistem proxy’si etkin",
+    "systemProxyDisabled": "Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)",
+    "adminPrivilegesRequired": "macOS'ta yönetici ayrıcalıkları gerekir",
+    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir"
   },
   "about": {
     "pageTitle": "Hakkında",
@@ -215,7 +318,8 @@
     "telegramChannel": "Telegram Kanalı",
     "checkForUpdate": "Güncellemeleri kontrol et",
     "privacyPolicy": "Gizlilik Politikası",
-    "termsAndConditions": "Şartlar ve koşullar"
+    "termsAndConditions": "Şartlar ve koşullar",
+    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi"
   },
   "appUpdate": {
     "notAvailableMsg": " En son sürümü kullanıyorsunuz",
@@ -236,7 +340,8 @@
       "connecting": "Bağlanıyor",
       "disconnect": "Bağlantıyı kes",
       "disconnecting": "Bağlantı kesiliyor"
-    }
+    },
+    "hide": "Gizle"
   },
   "failure": {
     "unexpected": "Beklenmeyen hata",
@@ -254,19 +359,23 @@
       "invalidConfigOptions": "Geçersiz yapılandırma seçenekleri",
       "invalidConfig": "Geçersiz Yapılandırma",
       "create": "Servis oluşturma hatası",
-      "start": "Servis başlatma hatası"
+      "start": "Servis başlatma hatası",
+      "coreLibraryMissing": "Çekirdek Kitaplığı Yüklü Değil",
+      "startTimeout": "Servis Başlatma Zaman Aşımı"
     },
     "connectivity": {
       "unexpected": "Beklenmedik Hata",
       "missingVpnPermission": "Eksik VPN İzni",
       "missingNotificationPermission": "Eksik Bildirim İzni",
-      "core": "Temel Hata"
+      "core": "Temel Hata",
+      "networkUnavailable": "Ağ Kullanılamıyor"
     },
     "profiles": {
       "unexpected": "Beklenmedik hata",
       "notFound": "Profil bulunamadı",
       "invalidConfig": "Geçersiz Yapılandırmalar",
-      "invalidUrl": "Geçersiz URL"
+      "invalidUrl": "Geçersiz URL",
+      "noActive": "Etkin Profil Yok"
     },
     "connection": {
       "unexpected": "Beklenmeyen bağlantı hatası",
@@ -293,7 +402,10 @@
     "connected": "Bağlandı",
     "experimentalNotice": "Kullanımdaki Deneysel Özellikler",
     "experimentalNoticeMsg": "Bağlantı kalitesini etkileyebilecek ve beklenmeyen hatalara neden olabilecek bazı deneysel özellikleri etkinleştirdiniz. Bu seçenekleri istediğiniz zaman Yapılandırma seçenekleri sayfasından değiştirebilir veya sıfırlayabilirsiniz.",
-    "disableExperimentalNotice": "Bir daha gösterme"
+    "disableExperimentalNotice": "Bir daha gösterme",
+    "reconnect": "Yeniden Bağlan",
+    "connectAnyWay": "Bağlan",
+    "reconnectMsg": "Değişiklikleri uygulamak için yeniden bağlanılıyor..."
   },
   "config": {
     "resetBtn": "Ayarları sıfırla",
@@ -301,7 +413,8 @@
     "serviceModes": {
       "proxy": "Proxy",
       "systemProxy": "Sistem Proxy",
-      "tun": "VPN"
+      "tun": "VPN",
+      "tunService": "VPN Servisi"
     },
     "section": {
       "route": "Rota Seçenekleri",
@@ -359,11 +472,33 @@
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",
-      "outbound": "Detour proxies through WARP"
+      "outbound": "Detour proxies through WARP",
+      "proxyOverWarp": "Hatları WARP Üzerinden Geçir",
+      "warpOverProxy": "WARP'ı Hatlar Üzerinden Geçir"
     },
     "warpLicenseKey": "License Key",
     "warpCleanIp": "Clean IP",
     "warpPort": "Port",
-    "warpNoise": "Noise"
+    "warpNoise": "Noise",
+    "quickSettings": "Hızlı Ayarlar",
+    "quickSettingsSubtitle": "Bağlantı deneyiminizi özelleştirin",
+    "setupWarp": "WARP Kurulumu",
+    "allOptions": "Tüm Yapılandırma Seçenekleri",
+    "allAdvancedOptions": "Tüm Gelişmiş Seçenekler",
+    "shortServiceModes": {
+      "proxy": "Yalnızca Hat",
+      "systemProxy": "Sistem Hattı",
+      "tun": "VPN",
+      "tunService": "VPN Servisi"
+    },
+    "generateWarpConfig": "WARP Yapılandırması Oluştur",
+    "missingWarpConfig": "WARP Yapılandırması Eksik",
+    "warpConfigGenerated": "WARP Yapılandırması Oluşturuldu",
+    "blockAds": "Reklamları Engelle",
+    "tproxyPort": "Şeffaf Hat Bağlantı Noktası",
+    "warpNoiseSize": "Gürültü Boyutu",
+    "warpNoiseMode": "Gürültü Modu",
+    "warpNoiseDelay": "Gürültü Gecikmesi",
+    "desktopProxyScopeNotice": "Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır."
   }
 }

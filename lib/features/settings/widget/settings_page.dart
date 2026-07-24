@@ -425,10 +425,21 @@ class _BatteryOptimizationTileState
         .isIgnoringBatteryOptimizations();
   }
 
+  /// 防重入：一次请求在飞的时候再点没有意义（系统同时只可能弹一个豁免对话框），
+  /// 原生侧对重复请求也只会直接回 false。挡在这里可以让用户连点不产生任何
+  /// 多余的往返，也不会用一个 false 结果去覆盖真实状态。
+  bool _requesting = false;
+
   Future<void> _onTap() async {
-    await ref
-        .read(batteryOptimizationServiceProvider)
-        .requestIgnoreBatteryOptimizations();
+    if (_requesting) return;
+    _requesting = true;
+    try {
+      await ref
+          .read(batteryOptimizationServiceProvider)
+          .requestIgnoreBatteryOptimizations();
+    } finally {
+      _requesting = false;
+    }
     if (!mounted) return;
     setState(() {
       _statusFuture = _queryStatus();

@@ -22,7 +22,9 @@
     "showMore": "عرض المزيد",
     "showLess": "عرض أقل",
     "openAppSettings": "فتح إعدادات التطبيق",
-    "grantPermission": "منح الإذن"
+    "grantPermission": "منح الإذن",
+    "underDevelopment": "قيد التطوير",
+    "confirm": "تأكيد"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بمواصلة استخدامك، فإنك توافق على ${tap(@:about.termsAndConditions)}",
@@ -31,7 +33,18 @@
   "home": {
     "pageTitle": "الصفحة الرئيسية",
     "emptyProfilesMsg": "ابدأ بإضافة ملف تعريف اشتراك",
-    "noActiveProfileMsg": "اختر ملف تعريف"
+    "noActiveProfileMsg": "اختر ملف تعريف",
+    "routingMode": {
+      "global": "بروكسي عام",
+      "smart": "توجيه ذكي"
+    },
+    "failedToSwitchMode": "فشل تبديل الوضع: ${error}",
+    "connectionFailedTitle": "فشل الاتصال",
+    "coreMissingTitle": "لم يتم العثور على مكتبة النواة",
+    "coreMissingMsg": "تعذّر على التطبيق تحميل نواة الشبكة. الاتصال غير متاح. أعد تثبيت التطبيق أو تأكد من وجود ملف مكتبة النواة بجوار الملف التنفيذي.",
+    "degradedTitle": "متصل، لكن لا يوجد وصول إلى الإنترنت",
+    "degradedMsg": "النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.",
+    "degradedRetry": "إعادة الفحص"
   },
   "stats": {
     "traffic": "حركة المرور",
@@ -41,7 +54,9 @@
     "downlink": "الهبوط",
     "connection": "الاتصال",
     "speed": "السرعة",
-    "totalTransferred": "إجمالي البيانات المنقولة"
+    "totalTransferred": "إجمالي البيانات المنقولة",
+    "trafficUsage": "استخدام البيانات",
+    "liveSpeed": "السرعة الحالية"
   },
   "profile": {
     "overviewPageTitle": "الملفات الشخصية",
@@ -79,7 +94,12 @@
       },
       "manually": "إدخال يدوي",
       "addingProfileMsg": "إضافة ملف التعريف",
-      "failureMsg": "فشل في إضافة ملف التعريف"
+      "failureMsg": "فشل في إضافة ملف التعريف",
+      "modalSubtitle": "اختر طريقة إضافة ملف الإعداد",
+      "manuallyDescription": "أدخل إعداد الخادم يدوياً",
+      "addWarp": "إضافة WARP",
+      "warpDescription": "تسريع مجاني عبر Cloudflare WARP",
+      "addingWarpMsg": "يرجى الانتظار أثناء تسجيل WARP."
     },
     "update": {
       "buttonTxt": "تحديث",
@@ -96,7 +116,11 @@
       "exportSubLinkToClipboard": "تصدير رابط الاشتراك إلى الحافظة",
       "subLinkQrCode": "رمز الاستجابة السريعة لرابط الاشتراك",
       "exportConfigToClipboard": "تصدير التكوين إلى الحافظة",
-      "exportConfigToClipboardSuccess": "تم نسخ التكوين إلى الحافظة"
+      "exportConfigToClipboardSuccess": "تم نسخ التكوين إلى الحافظة",
+      "shareLink": "مشاركة الرابط",
+      "subscriptionLinkCopied": "تم نسخ رابط الاشتراك",
+      "configCopied": "تم نسخ الإعداد",
+      "copyFailed": "فشل النسخ"
     },
     "edit": {
       "buttonTxt": "تحرير",
@@ -126,7 +150,28 @@
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
       "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
-    }
+    },
+    "actionButtons": {
+      "add": "إضافة",
+      "updateAll": "تحديث الكل",
+      "sort": "ترتيب",
+      "copyConfigSuccess": "تم نسخ الإعداد",
+      "editConfig": "تحرير الإعداد"
+    },
+    "details": {
+      "basicInfo": "معلومات أساسية",
+      "subscriptionStatus": "حالة الاشتراك",
+      "options": "خيارات",
+      "updateNow": "تحديث الآن",
+      "updateNowDescription": "جلب أحدث إعداد من الخادم",
+      "expireDate": "تاريخ الانتهاء",
+      "unlimited": "غير محدود"
+    },
+    "overview": {
+      "currentlyUsing": "قيد الاستخدام حالياً",
+      "remainingDays": "متبقٍ ${days} يوماً"
+    },
+    "remoteProfile": "اشتراك بعيد"
   },
   "proxies": {
     "pageTitle": "الخوادم الوكيلية",
@@ -149,7 +194,19 @@
     "ipInfoSemantics": {
       "address": "عنوان IP",
       "country": "الدولة"
-    }
+    },
+    "autoSelect": "اختيار تلقائي",
+    "autoSelectDescription": "الاتصال تلقائياً بأسرع خادم",
+    "sortModalTitle": "اختر طريقة الترتيب",
+    "testingDelayInfo": "جارٍ اختبار التأخير لـ: ${name}",
+    "switchedTo": "تم التبديل إلى ${name}",
+    "switchToFailed": "فشل التبديل: ${error}",
+    "connectBeforeSwitch": "يرجى الاتصال قبل تبديل الخطوط",
+    "startDelayTestForGroups": "بدأ اختبار التأخير لـ ${count} خط",
+    "delayTestBtn": "التأخير",
+    "lineCount": "${count} خط",
+    "manualSelect": "اختيار يدوي",
+    "autoTest": "اختبار تلقائي"
   },
   "logs": {
     "pageTitle": "السجلات",
@@ -159,7 +216,11 @@
     "shareAppLogs": "مشاركة سجلات التطبيق",
     "pauseTooltip": "إيقاف مؤقت",
     "resumeTooltip": "استئناف",
-    "clearTooltip": "مسح"
+    "clearTooltip": "مسح",
+    "logsCleared": "تم مسح السجلات",
+    "logsCopied": "تم نسخ السجلات",
+    "logsUnderDevelopment": "ميزة السجلات قيد التطوير",
+    "noLogsWhenDisconnected": "غير متصل، لا توجد سجلات"
   },
   "settings": {
     "pageTitle": "الإعدادات",
@@ -199,7 +260,12 @@
       "ignoreBatteryOptimizationsMsg": "إزالة القيود للحصول على أفضل أداء VPN",
       "dynamicNotification": "عرض السرعة في الإشعار",
       "hapticFeedback": "ردود فعل اللمس",
-      "autoIpCheck": "التحقق من عنوان IP للاتصال تلقائيًا"
+      "autoIpCheck": "التحقق من عنوان IP للاتصال تلقائيًا",
+      "batteryOptimizationStatus": {
+        "exempted": "مُستثنى",
+        "notExempted": "غير مُستثنى",
+        "pending": "…"
+      }
     },
     "advanced": {
       "sectionTitle": "متقدم",
@@ -221,7 +287,11 @@
       },
       "showSystemApps": "عرض تطبيقات النظام",
       "hideSystemApps": "إخفاء تطبيقات النظام",
-      "clearSelection": "مسح الاختيار"
+      "clearSelection": "مسح الاختيار",
+      "perAppProxyLoadFailedMsg": "فشل تحميل قائمة التطبيقات",
+      "perAppProxyRetry": "إعادة المحاولة",
+      "perAppProxyEmptyMsg": "لا توجد نتائج",
+      "perAppProxyAndroidOnlyMsg": "وضع الخط لكل تطبيق مدعوم على Android فقط"
     },
     "geoAssets": {
       "pageTitle": "أصول التوجيه",
@@ -235,7 +305,11 @@
       "successMsg": "تم تحديث الأصل بنجاح",
       "addRecommended": "إضافة الأصول الموصى بها",
       "missingGeoAssetsMsg": "ملفات أصول التوجيه المحددة مفقودة. قم بتنزيلها أو اختر ملفات موجودة"
-    }
+    },
+    "systemProxyEnabled": "تم تفعيل بروكسي النظام",
+    "systemProxyDisabled": "تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)",
+    "adminPrivilegesRequired": "يتطلب صلاحيات المسؤول على macOS",
+    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها"
   },
   "about": {
     "pageTitle": "حول\nتعريب:م. ابراهيم قاسم",
@@ -244,7 +318,8 @@
     "telegramChannel": "قناة Telegram",
     "checkForUpdate": "التحقق من وجود تحديث",
     "privacyPolicy": "سياسة الخصوصية",
-    "termsAndConditions": "الشروط والأحكام"
+    "termsAndConditions": "الشروط والأحكام",
+    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box"
   },
   "appUpdate": {
     "notAvailableMsg": "أنت تستخدم أحدث إصدار بالفعل",
@@ -265,7 +340,8 @@
       "connecting": "جار الاتصال",
       "disconnect": "فصم الاتصال",
       "disconnecting": "جار فصم الاتصال"
-    }
+    },
+    "hide": "إخفاء"
   },
   "failure": {
     "unexpected": "خطأ غير متوقع",
@@ -283,19 +359,23 @@
       "invalidConfigOptions": "خيارات التكوين غير صحيحة",
       "invalidConfig": "تكوين غير صالح",
       "create": "خطأ في إنشاء الخدمة",
-      "start": "خطأ في بدء تشغيل الخدمة"
+      "start": "خطأ في بدء تشغيل الخدمة",
+      "coreLibraryMissing": "مكتبة النواة غير مثبتة",
+      "startTimeout": "انتهت مهلة بدء الخدمة"
     },
     "connectivity": {
       "unexpected": "فشل غير متوقع",
       "missingVpnPermission": "غياب إذن VPN",
       "missingNotificationPermission": "غياب إذن الإشعارات",
-      "core": "خطأ في النواة"
+      "core": "خطأ في النواة",
+      "networkUnavailable": "الشبكة غير متاحة"
     },
     "profiles": {
       "unexpected": "خطأ غير متوقع",
       "notFound": "لم يتم العثور على ملف التعريف",
       "invalidConfig": "تكوينات غير صحيحة",
-      "invalidUrl": "عنوان URL غير صالح"
+      "invalidUrl": "عنوان URL غير صالح",
+      "noActive": "لا يوجد اشتراك مفعّل"
     },
     "connection": {
       "unexpected": "خطأ في الاتصال غير متوقع",
@@ -413,6 +493,12 @@
     "warpCleanIp": "عنوان IP نظيف",
     "warpPort": "المنفذ",
     "warpNoise": "عدد الضوضاء",
-    "warpNoiseDelay": "تأخير الضوضاء"
+    "warpNoiseDelay": "تأخير الضوضاء",
+    "quickSettingsSubtitle": "خصص تجربة الاتصال",
+    "allAdvancedOptions": "جميع الخيارات المتقدمة",
+    "blockAds": "حظر الإعلانات",
+    "warpNoiseSize": "حجم الضجيج",
+    "warpNoiseMode": "وضع الضجيج",
+    "desktopProxyScopeNotice": "على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي."
   }
 }

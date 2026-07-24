@@ -36,7 +36,8 @@ docker run --rm -v "$PWD/core/sing-box:/src" \
    go run ./cmd/srsdump /geo/geoip-cn.srs > /out/ip.json"
 ```
 
-工具源码见 `core/sing-box/cmd/srsdump`。原理：`srs.Read(reader, recovery=true)`
+工具源码见 `tools/srsdump/`（含用法说明；`core/sing-box/` 在 .gitignore 里，
+所以工具本体放在跟踪目录，用前复制进内核源码树再编）。原理：`srs.Read(reader, recovery=true)`
 的 `recovery` 为 true 时，内核 `common/srs/binary.go` 会对域名规则调用
 `matcher.Dump()`，把 succinct trie 还原成 `Domain`/`DomainSuffix` 两个字符串
 列表——域名数据是能导出的（早前记录的"没有导出 API"是错的）。

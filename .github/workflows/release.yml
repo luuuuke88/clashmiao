@@ -81,6 +81,11 @@ jobs:
           cache: true
       - name: Derive version from tag
         id: version
+        # 必须显式声明 bash：windows-latest 的默认 shell 是 pwsh，下面这段
+        # 是 bash 语法（参数展开 ${VAR#v} / case / >> "$GITHUB_OUTPUT"），
+        # 不声明的话 windows job 会用 pwsh 去跑它，第一次真正发版就炸。
+        # actionlint 抓不到这个——它按 bash 校验脚本内容，不看 runner 默认 shell。
+        shell: bash
         run: |
           # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
           # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
@@ -127,6 +132,11 @@ jobs:
         run: bin/fetch-libcore.sh android
       - name: Derive version from tag
         id: version
+        # 必须显式声明 bash：windows-latest 的默认 shell 是 pwsh，下面这段
+        # 是 bash 语法（参数展开 ${VAR#v} / case / >> "$GITHUB_OUTPUT"），
+        # 不声明的话 windows job 会用 pwsh 去跑它，第一次真正发版就炸。
+        # actionlint 抓不到这个——它按 bash 校验脚本内容，不看 runner 默认 shell。
+        shell: bash
         run: |
           # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
           # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
@@ -221,6 +231,11 @@ jobs:
         run: bin/fetch-libcore.sh macos
       - name: Derive version from tag
         id: version
+        # 必须显式声明 bash：windows-latest 的默认 shell 是 pwsh，下面这段
+        # 是 bash 语法（参数展开 ${VAR#v} / case / >> "$GITHUB_OUTPUT"），
+        # 不声明的话 windows job 会用 pwsh 去跑它，第一次真正发版就炸。
+        # actionlint 抓不到这个——它按 bash 校验脚本内容，不看 runner 默认 shell。
+        shell: bash
         run: |
           # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
           # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。
@@ -365,6 +380,11 @@ jobs:
         run: bin/fetch-libcore.sh windows
       - name: Derive version from tag
         id: version
+        # 必须显式声明 bash：windows-latest 的默认 shell 是 pwsh，下面这段
+        # 是 bash 语法（参数展开 ${VAR#v} / case / >> "$GITHUB_OUTPUT"），
+        # 不声明的话 windows job 会用 pwsh 去跑它，第一次真正发版就炸。
+        # actionlint 抓不到这个——它按 bash 校验脚本内容，不看 runner 默认 shell。
+        shell: bash
         run: |
           # v1.2.3 -> 1.2.3。flutter --build-name 只接受 x.y.z，带 v 前缀会被
           # 当成非法版本；tag 里可能有的 -beta 之类后缀也一并去掉。

@@ -116,9 +116,15 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
+          # 缺签名必须直接失败，绝不静默降级成 debug 签名。
+          # 降级会产出一个「构建成功」但实际无法上架、也无法后续升级
+          # （签名 key 定了就不能换）的废包——比构建失败糟糕得多。
           if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::warning::ANDROID_KEYSTORE_BASE64 is not set; Android release artifacts will use the debug signing config."
-            exit 0
+            echo "::error::ANDROID_KEYSTORE_BASE64 未配置。release 构建不允许回退到 debug 签名："
+            echo "::error::debug 签名的 AAB 无法上架 Google Play，且签名 key 无法事后更换。"
+            echo "::error::请在仓库 Secrets 里配置 ANDROID_KEYSTORE_BASE64 / ANDROID_KEY_ALIAS /"
+            echo "::error::ANDROID_KEY_PASSWORD / ANDROID_STORE_PASSWORD（生成步骤见 docs/RELEASE.md）。"
+            exit 1
           fi
           test -n "$ANDROID_KEY_ALIAS"
           test -n "$ANDROID_KEY_PASSWORD"
@@ -130,8 +136,20 @@ jobs:
           keyAlias=$ANDROID_KEY_ALIAS
           storeFile=upload-keystore.jks
           EOF
-      - run: flutter build apk --release
-      - run: flutter build appbundle --release
+      - name: Build Android release (APK + AAB)
+        env:
+          DART_DEFINES: >-
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
+            --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
+            --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
+            --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
+            --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
+            --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+        run: |
+          flutter build apk --release $DART_DEFINES
+          flutter build appbundle --release $DART_DEFINES
       - name: Verify Android artifacts
         run: |
           test -s build/app/outputs/flutter-apk/app-release.apk
@@ -161,33 +179,106 @@ jobs:
         run: bin/fetch-libcore.sh macos
       - run: flutter pub get
       - run: flutter config --enable-macos-desktop
-      - run: flutter build macos --release --no-tree-shake-icons
-      - name: Verify macOS bundle
+      - name: Build macOS release
+        env:
+          DART_DEFINES: >-
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
+            --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
+            --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
+            --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
+            --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
+            --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+        run: flutter build macos --release --no-tree-shake-icons $DART_DEFINES
+      - name: Verify macOS bundle (must be universal)
         run: |
-          test -d build/macos/Build/Products/Release/clashmiao.app
-          test -s build/macos/Build/Products/Release/clashmiao.app/Contents/Frameworks/libcore.dylib
+          APP=build/macos/Build/Products/Release/clashmiao.app
+          test -d "$APP"
+          test -s "$APP/Contents/Frameworks/libcore.dylib"
+          # 只出 arm64 的话 Intel Mac 装了也跑不起来（Rosetta 只能 x86→arm，
+          # 反向不行）。可执行文件和 libcore 两者都必须含两个架构——校验而
+          # 不是假设，产物名叫 universal 但实际是单架构才是最坑的情形。
+          for BIN in "$APP/Contents/MacOS/clashmiao" "$APP/Contents/Frameworks/libcore.dylib"; do
+            ARCHS="$(lipo -archs "$BIN")"
+            echo "$BIN -> $ARCHS"
+            case "$ARCHS" in
+              *x86_64*arm64*|*arm64*x86_64*) ;;
+              *) echo "::error::$BIN 不是 universal（实际: $ARCHS）"; exit 1 ;;
+            esac
+          done
+      - name: Sign macOS app (skipped until Apple Developer account is configured)
+        env:
+          MACOS_CERTIFICATE_P12_BASE64: ${{ secrets.MACOS_CERTIFICATE_P12_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: |
+          # 没配置证书时不失败，只提示——签名依赖付费 Apple 开发者账号，
+          # 账号到位前仍然要能出包（用户首次打开需右键→打开，见 docs/RELEASE.md）。
+          if [ -z "$MACOS_CERTIFICATE_P12_BASE64" ]; then
+            echo "::warning::未配置 macOS 签名证书，产出的 dmg 未签名/未公证；用户首次打开会被 Gatekeeper 拦截，需右键→打开。"
+            exit 0
+          fi
+          KEYCHAIN=build.keychain
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          printf '%s' "$MACOS_CERTIFICATE_P12_BASE64" | base64 -d > cert.p12
+          security import cert.p12 -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          rm -f cert.p12
+          APP=build/macos/Build/Products/Release/clashmiao.app
+          # 先签内嵌的 dylib，再签 App 本体——顺序反了外层签名会失效。
+          find "$APP/Contents/Frameworks" -name '*.dylib' -print0 |
+            xargs -0 -I{} codesign --force --timestamp --options runtime \
+              --sign "$MACOS_SIGNING_IDENTITY" {}
+          codesign --force --deep --timestamp --options runtime \
+            --entitlements macos/Runner/Release.entitlements \
+            --sign "$MACOS_SIGNING_IDENTITY" "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
       - name: Create macOS packages
         run: |
           brew install create-dmg
           mkdir -p build/release
-          rm -f build/release/ClashMiao-macOS-arm64.dmg build/release/ClashMiao-macOS-arm64.zip
+          rm -f build/release/ClashMiao-macOS-universal.dmg build/release/ClashMiao-macOS-universal.zip
           create-dmg \
             --volname "ClashMiao" \
             --window-size 600 400 \
             --icon-size 100 \
             --app-drop-link 400 200 \
-            "build/release/ClashMiao-macOS-arm64.dmg" \
+            "build/release/ClashMiao-macOS-universal.dmg" \
             "build/macos/Build/Products/Release/clashmiao.app" || \
           echo "::warning::dmg creation failed; zip artifact will still be uploaded"
           cd build/macos/Build/Products/Release && \
-            ditto -c -k --keepParent clashmiao.app ../../../../release/ClashMiao-macOS-arm64.zip
-          test -s ../../../../release/ClashMiao-macOS-arm64.dmg || test -s ../../../../release/ClashMiao-macOS-arm64.zip
+            ditto -c -k --keepParent clashmiao.app ../../../../release/ClashMiao-macOS-universal.zip
+          test -s ../../../../release/ClashMiao-macOS-universal.dmg || test -s ../../../../release/ClashMiao-macOS-universal.zip
+      - name: Notarize macOS dmg (skipped until Apple Developer account is configured)
+        env:
+          MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
+          MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
+          MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+        run: |
+          if [ -z "$MACOS_NOTARY_APPLE_ID" ]; then
+            echo "::warning::未配置公证凭据，dmg 未公证。"
+            exit 0
+          fi
+          DMG=build/release/ClashMiao-macOS-universal.dmg
+          test -s "$DMG"
+          xcrun notarytool submit "$DMG" \
+            --apple-id "$MACOS_NOTARY_APPLE_ID" \
+            --password "$MACOS_NOTARY_PASSWORD" \
+            --team-id "$MACOS_NOTARY_TEAM_ID" \
+            --wait
+          # staple 让用户离线也能通过 Gatekeeper 校验
+          xcrun stapler staple "$DMG"
+          xcrun stapler validate "$DMG"
       - uses: actions/upload-artifact@v4
         with:
           name: release-macos
           path: |
-            build/release/ClashMiao-macOS-arm64.dmg
-            build/release/ClashMiao-macOS-arm64.zip
+            build/release/ClashMiao-macOS-universal.dmg
+            build/release/ClashMiao-macOS-universal.zip
           if-no-files-found: warn
 
   windows:
@@ -209,7 +300,23 @@ jobs:
         run: bin/fetch-libcore.sh windows
       - run: flutter pub get
       - run: flutter config --enable-windows-desktop
-      - run: flutter build windows --release --no-tree-shake-icons
+      - name: Build Windows release
+        env:
+          DART_DEFINES: >-
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
+            --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
+            --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
+            --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
+            --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
+            --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+        shell: pwsh
+        run: |
+          # DART_DEFINES 是一个空格分隔的字符串（YAML 折叠标量），pwsh 不做
+          # word splitting，必须显式拆成数组再 splat，否则会被当成单个参数。
+          $defines = $env:DART_DEFINES -split '\s+' | Where-Object { $_ }
+          flutter build windows --release --no-tree-shake-icons @defines
       - name: Verify and stage Windows bundle
         shell: pwsh
         run: |
@@ -232,6 +339,26 @@ jobs:
           "CLASHMIAO_BUNDLE_DIR=$bundle" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           "CLASHMIAO_VERSION=$version" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
           Compress-Archive -Path (Join-Path $bundle '*') -DestinationPath "build/release/ClashMiao-Windows-x64-$version.zip" -Force
+      - name: Sign Windows binaries (skipped until a code-signing cert is purchased)
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE_PFX_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_PFX_BASE64 }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          # 当前不买证书。未签名的安装包会触发 SmartScreen「Windows 已保护
+          # 你的电脑」，用户需点「更多信息」→「仍要运行」，下载页必须写清这步
+          # （见 docs/RELEASE.md）。买了证书后配好这两个 Secret 即自动生效。
+          if (-not $env:WINDOWS_CERTIFICATE_PFX_BASE64) {
+            Write-Output "::warning::未配置 Windows 代码签名证书；安装包未签名，用户会遇到 SmartScreen 警告。"
+            exit 0
+          }
+          [IO.File]::WriteAllBytes("cert.pfx", [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE_PFX_BASE64))
+          $signtool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin" -Recurse -Filter signtool.exe |
+            Where-Object { $_.FullName -like "*x64*" } | Select-Object -First 1
+          & $signtool.FullName sign /f cert.pfx /p $env:WINDOWS_CERTIFICATE_PASSWORD `
+            /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
+            "$env:CLASHMIAO_BUNDLE_DIR\clashmiao.exe"
+          Remove-Item cert.pfx
       - name: Create Windows installer
         shell: pwsh
         run: |

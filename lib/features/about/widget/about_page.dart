@@ -1,5 +1,6 @@
 import 'dart:ui';
 
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
@@ -216,44 +217,38 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             trailing: _Chevron(
                               color: Theme.of(context).aiUi.secondaryTextColor,
                             ),
-                            onTap: () => _tryLaunch(
-                              const String.fromEnvironment(
-                                'GITHUB_REPO_URL',
-                                defaultValue:
-                                    'https://github.com/clashmiao/clashmiao-client',
-                              ),
-                            ),
+                            onTap: () => _tryLaunch(githubRepoUrl),
                           ),
-                          const _Divider(),
-                          _AboutTile(
-                            icon: FluentIcons.people_community_24_regular,
-                            iconColor: Colors.lightBlue.shade400,
-                            label: t.about.telegramChannel,
-                            trailing: _Chevron(
-                              color: Theme.of(context).aiUi.secondaryTextColor,
-                            ),
-                            onTap: () => _tryLaunch(
-                              const String.fromEnvironment(
-                                'TELEGRAM_CHANNEL_URL',
-                                defaultValue: '',
+                          // 没配置就整项不显示——给用户一个点了没反应的死链，
+                          // 比不给这一项糟糕。下同。
+                          if (hasTelegramChannel) ...[
+                            const _Divider(),
+                            _AboutTile(
+                              icon: FluentIcons.people_community_24_regular,
+                              iconColor: Colors.lightBlue.shade400,
+                              label: t.about.telegramChannel,
+                              trailing: _Chevron(
+                                color: Theme.of(
+                                  context,
+                                ).aiUi.secondaryTextColor,
                               ),
+                              onTap: () => _tryLaunch(telegramChannelUrl),
                             ),
-                          ),
-                          const _Divider(),
-                          _AboutTile(
-                            icon: FluentIcons.shield_checkmark_24_regular,
-                            iconColor: Colors.purple.shade400,
-                            label: t.about.privacyPolicy,
-                            trailing: _Chevron(
-                              color: Theme.of(context).aiUi.secondaryTextColor,
-                            ),
-                            onTap: () => _tryLaunch(
-                              const String.fromEnvironment(
-                                'PRIVACY_POLICY_URL',
-                                defaultValue: '',
+                          ],
+                          if (hasPrivacyPolicy) ...[
+                            const _Divider(),
+                            _AboutTile(
+                              icon: FluentIcons.shield_checkmark_24_regular,
+                              iconColor: Colors.purple.shade400,
+                              label: t.about.privacyPolicy,
+                              trailing: _Chevron(
+                                color: Theme.of(
+                                  context,
+                                ).aiUi.secondaryTextColor,
                               ),
+                              onTap: () => _tryLaunch(privacyPolicyUrl),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

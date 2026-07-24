@@ -1,3 +1,5 @@
+import 'package:clashmiao/core/config/build_config.dart';
+
 enum GeoAssetType { geoip, geosite }
 
 class GeoAsset {
@@ -15,14 +17,9 @@ class GeoAsset {
   final DateTime? lastUpdated;
   final int? sizeBytes;
 
-  static const defaultGeoipUrl = String.fromEnvironment(
-    'GEOIP_CDN_URL',
-    defaultValue: '',
-  );
-  static const defaultGeositeUrl = String.fromEnvironment(
-    'GEOSITE_CDN_URL',
-    defaultValue: '',
-  );
+  /// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+  static const defaultGeoipUrl = geoipCdnUrl;
+  static const defaultGeositeUrl = geositeCdnUrl;
 
   static GeoAsset get geoip => const GeoAsset(
     type: GeoAssetType.geoip,

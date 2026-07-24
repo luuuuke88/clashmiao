@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/onboarding/onboarding_state.dart';
@@ -320,9 +321,11 @@ class _State extends ConsumerState<OnboardingPage> {
   }
 
   Future<void> _openTerms() async {
-    const url = String.fromEnvironment('TERMS_AND_CONDITIONS_URL');
-    if (url.isEmpty) return;
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    if (!hasTermsAndConditions) return;
+    await launchUrl(
+      Uri.parse(termsAndConditionsUrl),
+      mode: LaunchMode.externalApplication,
+    );
   }
 }
 

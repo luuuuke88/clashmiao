@@ -79,19 +79,51 @@ build_android() {
     log_info "Android 编译完成: $OUTPUT_DIR/libcore.aar"
 }
 
-# 编译 macOS
+# 编译 macOS（universal：x86_64 + arm64）
+#
+# 必须出 universal：Intel Mac 装了纯 arm64 的包**跑不起来**（Rosetta 只能
+# x86→arm，反向不行）。这里以前的实现只编 arm64，但日志写的是
+# "arm64, amd64"——日志和实现不符，谁照着这个脚本重建一次 libcore 就会
+# 静默丢掉 Intel 支持（当前发布用的 libcore.dylib 实测是 universal，说明
+# 它当初不是这个脚本产出的）。
 build_macos() {
-    log_info "编译 macOS (arm64, amd64)..."
+    log_info "编译 macOS (arm64 + amd64 → universal)..."
     cd "$CORE_DIR"
+
+    local tags="with_gvisor,with_quic,with_wireguard,with_clash_api"
+    local arm64_out="$OUTPUT_DIR/libcore-darwin-arm64.dylib"
+    local amd64_out="$OUTPUT_DIR/libcore-darwin-amd64.dylib"
+    local universal_out="$OUTPUT_DIR/libcore.dylib"
 
     CGO_ENABLED=1 GOOS=darwin GOARCH=arm64 \
     go build -buildmode=c-shared -trimpath \
-        -ldflags="-s -w" \
-        -tags "with_gvisor,with_quic,with_wireguard,with_clash_api" \
-        -o "$OUTPUT_DIR/libcore-darwin-arm64.dylib" \
-        ./cmd/internal/build_shared
+        -ldflags="-s -w" -tags "$tags" \
+        -o "$arm64_out" ./cmd/internal/build_shared
 
-    log_info "macOS 编译完成: $OUTPUT_DIR/libcore-darwin-arm64.dylib"
+    # 从 Apple Silicon 交叉编 darwin/amd64 需要显式给 clang 指定目标三元组，
+    # 否则 cgo 会用宿主架构去链接。
+    CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 \
+    CGO_CFLAGS="-target x86_64-apple-macos10.15" \
+    CGO_LDFLAGS="-target x86_64-apple-macos10.15" \
+    go build -buildmode=c-shared -trimpath \
+        -ldflags="-s -w" -tags "$tags" \
+        -o "$amd64_out" ./cmd/internal/build_shared
+
+    lipo -create "$arm64_out" "$amd64_out" -output "$universal_out"
+    rm -f "$arm64_out" "$amd64_out"
+
+    # 校验而不是假设——静默产出单架构正是这里原来的 bug。
+    local archs
+    archs="$(lipo -archs "$universal_out")"
+    case "$archs" in
+        *x86_64*arm64*|*arm64*x86_64*) ;;
+        *)
+            log_error "libcore.dylib 不是 universal（实际: $archs）"
+            exit 1
+            ;;
+    esac
+
+    log_info "macOS 编译完成: $universal_out ($archs)"
 }
 
 # 编译 Linux

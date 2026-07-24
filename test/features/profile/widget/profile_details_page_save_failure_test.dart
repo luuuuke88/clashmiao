@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
@@ -84,11 +85,44 @@ class _AlwaysInvalidBoxService implements BoxService {
   Future<void> resetTunnel() async {}
 }
 
+/// 返回一个固定响应体的假 [HttpClientAdapter]，不发出任何真实网络请求。
+///
+/// 这个文件原来起的是真实 `HttpServer` + 真实 socket。实测（连跑 6 轮全量
+/// 测试）它跟 `profile_details_page_save_test.dart` **会一起偶发失败**，
+/// 每轮失败的用例计数还不一样——典型的共享资源争用，争的就是这套真实网络
+/// 栈（端口绑定 + socket + `connectTimeout: 3s`）在高负载下的表现。
+///
+/// 换成 adapter 层假实现后争用源消失，而断言强度不变：`ProfileRepository`
+/// 走的是注入的这个 `dio`，Dio 完整请求管线仍被执行，只是不落到 socket。
+/// 写法沿用仓库既有范式（`egress_ip_service_test.dart` 等的 `_FakeAdapter`）。
+class _FixedBodyAdapter implements HttpClientAdapter {
+  const _FixedBodyAdapter(this.body);
+
+  final String body;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async => ResponseBody.fromString(body, HttpStatus.ok);
+
+  @override
+  void close({bool force = false}) {}
+}
+
+/// 反复小步 pump，直到 [condition] 成立或到达 [timeout]。
+///
+/// 这里的真实时间等待无法消除：`ProfileRepository` 写真实文件（fake-time 下
+/// 完不成），且 `_save()` 期间的 `CircularProgressIndicator` 是无限动画
+/// （`pumpAndSettle()` 在那个窗口内永远收敛不了）。但它现在等的只是本地
+/// 文件 I/O + 微任务（毫秒级），deadline 给到 60 秒纯粹是让系统负载不可能
+/// 成为判定因素。
 Future<void> _pumpUntil(
   WidgetTester tester,
   bool Function() condition, {
-  Duration timeout = const Duration(seconds: 10),
-  Duration step = const Duration(milliseconds: 100),
+  Duration timeout = const Duration(seconds: 60),
+  Duration step = const Duration(milliseconds: 20),
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (!condition()) {
@@ -102,8 +136,6 @@ Future<void> _pumpUntil(
 
 void main() {
   testWidgets('URL 变化但拉取失败时会明确提示错误，不能静默吞掉', (tester) async {
-    HttpOverrides.global = null; // 关掉 TestWidgetsFlutterBinding 的全局 HTTP mock
-
     await tester.runAsync(() async {
       final tmpDir = await Directory.systemTemp.createTemp(
         'details_save_fail_',
@@ -114,19 +146,14 @@ void main() {
       SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();
 
-      // 真的会发起 HTTP 请求，但响应体不是"看起来已经是合法 sing-box JSON"的
-      // 内容（否则 `_normalizeAndWrite` 会走直通快路径，完全不调
+      // 真的会走一遍 Dio 请求管线，但响应体不是"看起来已经是合法 sing-box
+      // JSON"的内容（否则 `_normalizeAndWrite` 会走直通快路径，完全不调
       // boxService.validateConfig，下面"永远判定无效"就测不到了）。
-      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-      // ignore: unawaited_futures
-      server.listen((req) async {
-        req.response.write('not-a-valid-config');
-        await req.response.close();
-      });
-      addTearDown(() => server.close(force: true));
+      final dio = Dio();
+      dio.httpClientAdapter = const _FixedBodyAdapter('not-a-valid-config');
 
       final repo = ProfileRepository(
-        dio: Dio(BaseOptions(connectTimeout: const Duration(seconds: 3))),
+        dio: dio,
         configDir: tmpDir,
         prefs: prefs,
         boxService: const _AlwaysInvalidBoxService(),
@@ -144,7 +171,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
           profileListProvider.overrideWith((_) => Future.value(repo.getAll())),
           activeProfileProvider.overrideWith((_) => Future.value(profile)),
@@ -173,14 +200,13 @@ void main() {
       final urlField = find.byWidgetPredicate(
         (w) => w is TextField && w.keyboardType == TextInputType.url,
       );
-      await tester.enterText(urlField, 'http://localhost:${server.port}/new');
+      await tester.enterText(urlField, 'https://new.example.invalid/new');
       await tester.tap(find.text('保存'));
       await tester.pump();
       await _pumpUntil(
         tester,
         () => find.textContaining('失败').evaluate().isNotEmpty,
       );
-      await tester.pumpAndSettle();
 
       // 明确的失败反馈：toast 文案里带着"失败"字样，不能静默吞掉
       expect(find.textContaining('失败'), findsWidgets);

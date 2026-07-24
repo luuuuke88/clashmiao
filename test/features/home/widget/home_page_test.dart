@@ -9,6 +9,7 @@ import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:dio/dio.dart';
@@ -83,7 +84,7 @@ Future<Widget> _host(ProfileEntity profile) async {
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       activeProfileProvider.overrideWith((_) => Future.value(profile)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(const []),
@@ -123,7 +124,7 @@ Future<(Widget, ProviderContainer)> _hostWithContainer(
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       activeProfileProvider.overrideWith((_) => Future.value(profile)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(const []),
@@ -162,7 +163,7 @@ Future<Widget> _hostWithProfiles({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       activeProfileProvider.overrideWith((_) => Future.value(activeProfile)),
       profileListProvider.overrideWith((_) => Future.value(profiles)),
       outboundGroupsProvider.overrideWith(
@@ -218,7 +219,7 @@ Future<Widget> _hostFooterStats({required Dio dio}) async {
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       egressIpServiceProvider.overrideWith(
         (ref) => EgressIpService(ref, dio: dio),
       ),
@@ -258,7 +259,7 @@ Future<(Widget, ProviderContainer)> _hostForEgressRace({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       activeProfileProvider.overrideWith((_) => Future.value(profile)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(const []),
@@ -657,5 +658,75 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
     toastification.dismissAll(delayForAnimation: false);
     await tester.pump(const Duration(milliseconds: 500));
+  });
+
+  // ===========================================================
+  // 桌面端 libcore 加载失败会被 `BoxService` 工厂 catch 住、静默降级成桩实现。
+  // 修复前这个状态在界面上完全不可见：首页照常渲染连接按钮，用户点了没反应
+  // 也没有任何解释。这两个测试锁定"真故障必须可见"和"测试替身不能误报"
+  // 这两条互相制衡的行为。
+  // ===========================================================
+  group('核心库加载失败时首页给出阻断提示', () {
+    Future<Widget> hostWithService(StubBoxService service) async {
+      SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+      PackageInfo.setMockInitialValues(
+        appName: 'ClashMiao',
+        packageName: 'com.clashmiao.app',
+        version: '1.2.3',
+        buildNumber: '45',
+        buildSignature: '',
+      );
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(service),
+          activeProfileProvider.overrideWith((_) => Future.value(null)),
+          outboundGroupsProvider.overrideWith(
+            (_) => Stream<List<OutboundGroup>>.value(const []),
+          ),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      return UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const HomePage(),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('coreLoadFailed 时显示阻断文案，而不是一个点了没反应的连接按钮', (tester) async {
+      await tester.pumpWidget(
+        await hostWithService(
+          const StubBoxService(reason: StubReason.coreLoadFailed),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('未找到核心库'), findsOneWidget);
+      expect(
+        find.byType(ConnectionButton),
+        findsNothing,
+        reason: '核心库都没有，不该再给用户一个必定无效的连接按钮',
+      );
+    });
+
+    testWidgets('默认 StubBoxService（测试替身/平台不支持）不得误报核心库缺失', (tester) async {
+      await tester.pumpWidget(await hostWithService(const StubBoxService()));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(
+        find.text('未找到核心库'),
+        findsNothing,
+        reason: '大量既有 widget 测试把桩实现当替身用，按类型判断会让它们全部误报',
+      );
+    });
   });
 }

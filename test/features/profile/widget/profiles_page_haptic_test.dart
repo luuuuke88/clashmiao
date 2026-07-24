@@ -32,7 +32,7 @@ class _FakeProfileRepository extends ProfileRepository {
     : super(
         dio: Dio(),
         configDir: Directory('/tmp/unused-haptic-profile-repo'),
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
 
   int updateCalls = 0;
@@ -83,7 +83,7 @@ Future<(Widget, _FakeProfileRepository)> _host({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
       profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
     ],
   );

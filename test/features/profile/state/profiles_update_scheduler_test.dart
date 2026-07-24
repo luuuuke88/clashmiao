@@ -106,7 +106,7 @@ void main() {
         dio: Dio(),
         configDir: tmpDir,
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
     });
 
@@ -249,7 +249,7 @@ void main() {
         dio: Dio(),
         configDir: tmpDir,
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
     });
 
@@ -329,7 +329,7 @@ void main() {
         dio: Dio(),
         configDir: tmpDir,
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
     });
 

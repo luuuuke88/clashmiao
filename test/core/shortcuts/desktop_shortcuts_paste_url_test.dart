@@ -41,12 +41,12 @@ void main() {
         dio: Dio(),
         configDir: tmpDir,
         prefs: prefs,
-        boxService: StubBoxService(),
+        boxService: const StubBoxService(),
       );
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-          boxServiceProvider.overrideWithValue(StubBoxService()),
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
           profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
         ],
       );

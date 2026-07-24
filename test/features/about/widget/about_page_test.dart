@@ -23,7 +23,7 @@ Future<Widget> _host() async {
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(StubBoxService()),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
     ],
   );
   await container.read(sharedPreferencesProvider.future);

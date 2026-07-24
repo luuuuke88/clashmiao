@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
@@ -46,4 +47,15 @@ final outboundGroupsProvider = StreamProvider<List<OutboundGroup>>((ref) {
 final isConnectedProvider = Provider<bool>((ref) {
   final status = ref.watch(boxStatusProvider);
   return status.valueOrNull is BoxStarted;
+});
+
+/// 桌面端 libcore 加载失败、整个 App 实际是个空壳时为 true。
+///
+/// 只认 [StubReason.coreLoadFailed]，不认"是不是桩实现"——桩实现同时被大量
+/// widget 测试当替身用（`boxServiceProvider.overrideWithValue(StubBoxService())`），
+/// 按类型判断会让那些测试全部误报故障。见 [StubReason] 的文档。
+final coreLibraryMissingProvider = Provider<bool>((ref) {
+  final service = ref.watch(boxServiceProvider);
+  return service is StubBoxService &&
+      service.reason == StubReason.coreLoadFailed;
 });

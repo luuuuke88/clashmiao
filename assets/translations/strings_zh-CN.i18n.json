@@ -39,7 +39,9 @@
       "smart": "智能分流"
     },
     "failedToSwitchMode": "切换模式失败: ${error}",
-    "connectionFailedTitle": "连接失败"
+    "connectionFailedTitle": "连接失败",
+    "coreMissingTitle": "未找到核心库",
+    "coreMissingMsg": "应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。"
   },
   "stats": {
     "traffic": "流量",
@@ -347,6 +349,7 @@
     "singbox": {
       "unexpected": "意外服务错误",
       "serviceNotRunning": "服务未运行",
+      "coreLibraryMissing": "核心库未安装",
       "missingPrivilege": "缺少权限",
       "missingPrivilegeMsg": "VPN 模式需要管理员权限。以管理员身份重新启动应用程序或更改服务模式",
       "missingGeoAssets": "缺失 GEO 资源文件",
@@ -367,6 +370,7 @@
     "profiles": {
       "unexpected": "意外错误",
       "notFound": "未找到配置文件",
+      "noActive": "没有激活的订阅",
       "invalidConfig": "无效配置",
       "invalidUrl": "网址无效"
     },

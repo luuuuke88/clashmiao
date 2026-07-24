@@ -437,35 +437,67 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     }
   }
 
+  /// 把一条连接前置校验的失败原因写给用户看。
+  ///
+  /// 这些分支以前**只 `debugPrint` 就 return**——用户点了"连接"什么都不会
+  /// 发生、也看不到任何提示，就是一个死按钮。而且桌面托盘的"连接"菜单项
+  /// （`tray_controller.dart`）不经过首页 `_EmptyHomeBody` 那层空态守卫，
+  /// 会直接命中这些分支。所以每条失败路径都必须给出可见的分类文案。
+  void _failPrecheck(String message) {
+    _ref.read(connectionErrorProvider.notifier).state = message;
+    state = const AsyncData(BoxStopped());
+  }
+
   /// 连接
   Future<void> connect() async {
+    final t = _ref.read(translationsProvider);
+
     if (_isStub) {
-      debugPrint('核心库未安装，无法连接');
+      // 桌面端加载 libcore 失败会静默降级成 StubBoxService（见
+      // `BoxService` 工厂的 catch），界面一切正常但什么都不工作——
+      // 这是用户完全无法从界面上察觉的状态，必须明确告知。
+      _failPrecheck(t.failure.singbox.coreLibraryMissing);
       return;
     }
     _manualDisconnect = false; // 用户发起连接，清除手动断开意图
 
-    // 获取 ProfileRepository
-    final repoAsync = _ref.read(profileRepositoryProvider);
-    if (!repoAsync.hasValue) {
-      debugPrint('ProfileRepository 未就绪');
+    // 获取 ProfileRepository。
+    // 这里**等**它就绪，而不是像以前那样"没就绪就报错返回"——仓库未就绪纯粹是
+    // 启动期的短暂竞态（用户在 provider 解析完成前就点了连接），等一下就有了，
+    // 报错反而是把一个能自然消解的时序问题变成用户可见的失败。
+    final ProfileRepository repo;
+    try {
+      repo = await _ref.read(profileRepositoryProvider.future);
+    } catch (e) {
+      _failPrecheck(classifyExceptionMessage(e, t));
       return;
     }
-    final repo = repoAsync.requireValue;
 
     // 获取激活订阅
     final active = repo.getActive();
     if (active == null) {
-      debugPrint('无激活订阅，请先添加订阅');
+      _failPrecheck(t.failure.profiles.noActive);
       return;
     }
 
-    // 检查配置文件存在
+    // 检查配置文件存在。
+    // 缺失是真实会发生的：订阅更新中途失败、备份恢复之后，都可能让记录还在
+    // 但磁盘上的配置文件没了。这种情况下用户唯一能自救的动作就是"重新拉一次
+    // 订阅"——那就别让他去菜单里找，直接替他做一次，成功就照常连上去。
     final configPath = repo.configFilePath(active.id);
-    final configFile = File(configPath);
+    var configFile = File(configPath);
     if (!await configFile.exists()) {
-      debugPrint('配置文件不存在: $configPath');
-      return;
+      debugPrint('配置文件不存在，尝试重新拉取订阅自愈: $configPath');
+      try {
+        await repo.update(active.id);
+      } catch (e) {
+        debugPrint('自愈重新拉取订阅失败: $e');
+      }
+      configFile = File(configPath);
+      if (!await configFile.exists()) {
+        _failPrecheck(t.failure.profiles.notFound);
+        return;
+      }
     }
 
     final epoch = ++_opEpoch;

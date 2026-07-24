@@ -39,7 +39,9 @@
       "smart": "Smart Routing"
     },
     "failedToSwitchMode": "Failed to switch mode: ${error}",
-    "connectionFailedTitle": "Connection Failed"
+    "connectionFailedTitle": "Connection Failed",
+    "coreMissingTitle": "Core Library Not Found",
+    "coreMissingMsg": "The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable."
   },
   "stats": {
     "traffic": "Traffic",
@@ -347,6 +349,7 @@
     "singbox": {
       "unexpected": "Unexpected Service Error",
       "serviceNotRunning": "Service is Not Running",
+      "coreLibraryMissing": "Core Library Not Installed",
       "missingPrivilege": "Missing Privilege",
       "missingPrivilegeMsg": "VPN Mode Requires Administrator Privileges. Either relaunch the app as administrator or change service mode.",
       "missingGeoAssets": "Missing Geo Assets",
@@ -367,6 +370,7 @@
     "profiles": {
       "unexpected": "Unexpected Error",
       "notFound": "Profile Not Found",
+      "noActive": "No Active Profile",
       "invalidConfig": "Invalid Configs",
       "invalidUrl": "Invalid URL"
     },

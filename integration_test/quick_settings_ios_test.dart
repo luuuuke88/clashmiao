@@ -23,7 +23,9 @@ void main() {
       }
 
       final container = ProviderContainer(
-        overrides: [boxServiceProvider.overrideWithValue(StubBoxService())],
+        overrides: [
+          boxServiceProvider.overrideWithValue(const StubBoxService()),
+        ],
       );
       await container.read(sharedPreferencesProvider.future);
 

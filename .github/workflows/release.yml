@@ -125,14 +125,7 @@ jobs:
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Install Android SDK packages
-        run: |
-          set +o pipefail
-          yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
+      - uses: ./.github/actions/setup-android-build
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -627,35 +620,26 @@ jobs:
       - name: Collect release assets
         id: collect
         run: |
-          mkdir -p assets
-          # 只收各平台的 release-* artifact。store-android-aab 故意排除：
-          # AAB 是 Play Store 上传格式，终端用户下载了没法安装，放在公开
-          # 下载列表里只会造成困惑。需要它的时候从 workflow artifact 里取。
-          shopt -s nullglob
-          for f in artifacts/release-*/*; do
-            [ -f "$f" ] && cp "$f" assets/
-          done
-          COUNT=$(find assets -type f | wc -l | tr -d ' ')
+          # 暂存目录放在 $RUNNER_TEMP 下，**不能**放在 checkout 里：仓库自己有
+          # 一个 assets/ 目录，之前写死 `assets` 就撞上了它，把 17 个字体/图片
+          # 文件当成了发布产物（详见 bin/collect-release-assets.sh 的注释）。
+          COUNT="$(bin/collect-release-assets.sh artifacts "$RUNNER_TEMP/release-assets")"
           echo "count=$COUNT" >> "$GITHUB_OUTPUT"
-          if [ "$COUNT" -eq 0 ]; then
-            echo "::error::一个平台的产物都没有，不发布空 release"
-            exit 1
-          fi
-          echo "收到 $COUNT 个文件："
-          find assets -type f -printf '  %f (%s bytes)\n' | sort
       - name: Generate SHA256SUMS
-        working-directory: assets
         run: |
           # 让用户能校验下载完整性——开源项目标配。
-          # 用 -- 和 basename：sha256sum 的输出里带路径的话，用户在下载目录里
-          # 跑 `sha256sum -c` 会找不到文件。
+          # 在暂存目录里跑并只输出文件名（不带路径）：sha256sum 的输出里带路径
+          # 的话，用户在自己的下载目录里跑 `sha256sum -c` 会找不到文件。
+          cd "$RUNNER_TEMP/release-assets"
           find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -printf '%f\n' |
             sort | xargs sha256sum > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Build release notes
         env:
           VERSION: ${{ env.RELEASE_TAG }}
-        run: bin/make-release-notes.sh "${VERSION#v}" assets > notes.md
+        run: |
+          bin/make-release-notes.sh "${VERSION#v}" \
+            "$RUNNER_TEMP/release-assets" > notes.md
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -668,16 +652,24 @@ jobs:
             DRAFT_FLAG="--draft"
             echo "::notice::发成 draft（只有协作者可见）。确认无误后在 Releases 页面点 Publish，或直接删掉。"
           fi
+          # 显式列出要上传的文件，而不是把 `<dir>/*` 交给 gh：glob 里混进一个
+          # 目录，gh 会报 "read <dir>: is a directory" 而整条失败。收集脚本已
+          # 保证暂存目录里只有文件，这里再用 -type f 兜一层。
+          mapfile -t ASSET_FILES < <(
+            find "$RUNNER_TEMP/release-assets" -maxdepth 1 -type f | sort
+          )
+          [ ${#ASSET_FILES[@]} -gt 0 ] || { echo "::error::暂存目录里没有文件"; exit 1; }
+
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" --notes-file notes.md
-            gh release upload "$RELEASE_TAG" assets/* --clobber
+            gh release upload "$RELEASE_TAG" "${ASSET_FILES[@]}" --clobber
           else
             # shellcheck disable=SC2086  # DRAFT_FLAG 要么是空要么是单个 --draft，
             # 必须不加引号，否则空值会被当成一个空参数传给 gh
             gh release create "$RELEASE_TAG" $DRAFT_FLAG \
               --title "ClashMiao ${RELEASE_TAG#v}" \
               --notes-file notes.md \
-              assets/*
+              "${ASSET_FILES[@]}"
           fi
           echo "已发布：$(gh release view "$RELEASE_TAG" --json url --jq .url)"
 

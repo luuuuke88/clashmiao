@@ -255,16 +255,17 @@ jobs:
             --build-name=${{ steps.version.outputs.name }}
             --build-number=${{ github.run_number }}
         run: |
-          # 必须先 clean。`--split-per-abi` 会在共享的 intermediates 目录里留下
-          # 四份 shrunk-resources（每个 ABI 一份），而随后的 bundleRelease 期望
-          # 恰好一份，于是直接失败：
-          #   Multiple shrunk-resources files found in directory
-          #   '.../shrunk_resources_proto_format/release/minifyReleaseWithR8'
-          #   Please disable building multiple APKs when building an app bundle.
-          #   （https://issuetracker.google.com/402800800）
+          # AAB 构建不了的**真正**原因在 android/app/build.gradle.kts：
+          # splits.abi.isEnable 原来写死 true，ABI 拆分常开，AGP 就会为每个 ABI
+          # 各生成一份 shrunk-resources，而 buildReleasePreBundle 只接受一份
+          # （issuetracker.google.com/402800800）。已改成只在非 Bundle 任务时启用。
           #
-          # 不去精准删那一个 intermediates 子目录：那依赖 AGP 的内部布局，AGP
-          # 改个路径就又坏了。整包重建慢几分钟，但发版本来就不频繁，确定性更值钱。
+          # 这里的 clean 不是修复手段——本地实测过，clean 之后单独建 AAB 照样
+          # 失败，因为清掉的只是残留文件、拆分配置还在。它留在这里只是确定性
+          # 兜底：APK 那趟（拆分开启）会在共享 intermediates 里留下四份 proto
+          # shrunk-resources，实测 AGP 会自己清掉、不 clean 也能过，但那依赖它的
+          # up-to-date 判定。发版不频繁，多花几分钟换一个从干净树构建出来的
+          # 上架产物，划算。
           flutter clean
           flutter pub get
           # shellcheck disable=SC2086  # 同前：DART_DEFINES 必须发生 word splitting

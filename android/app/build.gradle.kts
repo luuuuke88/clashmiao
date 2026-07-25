@@ -46,7 +46,25 @@ android {
 
     splits {
         abi {
-            isEnable = true
+            // 构建 AAB 时必须关掉 ABI 拆分，只有构建 APK 时才开。
+            //
+            // AAB 自己就按 ABI 分发（Play Store 按设备下发对应的 split），根本
+            // 不需要在构建期拆。而两者同时开，AGP 会在共享的 intermediates 目录
+            // 里为每个 ABI 各生成一份 shrunk-resources，随后 buildReleasePreBundle
+            // 期望恰好一份，直接失败：
+            //
+            //   Multiple shrunk-resources files found in directory
+            //   '.../shrunk_resources_proto_format/release/minifyReleaseWithR8'
+            //   Please disable building multiple APKs when building an app bundle.
+            //   （https://issuetracker.google.com/402800800）
+            //
+            // 这里原来写死 isEnable = true，所以 `flutter build appbundle` 在本项目
+            // 里**从来没有成功过**——只是一直没人跑到那一步，直到第一次真实排练
+            // 发版才暴露。注意 `flutter clean` 治不了它：清掉的只是残留文件，
+            // 拆分配置本身还在，重建一遍照样生成四份。
+            isEnable = gradle.startParameter.taskNames.none {
+                it.contains("Bundle", ignoreCase = true)
+            }
             reset()
             include("x86_64", "armeabi-v7a", "arm64-v8a")
             isUniversalApk = true

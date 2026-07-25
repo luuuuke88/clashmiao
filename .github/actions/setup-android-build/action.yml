@@ -1,0 +1,31 @@
+name: Setup Android build environment
+description: >-
+  JDK 17 + cmdline-tools（含 sdkmanager）+ 本项目需要的 SDK 包。
+
+  ci.yml 和 release.yml 共用这一份。之前是两个 workflow 各抄一遍，四处重复：
+  runner image 不再把 cmdline-tools 放进 PATH 之后，修复只补进了 ci.yml 的三处，
+  release.yml 的 android job 一直是坏的——而 release.yml 平时不跑，所以这个坏
+  一直没人看见，直到第一次真实排练发版才在 `sdkmanager: command not found`
+  上暴露。抽成一处之后，同类修复不可能再只补一半。
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '17'
+    # runner image 更新后 cmdline-tools 不再默认进 PATH，裸调 sdkmanager 会
+    # command not found（见 actions/runner-images#13674）。这一步把含
+    # sdkmanager 的 cmdline-tools 装好并加进 PATH；packages: '' 表示不让它
+    # 自动装包，具体 SDK 包由下一步显式装。
+    - uses: android-actions/setup-android@v4
+      with:
+        packages: ''
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        # `yes |` 喂许可协议；sdkmanager 收完就关管道，yes 吃到 SIGPIPE。
+        # 关掉 pipefail 否则这条正常结束的管道会被判失败。
+        set +o pipefail
+        yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"

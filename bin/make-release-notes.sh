@@ -14,7 +14,12 @@ set -euo pipefail
 VERSION="${1:?用法: bin/make-release-notes.sh <version> <assets-dir>}"
 ASSETS="${2:?用法: bin/make-release-notes.sh <version> <assets-dir>}"
 
-have() { find "$ASSETS" -type f -name "$1" -print -quit 2>/dev/null | grep -q .; }
+# 不要写成 `find ... | grep -q .`：`grep -q` 一命中就退出，find 可能收到
+# SIGPIPE，而本脚本开了 pipefail → 函数返回 141 → 被 `|| MISSING+=` 解读成
+# "这个平台缺包"，于是在 release 正文里挂一条**假的**缺平台警告。同一个坑在
+# package-linux.sh 和 setup-android-signing.sh 里各踩过一次。
+# 用命令替换取输出再判空，管道就不存在了。
+have() { [ -n "$(find "$ASSETS" -maxdepth 1 -type f -name "$1" -print -quit 2>/dev/null)" ]; }
 
 MISSING=()
 have 'ClashMiao-Android-*.apk'      || MISSING+=("Android")

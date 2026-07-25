@@ -19,6 +19,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/temp_dirs.dart';
+
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录
 /// （照抄 test/core/providers/connection_controller_test.dart 的既有模式）。
 Future<Directory> _mockPathProvider() async {
@@ -177,7 +179,7 @@ void main() {
       await tester.runAsync(() async {
         final tmp = await _mockPathProvider();
         addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
+          await deleteTempDirBestEffort(tmp);
         });
         SharedPreferences.setMockInitialValues({
           'locale': 'zhCn',
@@ -219,7 +221,7 @@ void main() {
       await tester.runAsync(() async {
         final tmp = await _mockPathProvider();
         addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
+          await deleteTempDirBestEffort(tmp);
         });
         SharedPreferences.setMockInitialValues({
           'locale': 'zhCn',
@@ -263,7 +265,7 @@ void main() {
       await tester.runAsync(() async {
         final tmp = await _mockPathProvider();
         addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
+          await deleteTempDirBestEffort(tmp);
         });
         SharedPreferences.setMockInitialValues({
           'locale': 'zhCn',
@@ -304,7 +306,7 @@ void main() {
       await tester.runAsync(() async {
         final tmp = await _mockPathProvider();
         addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
+          await deleteTempDirBestEffort(tmp);
         });
         SharedPreferences.setMockInitialValues({
           'locale': 'zhCn',
@@ -346,7 +348,7 @@ void main() {
       await tester.runAsync(() async {
         final tmp = await _mockPathProvider();
         addTearDown(() async {
-          if (await tmp.exists()) await tmp.delete(recursive: true);
+          await deleteTempDirBestEffort(tmp);
         });
         SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
         final prefs = await SharedPreferences.getInstance();

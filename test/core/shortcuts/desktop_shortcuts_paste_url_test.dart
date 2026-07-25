@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'desktop_shortcuts_test_support.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// Cmd+V 全局粘贴导入——剪贴板是 http(s) 订阅链接时走 `addByUrl`。单独一个
 /// 文件的原因见 `desktop_shortcuts_test_support.dart` 头部文档。
 void main() {
@@ -33,7 +35,7 @@ void main() {
         'desktop_shortcuts_paste_url_test_',
       );
       addTearDown(() async {
-        if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tmpDir);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

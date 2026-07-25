@@ -11,6 +11,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/temp_dirs.dart';
+
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录（同
 /// test/core/providers/connection_controller_test.dart 里的写法）。
 Future<Directory> _mockPathProvider() async {
@@ -111,9 +113,7 @@ void main() {
             const MethodChannel('plugins.flutter.io/path_provider'),
             null,
           );
-      if (await tempDir.exists()) {
-        await tempDir.delete(recursive: true);
-      }
+      await deleteTempDirBestEffort(tempDir);
     });
 
     test('"分享核心日志"和"分享应用日志"用的是不同的文件路径', () async {

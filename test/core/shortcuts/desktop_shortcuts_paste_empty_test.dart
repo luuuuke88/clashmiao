@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'desktop_shortcuts_test_support.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// Cmd+V 全局粘贴导入——剪贴板为空时必须给出明确的失败反馈，而不是静默无
 /// 反应（用户按了快捷键会以为没生效）。单独一个文件的原因见
 /// `desktop_shortcuts_test_support.dart` 头部文档。
@@ -23,7 +25,7 @@ void main() {
         'desktop_shortcuts_paste_empty_test_',
       );
       addTearDown(() async {
-        if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tmpDir);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

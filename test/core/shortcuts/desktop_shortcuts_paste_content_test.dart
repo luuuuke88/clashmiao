@@ -13,6 +13,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'desktop_shortcuts_test_support.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// Ctrl+V 全局粘贴导入——剪贴板是单节点代理 URI 时走 `addByContent`（不发起
 /// 网络请求）。单独一个文件的原因见
 /// `desktop_shortcuts_test_support.dart` 头部文档。
@@ -27,7 +29,7 @@ void main() {
         'desktop_shortcuts_paste_content_test_',
       );
       addTearDown(() async {
-        if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tmpDir);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

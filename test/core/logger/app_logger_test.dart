@@ -4,6 +4,8 @@ import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// AppLogger 是 App 层（Dart/Flutter）日志基础设施：
 /// - `FlutterError.onError` / `PlatformDispatcher.instance.onError` 兜底捕获
 ///   未处理异常，写入本地 app.log；
@@ -24,9 +26,7 @@ void main() {
 
   tearDown(() async {
     AppLogger.resetForTesting();
-    if (await tempDir.exists()) {
-      await tempDir.delete(recursive: true);
-    }
+    await deleteTempDirBestEffort(tempDir);
   });
 
   group('AppLogger.getLogFilePath', () {

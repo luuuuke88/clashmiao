@@ -200,6 +200,29 @@ class _FakeStoreReviewService extends StoreReviewService {
   }
 }
 
+/// 轮询等待条件成立，而不是睡一个固定时长。
+///
+/// `await Future.delayed(200ms)` 本质是在赌「这段异步工作 200ms 内一定做完」。
+/// 本地够，CI runner 负载高时不够——这个文件里的竞态回归测试就因此在发版门禁
+/// 上随机失败过一次：睡完 200ms，connect() 还没走到 start()（它前面有真实的
+/// 文件 I/O 和运行时配置构建）。
+///
+/// 轮询把"等多久"换成"等到什么条件"，语义不变而不再依赖机器速度。超时会带着
+/// 说明失败，而不是留下一个 `Expected: <1> Actual: <0>` 让人去猜。
+Future<void> _until(
+  bool Function() condition, {
+  required String reason,
+  Duration timeout = const Duration(seconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (!DateTime.now().isBefore(deadline)) {
+      fail('等待超时（${timeout.inSeconds}s）：$reason');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -406,35 +429,54 @@ void main() {
 
       final controller = container.read(connectionControllerProvider.notifier);
 
+      // 时序控制点：把 disconnect 的「1.5s 展示动画」换成一个由本测试掌握的
+      // 闸门。这样"迟到的收尾"到底什么时候执行完全由测试决定，不再依赖机器
+      // 快慢——原来这里靠一串固定睡眠去和真实的 1.5s 对齐，在 CI 上随机失败
+      // （Expected: <1> Actual: <0>，200ms 睡完 connect() 还没走到 start()）。
+      //
+      // 注意这不只是"修 flaky"：如果只把睡眠换成轮询等条件，机器再慢一点，
+      // 1.5s 窗口会在 connect() 接管之前就到期，测试**空转通过**——最终断言
+      // 照样成立，但根本没经过要测的竞态。闸门同时消掉了这两种失效。
+      final settleGate = Completer<void>();
+      var settleRequested = false;
+      controller.disconnectSettleDelay = (_) {
+        settleRequested = true;
+        return settleGate.future;
+      };
+
       // 进入已连接态
       spy.statusStreamController.add(const BoxStarted());
-      await Future<void>.delayed(Duration.zero);
-      expect(
-        container.read(connectionControllerProvider).valueOrNull,
-        isA<BoxStarted>(),
+      await _until(
+        () =>
+            container.read(connectionControllerProvider).valueOrNull
+                is BoxStarted,
+        reason: '初始应进入已连接态',
       );
 
-      // 1. 断开（不 await——让它的 1.5s 收尾在后台悬着）
+      // 1. 断开（不 await——让它的收尾悬在闸门上）
       final disconnectFuture = controller.disconnect();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await _until(() => spy.stopCalls == 1, reason: 'disconnect 应真实调用 stop');
       // native 确认停止
       spy.statusStreamController.add(const BoxStopped());
-      await Future<void>.delayed(const Duration(milliseconds: 100));
+      // 等到 disconnect 真的进入了收尾等待——这才叫"窗口已打开"，后面的重连
+      // 才确定落在窗口之内。
+      await _until(() => settleRequested, reason: 'disconnect 应进入收尾等待');
 
-      // 2. 动画窗口内用户重连
+      // 2. 窗口内用户重连
       final connectFuture = controller.connect();
-      await Future<void>.delayed(const Duration(milliseconds: 200));
-      expect(spy.startCalls, 1, reason: '重连应真实调用 start');
+      await _until(() => spy.startCalls == 1, reason: '重连应真实调用 start');
       // native 起来了
       spy.statusStreamController.add(const BoxStarted());
-      await Future<void>.delayed(Duration.zero);
-      expect(
-        container.read(connectionControllerProvider).valueOrNull,
-        isA<BoxStarted>(),
+      await _until(
+        () =>
+            container.read(connectionControllerProvider).valueOrNull
+                is BoxStarted,
         reason: 'BoxStarted 应穿透 _transitioning 写入',
       );
 
-      // 3. 等两个操作全部收尾（disconnect 的 1.5s 迟到写点在这期间执行）
+      // 3. 现在才放开闸门：迟到的 disconnect 收尾在"新连接已建立"之后执行——
+      // 这正是真机上出问题的那个顺序，而且现在是确定发生的，不是碰巧。
+      settleGate.complete();
       await disconnectFuture;
       await connectFuture;
 

@@ -366,6 +366,22 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   /// 永久卡死在"正在连接"。
   int _opEpoch = 0;
 
+  /// disconnect() 里「至少展示 1.5s 断开中动画」那段延时的可注入接缝。
+  ///
+  /// 生产行为完全不变（默认就是 `Future.delayed`）。它存在**只**为了让上面
+  /// 那条竞态的回归测试能确定性地控制时序：该测试必须让 connect() 的接管发生
+  /// 在这个窗口**之内**，否则测的就不是这个竞态。
+  ///
+  /// 原来测试是靠真实墙钟睡眠去对齐这 1.5s，CI runner 负载一高就随机失败
+  /// （在发版门禁上真炸过一次：睡了 200ms，connect() 还没走到 start()，因为
+  /// 它前面有真实的文件 I/O 和运行时配置构建）。
+  ///
+  /// 而只把睡眠换成"轮询等条件"并不够：机器再慢一点，1.5s 窗口会在接管之前
+  /// 就到期，于是测试**空转通过**——最终断言照样成立，但根本没经过竞态。
+  /// 把随机失败换成静默假绿是更糟的交易，所以这里给出真正的时序控制点。
+  @visibleForTesting
+  Future<void> Function(Duration) disconnectSettleDelay = Future<void>.delayed;
+
   /// start()/restart() 发出后的收尾：先给 BoxStarting 动画一个最短展示窗口，
   /// 然后**不**手动写 BoxStarted——真实状态由 watchStatus 推送穿透写入
   /// （native 实际起来才算数，见 connect() 内注释）。但有一种真实存在的例外：
@@ -597,8 +613,8 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     state = const AsyncData(BoxStopping());
     try {
       await _boxService.stop();
-      // 至少展示 1.5秒 断开中动画
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // 至少展示 1.5秒 断开中动画（延时走可注入接缝，见 disconnectSettleDelay）
+      await disconnectSettleDelay(const Duration(milliseconds: 1500));
       // 代际守卫：这 1.5s 窗口内用户可能已经点了重连——真机实锤过的竞态
       // （见 connect() 里 _opEpoch 的文档）。如果 connect() 已经接管（更新的
       // 代际），这句迟到的 BoxStopped 绝不能把它的 BoxStarted 覆盖掉，

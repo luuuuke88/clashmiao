@@ -406,7 +406,8 @@
     "experimentalNotice": "使用中的實驗性功能",
     "experimentalNoticeMsg": "您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。",
     "disableExperimentalNotice": "不再提示",
-    "reconnectMsg": "重新連線以使變更生效"
+    "reconnectMsg": "重新連線以使變更生效",
+    "staleSystemProxyCleaned": "已清理上次異常結束殘留的系統代理設定"
   },
   "config": {
     "resetBtn": "重置選項",

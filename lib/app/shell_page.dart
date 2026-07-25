@@ -28,6 +28,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
@@ -39,6 +40,7 @@ class ShellPage extends ConsumerStatefulWidget {
 class _ShellPageState extends ConsumerState<ShellPage> {
   bool _debugAddProfileOpened = false;
   bool _deepLinkResultChecked = false;
+  bool _staleProxyNoticeChecked = false;
 
   static const _pages = [
     HomePage(),
@@ -251,6 +253,25 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       if (next != null) _handleDeepLinkResult(context, ref, next);
     });
 
+    // 启动自愈清理掉了残留的系统代理时，告诉用户一声。
+    //
+    // 跟 deep-link 一样要"首帧补展示 + 后续 listen"两路：自愈发生在 main() 的
+    // 启动流程里，比 ShellPage 挂载**早**，纯 ref.listen 会漏掉这一次唯一的
+    // 变化。而不提示的话，用户的体感是"刚才网不通、重开 App 又好了"，下次再
+    // 遇到还是一样懵——这件事必须从玄学变成一次可理解的故障。
+    if (!_staleProxyNoticeChecked) {
+      _staleProxyNoticeChecked = true;
+      if (ref.read(staleProxyHealedNoticeProvider).isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _showStaleProxyNotice(context, ref);
+        });
+      }
+    }
+    ref.listen<List<String>>(staleProxyHealedNoticeProvider, (prev, next) {
+      if (next.isEmpty) return;
+      _showStaleProxyNotice(context, ref);
+    });
+
     // 桌面端预留窗口装饰（macOS 红绿灯/Win+Linux 标题栏间距），移动端交给各页面 SafeArea
     final double topPad;
     if (Platform.isMacOS) {
@@ -298,6 +319,19 @@ class _ShellPageState extends ConsumerState<ShellPage> {
 /// 展示一条深链导入结果的 toast，并把 [deepLinkImportResultProvider] 的
 /// state 重置回 `null`——建模成"一次性事件"，避免 ShellPage 重建时把同一条
 /// 结果再弹一次。
+/// 提示"上次异常退出残留的系统代理已清理"。
+///
+/// 用 info 而不是 success：从用户视角这不是一件他做成的事，而是一次**故障的
+/// 事后说明**——上次退出不干净、机器的网络设置被留在了错误状态。用成功语气
+/// 会让人以为是正常流程的一部分。
+void _showStaleProxyNotice(BuildContext context, WidgetRef ref) {
+  if (!context.mounted) return;
+  AppToast.info(
+    context,
+    ref.read(translationsProvider).connection.staleSystemProxyCleaned,
+  );
+}
+
 void _handleDeepLinkResult(
   BuildContext context,
   WidgetRef ref,

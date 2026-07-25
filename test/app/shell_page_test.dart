@@ -16,6 +16,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
+import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
+import 'package:clashmiao/core/localization/translations.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
@@ -159,6 +161,56 @@ void main() {
     expect(container.read(deepLinkImportResultProvider), isNull);
 
     await _drainToasts(tester);
+  });
+
+  group('启动自愈残留系统代理的提示', () {
+    testWidgets('冷启动时序：自愈发生在 ShellPage 挂载之前，首帧后也要补提示', (tester) async {
+      // 这条通知的全部难点就在时序：自愈跑在 main() 的启动流程里，比 ShellPage
+      // 挂载**早**，所以纯 ref.listen 会漏掉这唯一一次变化。用 override 模拟
+      // "挂载前就已经清理过了"。
+      final (widget, container) = await _host(
+        extraOverrides: [
+          staleProxyHealedNoticeProvider.overrideWith((ref) => ['Wi-Fi']),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      expect(
+        find.text(
+          container
+              .read(translationsProvider)
+              .connection
+              .staleSystemProxyCleaned,
+        ),
+        findsOneWidget,
+        reason:
+            '不提示的话，用户只知道"刚才网不通、重开又好了"，下次遇到还是懵——'
+            '这件事必须从玄学变成一次可理解的故障',
+      );
+
+      await _drainToasts(tester);
+    });
+
+    testWidgets('没清理到东西时不弹任何提示（绝大多数启动都是这种）', (tester) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      expect(
+        find.text(
+          container
+              .read(translationsProvider)
+              .connection
+              .staleSystemProxyCleaned,
+        ),
+        findsNothing,
+      );
+    });
   });
 
   group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {

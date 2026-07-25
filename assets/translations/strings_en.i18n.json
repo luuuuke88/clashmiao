@@ -406,7 +406,8 @@
     "experimentalNotice": "Experimental Features In Use",
     "experimentalNoticeMsg": "You've enabled some experimental features which might affect connection quality and cause unexpected errors. You can always change or reset these options from Config options page.",
     "disableExperimentalNotice": "Don't Show Again",
-    "reconnectMsg": "Reconnecting for taking into account the changes..."
+    "reconnectMsg": "Reconnecting for taking into account the changes...",
+    "staleSystemProxyCleaned": "Cleaned up system proxy settings left behind by an abnormal exit last time"
   },
   "config": {
     "resetBtn": "Reset Options",

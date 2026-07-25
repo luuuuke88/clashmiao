@@ -405,7 +405,8 @@
     "disableExperimentalNotice": "Não mostrar novamente",
     "reconnect": "Reconectar",
     "connectAnyWay": "Conectar",
-    "reconnectMsg": "Reconectando para aplicar as alterações..."
+    "reconnectMsg": "Reconectando para aplicar as alterações...",
+    "staleSystemProxyCleaned": "Configurações de proxy do sistema deixadas por um encerramento anormal foram limpas"
   },
   "config": {
     "resetBtn": "Redefinir opções",

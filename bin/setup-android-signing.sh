@@ -92,10 +92,19 @@ printf '%s' "$PW"    | gh secret set ANDROID_KEY_PASSWORD
 printf '%s' "$PW"    | gh secret set ANDROID_STORE_PASSWORD
 unset PW
 
+# 复查。列表**先整份抓到变量**再匹配，不要 `gh secret list | grep -q`：
+# grep -q 一命中就退出，gh 写到一半收到 SIGPIPE，而本脚本开了 pipefail，
+# 于是整条管道被判失败（exit 141 = 128+SIGPIPE），明明上传成功却报"没上传"。
+# 而且这是**竞态**——取决于 gh 有没有写完，实测 5 次里 3 次误报，具体哪个
+# 名字中招还不固定。跟 bin/package-linux.sh 里踩过的是同一个坑。
+SECRETS="$(gh secret list)"
 MISSING=()
 for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEY_ALIAS \
             ANDROID_KEY_PASSWORD ANDROID_STORE_PASSWORD; do
-  gh secret list | grep -q "^$name" || MISSING+=("$name")
+  case "$SECRETS" in
+    *"$name"*) ;;
+    *) MISSING+=("$name") ;;
+  esac
 done
 [ ${#MISSING[@]} -eq 0 ] || die "这些 Secret 没上传成功：${MISSING[*]}"
 

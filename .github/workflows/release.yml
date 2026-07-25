@@ -528,11 +528,13 @@ jobs:
             throw "libcore.dll is not bundled next to clashmiao.exe"
           }
           New-Item -ItemType Directory -Force -Path build/release | Out-Null
-          $tag = "${env:RELEASE_TAG}"
-          $version = $tag.TrimStart("v")
           "CLASHMIAO_BUNDLE_DIR=$bundle" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
-          "CLASHMIAO_VERSION=$version" | Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
-          Compress-Archive -Path (Join-Path $bundle '*') -DestinationPath "build/release/ClashMiao-Windows-x64-$version.zip" -Force
+          # 版本号用 quality 那步推导出来的值，**不要**自己 TrimStart("v") 去啃
+          # 原始 tag：那样 v0.0.1-rehearsal 会得到 "0.0.1-rehearsal"，而其余三个
+          # 平台拿到的是剥掉 prerelease 后缀的 "0.0.1"。排练时真的产出过一个叫
+          # ClashMiao-Windows-x64-0.0.1-rehearsal.zip 的包，只有 Windows 一家不一样。
+          "CLASHMIAO_VERSION=${{ steps.version.outputs.name }}" |
+            Out-File -Append -FilePath $env:GITHUB_ENV -Encoding utf8
       - name: Sign Windows binaries (skipped until a code-signing cert is purchased)
         shell: pwsh
         env:
@@ -553,6 +555,32 @@ jobs:
             /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 `
             "$env:CLASHMIAO_BUNDLE_DIR\clashmiao.exe"
           Remove-Item cert.pfx
+      # zip 必须在**签名之后**打。之前它排在签名步骤前面，等买了代码签名证书，
+      # 安装器里的 exe 是签过的、zip 里的那份却没签——现在没证书所以两者都没签，
+      # 看不出差别，一买证书就变成一个隐藏的不一致。
+      - name: Create Windows zip
+        shell: pwsh
+        run: |
+          # 打进一个带版本号的顶层目录，而不是把 44 个文件平铺在压缩包根下。
+          # 用户通常直接在「下载」目录里解压，平铺会当场炸出一地文件，而且同时
+          # 解两个版本会互相覆盖。Linux 的 tar.gz 早就用 --transform 做了这件事，
+          # Windows 这边一直漏着。
+          $version = "${env:CLASHMIAO_VERSION}"
+          $stage = Join-Path "${env:RUNNER_TEMP}" "ClashMiao-$version"
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path (Join-Path "${env:CLASHMIAO_BUNDLE_DIR}" '*') `
+            -Destination $stage -Recurse -Force
+          Compress-Archive -Path $stage `
+            -DestinationPath "build/release/ClashMiao-Windows-x64-$version.zip" -Force
+          # 校验而不是假设：顶层必须只有那一个目录。
+          $roots = [IO.Compression.ZipFile]::OpenRead(
+            (Resolve-Path "build/release/ClashMiao-Windows-x64-$version.zip")
+          ).Entries.FullName | ForEach-Object { $_.Split('/')[0] } | Sort-Object -Unique
+          if ($roots.Count -ne 1 -or $roots[0] -ne "ClashMiao-$version") {
+            throw "zip 顶层结构不对：$($roots -join ', ')"
+          }
+          Write-Output "zip 顶层目录: $($roots[0])"
       - name: Create Windows installer
         shell: pwsh
         run: |
@@ -567,7 +595,7 @@ jobs:
           # 两层子目录；而 macOS/Linux 的文件都在 build/release 下，落下来是平的。
           # 这个不一致让 Windows 的包在收集阶段被漏掉过一次——排练时 windows job
           # 明明成功，release 里却没有 Windows 包。
-          Copy-Item build\installer\ClashMiao-Windows-x64-Setup.exe build\release\
+          Copy-Item "build\installer\ClashMiao-Windows-x64-${env:CLASHMIAO_VERSION}-Setup.exe" build\release\
           Get-ChildItem build\release\ClashMiao-Windows-x64-* | ForEach-Object {
             "{0}  {1} bytes" -f $_.Name, $_.Length
           }

@@ -1,13 +1,24 @@
 # Release
 
-`Release` workflow is triggered by tags that match `v*`.
+## 正式发版
+
+打一个 `v*` 的 tag 即可：
 
 ```bash
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-It can also be run manually from GitHub Actions with the same tag value.
+## 先排练一次（强烈建议首次发版前做）
+
+这条流水线的每一步都单独验证过，但**首次真实发版是它的第一次端到端运行**。
+Actions 页面手动触发 `Release`，填 tag、**保持 `draft` 勾选**：
+
+- 产物照常构建、release 照常创建，但是 **draft 状态——只有协作者能看到**
+- 确认四个平台的包、`SHA256SUMS.txt`、release 正文都对了之后，在 Releases
+  页面点 Publish 转正式；不满意直接删掉，外界全程无感
+
+tag push 触发时不受这个开关影响，永远是正式发布。
 
 ## 发布产物
 

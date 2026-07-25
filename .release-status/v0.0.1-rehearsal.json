@@ -1,11 +1,40 @@
 {
-  "artifacts": [],
-  "jobs": {},
+  "artifacts": [
+    {
+      "path": "artifacts/release-linux/ClashMiao-Linux-x86_64-0.0.1.tar.gz",
+      "size": 32086535
+    },
+    {
+      "path": "artifacts/release-linux/clashmiao_0.0.1_amd64.deb",
+      "size": 25191772
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.0.1.dmg",
+      "size": 58814134
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.0.1.zip",
+      "size": 59068235
+    },
+    {
+      "path": "artifacts/release-windows/installer/ClashMiao-Windows-x64-Setup.exe",
+      "size": 25467482
+    },
+    {
+      "path": "artifacts/release-windows/release/ClashMiao-Windows-x64-0.0.1-rehearsal.zip",
+      "size": 34484597
+    }
+  ],
+  "jobs": {
+    "android": "failure",
+    "macos": "success",
+    "publish": "failure",
+    "quality": "success",
+    "windows": "success"
+  },
   "run_attempt": "1",
   "run_id": "30163456005",
   "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/30163456005",
   "sha": "dbd87cc6543e0279111e0fed7661989cff1ff9f0",
-  "status": "started",
-  "tag": "v0.0.1-rehearsal",
-  "updated_at": "2026-07-25T15:21:49.129957+00:00"
+  "tag": "v0.0.1-rehearsal"
 }

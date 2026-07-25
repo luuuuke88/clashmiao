@@ -1,11 +1,60 @@
 {
-  "artifacts": [],
-  "jobs": {},
+  "artifacts": [
+    {
+      "path": "artifacts/release-android/ClashMiao-Android-arm64-v8a-0.0.1.apk",
+      "size": 77552637
+    },
+    {
+      "path": "artifacts/release-android/ClashMiao-Android-armeabi-v7a-0.0.1.apk",
+      "size": 70336103
+    },
+    {
+      "path": "artifacts/release-android/ClashMiao-Android-universal-0.0.1.apk",
+      "size": 219407618
+    },
+    {
+      "path": "artifacts/release-android/ClashMiao-Android-x86_64-0.0.1.apk",
+      "size": 81780610
+    },
+    {
+      "path": "artifacts/release-linux/ClashMiao-Linux-x86_64-0.0.1.tar.gz",
+      "size": 32086429
+    },
+    {
+      "path": "artifacts/release-linux/clashmiao_0.0.1_amd64.deb",
+      "size": 25185808
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.0.1.dmg",
+      "size": 58814532
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.0.1.zip",
+      "size": 59068654
+    },
+    {
+      "path": "artifacts/release-windows/ClashMiao-Windows-x64-0.0.1-rehearsal.zip",
+      "size": 34484556
+    },
+    {
+      "path": "artifacts/release-windows/ClashMiao-Windows-x64-Setup.exe",
+      "size": 25473751
+    },
+    {
+      "path": "artifacts/store-android-aab/ClashMiao-Android-0.0.1.aab",
+      "size": 244162620
+    }
+  ],
+  "jobs": {
+    "android": "success",
+    "macos": "success",
+    "publish": "success",
+    "quality": "success",
+    "windows": "success"
+  },
   "run_attempt": "1",
   "run_id": "30165727446",
   "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/30165727446",
   "sha": "84e4de3df35c7bd52a98407752a3b523e36666d1",
-  "status": "started",
-  "tag": "v0.0.1-rehearsal",
-  "updated_at": "2026-07-25T16:29:26.146230+00:00"
+  "tag": "v0.0.1-rehearsal"
 }

@@ -12,6 +12,7 @@ import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/shortcuts/desktop_shortcuts.dart';
 import 'package:clashmiao/core/tray/tray_controller.dart';
@@ -126,6 +127,30 @@ void main() async {
     if (Platform.isMacOS) {
       registerMacosShutdownHandler(container);
     }
+
+    // 自愈上一次**异常退出**（崩溃 / 强制退出 / 断电）残留的系统代理。
+    //
+    // 上面那个 Cmd+Q 的钩子只能覆盖"操作系统给了清理机会"的情形；被强杀时
+    // 谁都拦不住，而三个桌面平台的系统代理写的都是持久化设置，残留后会让
+    // 整机的浏览器都打不开网页，同时 App 界面显示"未连接"——两个信息互相
+    // 矛盾，用户几乎不可能自己定位到是代理设置残留（详见
+    // core/proxy/system_proxy_guard.dart）。
+    //
+    // 不 await：它要跑几条外部命令，不该阻塞启动。而且只有在上次确实置了
+    // 脏标记时才会真的去查，绝大多数启动直接返回。
+    unawaited(
+      healStaleSystemProxyIfNeeded(
+        prefs: container.read(sharedPreferencesProvider).requireValue,
+        expectedPort: container.read(networkSettingsProvider).mixedPort,
+      ).then((result) {
+        if (result.healedAnything) {
+          // 清理掉了就要告诉用户。不然他们只知道"刚才网不通、现在又好了"，
+          // 下次再遇到还是一样懵。
+          container.read(staleProxyHealedNoticeProvider.notifier).state =
+              result.healedScopes;
+        }
+      }),
+    );
   }
 
   // 深链导入：监听 sing-box:// clash:// clashmeta:// clashmiao:// 链接

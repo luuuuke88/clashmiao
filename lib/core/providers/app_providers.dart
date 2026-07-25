@@ -19,6 +19,7 @@ import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/core/config/default_config_options.dart';
 import 'package:clashmiao/core/config/runtime_config_builder.dart';
+import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
@@ -487,6 +488,37 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     }
   }
 
+  /// 置"系统代理由我们设着"的脏标记——仅在这次连接**真的会去改系统代理**时。
+  ///
+  /// 判定条件跟 `getDefaultConfigOptions` 里 `setSystemProxyFinal` 保持一致：
+  /// 移动端不设系统代理（走 TUN），桌面端才看用户开关。条件写错的后果是两头
+  /// 的：多标只是下次启动多跑几条只读命令，漏标则是真残留没人清。
+  ///
+  /// 失败只记日志：连接本身不该因为写不进一个标记而失败。代价是那次异常退出
+  /// 的残留没人清，但让连接直接失败明显更糟。
+  Future<void> _markSystemProxyDirtyIfApplicable() async {
+    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
+    if (!_ref.read(networkSettingsProvider).setSystemProxy) return;
+    try {
+      final prefs = await _ref.read(sharedPreferencesProvider.future);
+      await markSystemProxyDirty(prefs);
+    } catch (e) {
+      debugPrint('置系统代理脏标记失败: $e');
+    }
+  }
+
+  /// 清除脏标记。只在 `stop()` 成功之后调用——那时 sing-box 已经走完 listener
+  /// 的 Close、还原了系统代理。
+  Future<void> _clearSystemProxyDirty() async {
+    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
+    try {
+      final prefs = await _ref.read(sharedPreferencesProvider.future);
+      await clearSystemProxyDirty(prefs);
+    } catch (e) {
+      debugPrint('清除系统代理脏标记失败: $e');
+    }
+  }
+
   /// 把一条连接前置校验的失败原因写给用户看。
   ///
   /// 这些分支以前**只 `debugPrint` 就 return**——用户点了"连接"什么都不会
@@ -585,6 +617,12 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
         advancedConfig: active.advancedConfig,
       );
 
+      // 置"系统代理脏标记"。放在 start() **之前**：一旦请求启动，sing-box 就
+      // 可能已经把系统代理写进去了，start() 抛异常也不代表没写成。方向上宁可
+      // 多标——多标的代价是下次启动多跑几条只读命令（发现没残留就什么都不做），
+      // 漏标的代价是真残留没人清，用户整机断网（见 system_proxy_guard.dart）。
+      await _markSystemProxyDirtyIfApplicable();
+
       await _boxService.start(runtimeConfig.path, name: active.name);
       // 让 BoxStarting 动画至少展示 1.5s，期间锁住 _transitioning。
       // 之后**不**手动写 BoxStarted —— 真实 BoxStarted 由 watchStatus
@@ -646,6 +684,10 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     state = const AsyncData(BoxStopping());
     try {
       await _boxService.stop();
+      // stop 成功 ⇒ sing-box 已经走完 listener 的 Close、还原了系统代理，
+      // 这时才能清脏标记。stop 失败的分支**故意不清**——那种情况下代理很可能
+      // 还挂着，标记要留到下次启动去自愈。
+      await _clearSystemProxyDirty();
       // 至少展示 1.5秒 断开中动画（延时走可注入接缝，见 disconnectSettleDelay）
       await disconnectSettleDelay(const Duration(milliseconds: 1500));
       // 代际守卫：这 1.5s 窗口内用户可能已经点了重连——真机实锤过的竞态

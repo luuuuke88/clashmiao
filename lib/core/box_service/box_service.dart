@@ -13,6 +13,27 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 ///
 /// 统一的抽象层，iOS/Android 通过 PlatformChannel 实现，
 /// macOS/Windows/Linux 通过 FFI 实现
+/// 持有需要显式释放的资源（StreamController / ReceivePort / 原生句柄）的
+/// [BoxService] 实现，额外实现这个接口。
+///
+/// ## 为什么不直接加到 BoxService 上
+///
+/// Dart 的 `implements` 要求实现**每一个**成员，加到 `BoxService` 上会强迫 14 个
+/// 测试替身各补一行空 `dispose()`——纯 churn，而且以后每加一个替身都要再补一次。
+/// 拆成可选接口后，只有真的持有资源的实现去声明它，`boxServiceProvider` 用
+/// `is` 判一下即可，契约仍然是有类型的（不是靠约定或注释）。
+///
+/// ## 为什么需要它
+///
+/// 生产环境里 service 与进程同生命周期，不释放也不构成真实泄漏。但接口上**完全
+/// 没有生命周期契约**意味着：一旦将来需要重建 service（内核致命错误后重启、
+/// 开发期热重启、测试里换实现），那些 controller 和 ReceivePort 就会真的泄漏，
+/// 而且 ReceivePort 还会让对应的 isolate 端口一直存活。
+abstract interface class DisposableBoxService {
+  /// 释放持有的资源。必须幂等——重复调用不能抛。
+  Future<void> dispose();
+}
+
 abstract interface class BoxService {
   /// 工厂构造，根据平台自动选择实现
   /// 桌面端加载核心库失败时回退到桩实现

@@ -31,6 +31,31 @@
 
 ## 安装
 
+从 [Releases](https://github.com/luuuuke88/clashmiao/releases) 下载对应平台的包。
+每个 release 都附 `SHA256SUMS.txt` 可校验完整性：
+
+```bash
+sha256sum -c SHA256SUMS.txt --ignore-missing      # Linux
+shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS
+```
+
+### Android
+
+| 文件 | 适用 |
+|---|---|
+| `ClashMiao-Android-arm64-v8a-*.apk` | **绝大多数手机选这个**（2017 年后机型基本都是 arm64） |
+| `ClashMiao-Android-armeabi-v7a-*.apk` | 老旧 32 位设备 |
+| `ClashMiao-Android-x86_64-*.apk` | 模拟器 / x86 平板 |
+| `ClashMiao-Android-universal-*.apk` | 不确定架构时用，体积约为上面的 3 倍 |
+
+需在系统设置里允许「安装未知来源应用」。首次连接会请求 VPN 权限，这是建立
+TUN 隧道的必要授权。
+
+### Linux
+
+- `clashmiao_*_amd64.deb` —— Debian / Ubuntu：`sudo apt install ./clashmiao_*.deb`
+- `ClashMiao-Linux-x86_64-*.tar.gz` —— 其它发行版：解开直接跑 `./clashmiao`
+
 ### macOS
 
 安装包**未经 Apple 公证**（需要付费开发者账号），首次打开会被 Gatekeeper 拦下，

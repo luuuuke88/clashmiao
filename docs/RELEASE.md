@@ -109,27 +109,22 @@ debug 签名的 AAB 无法上架 Google Play，而且签名 key 一旦确定就�
 - `ANDROID_KEY_PASSWORD`
 - `ANDROID_STORE_PASSWORD`
 
-### 生成 keystore
-
-在你自己的机器上执行（**密钥和密码不要发给任何人，也不要提交进仓库**）：
+### 一条命令搞定
 
 ```bash
-keytool -genkey -v -keystore ~/clashmiao-upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+bash bin/setup-android-signing.sh
 ```
 
-会依次询问密码和证书信息。记住你输入的：
+它会：生成密钥 → 校验密码 → base64 编码 → 录入四个 Secret → 复查。
 
-- **keystore 密码** → 之后填进 `ANDROID_STORE_PASSWORD`
-- **key 密码**（可以直接回车沿用 keystore 密码）→ 填进 `ANDROID_KEY_PASSWORD`
-- **alias** → 上面命令里是 `upload`，填进 `ANDROID_KEY_ALIAS`
+密码只经过 `read -s`（不回显、不进命令历史），不落任何日志。中途密码输错会
+**当场**报错并中止，而不是等到 CI 构建时才失败。
 
-### 转成 base64 并录入
+### 为什么这一步必须你自己跑
 
-```bash
-base64 -i ~/clashmiao-upload-keystore.jks | pbcopy
-```
-
-粘贴到 Secret `ANDROID_KEYSTORE_BASE64`。
+这把密钥决定"谁能发布用户设备和 Google Play 认可为正版 ClashMiao 的更新"。
+它必须只有你知道密码、由你离线备份。别人（包括 AI 助手）代跑的话，密码会
+经过对方的上下文和 shell 历史，而你手上反而没有独立备份。
 
 > ⚠️ **把 `~/clashmiao-upload-keystore.jks` 和密码离线备份好。** 丢了就再也
 > 无法给已上架的应用发布更新——Google Play 不接受换签名 key 的新版本。

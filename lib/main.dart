@@ -15,6 +15,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/shortcuts/desktop_shortcuts.dart';
 import 'package:clashmiao/core/tray/tray_controller.dart';
 import 'package:clashmiao/core/update/startup_update_check.dart';
+import 'package:clashmiao/core/window/macos_shutdown.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/features/profile/state/profiles_update_scheduler.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart'
@@ -111,6 +112,19 @@ void main() async {
     // （真正退出走托盘菜单"退出"项，见 TrayController.onTrayMenuItemClick）。
     await windowManager.setPreventClose(true);
     windowManager.addListener(DesktopShutdownGuard());
+
+    // macOS：接住 Cmd+Q / 菜单退出 / 系统注销。原生侧
+    // （macos/Runner/AppDelegate.swift 的 applicationShouldTerminate）会先请求
+    // 这条通道做清理，再放行退出，并带 5 秒硬超时兜底。
+    //
+    // 不接的话，Cmd+Q 走 FlutterAppDelegate 的默认实现直接终止进程，Dart 侧
+    // 一行清理都跑不到——而桌面端默认开着 set-system-proxy，sing-box 在 macOS
+    // 上是用 `networksetup -setwebproxy` 写的**持久化系统设置**，只在优雅关闭
+    // 时才还原。结果就是按一下 Cmd+Q，系统代理永久指向一个已经没人监听的本地
+    // 端口，整机的浏览器都上不了网（详见 performShutdownCleanup 的文档）。
+    if (Platform.isMacOS) {
+      registerMacosShutdownHandler(container);
+    }
   }
 
   // 深链导入：监听 sing-box:// clash:// clashmeta:// clashmiao:// 链接

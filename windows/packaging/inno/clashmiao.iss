@@ -20,7 +20,10 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 OutputDir={#RepoRoot}\build\installer
-OutputBaseFilename=ClashMiao-Windows-x64-Setup
+; 文件名必须带版本号。不带的话，用户先后下两个版本的安装器会在下载目录里
+; 直接撞名（浏览器改成 "...(1).exe"，之后根本分不清哪个是新的），而且其余
+; 三个平台的每个产物都带版本号，只有它不带。
+OutputBaseFilename=ClashMiao-Windows-x64-{#MyAppVersion}-Setup
 Compression=lzma2
 SolidCompression=yes
 WizardStyle=modern

@@ -81,7 +81,7 @@ if have 'ClashMiao-Windows-*'; then
   cat <<'EOF'
 **Windows**（x64）
 
-- `ClashMiao-Windows-x64-Setup.exe` —— 安装版
+- `ClashMiao-Windows-x64-*-Setup.exe` —— 安装版
 - `ClashMiao-Windows-x64-*.zip` —— 免安装版，解开就能跑
 
 > ⚠️ 安装包**未经代码签名**，SmartScreen 会弹「Windows 已保护你的电脑」。

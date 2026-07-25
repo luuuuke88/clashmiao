@@ -31,7 +31,7 @@ tag push 触发时不受这个开关影响，永远是正式发布。
 | | `ClashMiao-Android-x86_64-<ver>.apk`（模拟器 / x86 平板） |
 | | `ClashMiao-Android-universal-<ver>.apk`（不确定架构时用，体积约 3 倍） |
 | macOS | `ClashMiao-macOS-universal-<ver>.dmg` / `-<ver>.zip`（Intel + Apple Silicon） |
-| Windows | `ClashMiao-Windows-x64-Setup.exe` / `ClashMiao-Windows-x64-<ver>.zip` |
+| Windows | `ClashMiao-Windows-x64-<ver>-Setup.exe`（安装版）/ `ClashMiao-Windows-x64-<ver>.zip`（免安装） |
 | Linux | `clashmiao_<ver>_amd64.deb` / `ClashMiao-Linux-x86_64-<ver>.tar.gz` |
 | 全部 | `SHA256SUMS.txt` |
 
@@ -115,10 +115,18 @@ debug 签名的 AAB 无法上架 Google Play，而且签名 key 一旦确定就�
 bash bin/setup-android-signing.sh
 ```
 
-它会：生成密钥 → 校验密码 → base64 编码 → 录入四个 Secret → 复查。
+**零交互**，不问密码也不问证书信息。它会：用 `openssl rand` 生成 32 字符随机
+密码 → 生成密钥 → 校验密码真能打开这个 keystore → base64 编码上传四个 Secret
+→ 复查 Secret 是否齐。
 
-密码只经过 `read -s`（不回显、不进命令历史），不落任何日志。中途密码输错会
-**当场**报错并中止，而不是等到 CI 构建时才失败。
+密码写进 `~/clashmiao-signing-password.txt`（权限 600），全程不打印到屏幕、不
+进命令历史。证书里的姓名/组织/城市那六项用 `-dname` 一次性写死——Android 只
+校验密钥本身、不校验证书里的身份信息（不像 HTTPS 证书有 CA 验证），而 keytool
+那段问答的最后一句"是否正确?"默认是"否"，回车会让它重问一轮，很容易卡住。
+
+密码不匹配、keystore 残缺这些情况会**当场**报错中止，而不是等到 CI 构建时
+才失败。上一次跑到一半留下的残缺 keystore 会被自动移到 `.broken.<时间戳>`
+再重新生成。
 
 ### 为什么这一步必须你自己跑
 

@@ -3,11 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/box_service/box_service.dart';
-import 'package:clashmiao/core/model/box_alert.dart';
-import 'package:clashmiao/core/model/box_stats.dart';
 import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -20,6 +16,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/temp_dirs.dart';
+
+import '../../../support/fake_box_service.dart';
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录
 /// （照抄 test/core/providers/connection_controller_test.dart 的既有模式）。
@@ -34,7 +32,7 @@ Future<Directory> _mockPathProvider() async {
 }
 
 /// 非 stub spy，只记录 start 调用次数，用于验证"门禁挡住 connect()"。
-class _SpyBoxService implements BoxService {
+class _SpyBoxService extends FakeBoxService {
   int startCalls = 0;
 
   @override
@@ -43,49 +41,9 @@ class _SpyBoxService implements BoxService {
   }
 
   @override
-  Future<void> stop() async {}
-  @override
-  Future<void> restart(String path, {String name = ''}) async {}
-  @override
-  Future<void> changeConfigOptions(String json) async {}
-  @override
-  Future<void> init() async {}
-  @override
-  Future<void> setup(AppDirectories d, {bool debug = false}) async {}
-  @override
-  Future<String?> validateConfig(
-    String a,
-    String b, {
-    bool debug = false,
-  }) async => null;
-  @override
-  Future<void> selectOutbound(String g, String o) async {}
-  @override
-  Future<void> urlTest(String g) async {}
-  @override
-  Stream<BoxStatus> watchStatus() => const Stream.empty();
-  @override
-  Stream<BoxAlert> watchAlerts() => const Stream.empty();
-  @override
-  Stream<BoxStats> watchStats() => const Stream.empty();
-  @override
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
-  Future<String?> generateFullConfig(String p) async => null;
-  @override
-  Future<String?> generateWarpConfig({
-    required String licenseKey,
-    String? previousAccountId,
-    String? previousAccessToken,
-  }) async => null;
-  @override
-  Future<void> clearLogs() async {}
-  @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
-  @override
-  Stream<void> watchNetworkChanged() => const Stream.empty();
-  @override
-  Future<void> resetTunnel() async {}
 }
 
 /// 准备一个已经激活、且带最小合法配置文件的订阅，让 connect() 能真正走到

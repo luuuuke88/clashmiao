@@ -1,11 +1,6 @@
 import 'dart:io';
 
-import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/core/model/box_alert.dart';
-import 'package:clashmiao/core/model/box_stats.dart';
-import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/shortcuts/desktop_shortcuts.dart';
@@ -15,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:toastification/toastification.dart';
+
+import '../../support/fake_box_service.dart';
 
 /// `test/core/shortcuts/desktop_shortcuts_test.dart` 及其拆分出去的几个
 /// `desktop_shortcuts_paste_*_test.dart` 共用的测试基础设施。
@@ -58,54 +55,17 @@ const validSingBoxJsonBody = '''
 /// 有特判（跳过 native 校验直接写原文），如果这里继续 extends StubBoxService，
 /// `is` 判断依然为真，测不出"native 校验失败"这条路径。用于验证"剪贴板内容
 /// 不像有效订阅"时全局快捷键必须给出清晰的失败反馈，而不是静默成功。
-class RejectingBoxService implements BoxService {
+class RejectingBoxService extends FakeBoxService {
   @override
   Future<String?> validateConfig(
     String path,
     String tempPath, {
     bool debug = false,
   }) async => '不是合法的订阅内容';
-
-  @override
-  Future<void> init() async {}
-  @override
-  Future<void> setup(AppDirectories directories, {bool debug = false}) async {}
-  @override
-  Future<void> changeConfigOptions(String jsonOptions) async {}
-  @override
-  Future<void> start(String configPath, {String name = ''}) async {}
-  @override
-  Future<void> stop() async {}
-  @override
-  Future<void> restart(String configPath, {String name = ''}) async {}
-  @override
-  Future<void> selectOutbound(String groupTag, String outboundTag) async {}
-  @override
-  Future<void> urlTest(String groupTag) async {}
-  @override
-  Stream<BoxStatus> watchStatus() => const Stream.empty();
-  @override
-  Stream<BoxAlert> watchAlerts() => const Stream.empty();
-  @override
-  Stream<BoxStats> watchStats() => const Stream.empty();
   @override
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
-  Future<String?> generateFullConfig(String path) async => null;
-  @override
-  Future<String?> generateWarpConfig({
-    required String licenseKey,
-    String? previousAccountId,
-    String? previousAccessToken,
-  }) async => null;
-  @override
-  Future<void> clearLogs() async {}
-  @override
   Stream<List<String>> watchLogs(String path) => const Stream.empty();
-  @override
-  Stream<void> watchNetworkChanged() => const Stream.empty();
-  @override
-  Future<void> resetTunnel() async {}
 }
 
 /// toastification 的 toast 自带真实 Timer 做自动关闭，测试结束前排干，

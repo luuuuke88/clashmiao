@@ -1,11 +1,6 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/box_service/box_service.dart';
-import 'package:clashmiao/core/model/box_alert.dart';
-import 'package:clashmiao/core/model/box_stats.dart';
-import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -19,6 +14,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/fake_box_service.dart';
+
 /// 覆盖：wave4 触觉反馈扩展——代理节点切换 / 测速两个交互点。
 ///
 /// 复用 `proxies_page_tap_test.dart` 的 `_SpyBoxService` + host 搭建模式，
@@ -26,7 +23,7 @@ import 'package:toastification/toastification.dart';
 /// （跟 `test/core/haptic/haptic_service_test.dart` 的验证方式一致），这样
 /// 既能验证"确实调用了 HapticService"，又能验证"偏好读取"这一层真实生效
 /// （不是绕过 HapticService 直接 spy 调用次数）。
-class _SpyBoxService implements BoxService {
+class _SpyBoxService extends FakeBoxService {
   int selectOutboundCalls = 0;
   final List<String> urlTestCalls = [];
 
@@ -36,52 +33,14 @@ class _SpyBoxService implements BoxService {
   }
 
   @override
-  Future<void> init() async {}
-  @override
-  Future<void> setup(AppDirectories d, {bool debug = false}) async {}
-  @override
-  Future<String?> validateConfig(
-    String a,
-    String b, {
-    bool debug = false,
-  }) async => null;
-  @override
-  Future<void> changeConfigOptions(String jsonOptions) async {}
-  @override
-  Future<void> start(String path, {String name = ''}) async {}
-  @override
-  Future<void> stop() async {}
-  @override
-  Future<void> restart(String path, {String name = ''}) async {}
-  @override
   Future<void> urlTest(String g) async {
     urlTestCalls.add(g);
   }
 
   @override
-  Stream<BoxStatus> watchStatus() => const Stream.empty();
-  @override
-  Stream<BoxAlert> watchAlerts() => const Stream.empty();
-  @override
-  Stream<BoxStats> watchStats() => const Stream.empty();
-  @override
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
-  Future<String?> generateFullConfig(String p) async => null;
-  @override
-  Future<String?> generateWarpConfig({
-    required String licenseKey,
-    String? previousAccountId,
-    String? previousAccessToken,
-  }) async => null;
-  @override
-  Future<void> clearLogs() async {}
-  @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
-  @override
-  Stream<void> watchNetworkChanged() => const Stream.empty();
-  @override
-  Future<void> resetTunnel() async {}
 }
 
 const _ssNode = OutboundProxy(tag: 'ss-node', type: 'shadowsocks');

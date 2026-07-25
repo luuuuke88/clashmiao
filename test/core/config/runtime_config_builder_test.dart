@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:clashmiao/core/config/runtime_config_builder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/temp_dirs.dart';
+
 Future<File> _writeProfile(Directory dir, Map<String, dynamic> cfg) async {
   final f = File('${dir.path}/profile.json');
   await f.writeAsString(jsonEncode(cfg));
@@ -19,7 +21,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmp.exists()) await tmp.delete(recursive: true);
+      await deleteTempDirBestEffort(tmp);
     });
 
     // route/dns 的 rule_set 注入/剥离曾经在这里做，但真机验证证实这个 sing-box

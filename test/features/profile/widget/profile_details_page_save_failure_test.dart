@@ -21,6 +21,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/temp_dirs.dart';
+
 // 独立成单独文件的原因：`AppToast`（lib/shared/components/app_toast.dart）
 // 用静态字段做"800ms 内同文案去重"+ 调用 `toastification.dismissAll(...)`，
 // 这个状态和 `toastification` 包自己的 Overlay 缓存都是进程级的、跨
@@ -141,7 +143,7 @@ void main() {
         'details_save_fail_',
       );
       addTearDown(() async {
-        if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tmpDir);
       });
       SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();

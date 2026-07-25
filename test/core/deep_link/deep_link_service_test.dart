@@ -9,6 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// 端到端覆盖"解析 → 调用 addByUrl/addByContent → 写入
 /// deepLinkImportResultProvider"整条链路，不经过真实 AppLinks 平台通道
 /// （那部分只能靠真机验证，见 p3-deeplink-report.md）。
@@ -67,7 +69,7 @@ void main() {
 
   tearDown(() async {
     container.dispose();
-    if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+    await deleteTempDirBestEffort(tmpDir);
   });
 
   test('install-sub 深链：解析 → 真实 HTTP 抓取 → 落地为订阅 → 成功反馈 '

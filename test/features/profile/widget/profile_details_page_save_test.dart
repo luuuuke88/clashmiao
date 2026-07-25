@@ -16,6 +16,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/temp_dirs.dart';
+
 /// 记录被打了几次的假 [HttpClientAdapter]——验证"保存时是否真的发起了重新
 /// 拉取"，不关心响应内容，只关心**请求次数**。
 ///
@@ -158,7 +160,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     testWidgets('URL 变化时保存会触发一次真实的重新拉取', (tester) async {

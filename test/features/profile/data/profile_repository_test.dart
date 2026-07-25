@@ -13,6 +13,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/temp_dirs.dart';
+
 /// 起一个一次性 HTTP server，用来 mock 订阅响应。
 Future<HttpServer> _serveOnce(
   String body, {
@@ -105,7 +107,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('sing-box JSON 原文带 outbounds → 直通保留 inbounds/route', () async {
@@ -315,7 +317,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     Future<String> addNamed(String name) async {
@@ -420,7 +422,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('ss:// URI 内容写到 profile 文件（stub 路径下原文写出）', () async {
@@ -468,7 +470,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('重复添加同一 URL 更新已有记录而不是新增一条', () async {
@@ -551,7 +553,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('update rejects invalid config and preserves previous file', () async {

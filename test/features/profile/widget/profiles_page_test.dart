@@ -23,6 +23,8 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/temp_dirs.dart';
+
 /// 可控行为的假 BoxService，只重写 generateWarpConfig，其余沿用
 /// StubBoxService 的安全空实现。native 不支持的失败路径直接用真实的
 /// StubBoxService（它的 generateWarpConfig 本来就抛 UnsupportedError），
@@ -548,7 +550,7 @@ void main() {
         'profile_share_test_',
       );
       addTearDown(() async {
-        if (await tempDir.exists()) await tempDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tempDir);
       });
 
       const profile = ProfileEntity(

@@ -23,6 +23,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// 判断最近一次推给 native 的 configOptions 是不是"智能分流"模式产出的。
 ///
 /// 真正生效的智能/全局分流信号是这里的 `rules` 字段（driven by
@@ -286,7 +288,7 @@ void main() {
     test('spy service 下 connect 无激活订阅时早返回（不调 start）', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -313,7 +315,7 @@ void main() {
     test('网络变更触发退避重连时，用户手动断开应阻止自动重连把连接顶回去', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -395,7 +397,7 @@ void main() {
       // 自己仍是最新操作，否则放弃（新操作已接管）。
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -505,7 +507,7 @@ void main() {
     test('applyProxyMode 已连接时真实 reconnect，内核收到的模式与最终选择一致', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -565,7 +567,7 @@ void main() {
       // 到最新值的排队，不再要求"此刻精确是 BoxStarted"。
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -638,7 +640,7 @@ void main() {
     test('disconnect 持续失败时，state 绝不能谎报 BoxStopped（核心不变量）', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -693,7 +695,7 @@ void main() {
     test('disconnect 首次失败但重试成功时，强制清理生效，诚实回到 BoxStopped', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -727,7 +729,7 @@ void main() {
     test('disconnect 一次成功时 state 应该是 BoxStopped（回归：正常路径不能被改坏）', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -761,7 +763,7 @@ void main() {
     test('已连接时网络设置变更 → configChangeReconnectNoticeProvider 应该变化一次', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -814,7 +816,7 @@ void main() {
     test('密集的连续设置变更只合并成一次重连 + 一条提示', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -883,7 +885,7 @@ void main() {
     test('防抖窗口内用户断开连接 → 不把连接顶回去', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -1435,7 +1437,7 @@ void main() {
     test('connect() 捕获到 SocketException 时应归类为网络不可用文案', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({'locale': 'en'});
       final prefs = await SharedPreferences.getInstance();
@@ -1490,7 +1492,7 @@ void main() {
     test('connect() 捕获到 TimeoutException 时应归类为启动超时文案', () async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({'locale': 'en'});
       final prefs = await SharedPreferences.getInstance();
@@ -1587,7 +1589,7 @@ void main() {
     }) async {
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
@@ -1684,7 +1686,7 @@ void main() {
       final spy = _SpyBoxService();
       final tmp = await _mockPathProvider();
       addTearDown(() async {
-        if (await tmp.exists()) await tmp.delete(recursive: true);
+        await deleteTempDirBestEffort(tmp);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

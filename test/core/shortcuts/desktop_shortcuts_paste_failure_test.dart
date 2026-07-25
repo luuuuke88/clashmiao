@@ -12,6 +12,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'desktop_shortcuts_test_support.dart';
 
+import '../../support/temp_dirs.dart';
+
 /// Cmd+V 全局粘贴导入——剪贴板内容不像有效订阅（native 校验失败）时必须给出
 /// 明确的失败 toast，而不是静默成功或无反应。单独一个文件的原因见
 /// `desktop_shortcuts_test_support.dart` 头部文档。
@@ -22,7 +24,7 @@ void main() {
         'desktop_shortcuts_paste_failure_test_',
       );
       addTearDown(() async {
-        if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+        await deleteTempDirBestEffort(tmpDir);
       });
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

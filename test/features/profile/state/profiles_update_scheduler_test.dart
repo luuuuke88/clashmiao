@@ -10,6 +10,8 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/temp_dirs.dart';
+
 Future<HttpServer> _countingServer(void Function() onRequest) async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   // ignore: unawaited_futures
@@ -111,7 +113,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('到期的订阅被静默刷新，未到期的不会被打扰', () async {
@@ -254,7 +256,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     test('App 恢复前台（resumed）触发一次检查', () async {
@@ -334,7 +336,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await tmpDir.exists()) await tmpDir.delete(recursive: true);
+      await deleteTempDirBestEffort(tmpDir);
     });
 
     testWidgets('start() 之后 Timer.periodic 会定期触发检查', (tester) async {

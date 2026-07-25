@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:uuid/uuid.dart';
 
 /// 订阅链接解析器

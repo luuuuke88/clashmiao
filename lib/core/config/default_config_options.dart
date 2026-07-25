@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/config/cn_direct_rules.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
-import 'package:clashmiao/features/profile/model/advanced_config.dart';
+import 'package:clashmiao/core/model/advanced_config.dart';
 
 /// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
 ///

@@ -6,7 +6,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/warp/warp_config_service.dart';
 import 'package:clashmiao/features/import/qr_scanner_page.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/warp_license_agreement_modal.dart';

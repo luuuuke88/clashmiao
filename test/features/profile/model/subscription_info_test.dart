@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/utils/formatters.dart' as formatters;
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

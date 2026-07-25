@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/utils/formatters.dart' as formatters;
-import 'package:clashmiao/features/profile/model/advanced_config.dart';
+import 'package:clashmiao/core/model/advanced_config.dart';
 
 /// 订阅配置实体
 class ProfileEntity {

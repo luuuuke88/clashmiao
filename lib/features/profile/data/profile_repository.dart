@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/features/profile/data/profile_parser.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:flutter/widgets.dart';
 
 /// 判断某条订阅此刻是否"到期需要自动刷新"。

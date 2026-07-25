@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
-import 'package:clashmiao/core/shortcuts/desktop_shortcuts.dart';
+import 'package:clashmiao/app/shortcuts/desktop_shortcuts.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,24 +15,18 @@ import 'desktop_shortcuts_test_support.dart';
 
 import '../../support/temp_dirs.dart';
 
-/// Cmd+V 全局粘贴导入——剪贴板是 http(s) 订阅链接时走 `addByUrl`。单独一个
-/// 文件的原因见 `desktop_shortcuts_test_support.dart` 头部文档。
+/// Ctrl+V 全局粘贴导入——剪贴板是单节点代理 URI 时走 `addByContent`（不发起
+/// 网络请求）。单独一个文件的原因见
+/// `desktop_shortcuts_test_support.dart` 头部文档。
 void main() {
-  testWidgets('Cmd+V：剪贴板是 http(s) 订阅链接 → addByUrl 落地 + 成功 toast', (
+  testWidgets('Ctrl+V（Windows/Linux）：剪贴板是单节点 URI → addByContent 落地', (
     tester,
   ) async {
-    // 这条真的会走一次本地 HttpServer 网络请求（ProfileRepository.addByUrl
-    // 内部用 dio 实际 fetch），widget test 默认的 fake-time zone 里真实
-    // Socket/IO 完成回调等不到（同 profile_details_page_save_test.dart 的
-    // `_withRealNetwork` 写法），必须用 `tester.runAsync` 逃出去；
-    // `TestWidgetsFlutterBinding` 全局装的 HTTP mock（一律返回 400）也要
-    // 关掉，否则请求会被拦截。
-    HttpOverrides.global = null;
-    addTearDown(() => HttpOverrides.global = null);
-
+    // 不需要网络，但 addByContent 内部仍有真实文件 I/O（写归一化后的配置
+    // 文件），同样得用 runAsync 逃出 fake-time zone。
     await tester.runAsync(() async {
       final tmpDir = await Directory.systemTemp.createTemp(
-        'desktop_shortcuts_paste_url_test_',
+        'desktop_shortcuts_paste_content_test_',
       );
       addTearDown(() async {
         await deleteTempDirBestEffort(tmpDir);
@@ -55,15 +49,11 @@ void main() {
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
 
-      final server = await serveOnce(validSingBoxJsonBody);
-      addTearDown(() => server.close(force: true));
-      final subUrl = 'http://localhost:${server.port}/sub#我的订阅';
-      mockClipboard(tester, text: subUrl);
+      const proxyUri =
+          'vless://11111111-2222-3333-4444-555555555555'
+          '@127.0.0.1:1?encryption=none#测试节点';
+      mockClipboard(tester, text: proxyUri);
 
-      // 用真实 defaultPasteImport（走真实 Cmd+V → Shortcuts → Action 映射），
-      // 但额外包一层 completer 拿到"这次调用真正 await 完"的精确信号——比
-      // 按固定 Duration 轮询更稳，不依赖 runAsync/fake-time zone 边界的具体
-      // 调度细节。
       final done = Completer<void>();
       await pumpShortcuts(
         tester,
@@ -73,14 +63,14 @@ void main() {
           if (!done.isCompleted) done.complete();
         },
       );
-      await pressPaste(tester, meta: true);
+      await pressPaste(tester, meta: false);
       await done.future.timeout(const Duration(seconds: 10));
       await pumpUntilFound(tester, find.textContaining('已导入订阅'));
 
       expect(find.textContaining('已导入订阅'), findsOneWidget);
       final profiles = await container.read(profileListProvider.future);
       expect(profiles, hasLength(1));
-      expect(profiles.single.url, subUrl);
+      expect(profiles.single.url, startsWith('content://'));
 
       await drainToasts(tester);
     });

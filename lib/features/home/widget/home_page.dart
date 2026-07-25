@@ -11,7 +11,7 @@ import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/quick_settings_modal.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';

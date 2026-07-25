@@ -15,8 +15,10 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -200,6 +202,24 @@ class _FakeStoreReviewService extends StoreReviewService {
   Future<void> maybeRequestReview() async {
     maybeRequestReviewCalls++;
   }
+}
+
+/// `getActive()` 抛异常的仓库。用来构造一个**从 connect() 前置段逃出来**的
+/// 异常——那一段（读仓库、取激活订阅、拼配置路径、判文件存在）在 connect()
+/// 自己的 try 之外，异常会一路穿出 connect()。
+///
+/// 不用 spy 的 `startError`：那个是在 start() 上抛，会被 connect() 内层的
+/// try/catch 正常接住，测不到 toggle() 这层兜底。
+class _ThrowingActiveRepo extends ProfileRepository {
+  _ThrowingActiveRepo({
+    required super.dio,
+    required super.configDir,
+    required super.prefs,
+    required super.boxService,
+  });
+
+  @override
+  ProfileEntity? getActive() => throw StateError('模拟仓库读取失败');
 }
 
 /// 轮询等待条件成立，而不是睡一个固定时长。
@@ -491,6 +511,60 @@ void main() {
             '显示已断开、native 实际在跑，用户再点连接被 native 静默忽略后'
             '永卡"正在连接"',
       );
+    });
+
+    test('toggle() 撞上从 connect() 前置段逃出来的异常时，必须写出可见错误、并且不吞掉异常', () async {
+      // 首页那颗大按钮是 fire-and-forget：
+      //   onTap: () { ref.read(connectionControllerProvider.notifier).toggle(); }
+      // 异常从 connect() 逃出来就没人接，用户点了**什么都不发生、也没有任何
+      // 提示**——一个死按钮。这跟 connect() 里那几条前置校验分支是同一种
+      // 用户体验，只是来源换成了"意外异常"。
+      //
+      // 同时断言异常仍然往外抛：吞掉它换来一条可见提示、代价是崩溃上报里
+      // 从此看不到这个故障，那是拿可观测性换体面。
+      final tmp = await _mockPathProvider();
+      addTearDown(() => deleteTempDirBestEffort(tmp));
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          profileRepositoryProvider.overrideWith(
+            (ref) async => _ThrowingActiveRepo(
+              dio: Dio(),
+              configDir: tmp,
+              prefs: prefs,
+              boxService: spy,
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+
+      final controller = container.read(connectionControllerProvider.notifier);
+      expect(
+        container.read(connectionErrorProvider),
+        isNull,
+        reason: '前提：还没出错',
+      );
+
+      await expectLater(
+        controller.toggle(),
+        throwsA(isA<StateError>()),
+        reason: 'toggle() 不该吞掉异常——全局错误处理/崩溃上报还要看到它',
+      );
+
+      expect(
+        container.read(connectionErrorProvider),
+        isNotNull,
+        reason:
+            'toggle() 抛出异常时没有写 connectionErrorProvider——首页按钮是 '
+            'fire-and-forget，用户点了会什么反应都没有，就是个死按钮',
+      );
+      expect(spy.startCalls, 0, reason: '前置段就炸了，不该真的调用 start');
     });
 
     // 注：connect() 里 `_settleAfterStart` 那层"读一次当前缓存值对齐真实

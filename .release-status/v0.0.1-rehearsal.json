@@ -1,11 +1,15 @@
 {
   "artifacts": [],
-  "jobs": {},
+  "jobs": {
+    "android": "skipped",
+    "macos": "skipped",
+    "publish": "failure",
+    "quality": "failure",
+    "windows": "skipped"
+  },
   "run_attempt": "1",
   "run_id": "30165174737",
   "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/30165174737",
   "sha": "acadf8f3c2b5564d49668b92d933b708d30d6e3b",
-  "status": "started",
-  "tag": "v0.0.1-rehearsal",
-  "updated_at": "2026-07-25T16:13:03.498154+00:00"
+  "tag": "v0.0.1-rehearsal"
 }

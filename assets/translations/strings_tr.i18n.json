@@ -406,7 +406,8 @@
     "disableExperimentalNotice": "Bir daha gösterme",
     "reconnect": "Yeniden Bağlan",
     "connectAnyWay": "Bağlan",
-    "reconnectMsg": "Değişiklikleri uygulamak için yeniden bağlanılıyor..."
+    "reconnectMsg": "Değişiklikleri uygulamak için yeniden bağlanılıyor...",
+    "staleSystemProxyCleaned": "Önceki anormal çıkıştan kalan sistem proxy ayarları temizlendi"
   },
   "config": {
     "resetBtn": "Ayarları sıfırla",

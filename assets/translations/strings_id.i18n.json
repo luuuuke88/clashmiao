@@ -406,7 +406,8 @@
     "disableExperimentalNotice": "Jangan tampil lagi",
     "reconnect": "Sambungkan Ulang",
     "connectAnyWay": "Sambungkan",
-    "reconnectMsg": "Menyambungkan ulang untuk menerapkan perubahan..."
+    "reconnectMsg": "Menyambungkan ulang untuk menerapkan perubahan...",
+    "staleSystemProxyCleaned": "Pengaturan proxy sistem yang tertinggal dari keluar tidak normal telah dibersihkan"
   },
   "config": {
     "resetBtn": "Set Ulang Opsi",

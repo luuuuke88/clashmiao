@@ -99,12 +99,24 @@ dpkg-deb --build --root-owner-group "$DEB_ROOT" "$DEB" >/dev/null
 log "deb: $DEB ($(du -h "$DEB" | cut -f1))"
 
 # 校验而不是假设：deb 结构错了（比如少了 desktop 文件）也能"打包成功"。
-dpkg-deb --contents "$DEB" | grep -q "usr/share/applications/$APP_ID.desktop" ||
-  die "deb 里没有 .desktop 文件，装完不会出现在应用菜单里"
-dpkg-deb --contents "$DEB" | grep -q "usr/lib/$APP_ID/clashmiao" ||
-  die "deb 里没有主程序"
-dpkg-deb --contents "$DEB" | grep -q "usr/lib/$APP_ID/lib/libcore.so" ||
-  die "deb 里没有 libcore.so，装完连不上"
+#
+# 内容先整份抓到变量里，再对变量 grep——**不要** `dpkg-deb --contents | grep -q`：
+# grep -q 一命中就退出，dpkg-deb 收到 SIGPIPE 而本脚本开了 `set -o pipefail`，
+# 于是整条管道被判失败，明明文件存在却报"缺文件"。实跑时踩过这个坑，
+# 报出来的是一条彻头彻尾的假错误。
+CONTENTS="$(dpkg-deb --contents "$DEB")"
+case "$CONTENTS" in
+  *"usr/share/applications/$APP_ID.desktop"*) ;;
+  *) die "deb 里没有 .desktop 文件，装完不会出现在应用菜单里" ;;
+esac
+case "$CONTENTS" in
+  *"usr/lib/$APP_ID/clashmiao"*) ;;
+  *) die "deb 里没有主程序" ;;
+esac
+case "$CONTENTS" in
+  *"usr/lib/$APP_ID/lib/libcore.so"*) ;;
+  *) die "deb 里没有 libcore.so，装完连不上" ;;
+esac
 
 log "完成，产物："
 find "$OUT" -maxdepth 1 -type f -printf '  %f (%s bytes)\n' | sort

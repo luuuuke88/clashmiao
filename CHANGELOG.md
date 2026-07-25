@@ -4,6 +4,33 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### CI/CD 出包：四平台可下载安装包 + 校验和 + 安装说明
+
+此前 GitHub Releases 上只有 `libcore v1.11.0`（核心库），**没有任何可下载的应用
+安装包**。这次把发布产物补成开源项目该有的样子：
+
+- **新增 Linux job 与打包**。`release.yml` 原本只有 android/macos/windows 三个
+  平台，Linux 完全没有出包路径。新增 `bin/package-linux.sh` 产出 `.deb`
+  （Debian/Ubuntu 双击安装，带 `.desktop` 与多尺寸图标）和 `tar.gz`
+  （其它发行版，解开即用）。打包后会**校验** deb 里真的有主程序、`libcore.so`
+  和 `.desktop`——结构错了也能"打包成功"，不校验等于没验。
+- **Android 产物改成可辨识命名 + 按 ABI 拆分**。原来叫 `app-release.apk`，
+  用户下载下来认不出是什么应用、什么版本，两个版本还会撞名。现在是
+  `ClashMiao-Android-arm64-v8a-<ver>.apk` 等；通用包把四种架构的 native lib
+  全塞进去（150MB+），而任何一台手机只用得上一种，拆分后多数用户只需下 1/3 体积。
+- **AAB 从公开下载里移出**。它是 Play Store 上传格式，终端用户下了装不上，
+  放在 release 资产里只造成困惑。改为单独的 workflow artifact。
+- **新增 `SHA256SUMS.txt`**。开源项目标配，让用户能校验下载完整性。生成时
+  刻意不带路径前缀，用户在下载目录里直接 `sha256sum -c` 就能用（已实测）。
+- **release 正文改为生成式**（`bin/make-release-notes.sh`）。原来只有
+  `--generate-notes`，用户点进去看到十几个文件不知道该下哪个；而这个项目还有
+  两个绕不开的坑必须写在下载页上——macOS 未公证会被 Gatekeeper 拦、Windows
+  未签名会触发 SmartScreen，用户不知道怎么绕会直接以为软件坏了。
+- **缺一个平台不再阻断其余平台出包**。`publish` 原本硬 `needs: [android, ...]`，
+  结果 Android 缺 keystore 就一个包都不发、连桌面端都没有，用户打开 release
+  页面看到的是空的。改成 `if: always()` 发布已成功的平台，并在正文里**显式
+  警告**缺了哪个平台、为什么缺；整个 run 仍标记失败，不掩盖问题。
+
 ### 三端可发布专项：发布基建 + VPN 失败模式防护
 
 一次全项目体检后的集中修复。定性：代码质量本身没问题（651→694 测试全绿、

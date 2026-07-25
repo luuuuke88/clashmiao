@@ -109,7 +109,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
       _debugActionsOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal(
+        showAiUiModal<void>(
           context: context,
           builder: (_) => const _ConfigOptionsActionsModal(),
         );
@@ -147,7 +147,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                     ),
                   ),
                   _HeaderControlPill(
-                    onMore: () => showAiUiModal(
+                    onMore: () => showAiUiModal<void>(
                       context: context,
                       builder: (_) => const _ConfigOptionsActionsModal(),
                     ),
@@ -1461,7 +1461,9 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AssetsPage()),
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AssetsPage(),
+                      ),
                     );
                   },
                 ),
@@ -1471,9 +1473,9 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                   label: t.logs.pageTitle,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.of(
-                      context,
-                    ).push(MaterialPageRoute(builder: (_) => const LogsPage()));
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(builder: (_) => const LogsPage()),
+                    );
                   },
                 ),
                 const SizedBox(height: 16),

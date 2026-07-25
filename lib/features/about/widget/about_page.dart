@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:clashmiao/core/config/build_config.dart';
@@ -193,13 +194,14 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                                       // 「立即更新」什么时候点是用户的事，不该
                                       // 让"检查更新"这一行的 loading 态一直等
                                       // 到弹窗关掉才恢复。
-                                      // ignore: discarded_futures
-                                      showUpdateAvailableDialog(
-                                        context,
-                                        currentVersion: info.version,
-                                        latestVersion: version.replaceFirst(
-                                          'v',
-                                          '',
+                                      unawaited(
+                                        showUpdateAvailableDialog(
+                                          context,
+                                          currentVersion: info.version,
+                                          latestVersion: version.replaceFirst(
+                                            'v',
+                                            '',
+                                          ),
                                         ),
                                       );
                                     } finally {

@@ -103,7 +103,7 @@ class RuntimeConfigBuilder {
     final dns = (cfg['dns'] ??= <String, dynamic>{}) as Map<String, dynamic>;
     final servers = ((dns['servers'] ??= <dynamic>[]) as List).cast<dynamic>();
     final tags = servers
-        .whereType<Map>()
+        .whereType<Map<dynamic, dynamic>>()
         .map((s) => s['tag'])
         .whereType<String>()
         .toSet();

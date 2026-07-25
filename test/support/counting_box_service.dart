@@ -16,6 +16,9 @@ import 'package:rxdart/rxdart.dart';
 /// `ConnectionController` 构造时就订阅它，而测试常常在构造之后立刻 `add()`
 /// 一个状态；广播流对"订阅前发出的事件"不补放，会静默丢掉。
 class CountingBoxService implements BoxService {
+  // 测试替身的生命周期就是单个用例，进程退出即回收；为它引入一套
+  // dispose + addTearDown 只会让每个用例多两行噪音。
+  // ignore: close_sinks
   final statusStreamController = BehaviorSubject<BoxStatus>();
 
   int startCalls = 0;

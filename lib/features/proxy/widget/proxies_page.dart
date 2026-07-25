@@ -181,7 +181,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                       _HeaderButton(
                         icon: FluentIcons.arrow_sort_24_regular,
                         onTap: () {
-                          showAiUiModal(
+                          showAiUiModal<void>(
                             context: context,
                             builder: (context) => const ProxiesSortModal(),
                           );
@@ -322,7 +322,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
             // Toast can be annoying on fast switches, removed or keep brief
             // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
           })
-          .catchError((e) {
+          .catchError((Object e) {
             optimisticNotifier.revert(groupTag, previousSelection);
             if (!context.mounted) return;
             AppToast.error(

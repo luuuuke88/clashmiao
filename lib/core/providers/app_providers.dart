@@ -255,7 +255,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             unawaited(_reapplyPersistedSelections());
           }
         },
-        onError: (e) {
+        onError: (Object e) {
           debugPrint('watchStatus 错误: $e');
         },
       );
@@ -348,8 +348,8 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   }
 
   final Ref _ref;
-  StreamSubscription? _statusSub;
-  StreamSubscription? _alertSub;
+  StreamSubscription<BoxStatus>? _statusSub;
+  StreamSubscription<BoxAlert>? _alertSub;
   StreamSubscription<void>? _networkSub;
   bool _transitioning = false;
 
@@ -399,7 +399,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
   /// watchStatus 的当前缓存值（PlatformBoxService/FFIBoxService 都是
   /// ValueStream 语义，`.first` 立即返回最新值）对齐真实终态。
   Future<void> _settleAfterStart(int epoch) async {
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
     if (epoch != _opEpoch || state.valueOrNull is! BoxStarting) return;
     final BoxStatus actual;
     try {
@@ -599,7 +599,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       if (errMsg.contains('instance not stopped')) {
         try {
           await _boxService.stop();
-          await Future.delayed(const Duration(milliseconds: 500));
+          await Future<void>.delayed(const Duration(milliseconds: 500));
           // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失 inbound/DNS 处理）
           final workingDir = await resolveSingBoxWorkingDirectory();
           final settings = _ref.read(networkSettingsProvider);
@@ -670,7 +670,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
             classifyExceptionMessage(e, _ref.read(translationsProvider));
       }
       try {
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future<void>.delayed(const Duration(milliseconds: 300));
         await _boxService.stop();
         // 重试确认停掉了，这时候设 BoxStopped 才是诚实的（同上，代际守卫）。
         if (epoch == _opEpoch) {
@@ -753,7 +753,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       // "2s 后仍 Starting 就标 Started" 会在启动实际失败时伪装成功，
       // 让 _autoReconnect 误判恢复而停止退避。这里等一个观察窗口即可，
       // 真实失败由 watchAlerts 的 fatal alert 拉回 BoxStopped。
-      await Future.delayed(const Duration(seconds: 2));
+      await Future<void>.delayed(const Duration(seconds: 2));
     } catch (e) {
       debugPrint('重连失败: $e');
       // 代际守卫同 connect()/disconnect()：这 2s 观察窗口内用户可能已经
@@ -850,7 +850,7 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     try {
       const delays = [1, 2, 4, 8];
       for (final d in delays) {
-        await Future.delayed(Duration(seconds: d));
+        await Future<void>.delayed(Duration(seconds: d));
         if (!mounted) return;
         if (_manualDisconnect) return; // 退避窗口内用户已手动断开，停止重试
         if (state.valueOrNull is BoxStarted) return; // already recovered
@@ -975,6 +975,6 @@ final boxLogStreamProvider = StreamProvider.autoDispose<List<String>>((
     } else {
       yield const [];
     }
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future<void>.delayed(const Duration(milliseconds: 1500));
   }
 });

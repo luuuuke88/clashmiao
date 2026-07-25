@@ -101,7 +101,10 @@ class _State extends ConsumerState<OnboardingPage> {
 
     final mapping = mapCountryCodeToRegionLocale(countryCode);
     await _applyRegion(mapping.region);
-    ref.read(localePreferencesProvider.notifier).changeLocale(mapping.locale);
+    // 同 home_page 里的 updateMode：await 掉，别让"语言没存下来"静默发生。
+    await ref
+        .read(localePreferencesProvider.notifier)
+        .changeLocale(mapping.locale);
   }
 
   bool _currentlyShouldAutoDetect() {
@@ -292,7 +295,7 @@ class _State extends ConsumerState<OnboardingPage> {
 
   void _showLocaleDialog(BuildContext context, TranslationsEn t) {
     final current = ref.read(localePreferencesProvider);
-    showAiUiModal(
+    showAiUiModal<void>(
       context: context,
       builder: (_) {
         return SettingsSelectionModal<AppLocale>(
@@ -311,7 +314,7 @@ class _State extends ConsumerState<OnboardingPage> {
 
   void _showRegionDialog(BuildContext context, TranslationsEn t) {
     final current = ref.read(networkSettingsProvider).region;
-    showAiUiModal(
+    showAiUiModal<void>(
       context: context,
       builder: (_) {
         return SettingsSelectionModal<String>(

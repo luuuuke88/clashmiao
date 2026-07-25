@@ -30,8 +30,8 @@ void main() {
     expect(
       () => BackupBundle.fromJson({
         'version': '99.0',
-        'profiles': [],
-        'settings': {},
+        'profiles': <dynamic>[],
+        'settings': <String, dynamic>{},
         'createdAt': 0,
       }),
       throwsException,

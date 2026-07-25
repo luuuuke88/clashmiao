@@ -139,11 +139,11 @@ class _RetryInterceptor extends Interceptor {
     ErrorInterceptorHandler handler,
     int attempt,
   ) async {
-    await Future.delayed(retryDelay);
+    await Future<void>.delayed(retryDelay);
     final options = err.requestOptions;
     options.extra[_attemptKey] = attempt + 1;
     try {
-      final response = await _dio.fetch(options);
+      final response = await _dio.fetch<dynamic>(options);
       handler.resolve(response);
     } on DioException catch (e) {
       handler.next(e);

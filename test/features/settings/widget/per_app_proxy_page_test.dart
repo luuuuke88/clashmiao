@@ -53,7 +53,9 @@ Future<Widget> _routedHost() async {
             child: ElevatedButton(
               onPressed: () {
                 Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PerAppProxyPage()),
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PerAppProxyPage(),
+                  ),
                 );
               },
               child: const Text('Open per-app proxy'),

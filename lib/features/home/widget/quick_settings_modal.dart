@@ -195,7 +195,7 @@ class QuickSettingsModal extends ConsumerWidget {
     Navigator.of(
       context,
       rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => const ConfigOptionsPage()));
+    ).push(MaterialPageRoute<void>(builder: (_) => const ConfigOptionsPage()));
   }
 }
 

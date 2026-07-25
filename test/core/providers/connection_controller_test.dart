@@ -64,6 +64,8 @@ class _SpyBoxService implements BoxService {
   /// "新订阅者" 前引入一个微任务延迟，导致"构造后立即 add()"的既有测试
   /// 时序被打破（事件在内部订阅真正接上之前就发出，广播流不补放，直接丢失）。
   /// `BehaviorSubject` 是这个仓库生产代码已经在用的成熟方案，语义经过验证。
+  // ignore_for_file: close_sinks  同 test/support/counting_box_service.dart：
+  // 测试替身的生命周期就是单个用例，进程退出即回收。
   final statusStreamController = BehaviorSubject<BoxStatus>();
   final networkChangedController = StreamController<void>.broadcast();
   final alertStreamController = StreamController<BoxAlert>.broadcast();

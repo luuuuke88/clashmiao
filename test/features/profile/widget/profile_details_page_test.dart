@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -87,6 +88,50 @@ Future<Widget> _host({
   );
 }
 
+/// 把页面放进**内层** Navigator 的 host。
+///
+/// 关键在于 `showAiUiModal` 默认 `useRootNavigator: true`——弹窗挂在最外层
+/// Navigator 上。页面放内层之后，就能只把页面 pop 掉、而弹窗还留在屏幕上，
+/// 复现真机上"弹窗开着的时候页面被销毁"这个时序（订阅被别处删掉、返回手势、
+/// 程序化 pop 都会造成）。
+Future<Widget> _hostNested({
+  required ProfileEntity profile,
+  required GlobalKey<NavigatorState> innerNav,
+}) async {
+  SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+  final prefs = await SharedPreferences.getInstance();
+  final container = ProviderContainer(
+    overrides: [
+      sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
+      profileListProvider.overrideWith((_) => Future.value([profile])),
+      activeProfileProvider.overrideWith((_) => Future.value(profile)),
+    ],
+  );
+  await container.read(sharedPreferencesProvider.future);
+  await container.read(profileListProvider.future);
+  await container.read(activeProfileProvider.future);
+
+  return UncontrolledProviderScope(
+    container: container,
+    child: ToastificationWrapper(
+      child: MaterialApp(
+        theme: ThemeData.light().copyWith(
+          extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+          splashFactory: NoSplash.splashFactory,
+        ),
+        home: Navigator(
+          key: innerNav,
+          onGenerateRoute: (_) => MaterialPageRoute<void>(
+            builder: (_) =>
+                ProfileDetailsPage(profile.id, debugOpenUpdateInterval: true),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 void main() {
   group('ProfileDetailsPage UI', () {
     testWidgets('远程配置渲染详情页基础信息、订阅状态和选项区', (tester) async {
@@ -150,6 +195,57 @@ void main() {
       expect(find.text('CANCEL'), findsOneWidget);
       expect(find.text('OK'), findsOneWidget);
       expect(find.text('禁用'), findsOneWidget);
+    });
+
+    testWidgets('弹窗还开着时页面被销毁 → 回来不能 setState 到已 dispose 的 State', (
+      tester,
+    ) async {
+      // 真机上的时序：用户点开"自动更新间隔"弹窗，这期间页面被销毁（订阅被别处
+      // 删掉 / 返回手势 / 程序化 pop）。弹窗走 root navigator 所以还在，用户点了
+      // OK——handler 从 await 恢复，若不查 mounted 就会 setState 到已 dispose 的
+      // State：debug 下断言失败，release 下抛 FlutterError 且这次修改静默丢失。
+      final innerNav = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        await _hostNested(profile: _remoteProfile, innerNav: innerNav),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text('OK'), findsOneWidget, reason: '前提：弹窗已打开');
+
+      // 只销毁页面，弹窗（root navigator 上）留着。
+      //
+      // 用 pushReplacement 而不是 pop：内层 Navigator 只有一个路由时 pop 不会
+      // 真的把页面移出树，State 也就不会 dispose——第一版测试就是这么写的，
+      // 结果拆掉 mounted 守卫它照样绿，纯空转。
+      // 不 await：这个 Future 要等被替换掉的路由完全消失才完成，而我们正是要
+      // 在它消失之后继续操作弹窗——await 会死等。
+      unawaited(
+        innerNav.currentState!.pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const SizedBox.shrink()),
+        ),
+      );
+      // 多 pump 几次：root navigator 上压着一个 modal 时，内层路由的替换动画
+      // 结束得比常规 300ms 晚，pump 不够旧页面还在树上，销毁断言就会误判。
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        find.text('基础信息'),
+        findsNothing,
+        reason: '前提：页面必须真的被销毁了，否则这条测试测不到任何东西',
+      );
+      expect(find.text('OK'), findsOneWidget, reason: '弹窗应该还在');
+
+      await tester.tap(find.text('OK'));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason:
+            'setState 打在了已 dispose 的 State 上。弹窗走 root navigator，'
+            '页面可能挂在更内层的 Navigator 上，弹窗开着期间被销毁是真实时序',
+      );
     });
 
     testWidgets('选项区显示已有的 User-Agent 与已开启的 Mux', (tester) async {

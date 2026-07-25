@@ -11,14 +11,6 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 
-    // 退出清理通道。AppDelegate.applicationShouldTerminate 会在 Cmd+Q 时通过
-    // 它请求 Dart 侧停内核（还原系统代理）+ 清托盘，见那边的注释。
-    // 通道只在这里建立一次，AppDelegate 拿到的是同一个引擎的 messenger。
-    AppDelegate.shutdownChannel = FlutterMethodChannel(
-      name: "com.clashmiao/shutdown",
-      binaryMessenger: flutterViewController.engine.binaryMessenger
-    )
-
     // 开机启动 MethodChannel
     let channel = FlutterMethodChannel(
       name: "com.clashmiao/auto_start",

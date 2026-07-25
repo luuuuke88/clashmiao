@@ -410,6 +410,12 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ),
     ).show(context);
     if (result == null || result <= 0) return;
+    // 必须查 mounted：弹窗走的是 **root navigator**（showAiUiModal 默认
+    // useRootNavigator: true），而这个页面可能挂在更内层的 Navigator 上。
+    // 弹窗开着的这段时间里页面完全可能被销毁——订阅被别处删掉、返回手势、
+    // 程序化 pop 都会——那时这里的 setState 会打在已 dispose 的 State 上，
+    // debug 下直接断言失败，release 下抛 FlutterError 且这次修改静默丢失。
+    if (!mounted) return;
     setState(() => _updateInterval = Duration(hours: result));
   }
 
@@ -422,6 +428,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       keyboardType: TextInputType.text,
     ).show(context);
     if (result == null) return;
+    if (!mounted) return; // 同 _editUpdateInterval：弹窗期间页面可能已被销毁
     setState(
       () => _customUserAgent = result.trim().isEmpty ? null : result.trim(),
     );

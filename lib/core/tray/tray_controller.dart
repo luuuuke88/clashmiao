@@ -183,15 +183,58 @@ Future<void> performQuitSequence({
   required Future<void> Function() disposeTray,
   required Future<void> Function() destroyWindow,
 }) async {
+  await performShutdownCleanup(
+    disconnect: disconnect,
+    disposeTray: disposeTray,
+  );
+  await destroyWindow();
+}
+
+/// 退出前的清理部分：停内核（**这一步负责还原系统代理**）+ 清托盘。
+///
+/// 从 [performQuitSequence] 里拆出来，是因为「操作系统正在终止我们」这条路径
+/// 不该由我们自己去 `destroyWindow()`——窗口由 OS 销毁，我们只需要在它动手
+/// **之前**把该还原的东西还原掉。macOS 上 Cmd+Q 走的就是这条路
+/// （`AppDelegate.applicationShouldTerminate`）。
+///
+/// ## 为什么这一步漏了会很严重
+///
+/// 桌面端默认开启 `set-system-proxy`。sing-box 在 macOS 上是 shell 出去执行
+/// `networksetup -setwebproxy <服务> 127.0.0.1 <端口>`——那是**持久化的系统级
+/// 设置**，不随进程消失。而它的 `Disable()` 只在 listener 的 Close 路径上被
+/// 调用（sing-box `common/listener/listener.go`），也就是只有优雅关闭才会执行。
+///
+/// 于是进程一旦没走到 Close 就死掉，系统代理会**永久**指向一个已经没人监听的
+/// 本地端口：浏览器和所有遵循系统代理的程序全部连不上网，而且用户重启 App 也
+/// 不会自动修好，只能自己去「系统设置 → 网络 → 代理」里手动关。
+///
+/// 原来只有系统托盘的「退出」和 Ctrl+Q 快捷键会走优雅路径，而 macOS 上最常用
+/// 的退出手势 **Cmd+Q 完全不经过 Dart 侧**（`FlutterAppDelegate` 默认直接
+/// `.terminateNow`），属于按一下就让机器断网。
+///
+/// 残留风险说明：崩溃、强制退出、断电这类路径谁都拦不住，本函数只覆盖"操作
+/// 系统给了我们清理机会"的情形。
+Future<void> performShutdownCleanup({
+  required Future<void> Function() disconnect,
+  required Future<void> Function() disposeTray,
+}) async {
+  // 这两行日志**不加 kDebugMode 判断**，正式包里也要留。当用户报"退出之后
+  // 上不了网了"，唯一能立刻定性的信息就是"退出时这段清理到底跑没跑完"——
+  // 每次退出仅一行，没有噪音成本。
+  debugPrint('[Quit] 开始退出清理（停内核 → 还原系统代理 → 清托盘）');
+  // 两步都不能因为前一步失败就中止——disconnect 失败照样要继续清托盘，
+  // 更不能让用户点了"退出"卡住退不出去。
   try {
     await disconnect();
-  } catch (_) {}
+  } catch (e) {
+    if (kDebugMode) debugPrint('[Quit] disconnect failed during quit: $e');
+  }
   try {
     await disposeTray();
   } catch (e) {
     if (kDebugMode) debugPrint('[Tray] dispose failed during quit: $e');
   }
-  await destroyWindow();
+  debugPrint('[Quit] 退出清理完成');
 }
 
 /// "打开..."子菜单里点某个页面跳转项之后的实际动作：先把 [tabIndex] 写进

@@ -140,7 +140,7 @@ class BackupService {
           await prefs.setDouble(entry.key, v);
         case String v:
           await prefs.setString(entry.key, v);
-        case List v:
+        case List<dynamic> v:
           if (v.every((e) => e is String)) {
             await prefs.setStringList(entry.key, v.cast<String>());
           }

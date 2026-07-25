@@ -85,7 +85,7 @@ void main() {
         response: jsonEncode({
           'account-id': 'acc-2',
           'access-token': 'token-2',
-          'config': {},
+          'config': <String, dynamic>{},
         }),
       );
       final container = await _containerWith(fake);

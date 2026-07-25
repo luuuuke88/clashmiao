@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -335,7 +336,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(activeProfileProvider);
       if (mounted) {
         AppToast.success(context, t.profile.save.successMsg);
-        Navigator.of(context).maybePop();
+        unawaited(Navigator.of(context).maybePop());
       }
     } catch (error) {
       if (mounted) {
@@ -381,7 +382,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) {
         AppToast.success(context, t.profile.delete.successMsg);
-        Navigator.of(context).maybePop();
+        unawaited(Navigator.of(context).maybePop());
       }
     } catch (error) {
       if (mounted) AppToast.error(context, '${t.failure.unexpected}: $error');

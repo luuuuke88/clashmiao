@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
@@ -273,11 +274,11 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
     await _doAdd(context, widget.ref, text);
     if (!mounted) return;
     setState(() => _isLoading = false);
-    Navigator.of(context).maybePop();
+    unawaited(Navigator.of(context).maybePop());
   }
 
   void _showManualForm() {
-    Navigator.of(context).maybePop();
+    unawaited(Navigator.of(context).maybePop());
     showProfileManualFormDialog(context, widget.ref);
   }
 
@@ -305,7 +306,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       await notifier.setEnableWarp(true);
       if (!mounted) return;
       AppToast.success(context, 'WARP 配置生成成功');
-      Navigator.of(context).maybePop();
+      unawaited(Navigator.of(context).maybePop());
     } catch (e) {
       if (mounted) AppToast.error(context, 'WARP 配置生成失败: $e');
     } finally {

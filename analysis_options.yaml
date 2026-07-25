@@ -5,3 +5,60 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "lib/core/localization/gen/**"
+
+  # 严格类型模式。这个 App 大量解析外部 JSON（订阅内容、sing-box 配置、平台
+  # channel 返回值），那正是隐式 dynamic 最容易藏 bug 的地方：类型对不上时不会
+  # 在解析处报错，而是在几层之后以一个莫名其妙的 NoSuchMethodError 冒出来。
+  language:
+    strict-casts: true # 禁止从 dynamic 隐式向下转型
+    strict-inference: true # 推不出类型时报错，而不是静默填 dynamic
+    strict-raw-types: true # 禁止裸 List / Map / Future
+
+linter:
+  rules:
+    # ── 资源泄漏 ────────────────────────────────────────────────────
+    - cancel_subscriptions # StreamSubscription 必须 cancel
+    - close_sinks # StreamController 必须 close
+
+    # ── 静默失败 ────────────────────────────────────────────────────
+    # 这个 App 最糟的失败形态就是"点了没反应"，所以这条要开。
+    # 它只在 async 函数体内生效，覆盖不到同步 UI 回调里的 fire-and-forget
+    # （那部分只能靠人工审计，见下面对 discarded_futures 的说明）。
+    - unawaited_futures
+
+    # ── 类型安全 ────────────────────────────────────────────────────
+    - avoid_dynamic_calls
+    - avoid_type_to_string
+    - always_declare_return_types
+
+    # ── 真实错误 ────────────────────────────────────────────────────
+    - throw_in_finally
+    - no_duplicate_case_values
+    - literal_only_boolean_expressions
+    - no_self_assignments
+    - unnecessary_await_in_return
+    - test_types_in_equals
+
+# ─────────────────────────────────────────────────────────────────────
+# 刻意**不开**的规则，以及原因。写在这里是为了下次有人想加时先看到取舍，
+# 而不是又跑一遍同样的评估。
+#
+# avoid_slow_async_io
+#   它建议把 File.exists()/stat() 换成同步版，理由是异步版更慢。但在 Flutter
+#   里同步 I/O 会阻塞 UI isolate——掉帧比慢几毫秒严重得多。这条规则的取向和
+#   GUI 应用相反。实测会命中 24 处，全是正确使用异步 I/O 的地方。
+#
+# avoid_void_async
+#   实测命中 3 处，全是框架回调重写（TrayListener.onTrayIconMouseDown、
+#   onTrayMenuItemClick、WindowListener.onWindowClose），接口声明的返回类型
+#   就是 void，签名改不了。规则本身的意图（没人能 await，异常会没人接）是对的，
+#   但正确做法是让这些回调自己兜住异常——已逐个核实过它们内部都有 try/catch。
+#
+# discarded_futures
+#   实测命中 56 处（是 unawaited_futures 的 4.7 倍），因为它也管同步上下文。
+#   但其中约九成是 Navigator.push / showDialog / showModalBottomSheet 这类
+#   "返回的 Future 表示界面何时关闭"的调用，fire-and-forget 是惯用法。全部
+#   包一层 unawaited() 只会让 UI 代码更吵，真正的问题反而更难看见。
+#   已人工逐个审过这 56 处：其中 10 处需要判断（4 处偏好持久化、3 处初始化、
+#   2 处托盘、1 处首页连接按钮），只有首页那处是真 bug（异常从 connect() 逃出
+#   来没人接 → 死按钮），已修（见 ConnectionController.toggle 的注释）。

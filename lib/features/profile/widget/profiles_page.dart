@@ -273,10 +273,9 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   }
 
   void _showEditDialog(BuildContext context, ProfileEntity profile) {
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).push(MaterialPageRoute(builder: (_) => ProfileDetailsPage(profile.id)));
+    Navigator.of(context, rootNavigator: true).push(
+      MaterialPageRoute<void>(builder: (_) => ProfileDetailsPage(profile.id)),
+    );
   }
 
   void _showProfileActions(
@@ -291,7 +290,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
     // 限制；backgroundColor/barrierColor 保持不变（barrierColor 走 Material
     // 默认的 Colors.black54，别处测试断言过这个颜色，不能悄悄改成
     // showAiUiModal 那种透明 barrier）。
-    showModalBottomSheet(
+    showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -310,7 +309,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   /// fragment），跟 [_copyProfileLink] 复制到剪贴板的内容保持一致——对方无论
   /// 是粘贴还是扫码，导入后拿到的名称都是同一个。
   void _showQrDialog(BuildContext context, ProfileEntity profile) {
-    showAiUiModal(
+    showAiUiModal<void>(
       context: context,
       builder: (context) => ProfileQrDialog(
         data: profileShareUrl(profile),
@@ -359,7 +358,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   }
 
   void _showSortModal(BuildContext context) {
-    showAiUiModal(
+    showAiUiModal<void>(
       context: context,
       builder: (context) => _ProfilesSortModal(
         sortBy: _sortBy,
@@ -385,7 +384,9 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
-      if (widget.embedInSheet && mounted) Navigator.of(context).maybePop();
+      if (widget.embedInSheet && mounted) {
+        unawaited(Navigator.of(context).maybePop());
+      }
     } catch (e) {
       if (mounted) AppToast.error(context, '切换失败: $e');
     }

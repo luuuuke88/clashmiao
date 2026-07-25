@@ -58,8 +58,10 @@ void main() {
       );
       final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
 
-      expect(cfg['route']['rule_set'], hasLength(1));
-      final routeRules = (cfg['route']['rules'] as List).cast<Map>();
+      final route = cfg['route'] as Map<String, dynamic>;
+      expect(route['rule_set'], hasLength(1));
+      final routeRules = (route['rules'] as List<dynamic>)
+          .cast<Map<dynamic, dynamic>>();
       expect(routeRules.any((r) => r['rule_set'] != null), isTrue);
       expect(routeRules.any((r) => r['domain'] == 'example.com'), isTrue);
     });
@@ -84,7 +86,8 @@ void main() {
       );
       final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
 
-      final inbounds = (cfg['inbounds'] as List).cast<Map>();
+      final inbounds = (cfg['inbounds'] as List<dynamic>)
+          .cast<Map<dynamic, dynamic>>();
       expect(inbounds.any((i) => i['type'] == 'tun'), isFalse);
       expect(inbounds.any((i) => i['type'] == 'mixed'), isFalse);
       expect(inbounds.any((i) => i['type'] == 'socks'), isTrue);

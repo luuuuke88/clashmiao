@@ -191,7 +191,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           label: t.settings.network.perAppProxyPageTitle,
                           trailing: _Chevron(),
                           onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
+                            MaterialPageRoute<void>(
                               builder: (_) => const PerAppProxyPage(),
                             ),
                           ),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -149,16 +150,14 @@ void main() async {
       container.invalidate(activeProfileProvider);
     },
   );
-  // ignore: discarded_futures
-  profileUpdateScheduler.checkAndRefreshDue();
+  unawaited(profileUpdateScheduler.checkAndRefreshDue());
   profileUpdateScheduler.start();
 
   // 启动静默自动检查更新：检查到新版本才弹「发现新版本」对话框（见
   // core/update/startup_update_check.dart），没有新版本 / 网络失败 /
   // GITHUB_REPO_SLUG 为空时什么都不做，不产生任何视觉噪音。跟上面订阅的
   // 自动更新调度器、跟关于页手动点「检查更新」都相互独立，谁都不依赖谁。
-  // ignore: discarded_futures
-  runStartupUpdateCheck(container);
+  unawaited(runStartupUpdateCheck(container));
 
   // dev-only / CI smoke：检测 ~/.clashmiao_dev_subscription_url 或
   // CLASHMIAO_TEST_SUB_URL env，自动添加订阅 + 自动连接，解放手动 UI 测试。
@@ -168,8 +167,7 @@ void main() async {
       ? smokeDefine
       : Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '';
   if (kDebugMode || smokeEnv.isNotEmpty) {
-    // ignore: discarded_futures
-    _devAutoBoot(container);
+    unawaited(_devAutoBoot(container));
   }
 
   // 数据分析开关（'clashmiao_analytics_enabled'，onboarding/settings 页共用同
@@ -296,7 +294,7 @@ Future<void> _devAutoBoot(ProviderContainer container) async {
     }
 
     // 给 UI / status stream 一点时间稳定，然后触发 connect
-    await Future.delayed(const Duration(seconds: 2));
+    await Future<void>.delayed(const Duration(seconds: 2));
     debugPrint('[DevBoot] 自动连接...');
     await container.read(connectionControllerProvider.notifier).toggle();
   } catch (e, st) {

@@ -284,7 +284,7 @@ void main() {
       scheduler.didChangeAppLifecycleState(AppLifecycleState.resumed);
       final deadline = DateTime.now().add(const Duration(seconds: 5));
       while (callCount == 0 && DateTime.now().isBefore(deadline)) {
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
       }
 
       expect(callCount, 1);
@@ -312,7 +312,7 @@ void main() {
 
       scheduler.didChangeAppLifecycleState(AppLifecycleState.paused);
       scheduler.didChangeAppLifecycleState(AppLifecycleState.inactive);
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
       expect(callCount, 0);
     });
@@ -370,7 +370,7 @@ void main() {
         scheduler.start();
         final deadline = DateTime.now().add(const Duration(seconds: 5));
         while (callCount == 0 && DateTime.now().isBefore(deadline)) {
-          await Future.delayed(const Duration(milliseconds: 50));
+          await Future<void>.delayed(const Duration(milliseconds: 50));
         }
 
         expect(callCount, greaterThan(0));

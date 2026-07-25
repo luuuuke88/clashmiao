@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/router/app_router.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
@@ -38,7 +39,7 @@ Future<void> runStartupUpdateCheck(
 }) async {
   try {
     if (initialDelay > Duration.zero) {
-      await Future.delayed(initialDelay);
+      await Future<void>.delayed(initialDelay);
     }
 
     final prefs = await container.read(sharedPreferencesProvider.future);
@@ -59,11 +60,12 @@ Future<void> runStartupUpdateCheck(
     // resolve，而这是一次性的"发现即弹"通知，不是需要等用户操作完才算
     // "启动检查完成"的流程；调用弹窗过程中任何同步异常（比如 context 失效）
     // 仍然会被外层 try/catch 兜住。
-    // ignore: discarded_futures
-    showUpdateAvailableDialog(
-      context,
-      currentVersion: info.version,
-      latestVersion: latestTag.replaceFirst('v', ''),
+    unawaited(
+      showUpdateAvailableDialog(
+        context,
+        currentVersion: info.version,
+        latestVersion: latestTag.replaceFirst('v', ''),
+      ),
     );
   } catch (e, st) {
     // 静默失败：启动自动检查绝不能因为网络/平台异常影响正常启动流程。

@@ -102,6 +102,15 @@ class FFIBoxService implements BoxService {
   Stream<BoxStats>? _statsStream;
   Stream<List<OutboundGroup>>? _groupsStream;
 
+  // 这个 controller（以及 `_statusReceiver` 这个 ReceivePort）确实从不 close。
+  // 现状下不构成真实泄漏：`BoxService` 由 `boxServiceProvider`（一个普通
+  // Provider，没有 onDispose）创建，与进程同生命周期，进程退出即回收。
+  //
+  // 但**根因是 `BoxService` 接口完全没有 dispose/close 契约**——一旦将来需要
+  // 重建 service（内核致命错误后重启、开发期热重启），这里就会真的泄漏。
+  // 正确修法是给接口补生命周期方法并在 provider 上 `ref.onDispose`，那要同时
+  // 改 3 个实现和 7 个测试替身，属于独立的一次改动，不夹在这轮 lint 收敛里做。
+  // ignore: close_sinks
   final _networkChangedController = StreamController<void>.broadcast();
 
   /// 加载动态库

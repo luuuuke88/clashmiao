@@ -152,7 +152,7 @@ class HomePage extends ConsumerWidget {
                           children: [
                             _HeaderButton(
                               icon: FluentIcons.options_24_regular,
-                              onTap: () => showAiUiModal(
+                              onTap: () => showAiUiModal<void>(
                                 context: context,
                                 builder: (_) => const QuickSettingsModal(),
                               ),
@@ -355,7 +355,7 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
 
     return GestureDetector(
       onTap: () {
-        showAiUiModal(
+        showAiUiModal<void>(
           context: context,
           builder: (context) => const _ProfilesOverviewSheet(),
         );
@@ -1031,7 +1031,10 @@ class _ModeSelector extends ConsumerWidget {
     // 同步更新，保证点击零延迟高亮——实际让内核用上新模式的逻辑（含连续
     // 快速切换时的排队/收敛）在 ConnectionController.applyProxyMode 里，
     // 见其文档注释（曾经真机实锤过 UI/内核路由模式静默错位的 bug）。
-    ref.read(proxyModeProvider.notifier).updateMode(index);
+    // await 而不是 fire-and-forget：state 是在 updateMode 内部**同步**赋值的，
+    // 所以"点击零延迟高亮"不受影响；异步的只有 `prefs.setInt`。不 await 的话
+    // 写失败会变成一条没人接的异步异常——UI 显示新模式、重启后静默回退到旧模式。
+    await ref.read(proxyModeProvider.notifier).updateMode(index);
     await ref.read(connectionControllerProvider.notifier).applyProxyMode();
   }
 
@@ -1416,7 +1419,7 @@ class _EmptyActiveProfileBody extends ConsumerWidget {
             const SizedBox(height: 32),
             GestureDetector(
               onTap: () {
-                showAiUiModal(
+                showAiUiModal<void>(
                   context: context,
                   builder: (context) => const _ProfilesOverviewSheet(),
                 );

@@ -204,7 +204,7 @@ class ProfileRepository {
           _isLikelyInformationalProxyTag(current);
     }
 
-    Map? proxySelector;
+    Map<dynamic, dynamic>? proxySelector;
     for (final outbound in outbounds) {
       if (outbound is! Map || !groupTypes.contains(outbound['type'])) {
         continue;
@@ -257,7 +257,7 @@ class ProfileRepository {
     }
 
     if (proxyTags.isNotEmpty) {
-      Map? existingProxy;
+      Map<dynamic, dynamic>? existingProxy;
       for (final outbound in outbounds) {
         if (outbound is Map &&
             outbound['tag'] == 'proxy' &&
@@ -325,13 +325,19 @@ class ProfileRepository {
         !tagsSet.contains(finalTag) ||
         finalType == 'urltest' ||
         finalType == 'url_test') {
-      // 优先 proxy selector；没有就用第一个非 direct 的
+      // 优先 proxy selector；没有就用第一个非 direct 的。
+      //
+      // 先落到有类型的局部变量再取 'tag'，不要把 `firstWhere(...)['tag']` 串成
+      // 一行：`firstWhere` 在 `List<dynamic>` 上返回 dynamic，直接下标就是一次
+      // dynamic 调用——类型对不上时不会在这里报错，而是在几层之后以一个跟现场
+      // 无关的 NoSuchMethodError 冒出来。
+      final Object? fallbackOutbound = outbounds.firstWhere(
+        (o) => o is Map && o['type'] != 'direct',
+        orElse: () => {'tag': 'direct'},
+      );
       route['final'] = tagsSet.contains('proxy')
           ? 'proxy'
-          : outbounds.firstWhere(
-              (o) => o is Map && o['type'] != 'direct',
-              orElse: () => {'tag': 'direct'},
-            )['tag'];
+          : (fallbackOutbound is Map ? fallbackOutbound['tag'] : 'direct');
       cfg['route'] = route;
       changed = true;
     }

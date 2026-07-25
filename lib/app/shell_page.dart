@@ -73,7 +73,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal(
+        showAiUiModal<void>(
           context: context,
           builder: (_) => const ProfilesPage(
             embedInSheet: true,
@@ -97,7 +97,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
             ? 'debug-profile-no-subinfo'
             : 'debug-home-profile';
         Navigator.of(context).push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) => const ProfileDetailsPage(
               profileId,
               debugOpenUpdateInterval: bool.fromEnvironment(
@@ -113,7 +113,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal(
+        showAiUiModal<void>(
           context: context,
           builder: (_) => const QuickSettingsModal(),
         );
@@ -126,7 +126,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
         if (!mounted) return;
         Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (_) => const LogsPage()));
+        ).push(MaterialPageRoute<void>(builder: (_) => const LogsPage()));
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_CONFIG_OPTIONS') &&
@@ -135,7 +135,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(context).push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             builder: (_) => const ConfigOptionsPage(
               debugOpenActions: bool.fromEnvironment(
                 'CLASHMIAO_OPEN_CONFIG_ACTIONS',
@@ -164,7 +164,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
         if (!mounted) return;
         Navigator.of(
           context,
-        ).push(MaterialPageRoute(builder: (_) => const AssetsPage()));
+        ).push(MaterialPageRoute<void>(builder: (_) => const AssetsPage()));
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_PER_APP_PROXY') &&
@@ -172,9 +172,9 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute(builder: (_) => const PerAppProxyPage()));
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const PerAppProxyPage()),
+        );
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_QR_SCANNER_DENIED') &&
@@ -183,7 +183,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(context, rootNavigator: true).push(
-          MaterialPageRoute(
+          MaterialPageRoute<void>(
             fullscreenDialog: true,
             builder: (_) => const QrScannerPage.permissionDeniedPreview(),
           ),

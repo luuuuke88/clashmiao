@@ -131,7 +131,7 @@ Future<void> _pumpUntil(
     if (DateTime.now().isAfter(deadline)) {
       throw TestFailure('_pumpUntil 超时（$timeout）仍未满足条件');
     }
-    await Future.delayed(step);
+    await Future<void>.delayed(step);
     await tester.pump(step);
   }
 }

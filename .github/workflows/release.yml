@@ -212,10 +212,7 @@ jobs:
           flutter build apk --release --split-per-abi $VERSION_ARGS $DART_DEFINES
           # shellcheck disable=SC2086  # 同上
           flutter build apk --release $VERSION_ARGS $DART_DEFINES
-          # AAB 只用于上传 Play Store，不进公开下载（终端用户下了没法装）。
-          # shellcheck disable=SC2086  # 同上
-          flutter build appbundle --release $VERSION_ARGS $DART_DEFINES
-      - name: Stage Android artifacts with identifiable names
+      - name: Stage APKs with identifiable names
         env:
           VERSION: ${{ steps.version.outputs.name }}
         run: |
@@ -233,18 +230,55 @@ jobs:
             echo "::error::缺少通用 APK"; exit 1; }
           cp "$APK_DIR/app-release.apk" \
             "$OUT/ClashMiao-Android-universal-$VERSION.apk"
-          # AAB 单独放，upload-artifact 分成两个 artifact，publish 只取前者
-          mkdir -p build/store
-          test -s build/app/outputs/bundle/release/app-release.aab || {
-            echo "::error::缺少 AAB"; exit 1; }
-          cp build/app/outputs/bundle/release/app-release.aab \
-            "build/store/ClashMiao-Android-$VERSION.aab"
-          find "$OUT" build/store -type f -name '*.a*' -printf '%f %s\n'
+          find "$OUT" -type f -name '*.apk' -printf '%f %s\n' | sort
+      # APK 的上传**必须**排在 AAB 构建之前。AAB 只用于上传 Play Store，
+      # 而 APK 是用户真正要下载的东西；AAB 那步挂掉不该把已经建好的四个 APK
+      # 一起拖下水。这跟 publish 的 `if: always()` 是同一个道理，只是落在
+      # step 层面：缺 AAB 时 run 仍然标红，但 release 里照样有 Android 包。
       - uses: actions/upload-artifact@v4
         with:
           name: release-android
           path: build/release/ClashMiao-Android-*.apk
           if-no-files-found: error
+      - name: Build Android App Bundle (Play Store upload only)
+        env:
+          DART_DEFINES: >-
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
+            --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
+            --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
+            --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
+            --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
+            --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+          VERSION_ARGS: >-
+            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ github.run_number }}
+        run: |
+          # 必须先 clean。`--split-per-abi` 会在共享的 intermediates 目录里留下
+          # 四份 shrunk-resources（每个 ABI 一份），而随后的 bundleRelease 期望
+          # 恰好一份，于是直接失败：
+          #   Multiple shrunk-resources files found in directory
+          #   '.../shrunk_resources_proto_format/release/minifyReleaseWithR8'
+          #   Please disable building multiple APKs when building an app bundle.
+          #   （https://issuetracker.google.com/402800800）
+          #
+          # 不去精准删那一个 intermediates 子目录：那依赖 AGP 的内部布局，AGP
+          # 改个路径就又坏了。整包重建慢几分钟，但发版本来就不频繁，确定性更值钱。
+          flutter clean
+          flutter pub get
+          # shellcheck disable=SC2086  # 同前：DART_DEFINES 必须发生 word splitting
+          flutter build appbundle --release $VERSION_ARGS $DART_DEFINES
+      - name: Stage AAB
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
+        run: |
+          mkdir -p build/store
+          test -s build/app/outputs/bundle/release/app-release.aab || {
+            echo "::error::缺少 AAB"; exit 1; }
+          cp build/app/outputs/bundle/release/app-release.aab \
+            "build/store/ClashMiao-Android-$VERSION.aab"
+          find build/store -type f -name '*.aab' -printf '%f %s\n'
       - name: Upload AAB separately (Play Store upload only, not a public download)
         uses: actions/upload-artifact@v4
         with:
@@ -523,12 +557,23 @@ jobs:
         run: |
           choco install innosetup --no-progress -y
           & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "windows\packaging\inno\clashmiao.iss"
+      - name: Stage Windows artifacts into one directory
+        shell: pwsh
+        run: |
+          # 安装器和 zip 必须收进**同一个**目录再上传。upload-artifact 会保留所
+          # 传路径的最近公共祖先：两个路径分别在 build/installer 和 build/release
+          # 下时，公共祖先是 build/，于是 artifact 里带着 installer/ 和 release/
+          # 两层子目录；而 macOS/Linux 的文件都在 build/release 下，落下来是平的。
+          # 这个不一致让 Windows 的包在收集阶段被漏掉过一次——排练时 windows job
+          # 明明成功，release 里却没有 Windows 包。
+          Copy-Item build\installer\ClashMiao-Windows-x64-Setup.exe build\release\
+          Get-ChildItem build\release\ClashMiao-Windows-x64-* | ForEach-Object {
+            "{0}  {1} bytes" -f $_.Name, $_.Length
+          }
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
-          path: |
-            build/installer/ClashMiao-Windows-x64-Setup.exe
-            build/release/ClashMiao-Windows-x64-*.zip
+          path: build/release/ClashMiao-Windows-x64-*
           if-no-files-found: error
 
   linux:

@@ -9,20 +9,37 @@ git push origin v0.1.0
 
 It can also be run manually from GitHub Actions with the same tag value.
 
-## Artifacts
+## 发布产物
 
-The tag workflow builds and publishes these release assets:
+打 tag 后会构建并发布这些文件（四个平台）：
 
-- Windows: `ClashMiao-Windows-x64-Setup.exe`
-- Windows: `ClashMiao-Windows-x64-<version>.zip`
-- Android: `app-release.apk`
-- Android: `app-release.aab`
-- macOS: `ClashMiao-macOS-universal.dmg`
-- macOS: `ClashMiao-macOS-universal.zip` as a fallback/package archive
+| 平台 | 文件 |
+|---|---|
+| Android | `ClashMiao-Android-arm64-v8a-<ver>.apk`（**多数用户**） |
+| | `ClashMiao-Android-armeabi-v7a-<ver>.apk`（老旧 32 位设备） |
+| | `ClashMiao-Android-x86_64-<ver>.apk`（模拟器 / x86 平板） |
+| | `ClashMiao-Android-universal-<ver>.apk`（不确定架构时用，体积约 3 倍） |
+| macOS | `ClashMiao-macOS-universal.dmg` / `.zip`（Intel + Apple Silicon） |
+| Windows | `ClashMiao-Windows-x64-Setup.exe` / `ClashMiao-Windows-x64-<ver>.zip` |
+| Linux | `clashmiao_<ver>_amd64.deb` / `ClashMiao-Linux-x86_64-<ver>.tar.gz` |
+| 全部 | `SHA256SUMS.txt` |
 
-Before publishing, the workflow runs formatting, analysis, and unit/widget
-tests, then verifies that each platform produced the expected package files.
-Windows and macOS also verify that `libcore` is bundled into the app output.
+**AAB 不在公开下载里**。`ClashMiao-Android-<ver>.aab` 作为单独的 workflow
+artifact（`store-android-aab`）上传，只用于上传 Play Store——终端用户下载 AAB
+是装不上的，放在 release 资产里只会造成困惑。要上传商店时从 Actions 页面的
+artifact 里下载。
+
+发布前会跑格式化、静态分析和单元/widget 测试，然后逐平台校验产物存在且
+`libcore` 真被打进去了（Linux 还会用 `nm` 验 FFI 符号、macOS 验双架构）。
+
+### 缺一个平台不会阻断其余平台
+
+`publish` 是 `if: always()`：某个平台缺签名密钥或构建失败时，其余平台的包照样
+发出去，缺哪个会在 release 正文里显式警告。整个 run 仍然标记为失败，不会掩盖
+问题。
+
+之前是硬 `needs`，结果 Android 缺 keystore 就一个包都不发、连桌面端都没有——
+用户打开 release 页面看到的是空的。
 
 ## 版本号来自 tag，不是 pubspec
 

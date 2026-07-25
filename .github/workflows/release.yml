@@ -199,19 +199,53 @@ jobs:
           # shellcheck disable=SC2086  # 故意不加引号：DART_DEFINES 是一串空格
           # 分隔的 --dart-define=...，必须发生 word splitting 才能变成多个参数。
           # 加引号会把整串当成单个参数传给 flutter，构建直接失败。
+          #
+          # --split-per-abi：额外产出按 CPU 架构拆分的 APK。通用 APK 把四种
+          # 架构的 native lib 全塞进去（150MB+），而任何一台手机只用得上其中
+          # 一种。绝大多数用户下 arm64-v8a 就够了（~1/3 体积）。通用包保留，
+          # 给不确定自己架构的用户兜底。
+          flutter build apk --release --split-per-abi $VERSION_ARGS $DART_DEFINES
+          # shellcheck disable=SC2086  # 同上
           flutter build apk --release $VERSION_ARGS $DART_DEFINES
+          # AAB 只用于上传 Play Store，不进公开下载（终端用户下了没法装）。
           # shellcheck disable=SC2086  # 同上
           flutter build appbundle --release $VERSION_ARGS $DART_DEFINES
-      - name: Verify Android artifacts
+      - name: Stage Android artifacts with identifiable names
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
         run: |
-          test -s build/app/outputs/flutter-apk/app-release.apk
-          test -s build/app/outputs/bundle/release/app-release.aab
+          # Flutter 产出的文件名是 app-release.apk / app-arm64-v8a-release.apk，
+          # 用户下载下来完全认不出是什么应用、什么版本，而且下两个版本会撞名。
+          APK_DIR=build/app/outputs/flutter-apk
+          OUT=build/release
+          mkdir -p "$OUT"
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            src="$APK_DIR/app-$abi-release.apk"
+            test -s "$src" || { echo "::error::缺少 $src"; exit 1; }
+            cp "$src" "$OUT/ClashMiao-Android-$abi-$VERSION.apk"
+          done
+          test -s "$APK_DIR/app-release.apk" || {
+            echo "::error::缺少通用 APK"; exit 1; }
+          cp "$APK_DIR/app-release.apk" \
+            "$OUT/ClashMiao-Android-universal-$VERSION.apk"
+          # AAB 单独放，upload-artifact 分成两个 artifact，publish 只取前者
+          mkdir -p build/store
+          test -s build/app/outputs/bundle/release/app-release.aab || {
+            echo "::error::缺少 AAB"; exit 1; }
+          cp build/app/outputs/bundle/release/app-release.aab \
+            "build/store/ClashMiao-Android-$VERSION.aab"
+          find "$OUT" build/store -type f -name '*.a*' -printf '%f %s\n'
       - uses: actions/upload-artifact@v4
         with:
           name: release-android
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+          path: build/release/ClashMiao-Android-*.apk
+          if-no-files-found: error
+      - name: Upload AAB separately (Play Store upload only, not a public download)
+        uses: actions/upload-artifact@v4
+        with:
+          name: store-android-aab
+          path: build/store/ClashMiao-Android-*.aab
+          if-no-files-found: error
 
   macos:
     runs-on: macos-15
@@ -478,8 +512,82 @@ jobs:
             build/installer/ClashMiao-Windows-x64-Setup.exe
             build/release/ClashMiao-Windows-x64-*.zip
 
+  linux:
+    runs-on: ubuntu-latest
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ninja-build libgtk-3-dev \
+            libayatana-appindicator3-dev libcurl4-openssl-dev
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Derive version from tag
+        id: version
+        shell: bash
+        run: |
+          NAME="${RELEASE_TAG#v}"
+          NAME="${NAME%%-*}"
+          case "$NAME" in
+            [0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "::error::tag '$RELEASE_TAG' 推导不出合法版本号（需要 vX.Y.Z 形式）"; exit 1 ;;
+          esac
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+      - name: Fetch libcore (linux)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bin/fetch-libcore.sh linux
+      - run: flutter pub get
+      - run: flutter config --enable-linux-desktop
+      - name: Build Linux release
+        env:
+          DART_DEFINES: >-
+            --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
+            --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
+            --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
+            --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
+            --dart-define=TERMS_AND_CONDITIONS_URL=${{ vars.TERMS_AND_CONDITIONS_URL }}
+            --dart-define=GEOIP_CDN_URL=${{ vars.GEOIP_CDN_URL }}
+            --dart-define=GEOSITE_CDN_URL=${{ vars.GEOSITE_CDN_URL }}
+          VERSION_ARGS: >-
+            --build-name=${{ steps.version.outputs.name }}
+            --build-number=${{ github.run_number }}
+        run: |
+          # shellcheck disable=SC2086  # 必须 word splitting，见 android job 说明
+          flutter build linux --release $VERSION_ARGS $DART_DEFINES
+      - name: Verify libcore.so bundled with FFI exports
+        run: |
+          BUNDLE=build/linux/x64/release/bundle
+          test -f "$BUNDLE/lib/libcore.so" || {
+            echo "::error::libcore.so 没被打进产物"; exit 1; }
+          nm -D --defined-only "$BUNDLE/lib/libcore.so" |
+            grep -E ' T (setup|start|stop|parse|selectOutbound|urlTest)$' >/dev/null || {
+            echo "::error::libcore.so 缺少预期的 FFI 导出符号"; exit 1; }
+      - name: Package Linux (tar.gz + deb)
+        run: bin/package-linux.sh "${{ steps.version.outputs.name }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: |
+            build/release/ClashMiao-Linux-x86_64-*.tar.gz
+            build/release/clashmiao_*_amd64.deb
+          if-no-files-found: error
+
+
   publish:
-    needs: [android, macos, windows]
+    needs: [android, macos, windows, linux]
+    # always()：某个平台缺签名密钥或构建失败时，**其余平台的包照样要发出去**。
+    # 之前是硬 needs，结果 Android 缺 keystore 就一个包都不发、连桌面端都没有——
+    # 用户打开 release 页面看到的是空的。缺哪个平台会在 release 正文里显式警告
+    # （见 bin/make-release-notes.sh），整个 run 仍然标记为失败，不会掩盖问题。
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -488,16 +596,53 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
+      - name: Collect release assets
+        id: collect
+        run: |
+          mkdir -p assets
+          # 只收各平台的 release-* artifact。store-android-aab 故意排除：
+          # AAB 是 Play Store 上传格式，终端用户下载了没法安装，放在公开
+          # 下载列表里只会造成困惑。需要它的时候从 workflow artifact 里取。
+          shopt -s nullglob
+          for f in artifacts/release-*/*; do
+            [ -f "$f" ] && cp "$f" assets/
+          done
+          COUNT=$(find assets -type f | wc -l | tr -d ' ')
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::一个平台的产物都没有，不发布空 release"
+            exit 1
+          fi
+          echo "收到 $COUNT 个文件："
+          find assets -type f -printf '  %f (%s bytes)\n' | sort
+      - name: Generate SHA256SUMS
+        working-directory: assets
+        run: |
+          # 让用户能校验下载完整性——开源项目标配。
+          # 用 -- 和 basename：sha256sum 的输出里带路径的话，用户在下载目录里
+          # 跑 `sha256sum -c` 会找不到文件。
+          find . -maxdepth 1 -type f ! -name 'SHA256SUMS.txt' -printf '%f\n' |
+            sort | xargs sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Build release notes
+        env:
+          VERSION: ${{ env.RELEASE_TAG }}
+        run: bin/make-release-notes.sh "${VERSION#v}" assets > notes.md
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          shopt -s nullglob
-          ARTIFACTS=(artifacts/release-android/* artifacts/release-macos/* artifacts/release-windows/*)
-          gh release create "$RELEASE_TAG" \
-            --generate-notes \
-            "${ARTIFACTS[@]}" || \
-          gh release upload "$RELEASE_TAG" "${ARTIFACTS[@]}" --clobber
+          # 已存在就更新（重跑同一个 tag 时不该失败），不存在就创建。
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release edit "$RELEASE_TAG" --notes-file notes.md
+            gh release upload "$RELEASE_TAG" assets/* --clobber
+          else
+            gh release create "$RELEASE_TAG" \
+              --title "ClashMiao ${RELEASE_TAG#v}" \
+              --notes-file notes.md \
+              assets/*
+          fi
+          echo "已发布：$(gh release view "$RELEASE_TAG" --json url --jq .url)"
 
   report:
     needs: [quality, android, macos, windows, publish]

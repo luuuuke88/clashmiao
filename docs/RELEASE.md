@@ -30,7 +30,7 @@ tag push 触发时不受这个开关影响，永远是正式发布。
 | | `ClashMiao-Android-armeabi-v7a-<ver>.apk`（老旧 32 位设备） |
 | | `ClashMiao-Android-x86_64-<ver>.apk`（模拟器 / x86 平板） |
 | | `ClashMiao-Android-universal-<ver>.apk`（不确定架构时用，体积约 3 倍） |
-| macOS | `ClashMiao-macOS-universal.dmg` / `.zip`（Intel + Apple Silicon） |
+| macOS | `ClashMiao-macOS-universal-<ver>.dmg` / `-<ver>.zip`（Intel + Apple Silicon） |
 | Windows | `ClashMiao-Windows-x64-Setup.exe` / `ClashMiao-Windows-x64-<ver>.zip` |
 | Linux | `clashmiao_<ver>_amd64.deb` / `ClashMiao-Linux-x86_64-<ver>.tar.gz` |
 | 全部 | `SHA256SUMS.txt` |
@@ -175,9 +175,10 @@ macOS 产物是 **universal**（`x86_64` + `arm64`），Intel Mac 和 Apple Sili
 
 ## 发布前检查清单
 
-- [ ] 四个 Android 签名 Secret 已配置（否则构建直接失败）
+- [ ] 四个 Android 签名 Secret 已配置（跑 `bin/setup-android-signing.sh`；否则 Android 包不产出）
 - [ ] `SENTRY_DSN` 已配置（否则线上崩溃看不到）
 - [ ] `PRIVACY_POLICY_URL` / `TERMS_AND_CONDITIONS_URL` 已配置（上架必需）
 - [ ] `REPO_SLUG` 已配置（否则"检查更新"永远说已是最新）
 - [ ] 下载页写清 macOS 首次打开需右键、Windows 需过 SmartScreen
-- [ ] keystore 文件与密码已离线备份
+- [ ] keystore 文件与密码已离线备份（**最重要的一条**）
+- [ ] 先用手动触发 + `draft` 排练过一次，确认产物和正文都对

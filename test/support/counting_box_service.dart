@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/model/box_alert.dart';
 import 'package:clashmiao/core/model/box_stats.dart';
@@ -28,6 +29,10 @@ class CountingBoxService implements BoxService {
   /// 若非 null，`stop()` 每次都抛它——用来验证"停内核失败也不能卡住退出"。
   Object? stopError;
 
+  /// 为真时 `stop()` **永不返回**——模拟内核完全无响应，用来验证退出路径上的
+  /// 超时保护真的生效（不然 App 会卡在退不出去的状态）。
+  bool stopHangs = false;
+
   @override
   Future<void> start(String configPath, {String name = ''}) async {
     startCalls++;
@@ -36,6 +41,7 @@ class CountingBoxService implements BoxService {
   @override
   Future<void> stop() async {
     stopCalls++;
+    if (stopHangs) return Completer<void>().future;
     if (stopError != null) throw stopError!;
   }
 

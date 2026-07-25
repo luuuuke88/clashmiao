@@ -352,32 +352,43 @@ jobs:
             --sign "$MACOS_SIGNING_IDENTITY" "$APP"
           codesign --verify --deep --strict --verbose=2 "$APP"
       - name: Create macOS packages
+        env:
+          VERSION: ${{ steps.version.outputs.name }}
         run: |
           brew install create-dmg
           mkdir -p build/release
-          rm -f build/release/ClashMiao-macOS-universal.dmg build/release/ClashMiao-macOS-universal.zip
+          # 文件名带版本号，跟其它三个平台一致：不带的话用户先后下两个版本会
+          # 撞名，浏览器只能自动改成 "(1).dmg" 这种认不出来的名字。
+          DMG="build/release/ClashMiao-macOS-universal-$VERSION.dmg"
+          ZIP="build/release/ClashMiao-macOS-universal-$VERSION.zip"
+          rm -f "$DMG" "$ZIP"
           create-dmg \
             --volname "ClashMiao" \
             --window-size 600 400 \
             --icon-size 100 \
             --app-drop-link 400 200 \
-            "build/release/ClashMiao-macOS-universal.dmg" \
+            "$DMG" \
             "build/macos/Build/Products/Release/clashmiao.app" || \
-          echo "::warning::dmg creation failed; zip artifact will still be uploaded"
-          cd build/macos/Build/Products/Release && \
-            ditto -c -k --keepParent clashmiao.app ../../../../release/ClashMiao-macOS-universal.zip
-          test -s ../../../../release/ClashMiao-macOS-universal.dmg || test -s ../../../../release/ClashMiao-macOS-universal.zip
+          echo "::warning::dmg 创建失败；zip 产物仍会上传"
+          ditto -c -k --keepParent \
+            "build/macos/Build/Products/Release/clashmiao.app" "$ZIP"
+          # dmg 和 zip 至少要有一个，两个都没有说明打包整体失败了
+          test -s "$DMG" || test -s "$ZIP"
       - name: Notarize macOS dmg (skipped until Apple Developer account is configured)
         env:
           MACOS_NOTARY_APPLE_ID: ${{ secrets.MACOS_NOTARY_APPLE_ID }}
           MACOS_NOTARY_PASSWORD: ${{ secrets.MACOS_NOTARY_PASSWORD }}
           MACOS_NOTARY_TEAM_ID: ${{ secrets.MACOS_NOTARY_TEAM_ID }}
+          # 必须跟打包步骤用同一个版本来源。用 ${RELEASE_TAG#v} 在 prerelease
+          # tag 下会对不上：版本推导会把 v2.0.0-beta.1 归一成 2.0.0（Flutter 的
+          # --build-name 不收 prerelease 段），文件名是 ...-2.0.0.dmg。
+          VERSION: ${{ steps.version.outputs.name }}
         run: |
           if [ -z "$MACOS_NOTARY_APPLE_ID" ]; then
             echo "::warning::未配置公证凭据，dmg 未公证。"
             exit 0
           fi
-          DMG=build/release/ClashMiao-macOS-universal.dmg
+          DMG="build/release/ClashMiao-macOS-universal-$VERSION.dmg"
           test -s "$DMG"
           xcrun notarytool submit "$DMG" \
             --apple-id "$MACOS_NOTARY_APPLE_ID" \
@@ -391,9 +402,9 @@ jobs:
         with:
           name: release-macos
           path: |
-            build/release/ClashMiao-macOS-universal.dmg
-            build/release/ClashMiao-macOS-universal.zip
-          if-no-files-found: warn
+            build/release/ClashMiao-macOS-universal-*.dmg
+            build/release/ClashMiao-macOS-universal-*.zip
+          if-no-files-found: error
 
   windows:
     runs-on: windows-latest
@@ -511,6 +522,7 @@ jobs:
           path: |
             build/installer/ClashMiao-Windows-x64-Setup.exe
             build/release/ClashMiao-Windows-x64-*.zip
+          if-no-files-found: error
 
   linux:
     runs-on: ubuntu-latest

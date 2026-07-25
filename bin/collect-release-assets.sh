@@ -44,10 +44,20 @@ if [ -e "$STAGING" ]; then
 fi
 mkdir -p "$STAGING"
 
+# 递归找文件，**不要**只扫 release-*/ 的第一层。upload-artifact 会保留所传
+# 路径的「最近公共祖先」目录结构：一个 job 如果传了 build/installer/x.exe 和
+# build/release/y.zip，公共祖先是 build/，artifact 里就带着 installer/ 和
+# release/ 两层子目录；而所有文件都在同一个目录下的 job，落下来就是平的。
+# 只扫一层的话，前者的文件会被**静默跳过**——排练时 windows job 明明成功，
+# release 里却一个 Windows 包都没有，就是这么来的。
 shopt -s nullglob
-for f in "$ARTIFACTS"/release-*/*; do
-  [ -f "$f" ] || continue
-  cp "$f" "$STAGING/"
+for dir in "$ARTIFACTS"/release-*/; do
+  while IFS= read -r -d '' f; do
+    base="$(basename "$f")"
+    # 重名会让后一个悄悄盖掉前一个，发出去的包少一个而没有任何提示。
+    [ -e "$STAGING/$base" ] && die "两个 artifact 里都有 $base，重名会互相覆盖"
+    cp "$f" "$STAGING/$base"
+  done < <(find "$dir" -type f -print0)
 done
 
 # -maxdepth 1：只数暂存目录顶层。产物都是单个文件，出现子目录就是收错了东西。

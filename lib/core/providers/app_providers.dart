@@ -447,10 +447,43 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
       return;
     }
 
-    if (currentStatus is BoxStarted) {
-      await disconnect();
-    } else {
-      await connect();
+    try {
+      if (currentStatus is BoxStarted) {
+        await disconnect();
+      } else {
+        await connect();
+      }
+    } catch (e) {
+      // 兜底不能省。toggle() 是「连接/断开」的唯一入口（首页大按钮、桌面托盘
+      // 菜单、dev 自动启动），而**首页那处是 fire-and-forget**：
+      // `onTap: () { ref.read(...).toggle(); }` 把 Future 丢掉了。异常一旦从
+      // connect()/disconnect() 逃出来就没人接，用户点了按钮**什么都不发生、
+      // 也看不到任何提示**——一个死按钮。这正是 _failPrecheck 当初要解决的
+      // 形态，只是来源从"前置校验分支"换成了"意外异常"。
+      //
+      // 异常真的能逃出来：connect() 的 try 只包住 start() 之后那段，前面读
+      // 配置/读 provider 的十几行在 try 之外。实测过一次——provider 容器已被
+      // dispose 时 `_ref.read()` 抛 StateError，堆栈停在 connect() 里。
+      //
+      // 这里**只报错、不改 state**：disconnect 失败时内核可能还在跑，谎报
+      // BoxStopped 是本 App 最不能犯的错（见 disconnect() 内的注释）。
+      // connect()/disconnect() 各自的 catch 已经把自己的状态处理好了。
+      //
+      // 也**不吞异常**：`rethrow` 让全局错误处理（Sentry / zone handler）照样
+      // 收到这条。catch 掉不往外抛的话，换来一条用户可见的提示、代价是崩溃
+      // 上报里从此看不到这个故障——那是拿可观测性换体面。
+      // 报错这件事本身也要保护起来。异常的起因可能正是"provider 容器已被
+      // dispose"，那么下面这两个 `_ref.read()` 会**同样抛出**——新异常顶掉原
+      // 异常、`rethrow` 根本执行不到，结果比不加这个 catch 更糟（原始故障
+      // 彻底消失）。所以：报不出来就只记日志，绝不让它盖掉原异常。
+      try {
+        _ref.read(connectionErrorProvider.notifier).state =
+            classifyExceptionMessage(e, _ref.read(translationsProvider));
+      } catch (secondary) {
+        debugPrint('toggle 兜底提示也失败了（容器可能已 dispose）: $secondary');
+      }
+      debugPrint('toggle 未捕获异常: $e');
+      rethrow;
     }
   }
 

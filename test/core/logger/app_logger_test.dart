@@ -140,4 +140,33 @@ void main() {
       expect(previousCalled, isTrue, reason: '之前注册的 handler 必须继续被调用，不能被静默替换');
     });
   });
+
+  group('日志目录消失时 append 不能抛异常', () {
+    test('目录被删掉之后再 append，静默丢弃而不是抛 PathNotFoundException', () async {
+      final tmp = await Directory.systemTemp.createTemp('app_logger_gone_');
+      AppLogger.configureForTesting(
+        resolveLogFile: () async => File('${tmp.path}/app.log'),
+      );
+      addTearDown(AppLogger.resetForTesting);
+      await AppLogger.instance.append('第一行');
+
+      // 模拟"日志目录在两次写入之间消失"
+      await tmp.delete(recursive: true);
+
+      // 不抛才算通过。这条路径的调用方是 FlutterError.onError 里的
+      // fire-and-forget，抛出来就是一条没人接的异步异常，而且是在处理另一个
+      // 错误的过程中产生的，堆栈跟真正的故障毫无关系。
+      await AppLogger.instance.append('目录已经没了');
+    });
+  });
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// 追加：日志目录消失时不能抛异常
+//
+// CI 上真实发生过：`FlutterError.onError` 里的 fire-and-forget append 活得比
+// 测试还长，等它执行时临时目录已经被 tearDown 删掉，`file.length()` 抛
+// PathNotFoundException，报在一条**已经结束**的测试上（"This test failed after
+// it had already completed"）——排查时极具误导性。
+//
+// 生产上同样会发生：用户清 App 数据、系统清理临时目录、外部工具删目录。

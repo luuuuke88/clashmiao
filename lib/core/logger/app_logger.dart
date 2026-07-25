@@ -119,12 +119,30 @@ class AppLogger {
   }
 
   Future<void> _appendInternal(String line) async {
-    final file = await _file();
-    await file.writeAsString('$line\n', mode: FileMode.append, flush: true);
-    await _rotateIfNeeded(file);
+    // 写日志**绝不能**把异常抛出去。这条路径上的调用方是
+    // `FlutterError.onError` / `PlatformDispatcher.onError` 里的
+    // fire-and-forget（见 initAppLogger），抛出来就是一条没人接的异步异常——
+    // 而且是在"处理另一个错误"的过程中产生的，堆栈跟真正的故障毫无关系，
+    // 排障时极具误导性。
+    //
+    // 日志目录消失是真实会发生的：用户清了 App 数据、系统清理临时目录、
+    // 外部工具删了目录。CI 上就真的撞到过（PathNotFoundException from
+    // `file.length()`，报在一条**已经结束**的测试上）。
+    //
+    // 丢一行日志远好过制造一条假故障。
+    try {
+      final file = await _file();
+      await file.writeAsString('$line\n', mode: FileMode.append, flush: true);
+      await _rotateIfNeeded(file);
+    } catch (_) {
+      // 这里连 debugPrint 都不做：日志系统自己出问题时再去打日志，容易套娃。
+    }
   }
 
   Future<void> _rotateIfNeeded(File file) async {
+    // 先确认文件还在：写完到这里之间目录可能已经被删掉（见 _appendInternal
+    // 的注释），`length()` 对不存在的文件会抛 PathNotFoundException。
+    if (!await file.exists()) return;
     final length = await file.length();
     if (length <= maxBytes) return;
 

@@ -80,7 +80,7 @@ typedef StopCommandClientDart = Pointer<Char> Function(int);
 /// 桌面端 FFI 实现
 ///
 /// macOS/Windows/Linux 通过 dart:ffi 直接加载 sing-box 动态库
-class FFIBoxService implements BoxService {
+class FFIBoxService implements BoxService, DisposableBoxService {
   late final DynamicLibrary _lib;
 
   late final SetupDart _setup;
@@ -102,16 +102,13 @@ class FFIBoxService implements BoxService {
   Stream<BoxStats>? _statsStream;
   Stream<List<OutboundGroup>>? _groupsStream;
 
-  // 这个 controller（以及 `_statusReceiver` 这个 ReceivePort）确实从不 close。
-  // 现状下不构成真实泄漏：`BoxService` 由 `boxServiceProvider`（一个普通
-  // Provider，没有 onDispose）创建，与进程同生命周期，进程退出即回收。
-  //
-  // 但**根因是 `BoxService` 接口完全没有 dispose/close 契约**——一旦将来需要
-  // 重建 service（内核致命错误后重启、开发期热重启），这里就会真的泄漏。
-  // 正确修法是给接口补生命周期方法并在 provider 上 `ref.onDispose`，那要同时
-  // 改 3 个实现和 7 个测试替身，属于独立的一次改动，不夹在这轮 lint 收敛里做。
-  // ignore: close_sinks
+  /// 由 [dispose] 关闭（见 [DisposableBoxService]）。
   final _networkChangedController = StreamController<void>.broadcast();
+
+  /// `init()` 是否已经跑过。`_statusReceiver` 是 `late final`，没 init 就读会抛
+  /// LateInitializationError——[dispose] 必须能在"创建了但从没 init"的实例上
+  /// 安全调用（工厂里 `FFIBoxService()` 构造成功但 init 失败就是这种情形）。
+  bool _initialized = false;
 
   /// 加载动态库
   void _loadLibrary() {
@@ -165,6 +162,7 @@ class FFIBoxService implements BoxService {
     _loadLibrary();
 
     _statusReceiver = ReceivePort('service status');
+    _initialized = true;
     final source = _statusReceiver
         .asBroadcastStream()
         .map((event) => jsonDecode(event as String))
@@ -196,6 +194,23 @@ class FFIBoxService implements BoxService {
 
     if (err.isNotEmpty) {
       throw Exception('setup failed: $err');
+    }
+  }
+
+  /// 见 [DisposableBoxService]。由 `boxServiceProvider` 的 `ref.onDispose`
+  /// 调用；生产环境里 provider 与进程同生命周期，所以正常运行时不会走到这里，
+  /// 它保证的是"万一 service 被重建"时旧实例的资源能被真正放掉。
+  ///
+  /// 幂等：`_networkChangedController.close()` 重复调用是安全的（Dart 的
+  /// StreamController 允许），ReceivePort 用 `_initialized` 守卫——它是
+  /// `late final`，没跑过 init 就读会抛 LateInitializationError，而
+  /// "构造成功但 init 失败"是真实存在的路径（见 `BoxService()` 工厂的 catch）。
+  @override
+  Future<void> dispose() async {
+    await _networkChangedController.close();
+    if (_initialized) {
+      // ReceivePort 不关的话，对应的 isolate 端口会一直存活。
+      _statusReceiver.close();
     }
   }
 

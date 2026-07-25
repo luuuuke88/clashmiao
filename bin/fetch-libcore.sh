@@ -49,14 +49,24 @@ fetch_macos() {
   if command -v lipo >/dev/null; then
     local archs
     archs="$(lipo -archs libcore/bin/libcore.dylib 2>/dev/null || true)"
-    local host_arch
-    host_arch="$(uname -m)"
+    # 必须双架构，不能只查宿主架构。这条通道只分发**一个** dylib 给所有人，
+    # 所以唯一正确的产物就是 universal。
+    #
+    # 之前这里只校验 `uname -m` 在不在里面，结果放过了一个纯 arm64 的资产：
+    # Apple Silicon 开发机和 arm64 CI runner 都"通过"，直到 release 流水线跑
+    # 完整个 macOS 构建、在最后一步的 universal 断言才炸。校验点离错误源头
+    # 太远了——在下载完的当场就能判死的事，不该拖到 5 分钟后。
     case " $archs " in
-      *" $host_arch "*) ;;
-      *)
-        warn "macOS libcore.dylib must include $host_arch; got: ${archs:-unknown}"
-        exit 1
-        ;;
+      *" x86_64 "*) ;;
+      *) warn "libcore.dylib 缺 x86_64，Intel Mac 跑不起来（实际: ${archs:-unknown}）"
+         warn "重新编：core/build.sh macos（它会分别编 amd64/arm64 再 lipo 合成）"
+         exit 1 ;;
+    esac
+    case " $archs " in
+      *" arm64 "*) ;;
+      *) warn "libcore.dylib 缺 arm64，Apple Silicon 跑不起来（实际: ${archs:-unknown}）"
+         warn "重新编：core/build.sh macos"
+         exit 1 ;;
     esac
   fi
 }

@@ -9,6 +9,16 @@ on:
         description: 'Release tag to package, for example v0.1.0'
         required: true
         type: string
+      draft:
+        # 手动触发时默认发成 draft：draft release 只有协作者能看到、可以随时
+        # 删除，用来**排练**整条发布流水线而不对外暴露任何东西。
+        # 这条流水线的每一步单独验过，但从没端到端跑过一次真实发布——首次
+        # 就直接对外发是拿用户当测试用例。tag push 触发时不受影响（下面的
+        # 表达式在 tag 场景下取 false），正式发版行为不变。
+        description: '发成 draft（只有协作者可见，可随时删除）——用来排练发布流程'
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
@@ -645,11 +655,20 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # 已存在就更新（重跑同一个 tag 时不该失败），不存在就创建。
+          # tag push 触发时 inputs.draft 为空 → DRAFT_FLAG 为空 → 正式发布。
+          # 只有手动触发且勾了 draft 才发成草稿。
+          DRAFT_FLAG=""
+          if [ "${{ inputs.draft }}" = "true" ]; then
+            DRAFT_FLAG="--draft"
+            echo "::notice::发成 draft（只有协作者可见）。确认无误后在 Releases 页面点 Publish，或直接删掉。"
+          fi
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release edit "$RELEASE_TAG" --notes-file notes.md
             gh release upload "$RELEASE_TAG" assets/* --clobber
           else
-            gh release create "$RELEASE_TAG" \
+            # shellcheck disable=SC2086  # DRAFT_FLAG 要么是空要么是单个 --draft，
+            # 必须不加引号，否则空值会被当成一个空参数传给 gh
+            gh release create "$RELEASE_TAG" $DRAFT_FLAG \
               --title "ClashMiao ${RELEASE_TAG#v}" \
               --notes-file notes.md \
               assets/*

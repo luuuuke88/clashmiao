@@ -4,7 +4,7 @@ import 'package:app_links/app_links.dart';
 import 'package:clashmiao/core/deep_link/deep_link_parser.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

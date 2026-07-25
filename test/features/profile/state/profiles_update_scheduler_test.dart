@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/state/profiles_update_scheduler.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/widgets.dart';

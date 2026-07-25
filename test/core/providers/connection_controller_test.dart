@@ -16,7 +16,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';

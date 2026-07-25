@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
-import 'package:clashmiao/core/router/app_router.dart';
-import 'package:clashmiao/core/tray/tray_controller.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/app/router/app_router.dart';
+import 'package:clashmiao/app/tray/tray_controller.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart'
     show isHttpDownloadUrl;

@@ -8,7 +8,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/data/profile_parser.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profile_details_page.dart';
 import 'package:clashmiao/features/profile/widget/profile_qr_dialog.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';

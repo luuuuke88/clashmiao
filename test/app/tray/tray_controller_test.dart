@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/tray/tray_controller.dart';
+import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tray_manager/tray_manager.dart';

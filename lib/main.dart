@@ -14,10 +14,10 @@ import 'package:clashmiao/core/model/directories.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
-import 'package:clashmiao/core/shortcuts/desktop_shortcuts.dart';
-import 'package:clashmiao/core/tray/tray_controller.dart';
-import 'package:clashmiao/core/update/startup_update_check.dart';
-import 'package:clashmiao/core/window/desktop_exit_guard.dart';
+import 'package:clashmiao/app/shortcuts/desktop_shortcuts.dart';
+import 'package:clashmiao/app/tray/tray_controller.dart';
+import 'package:clashmiao/app/update/startup_update_check.dart';
+import 'package:clashmiao/app/window/desktop_exit_guard.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/features/profile/state/profiles_update_scheduler.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart'

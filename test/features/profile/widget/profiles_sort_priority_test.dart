@@ -1,4 +1,4 @@
-import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:flutter_test/flutter_test.dart';
 

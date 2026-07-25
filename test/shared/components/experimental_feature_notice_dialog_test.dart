@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/profile/model/advanced_config.dart';
+import 'package:clashmiao/core/model/advanced_config.dart';
 import 'package:clashmiao/shared/components/experimental_feature_notice_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

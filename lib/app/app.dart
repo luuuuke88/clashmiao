@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/localization/locale_extensions.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/router/app_router.dart';
+import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:dynamic_color/dynamic_color.dart';

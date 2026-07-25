@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/core/update/startup_update_check.dart';
+import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

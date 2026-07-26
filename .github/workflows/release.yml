@@ -574,9 +574,13 @@ jobs:
           Compress-Archive -Path $stage `
             -DestinationPath "build/release/ClashMiao-Windows-x64-$version.zip" -Force
           # 校验而不是假设：顶层必须只有那一个目录。
-          $roots = [IO.Compression.ZipFile]::OpenRead(
-            (Resolve-Path "build/release/ClashMiao-Windows-x64-$version.zip")
-          ).Entries.FullName | ForEach-Object { $_.Split('/')[0] } | Sort-Object -Unique
+          # @() 强制保留数组语义。只有一个顶层目录时，PowerShell 默认把管道
+          # 结果展开成 String，随后 $roots[0] 会变成首字符 "C" 而不是目录名。
+          $roots = @(
+            [IO.Compression.ZipFile]::OpenRead(
+              (Resolve-Path "build/release/ClashMiao-Windows-x64-$version.zip")
+            ).Entries.FullName | ForEach-Object { $_.Split('/')[0] } | Sort-Object -Unique
+          )
           if ($roots.Count -ne 1 -or $roots[0] -ne "ClashMiao-$version") {
             throw "zip 顶层结构不对：$($roots -join ', ')"
           }

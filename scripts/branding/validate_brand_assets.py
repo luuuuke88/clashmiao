@@ -6,6 +6,13 @@ from pathlib import Path
 
 from PIL import Image
 
+from build_icon_set import (
+    TRAIL,
+    WHITE,
+    color_class_mask,
+    connected_component_count,
+)
+
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -71,6 +78,37 @@ def image_at(relative: str) -> Image.Image | None:
     return Image.open(path)
 
 
+def brand_mark_geometry_errors(mark: Image.Image) -> list[str]:
+    rgba_mark = mark.convert("RGBA")
+    wave = color_class_mask(rgba_mark, TRAIL)
+    white = color_class_mask(rgba_mark, WHITE)
+    wave_box = wave.getbbox()
+    white_box = white.getbbox()
+    geometry_errors: list[str] = []
+
+    if wave_box is None or white_box is None:
+        return ["brand mark must contain cat and detached wave"]
+    if connected_component_count(wave) != 1:
+        geometry_errors.append(
+            "brand mark must contain exactly one wave component"
+        )
+    if white_box[0] - wave_box[2] < 8:
+        geometry_errors.append("detached wave must not touch the cat")
+    if not (90 <= wave_box[0] and wave_box[2] <= 270):
+        geometry_errors.append(f"unexpected detached wave bounds: {wave_box}")
+    return geometry_errors
+
+
+def brand_logo_geometry_errors(logo: Image.Image) -> list[str]:
+    white_box = color_class_mask(logo.convert("RGBA"), WHITE).getbbox()
+    if white_box is None:
+        return ["brand logo must contain white cat"]
+    width = white_box[2] - white_box[0]
+    if not 520 <= width <= 610:
+        return [f"brand logo cat width outside B range: {width}"]
+    return []
+
+
 errors: list[str] = []
 
 for relative, expected_size in EXPECTED.items():
@@ -89,6 +127,12 @@ if brand_mark is not None:
     with brand_mark:
         if brand_mark.mode != "RGBA" or brand_mark.getpixel((0, 0))[3] != 0:
             errors.append("brand_mark.png must have transparent RGBA corners")
+        errors.extend(brand_mark_geometry_errors(brand_mark))
+
+brand_logo = image_at("assets/images/brand_logo.png")
+if brand_logo is not None:
+    with brand_logo:
+        errors.extend(brand_logo_geometry_errors(brand_logo))
 
 macos_icon = image_at(
     "macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png"

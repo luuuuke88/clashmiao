@@ -8,10 +8,17 @@ from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SOURCE_MARK_PATH = ROOT / "assets/branding/speed_cat_mark_source.png"
 MARK_PATH = ROOT / "assets/branding/speed_cat_mark.png"
 
 INDIGO_A = (118, 103, 255, 255)
 INDIGO_B = (49, 85, 216, 255)
+WHITE = (255, 255, 255)
+YELLOW = (255, 215, 94)
+TRAIL = (198, 205, 255)
+PALETTE = (WHITE, YELLOW, TRAIL)
+MAC_MARK_RATIO = 1.04
+SQUARE_MARK_RATIO = 1.12
 RESAMPLE = Image.Resampling.LANCZOS
 
 MAC_SIZES = [16, 32, 64, 128, 256, 512, 1024]
@@ -66,7 +73,7 @@ def fitted_mark(
 
 def square_icon(mark: Image.Image, size: int) -> Image.Image:
     image = gradient(size)
-    image.alpha_composite(fitted_mark(mark, size, ratio=0.86))
+    image.alpha_composite(fitted_mark(mark, size, ratio=SQUARE_MARK_RATIO))
     return image.convert("RGB")
 
 
@@ -93,7 +100,7 @@ def mac_icon(mark: Image.Image, size: int) -> Image.Image:
     tile = gradient(work)
     tile.putalpha(mask)
     canvas.alpha_composite(tile)
-    canvas.alpha_composite(fitted_mark(mark, work, ratio=0.80))
+    canvas.alpha_composite(fitted_mark(mark, work, ratio=MAC_MARK_RATIO))
     return canvas.resize((size, size), RESAMPLE)
 
 
@@ -110,11 +117,151 @@ def color_distance(
     return sum((a - b) ** 2 for a, b in zip(left, right))
 
 
+def nearest_brand_color(rgb: tuple[int, int, int]) -> tuple[int, int, int]:
+    return min(PALETTE, key=lambda target: color_distance(rgb, target))
+
+
+def color_class_mask(
+    image: Image.Image,
+    target: tuple[int, int, int],
+) -> Image.Image:
+    source = image.convert("RGBA")
+    mask = Image.new("L", source.size)
+    source_pixels = source.load()
+    mask_pixels = mask.load()
+    for y in range(source.height):
+        for x in range(source.width):
+            red, green, blue, alpha = source_pixels[x, y]
+            if (
+                alpha >= 32
+                and nearest_brand_color((red, green, blue)) == target
+            ):
+                mask_pixels[x, y] = alpha
+    return mask
+
+
+def connected_component_count(
+    mask: Image.Image,
+    threshold: int = 32,
+) -> int:
+    grayscale = mask.convert("L")
+    pixels = grayscale.load()
+    width, height = grayscale.size
+    visited = bytearray(width * height)
+    count = 0
+
+    for y in range(height):
+        for x in range(width):
+            start_index = y * width + x
+            if visited[start_index] or pixels[x, y] < threshold:
+                continue
+            count += 1
+            pending = [(x, y)]
+            visited[start_index] = 1
+            while pending:
+                current_x, current_y = pending.pop()
+                for neighbor_x, neighbor_y in (
+                    (current_x - 1, current_y),
+                    (current_x + 1, current_y),
+                    (current_x, current_y - 1),
+                    (current_x, current_y + 1),
+                ):
+                    if not (
+                        0 <= neighbor_x < width and 0 <= neighbor_y < height
+                    ):
+                        continue
+                    neighbor_index = neighbor_y * width + neighbor_x
+                    if (
+                        visited[neighbor_index]
+                        or pixels[neighbor_x, neighbor_y] < threshold
+                    ):
+                        continue
+                    visited[neighbor_index] = 1
+                    pending.append((neighbor_x, neighbor_y))
+    return count
+
+
+def cubic_points(
+    start: tuple[float, float],
+    control_a: tuple[float, float],
+    control_b: tuple[float, float],
+    end: tuple[float, float],
+    steps: int = 48,
+) -> list[tuple[float, float]]:
+    points: list[tuple[float, float]] = []
+    for index in range(steps + 1):
+        t = index / steps
+        inverse = 1 - t
+        x = (
+            inverse**3 * start[0]
+            + 3 * inverse**2 * t * control_a[0]
+            + 3 * inverse * t**2 * control_b[0]
+            + t**3 * end[0]
+        )
+        y = (
+            inverse**3 * start[1]
+            + 3 * inverse**2 * t * control_a[1]
+            + 3 * inverse * t**2 * control_b[1]
+            + t**3 * end[1]
+        )
+        points.append((x, y))
+    return points
+
+
+def build_refined_mark(source: Image.Image) -> Image.Image:
+    source = source.convert("RGBA")
+    refined = source.copy()
+    source_pixels = source.load()
+    refined_pixels = refined.load()
+    for y in range(source.height):
+        for x in range(source.width):
+            red, green, blue, alpha = source_pixels[x, y]
+            if (
+                alpha > 0
+                and nearest_brand_color((red, green, blue)) == TRAIL
+            ):
+                refined_pixels[x, y] = (0, 0, 0, 0)
+
+    scale = 4
+    wave = Image.new(
+        "RGBA",
+        (source.width * scale, source.height * scale),
+    )
+    first = cubic_points(
+        (110, 620),
+        (140, 580),
+        (170, 580),
+        (195, 620),
+    )
+    second = cubic_points(
+        (195, 620),
+        (215, 650),
+        (235, 650),
+        (245, 625),
+    )
+    points = [
+        (round(x * scale), round(y * scale))
+        for x, y in first + second[1:]
+    ]
+    draw = ImageDraw.Draw(wave)
+    draw.line(
+        points,
+        fill=(*TRAIL, 255),
+        width=40 * scale,
+        joint="curve",
+    )
+    radius = 20 * scale
+    for x, y in (points[0], points[-1]):
+        draw.ellipse(
+            (x - radius, y - radius, x + radius, y + radius),
+            fill=(*TRAIL, 255),
+        )
+    refined.alpha_composite(wave.resize(source.size, RESAMPLE))
+    return refined
+
+
 def macos_template(mark: Image.Image) -> Image.Image:
     template_source = mark.resize((128, 128), RESAMPLE)
-    white = (255, 255, 255)
-    yellow = (255, 215, 94)
-    trail = (198, 205, 255)
 
     alpha = Image.new("L", (128, 128))
     source_pixels = template_source.load()
@@ -126,10 +273,10 @@ def macos_template(mark: Image.Image) -> Image.Image:
                 continue
             rgb = (red, green, blue)
             nearest = min(
-                (white, yellow, trail),
+                PALETTE,
                 key=lambda target: color_distance(rgb, target),
             )
-            if nearest == white:
+            if nearest == WHITE:
                 alpha_pixels[x, y] = source_alpha
 
     template = Image.new("RGBA", (128, 128), (255, 255, 255, 0))
@@ -138,8 +285,10 @@ def macos_template(mark: Image.Image) -> Image.Image:
 
 
 def main() -> None:
-    mark = Image.open(MARK_PATH).convert("RGBA")
+    source = Image.open(SOURCE_MARK_PATH).convert("RGBA")
+    mark = build_refined_mark(source)
 
+    save_png(mark, "assets/branding/speed_cat_mark.png")
     save_png(mark, "assets/images/brand_mark.png")
     save_png(mac_icon(mark, 1024), "assets/images/brand_logo.png")
     save_png(mac_icon(mark, 128), "assets/images/tray_icon.png")

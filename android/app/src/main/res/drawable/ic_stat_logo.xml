@@ -9,4 +9,10 @@
         android:fillColor="#FFFFFFFF"
         android:fillType="evenOdd"
         android:pathData="M4.5,9.75 L7.875,4.5 L10.5,9 Q12.375,7.875 14.25,9 L17.625,4.5 L19.875,10.875 Q21.75,14.25 19.875,17.625 Q17.25,21 12,21 Q6.75,21 4.125,17.625 Q2.25,13.875 4.5,9.75 Z M11.25,10.5 L16.125,10.5 L13.5,13.125 L16.5,13.125 L10.125,18.75 L12,14.625 L8.625,14.625 Z" />
+    <path
+        android:fillColor="@android:color/transparent"
+        android:pathData="M2.8,14 C3.6,12.9 4.4,12.9 5.2,14 C5.7,14.8 6.2,14.8 6.5,14.3"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.2" />
 </vector>

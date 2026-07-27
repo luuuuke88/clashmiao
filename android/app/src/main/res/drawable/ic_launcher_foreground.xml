@@ -12,7 +12,7 @@
         android:pathData="M51.5,45.8 L69.05,45.8 L59.6,55.25 L70.4,55.25 L47.45,75.5 L54.2,60.65 L42.05,60.65 Z" />
     <path
         android:fillColor="@android:color/transparent"
-        android:pathData="M24,51 C17,51 16,45 22,42 M25,64 C17,67 16,60 22,57"
+        android:pathData="M15,62 C18,58 21,58 24,62 C26,65 28,65 29,63"
         android:strokeColor="#FFC6CDFF"
         android:strokeLineCap="round"
         android:strokeWidth="4" />

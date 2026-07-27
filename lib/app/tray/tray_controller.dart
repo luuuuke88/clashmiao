@@ -137,6 +137,31 @@ Menu buildTrayMenu({
   );
 }
 
+/// 不同桌面平台需要不同的托盘图标语义。
+///
+/// macOS 的菜单栏图标必须作为 template image 交给系统，系统才能按浅色/深色
+/// 菜单栏自动着色；Windows 和 Linux 则继续使用彩色版本。
+@immutable
+class TrayIconSpec {
+  const TrayIconSpec({required this.path, required this.isTemplate});
+
+  final String path;
+  final bool isTemplate;
+}
+
+@visibleForTesting
+TrayIconSpec trayIconSpec({required bool isMacOS}) {
+  return isMacOS
+      ? const TrayIconSpec(
+          path: 'assets/images/tray_icon_macos.png',
+          isTemplate: true,
+        )
+      : const TrayIconSpec(
+          path: 'assets/images/tray_icon.png',
+          isTemplate: false,
+        );
+}
+
 /// 调 [setIcon] 设置托盘图标，失败时记录日志而不是静默吞掉。
 ///
 /// 此前状态变化的监听回调里是 `trayManager.setIcon(...).catchError((_) {})`
@@ -146,11 +171,12 @@ Menu buildTrayMenu({
 /// 调用的失败处理，保证至少有日志。
 @visibleForTesting
 Future<void> setTrayIconWithLogging(
-  Future<void> Function(String path) setIcon,
-  String path,
-) async {
+  Future<void> Function(String path, {bool isTemplate}) setIcon,
+  String path, {
+  bool isTemplate = false,
+}) async {
   try {
-    await setIcon(path);
+    await setIcon(path, isTemplate: isTemplate);
   } catch (e) {
     if (kDebugMode) debugPrint('[Tray] setIcon failed: $e');
   }
@@ -309,11 +335,7 @@ class TrayController extends TrayListener {
     _initialized = true;
     _container = container;
 
-    // 图标路径：macOS 用 16x16 PNG（template image 系统会自动反色）
-    await setTrayIconWithLogging(
-      trayManager.setIcon,
-      _iconPath(const BoxStopped()),
-    );
+    await _setTrayIcon();
     await _rebuildMenu(const BoxStopped());
     trayManager.addListener(this);
 
@@ -322,7 +344,7 @@ class TrayController extends TrayListener {
       (_, next) {
         final status = next.valueOrNull ?? const BoxStopped();
         _rebuildMenu(status);
-        setTrayIconWithLogging(trayManager.setIcon, _iconPath(status));
+        _setTrayIcon();
       },
     );
   }
@@ -337,14 +359,13 @@ class TrayController extends TrayListener {
   bool get _isDesktop =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
 
-  /// 本该按状态用 tray_on/pending/off.png 三态图标，但美术素材缺失
-  /// （assets/images/ 下只有一个通用 tray_icon.png），三态分别指向
-  /// 不存在的文件会导致 setIcon 在任何状态下都失败——托盘图标从未
-  /// 真正显示过。在拿到真实三态素材前，先全部兜底到这个通用图标，
-  /// 好过完全没有图标（尤其是和"静默启动"叠加时，图标渲染失败会
-  /// 让用户找不到任何入口）。
-  String _iconPath(BoxStatus status) {
-    return 'assets/images/tray_icon.png';
+  Future<void> _setTrayIcon() {
+    final spec = trayIconSpec(isMacOS: Platform.isMacOS);
+    return setTrayIconWithLogging(
+      trayManager.setIcon,
+      spec.path,
+      isTemplate: spec.isTemplate,
+    );
   }
 
   Future<void> _rebuildMenu(BoxStatus status) async {

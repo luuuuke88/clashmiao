@@ -126,6 +126,22 @@ void main() {
     });
   });
 
+  group('trayIconSpec', () {
+    test('macOS 使用系统模板托盘图标', () {
+      final spec = trayIconSpec(isMacOS: true);
+
+      expect(spec.path, 'assets/images/tray_icon_macos.png');
+      expect(spec.isTemplate, isTrue);
+    });
+
+    test('Windows 和 Linux 使用彩色托盘图标', () {
+      final spec = trayIconSpec(isMacOS: false);
+
+      expect(spec.path, 'assets/images/tray_icon.png');
+      expect(spec.isTemplate, isFalse);
+    });
+  });
+
   group('setTrayIconWithLogging', () {
     late DebugPrintCallback originalDebugPrint;
     final logs = <String>[];
@@ -143,13 +159,16 @@ void main() {
     });
 
     test('setIcon 成功时不产生任何日志', () async {
-      await setTrayIconWithLogging((_) async {}, 'assets/images/tray_on.png');
+      await setTrayIconWithLogging(
+        (_, {isTemplate = false}) async {},
+        'assets/images/tray_on.png',
+      );
       expect(logs, isEmpty);
     });
 
     test('setIcon 失败（图标文件缺失等）时记录日志，而不是静默吞掉', () async {
       await setTrayIconWithLogging(
-        (_) async => throw Exception('asset not found'),
+        (_, {isTemplate = false}) async => throw Exception('asset not found'),
         'assets/images/tray_on.png',
       );
       expect(
@@ -160,6 +179,20 @@ void main() {
             '.catchError((_) {})，图标文件缺失时的失败被完全静默吞掉，'
             '连排障用的日志都没有',
       );
+    });
+
+    test('把 macOS template 模式透传给 setIcon', () async {
+      bool? receivedTemplate;
+
+      await setTrayIconWithLogging(
+        (_, {isTemplate = false}) async {
+          receivedTemplate = isTemplate;
+        },
+        'assets/images/tray_icon_macos.png',
+        isTemplate: true,
+      );
+
+      expect(receivedTemplate, isTrue);
     });
   });
 

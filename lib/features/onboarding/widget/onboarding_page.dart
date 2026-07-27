@@ -10,6 +10,7 @@ import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/settings_selection_modal.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/gestures.dart';
@@ -185,21 +186,9 @@ class _State extends ConsumerState<OnboardingPage> {
                 child: SizedBox(
                   width: 224,
                   height: 224,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: theme.colorScheme.primary.withValues(
-                          alpha: 0.08,
-                        ),
-                      ),
-                      child: Icon(
-                        FluentIcons.animal_paw_print_20_filled,
-                        size: 96,
-                        color: theme.colorScheme.primary,
-                      ),
-                    ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: BrandMark(size: 176),
                   ),
                 ),
               ),

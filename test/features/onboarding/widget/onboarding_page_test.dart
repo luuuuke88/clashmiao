@@ -6,6 +6,8 @@ import 'package:clashmiao/core/region/region_detection_service.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/onboarding/widget/onboarding_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -74,6 +76,8 @@ void main() {
       expect(find.text('开始'), findsOneWidget);
       expect(find.text('代理模式'), findsNothing);
       expect(find.text('添加订阅'), findsNothing);
+      expect(find.byType(BrandMark), findsOneWidget);
+      expect(find.byIcon(FluentIcons.animal_paw_print_20_filled), findsNothing);
     });
 
     testWidgets('语言入口打开选择面板', (tester) async {

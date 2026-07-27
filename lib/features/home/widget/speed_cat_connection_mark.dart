@@ -18,6 +18,9 @@ class SpeedCatConnectionMark extends StatefulWidget {
 
 class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
     with TickerProviderStateMixin {
+  static const _ripple0Start = 120 / 600;
+  static const _ripple1Start = 250 / 600;
+
   late final AnimationController _activationController;
   late final AnimationController _pulseController;
   late final Animation<double> _boltLift;
@@ -27,8 +30,7 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
   var _disableAnimations = false;
   var _hasMediaQuery = false;
 
-  bool get _isActivating =>
-      widget.status is BoxStarting || widget.status is BoxStopping;
+  bool get _isActivating => widget.status is BoxStarting;
 
   bool get _isConnected => widget.status is BoxStarted;
 
@@ -160,6 +162,8 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
         builder: (context, child) {
           final activation = _activationController.value;
           final pulse = _pulseController.value;
+          final ripple0Progress = _intervalProgress(activation, _ripple0Start);
+          final ripple1Progress = _intervalProgress(activation, _ripple1Start);
           return SizedBox.square(
             dimension: widget.size,
             child: Stack(
@@ -171,16 +175,16 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
                     pulse: pulse,
                     disableAnimations: _disableAnimations,
                   ),
-                if (_isActivating && !_disableAnimations && activation < 1) ...[
+                if (_showsRipple(activation, _ripple0Start))
                   _ActivationRipple(
                     key: const ValueKey('connection-ripple-0'),
-                    progress: activation,
+                    progress: ripple0Progress,
                   ),
+                if (_showsRipple(activation, _ripple1Start))
                   _ActivationRipple(
                     key: const ValueKey('connection-ripple-1'),
-                    progress: (activation + 0.42) % 1,
+                    progress: ripple1Progress,
                   ),
-                ],
                 Image.asset(
                   'assets/images/brand_cat.png',
                   key: const ValueKey('connection-cat-layer'),
@@ -227,6 +231,17 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
         },
       ),
     );
+  }
+
+  bool _showsRipple(double activation, double start) {
+    return _isActivating &&
+        !_disableAnimations &&
+        activation >= start &&
+        activation < 1;
+  }
+
+  double _intervalProgress(double activation, double start) {
+    return ((activation - start) / (1 - start)).clamp(0.0, 1.0);
   }
 }
 

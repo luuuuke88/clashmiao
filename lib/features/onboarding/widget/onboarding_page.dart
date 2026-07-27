@@ -180,13 +180,13 @@ class _State extends ConsumerState<OnboardingPage> {
         child: CustomScrollView(
           shrinkWrap: true,
           slivers: [
-            SliverToBoxAdapter(
+            const SliverToBoxAdapter(
               child: Align(
                 alignment: Alignment.topCenter,
                 child: SizedBox(
                   width: 224,
                   height: 224,
-                  child: const Padding(
+                  child: Padding(
                     padding: EdgeInsets.all(24),
                     child: BrandMark(size: 176),
                   ),

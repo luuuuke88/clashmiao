@@ -72,8 +72,8 @@ String proxyModeSubmenuLabel(Translations t) {
 ///
 /// 新增两个子菜单（原来只有 toggle/show/hide/quit 四个平铺条目）：
 /// - `open_page`："打开..."子菜单，跳转到 App 内某个具体页面（首页/线路/设置）。
-///   这个 App 没有按页面区分的 GoRouter 路由（见 `app_router.dart`，路由只有
-///   `/` 和 `/onboarding`），实际的页面切换是 `ShellPage` 用
+///   这个 App 没有按页面区分的 GoRouter 路由（见 `app_router.dart`，只有根
+///   路由 `/`），实际的页面切换是 `ShellPage` 用
 ///   `selectedTabProvider`（一个 tab 下标）驱动 `IndexedStack`（见
 ///   `lib/app/shell_page.dart` / `lib/app/state/selected_tab.dart`）。所以"跳转
 ///   到具体页面"在这里等价于"把 selectedTabProvider 设成目标 tab，再把窗口显示

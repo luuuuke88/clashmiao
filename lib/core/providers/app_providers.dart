@@ -317,12 +317,9 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     }
   }
 
-  /// 运行时读取设置页"数据分析"开关（onboarding 页写入同一个 key），
-  /// 决定 fatal alert 是否真的上报给 Sentry。默认值需要和
-  /// settings_page.dart 里 `_BoolPreferenceTile(prefKey:
-  /// 'clashmiao_analytics_enabled', defaultValue: false)` 保持一致
-  /// （onboarding_page.dart 的 `_BoolPreferenceNotifier` 默认值同为
-  /// false，两处一致，都是默认不上报）。
+  /// 运行时读取设置页"数据分析"开关，决定 fatal alert 是否真的上报给
+  /// Sentry。默认值需要和 settings_page.dart 里的
+  /// `_AnalyticsToggle` 保持一致，都是默认不上报。
   ///
   /// [sharedPreferencesProvider] 是 FutureProvider，这里是 watchAlerts
   /// 回调的同步上下文，只能读已经 resolve 的值（`valueOrNull`）；prefs

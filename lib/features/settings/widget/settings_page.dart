@@ -378,9 +378,7 @@ class _BoolPreferenceTile extends ConsumerWidget {
 /// （见 [BatteryOptimizationService]），此处只负责 UI 展示与刷新时机。
 /// Analytics 开关：读写逻辑跟改动前完全一致（同一个 `_boolPreferenceProvider`
 /// family、同一个 `clashmiao_analytics_enabled` key、同一个默认值 false），只是
-/// 渲染换成共享的 [AnalyticsToggleTile]——见该组件文档，统一后的样式是项目里
-/// "设置项 + 开关"占主导地位的单行样式，跟 `onboarding_page.dart` 之前私有的
-/// 卡片样式 `_IntroSwitchTile` 收敛成同一份实现。
+/// 渲染使用共享的 [AnalyticsToggleTile]。
 class _AnalyticsToggle extends ConsumerWidget {
   const _AnalyticsToggle({required this.label});
 

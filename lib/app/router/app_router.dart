@@ -10,7 +10,5 @@ final appRouterNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: appRouterNavigatorKey,
   initialLocation: '/',
-  routes: [
-    GoRoute(path: '/', builder: (context, state) => const ShellPage()),
-  ],
+  routes: [GoRoute(path: '/', builder: (context, state) => const ShellPage())],
 );

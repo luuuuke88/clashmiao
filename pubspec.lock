@@ -413,14 +413,6 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_timezone:
-    dependency: transitive
-    description:
-      name: flutter_timezone
-      sha256: "869677426fde92dbe170fb7d2d4929f2a8343c2f5f62f08b0bb64f908630b073"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.1.0"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -1265,22 +1257,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
-  timezone:
-    dependency: transitive
-    description:
-      name: timezone
-      sha256: "981d1020d6ef8fe1e7b3de5054e5b25579ae7c403d7734adc508ffc47668e9cb"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.11.1"
-  timezone_to_country:
-    dependency: "direct main"
-    description:
-      name: timezone_to_country
-      sha256: "8c31d27c60bd30b21cd645f1905d129586a9ef386bbf48bf0e05f75b877c3abf"
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.2.0"
   timing:
     dependency: transitive
     description:

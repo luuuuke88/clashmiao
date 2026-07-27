@@ -63,9 +63,6 @@ dependencies:
   # 深链（sing-box:// clash:// clashmeta:// clashmiao:// 导入订阅）
   app_links: ^6.3.2
 
-  # 地区识别（首次启动时区/IP 兜底推断国家码，onboarding 自动选地区/语言）
-  timezone_to_country: ^3.2.0
-
   # 桌面端
   window_manager: ^0.3.9
   tray_manager: ^0.2.2

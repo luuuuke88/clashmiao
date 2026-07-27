@@ -10,10 +10,4 @@
     <path
         android:fillColor="#FFFFD75E"
         android:pathData="M51.5,45.8 L69.05,45.8 L59.6,55.25 L70.4,55.25 L47.45,75.5 L54.2,60.65 L42.05,60.65 Z" />
-    <path
-        android:fillColor="@android:color/transparent"
-        android:pathData="M11.5,62 C13,60.2 15,60.2 16.5,62 C17.5,63.2 18.5,63.2 19.2,62.4"
-        android:strokeColor="#FFC6CDFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="2.2" />
 </vector>

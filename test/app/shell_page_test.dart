@@ -21,6 +21,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
+  Brightness brightness = Brightness.light,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
@@ -55,9 +56,17 @@ Future<(Widget, ProviderContainer)> _host({
       container: container,
       child: ToastificationWrapper(
         child: MaterialApp(
-          theme: ThemeData.light().copyWith(
-            extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
-          ),
+          theme:
+              (brightness == Brightness.light
+                      ? ThemeData.light()
+                      : ThemeData.dark())
+                  .copyWith(
+                    extensions: <ThemeExtension<dynamic>>[
+                      brightness == Brightness.light
+                          ? AiUiTheme.light
+                          : AiUiTheme.dark,
+                    ],
+                  ),
           home: const ShellPage(),
         ),
       ),
@@ -104,6 +113,34 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bottom_nav_3')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(container.read(selectedTabProvider), AppTab.about);
+  });
+
+  testWidgets('底部导航在浅色模式使用实色蓝灰白底', (tester) async {
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = tester.widget<Container>(
+      find.byKey(const ValueKey('bottom_nav_bar')),
+    );
+    final decoration = bar.decoration! as BoxDecoration;
+    expect(decoration.color, const Color(0xFFEEF1F7));
+  });
+
+  testWidgets('底部导航在深色模式使用实色深蓝黑底', (tester) async {
+    final (widget, container) = await _host(brightness: Brightness.dark);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = tester.widget<Container>(
+      find.byKey(const ValueKey('bottom_nav_bar')),
+    );
+    final decoration = bar.decoration! as BoxDecoration;
+    expect(decoration.color, const Color(0xFF1B1D24));
   });
 
   testWidgets('深链运行时导入成功 → ShellPage 弹出成功 toast', (tester) async {

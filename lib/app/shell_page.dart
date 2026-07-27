@@ -385,10 +385,11 @@ class _GlassBottomNav extends ConsumerWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
+          key: const ValueKey('bottom_nav_bar'),
           decoration: BoxDecoration(
             color: isLight
-                ? aiUi.glassColor
-                : const Color(0xFF16161A).withValues(alpha: 0.8),
+                ? const Color(0xFFEEF1F7)
+                : const Color(0xFF1B1D24),
             border: Border(
               top: BorderSide(
                 color: isLight ? aiUi.borderColor : const Color(0x14FFFFFF),

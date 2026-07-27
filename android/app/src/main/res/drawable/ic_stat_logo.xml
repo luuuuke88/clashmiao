@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Status bar notification icon. Android 强制为 alpha mask，颜色交给系统着色。 -->
+<!-- 疾速猫通知图标。Android 强制为 alpha mask，颜色交给系统着色。 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
@@ -7,5 +7,6 @@
     android:viewportHeight="24">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,1L3,5v6c0,5.55 3.84,10.74 9,12 5.16,-1.26 9,-6.45 9,-12V5l-9,-4zM12,11.99h7c-0.53,4.12 -3.28,7.79 -7,8.94V12H5V6.3l7,-3.11v8.8z"/>
+        android:fillType="evenOdd"
+        android:pathData="M4.5,9.75 L7.875,4.5 L10.5,9 Q12.375,7.875 14.25,9 L17.625,4.5 L19.875,10.875 Q21.75,14.25 19.875,17.625 Q17.25,21 12,21 Q6.75,21 4.125,17.625 Q2.25,13.875 4.5,9.75 Z M11.25,10.5 L16.125,10.5 L13.5,13.125 L16.5,13.125 L10.125,18.75 L12,14.625 L8.625,14.625 Z" />
 </vector>

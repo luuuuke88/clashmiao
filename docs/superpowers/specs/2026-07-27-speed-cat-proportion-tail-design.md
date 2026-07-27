@@ -18,7 +18,9 @@ The approved combination is **B proportion + D wave-tail**:
 
 - enlarge the complete foreground composition by approximately 30%;
 - retain an 8–10% optical safety margin around the foreground at launcher size;
-- preserve the existing white cat head and warm-yellow lightning bolt exactly;
+- preserve the existing white cat-head and warm-yellow lightning shapes;
+- horizontally center the cat-head mass on the 1024 px master, independently
+  from the detached wave;
 - remove both horizontal speed trails;
 - add one short pale-indigo wave on the left side;
 - keep the wave fully detached from the cat head with a clearly visible gap;
@@ -26,11 +28,11 @@ The approved combination is **B proportion + D wave-tail**:
   tail and not multiple speed lines;
 - keep the wave subordinate to the cat head and lightning.
 
-The detached wave uses the existing trail color `#C6CDFF`. Its visible length is
-approximately 13–15% of the icon canvas, its rounded stroke is approximately 4%
-of the canvas, and the gap to the cat silhouette is approximately 3–4% of the
-canvas. It sits beside the lower-left cheek, near the vertical center of the
-lightning bolt.
+The detached wave uses the existing trail color `#C6CDFF`. After the final
+visual refinement, its visible length is approximately 10–12% of the icon
+canvas, its rounded stroke is approximately 2.4% of the canvas, and the gap to
+the cat silhouette is approximately 2–3% of the canvas. It sits beside the
+lower-left cheek, near the vertical center of the lightning bolt.
 
 ## Implementation approaches considered
 
@@ -78,8 +80,12 @@ old horizontal trails.
 ## Composition and safety rules
 
 - The cat head remains the dominant centered mass.
+- The white cat-head bounding-box center must be within 1 px of the horizontal
+  center of the 1024 px transparent master.
 - The detached wave must not touch or overlap the cat silhouette at any output
   size.
+- The detached wave must remain no wider than 120 px and no taller than 65 px
+  in the 1024 px transparent master.
 - No foreground pixel may be clipped by the launcher canvas.
 - The detached wave must remain visible at 32 px without becoming two separate
   dots.

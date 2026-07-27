@@ -115,16 +115,24 @@ def brand_layer_errors(
     filename: str,
 ) -> list[str]:
     rgba_layer = layer.convert("RGBA")
-    expected_box = color_class_mask(mark, color).getbbox()
-    alpha_box = rgba_layer.getchannel("A").getbbox()
+    expected_mask = color_class_mask(mark, color)
+    expected_box = expected_mask.getbbox()
+    alpha = rgba_layer.getchannel("A")
     color_box = color_class_mask(rgba_layer, color).getbbox()
     errors: list[str] = []
 
     if layer.mode != "RGBA" or rgba_layer.getpixel((0, 0))[3] != 0:
         errors.append(f"{filename} must have transparent RGBA corners")
-    if alpha_box != expected_box or color_box != expected_box:
+    if alpha.tobytes() != expected_mask.tobytes() or color_box != expected_box:
         errors.append(
             f"{filename} color-class geometry must match the refined mark"
+        )
+    if any(
+        alpha_value and (red, green, blue) != color
+        for red, green, blue, alpha_value in rgba_layer.getdata()
+    ):
+        errors.append(
+            f"{filename} pixels must use the exact requested color"
         )
     return errors
 

@@ -20,6 +20,15 @@ class BrandGeometryValidationTest(unittest.TestCase):
             build_icon_set.WHITE,
         )
 
+    def interior_opaque_cat_pixel(self) -> tuple[int, int]:
+        box = self.cat.getchannel("A").getbbox()
+        assert box is not None
+        for y in range(box[1] + 1, box[3] - 1):
+            for x in range(box[0] + 1, box[2] - 1):
+                if self.cat.getpixel((x, y))[3] == 255:
+                    return x, y
+        self.fail("expected an interior opaque cat pixel")
+
     def test_source_with_trails_is_rejected(self) -> None:
         source = Image.open(build_icon_set.SOURCE_MARK_PATH).convert("RGBA")
 
@@ -106,6 +115,40 @@ class BrandGeometryValidationTest(unittest.TestCase):
 
         self.assertIn(
             "brand_cat.png color-class geometry must match the refined mark",
+            errors,
+        )
+
+    def test_brand_layer_with_near_white_pixel_is_rejected(self) -> None:
+        cat = self.cat.copy()
+        x, y = self.interior_opaque_cat_pixel()
+        cat.putpixel((x, y), (254, 254, 254, 255))
+
+        errors = validate_brand_assets.brand_layer_errors(
+            cat,
+            self.refined,
+            build_icon_set.WHITE,
+            "brand_cat.png",
+        )
+
+        self.assertIn(
+            "brand_cat.png pixels must use the exact requested color",
+            errors,
+        )
+
+    def test_brand_layer_with_interior_altered_pixel_is_rejected(self) -> None:
+        cat = self.cat.copy()
+        x, y = self.interior_opaque_cat_pixel()
+        cat.putpixel((x, y), (*build_icon_set.YELLOW, 255))
+
+        errors = validate_brand_assets.brand_layer_errors(
+            cat,
+            self.refined,
+            build_icon_set.WHITE,
+            "brand_cat.png",
+        )
+
+        self.assertIn(
+            "brand_cat.png pixels must use the exact requested color",
             errors,
         )
 

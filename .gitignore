@@ -79,3 +79,6 @@ docs/superpowers/
 
 # 本地视觉构思伴随工具的会话文件
 .superpowers/
+
+# 本地隔离开发工作区
+.worktrees/

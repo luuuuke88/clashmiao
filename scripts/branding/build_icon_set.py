@@ -19,6 +19,8 @@ TRAIL = (198, 205, 255)
 PALETTE = (WHITE, YELLOW, TRAIL)
 MAC_MARK_RATIO = 1.04
 SQUARE_MARK_RATIO = 1.12
+CAT_HORIZONTAL_OFFSET = -35
+WAVE_STROKE_WIDTH = 24
 RESAMPLE = Image.Resampling.LANCZOS
 
 MAC_SIZES = [16, 32, 64, 128, 256, 512, 1024]
@@ -210,17 +212,24 @@ def cubic_points(
 
 def build_refined_mark(source: Image.Image) -> Image.Image:
     source = source.convert("RGBA")
-    refined = source.copy()
+    refined = Image.new("RGBA", source.size)
     source_pixels = source.load()
     refined_pixels = refined.load()
     for y in range(source.height):
         for x in range(source.width):
             red, green, blue, alpha = source_pixels[x, y]
-            if (
-                alpha > 0
-                and nearest_brand_color((red, green, blue)) == TRAIL
-            ):
-                refined_pixels[x, y] = (0, 0, 0, 0)
+            if alpha == 0:
+                continue
+            if nearest_brand_color((red, green, blue)) == TRAIL:
+                continue
+            destination_x = x + CAT_HORIZONTAL_OFFSET
+            if 0 <= destination_x < source.width:
+                refined_pixels[destination_x, y] = (
+                    red,
+                    green,
+                    blue,
+                    alpha,
+                )
 
     scale = 4
     wave = Image.new(
@@ -228,16 +237,16 @@ def build_refined_mark(source: Image.Image) -> Image.Image:
         (source.width * scale, source.height * scale),
     )
     first = cubic_points(
-        (110, 620),
-        (140, 580),
-        (170, 580),
-        (195, 620),
+        (110, 625),
+        (128, 602),
+        (148, 602),
+        (164, 624),
     )
     second = cubic_points(
-        (195, 620),
-        (215, 650),
-        (235, 650),
-        (245, 625),
+        (164, 624),
+        (178, 640),
+        (190, 640),
+        (200, 626),
     )
     points = [
         (round(x * scale), round(y * scale))
@@ -247,10 +256,10 @@ def build_refined_mark(source: Image.Image) -> Image.Image:
     draw.line(
         points,
         fill=(*TRAIL, 255),
-        width=40 * scale,
+        width=WAVE_STROKE_WIDTH * scale,
         joint="curve",
     )
-    radius = 20 * scale
+    radius = WAVE_STROKE_WIDTH * scale // 2
     for x, y in (points[0], points[-1]):
         draw.ellipse(
             (x - radius, y - radius, x + radius, y + radius),

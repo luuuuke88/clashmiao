@@ -15,7 +15,14 @@ void main() {
     ).readAsStringSync();
     expect(foreground, contains('android:strokeColor="#FFC6CDFF"'));
     expect(foreground, contains('android:strokeLineCap="round"'));
-    expect(foreground, contains('M15,62 C18,58 21,58 24,62'));
+    expect(
+      foreground,
+      contains(
+        'M11.5,62 C13,60.2 15,60.2 16.5,62 '
+        'C17.5,63.2 18.5,63.2 19.2,62.4',
+      ),
+    );
+    expect(foreground, contains('android:strokeWidth="2.2"'));
     expect(foreground, isNot(contains('M24,51 C17,51')));
     expect(foreground, isNot(contains('M25,64 C17,67')));
 
@@ -25,7 +32,14 @@ void main() {
     expect(notification, contains('android:viewportWidth="24"'));
     expect(notification, contains('android:fillType="evenOdd"'));
     expect(notification, contains('android:strokeLineCap="round"'));
-    expect(notification, contains('android:strokeWidth="1.2"'));
+    expect(
+      notification,
+      contains(
+        'M2.2,14 C2.7,13.3 3.3,13.3 3.8,14 '
+        'C4.1,14.4 4.4,14.4 4.6,14.1',
+      ),
+    );
+    expect(notification, contains('android:strokeWidth="0.7"'));
     expect(notification, isNot(contains('M12,1L3,5v6')));
   });
 }

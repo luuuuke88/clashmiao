@@ -141,6 +141,16 @@ def color_class_mask(
     return mask
 
 
+def build_brand_layer(
+    mark: Image.Image,
+    color: tuple[int, int, int],
+) -> Image.Image:
+    mask = color_class_mask(mark, color)
+    layer = Image.new("RGBA", mark.size, (*color, 255))
+    layer.putalpha(mask)
+    return layer
+
+
 def connected_component_count(
     mask: Image.Image,
     threshold: int = 32,
@@ -235,6 +245,14 @@ def main() -> None:
 
     save_png(mark, "assets/branding/speed_cat_mark.png")
     save_png(mark, "assets/images/brand_mark.png")
+    save_png(
+        build_brand_layer(mark, WHITE),
+        "assets/images/brand_cat.png",
+    )
+    save_png(
+        build_brand_layer(mark, YELLOW),
+        "assets/images/brand_bolt.png",
+    )
     save_png(mac_icon(mark, 1024), "assets/images/brand_logo.png")
     save_png(mac_icon(mark, 128), "assets/images/tray_icon.png")
     save_png(macos_template(mark), "assets/images/tray_icon_macos.png")

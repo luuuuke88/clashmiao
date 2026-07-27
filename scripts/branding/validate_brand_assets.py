@@ -92,9 +92,20 @@ def brand_mark_geometry_errors(mark: Image.Image) -> list[str]:
         geometry_errors.append(
             "brand mark must contain exactly one wave component"
         )
-    if white_box[0] - wave_box[2] < 8:
-        geometry_errors.append("detached wave must not touch the cat")
-    if not (90 <= wave_box[0] and wave_box[2] <= 270):
+    cat_center_x = (white_box[0] + white_box[2]) / 2
+    if abs(cat_center_x - rgba_mark.width / 2) > 1:
+        geometry_errors.append(
+            f"cat head must be horizontally centered: {cat_center_x}"
+        )
+    wave_width = wave_box[2] - wave_box[0]
+    wave_height = wave_box[3] - wave_box[1]
+    if wave_width > 120 or wave_height > 65:
+        geometry_errors.append(
+            f"detached wave is too large: {wave_width}x{wave_height}"
+        )
+    if white_box[0] - wave_box[2] < 20:
+        geometry_errors.append("detached wave must keep a clear gap")
+    if not (90 <= wave_box[0] and wave_box[2] <= 220):
         geometry_errors.append(f"unexpected detached wave bounds: {wave_box}")
     return geometry_errors
 

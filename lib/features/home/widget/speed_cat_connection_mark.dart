@@ -22,6 +22,7 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
   late final AnimationController _pulseController;
   late final Animation<double> _boltLift;
   late final Animation<double> _boltScale;
+  late final Animation<double> _boltGlow;
 
   var _disableAnimations = false;
   var _hasMediaQuery = false;
@@ -71,6 +72,22 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
         tween: Tween(
           begin: 1.18,
           end: 1.04,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 63,
+      ),
+    ]).animate(_activationController);
+    _boltGlow = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.04,
+          end: 0.38,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 37,
+      ),
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.38,
+          end: 0.12,
         ).chain(CurveTween(curve: Curves.easeOutCubic)),
         weight: 63,
       ),
@@ -154,7 +171,7 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
                     pulse: pulse,
                     disableAnimations: _disableAnimations,
                   ),
-                if (_isActivating && !_disableAnimations) ...[
+                if (_isActivating && !_disableAnimations && activation < 1) ...[
                   _ActivationRipple(
                     key: const ValueKey('connection-ripple-0'),
                     progress: activation,
@@ -181,11 +198,27 @@ class _SpeedCatConnectionMarkState extends State<SpeedCatConnectionMark>
                       _boltScale.value,
                       1.0,
                     ),
-                  child: Image.asset(
-                    'assets/images/brand_bolt.png',
-                    key: const ValueKey('connection-bolt-layer'),
-                    width: widget.size,
-                    height: widget.size,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Image.asset(
+                        'assets/images/brand_bolt.png',
+                        key: const ValueKey('connection-bolt-layer'),
+                        width: widget.size,
+                        height: widget.size,
+                      ),
+                      Opacity(
+                        key: const ValueKey('connection-bolt-glow'),
+                        opacity: _boltGlow.value,
+                        child: Image.asset(
+                          'assets/images/brand_bolt.png',
+                          width: widget.size,
+                          height: widget.size,
+                          color: Colors.white,
+                          colorBlendMode: BlendMode.screen,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -229,9 +262,10 @@ class _ConnectedHalo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final pulsePhase = pulse <= 0.5 ? pulse * 2 : (1 - pulse) * 2;
     final haloPulse = disableAnimations
         ? 0.5
-        : Curves.easeInOut.transform(pulse);
+        : Curves.easeInOut.transform(pulsePhase);
     final ringPulse = (pulse * 2) % 1;
     return Stack(
       alignment: Alignment.center,

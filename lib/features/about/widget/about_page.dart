@@ -6,6 +6,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/update_available_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -73,28 +74,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                           ),
                         ),
                         const SizedBox(height: 48),
-                        Container(
-                          width: 112,
-                          height: 112,
-                          decoration: BoxDecoration(
-                            color:
-                                Theme.of(context).brightness == Brightness.light
-                                ? Colors.white
-                                : Theme.of(context).aiUi.glassColor,
-                            borderRadius: BorderRadius.circular(32),
-                            border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).aiUi.borderColor.withValues(alpha: 0.05),
-                            ),
-                            boxShadow: Theme.of(context).aiUi.primaryShadow,
-                          ),
-                          child: Icon(
-                            FluentIcons.animal_paw_print_20_filled,
-                            size: 64,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
+                        const BrandMark(size: 112),
                         const SizedBox(height: 24),
                         Text(
                           'ClashMiao',

@@ -5,6 +5,8 @@ import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/about/widget/about_page.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -73,6 +75,8 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(SliverFillRemaining), findsOneWidget);
+    expect(find.byType(BrandMark), findsOneWidget);
+    expect(find.byIcon(FluentIcons.animal_paw_print_20_filled), findsNothing);
   });
 
   // 这些外链靠编译期 --dart-define 注入。以前没配置时行为是"入口还在、点了

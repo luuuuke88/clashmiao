@@ -15,6 +15,7 @@ import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -1304,16 +1305,9 @@ class _EmptyProfileBody extends ConsumerWidget {
                     ),
                   ),
                 ),
-                Icon(
-                  FluentIcons.animal_paw_print_20_filled,
+                const BrandMark(
                   size: 120,
-                  color: theme.colorScheme.primary.withValues(alpha: 0.8),
-                  shadows: [
-                    Shadow(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
-                      blurRadius: 30,
-                    ),
-                  ],
+                  variant: BrandMarkVariant.transparent,
                 ),
               ],
             ),

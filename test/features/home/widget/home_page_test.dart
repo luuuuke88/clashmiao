@@ -13,6 +13,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';
+import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -388,6 +389,9 @@ void main() {
     expect(find.text('点击下方按钮开始探索'), findsOneWidget);
     expect(find.text('新的配置文件'), findsOneWidget);
     expect(find.text('未选择配置文件'), findsNothing);
+    expect(find.byType(BrandMark), findsOneWidget);
+    final brand = tester.widget<BrandMark>(find.byType(BrandMark));
+    expect(brand.variant, BrandMarkVariant.transparent);
   });
 
   testWidgets('HomePage 有配置但无激活配置时渲染未选择空态', (tester) async {

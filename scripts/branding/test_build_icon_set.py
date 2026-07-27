@@ -14,6 +14,22 @@ class RefinedMarkTest(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.source = Image.open(build_icon_set.SOURCE_MARK_PATH).convert("RGBA")
         cls.refined = build_icon_set.build_refined_mark(cls.source)
+        cls.source_main = build_icon_set.color_class_mask(
+            cls.source,
+            build_icon_set.WHITE,
+        )
+        cls.refined_main = build_icon_set.color_class_mask(
+            cls.refined,
+            build_icon_set.WHITE,
+        )
+        cls.source_bolt = build_icon_set.color_class_mask(
+            cls.source,
+            build_icon_set.YELLOW,
+        )
+        cls.refined_bolt = build_icon_set.color_class_mask(
+            cls.refined,
+            build_icon_set.YELLOW,
+        )
 
     def test_refinement_preserves_canvas_and_transparency(self) -> None:
         self.assertEqual(self.refined.size, (1024, 1024))
@@ -21,27 +37,10 @@ class RefinedMarkTest(unittest.TestCase):
         self.assertEqual(self.refined.getpixel((0, 0))[3], 0)
 
     def test_refinement_keeps_cat_and_lightning_pixels(self) -> None:
-        source_main = build_icon_set.color_class_mask(
-            self.source,
-            build_icon_set.WHITE,
-        )
-        refined_main = build_icon_set.color_class_mask(
-            self.refined,
-            build_icon_set.WHITE,
-        )
-
-        source_bolt = build_icon_set.color_class_mask(
-            self.source,
-            build_icon_set.YELLOW,
-        )
-        refined_bolt = build_icon_set.color_class_mask(
-            self.refined,
-            build_icon_set.YELLOW,
-        )
-        source_main_box = source_main.getbbox()
-        refined_main_box = refined_main.getbbox()
-        source_bolt_box = source_bolt.getbbox()
-        refined_bolt_box = refined_bolt.getbbox()
+        source_main_box = self.source_main.getbbox()
+        refined_main_box = self.refined_main.getbbox()
+        source_bolt_box = self.source_bolt.getbbox()
+        refined_bolt_box = self.refined_bolt.getbbox()
         self.assertIsNotNone(source_main_box)
         self.assertIsNotNone(refined_main_box)
         self.assertIsNotNone(source_bolt_box)
@@ -72,10 +71,7 @@ class RefinedMarkTest(unittest.TestCase):
         )
 
     def test_refinement_centers_cat_head_horizontally(self) -> None:
-        cat_box = build_icon_set.color_class_mask(
-            self.refined,
-            build_icon_set.WHITE,
-        ).getbbox()
+        cat_box = self.refined_main.getbbox()
 
         self.assertIsNotNone(cat_box)
         assert cat_box is not None
@@ -92,6 +88,29 @@ class RefinedMarkTest(unittest.TestCase):
         self.assertEqual(
             build_icon_set.connected_component_count(trail),
             0,
+        )
+
+    def test_brand_layers_split_cat_and_bolt_without_moving_them(self) -> None:
+        cat = build_icon_set.build_brand_layer(
+            self.refined,
+            build_icon_set.WHITE,
+        )
+        bolt = build_icon_set.build_brand_layer(
+            self.refined,
+            build_icon_set.YELLOW,
+        )
+
+        self.assertEqual(cat.mode, "RGBA")
+        self.assertEqual(bolt.mode, "RGBA")
+        self.assertEqual(cat.getpixel((0, 0))[3], 0)
+        self.assertEqual(bolt.getpixel((0, 0))[3], 0)
+        self.assertEqual(
+            cat.getchannel("A").getbbox(),
+            self.refined_main.getbbox(),
+        )
+        self.assertEqual(
+            bolt.getchannel("A").getbbox(),
+            self.refined_bolt.getbbox(),
         )
 
 

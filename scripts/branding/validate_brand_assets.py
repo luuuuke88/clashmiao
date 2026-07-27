@@ -10,7 +10,6 @@ from build_icon_set import (
     TRAIL,
     WHITE,
     color_class_mask,
-    connected_component_count,
 )
 
 
@@ -80,33 +79,19 @@ def image_at(relative: str) -> Image.Image | None:
 
 def brand_mark_geometry_errors(mark: Image.Image) -> list[str]:
     rgba_mark = mark.convert("RGBA")
-    wave = color_class_mask(rgba_mark, TRAIL)
-    white = color_class_mask(rgba_mark, WHITE)
-    wave_box = wave.getbbox()
-    white_box = white.getbbox()
+    wave_box = color_class_mask(rgba_mark, TRAIL).getbbox()
+    white_box = color_class_mask(rgba_mark, WHITE).getbbox()
     geometry_errors: list[str] = []
 
-    if wave_box is None or white_box is None:
-        return ["brand mark must contain cat and detached wave"]
-    if connected_component_count(wave) != 1:
-        geometry_errors.append(
-            "brand mark must contain exactly one wave component"
-        )
+    if white_box is None:
+        return ["brand mark must contain cat"]
+    if wave_box is not None:
+        geometry_errors.append("brand mark must not contain trail pixels")
     cat_center_x = (white_box[0] + white_box[2]) / 2
     if abs(cat_center_x - rgba_mark.width / 2) > 1:
         geometry_errors.append(
             f"cat head must be horizontally centered: {cat_center_x}"
         )
-    wave_width = wave_box[2] - wave_box[0]
-    wave_height = wave_box[3] - wave_box[1]
-    if wave_width > 120 or wave_height > 65:
-        geometry_errors.append(
-            f"detached wave is too large: {wave_width}x{wave_height}"
-        )
-    if white_box[0] - wave_box[2] < 20:
-        geometry_errors.append("detached wave must keep a clear gap")
-    if not (90 <= wave_box[0] and wave_box[2] <= 220):
-        geometry_errors.append(f"unexpected detached wave bounds: {wave_box}")
     return geometry_errors
 
 

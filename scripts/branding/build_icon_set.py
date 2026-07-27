@@ -20,7 +20,6 @@ PALETTE = (WHITE, YELLOW, TRAIL)
 MAC_MARK_RATIO = 1.04
 SQUARE_MARK_RATIO = 1.12
 CAT_HORIZONTAL_OFFSET = -35
-WAVE_STROKE_WIDTH = 24
 RESAMPLE = Image.Resampling.LANCZOS
 
 MAC_SIZES = [16, 32, 64, 128, 256, 512, 1024]
@@ -183,33 +182,6 @@ def connected_component_count(
     return count
 
 
-def cubic_points(
-    start: tuple[float, float],
-    control_a: tuple[float, float],
-    control_b: tuple[float, float],
-    end: tuple[float, float],
-    steps: int = 48,
-) -> list[tuple[float, float]]:
-    points: list[tuple[float, float]] = []
-    for index in range(steps + 1):
-        t = index / steps
-        inverse = 1 - t
-        x = (
-            inverse**3 * start[0]
-            + 3 * inverse**2 * t * control_a[0]
-            + 3 * inverse * t**2 * control_b[0]
-            + t**3 * end[0]
-        )
-        y = (
-            inverse**3 * start[1]
-            + 3 * inverse**2 * t * control_a[1]
-            + 3 * inverse * t**2 * control_b[1]
-            + t**3 * end[1]
-        )
-        points.append((x, y))
-    return points
-
-
 def build_refined_mark(source: Image.Image) -> Image.Image:
     source = source.convert("RGBA")
     refined = Image.new("RGBA", source.size)
@@ -230,42 +202,6 @@ def build_refined_mark(source: Image.Image) -> Image.Image:
                     blue,
                     alpha,
                 )
-
-    scale = 4
-    wave = Image.new(
-        "RGBA",
-        (source.width * scale, source.height * scale),
-    )
-    first = cubic_points(
-        (110, 625),
-        (128, 602),
-        (148, 602),
-        (164, 624),
-    )
-    second = cubic_points(
-        (164, 624),
-        (178, 640),
-        (190, 640),
-        (200, 626),
-    )
-    points = [
-        (round(x * scale), round(y * scale))
-        for x, y in first + second[1:]
-    ]
-    draw = ImageDraw.Draw(wave)
-    draw.line(
-        points,
-        fill=(*TRAIL, 255),
-        width=WAVE_STROKE_WIDTH * scale,
-        joint="curve",
-    )
-    radius = WAVE_STROKE_WIDTH * scale // 2
-    for x, y in (points[0], points[-1]):
-        draw.ellipse(
-            (x - radius, y - radius, x + radius, y + radius),
-            fill=(*TRAIL, 255),
-        )
-    refined.alpha_composite(wave.resize(source.size, RESAMPLE))
     return refined
 
 

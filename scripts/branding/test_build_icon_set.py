@@ -82,27 +82,17 @@ class RefinedMarkTest(unittest.TestCase):
         cat_center_x = (cat_box[0] + cat_box[2]) / 2
         self.assertLessEqual(abs(cat_center_x - 512), 1)
 
-    def test_refinement_replaces_two_lines_with_one_detached_wave(self) -> None:
-        wave = build_icon_set.color_class_mask(
+    def test_refinement_removes_all_trail_pixels(self) -> None:
+        trail = build_icon_set.color_class_mask(
             self.refined,
             build_icon_set.TRAIL,
         )
-        wave_box = wave.getbbox()
-        white_box = build_icon_set.color_class_mask(
-            self.refined,
-            build_icon_set.WHITE,
-        ).getbbox()
 
-        self.assertIsNotNone(wave_box)
-        self.assertIsNotNone(white_box)
-        assert wave_box is not None
-        assert white_box is not None
-        self.assertEqual(build_icon_set.connected_component_count(wave), 1)
-        self.assertGreaterEqual(wave_box[0], 90)
-        self.assertLessEqual(wave_box[2], 270)
-        self.assertGreaterEqual(white_box[0] - wave_box[2], 20)
-        self.assertLessEqual(wave_box[2] - wave_box[0], 120)
-        self.assertLessEqual(wave_box[3] - wave_box[1], 65)
+        self.assertIsNone(trail.getbbox())
+        self.assertEqual(
+            build_icon_set.connected_component_count(trail),
+            0,
+        )
 
 
 if __name__ == "__main__":

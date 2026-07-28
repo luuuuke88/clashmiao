@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 只有品牌蓝底，不放静态 Logo：猫由 Flutter 的开屏动画从无到有弹出来。
+     这里再画一只的话，用户会先看到一只不动的猫、然后它又重新弹一次。 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/launch_background" />
+</layer-list>

@@ -21,8 +21,18 @@ library;
 /// （两者是 AND 关系，见 `main.dart` 的 `bootstrapSentryGatedApp`）。
 const sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
-/// GitHub 仓库 slug（`owner/repo`），更新检查用。空 = 不做更新检查。
+/// GitHub 仓库 slug（`owner/repo`），更新检查用。空 = 这条来源不可用。
 const githubRepoSlug = String.fromEnvironment('GITHUB_REPO_SLUG');
+
+/// 官网发布的版本清单地址，更新检查的**首选**来源。空 = 这条来源不可用。
+///
+/// 优先级高于 GitHub API：未认证的 GitHub API 是 60 次/小时/IP，同一运营商
+/// NAT 后面的用户共用出口 IP，用户一多就集体被限流——而限流的表现是"检查
+/// 更新永远失败"，完全静默。官网在 CDN 上，且随发版自动重建。
+///
+/// 做成编译期参数而不是写死域名：域名会变，而写死意味着改域名就得发新包，
+/// 老版本永远指着一个不存在的地址。
+const updateManifestUrl = String.fromEnvironment('UPDATE_MANIFEST_URL');
 
 /// 源码仓库地址。这一项有兜底默认值，所以永远可用。
 const githubRepoUrl = String.fromEnvironment(
@@ -60,5 +70,6 @@ bool get hasPrivacyPolicy => privacyPolicyUrl.isNotEmpty;
 /// 是否配置了服务条款链接。
 bool get hasTermsAndConditions => termsAndConditionsUrl.isNotEmpty;
 
-/// 是否能做更新检查（需要 GitHub repo slug）。
-bool get hasUpdateCheck => githubRepoSlug.isNotEmpty;
+/// 是否能做更新检查。两条来源任意一条可用即可。
+bool get hasUpdateCheck =>
+    updateManifestUrl.isNotEmpty || githubRepoSlug.isNotEmpty;

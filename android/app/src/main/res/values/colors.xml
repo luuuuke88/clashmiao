@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 启动图底色：跟 Flutter 侧的 scaffoldBackgroundColor 一致
+         （AppTheme.lightTheme 的 #6A64F8 / darkTheme 的纯黑），
+         这样启动图交给 Flutter 第一帧时不会闪一下。 -->
+    <color name="launch_background">#6A64F8</color>
+    <color name="launch_background_dark">#6A64F8</color>
+</resources>

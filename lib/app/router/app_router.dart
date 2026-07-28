@@ -1,4 +1,4 @@
-import 'package:clashmiao/app/shell_page.dart';
+import 'package:clashmiao/app/splash_gate.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -10,5 +10,5 @@ final appRouterNavigatorKey = GlobalKey<NavigatorState>();
 final appRouter = GoRouter(
   navigatorKey: appRouterNavigatorKey,
   initialLocation: '/',
-  routes: [GoRoute(path: '/', builder: (context, state) => const ShellPage())],
+  routes: [GoRoute(path: '/', builder: (context, state) => const SplashGate())],
 );

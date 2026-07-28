@@ -25,6 +25,8 @@ class SettingsSelectionModal<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AiUiModalWrapper(
+      // 下面那个列表自己会滚，不要再套一层。
+      scrollableContent: false,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

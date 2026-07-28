@@ -191,8 +191,8 @@ void main() async {
     unawaited(_devAutoBoot(container));
   }
 
-  // 数据分析开关（'clashmiao_analytics_enabled'，onboarding/settings 页共用同
-  // 一个 key，默认 false，opt-in——clashmiao 有意比参照项目更保守，这是既定
+  // 数据分析开关（'clashmiao_analytics_enabled'，设置页使用，默认 false，
+  // opt-in——clashmiao 有意比参照项目更保守，这是既定
   // 产品决策）决定 Sentry SDK 要不要真的初始化：之前只要编译期 SENTRY_DSN
   // 非空就无条件 init，关掉开关后未处理异常/原生崩溃依然被自动上报，隐私
   // 承诺和实际行为不符。prefs 在 main() 顶部已经 await 过 sharedPreferencesProvider.future，

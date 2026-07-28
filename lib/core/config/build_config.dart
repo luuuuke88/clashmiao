@@ -38,7 +38,7 @@ const telegramChannelUrl = String.fromEnvironment('TELEGRAM_CHANNEL_URL');
 /// **上架必需**：Google Play 与 App Store 都要求提供可访问的隐私政策链接。
 const privacyPolicyUrl = String.fromEnvironment('PRIVACY_POLICY_URL');
 
-/// 服务条款页面地址。空 = 引导页不显示条款入口。
+/// 服务条款页面地址。保留为发布构建可注入的公共配置。
 ///
 /// **上架必需**，同 [privacyPolicyUrl]。
 const termsAndConditionsUrl = String.fromEnvironment(

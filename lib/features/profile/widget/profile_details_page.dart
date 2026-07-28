@@ -777,11 +777,7 @@ class _ToggleTile extends StatelessWidget {
           color: Theme.of(context).aiUi.secondaryTextColor,
         ),
       ),
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: Theme.of(context).colorScheme.primary,
-      ),
+      trailing: Switch(value: value, onChanged: onChanged),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
     );
   }

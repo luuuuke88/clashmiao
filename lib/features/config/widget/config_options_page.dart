@@ -894,7 +894,6 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
             await notifier.setEnableWarp(value);
           },
           contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-          activeThumbColor: Theme.of(context).colorScheme.primary,
         ),
         ListTile(
           leading: const Icon(FluentIcons.document_save_24_regular, size: 20),
@@ -1328,7 +1327,6 @@ class _ConfigSwitchTile extends StatelessWidget {
       value: value,
       onChanged: onChanged,
       contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      activeThumbColor: Theme.of(context).colorScheme.primary,
     );
   }
 }

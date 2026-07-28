@@ -4,21 +4,14 @@ import 'package:flutter/material.dart';
 
 /// Analytics（数据分析）开关的统一 UI 外壳。
 ///
-/// 之前 `settings_page.dart`（私有 `_BoolPreferenceTile`，强调色图标 + 单行
-/// 样式）和 `onboarding_page.dart`（私有 `_IntroSwitchTile`，独立卡片样式）
-/// 各自维护一份实现，控制的却是同一个持久化偏好（`clashmiao_analytics_enabled`），
-/// 视觉风格互不一致。
-///
-/// 统一后选的是项目里对"设置项 + 开关"占主导地位的单行样式——同样的图标 +
-/// 单行布局也用在 `settings_page.dart` 其它行（locale/主题/自动检查 IP 等）、
+/// 使用项目里对"设置项 + 开关"占主导地位的单行样式——同样的图标 + 单行
+/// 布局也用在 `settings_page.dart` 其它行（locale/主题/自动检查 IP 等）、
 /// `config_options_page.dart` 的 `_ConfigGroup` 内部条目、
 /// `profile_details_page.dart` 的 `_GlassContainer` 内部条目：三处都是"共享
-/// 卡片容器 + 分隔线分隔的单行"，这是同类条目里出现频率最高的样式；
-/// 相对地，"每项各自一张独立卡片"的样式只出现在 onboarding 自己的引导卡片
-/// 和 `quick_settings_modal.dart` 的快捷开关里，属于少数。
+/// 卡片容器 + 分隔线分隔的单行"。
 ///
 /// 本组件只负责渲染，不接触持久化读写——[value]/[onChanged] 由调用方自己的
-/// provider 提供，两处原有的读写逻辑保持不变。
+/// provider 提供。
 class AnalyticsToggleTile extends StatelessWidget {
   const AnalyticsToggleTile({
     super.key,
@@ -82,11 +75,7 @@ class AnalyticsToggleTile extends StatelessWidget {
             const Icon(FluentIcons.bug_24_regular, size: 20, color: _iconColor),
             const SizedBox(width: 16),
             Expanded(child: labelColumn),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: Theme.of(context).colorScheme.primary,
-            ),
+            Switch(value: value, onChanged: onChanged),
           ],
         ),
       ),

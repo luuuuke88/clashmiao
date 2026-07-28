@@ -308,12 +308,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     });
 
-    // 分析开关此前是私有的 _BoolPreferenceTile（强调色图标 + 单行样式），
-    // onboarding_page.dart 是另一份私有的 _IntroSwitchTile（独立卡片样式）
-    // ——两处控制同一个持久化偏好却各自维护一份 UI。现在两处都改用共享的
-    // AnalyticsToggleTile（跟 onboarding_page_test.dart 的对应断言呼应，
-    // 一起证明两个页面渲染的是同一个组件类型——同 TipCard 在
-    // assets_page_test.dart / config_options_page_test.dart 里的验证方式）。
+    // 分析开关通过共享 AnalyticsToggleTile 渲染，避免设置页重复维护开关 UI。
     testWidgets('分析开关用共享的 AnalyticsToggleTile 渲染', (tester) async {
       await tester.pumpWidget(await _host());
       await tester.pump(const Duration(milliseconds: 200));

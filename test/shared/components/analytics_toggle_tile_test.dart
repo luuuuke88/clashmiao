@@ -10,10 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// `settings_page.dart` 的 `_SwitchSettingsTile`/`_SettingsTile`、
 /// `config_options_page.dart` 的 `_ConfigGroup` 内部条目、
 /// `profile_details_page.dart` 的 `_GlassContainer` 内部条目都是这个样式
-/// （共享卡片容器 + 分隔线分隔的单行）。之前 `onboarding_page.dart` 私有的
-/// `_IntroSwitchTile` 是另一套"每项独立卡片"的样式，跟 `settings_page.dart`
-/// 私有的 `_BoolPreferenceTile` 视觉不一致，两者控制的却是同一个持久化偏好
-/// （`clashmiao_analytics_enabled`）。这里把两处收敛成本组件。
+/// （共享卡片容器 + 分隔线分隔的单行）。本组件统一承载分析开关的视觉结构。
 void main() {
   Future<void> pumpTile(
     WidgetTester tester, {

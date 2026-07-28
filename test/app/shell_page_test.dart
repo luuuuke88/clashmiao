@@ -21,6 +21,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
+  Brightness brightness = Brightness.light,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
@@ -55,8 +56,24 @@ Future<(Widget, ProviderContainer)> _host({
       container: container,
       child: ToastificationWrapper(
         child: MaterialApp(
-          theme: ThemeData.light().copyWith(
-            extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+          theme:
+              (brightness == Brightness.light
+                      ? ThemeData.light()
+                      : ThemeData.dark())
+                  .copyWith(
+                    extensions: <ThemeExtension<dynamic>>[
+                      brightness == Brightness.light
+                          ? AiUiTheme.light
+                          : AiUiTheme.dark,
+                    ],
+                  ),
+          // 空态那只猫在睡觉，呼吸和 z 是常驻循环动画，`pumpAndSettle` 会一直
+          // 等不到"没有待处理帧"而超时。这里统一按"减弱动态效果"跑，本文件
+          // 关心的是深链 / alert 的行为，不是动画本身（动画的开关行为由
+          // sleeping_brand_hero_test.dart 覆盖）。
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            child: child!,
           ),
           home: const ShellPage(),
         ),
@@ -104,6 +121,62 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bottom_nav_3')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(container.read(selectedTabProvider), AppTab.about);
+  });
+
+  testWidgets('ShellPage 底部导航是浮起来的胶囊（左右留边、圆角等于半个高度）', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final barFinder = find.byKey(const ValueKey('bottom_nav_bar'));
+    final rect = tester.getRect(barFinder);
+    expect(rect.left, greaterThan(0), reason: '胶囊两侧要留边，不能通栏');
+    expect(rect.right, lessThan(430));
+    expect(rect.bottom, lessThan(932), reason: '胶囊要浮在底部之上，留出下边距');
+
+    final bar = tester.widget<Container>(barFinder);
+    final decoration = bar.decoration! as BoxDecoration;
+    final radius = decoration.borderRadius! as BorderRadius;
+    expect(radius.topLeft.x, rect.height / 2);
+
+    // 对齐 Apple HIG 的标签栏高度（紧凑 49 / 常规 50）：比系统标签栏还高的话，
+    // 图标周围全是空白，整块导航会显得很笨重。
+    expect(rect.height, lessThanOrEqualTo(52));
+  });
+
+  testWidgets('底部导航在浅色模式使用实色蓝灰白底', (tester) async {
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = tester.widget<Container>(
+      find.byKey(const ValueKey('bottom_nav_bar')),
+    );
+    final decoration = bar.decoration! as BoxDecoration;
+    expect(decoration.color, const Color(0xFFEEF1F7));
+  });
+
+  testWidgets('底部导航在深色模式使用实色深蓝黑底', (tester) async {
+    final (widget, container) = await _host(brightness: Brightness.dark);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = tester.widget<Container>(
+      find.byKey(const ValueKey('bottom_nav_bar')),
+    );
+    final decoration = bar.decoration! as BoxDecoration;
+    expect(decoration.color, const Color(0xFF1B1D24));
   });
 
   testWidgets('深链运行时导入成功 → ShellPage 弹出成功 toast', (tester) async {

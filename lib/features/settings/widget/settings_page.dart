@@ -2,10 +2,13 @@ import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/settings/widget/per_app_proxy_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
+import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:clashmiao/shared/components/settings_selection_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -85,7 +88,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       });
     }
 
+    // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -108,19 +113,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                             letterSpacing: -0.5,
                           ),
                         ),
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.aiUi.glassColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: theme.aiUi.borderColor),
-                          ),
-                          child: Icon(
-                            FluentIcons.question_circle_24_regular,
-                            size: 20,
-                            color: theme.aiUi.secondaryTextColor,
-                          ),
+                        const GlassIconButton(
+                          icon: FluentIcons.question_circle_24_regular,
+                          onTap: null,
                         ),
                       ],
                     ),
@@ -129,104 +124,109 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
               ),
               SliverToBoxAdapter(
-                child: Container(
-                  margin: const EdgeInsets.only(top: 8, bottom: 24),
-                  decoration: _settingsCardDecoration(context),
-                  child: Column(
-                    children: [
-                      _SettingsTile(
-                        iconColor: const Color(0xFF0EA5E9),
-                        icon: FluentIcons.globe_24_regular,
-                        label: t.settings.general.locale,
-                        trailing: _TrailingValue(value: _localeName(locale)),
-                        onTap: () => _showLocaleDialog(context, ref, t),
-                      ),
-                      const _Divider(),
-                      _SettingsTile(
-                        iconColor: const Color(0xFF8B5CF6),
-                        icon: FluentIcons.dark_theme_24_regular,
-                        label: t.settings.general.themeMode,
-                        trailing: _TrailingValue(value: themeMode.present(t)),
-                        onTap: () => _showThemeDialog(context, ref, t),
-                      ),
-                      const _Divider(),
-                      _AnalyticsToggle(
-                        label: t.settings.general.enableAnalytics,
-                      ),
-                      const _Divider(),
-                      _BoolPreferenceTile(
-                        iconColor: const Color(0xFF10B981),
-                        icon: FluentIcons.globe_search_24_regular,
-                        label: t.settings.general.autoIpCheck,
-                        prefKey: 'clashmiao_auto_ip_check',
-                        defaultValue: true,
-                      ),
-                      if (isAndroid) ...[
-                        const _Divider(),
-                        _BoolPreferenceTile(
-                          iconColor: const Color(0xFFEC4899),
-                          icon: FluentIcons.top_speed_24_regular,
-                          label: t.settings.general.dynamicNotification,
-                          prefKey: 'dynamic_notification',
-                          defaultValue: true,
-                        ),
-                        const _Divider(),
-                        _BoolPreferenceTile(
-                          iconColor: const Color(0xFF6366F1),
-                          icon: FluentIcons.phone_vibrate_24_regular,
-                          label: t.settings.general.hapticFeedback,
-                          prefKey: 'clashmiao_haptic_feedback',
-                          defaultValue: true,
-                        ),
-                        const _Divider(),
-                        _BatteryOptimizationTile(
-                          label: t.settings.general.ignoreBatteryOptimizations,
-                          subtitle:
-                              t.settings.general.ignoreBatteryOptimizationsMsg,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8, bottom: 20),
+                  child: GlassCard(
+                    padding: EdgeInsets.zero,
+                    child: Column(
+                      children: [
+                        _SettingsTile(
+                          iconColor: const Color(0xFF0EA5E9),
+                          icon: FluentIcons.globe_24_regular,
+                          label: t.settings.general.locale,
+                          trailing: _TrailingValue(value: _localeName(locale)),
+                          onTap: () => _showLocaleDialog(context, ref, t),
                         ),
                         const _Divider(),
                         _SettingsTile(
-                          iconColor: const Color(0xFF059669),
-                          icon: FluentIcons.phone_tablet_24_regular,
-                          label: t.settings.network.perAppProxyPageTitle,
-                          trailing: _Chevron(),
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => const PerAppProxyPage(),
+                          iconColor: const Color(0xFF8B5CF6),
+                          icon: FluentIcons.dark_theme_24_regular,
+                          label: t.settings.general.themeMode,
+                          trailing: _TrailingValue(value: themeMode.present(t)),
+                          onTap: () => _showThemeDialog(context, ref, t),
+                        ),
+                        const _Divider(),
+                        _AnalyticsToggle(
+                          label: t.settings.general.enableAnalytics,
+                        ),
+                        const _Divider(),
+                        _BoolPreferenceTile(
+                          iconColor: const Color(0xFF10B981),
+                          icon: FluentIcons.globe_search_24_regular,
+                          label: t.settings.general.autoIpCheck,
+                          prefKey: 'clashmiao_auto_ip_check',
+                          defaultValue: true,
+                        ),
+                        if (isAndroid) ...[
+                          const _Divider(),
+                          _BoolPreferenceTile(
+                            iconColor: const Color(0xFFEC4899),
+                            icon: FluentIcons.top_speed_24_regular,
+                            label: t.settings.general.dynamicNotification,
+                            prefKey: 'dynamic_notification',
+                            defaultValue: true,
+                          ),
+                          const _Divider(),
+                          _BoolPreferenceTile(
+                            iconColor: BrandColors.indigo,
+                            icon: FluentIcons.phone_vibrate_24_regular,
+                            label: t.settings.general.hapticFeedback,
+                            prefKey: 'clashmiao_haptic_feedback',
+                            defaultValue: true,
+                          ),
+                          const _Divider(),
+                          _BatteryOptimizationTile(
+                            label:
+                                t.settings.general.ignoreBatteryOptimizations,
+                            subtitle: t
+                                .settings
+                                .general
+                                .ignoreBatteryOptimizationsMsg,
+                          ),
+                          const _Divider(),
+                          _SettingsTile(
+                            iconColor: const Color(0xFF059669),
+                            icon: FluentIcons.phone_tablet_24_regular,
+                            label: t.settings.network.perAppProxyPageTitle,
+                            trailing: _Chevron(),
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const PerAppProxyPage(),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
+                        if (Platform.isMacOS || Platform.isWindows) ...[
+                          const _Divider(),
+                          _SwitchSettingsTile(
+                            iconColor: const Color(0xFF06B6D4),
+                            icon: FluentIcons.desktop_24_regular,
+                            label: t.settings.general.autoStart,
+                            value: ref.watch(autoStartProvider),
+                            onChanged: (_) =>
+                                ref.read(autoStartProvider.notifier).toggle(),
+                          ),
+                          const _Divider(),
+                          _BoolPreferenceTile(
+                            iconColor: const Color(0xFF64748B),
+                            icon: FluentIcons.eye_off_24_regular,
+                            label: t.settings.general.silentStart,
+                            prefKey: 'clashmiao_silent_start',
+                            defaultValue: false,
+                          ),
+                        ],
+                        if (isIOS) ...[
+                          const _Divider(),
+                          _SettingsTile(
+                            iconColor: const Color(0xFFEF4444),
+                            icon: FluentIcons.arrow_reset_24_regular,
+                            label: t.settings.advanced.resetTunnel,
+                            trailing: _Chevron(),
+                            onTap: () => _resetTunnel(context, ref, t),
+                          ),
+                        ],
                       ],
-                      if (Platform.isMacOS || Platform.isWindows) ...[
-                        const _Divider(),
-                        _SwitchSettingsTile(
-                          iconColor: const Color(0xFF06B6D4),
-                          icon: FluentIcons.desktop_24_regular,
-                          label: t.settings.general.autoStart,
-                          value: ref.watch(autoStartProvider),
-                          onChanged: (_) =>
-                              ref.read(autoStartProvider.notifier).toggle(),
-                        ),
-                        const _Divider(),
-                        _BoolPreferenceTile(
-                          iconColor: const Color(0xFF64748B),
-                          icon: FluentIcons.eye_off_24_regular,
-                          label: t.settings.general.silentStart,
-                          prefKey: 'clashmiao_silent_start',
-                          defaultValue: false,
-                        ),
-                      ],
-                      if (isIOS) ...[
-                        const _Divider(),
-                        _SettingsTile(
-                          iconColor: const Color(0xFFEF4444),
-                          icon: FluentIcons.arrow_reset_24_regular,
-                          label: t.settings.advanced.resetTunnel,
-                          trailing: _Chevron(),
-                          onTap: () => _resetTunnel(context, ref, t),
-                        ),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -378,9 +378,7 @@ class _BoolPreferenceTile extends ConsumerWidget {
 /// （见 [BatteryOptimizationService]），此处只负责 UI 展示与刷新时机。
 /// Analytics 开关：读写逻辑跟改动前完全一致（同一个 `_boolPreferenceProvider`
 /// family、同一个 `clashmiao_analytics_enabled` key、同一个默认值 false），只是
-/// 渲染换成共享的 [AnalyticsToggleTile]——见该组件文档，统一后的样式是项目里
-/// "设置项 + 开关"占主导地位的单行样式，跟 `onboarding_page.dart` 之前私有的
-/// 卡片样式 `_IntroSwitchTile` 收敛成同一份实现。
+/// 渲染使用共享的 [AnalyticsToggleTile]。
 class _AnalyticsToggle extends ConsumerWidget {
   const _AnalyticsToggle({required this.label});
 
@@ -474,19 +472,6 @@ class _BatteryOptimizationTileState
       },
     );
   }
-}
-
-BoxDecoration _settingsCardDecoration(BuildContext context) {
-  return BoxDecoration(
-    color: Theme.of(context).brightness == Brightness.light
-        ? Colors.white
-        : Theme.of(context).aiUi.glassColor,
-    borderRadius: BorderRadius.circular(24),
-    border: Border.all(
-      color: Theme.of(context).aiUi.borderColor.withValues(alpha: 0.05),
-    ),
-    boxShadow: Theme.of(context).aiUi.cardShadow,
-  );
 }
 
 class _Divider extends StatelessWidget {
@@ -631,11 +616,7 @@ class _SwitchSettingsTile extends StatelessWidget {
       icon: icon,
       iconColor: iconColor,
       label: label,
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        activeThumbColor: Theme.of(context).colorScheme.primary,
-      ),
+      trailing: Switch(value: value, onChanged: onChanged),
       onTap: () => onChanged(!value),
     );
   }

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:ui';
 import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -22,6 +23,7 @@ import 'package:clashmiao/features/proxy/widget/proxies_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/blocking_alert_dialog.dart';
+import 'package:clashmiao/shared/components/brand_backdrop.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -299,11 +301,16 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       value: overlayStyle,
       child: Scaffold(
         extendBody: true,
-        body: Column(
+        body: Stack(
           children: [
-            if (topPad > 0) SizedBox(height: topPad),
-            Expanded(
-              child: IndexedStack(index: selectedIndex, children: _pages),
+            const Positioned.fill(child: BrandBackdrop()),
+            Column(
+              children: [
+                if (topPad > 0) SizedBox(height: topPad),
+                Expanded(
+                  child: IndexedStack(index: selectedIndex, children: _pages),
+                ),
+              ],
             ),
           ],
         ),
@@ -355,25 +362,29 @@ class _GlassBottomNav extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider);
+    // 一律用 24 号那套字形：之前混用 20 号图标画在 22 px 上，字形的描边网格
+    // 对不上像素，看起来又细又糊。图标本身也换成跟标签一致的意象——"主页"是
+    // 房子而不是电源（电源是页面中央那颗连接按钮的语义，撞在一起会误读），
+    // "线路"是地球而不是漏斗形的筛选图标。
     final items = [
       (
-        FluentIcons.power_20_regular,
-        FluentIcons.power_20_filled,
+        FluentIcons.home_24_regular,
+        FluentIcons.home_24_filled,
         t.home.pageTitle,
       ),
       (
-        FluentIcons.filter_20_regular,
-        FluentIcons.filter_20_filled,
+        FluentIcons.globe_24_regular,
+        FluentIcons.globe_24_filled,
         t.proxies.pageTitle,
       ),
       (
-        FluentIcons.settings_20_regular,
-        FluentIcons.settings_20_filled,
+        FluentIcons.settings_24_regular,
+        FluentIcons.settings_24_filled,
         t.settings.pageTitle,
       ),
       (
-        FluentIcons.info_20_regular,
-        FluentIcons.info_20_filled,
+        FluentIcons.info_24_regular,
+        FluentIcons.info_24_filled,
         t.about.pageTitle,
       ),
     ];
@@ -381,90 +392,94 @@ class _GlassBottomNav extends ConsumerWidget {
     final aiUi = theme.aiUi;
     final isLight = theme.brightness == Brightness.light;
 
-    return ClipRRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isLight
-                ? aiUi.glassColor
-                : const Color(0xFF16161A).withValues(alpha: 0.8),
-            border: Border(
-              top: BorderSide(
-                color: isLight ? aiUi.borderColor : const Color(0x14FFFFFF),
+    // 胶囊导航条：圆角取高度的一半，两侧留出边距浮在内容之上。阴影必须画在
+    // ClipRRect **外面**——裁剪会把投影一起裁掉。
+    // 高度对齐 Apple HIG 的标签栏：紧凑态 49pt / 常规 50pt。之前 58 比系统
+    // 标签栏还高一截，图标周围全是空白。
+    const barHeight = 50.0;
+    final radius = BorderRadius.circular(barHeight / 2);
+
+    return Padding(
+      // 底边距不能直接加上整条安全区（iPhone 是 34pt）——那样胶囊会被顶到离
+      // 屏幕底 46pt 的地方，整块导航占掉 100pt 以上。系统自己的浮动标签栏离
+      // 底大约 20pt，正好在 Home Indicator 上方留出余量。
+      padding: EdgeInsets.fromLTRB(
+        16,
+        0,
+        16,
+        math.max(12, MediaQuery.of(context).padding.bottom - 14),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: radius,
+          boxShadow: aiUi.cardShadow,
+        ),
+        child: ClipRRect(
+          borderRadius: radius,
+          child: BackdropFilter(
+            // 真磨砂：模糊半径要压过底色的透明度，否则底下的内容只是"透过去"
+            // 而不是"被磨掉"。
+            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
+            child: Container(
+              key: const ValueKey('bottom_nav_bar'),
+              height: barHeight,
+              decoration: BoxDecoration(
+                // 用接近卡片的实色底把页面内容压住，避免亮色背景从导航后面
+                // 透出来吃掉图标；边缘高光仍保留一点轻盈感。
+                color: isLight
+                    ? const Color(0xFFEEF1F7)
+                    : const Color(0xFF1B1D24),
+                borderRadius: radius,
+                // 玻璃边：亮面用高光白描边，暗面用极淡的白，让边缘从背景里"起片"。
+                border: Border.all(
+                  color: isLight
+                      ? Colors.white.withValues(alpha: 0.6)
+                      : const Color(0x1FFFFFFF),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: items.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final (icon, selectedIcon, label) = entry.value;
+                  final isSelected = i == selectedIndex;
+
+                  final color = isSelected
+                      ? theme.colorScheme.primary
+                      // 未选中在半透明玻璃上要比原来实一点，否则底下的内容
+                      // 一流过去就把图标"吃"掉了。
+                      : (isLight
+                            ? aiUi.secondaryTextColor.withValues(alpha: 0.75)
+                            : Colors.white.withValues(alpha: 0.55));
+
+                  return Expanded(
+                    child: GestureDetector(
+                      key: ValueKey('bottom_nav_$i'),
+                      onTap: () => onTap(i),
+                      behavior: HitTestBehavior.opaque,
+                      // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
+                      // tab，图标本身对读屏是空的。
+                      child: Semantics(
+                        label: label,
+                        button: true,
+                        selected: isSelected,
+                        child: Center(
+                          // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
+                          // 一块色块——整条已经是个胶囊，里面再套一个小方块是
+                          // 两层容器打架。
+                          child: Icon(
+                            isSelected ? selectedIcon : icon,
+                            color: color,
+                            size: 28,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
               ),
             ),
-          ),
-          padding: EdgeInsets.fromLTRB(
-            16,
-            8,
-            16,
-            8 + MediaQuery.of(context).padding.bottom,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: items.asMap().entries.map((entry) {
-              final i = entry.key;
-              final (icon, selectedIcon, label) = entry.value;
-              final isSelected = i == selectedIndex;
-
-              final color = isSelected
-                  ? theme.colorScheme.primary
-                  : (isLight
-                        ? aiUi.secondaryTextColor.withValues(alpha: 0.6)
-                        : Colors.white.withValues(alpha: 0.4));
-
-              return Expanded(
-                child: GestureDetector(
-                  key: ValueKey('bottom_nav_$i'),
-                  onTap: () => onTap(i),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? theme.colorScheme.primary.withValues(
-                                  alpha: 0.12,
-                                )
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: isSelected && isLight
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF3B82F6,
-                                    ).withValues(alpha: 0.12),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: Icon(
-                          isSelected ? selectedIcon : icon,
-                          color: color,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                          color: color,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
           ),
         ),
       ),

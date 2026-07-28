@@ -253,11 +253,7 @@ class _SettingTile extends StatelessWidget {
             if (onChanged != null && value != null)
               SizedBox(
                 height: 32,
-                child: Switch.adaptive(
-                  value: value!,
-                  onChanged: onChanged,
-                  activeThumbColor: theme.colorScheme.primary,
-                ),
+                child: Switch.adaptive(value: value!, onChanged: onChanged),
               )
             else
               Icon(

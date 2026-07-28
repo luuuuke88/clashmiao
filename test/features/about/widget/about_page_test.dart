@@ -55,7 +55,11 @@ void main() {
     await tester.pumpWidget(await _host());
     await tester.pumpAndSettle();
 
-    expect(find.text('About ClashMiao'), findsOneWidget);
+    // 标题走 i18n。此前这里硬编码 'About ClashMiao'，在简中环境下顶着一个
+    // 英文标题，而「线路」「设置」这些页的标题都是中文——这条断言当时把这个
+    // bug 一起锁住了。品牌名在下方的大字标里已经有，标题不必再带一次。
+    expect(find.text('关于'), findsOneWidget);
+    expect(find.text('About ClashMiao'), findsNothing);
     expect(find.text('ClashMiao'), findsOneWidget);
     expect(find.text('VERSION 1.2.3 (BUILD 45)'), findsOneWidget);
     expect(find.text('检查更新'), findsOneWidget);

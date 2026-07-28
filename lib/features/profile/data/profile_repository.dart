@@ -3,7 +3,9 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/features/profile/data/profile_parser.dart';
+import 'package:clashmiao/features/profile/data/subscription_fetch.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -482,27 +484,45 @@ class ProfileRepository {
       return update(existing.id);
     }
 
-    final response = await dio.get<String>(
-      normalizedUrl,
-      options: Options(
-        responseType: ResponseType.plain,
-        followRedirects: true,
-        validateStatus: (status) => status != null && status < 400,
-        headers: _userAgentHeaders(null),
-      ),
+    // 先用自己的 UA 请求；只有当响应明显不可用（网页 / 零节点）时才依次换用
+    // 通用客户端 UA 重试——详见 subscription_fetch.dart。
+    final fetched = await fetchSubscriptionWithUserAgentFallback(
+      primaryUserAgent: kDefaultUserAgent,
+      fetch: (userAgent) async {
+        final response = await dio.get<String>(
+          normalizedUrl,
+          options: Options(
+            responseType: ResponseType.plain,
+            followRedirects: true,
+            validateStatus: (status) => status != null && status < 400,
+            headers: {'User-Agent': userAgent},
+          ),
+        );
+        final headers = <String, List<String>>{};
+        response.headers.forEach((name, values) {
+          headers[name.toLowerCase()] = values;
+        });
+        return SubscriptionResponse(
+          body: response.data ?? '',
+          contentType: response.headers.value('content-type'),
+          headers: headers,
+        );
+      },
     );
 
-    // 解析响应头
-    final headers = <String, List<String>>{};
-    response.headers.forEach((name, values) {
-      headers[name.toLowerCase()] = values;
-    });
-
-    var profile = ProfileParser.parse(normalizedUrl, headers);
+    var profile = ProfileParser.parse(normalizedUrl, fetched.response.headers);
 
     // 优先使用用户自定义名称
     if (customName != null && customName.trim().isNotEmpty) {
       profile = profile.copyWith(name: customName.trim());
+    }
+
+    // 回退命中时，把真正管用的那个 UA 记在订阅上。不记的话：导入靠回退成功了，
+    // 但下一次刷新又用回自身 UA、面板再发一份空配置，节点列表会被当场清空——
+    // 那比一开始就导入失败更糟。写进 customUserAgent 还有个好处：用户在订阅
+    // 详情页看得见、也能自己改。
+    if (fetched.userAgent != kDefaultUserAgent) {
+      profile = profile.copyWith(customUserAgent: fetched.userAgent);
     }
 
     // 归一化：先把原始响应写到 tempFile（输入），让 native parse 读它、
@@ -510,7 +530,7 @@ class ProfileRepository {
     final configFile = File(configFilePath(profile.id));
     await configFile.parent.create(recursive: true);
     final needsStructureRepair = await _normalizeAndWrite(
-      rawBody: response.data ?? '',
+      rawBody: fetched.response.body,
       output: configFile,
     );
     if (needsStructureRepair) {

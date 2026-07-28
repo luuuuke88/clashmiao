@@ -75,11 +75,7 @@ class AnalyticsToggleTile extends StatelessWidget {
             const Icon(FluentIcons.bug_24_regular, size: 20, color: _iconColor),
             const SizedBox(width: 16),
             Expanded(child: labelColumn),
-            Switch(
-              value: value,
-              onChanged: onChanged,
-              activeThumbColor: Theme.of(context).colorScheme.primary,
-            ),
+            Switch(value: value, onChanged: onChanged),
           ],
         ),
       ),

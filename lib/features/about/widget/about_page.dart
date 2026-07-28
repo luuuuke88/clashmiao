@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -7,6 +6,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/update_available_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -30,28 +30,11 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   Widget build(BuildContext context) {
     final t = ref.watch(translationsProvider);
 
+    // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          Positioned(
-            top: -100,
-            left: -100,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withValues(
-                    alpha: Theme.of(context).brightness == Brightness.dark
-                        ? 0
-                        : 0.08,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -62,13 +45,17 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                     child: Column(
                       children: [
                         const SizedBox(height: 24),
-                        const Align(
+                        Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
                             'About ClashMiao',
+                            // 跟设置页标题同一套：不显式给颜色的话会落到主题的
+                            // bodyMedium（Slate 600），比别的页面标题淡一档，
+                            // 看着就是"这一页的标题不对"。
                             style: TextStyle(
                               fontSize: 24,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).colorScheme.onSurface,
                               letterSpacing: -0.5,
                             ),
                           ),
@@ -111,19 +98,8 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                     ),
                   ),
                   SliverToBoxAdapter(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? Colors.white
-                            : Theme.of(context).aiUi.glassColor,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).aiUi.borderColor.withValues(alpha: 0.05),
-                        ),
-                        boxShadow: Theme.of(context).aiUi.cardShadow,
-                      ),
+                    child: GlassCard(
+                      padding: EdgeInsets.zero,
                       child: Column(
                         children: [
                           _AboutTile(

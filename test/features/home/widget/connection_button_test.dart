@@ -104,6 +104,34 @@ void main() {
       expect(tapped, 1);
     });
 
+    testWidgets('猫咪跟外面的 Logo 同比例：比底盘大一圈，状态文字落在圆盘下方', (tester) async {
+      await tester.pumpWidget(await _host(const BoxStopped()));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final mark = tester.widget<SpeedCatConnectionMark>(
+        find.byType(SpeedCatConnectionMark),
+      );
+      final disc = tester.getSize(
+        find.byKey(const ValueKey('connection-idle-disc')),
+      );
+      expect(
+        mark.size,
+        greaterThan(disc.width),
+        reason: '标记图自带留白，尺寸不比底盘大一圈的话猫脸就比外面那只小',
+      );
+
+      final discBottom = tester
+          .getRect(find.byKey(const ValueKey('connection-idle-disc')))
+          .bottom;
+      expect(
+        tester.getRect(find.text('点击连接')).top,
+        greaterThan(discBottom),
+        reason: '文字挪到圆盘外面，圆盘里只剩 Logo——跟空态那只猫的排版一致',
+      );
+
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
     testWidgets('Stopping 状态显示"正在断开连接"', (tester) async {
       await tester.pumpWidget(await _host(const BoxStopping()));
       await tester.pump(const Duration(milliseconds: 200));

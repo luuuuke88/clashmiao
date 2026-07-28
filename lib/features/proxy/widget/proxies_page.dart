@@ -12,6 +12,8 @@ import 'package:clashmiao/features/proxy/state/proxy_selection_store_notifier.da
 import 'package:clashmiao/features/proxy/state/proxies_sort_notifier.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
+import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:collection/collection.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -150,7 +152,9 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
 
     final primaryGroup = groups.firstOrNull;
 
+    // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -539,23 +543,7 @@ class _HeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: Theme.of(context).aiUi.softBackgroundColor,
-          shape: BoxShape.circle,
-          border: Border.all(color: Theme.of(context).aiUi.borderColor),
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: Theme.of(context).aiUi.secondaryTextColor,
-        ),
-      ),
-    );
+    return GlassIconButton(icon: icon, onTap: onTap);
   }
 }
 
@@ -571,12 +559,6 @@ class _AutoSelectCard extends HookConsumerWidget {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
 
-    final backgroundColor = isSelected
-        ? theme.colorScheme.primary.withValues(alpha: 0.1)
-        : aiUi.glassColor;
-    final borderColor = isSelected
-        ? theme.colorScheme.primary
-        : aiUi.borderColor.withValues(alpha: 0.05);
     final textColor = isSelected
         ? theme.colorScheme.primary
         : theme.colorScheme.onSurface;
@@ -588,60 +570,63 @@ class _AutoSelectCard extends HookConsumerWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: isSelected ? 1.5 : 1),
-          boxShadow: isSelected ? aiUi.primaryShadow : aiUi.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primary
-                    : theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+        child: GlassCard(
+          borderRadius: 14,
+          padding: const EdgeInsets.all(14),
+          borderColor: isSelected ? theme.colorScheme.primary : null,
+          borderWidth: isSelected ? 1.5 : 1,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? theme.colorScheme.primary
+                      : theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  FluentIcons.flash_24_filled,
+                  color: isSelected ? Colors.white : theme.colorScheme.primary,
+                  size: 20,
+                ),
               ),
-              child: Icon(
-                FluentIcons.flash_24_filled,
-                color: isSelected ? Colors.white : theme.colorScheme.primary,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    t.proxies.autoSelect,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t.proxies.autoSelect,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    t.proxies.autoSelectDescription,
-                    style: TextStyle(fontSize: 11, color: subTextColor),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      t.proxies.autoSelectDescription,
+                      style: TextStyle(fontSize: 11, color: subTextColor),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (isSelected)
-              Icon(FluentIcons.checkmark_24_filled, color: textColor, size: 20)
-            else
-              Icon(
-                FluentIcons.chevron_right_24_regular,
-                size: 16,
-                color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
-          ],
+              if (isSelected)
+                Icon(
+                  FluentIcons.checkmark_24_filled,
+                  color: textColor,
+                  size: 20,
+                )
+              else
+                Icon(
+                  FluentIcons.chevron_right_24_regular,
+                  size: 16,
+                  color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -684,99 +669,93 @@ class _ProxyTile extends StatelessWidget {
       onLongPress: () => _showProxyNameModal(context, displayName),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: aiUi.glassColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? theme.colorScheme.primary
-                : aiUi.borderColor.withValues(alpha: 0.05),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected ? aiUi.primaryShadow : aiUi.cardShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: aiUi.softBackgroundColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  _getCountryFlag(displayName),
-                  style: const TextStyle(fontSize: 20),
+        child: GlassCard(
+          borderRadius: 14,
+          padding: const EdgeInsets.all(14),
+          borderColor: isSelected ? theme.colorScheme.primary : null,
+          borderWidth: isSelected ? 2 : 1,
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: aiUi.softBackgroundColor,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: Text(
+                    _getCountryFlag(displayName),
+                    style: const TextStyle(fontSize: 20),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      fontFamily: 'Emoji',
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: aiUi.softBackgroundColor,
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: aiUi.borderColor.withValues(alpha: 0.05),
-                          ),
-                        ),
-                        child: Text(
-                          _formatType(proxy.type).toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontFamily: 'Monospace',
-                            color: aiUi.secondaryTextColor,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      displayName,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Emoji',
                       ),
-                    ],
-                  ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: aiUi.softBackgroundColor,
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                              color: aiUi.borderColor.withValues(alpha: 0.05),
+                            ),
+                          ),
+                          child: Text(
+                            _formatType(proxy.type).toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 9,
+                              fontFamily: 'Monospace',
+                              color: aiUi.secondaryTextColor,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  if (showLoading)
+                    _DelayTestingBars(color: theme.colorScheme.primary)
+                  else ...[
+                    Text(
+                      delay != 0 ? (delay > 65000 ? '×' : '${delay}ms') : '--',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: delayColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Icon(_getSignalIcon(delay), color: delayColor, size: 16),
+                  ],
                 ],
               ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (showLoading)
-                  _DelayTestingBars(color: theme.colorScheme.primary)
-                else ...[
-                  Text(
-                    delay != 0 ? (delay > 65000 ? '×' : '${delay}ms') : '--',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: delayColor,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Icon(_getSignalIcon(delay), color: delayColor, size: 16),
-                ],
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -13,10 +13,7 @@ void main() {
     final foreground = File(
       'android/app/src/main/res/drawable/ic_launcher_foreground.xml',
     ).readAsStringSync();
-    expect(
-      RegExp(r'<path\b').allMatches(foreground).length,
-      2,
-    );
+    expect(RegExp(r'<path\b').allMatches(foreground).length, 2);
     expect(foreground, isNot(contains('android:stroke')));
     expect(foreground, isNot(contains('M24,51 C17,51')));
     expect(foreground, isNot(contains('M25,64 C17,67')));
@@ -26,10 +23,7 @@ void main() {
     ).readAsStringSync();
     expect(notification, contains('android:viewportWidth="24"'));
     expect(notification, contains('android:fillType="evenOdd"'));
-    expect(
-      RegExp(r'<path\b').allMatches(notification).length,
-      1,
-    );
+    expect(RegExp(r'<path\b').allMatches(notification).length, 1);
     expect(notification, isNot(contains('android:stroke')));
     expect(notification, isNot(contains('M12,1L3,5v6')));
   });

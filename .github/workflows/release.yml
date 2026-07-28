@@ -186,6 +186,7 @@ jobs:
           DART_DEFINES: >-
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=UPDATE_MANIFEST_URL=${{ vars.UPDATE_MANIFEST_URL }}
             --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
             --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
             --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
@@ -245,6 +246,7 @@ jobs:
           DART_DEFINES: >-
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=UPDATE_MANIFEST_URL=${{ vars.UPDATE_MANIFEST_URL }}
             --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
             --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
             --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
@@ -329,6 +331,7 @@ jobs:
           DART_DEFINES: >-
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=UPDATE_MANIFEST_URL=${{ vars.UPDATE_MANIFEST_URL }}
             --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
             --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
             --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
@@ -490,6 +493,7 @@ jobs:
           DART_DEFINES: >-
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=UPDATE_MANIFEST_URL=${{ vars.UPDATE_MANIFEST_URL }}
             --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
             --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
             --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}
@@ -648,6 +652,7 @@ jobs:
           DART_DEFINES: >-
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }}
             --dart-define=GITHUB_REPO_SLUG=${{ vars.REPO_SLUG }}
+            --dart-define=UPDATE_MANIFEST_URL=${{ vars.UPDATE_MANIFEST_URL }}
             --dart-define=GITHUB_REPO_URL=${{ vars.REPO_URL }}
             --dart-define=TELEGRAM_CHANNEL_URL=${{ vars.TELEGRAM_CHANNEL_URL }}
             --dart-define=PRIVACY_POLICY_URL=${{ vars.PRIVACY_POLICY_URL }}

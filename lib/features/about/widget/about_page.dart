@@ -48,7 +48,11 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                         Align(
                           alignment: Alignment.centerLeft,
                           child: Text(
-                            'About ClashMiao',
+                            // 走 i18n（`about.pageTitle`，11 种语言都已有），
+                            // 不硬编码英文——否则简中环境下只有这一页顶着英文
+                            // 标题。品牌名在下面的大字标里已经出现，标题不必
+                            // 再带一次，这样也跟「线路」「设置」的标题一致。
+                            t.about.pageTitle,
                             // 跟设置页标题同一套：不显式给颜色的话会落到主题的
                             // bodyMedium（Slate 600），比别的页面标题淡一档，
                             // 看着就是"这一页的标题不对"。

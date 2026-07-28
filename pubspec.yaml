@@ -1,6 +1,14 @@
 name: clashmiao
 description: "喵速 - 跨平台代理客户端"
 publish_to: "none"
+# 这个值**只影响本地/调试构建**，不决定发版版本号。
+#
+# 正式产物的版本从 git tag 推导，由 .github/workflows/release.yml 通过
+# `--build-name`（tag 去掉 v 前缀）和 `--build-number`（github.run_number）
+# 传给 flutter build，会覆盖这里。所以看到"tag 是 v0.1.1、这里却是 0.1.0"
+# 不是 bug，不需要在发版时同步改这一行。
+#
+# 调试包上看到的旧版本号同理——那是这个值，不是用户拿到的版本。
 version: 0.1.0+1
 
 environment:

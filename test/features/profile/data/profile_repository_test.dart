@@ -285,7 +285,14 @@ void main() {
     });
 
     test('customName 覆盖 header 解析的名称', () async {
-      final body = jsonEncode({'outbounds': <Map<String, dynamic>>[]});
+      // 这里必须给一个真实节点：零节点的响应现在会被 UA 回退逻辑判定为
+      // "订阅没有发节点"并抛错（见 subscription_fetch.dart），而本用例
+      // 要验证的是名称覆盖，不该依赖"空配置也能建订阅"这个旧行为。
+      final body = jsonEncode({
+        'outbounds': [
+          {'tag': 'node-1', 'type': 'vless'},
+        ],
+      });
       final server = await _serveOnce(
         body,
         headers: {'profile-title': 'FromHeader'},
@@ -818,6 +825,117 @@ void main() {
       final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
       expect(selector['outbounds'], ['SG-1']);
       expect(selector['default'], 'SG-1');
+    });
+  });
+
+  group('ProfileRepository.addByUrl User-Agent 回退', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('repo_ua_test_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: const StubBoxService(),
+      );
+    });
+
+    tearDown(() async {
+      await deleteTempDirBestEffort(tmpDir);
+    });
+
+    test('面板只认 sing-box UA 时，自动回退并拿到有节点的配置', () async {
+      // 假面板，完整复现线上那家的行为：认得的 UA 发完整配置，认不得的发一份
+      // 结构合法但节点为空的骨架（HTTP 200，不是错误码）。
+      final seenUserAgents = <String>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      // ignore: unawaited_futures
+      server.listen((req) async {
+        final ua = req.headers.value('user-agent') ?? '';
+        seenUserAgents.add(ua);
+        final knowsClient = ua.toLowerCase().contains('sing-box');
+        req.response.write(
+          knowsClient
+              ? jsonEncode({
+                  'outbounds': [
+                    {'tag': 'HK-01', 'type': 'vless'},
+                    {'tag': 'JP-01', 'type': 'vless'},
+                  ],
+                })
+              : 'mixed-port: 7890\nproxies: []\n',
+        );
+        await req.response.close();
+      });
+
+      final profile = await repo.addByUrl('http://localhost:${server.port}/');
+
+      final out =
+          jsonDecode(await File(repo.configFilePath(profile.id)).readAsString())
+              as Map<String, dynamic>;
+      // 注意：写盘时 _ensureMinimalProfileStructure 还会补上 selector / direct
+      // 这些内置出站，所以这里断言"真实节点都在"，而不是写死总数。
+      final tags = (out['outbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((o) => o['tag'])
+          .toList();
+      expect(tags, containsAll(<String>['HK-01', 'JP-01']));
+      expect(
+        seenUserAgents.any((ua) => ua.toLowerCase().contains('sing-box')),
+        isTrue,
+        reason: '应当在首次拿到空配置后改用 sing-box UA 重试',
+      );
+    });
+
+    test('回退命中的 UA 被记在订阅上，刷新时不会再退回空配置', () async {
+      // 不记住的话：导入靠回退成功，但下一次自动刷新又用回自身 UA，
+      // 面板再发一份空配置，节点列表当场被清空——比原来的导入失败更糟。
+      final seenUserAgents = <String>[];
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      addTearDown(() => server.close(force: true));
+      // ignore: unawaited_futures
+      server.listen((req) async {
+        final ua = req.headers.value('user-agent') ?? '';
+        seenUserAgents.add(ua);
+        req.response.write(
+          ua.toLowerCase().contains('sing-box')
+              ? jsonEncode({
+                  'outbounds': [
+                    {'tag': 'HK-01', 'type': 'vless'},
+                  ],
+                })
+              : 'mixed-port: 7890\nproxies: []\n',
+        );
+        await req.response.close();
+      });
+
+      final profile = await repo.addByUrl('http://localhost:${server.port}/');
+      expect(
+        profile.customUserAgent,
+        contains('sing-box'),
+        reason: '成功的 UA 应当写回订阅，供后续刷新复用',
+      );
+
+      seenUserAgents.clear();
+      await repo.update(profile.id);
+
+      expect(
+        seenUserAgents.first.toLowerCase(),
+        contains('sing-box'),
+        reason: '刷新的第一次请求就该用记住的 UA，而不是先撞一次空配置',
+      );
+      final out =
+          jsonDecode(await File(repo.configFilePath(profile.id)).readAsString())
+              as Map<String, dynamic>;
+      final tags = (out['outbounds'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((o) => o['tag'])
+          .toList();
+      expect(tags, contains('HK-01'));
     });
   });
 }

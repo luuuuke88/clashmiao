@@ -55,6 +55,12 @@ void main() {
             theme: ThemeData.light().copyWith(
               extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
             ),
+            // 空态那只睡觉的猫是常驻循环动画，`pumpAndSettle` 等不到静止帧；
+            // 这条用例只关心冷启动落到哪个页面，按"减弱动态效果"跑即可。
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: child!,
+            ),
             routerConfig: appRouter,
           ),
         ),

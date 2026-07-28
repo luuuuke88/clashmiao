@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
@@ -11,11 +10,13 @@ import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/core/health/connection_health_monitor.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/quick_settings_modal.dart';
+import 'package:clashmiao/features/home/widget/sleeping_brand_hero.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/widget/profiles_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
-import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
+import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:clashmiao/shared/components/profile_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -91,28 +92,11 @@ class HomePage extends ConsumerWidget {
       }
     });
 
+    // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
-          // 背景光晕
-          Positioned(
-            top: -100,
-            left: -100,
-            child: ImageFiltered(
-              imageFilter: ImageFilter.blur(sigmaX: 100, sigmaY: 100),
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(
-                    alpha: theme.brightness == Brightness.dark ? 0.0 : 0.08,
-                  ),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-          ),
-
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -227,11 +211,15 @@ class HomePage extends ConsumerWidget {
                                   const SizedBox(height: 24),
                                   _ConnectionInfo(status: status),
                                   const _DegradedConnectionNotice(),
-                                  const SizedBox(height: 24),
+                                  const SizedBox(height: 20),
                                   _ModeSelector(aiUi: aiUi),
-                                  const Spacer(flex: 6),
-                                  _FooterStats(compact: isCompact),
                                   const SizedBox(height: 16),
+                                  _FooterStats(compact: isCompact),
+                                  // 富余高度全部留到最下面：数据块紧跟在模式
+                                  // 切换下面是一组，中间撑开一大段的话它们看
+                                  // 起来跟上面就没关系了。底部也正好让开浮起
+                                  // 来的胶囊导航。
+                                  const Spacer(flex: 5),
                                 ],
                               );
                             },
@@ -280,32 +268,7 @@ class _HeaderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final aiUi = theme.aiUi;
-    final isLight = theme.brightness == Brightness.light;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: filled ? theme.colorScheme.primary : aiUi.softBackgroundColor,
-          shape: BoxShape.circle,
-          border: filled
-              ? null
-              : Border.all(color: aiUi.borderColor.withValues(alpha: 0.5)),
-          boxShadow: filled ? aiUi.primaryShadow : null,
-        ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: filled
-              ? Colors.white
-              : (isLight ? aiUi.secondaryTextColor : Colors.white70),
-        ),
-      ),
-    );
+    return GlassIconButton(icon: icon, filled: filled, onTap: onTap);
   }
 }
 
@@ -345,7 +308,6 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
-    final isLight = theme.brightness == Brightness.light;
     final t = ref.watch(translationsProvider);
 
     final profile = widget.profile;
@@ -361,33 +323,30 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
           builder: (context) => const _ProfilesOverviewSheet(),
         );
       },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: isLight ? Colors.white : aiUi.glassColor,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: aiUi.cardShadow,
-        ),
+      child: GlassCard(
+        borderRadius: 14,
+        // 这张卡只有一行内容，上下留 10 就够——留 14 会让它比中间那颗按钮
+        // 还抢戏。
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(9),
                   ),
                   child: Icon(
                     FluentIcons.shield_24_filled,
                     color: theme.colorScheme.primary,
-                    size: 20,
+                    size: 17,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -395,14 +354,15 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
                       Text(
                         profile.name,
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
+                          height: 1.2,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'Emoji',
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Row(
                         children: [
                           Container(
@@ -417,7 +377,8 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
                           Text(
                             'ACTIVE',
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 9,
+                              height: 1.2,
                               fontWeight: FontWeight.bold,
                               color: aiUi.secondaryTextColor,
                               letterSpacing: 1.0,
@@ -744,80 +705,72 @@ class _EgressIpTile extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: SizedBox(
         width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: aiUi.softBackgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                FluentIcons.globe_search_24_regular,
-                size: 18,
-                color: theme.colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: aiUi.secondaryTextColor,
-                      letterSpacing: 0.5,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    valueText,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (display.isLoading)
-              SizedBox(
-                width: 14,
-                height: 14,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
+        child: GlassCard(
+          borderRadius: 14,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(
+                  FluentIcons.globe_search_24_regular,
+                  size: 17,
                   color: theme.colorScheme.primary,
                 ),
-              )
-            else
-              Icon(
-                FluentIcons.arrow_sync_24_regular,
-                size: 16,
-                color: aiUi.secondaryTextColor,
               ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: aiUi.secondaryTextColor,
+                        letterSpacing: 0.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      valueText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              if (display.isLoading)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.colorScheme.primary,
+                  ),
+                )
+              else
+                Icon(
+                  FluentIcons.arrow_sync_24_regular,
+                  size: 16,
+                  color: aiUi.secondaryTextColor,
+                ),
+            ],
+          ),
         ),
       ),
     );
@@ -840,31 +793,21 @@ class _StatTile extends StatelessWidget {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: aiUi.softBackgroundColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassCard(
+      borderRadius: 14,
+      padding: const EdgeInsets.all(12),
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 30,
+            height: 30,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(9),
             ),
-            child: Icon(icon, size: 18, color: theme.colorScheme.primary),
+            child: Icon(icon, size: 17, color: theme.colorScheme.primary),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1047,12 +990,12 @@ class _ModeSelector extends ConsumerWidget {
     final modes = [t.home.routingMode.global, t.home.routingMode.smart];
 
     return Container(
-      height: 44,
+      height: 38,
       decoration: BoxDecoration(
         color: aiUi.softBackgroundColor,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(19),
       ),
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: modes.asMap().entries.map((entry) {
@@ -1088,13 +1031,13 @@ class _SegmentTab extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: 200.ms,
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: isSelected
               ? theme.colorScheme.surface
               : theme.colorScheme.surface.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: isSelected
@@ -1289,28 +1232,7 @@ class _EmptyProfileBody extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: RadialGradient(
-                      colors: [
-                        const Color(0xFF10B981).withValues(alpha: 0.15),
-                        const Color(0xFF10B981).withValues(alpha: 0),
-                      ],
-                    ),
-                  ),
-                ),
-                const BrandMark(
-                  size: 120,
-                  variant: BrandMarkVariant.transparent,
-                ),
-              ],
-            ),
+            const SleepingBrandHero(),
             const SizedBox(height: 40),
             Text(
               t.home.emptyProfilesMsg,

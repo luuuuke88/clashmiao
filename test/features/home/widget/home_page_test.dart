@@ -14,6 +14,7 @@ import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -392,6 +393,22 @@ void main() {
     expect(find.byType(BrandMark), findsOneWidget);
     final brand = tester.widget<BrandMark>(find.byType(BrandMark));
     expect(brand.variant, BrandMarkVariant.transparent);
+  });
+
+  testWidgets('HomePage 空态的品牌标记压在不透明底盘上（白猫不会消失在浅色背景里）', (tester) async {
+    await tester.pumpWidget(
+      await _hostWithProfiles(activeProfile: null, profiles: const []),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final disc = tester.widget<FrostedDisc>(
+      find.byKey(const ValueKey('empty_brand_disc')),
+    );
+    expect(
+      disc.tintAlpha,
+      greaterThanOrEqualTo(0.5),
+      reason: '磨砂玻璃的染色不能再淡了，否则白色标记又会跟浅色背景糊在一起',
+    );
   });
 
   testWidgets('HomePage 有配置但无激活配置时渲染未选择空态', (tester) async {

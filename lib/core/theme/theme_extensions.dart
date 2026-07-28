@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:flutter/material.dart';
 
 class ConnectionButtonTheme extends ThemeExtension<ConnectionButtonTheme> {
@@ -39,6 +40,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
   const AiUiTheme({
     required this.glassColor,
     required this.borderColor,
+    required this.cardColor,
     required this.softBackgroundColor,
     required this.secondaryTextColor,
     required this.cardShadow,
@@ -47,6 +49,14 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
 
   final Color glassColor;
   final Color borderColor;
+
+  /// 卡片（信息块）的底色：要**浮**在页面底色之上。
+  ///
+  /// 之前卡片直接用 [softBackgroundColor]，浅色主题下是 `#F1F5F9` 压在
+  /// `#F8FAFC` 的页面上——两者亮度差不到 3%，加上那道 2% 的黑影，结果是整块
+  /// 卡片的边界肉眼看不出来。[softBackgroundColor] 是"凹进去"的槽（分段控件
+  /// 的轨道、未选中的胶囊），跟"凸出来"的卡片是两个角色，不该共用一个色。
+  final Color cardColor;
   final Color softBackgroundColor;
   final Color secondaryTextColor;
   final List<BoxShadow> cardShadow;
@@ -57,9 +67,10 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     borderColor: const Color(
       0x14FFFFFF,
     ), // Colors.white.withValues(alpha: 0.08)
+    cardColor: const Color(0xFF1C1C22), // 比 #000 的页底亮一档
     softBackgroundColor: const Color(
-      0x0DFFFFFF,
-    ), // Colors.white.withValues(alpha: 0.05)
+      0x14FFFFFF,
+    ), // Colors.white.withValues(alpha: 0.08)
     secondaryTextColor: const Color(
       0x80FFFFFF,
     ), // Colors.white.withValues(alpha: 0.5)
@@ -72,7 +83,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     ],
     primaryShadow: [
       BoxShadow(
-        color: const Color(0xFF6366f1).withValues(alpha: 0.2),
+        color: BrandColors.indigo.withValues(alpha: 0.2),
         blurRadius: 20,
         offset: const Offset(0, 8),
       ),
@@ -82,7 +93,8 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
   static final AiUiTheme light = AiUiTheme(
     glassColor: const Color(0xD9FFFFFF), // ~85% white
     borderColor: const Color(0x1A000000), // 10% black border
-    softBackgroundColor: const Color(0xFFF1F5F9), // Slate 100/50 mix
+    cardColor: Colors.white,
+    softBackgroundColor: const Color(0xFFE9EEF6), // Slate 200/100 之间的凹槽色
     secondaryTextColor: const Color(0xFF475569), // Slate 600
     cardShadow: [
       BoxShadow(
@@ -93,7 +105,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     ],
     primaryShadow: [
       BoxShadow(
-        color: const Color(0xFF3B82F6).withValues(alpha: 0.15),
+        color: BrandColors.indigo.withValues(alpha: 0.15),
         blurRadius: 30,
         offset: const Offset(0, 10),
       ),
@@ -104,6 +116,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
   AiUiTheme copyWith({
     Color? glassColor,
     Color? borderColor,
+    Color? cardColor,
     Color? softBackgroundColor,
     Color? secondaryTextColor,
     List<BoxShadow>? cardShadow,
@@ -112,6 +125,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     return AiUiTheme(
       glassColor: glassColor ?? this.glassColor,
       borderColor: borderColor ?? this.borderColor,
+      cardColor: cardColor ?? this.cardColor,
       softBackgroundColor: softBackgroundColor ?? this.softBackgroundColor,
       secondaryTextColor: secondaryTextColor ?? this.secondaryTextColor,
       cardShadow: cardShadow ?? this.cardShadow,
@@ -125,6 +139,7 @@ class AiUiTheme extends ThemeExtension<AiUiTheme> {
     return AiUiTheme(
       glassColor: Color.lerp(glassColor, other.glassColor, t)!,
       borderColor: Color.lerp(borderColor, other.borderColor, t)!,
+      cardColor: Color.lerp(cardColor, other.cardColor, t)!,
       softBackgroundColor: Color.lerp(
         softBackgroundColor,
         other.softBackgroundColor,

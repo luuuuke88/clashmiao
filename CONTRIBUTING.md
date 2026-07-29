@@ -72,14 +72,11 @@ Conventional Commits（中英文都接受）：
 PR 必须：
 - `dart format --set-exit-if-changed lib/ test/ integration_test/` 通过
 - `flutter analyze --fatal-warnings` 0 个 issue
-- `flutter test` 所有 92+ 个测试绿
+- `flutter test` 全部通过
 - 新增功能至少加一个 unit test 或 widget test
 
 ## 代码风格约定
 
-- **绝对不要在公开文档 / commit message 中提及上游具体项目名**
-  用通用术语"上游 fork" / "sing-box 核心"。
-  源码内部技术注释解释 fork 行为时也用脱敏术语。
 - 注释解释 **WHY**，不解释 WHAT。
 - 状态用 Riverpod（hooks_riverpod），不用 setState 跨 widget 共享。
 - 公共组件放 `lib/shared/components/`，feature-local 组件放 feature 目录。

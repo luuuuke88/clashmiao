@@ -40,7 +40,7 @@ class RuntimeConfigBuilder {
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
 
     // mixed inbound 永远剥（所有平台）：
-    //   上游 fork 在 enable-full-config 路径下不管 profile 写没写都会自己 append 一个
+    //   核心在 enable-full-config 路径下，不管 profile 写没写都会自己 append 一个
     //   mixed:MixedPort（默认 2080），profile 自带 mixed 必然撞端口
     //   → sing-box 启动直接 `listen tcp 127.0.0.1:2080: bind: address already in use`。
     //

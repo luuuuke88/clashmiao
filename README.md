@@ -141,7 +141,7 @@ bash bin/test-all.sh     # 加 format + analyze + 可选 E2E
 bash bin/test-e2e.sh     # Android emulator E2E（需 adb 可见设备）
 ```
 
-测试覆盖：684 个 unit/widget + Android 模拟器 E2E。翻译完整性、连接前置校验、
+测试覆盖：unit / widget + Android 模拟器 E2E。翻译完整性、连接前置校验、
 黑洞检测等关键路径都有回归测试锁定。
 
 ## 许可证

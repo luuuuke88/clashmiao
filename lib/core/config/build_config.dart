@@ -34,10 +34,13 @@ const githubRepoSlug = String.fromEnvironment('GITHUB_REPO_SLUG');
 /// 老版本永远指着一个不存在的地址。
 const updateManifestUrl = String.fromEnvironment('UPDATE_MANIFEST_URL');
 
-/// 源码仓库地址。这一项有兜底默认值，所以永远可用。
+/// 源码仓库地址。有兜底默认值，发布构建会用 `--dart-define` 覆盖。
+///
+/// 兜底值的可达性由 `bin/check-public-links.sh` 在 CI 里实际请求验证——它曾
+/// 长期指向一个 404（仓库改名后没同步），而关于页的「源代码」入口就一直是死链。
 const githubRepoUrl = String.fromEnvironment(
   'GITHUB_REPO_URL',
-  defaultValue: 'https://github.com/clashmiao/clashmiao-client',
+  defaultValue: 'https://github.com/luuuuke88/clashmiao',
 );
 
 /// Telegram 频道地址。空 = 关于页不显示这一项。

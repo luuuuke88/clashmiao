@@ -82,3 +82,7 @@ docs/superpowers/
 
 # 本地隔离开发工作区
 .worktrees/
+
+# Flutter 生成文件：含本机绝对路径，不应入库
+.flutter-plugins
+.flutter-plugins-dependencies

@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3939 (393 per locale)
+/// Strings: 3910 (391 per locale)
 ///
-/// Built on 2026-07-25 at 18:54 UTC
+/// Built on 2026-07-29 at 04:30 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -125,7 +125,6 @@ class Translations implements BaseTranslations<AppLocale, Translations> {
   );
   late final TranslationsTrayEn tray = TranslationsTrayEn._(_root);
   late final TranslationsFailureEn failure = TranslationsFailureEn._(_root);
-  late final TranslationsPlayEn play = TranslationsPlayEn._(_root);
   late final TranslationsConnectionEn connection = TranslationsConnectionEn._(
     _root,
   );
@@ -434,20 +433,6 @@ class TranslationsFailureEn {
       TranslationsFailureConnectionEn._(_root);
   late final TranslationsFailureGeoAssetsEn geoAssets =
       TranslationsFailureGeoAssetsEn._(_root);
-}
-
-// Path: play
-class TranslationsPlayEn {
-  TranslationsPlayEn._(this._root);
-
-  final Translations _root; // ignore: unused_field
-
-  // Translations
-  String get title => 'ClashMiao (Preview)';
-  String get short_description =>
-      'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-  String get full_description =>
-      'The key goal of ClashMiao is to provide a secure, user-friendly and efficient tunneling client. It enables you to route all traffic or selected app traffic to a remote server of your choose, utilizing VPN-Service permission.\n\nNote: We do not provide any server; users are required to ensure their online activities stay private by using use their own self-hosted server or trusted servers. \n \nWe Support Servers With:\n- Normal V2Ray/XRay Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nWhat is our unique features?\n - User Friendly\n - Optimized and Fast\n - Automatically select LowestPing \n - Show user usage information\n - Easily import sublink by one click using deeplinking \n - Free and No ADS\n - Easily switch lines\n - More and more\n\nSupport:\n- All Protocols Supported by Sing-Box \n- VLESS + XTLS Reality, Vision\n- VMess\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2Ray\n- Hysteria2\n- TUICv5\n- SSH\n- ShadowTLS\n\n\nThe source code exist in https://github.com/clashmiao/clashmiao-client\nThe application core is based on open-source Sing-Box.\n\nPermission Description:\n- VPN Service: As the goal of this application is to provide a secure, user-friendly and efficient tunneling client, we need this permission to be able to route the traffic via tunnel to the remote server. \n- QUERY ALL PACKAGES: This permission is used to allow users to include or exclude specific applications for tunneling.\n- RECEIVE BOOT COMPLETED: This permission can be enabled or disabled from app settings to activate this application upon device boot.\n- POST NOTIFICATIONS: This permission is essential as we employ a foreground service to ensure the continuous operation of the VPN service.\n- This application is free from advertisements. The analytics and crash data only occurs with the explicit consent of the user in the first use of application.';
 }
 
 // Path: connection
@@ -1235,8 +1220,6 @@ class TranslationsAr extends Translations {
   @override
   late final TranslationsFailureAr failure = TranslationsFailureAr._(_root);
   @override
-  late final TranslationsPlayAr play = TranslationsPlayAr._(_root);
-  @override
   late final TranslationsConnectionAr connection = TranslationsConnectionAr._(
     _root,
   );
@@ -1708,24 +1691,6 @@ class TranslationsFailureAr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsAr geoAssets =
       TranslationsFailureGeoAssetsAr._(_root);
-}
-
-// Path: play
-class TranslationsPlayAr extends TranslationsPlayEn {
-  TranslationsPlayAr._(TranslationsAr root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsAr _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (معاينة)';
-  @override
-  String get short_description =>
-      'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-  @override
-  String get full_description =>
-      'الهدف الرئيسي لـ ClashMiao هو توفير عميل نفق آمن وسهل الاستخدام وكفاءة. يمكّنك من توجيه جميع حركة المرور أو حركة المرور من التطبيق المحدد إلى خادم بعيد من اختيارك، باستخدام إذن VPN-Service. \n\nملاحظة: لا نوفر أي خادم، ويتعين على المستخدمين ضمان بقاء أنشطتهم عبر الإنترنت خاصة باستخدام خادمهم المخصص أو الخوادم الموثوقة. \n \nندعم الخوادم مع:\n- رابط اشتراك V2Ray/XRay عادي \n- رابط اشتراك Clash \n- رابط اشتراك Sing-Box \n\nما هي ميزاتنا الفريدة؟\n - سهل الاستخدام \n - مُحسّن وسريع \n - اختيار أدنى Ping تلقائيًا \n - عرض معلومات استخدام المستخدم \n - استيراد sublink بسهولة بنقرة واحدة باستخدام deeplinking \n - مجاني وخالي من الإعلانات \n - تبديل sublinks بسهولة \n - المزيد والمزيد \n\nالدعم:\n- جميع البروتوكولات التي تدعمها Sing-Box \n- VLESS + XTLS Reality, Vision \n- VMess \n- Trojan \n- ShoadowSocks \n- Reality \n- WireGuard \n- V2Ray \n- Hysteria2 \n- TUICv5 \n- SSH \n- ShadowTLS \n\n\nرمز المصدر موجود في https://github.com/clashmiao/clashmiao-client \nتعتمد نواة التطبيق على Sing-Box مفتوحة المصدر.\n\nوصف الإذن:\n- VPN Service: نظرًا لأن هدف هذا التطبيق هو توفير عميل نفق آمن وسهل الاستخدام وكفاءة، نحتاج إلى هذا الإذن لنتمكن من توجيه حركة المرور عبر النفق إلى الخادم البعيد. \n- QUERY ALL PACKAGES: يستخدم هذا الإذن للسماح للمستخدمين بتضمين أو استبعاد تطبيقات محددة للأنفاق. \n- RECEIVE BOOT COMPLETED: يمكن تمكين أو تعطيل هذا الإذن من إعدادات التطبيق لتنشيط هذا التطبيق عند تشغيل الجهاز. \n- POST NOTIFICATIONS: هذا الإذن ضروري لأننا نستخدم خدمة المقدمة لضمان تشغيل خدمة VPN بشكل مستمر. \n- هذا التطبيق خالي من الإعلانات. يتم جمع التحليلات وبيانات الأعطال فقط بموافقة صريحة من المستخدم في أول استخدام للتطبيق.';
 }
 
 // Path: connection
@@ -2940,8 +2905,6 @@ class TranslationsEs extends Translations {
   @override
   late final TranslationsFailureEs failure = TranslationsFailureEs._(_root);
   @override
-  late final TranslationsPlayEs play = TranslationsPlayEs._(_root);
-  @override
   late final TranslationsConnectionEs connection = TranslationsConnectionEs._(
     _root,
   );
@@ -3390,24 +3353,6 @@ class TranslationsFailureEs extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsEs geoAssets =
       TranslationsFailureGeoAssetsEs._(_root);
-}
-
-// Path: play
-class TranslationsPlayEs extends TranslationsPlayEn {
-  TranslationsPlayEs._(TranslationsEs root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsEs _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao Next (vista previa)';
-  @override
-  String get short_description =>
-      'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-  @override
-  String get full_description =>
-      'El objetivo clave de ClashMiao es proporcionar un cliente de túnel seguro, fácil de usar y eficiente. Le permite enrutar todo el tráfico o el tráfico de aplicaciones seleccionadas a un servidor remoto de su elección, utilizando el permiso del servicio VPN.Nota: No proporcionamos ningún servidor; Los usuarios deben garantizar que sus actividades en línea permanezcan privadas mediante el uso de su propio servidor autohospedado o servidores confiables. Soportamos servidores con:- Enlace de suscripción normal a V2ray/Xray- Enlace de suscripción a Choque- Enlace de suscripción a Sing-Box¿Cuáles son nuestras características únicas? - Fácil de usar - Optimizado y Rápido - Seleccionar automáticamente LowestPing - Mostrar información de uso del usuario. - Importe fácilmente un subvínculo con un solo clic mediante enlaces profundos - Gratis y sin anuncios - Cambie fácilmente los subvínculos de usuario - más y másApoyo:- Todos los protocolos soportados por Sing-Box- VLESS + xtls realidad, visión- VMESS- troyano- Calcetines Shoadow- Realidad-V2ray-Histria2-TUIC-SSH- SombraTLSEl código fuente existe en https://github.com/clashmiao/clashmiao-clientEl núcleo de la aplicación se basa en sing-box de código abierto.Descripción del permiso:- Servicio VPN: como el objetivo de esta aplicación es proporcionar un cliente de túnel seguro, fácil de usar y eficiente, necesitamos este permiso para poder enrutar el tráfico a través del túnel al servidor remoto.- CONSULTAR TODOS LOS PAQUETES: este permiso se utiliza para permitir a los usuarios incluir o excluir aplicaciones específicas para la tunelización.- RECIBIR ARRANQUE COMPLETADO: este permiso se puede habilitar o deshabilitar desde la configuración de la aplicación para activar esta aplicación al iniciar el dispositivo.- PUBLICAR NOTIFICACIONES: este permiso es esencial ya que empleamos un servicio en primer plano para garantizar el funcionamiento continuo del servicio VPN.- Esta aplicación está libre de publicidad. Los datos analíticos y de fallos solo se producen con el consentimiento explícito del usuario en el primer uso de la aplicación.';
 }
 
 // Path: connection
@@ -4665,8 +4610,6 @@ class TranslationsFa extends Translations {
   @override
   late final TranslationsFailureFa failure = TranslationsFailureFa._(_root);
   @override
-  late final TranslationsPlayFa play = TranslationsPlayFa._(_root);
-  @override
   late final TranslationsConnectionFa connection = TranslationsConnectionFa._(
     _root,
   );
@@ -5141,24 +5084,6 @@ class TranslationsFailureFa extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsFa geoAssets =
       TranslationsFailureGeoAssetsFa._(_root);
-}
-
-// Path: play
-class TranslationsPlayFa extends TranslationsPlayEn {
-  TranslationsPlayFa._(TranslationsFa root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsFa _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (آزمایشی)';
-  @override
-  String get short_description =>
-      'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-  @override
-  String get full_description =>
-      'هدف اصلی ClashMiao ارائه یک کلاینت ضدفیلتر ایمن، کاربرپسند و کارآمد است. این به شما امکان می‌دهد تا با استفاده از مجوز سرویس VPN، تمام ترافیک یا ترافیک برنامه‌ی انتخابی را به یک سرور راه دور مورد نظر خود هدایت کنید.\n\nتوجه: ما هیچ سروری ارائه نمی‌دهیم. کاربران موظف هستند با استفاده از سرورهای خود، هاست یا سرورهای مورد اعتماد، فعالیت‌های آنلاین خود را خصوصی نگه دارند. \n\nما از این سرورها پشتیبانی می‌کنیم:\n- لینک اشتراک V2Ray/XRay معمولی\n- لینک اشتراک کلش\n- لینک اشتراک Sing-Box\n\nویژگی‌های منحصر به فرد این برنامه چیست؟\n- کاربر پسند  \n- بهینه و سریع  \n- انتخاب کمترین پینگ به صورت خودکار\n- نمایش اطلاعات استفاده کاربر\n- به راحتی لینک فرعی را با یک کلیک با استفاده از دیپ لینک وارد کنید  \n- رایگان و بدون تبلیغات  \n- به‌راحتی لینک های فرعی کاربر را تغییر دهید  \n- بیشتر و بیشتر\n\nپشتیبانی از:\n- همه‌ی پروتکل‌های پشتیبانی‌شده توسط Sing-Box- VLESS + XTLS Reality، Vision- VMess- Trojan- ShadowSocks- Reality- WireGuard- V2Ray- Hysteria2- TUICv5- SSH- ShadowTLS\n\nکد منبع در https://github.com/clashmiao/clashmiao-client موجود بوده و هسته‌ی برنامه مبتنی بر منبع باز Sing-Box است.\n\nتوضیحات مجوز:\n- VPN Service: از آن‌جا که هدف این برنامه ارائه‌ی یک کلاینت ضدفیلتر ایمن، کاربر پسند و کارآمد است، ما به این مجوز نیاز داریم تا بتوانیم ترافیک را از طریق تونل به سرور راه دور هدایت کنیم.\n- QUERY ALL PACKAGES: این مجوز برای اجازه دادن به کاربران برای گنجاندن یا حذف برنامه‌های کاربردی خاص برای تونل‌زدن استفاده می‌شود.\n- RECEIVE BOOT COMPLETED: این مجوز را می‌توان از تنظیمات برنامه فعال یا غیرفعال کرد تا این برنامه پس از شروع به کار دستگاه فعال شود.\n- POST NOTIFICATIONS: این مجوز ضروری است زیرا برای اطمینان از عملکرد یکسره VPN نیاز است از یک سرویس پس زمینه استفاده کنیم. \n- این برنامه بدون تبلیغات است. تجزیه و تحلیل و داده‌های خرابی فقط با رضایت صریح کاربر در اولین استفاده از برنامه اتفاق می‌افتد.';
 }
 
 // Path: connection
@@ -6379,8 +6304,6 @@ class TranslationsId extends Translations {
   @override
   late final TranslationsFailureId failure = TranslationsFailureId._(_root);
   @override
-  late final TranslationsPlayId play = TranslationsPlayId._(_root);
-  @override
   late final TranslationsConnectionId connection = TranslationsConnectionId._(
     _root,
   );
@@ -6853,24 +6776,6 @@ class TranslationsFailureId extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsId geoAssets =
       TranslationsFailureGeoAssetsId._(_root);
-}
-
-// Path: play
-class TranslationsPlayId extends TranslationsPlayEn {
-  TranslationsPlayId._(TranslationsId root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsId _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (Preview)';
-  @override
-  String get short_description =>
-      'Otomatik, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-  @override
-  String get full_description =>
-      'Tujuan utama ClashMiao adalah memberikan keamanan, user-friendly dan client tunnel yg efisien. ClashMiao mengizinkanmu untuk mengarahkan semua atau beberapa trafik data aplikasi terpilih ke server remot pilihanmu, memanfaatkan izin VPN-Service.\n\nNote: Kami tidak menyediakan server apapun; pengguna diwajibkan untuk memastikan aktivitas online mereka tetap private dengan menggunakan self-hosted server atau server yg dipercaya pilihan mereka sendiri. \n \nKami mendukung server dengan:\n- Normal V2ray/Xray Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nApa fitur unik kami?\n - User Friendly\n - Cepat dan teroptimasi\n - Otomatis pilihan PING terendah \n - Menampilkan informasi penggunaan user\n - Dengan mudah import sublink dengan satu klik menggunakan deeplinking \n - Bebas dan tanpa iklan\n - Dengan mudah berganti user sublink\n - dan sebagainya\n\nSupport:\n- Semua protokol di dukung oleh Sing-Box \n- VLESS + xtls reality, vision\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\nCode Sumber ada di https://github.com/clashmiao/clashmiao-client\nInti Aplikasi didasarkan pada Sing-Box Open Source.\n\nDeskripsi Izin:\n- VPN Servis: Tujuan aplikasi ini menyediakan keamanan, user-friendly dan tunneling client efisien, kami membutuhkan izin untuk bisa mengarahkan traffic data melalui kanal remot server. \n- QUERY ALL PACKAGES: izin ini digunakan untuk memperbolehkan pengguna masuk atau mengeluarkan aplikasi tertentu untuk tunneling.\n- RECEIVE BOOT COMPLETED: izin ini dapat diaktifkan atau dinonaktifkan dari setting aplikasi untuk mengaktikan aplikasi ini saat boot device.\n- POST NOTIFICATIONS: izin ini penting karena kami menggunakan foreground service untuk memastikan operasi berkelanjutan dari VPN Servis.\n- Aplikasi ini bebas dari iklan. Analitik dan data crash hanya terjadi dengan persetujuan eksplisit dari pengguna pada saat penggunaan pertama kali';
 }
 
 // Path: connection
@@ -8090,8 +7995,6 @@ class TranslationsPtBr extends Translations {
   @override
   late final TranslationsFailurePtBr failure = TranslationsFailurePtBr._(_root);
   @override
-  late final TranslationsPlayPtBr play = TranslationsPlayPtBr._(_root);
-  @override
   late final TranslationsConnectionPtBr connection =
       TranslationsConnectionPtBr._(_root);
   @override
@@ -8576,23 +8479,6 @@ class TranslationsFailurePtBr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsPtBr geoAssets =
       TranslationsFailureGeoAssetsPtBr._(_root);
-}
-
-// Path: play
-class TranslationsPlayPtBr extends TranslationsPlayEn {
-  TranslationsPlayPtBr._(TranslationsPtBr root)
-    : this._root = root,
-      super._(root);
-
-  @override
-  final TranslationsPtBr _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (Pré-visualização)';
-  @override
-  String get short_description =>
-      'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
 }
 
 // Path: connection
@@ -9825,8 +9711,6 @@ class TranslationsRu extends Translations {
   @override
   late final TranslationsFailureRu failure = TranslationsFailureRu._(_root);
   @override
-  late final TranslationsPlayRu play = TranslationsPlayRu._(_root);
-  @override
   late final TranslationsConnectionRu connection = TranslationsConnectionRu._(
     _root,
   );
@@ -10302,24 +10186,6 @@ class TranslationsFailureRu extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsRu geoAssets =
       TranslationsFailureGeoAssetsRu._(_root);
-}
-
-// Path: play
-class TranslationsPlayRu extends TranslationsPlayEn {
-  TranslationsPlayRu._(TranslationsRu root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsRu _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (Preview)';
-  @override
-  String get short_description =>
-      'Автовыбор, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-  @override
-  String get full_description =>
-      'Основная цель ClashMiao — предоставить безопасный, удобный и эффективный клиент туннелирования. Он позволяет направлять весь трафик или трафик выбранного приложения на указанный Вами удалённый сервер.\nПримечание: мы не предоставляем серверы, пользователи должны сами обеспечивать конфиденциальность своих действий в Интернете, используя собственный сервер или доверенные серверы. Поддерживаются сервера с:— Обычной ссылка на подписку V2ray/Xray— Ссылкой на подписку Clash— Ссылко на подписку на Sing–Box\nВ чём уникальные особенности? — Удобство — Оптимизация и скорость — Автоматический выбор минимальной задержки — Отображение информации об использовании — Простой импорт ссылок одним щелчком мыши — Бесплатно и без рекламы — Простое переключение ссылок — …и много больше\nПоддерживаются:• Все протоколы, поддерживаемые Sing-Box• VLESS + xtls reality, vision• VMESS• Trojan• ShoadowSocks• Reality• V2ray• Hystria2• TUIC• SSH• ShadowTLS\nИсходный код доступен по адресу https://github.com/clashmiao/clashmiao-client.Ядро приложения основано на открытом исходном коде Sing–Box.\nОписание разрешений:— СЛУЖБА VPN: поскольку целью данного приложения является предоставление безопасного, удобного и эффективного клиента туннелирования, это разрешение необходимо, чтобы иметь возможность направлять трафик через туннель на удалённый сервер.— ЗАПРОС ВСЕХ ПАКЕТОВ: это разрешение позволяет добавлять или удалять определённые приложения из списка для туннелирования.— ИНФОРМИРОВАНИЕ О ЗАВЕРШЕНИИ ЗАГРУЗКИ: это разрешение можно включить или отключить в настройках приложения, чтобы (де)активировать запуск приложения при загрузке устройства.— ПОСТОЯННОЕ УВЕДОМЛЕНИЕ: это разрешение необходимо, так как используется приоритетная служба для обеспечения непрерывной работы VPN.— Приложение не содержит рекламы. Сбор аналитики и данных о сбоях происходят только с явного согласия пользователя при первом использовании приложения.';
 }
 
 // Path: connection
@@ -11544,8 +11410,6 @@ class TranslationsTr extends Translations {
   @override
   late final TranslationsFailureTr failure = TranslationsFailureTr._(_root);
   @override
-  late final TranslationsPlayTr play = TranslationsPlayTr._(_root);
-  @override
   late final TranslationsConnectionTr connection = TranslationsConnectionTr._(
     _root,
   );
@@ -12020,24 +11884,6 @@ class TranslationsFailureTr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsTr geoAssets =
       TranslationsFailureGeoAssetsTr._(_root);
-}
-
-// Path: play
-class TranslationsPlayTr extends TranslationsPlayEn {
-  TranslationsPlayTr._(TranslationsTr root) : this._root = root, super._(root);
-
-  @override
-  final TranslationsTr _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao (Önizleme)';
-  @override
-  String get short_description =>
-      'Otomatik, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-  @override
-  String get full_description =>
-      'ClashMiao\'in temel hedefi güvenli, kullanıcı dostu ve verimli bir tünel istemcisi sağlamaktır. VPN Hizmeti iznini kullanarak tüm trafiği veya seçilen uygulama trafiğini seçtiğiniz uzak bir sunucuya yönlendirmenizi sağlar. Not: Herhangi bir sunucu sağlamıyoruz; kullanıcıların kendi barındırılan sunucularını veya güvenilir sunucularını kullanarak çevrimiçi etkinliklerinin gizli kalmasını sağlamaları gerekir. Sunucuları aşağıdakilerle destekliyoruz: - Normal V2ray/Xray Abonelik Bağlantısı - Clash Abonelik Bağlantısı - Sing-Box Abonelik Bağlantısı Benzersiz özelliklerimiz nelerdir? - Kullanıcı Dostu - Optimize Edilmiş ve Hızlı - En Düşük Ping\'i otomatik olarak seçin - Kullanıcı kullanım bilgilerini gösterin - Derin bağlantı kullanarak tek tıklamayla alt bağlantıyı kolayca içe aktarın - Ücretsiz ve ADS Yok - Kullanıcı alt bağlantılarını kolayca değiştirin - giderek daha fazla Destek: - Sing-Box tarafından desteklenen tüm Protokoller - VLESS + xtls gerçeklik, vizyon - VMESS - Trojan - ShoadowSocks - Reality - V2ray - Hystria2 - TUIC - SSH - ShadowTLS Kaynak kodu https://github.com/clashmiao/clashmiao-client adresinde mevcuttur. Uygulama çekirdeği açık tabanlıdır. kaynak şarkı kutusu. İzin Açıklaması: - VPN Hizmeti: Bu uygulamanın amacı güvenli, kullanıcı dostu ve verimli bir tünel istemcisi sağlamak olduğundan, trafiği tünel aracılığıyla uzak sunucuya yönlendirebilmek için bu izne ihtiyacımız var. - TÜM PAKETLERİ SORGULAYIN: Bu izin, kullanıcıların tünelleme için belirli uygulamaları dahil etmesine veya hariç tutmasına izin vermek için kullanılır. - ALMA ÖNYÜKLEME TAMAMLANDI: Bu izin, cihaz önyüklemesi sırasında bu uygulamayı etkinleştirmek için uygulama ayarlarından etkinleştirilebilir veya devre dışı bırakılabilir. - BİLDİRİMLER SONRASI: VPN hizmetinin sürekli çalışmasını sağlamak için bir ön plan hizmeti kullandığımız için bu izin önemlidir. - Bu uygulama reklam içermez. Analitik ve kilitlenme verileri yalnızca uygulamanın ilk kullanımında kullanıcının açık rızası ile gerçekleşir.';
 }
 
 // Path: connection
@@ -13261,8 +13107,6 @@ class TranslationsZhCn extends Translations {
   @override
   late final TranslationsFailureZhCn failure = TranslationsFailureZhCn._(_root);
   @override
-  late final TranslationsPlayZhCn play = TranslationsPlayZhCn._(_root);
-  @override
   late final TranslationsConnectionZhCn connection =
       TranslationsConnectionZhCn._(_root);
   @override
@@ -13730,26 +13574,6 @@ class TranslationsFailureZhCn extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhCn geoAssets =
       TranslationsFailureGeoAssetsZhCn._(_root);
-}
-
-// Path: play
-class TranslationsPlayZhCn extends TranslationsPlayEn {
-  TranslationsPlayZhCn._(TranslationsZhCn root)
-    : this._root = root,
-      super._(root);
-
-  @override
-  final TranslationsZhCn _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao（预览）';
-  @override
-  String get short_description =>
-      '自动，SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-  @override
-  String get full_description =>
-      'ClashMiao 的主要目标是提供安全、用户友好且高效的隧道客户端。它使您能够利用 VPN 服务权限将所有流量或选定的应用程序流量路由到您选择的远程服务器。\n\n注：我们不提供任何服务器；用户需要使用自己托管的服务器或可信的服务器来确保您在线活动的私密性。\n \n我们支持以下类型的服务器：\n- 普通 V2ray/Xray 订阅链接\n- Clash 订阅链接\n- Sing-Box 订阅链接\n\n我们的特色是什么？\n\n- 用户友好\n- 优化和高速\n- 自动选择最低延迟\n- 显示用户使用信息\n- 通过一键链接轻松导入\n- 免费且无广告\n- 轻松切换线路\n- 等等\n\n支持：\n- Sing-Box 支持的所有协议\n- VLESS + XTLS Reality、Vision 协议\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\n源代码位于 https://github.com/clashmiao/clashmiao-client\n应用程序核心基于开源的 Sing-Box。\n\n权限说明：\n\n- VPN 服务：由于此应用程序的目标是提供安全、用户友好和高效的隧道客户端，我们需要此权限以能够通过隧道将流量路由到远程服务器。\n获取应用程序列表：此权限用于允许用户包括或排除特定应用程序以进行隧道传输。\n- 接收开机广播：可以从应用程序设置中启用或禁用此权限，以便在设备启动时激活此应用程序。\n- 发送通知：此权限是必需的，因为我们使用前台服务来确保 VPN 服务的持续运行。\n- 本应用程序没有广告。分析和崩溃数据仅在首次使用应用程序时经用户明确同意的情况下发生。';
 }
 
 // Path: connection
@@ -14959,8 +14783,6 @@ class TranslationsZhTw extends Translations {
   @override
   late final TranslationsFailureZhTw failure = TranslationsFailureZhTw._(_root);
   @override
-  late final TranslationsPlayZhTw play = TranslationsPlayZhTw._(_root);
-  @override
   late final TranslationsConnectionZhTw connection =
       TranslationsConnectionZhTw._(_root);
   @override
@@ -15429,26 +15251,6 @@ class TranslationsFailureZhTw extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhTw geoAssets =
       TranslationsFailureGeoAssetsZhTw._(_root);
-}
-
-// Path: play
-class TranslationsPlayZhTw extends TranslationsPlayEn {
-  TranslationsPlayZhTw._(TranslationsZhTw root)
-    : this._root = root,
-      super._(root);
-
-  @override
-  final TranslationsZhTw _root; // ignore: unused_field
-
-  // Translations
-  @override
-  String get title => 'ClashMiao（預覽）';
-  @override
-  String get short_description =>
-      '自動、SSH、VLESS、Vmess、Trojan、Reality、Sing-Box、Clash、Xray、Shadowsocks';
-  @override
-  String get full_description =>
-      'ClashMiao 的主要目標是提供安全、使用者友好且高效率的隧道用戶端。它使您能夠利用 VPN 服務權限將所有流量或選定的應用程式流量路由到您選擇的遠端伺服器。\n\n註：我們不提供任何伺服器；使用者需要使用自己的自託管伺服器或受信任的伺服器來確保其線上活動的隱私。\n\n我們透過以下方式支援伺服器：\n - 普通 V2ray/Xray 訂閱連結\n - Clash 訂閱連結\n - Sing-Box 訂閱連結\n\n 我們的獨特功能是什麼？\n - 使用者友善\n - 最佳化且快速\n - 自動選擇最低延遲\n - 顯示使用者使用資訊\n - 使用一鍵連結輕鬆導入\n - 免費且無廣告\n - 輕鬆切換線路\n - 等等\n 支援：\n - Sing-Box 支援的所有協定 \n - VLESS + XTLS Reality、Vision 協定 \n - VMESS\n - Trojan\n - ShadowSocks\n - Reality\n - WireGuard\n - V2ray\n - Hystria2\n - TUIC \n - SSH\n - ShadowTLS\n\n\n 原始碼位於 https://github.com/clashmiao/clashmiao-client\n 應用程式核心基於開源的 Sing-Box。\n\n權限說明：\n\n - VPN 服務：由於此應用程式的目標是提供安全性、使用者友好且高效的隧道用戶端，因此我們需要此權限才能透過隧道將流量路由到遠端伺服器。\n - 獲取應用程式列表：此權限用於允許使用者包含或排除隧道的特定應用程式。\n - 接收啟動廣播：可以從應用程式設定中啟用或停用此權限，以在裝置啟動時啟動此應用程式。\n - 傳送通知：此權限至關重要，因為我們使用前台服務來確保 VPN 服務的持續運作。\n - 該應用程式沒有廣告。分析和崩潰數據僅在用戶首次使用應用程式時明確同意的情況下才會出現。';
 }
 
 // Path: connection
@@ -17202,12 +17004,6 @@ extension on Translations {
         return 'No Update Available';
       case 'failure.geoAssets.activeNotFound':
         return 'Active Geo Asset Not Found';
-      case 'play.title':
-        return 'ClashMiao (Preview)';
-      case 'play.short_description':
-        return 'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-      case 'play.full_description':
-        return 'The key goal of ClashMiao is to provide a secure, user-friendly and efficient tunneling client. It enables you to route all traffic or selected app traffic to a remote server of your choose, utilizing VPN-Service permission.\n\nNote: We do not provide any server; users are required to ensure their online activities stay private by using use their own self-hosted server or trusted servers. \n \nWe Support Servers With:\n- Normal V2Ray/XRay Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nWhat is our unique features?\n - User Friendly\n - Optimized and Fast\n - Automatically select LowestPing \n - Show user usage information\n - Easily import sublink by one click using deeplinking \n - Free and No ADS\n - Easily switch lines\n - More and more\n\nSupport:\n- All Protocols Supported by Sing-Box \n- VLESS + XTLS Reality, Vision\n- VMess\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2Ray\n- Hysteria2\n- TUICv5\n- SSH\n- ShadowTLS\n\n\nThe source code exist in https://github.com/clashmiao/clashmiao-client\nThe application core is based on open-source Sing-Box.\n\nPermission Description:\n- VPN Service: As the goal of this application is to provide a secure, user-friendly and efficient tunneling client, we need this permission to be able to route the traffic via tunnel to the remote server. \n- QUERY ALL PACKAGES: This permission is used to allow users to include or exclude specific applications for tunneling.\n- RECEIVE BOOT COMPLETED: This permission can be enabled or disabled from app settings to activate this application upon device boot.\n- POST NOTIFICATIONS: This permission is essential as we employ a foreground service to ensure the continuous operation of the VPN service.\n- This application is free from advertisements. The analytics and crash data only occurs with the explicit consent of the user in the first use of application.';
       case 'connection.tapToConnect':
         return 'Tap To Connect';
       case 'connection.connecting':
@@ -18019,12 +17815,6 @@ extension on TranslationsAr {
         return 'لا يوجد تحديث متاح';
       case 'failure.geoAssets.activeNotFound':
         return 'لم يتم العثور على أصل Geo النشط';
-      case 'play.title':
-        return 'ClashMiao (معاينة)';
-      case 'play.short_description':
-        return 'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-      case 'play.full_description':
-        return 'الهدف الرئيسي لـ ClashMiao هو توفير عميل نفق آمن وسهل الاستخدام وكفاءة. يمكّنك من توجيه جميع حركة المرور أو حركة المرور من التطبيق المحدد إلى خادم بعيد من اختيارك، باستخدام إذن VPN-Service. \n\nملاحظة: لا نوفر أي خادم، ويتعين على المستخدمين ضمان بقاء أنشطتهم عبر الإنترنت خاصة باستخدام خادمهم المخصص أو الخوادم الموثوقة. \n \nندعم الخوادم مع:\n- رابط اشتراك V2Ray/XRay عادي \n- رابط اشتراك Clash \n- رابط اشتراك Sing-Box \n\nما هي ميزاتنا الفريدة؟\n - سهل الاستخدام \n - مُحسّن وسريع \n - اختيار أدنى Ping تلقائيًا \n - عرض معلومات استخدام المستخدم \n - استيراد sublink بسهولة بنقرة واحدة باستخدام deeplinking \n - مجاني وخالي من الإعلانات \n - تبديل sublinks بسهولة \n - المزيد والمزيد \n\nالدعم:\n- جميع البروتوكولات التي تدعمها Sing-Box \n- VLESS + XTLS Reality, Vision \n- VMess \n- Trojan \n- ShoadowSocks \n- Reality \n- WireGuard \n- V2Ray \n- Hysteria2 \n- TUICv5 \n- SSH \n- ShadowTLS \n\n\nرمز المصدر موجود في https://github.com/clashmiao/clashmiao-client \nتعتمد نواة التطبيق على Sing-Box مفتوحة المصدر.\n\nوصف الإذن:\n- VPN Service: نظرًا لأن هدف هذا التطبيق هو توفير عميل نفق آمن وسهل الاستخدام وكفاءة، نحتاج إلى هذا الإذن لنتمكن من توجيه حركة المرور عبر النفق إلى الخادم البعيد. \n- QUERY ALL PACKAGES: يستخدم هذا الإذن للسماح للمستخدمين بتضمين أو استبعاد تطبيقات محددة للأنفاق. \n- RECEIVE BOOT COMPLETED: يمكن تمكين أو تعطيل هذا الإذن من إعدادات التطبيق لتنشيط هذا التطبيق عند تشغيل الجهاز. \n- POST NOTIFICATIONS: هذا الإذن ضروري لأننا نستخدم خدمة المقدمة لضمان تشغيل خدمة VPN بشكل مستمر. \n- هذا التطبيق خالي من الإعلانات. يتم جمع التحليلات وبيانات الأعطال فقط بموافقة صريحة من المستخدم في أول استخدام للتطبيق.';
       case 'connection.tapToConnect':
         return 'انقر للاتصال';
       case 'connection.connecting':
@@ -18820,12 +18610,6 @@ extension on TranslationsEs {
         return 'Actualización no disponible';
       case 'failure.geoAssets.activeNotFound':
         return 'Activo geográfico activo no encontrado';
-      case 'play.title':
-        return 'ClashMiao Next (vista previa)';
-      case 'play.short_description':
-        return 'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-      case 'play.full_description':
-        return 'El objetivo clave de ClashMiao es proporcionar un cliente de túnel seguro, fácil de usar y eficiente. Le permite enrutar todo el tráfico o el tráfico de aplicaciones seleccionadas a un servidor remoto de su elección, utilizando el permiso del servicio VPN.Nota: No proporcionamos ningún servidor; Los usuarios deben garantizar que sus actividades en línea permanezcan privadas mediante el uso de su propio servidor autohospedado o servidores confiables. Soportamos servidores con:- Enlace de suscripción normal a V2ray/Xray- Enlace de suscripción a Choque- Enlace de suscripción a Sing-Box¿Cuáles son nuestras características únicas? - Fácil de usar - Optimizado y Rápido - Seleccionar automáticamente LowestPing - Mostrar información de uso del usuario. - Importe fácilmente un subvínculo con un solo clic mediante enlaces profundos - Gratis y sin anuncios - Cambie fácilmente los subvínculos de usuario - más y másApoyo:- Todos los protocolos soportados por Sing-Box- VLESS + xtls realidad, visión- VMESS- troyano- Calcetines Shoadow- Realidad-V2ray-Histria2-TUIC-SSH- SombraTLSEl código fuente existe en https://github.com/clashmiao/clashmiao-clientEl núcleo de la aplicación se basa en sing-box de código abierto.Descripción del permiso:- Servicio VPN: como el objetivo de esta aplicación es proporcionar un cliente de túnel seguro, fácil de usar y eficiente, necesitamos este permiso para poder enrutar el tráfico a través del túnel al servidor remoto.- CONSULTAR TODOS LOS PAQUETES: este permiso se utiliza para permitir a los usuarios incluir o excluir aplicaciones específicas para la tunelización.- RECIBIR ARRANQUE COMPLETADO: este permiso se puede habilitar o deshabilitar desde la configuración de la aplicación para activar esta aplicación al iniciar el dispositivo.- PUBLICAR NOTIFICACIONES: este permiso es esencial ya que empleamos un servicio en primer plano para garantizar el funcionamiento continuo del servicio VPN.- Esta aplicación está libre de publicidad. Los datos analíticos y de fallos solo se producen con el consentimiento explícito del usuario en el primer uso de la aplicación.';
       case 'connection.tapToConnect':
         return 'Toque para conectarse';
       case 'connection.connecting':
@@ -19660,12 +19444,6 @@ extension on TranslationsFa {
         return 'هیچ به‌روزرسانی موجود نیست';
       case 'failure.geoAssets.activeNotFound':
         return 'فایل جغرافیایی فعال یافت نشد';
-      case 'play.title':
-        return 'ClashMiao (آزمایشی)';
-      case 'play.short_description':
-        return 'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
-      case 'play.full_description':
-        return 'هدف اصلی ClashMiao ارائه یک کلاینت ضدفیلتر ایمن، کاربرپسند و کارآمد است. این به شما امکان می‌دهد تا با استفاده از مجوز سرویس VPN، تمام ترافیک یا ترافیک برنامه‌ی انتخابی را به یک سرور راه دور مورد نظر خود هدایت کنید.\n\nتوجه: ما هیچ سروری ارائه نمی‌دهیم. کاربران موظف هستند با استفاده از سرورهای خود، هاست یا سرورهای مورد اعتماد، فعالیت‌های آنلاین خود را خصوصی نگه دارند. \n\nما از این سرورها پشتیبانی می‌کنیم:\n- لینک اشتراک V2Ray/XRay معمولی\n- لینک اشتراک کلش\n- لینک اشتراک Sing-Box\n\nویژگی‌های منحصر به فرد این برنامه چیست؟\n- کاربر پسند  \n- بهینه و سریع  \n- انتخاب کمترین پینگ به صورت خودکار\n- نمایش اطلاعات استفاده کاربر\n- به راحتی لینک فرعی را با یک کلیک با استفاده از دیپ لینک وارد کنید  \n- رایگان و بدون تبلیغات  \n- به‌راحتی لینک های فرعی کاربر را تغییر دهید  \n- بیشتر و بیشتر\n\nپشتیبانی از:\n- همه‌ی پروتکل‌های پشتیبانی‌شده توسط Sing-Box- VLESS + XTLS Reality، Vision- VMess- Trojan- ShadowSocks- Reality- WireGuard- V2Ray- Hysteria2- TUICv5- SSH- ShadowTLS\n\nکد منبع در https://github.com/clashmiao/clashmiao-client موجود بوده و هسته‌ی برنامه مبتنی بر منبع باز Sing-Box است.\n\nتوضیحات مجوز:\n- VPN Service: از آن‌جا که هدف این برنامه ارائه‌ی یک کلاینت ضدفیلتر ایمن، کاربر پسند و کارآمد است، ما به این مجوز نیاز داریم تا بتوانیم ترافیک را از طریق تونل به سرور راه دور هدایت کنیم.\n- QUERY ALL PACKAGES: این مجوز برای اجازه دادن به کاربران برای گنجاندن یا حذف برنامه‌های کاربردی خاص برای تونل‌زدن استفاده می‌شود.\n- RECEIVE BOOT COMPLETED: این مجوز را می‌توان از تنظیمات برنامه فعال یا غیرفعال کرد تا این برنامه پس از شروع به کار دستگاه فعال شود.\n- POST NOTIFICATIONS: این مجوز ضروری است زیرا برای اطمینان از عملکرد یکسره VPN نیاز است از یک سرویس پس زمینه استفاده کنیم. \n- این برنامه بدون تبلیغات است. تجزیه و تحلیل و داده‌های خرابی فقط با رضایت صریح کاربر در اولین استفاده از برنامه اتفاق می‌افتد.';
       case 'connection.tapToConnect':
         return 'برای اتصال ضربه بزنید';
       case 'connection.connecting':
@@ -20479,12 +20257,6 @@ extension on TranslationsId {
         return 'Perbaruan tidak tersedia';
       case 'failure.geoAssets.activeNotFound':
         return 'Geo Aset Aktif tidak ditemukan';
-      case 'play.title':
-        return 'ClashMiao (Preview)';
-      case 'play.short_description':
-        return 'Otomatik, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-      case 'play.full_description':
-        return 'Tujuan utama ClashMiao adalah memberikan keamanan, user-friendly dan client tunnel yg efisien. ClashMiao mengizinkanmu untuk mengarahkan semua atau beberapa trafik data aplikasi terpilih ke server remot pilihanmu, memanfaatkan izin VPN-Service.\n\nNote: Kami tidak menyediakan server apapun; pengguna diwajibkan untuk memastikan aktivitas online mereka tetap private dengan menggunakan self-hosted server atau server yg dipercaya pilihan mereka sendiri. \n \nKami mendukung server dengan:\n- Normal V2ray/Xray Subscription Link\n- Clash Subscription Link\n- Sing-Box Subscription Link\n\nApa fitur unik kami?\n - User Friendly\n - Cepat dan teroptimasi\n - Otomatis pilihan PING terendah \n - Menampilkan informasi penggunaan user\n - Dengan mudah import sublink dengan satu klik menggunakan deeplinking \n - Bebas dan tanpa iklan\n - Dengan mudah berganti user sublink\n - dan sebagainya\n\nSupport:\n- Semua protokol di dukung oleh Sing-Box \n- VLESS + xtls reality, vision\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\nCode Sumber ada di https://github.com/clashmiao/clashmiao-client\nInti Aplikasi didasarkan pada Sing-Box Open Source.\n\nDeskripsi Izin:\n- VPN Servis: Tujuan aplikasi ini menyediakan keamanan, user-friendly dan tunneling client efisien, kami membutuhkan izin untuk bisa mengarahkan traffic data melalui kanal remot server. \n- QUERY ALL PACKAGES: izin ini digunakan untuk memperbolehkan pengguna masuk atau mengeluarkan aplikasi tertentu untuk tunneling.\n- RECEIVE BOOT COMPLETED: izin ini dapat diaktifkan atau dinonaktifkan dari setting aplikasi untuk mengaktikan aplikasi ini saat boot device.\n- POST NOTIFICATIONS: izin ini penting karena kami menggunakan foreground service untuk memastikan operasi berkelanjutan dari VPN Servis.\n- Aplikasi ini bebas dari iklan. Analitik dan data crash hanya terjadi dengan persetujuan eksplisit dari pengguna pada saat penggunaan pertama kali';
       case 'connection.tapToConnect':
         return 'Ketuk untuk Sambung';
       case 'connection.connecting':
@@ -21299,10 +21071,6 @@ extension on TranslationsPtBr {
         return 'Nenhuma atualização disponível';
       case 'failure.geoAssets.activeNotFound':
         return 'Recurso geográfico ativo não encontrado';
-      case 'play.title':
-        return 'ClashMiao (Pré-visualização)';
-      case 'play.short_description':
-        return 'Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks';
       case 'connection.tapToConnect':
         return 'Toque para conectar';
       case 'connection.connecting':
@@ -22117,12 +21885,6 @@ extension on TranslationsRu {
         return 'Нет доступных обновлений';
       case 'failure.geoAssets.activeNotFound':
         return 'Активный географический актив не найден';
-      case 'play.title':
-        return 'ClashMiao (Preview)';
-      case 'play.short_description':
-        return 'Автовыбор, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-      case 'play.full_description':
-        return 'Основная цель ClashMiao — предоставить безопасный, удобный и эффективный клиент туннелирования. Он позволяет направлять весь трафик или трафик выбранного приложения на указанный Вами удалённый сервер.\nПримечание: мы не предоставляем серверы, пользователи должны сами обеспечивать конфиденциальность своих действий в Интернете, используя собственный сервер или доверенные серверы. Поддерживаются сервера с:— Обычной ссылка на подписку V2ray/Xray— Ссылкой на подписку Clash— Ссылко на подписку на Sing–Box\nВ чём уникальные особенности? — Удобство — Оптимизация и скорость — Автоматический выбор минимальной задержки — Отображение информации об использовании — Простой импорт ссылок одним щелчком мыши — Бесплатно и без рекламы — Простое переключение ссылок — …и много больше\nПоддерживаются:• Все протоколы, поддерживаемые Sing-Box• VLESS + xtls reality, vision• VMESS• Trojan• ShoadowSocks• Reality• V2ray• Hystria2• TUIC• SSH• ShadowTLS\nИсходный код доступен по адресу https://github.com/clashmiao/clashmiao-client.Ядро приложения основано на открытом исходном коде Sing–Box.\nОписание разрешений:— СЛУЖБА VPN: поскольку целью данного приложения является предоставление безопасного, удобного и эффективного клиента туннелирования, это разрешение необходимо, чтобы иметь возможность направлять трафик через туннель на удалённый сервер.— ЗАПРОС ВСЕХ ПАКЕТОВ: это разрешение позволяет добавлять или удалять определённые приложения из списка для туннелирования.— ИНФОРМИРОВАНИЕ О ЗАВЕРШЕНИИ ЗАГРУЗКИ: это разрешение можно включить или отключить в настройках приложения, чтобы (де)активировать запуск приложения при загрузке устройства.— ПОСТОЯННОЕ УВЕДОМЛЕНИЕ: это разрешение необходимо, так как используется приоритетная служба для обеспечения непрерывной работы VPN.— Приложение не содержит рекламы. Сбор аналитики и данных о сбоях происходят только с явного согласия пользователя при первом использовании приложения.';
       case 'connection.tapToConnect':
         return 'Нажмите для подключения';
       case 'connection.connecting':
@@ -22937,12 +22699,6 @@ extension on TranslationsTr {
         return 'Güncelleme mevcut değil';
       case 'failure.geoAssets.activeNotFound':
         return 'Etkin Coğrafi Varlık Bulunamadı';
-      case 'play.title':
-        return 'ClashMiao (Önizleme)';
-      case 'play.short_description':
-        return 'Otomatik, SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-      case 'play.full_description':
-        return 'ClashMiao\'in temel hedefi güvenli, kullanıcı dostu ve verimli bir tünel istemcisi sağlamaktır. VPN Hizmeti iznini kullanarak tüm trafiği veya seçilen uygulama trafiğini seçtiğiniz uzak bir sunucuya yönlendirmenizi sağlar. Not: Herhangi bir sunucu sağlamıyoruz; kullanıcıların kendi barındırılan sunucularını veya güvenilir sunucularını kullanarak çevrimiçi etkinliklerinin gizli kalmasını sağlamaları gerekir. Sunucuları aşağıdakilerle destekliyoruz: - Normal V2ray/Xray Abonelik Bağlantısı - Clash Abonelik Bağlantısı - Sing-Box Abonelik Bağlantısı Benzersiz özelliklerimiz nelerdir? - Kullanıcı Dostu - Optimize Edilmiş ve Hızlı - En Düşük Ping\'i otomatik olarak seçin - Kullanıcı kullanım bilgilerini gösterin - Derin bağlantı kullanarak tek tıklamayla alt bağlantıyı kolayca içe aktarın - Ücretsiz ve ADS Yok - Kullanıcı alt bağlantılarını kolayca değiştirin - giderek daha fazla Destek: - Sing-Box tarafından desteklenen tüm Protokoller - VLESS + xtls gerçeklik, vizyon - VMESS - Trojan - ShoadowSocks - Reality - V2ray - Hystria2 - TUIC - SSH - ShadowTLS Kaynak kodu https://github.com/clashmiao/clashmiao-client adresinde mevcuttur. Uygulama çekirdeği açık tabanlıdır. kaynak şarkı kutusu. İzin Açıklaması: - VPN Hizmeti: Bu uygulamanın amacı güvenli, kullanıcı dostu ve verimli bir tünel istemcisi sağlamak olduğundan, trafiği tünel aracılığıyla uzak sunucuya yönlendirebilmek için bu izne ihtiyacımız var. - TÜM PAKETLERİ SORGULAYIN: Bu izin, kullanıcıların tünelleme için belirli uygulamaları dahil etmesine veya hariç tutmasına izin vermek için kullanılır. - ALMA ÖNYÜKLEME TAMAMLANDI: Bu izin, cihaz önyüklemesi sırasında bu uygulamayı etkinleştirmek için uygulama ayarlarından etkinleştirilebilir veya devre dışı bırakılabilir. - BİLDİRİMLER SONRASI: VPN hizmetinin sürekli çalışmasını sağlamak için bir ön plan hizmeti kullandığımız için bu izin önemlidir. - Bu uygulama reklam içermez. Analitik ve kilitlenme verileri yalnızca uygulamanın ilk kullanımında kullanıcının açık rızası ile gerçekleşir.';
       case 'connection.tapToConnect':
         return 'Bağlanmak için dokunun';
       case 'connection.connecting':
@@ -23754,12 +23510,6 @@ extension on TranslationsZhCn {
         return '无可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到激活的 GEO 资源文件';
-      case 'play.title':
-        return 'ClashMiao（预览）';
-      case 'play.short_description':
-        return '自动，SSH, VLESS, Vmess, Trojan, Reality, Sing-Box, Clash, Xray, Shadowsocks';
-      case 'play.full_description':
-        return 'ClashMiao 的主要目标是提供安全、用户友好且高效的隧道客户端。它使您能够利用 VPN 服务权限将所有流量或选定的应用程序流量路由到您选择的远程服务器。\n\n注：我们不提供任何服务器；用户需要使用自己托管的服务器或可信的服务器来确保您在线活动的私密性。\n \n我们支持以下类型的服务器：\n- 普通 V2ray/Xray 订阅链接\n- Clash 订阅链接\n- Sing-Box 订阅链接\n\n我们的特色是什么？\n\n- 用户友好\n- 优化和高速\n- 自动选择最低延迟\n- 显示用户使用信息\n- 通过一键链接轻松导入\n- 免费且无广告\n- 轻松切换线路\n- 等等\n\n支持：\n- Sing-Box 支持的所有协议\n- VLESS + XTLS Reality、Vision 协议\n- VMESS\n- Trojan\n- ShadowSocks\n- Reality\n- WireGuard\n- V2ray\n- Hystria2\n- TUIC\n- SSH\n- ShadowTLS\n\n\n源代码位于 https://github.com/clashmiao/clashmiao-client\n应用程序核心基于开源的 Sing-Box。\n\n权限说明：\n\n- VPN 服务：由于此应用程序的目标是提供安全、用户友好和高效的隧道客户端，我们需要此权限以能够通过隧道将流量路由到远程服务器。\n获取应用程序列表：此权限用于允许用户包括或排除特定应用程序以进行隧道传输。\n- 接收开机广播：可以从应用程序设置中启用或禁用此权限，以便在设备启动时激活此应用程序。\n- 发送通知：此权限是必需的，因为我们使用前台服务来确保 VPN 服务的持续运行。\n- 本应用程序没有广告。分析和崩溃数据仅在首次使用应用程序时经用户明确同意的情况下发生。';
       case 'connection.tapToConnect':
         return '点击连接';
       case 'connection.connecting':
@@ -24570,12 +24320,6 @@ extension on TranslationsZhTw {
         return '暫無可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到活動 GEO 資源文件';
-      case 'play.title':
-        return 'ClashMiao（預覽）';
-      case 'play.short_description':
-        return '自動、SSH、VLESS、Vmess、Trojan、Reality、Sing-Box、Clash、Xray、Shadowsocks';
-      case 'play.full_description':
-        return 'ClashMiao 的主要目標是提供安全、使用者友好且高效率的隧道用戶端。它使您能夠利用 VPN 服務權限將所有流量或選定的應用程式流量路由到您選擇的遠端伺服器。\n\n註：我們不提供任何伺服器；使用者需要使用自己的自託管伺服器或受信任的伺服器來確保其線上活動的隱私。\n\n我們透過以下方式支援伺服器：\n - 普通 V2ray/Xray 訂閱連結\n - Clash 訂閱連結\n - Sing-Box 訂閱連結\n\n 我們的獨特功能是什麼？\n - 使用者友善\n - 最佳化且快速\n - 自動選擇最低延遲\n - 顯示使用者使用資訊\n - 使用一鍵連結輕鬆導入\n - 免費且無廣告\n - 輕鬆切換線路\n - 等等\n 支援：\n - Sing-Box 支援的所有協定 \n - VLESS + XTLS Reality、Vision 協定 \n - VMESS\n - Trojan\n - ShadowSocks\n - Reality\n - WireGuard\n - V2ray\n - Hystria2\n - TUIC \n - SSH\n - ShadowTLS\n\n\n 原始碼位於 https://github.com/clashmiao/clashmiao-client\n 應用程式核心基於開源的 Sing-Box。\n\n權限說明：\n\n - VPN 服務：由於此應用程式的目標是提供安全性、使用者友好且高效的隧道用戶端，因此我們需要此權限才能透過隧道將流量路由到遠端伺服器。\n - 獲取應用程式列表：此權限用於允許使用者包含或排除隧道的特定應用程式。\n - 接收啟動廣播：可以從應用程式設定中啟用或停用此權限，以在裝置啟動時啟動此應用程式。\n - 傳送通知：此權限至關重要，因為我們使用前台服務來確保 VPN 服務的持續運作。\n - 該應用程式沒有廣告。分析和崩潰數據僅在用戶首次使用應用程式時明確同意的情況下才會出現。';
       case 'connection.tapToConnect':
         return '點擊以連線';
       case 'connection.connecting':

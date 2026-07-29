@@ -206,10 +206,11 @@ jobs:
           # 分隔的 --dart-define=...，必须发生 word splitting 才能变成多个参数。
           # 加引号会把整串当成单个参数传给 flutter，构建直接失败。
           #
-          # --split-per-abi：额外产出按 CPU 架构拆分的 APK。通用 APK 把四种
-          # 架构的 native lib 全塞进去（150MB+），而任何一台手机只用得上其中
-          # 一种。绝大多数用户下 arm64-v8a 就够了（~1/3 体积）。通用包保留，
-          # 给不确定自己架构的用户兜底。
+          # --split-per-abi：额外产出按 CPU 架构拆分的 APK。通用 APK 把
+          # abiFilters 里三种架构（arm64-v8a / armeabi-v7a / x86_64）的 native
+          # lib 全塞进去（200MB+），而任何一台手机只用得上其中一种。2015 年后
+          # 的机型基本都是 arm64-v8a，下它就够了（~1/3 体积）。通用包保留，给
+          # 不确定自己架构的用户兜底。
           flutter build apk --release --split-per-abi $VERSION_ARGS $DART_DEFINES
           # shellcheck disable=SC2086  # 同上
           flutter build apk --release $VERSION_ARGS $DART_DEFINES

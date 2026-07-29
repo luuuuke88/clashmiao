@@ -95,6 +95,28 @@ Widget _wrap(ProviderContainer container, BoxStatus status) {
 
 /// 打开弹窗后不用 pumpAndSettle：AiUiModalWrapper 的入场动画只有 300ms，
 /// 用固定时长的 pump 序列确定性地推到底。
+/// 等到 [condition] 成立，最多等 [timeout]。
+///
+/// 替代 `await Future.delayed(1700ms)` 那种写法。connect() 内部有一段 1.5 秒的
+/// 状态展示动画，固定睡 1700ms 只留 200ms 余量——本地够用，但 CI runner 并行跑
+/// 几十个测试 isolate 时那点余量必然被吃掉，表现为随机失败。已经实际发生过：
+/// 同一个 commit 在 release workflow 里通过、在 CI workflow 里失败。
+///
+/// 这里改成轮询条件本身：机器快就早返回，机器慢就多等一会儿，两边都不会误判。
+Future<void> _waitUntil(
+  bool Function() condition, {
+  Duration timeout = const Duration(seconds: 15),
+  String? reason,
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!condition()) {
+    if (DateTime.now().isAfter(deadline)) {
+      fail('等待超时（${timeout.inSeconds}s）${reason == null ? '' : '：$reason'}');
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 25));
+  }
+}
+
 Future<void> _settleModal(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 500));
@@ -209,10 +231,8 @@ void main() {
         _pressDialogButton(tester, '仍然连接');
         await _settleModal(tester);
 
-        // connect() 内部有 1.5s 的 BoxStarting 展示动画，但 _boxService.start()
-        // 在那之前就已经被调用；等待足够时间让真实 IO / 该次调用跑完，也让
-        // connect() 内部的 delay 在 dispose 前完整走完。
-        await Future<void>.delayed(const Duration(milliseconds: 1700));
+        // 等 start() 真的被调用，而不是睡一个猜出来的时长。
+        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
         await tester.pump();
 
         expect(spy.startCalls, 1, reason: '用户点击"仍然连接"确认后，应该真正发起连接');
@@ -295,7 +315,7 @@ void main() {
           reason: '已勾选不再提示时不应该弹窗',
         );
 
-        await Future<void>.delayed(const Duration(milliseconds: 1700));
+        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
         await tester.pump();
 
         expect(spy.startCalls, 1, reason: '跳过弹窗后应该直接发起连接');
@@ -333,7 +353,7 @@ void main() {
           reason: '非实验性配置不应该弹出确认框',
         );
 
-        await Future<void>.delayed(const Duration(milliseconds: 1700));
+        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
         await tester.pump();
 
         expect(spy.startCalls, 1, reason: '正常配置的连接流程不应该被这次改动影响');

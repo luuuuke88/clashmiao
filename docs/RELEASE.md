@@ -26,14 +26,38 @@ tag push 触发时不受这个开关影响，永远是正式发布。
 
 | 平台 | 文件 |
 |---|---|
-| Android | `ClashMiao-Android-arm64-v8a-<ver>.apk`（**多数用户**） |
-| | `ClashMiao-Android-armeabi-v7a-<ver>.apk`（老旧 32 位设备） |
-| | `ClashMiao-Android-x86_64-<ver>.apk`（模拟器 / x86 平板） |
-| | `ClashMiao-Android-universal-<ver>.apk`（不确定架构时用，体积约 3 倍） |
+| Android | `ClashMiao-Android-arm64-v8a-<ver>.apk`（**仅此一个**，只支持 64 位设备） |
 | macOS | `ClashMiao-macOS-universal-<ver>.dmg` / `-<ver>.zip`（Intel + Apple Silicon） |
 | Windows | `ClashMiao-Windows-x64-<ver>-Setup.exe`（安装版）/ `ClashMiao-Windows-x64-<ver>.zip`（免安装） |
 | Linux | `clashmiao_<ver>_amd64.deb` / `ClashMiao-Linux-x86_64-<ver>.tar.gz` |
 | 全部 | `SHA256SUMS.txt` |
+
+### Android 只出 arm64-v8a
+
+`minSdk` 是 24（Android 7.0，2016 年），能跑本应用的设备基本都是 64 位；32 位
+包在新的 ARMv9 芯片上反而无法执行。armeabi-v7a、x86_64 和通用包都不再产出，
+包体从 219MB 降到 73.7MB。代价是 32 位设备和 x86_64 模拟器没有可用的发布包。
+
+**要维持这个状态需要两处配合，缺一不可**：
+
+1. `android/gradle.properties` 里的 `disable-abi-filtering=true`
+2. 构建命令上的 `--target-platform android-arm64`
+
+只做第 1 步不行：Flutter 的 gradle 插件会 `abiFilters.clear()` 再塞回它自己的
+全量列表，把 `app/build.gradle.kts` 里写的设置整个抹掉（它源码注释声称"用户
+自己配的优先"，但代码是无条件覆盖的）。
+
+只做第 2 步更容易骗人：那只管住 Flutter 自己的 `libapp.so` / `libflutter.so`，
+第三方 AAR 带来的 `libbox.so`（40MB+/架构）、`libsentry.so` 仍然三份全打进去。
+包会从 219MB 掉到 176MB——**看着像改好了，其实一个 32 位库都没少**。只看体积
+判断会被骗过去，要解包看 `lib/` 下有哪些目录。
+
+`release.yml` 里有一道断言守着这件事：解包检查 `lib/` 下必须恰好只有
+`arm64-v8a`。`abiFilters` 是并集语义，任何 buildType 加一项都会漏进产物，而多
+出来的 `.so` 不会让构建失败，只会让包变大、并把"仅支持 64 位"变成一句假话。
+
+debug 构建仍带 x86_64，供 CI 的 `smoke-android` 在 ubuntu runner 的 x86_64
+模拟器上跑；这一项不影响发布产物。
 
 **AAB 不在公开下载里**。`ClashMiao-Android-<ver>.aab` 作为单独的 workflow
 artifact（`store-android-aab`）上传，只用于上传 Play Store——终端用户下载 AAB

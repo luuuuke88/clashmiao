@@ -41,12 +41,11 @@ shasum -a 256 -c SHA256SUMS.txt --ignore-missing  # macOS
 
 ### Android
 
-| 文件 | 适用 |
-|---|---|
-| `ClashMiao-Android-arm64-v8a-*.apk` | **绝大多数手机选这个**（2017 年后机型基本都是 arm64） |
-| `ClashMiao-Android-armeabi-v7a-*.apk` | 老旧 32 位设备 |
-| `ClashMiao-Android-x86_64-*.apk` | 模拟器 / x86 平板 |
-| `ClashMiao-Android-universal-*.apk` | 不确定架构时用，体积约为上面的 3 倍 |
+`ClashMiao-Android-arm64-v8a-*.apk` —— 只有这一个包。
+
+**仅支持 64 位 ARM 设备**，也就是 2015 年之后的绝大多数手机。32 位
+（armeabi-v7a）与 x86_64 不再提供：前者在新的 ARMv9 芯片上已经无法执行，
+后者只用于模拟器。32 位设备安装会失败并提示「应用未安装」。
 
 需在系统设置里允许「安装未知来源应用」。首次连接会请求 VPN 权限，这是建立
 TUN 隧道的必要授权。

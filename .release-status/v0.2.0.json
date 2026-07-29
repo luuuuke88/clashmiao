@@ -1,60 +1,11 @@
 {
-  "artifacts": [
-    {
-      "path": "artifacts/release-android/ClashMiao-Android-arm64-v8a-0.2.0.apk",
-      "size": 77311555
-    },
-    {
-      "path": "artifacts/release-android/ClashMiao-Android-armeabi-v7a-0.2.0.apk",
-      "size": 70078637
-    },
-    {
-      "path": "artifacts/release-android/ClashMiao-Android-universal-0.2.0.apk",
-      "size": 219150152
-    },
-    {
-      "path": "artifacts/release-android/ClashMiao-Android-x86_64-0.2.0.apk",
-      "size": 81539528
-    },
-    {
-      "path": "artifacts/release-linux/ClashMiao-Linux-x86_64-0.2.0.tar.gz",
-      "size": 32543612
-    },
-    {
-      "path": "artifacts/release-linux/clashmiao_0.2.0_amd64.deb",
-      "size": 25735178
-    },
-    {
-      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.2.0.dmg",
-      "size": 59831279
-    },
-    {
-      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.2.0.zip",
-      "size": 60083987
-    },
-    {
-      "path": "artifacts/release-windows/ClashMiao-Windows-x64-0.2.0-Setup.exe",
-      "size": 25980459
-    },
-    {
-      "path": "artifacts/release-windows/ClashMiao-Windows-x64-0.2.0.zip",
-      "size": 34912315
-    },
-    {
-      "path": "artifacts/store-android-aab/ClashMiao-Android-0.2.0.aab",
-      "size": 243696035
-    }
-  ],
-  "jobs": {
-    "android": "success",
-    "macos": "success",
-    "publish": "success",
-    "quality": "success",
-    "windows": "success"
-  },
+  "artifacts": [],
+  "jobs": {},
   "run_attempt": "1",
-  "run_id": "30417974428",
-  "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/30417974428",
+  "run_id": "30418919759",
+  "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/30418919759",
   "sha": "90b6d05c468679c8f0084d4c6675ba97868c5809",
-  "tag": "v0.2.0"
+  "status": "started",
+  "tag": "v0.2.0",
+  "updated_at": "2026-07-29T03:12:07.305090+00:00"
 }

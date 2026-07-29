@@ -391,10 +391,6 @@
       "activeNotFound": "Recurso geográfico ativo não encontrado"
     }
   },
-  "play": {
-    "title": "ClashMiao (Pré-visualização)",
-    "short_description": "Auto, SSH, VLESS, VMess, Trojan, Reality, Sing-Box, Clash, XRay, Shadowsocks"
-  },
   "connection": {
     "tapToConnect": "Toque para conectar",
     "connecting": "Conectando",

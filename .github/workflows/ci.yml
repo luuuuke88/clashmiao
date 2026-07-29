@@ -24,6 +24,14 @@ env:
   LIBCORE_REPO: luuuuke88/clashmiao
 
 jobs:
+  # 对外链接可达性。单元测试查不出 404，而一个死掉的"源代码"入口对用户来说
+  # 跟软件坏了没有区别。
+  public-links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: bin/check-public-links.sh
+
   analyze:
     runs-on: ubuntu-latest
     steps:

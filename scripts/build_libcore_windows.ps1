@@ -1,14 +1,14 @@
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
+# 核心源码路径必须显式给出。此前这里有一个写死的本机路径作为兜底——在别人机器
+# 上它永远不存在，只会让报错晚一步出现，而且把某台机器的目录结构写进了仓库。
 $CoreSource = $env:CLASHMIAO_LIBCORE_SOURCE
 if (-not $CoreSource) {
-  $LocalCoreSource = 'C:/code/baseproxy/libcore'
-  if (Test-Path -LiteralPath $LocalCoreSource) {
-    $CoreSource = $LocalCoreSource
-  } else {
-    throw 'libcore source not found. Set CLASHMIAO_LIBCORE_SOURCE to the libcore checkout path.'
-  }
+  throw 'Set CLASHMIAO_LIBCORE_SOURCE to the libcore checkout path.'
+}
+if (-not (Test-Path -LiteralPath $CoreSource)) {
+  throw "CLASHMIAO_LIBCORE_SOURCE points to a path that does not exist: $CoreSource"
 }
 
 $OutputDir = ($RepoRoot -replace '\\', '/') + '/windows/libs'

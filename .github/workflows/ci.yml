@@ -108,7 +108,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bin/fetch-libcore.sh android
       - run: flutter pub get
-      - run: flutter build apk --release
+      # 只出 arm64-v8a，和发版产物保持一致（见 android/gradle.properties）
+      - run: flutter build apk --release --target-platform android-arm64
       - uses: actions/upload-artifact@v4
         with:
           name: clashmiao-android-apk

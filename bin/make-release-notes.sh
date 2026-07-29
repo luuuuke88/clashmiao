@@ -51,12 +51,9 @@ if have 'ClashMiao-Android-*.apk'; then
   cat <<'EOF'
 **Android**
 
-| 文件 | 适用 |
-|---|---|
-| `ClashMiao-Android-arm64-v8a-*.apk` | **绝大多数手机选这个**（2017 年后的机型基本都是 arm64） |
-| `ClashMiao-Android-armeabi-v7a-*.apk` | 老旧 32 位设备 |
-| `ClashMiao-Android-x86_64-*.apk` | 模拟器 / x86 平板 |
-| `ClashMiao-Android-universal-*.apk` | 不确定自己是哪种架构时用这个（体积约为上面的 3 倍） |
+`ClashMiao-Android-arm64-v8a-*.apk` —— 仅支持 64 位 ARM 设备，也就是 2015 年
+之后的绝大多数手机。32 位（armeabi-v7a）与 x86_64 不再提供：前者在新的
+ARMv9 芯片上已经无法执行，后者只用于模拟器。
 
 安装需在系统设置里允许「安装未知来源应用」。首次连接会请求 VPN 权限，
 这是建立隧道的必要授权。

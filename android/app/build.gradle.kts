@@ -40,7 +40,12 @@ android {
         versionName = flutter.versionName
         multiDexEnabled = true
         ndk {
-            abiFilters += listOf("x86_64", "armeabi-v7a", "arm64-v8a")
+            // 只出 arm64-v8a。minSdk 是 24（Android 7.0，2016 年），能跑本应用的
+            // 设备基本都是 64 位；32 位包在新的 ARMv9 芯片上反而根本执行不了。
+            //
+            // 注意 AGP 里 buildType 的 abiFilters 是和这里**取并集**，不是覆盖，
+            // 所以想让某个构建类型多带一个架构只能往上加（见下面的 debug）。
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
@@ -62,12 +67,12 @@ android {
             // 里**从来没有成功过**——只是一直没人跑到那一步，直到第一次真实排练
             // 发版才暴露。注意 `flutter clean` 治不了它：清掉的只是残留文件，
             // 拆分配置本身还在，重建一遍照样生成四份。
-            isEnable = gradle.startParameter.taskNames.none {
-                it.contains("Bundle", ignoreCase = true)
-            }
+            // 现在只剩一个 ABI，拆不拆结果都一样，索性一直关掉：少一条能出错的
+            // 路径，AAB 也不会再撞上上面那个 bug。
+            isEnable = false
             reset()
-            include("x86_64", "armeabi-v7a", "arm64-v8a")
-            isUniversalApk = true
+            include("arm64-v8a")
+            isUniversalApk = false
         }
     }
 
@@ -95,6 +100,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            ndk {
+                // 只在 debug 里多带 x86_64，为的是 CI 的 emulator E2E
+                // （smoke-android 跑在 ubuntu runner 上，模拟器是 x86_64）。
+                // 发布产物不含这一项——release 那边不加，并集里就没有。
+                abiFilters += listOf("x86_64")
+            }
+        }
         release {
             signingConfig = if (hasKeystore) {
                 signingConfigs.getByName("release")
@@ -102,7 +115,7 @@ android {
                 signingConfigs.getByName("debug")
             }
             ndk {
-                abiFilters += listOf("x86_64", "armeabi-v7a", "arm64-v8a")
+                // 不再往并集里加任何东西，最终就是 defaultConfig 的 arm64-v8a
                 debugSymbolLevel = "FULL"
             }
         }

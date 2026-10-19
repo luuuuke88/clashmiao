@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
-import 'package:clashmiao/core/model/box_alert.dart';
-import 'package:clashmiao/core/model/box_stats.dart';
-import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/model/directories.dart';
-import 'package:clashmiao/core/model/outbound.dart';
+import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/box_service/model/box_stats.dart';
+import 'package:clashmiao/core/box_service/model/box_status.dart';
+import 'package:clashmiao/core/box_service/model/directories.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
 

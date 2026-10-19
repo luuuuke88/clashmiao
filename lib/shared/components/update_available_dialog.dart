@@ -2,7 +2,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:clashmiao/core/config/build_config.dart';
+import 'package:clashmiao/core/env/build_config.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';

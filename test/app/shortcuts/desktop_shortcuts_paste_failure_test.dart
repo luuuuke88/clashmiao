@@ -5,7 +5,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/app/shortcuts/desktop_shortcuts.dart';
-import 'package:clashmiao/features/profile/data/profile_repository.dart';
+import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

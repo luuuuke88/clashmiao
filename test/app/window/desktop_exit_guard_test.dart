@@ -1,7 +1,7 @@
 import 'dart:ui' show AppExitResponse;
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/app/window/desktop_exit_guard.dart';

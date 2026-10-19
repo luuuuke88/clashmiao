@@ -4,10 +4,10 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
-import 'package:clashmiao/core/model/profile_entity.dart';
-import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/features/profile/data/profile_repository.dart';
+import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';

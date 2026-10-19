@@ -4,6 +4,7 @@ import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_hub.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/box_service/model/box_service_exception.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:flutter/foundation.dart';
@@ -600,8 +601,48 @@ class EmulatedKernelPort implements KernelPort {
     _abort(exec, _Fault(code, alert.message ?? ''));
   }
 
-  static String _describe(Object e) =>
-      e is PlatformException ? '${e.code}: ${e.message}' : '$e';
+  static String _describe(Object e) => e is PlatformException
+      ? '${e.code}: ${e.message}'
+      : e is BoxServiceException
+      ? '${e.code}: ${e.message}'
+      : '$e';
+}
+
+class _StartExec {
+  _StartExec({required this.seq, required this.attempt});
+  final int seq;
+  final int attempt;
+
+  /// 到达 started，或被 [EmulatedKernelPort._abort] 判定失败时完成。
+  final Completer<void> done = Completer<void>();
+  bool failed = false;
+  bool sawProgress = false;
+}
+
+class _StopExec {
+  _StopExec({required this.seq});
+  final int seq;
+
+  /// 平台已推送 Stopped。
+  bool stoppedSeen = false;
+
+  /// `stop()` 调用已返回（含抛异常）。
+  bool callReturned = false;
+
+  /// `stop()` 调用抛了异常且平台并未停止。
+  bool callFailed = false;
+  bool timedOut = false;
+
+  /// 执行可以收尾：调用已返回，并且 平台已 Stopped / 已超时 / 调用失败。
+  /// 调用未返回时永不完成——执行通道不放行，不会并发再发 stop。
+  final Completer<void> done = Completer<void>();
+
+  void check() {
+    if (done.isCompleted) return;
+    if (callReturned && (stoppedSeen || timedOut || callFailed)) {
+      done.complete();
+    }
+  }
 }
 
 class _StartExec {

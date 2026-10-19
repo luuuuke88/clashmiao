@@ -7,12 +7,13 @@ import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-/// 清理最多允许跑这么久，超时就放行退出。
+/// 清理最多允许跑这么久，超时就放行退出。与托盘、快捷键两条退出路径共用同一
+/// 个总期限（[kQuitCleanupDeadline]，由 `performShutdownCleanup` 执行）。
 ///
 /// **不能省。** 返回 [AppExitResponse.exit] 之前操作系统一直在等我们，清理里
 /// 任何一处卡住（内核不响应、平台 channel 无回应）都会让 App 永远退不出去——
 /// 用户只能强制退出，而强制退出恰好跳过清理，等于把要修的问题变得更糟。
-const kDesktopExitCleanupTimeout = Duration(seconds: 5);
+const kDesktopExitCleanupTimeout = kQuitCleanupDeadline;
 
 /// 桌面端退出守卫：在操作系统真的终止我们之前，先停内核（**还原系统代理**）
 /// 并清理托盘。
@@ -74,6 +75,8 @@ class DesktopExitGuard {
   @visibleForTesting
   Future<AppExitResponse> handleExitRequest() async {
     try {
+      // 总期限在 performShutdownCleanup 内部统一执行（含托盘清理）；这里再包一层
+      // 同样的期限，是最后一道保险——清理流程本身出了意外也不能把退出挂住。
       await performShutdownCleanup(
         disconnect: () =>
             _container.read(connectionControllerProvider.notifier).disconnect(),

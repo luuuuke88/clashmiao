@@ -1,15 +1,16 @@
 import 'dart:async';
 
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 这条连接实际能不能出网。
 ///
-/// 跟 [BoxStatus] 是两件不同的事：[BoxStatus] 说的是"内核起没起来、隧道建没
-/// 建成"，这里说的是"建成的这条隧道，数据包真的送得出去吗"。两者会不一致，
+/// 跟连接阶段（[ConnectionPhase]）是两件不同的事：阶段说的是"内核起没起来、
+/// 隧道建没建成"，这里说的是"建成的这条隧道，数据包真的送得出去吗"。两者会不一致，
 /// 而且不一致的那个组合（已连接 + 出不去）正是最坑用户的情形。
 enum ConnectionHealth {
   /// 未连接，或刚连上、还没有任何一次探测结果。
@@ -29,7 +30,7 @@ enum ConnectionHealth {
 ///
 /// ## 为什么需要它
 ///
-/// 这个 App 此前完全没有"连上了但不通"的检测能力：内核报告 `BoxStarted`
+/// 这个 App 此前完全没有"连上了但不通"的检测能力：内核报告已连接
 /// 之后，UI 就一直显示"已连接"，哪怕真实 egress 早已不通、整机流量被黑洞。
 /// 用户看到的是"VPN 连着呢"，实际上什么都打不开。
 ///
@@ -74,7 +75,7 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   ConnectionHealthMonitor(this._ref) : super(ConnectionHealth.unknown);
 
   final Ref _ref;
-  ProviderSubscription<AsyncValue<BoxStatus>>? _sub;
+  ProviderSubscription<ConnectionSnapshot>? _sub;
   Timer? _timer;
 
   /// 开始跟随连接状态做周期探测。由 App 启动流程调用一次，见类文档。
@@ -82,11 +83,11 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   /// 重复调用无副作用（幂等）。
   void start() {
     if (_sub != null) return;
-    _sub = _ref.listen<AsyncValue<BoxStatus>>(connectionControllerProvider, (
+    _sub = _ref.listen<ConnectionSnapshot>(connectionControllerProvider, (
       previous,
       next,
     ) {
-      _onStatus(next.valueOrNull);
+      _onPhase(next.phase);
     }, fireImmediately: true);
   }
 
@@ -117,9 +118,9 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
     super.dispose();
   }
 
-  void _onStatus(BoxStatus? status) {
-    if (status is BoxStarted) {
-      if (_timer != null) return; // 已经在监控了，重复的 BoxStarted 不重启周期
+  void _onPhase(ConnectionPhase phase) {
+    if (phase == ConnectionPhase.connected) {
+      if (_timer != null) return; // 已经在监控了，重复的 connected 不重启周期
       _consecutiveFailures = 0;
       state = ConnectionHealth.unknown;
       _timer = Timer(firstProbeDelay, () {

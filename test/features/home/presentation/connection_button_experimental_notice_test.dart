@@ -3,10 +3,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../support/temp_dirs.dart';
 
 import '../../../support/fake_box_service.dart';
+import '../../../support/fake_connection_controller.dart';
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录
 /// （照抄 test/domain/connection/application/connection_controller_test.dart 的既有模式）。
@@ -33,24 +34,15 @@ Future<Directory> _mockPathProvider() async {
   return tmp;
 }
 
-/// 非 stub spy，只记录 start 调用次数，用于验证"门禁挡住 connect()"。
+/// 仓库 / 订阅种子需要的 BoxService 替身（门禁效果由假控制器的 toggle 计数验证）。
 class _SpyBoxService extends FakeBoxService {
-  int startCalls = 0;
-
-  @override
-  Future<void> start(String path, {String name = ''}) async {
-    startCalls++;
-  }
-
   @override
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
 }
 
-/// 准备一个已经激活、且带最小合法配置文件的订阅，让 connect() 能真正走到
-/// _boxService.start()（否则会在"无激活订阅"/"配置文件不存在"提前 return，
-/// 测不出门禁效果）。
+/// 准备一个已经激活、且带最小合法配置文件的订阅（弹窗门禁读激活订阅的高级配置）。
 Future<void> _seedActiveProfile(ProviderContainer container) async {
   final repo = await container.read(profileRepositoryProvider.future);
   const profileId = 'experimental-notice-test-profile';
@@ -76,7 +68,10 @@ Future<void> _seedActiveProfile(ProviderContainer container) async {
   await container.read(activeProfileProvider.future);
 }
 
-Widget _wrap(ProviderContainer container, BoxStatus status) {
+FakeConnectionController _ctl(ProviderContainer c) =>
+    c.read(connectionControllerProvider.notifier) as FakeConnectionController;
+
+Widget _wrap(ProviderContainer container, ConnectionPhase phase) {
   return UncontrolledProviderScope(
     container: container,
     child: MaterialApp(
@@ -85,7 +80,7 @@ Widget _wrap(ProviderContainer container, BoxStatus status) {
       ),
       home: Scaffold(
         body: ConnectionButton(
-          status: status,
+          phase: phase,
           onTap: () {
             container.read(connectionControllerProvider.notifier).toggle();
           },
@@ -174,13 +169,16 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
           ],
         );
         addTearDown(container.dispose);
         await container.read(sharedPreferencesProvider.future);
         await _seedActiveProfile(container);
 
-        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pumpWidget(_wrap(container, ConnectionPhase.disconnected));
         await tester.pump(const Duration(milliseconds: 200));
 
         await tester.tap(find.byType(ConnectionButton));
@@ -192,9 +190,9 @@ void main() {
           reason: '命中实验性字段且未勾选不再提示时，点击连接应该先弹确认框',
         );
         expect(
-          spy.startCalls,
+          _ctl(container).toggleCalls,
           0,
-          reason: '弹窗还没确认之前，不应该调用底层 _boxService.start()',
+          reason: '弹窗还没确认之前，不应该触发 toggle()',
         );
       });
     });
@@ -215,29 +213,39 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
           ],
         );
         addTearDown(container.dispose);
         await container.read(sharedPreferencesProvider.future);
         await _seedActiveProfile(container);
 
-        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pumpWidget(_wrap(container, ConnectionPhase.disconnected));
         await tester.pump(const Duration(milliseconds: 200));
 
         await tester.tap(find.byType(ConnectionButton));
         await _settleModal(tester);
 
         expect(find.byType(ExperimentalFeatureNoticeDialog), findsOneWidget);
-        expect(spy.startCalls, 0);
+        expect(_ctl(container).toggleCalls, 0);
 
         _pressDialogButton(tester, '仍然连接');
         await _settleModal(tester);
 
         // 等 start() 真的被调用，而不是睡一个猜出来的时长。
-        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
+        await _waitUntil(
+          () => _ctl(container).toggleCalls >= 1,
+          reason: 'toggle() 未被调用',
+        );
         await tester.pump();
 
-        expect(spy.startCalls, 1, reason: '用户点击"仍然连接"确认后，应该真正发起连接');
+        expect(
+          _ctl(container).toggleCalls,
+          1,
+          reason: '用户点击"仍然连接"确认后，应该真正发起连接',
+        );
       });
     });
 
@@ -257,13 +265,16 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
           ],
         );
         addTearDown(container.dispose);
         await container.read(sharedPreferencesProvider.future);
         await _seedActiveProfile(container);
 
-        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pumpWidget(_wrap(container, ConnectionPhase.disconnected));
         await tester.pump(const Duration(milliseconds: 200));
 
         await tester.tap(find.byType(ConnectionButton));
@@ -277,7 +288,7 @@ void main() {
         await Future<void>.delayed(const Duration(milliseconds: 300));
         await tester.pump();
 
-        expect(spy.startCalls, 0, reason: '取消后不应该调用连接');
+        expect(_ctl(container).toggleCalls, 0, reason: '取消后不应该调用连接');
         expect(find.byType(ExperimentalFeatureNoticeDialog), findsNothing);
       });
     });
@@ -299,13 +310,16 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
           ],
         );
         addTearDown(container.dispose);
         await container.read(sharedPreferencesProvider.future);
         await _seedActiveProfile(container);
 
-        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pumpWidget(_wrap(container, ConnectionPhase.disconnected));
         await tester.pump(const Duration(milliseconds: 200));
 
         await tester.tap(find.byType(ConnectionButton));
@@ -317,10 +331,13 @@ void main() {
           reason: '已勾选不再提示时不应该弹窗',
         );
 
-        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
+        await _waitUntil(
+          () => _ctl(container).toggleCalls >= 1,
+          reason: 'toggle() 未被调用',
+        );
         await tester.pump();
 
-        expect(spy.startCalls, 1, reason: '跳过弹窗后应该直接发起连接');
+        expect(_ctl(container).toggleCalls, 1, reason: '跳过弹窗后应该直接发起连接');
       });
     });
 
@@ -337,13 +354,16 @@ void main() {
           overrides: [
             sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
             boxServiceProvider.overrideWithValue(spy),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
           ],
         );
         addTearDown(container.dispose);
         await container.read(sharedPreferencesProvider.future);
         await _seedActiveProfile(container);
 
-        await tester.pumpWidget(_wrap(container, const BoxStopped()));
+        await tester.pumpWidget(_wrap(container, ConnectionPhase.disconnected));
         await tester.pump(const Duration(milliseconds: 200));
 
         await tester.tap(find.byType(ConnectionButton));
@@ -355,10 +375,13 @@ void main() {
           reason: '非实验性配置不应该弹出确认框',
         );
 
-        await _waitUntil(() => spy.startCalls >= 1, reason: 'start() 未被调用');
+        await _waitUntil(
+          () => _ctl(container).toggleCalls >= 1,
+          reason: 'toggle() 未被调用',
+        );
         await tester.pump();
 
-        expect(spy.startCalls, 1, reason: '正常配置的连接流程不应该被这次改动影响');
+        expect(_ctl(container).toggleCalls, 1, reason: '正常配置的连接流程不应该被这次改动影响');
       });
     });
   });

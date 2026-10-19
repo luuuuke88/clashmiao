@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 4010 (401 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-19 at 17:06 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -202,6 +202,9 @@ class TranslationsHomeEn {
   String get degradedMsg =>
       'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
   String get degradedRetry => 'Check again';
+  late final TranslationsHomeEgressIpEn egressIp = TranslationsHomeEgressIpEn._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -221,6 +224,8 @@ class TranslationsStatsEn {
   String get connection => 'Connection';
   String get speed => 'Speed';
   String get totalTransferred => 'Total Transferred';
+  String get sessionTraffic => 'Session traffic';
+  String get downloadSpeed => 'Download speed';
 }
 
 // Path: profile
@@ -564,6 +569,20 @@ class TranslationsHomeRoutingModeEn {
   // Translations
   String get global => 'Global Proxy';
   String get smart => 'Smart Routing';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get label => 'Egress IP';
+  String get notConnected => 'Connect to show egress IP';
+  String get tapToCheck => 'Tap to check egress IP';
+  String get checking => 'Checking…';
+  String get failedRetry => 'Check failed, tap to retry';
 }
 
 // Path: profile.subscription
@@ -933,6 +952,9 @@ class TranslationsFailureSingboxEn {
   String get create => 'Service Creation Error';
   String get start => 'Service Startup Error';
   String get startTimeout => 'Service Startup Timed Out';
+  String get kernelUnresponsive =>
+      'The core is not responding. Please try again, or restart the app.';
+  String get kernelExited => 'The core exited unexpectedly';
 }
 
 // Path: failure.connectivity
@@ -947,6 +969,8 @@ class TranslationsFailureConnectivityEn {
   String get missingNotificationPermission => 'Missing Notification Permission';
   String get networkUnavailable => 'Network Unavailable';
   String get core => 'Core Error';
+  String get nativeUnresponsive =>
+      'Lost contact with the background service. Please try again.';
 }
 
 // Path: failure.profiles
@@ -1336,6 +1360,10 @@ class TranslationsHomeAr extends TranslationsHomeEn {
       'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
   @override
   String get degradedRetry => 'إعادة الفحص';
+  @override
+  late final TranslationsHomeEgressIpAr egressIp = TranslationsHomeEgressIpAr._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -1366,6 +1394,10 @@ class TranslationsStatsAr extends TranslationsStatsEn {
   String get trafficUsage => 'استخدام البيانات';
   @override
   String get liveSpeed => 'السرعة الحالية';
+  @override
+  String get sessionTraffic => 'حركة البيانات في هذه الجلسة';
+  @override
+  String get downloadSpeed => 'سرعة التنزيل';
 }
 
 // Path: profile
@@ -1912,6 +1944,28 @@ class TranslationsHomeRoutingModeAr extends TranslationsHomeRoutingModeEn {
   String get global => 'بروكسي عام';
   @override
   String get smart => 'توجيه ذكي';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpAr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'عنوان IP الخارجي';
+  @override
+  String get notConnected => 'اتصل لعرض عنوان IP الخارجي';
+  @override
+  String get tapToCheck => 'اضغط للتحقق من عنوان IP الخارجي';
+  @override
+  String get checking => 'جارٍ التحقق…';
+  @override
+  String get failedRetry => 'فشل التحقق، اضغط لإعادة المحاولة';
 }
 
 // Path: profile.subscription
@@ -2498,6 +2552,11 @@ class TranslationsFailureSingboxAr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'مكتبة النواة غير مثبتة';
   @override
   String get startTimeout => 'انتهت مهلة بدء الخدمة';
+  @override
+  String get kernelUnresponsive =>
+      'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+  @override
+  String get kernelExited => 'توقفت النواة بشكل غير متوقع';
 }
 
 // Path: failure.connectivity
@@ -2521,6 +2580,9 @@ class TranslationsFailureConnectivityAr
   String get core => 'خطأ في النواة';
   @override
   String get networkUnavailable => 'الشبكة غير متاحة';
+  @override
+  String get nativeUnresponsive =>
+      'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
 }
 
 // Path: failure.profiles
@@ -3023,6 +3085,10 @@ class TranslationsHomeEs extends TranslationsHomeEn {
       'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
   @override
   String get degradedRetry => 'Comprobar de nuevo';
+  @override
+  late final TranslationsHomeEgressIpEs egressIp = TranslationsHomeEgressIpEs._(
+    _root,
+  );
 }
 
 // Path: profile
@@ -3558,6 +3624,10 @@ class TranslationsStatsEs extends TranslationsStatsEn {
   String get speed => 'Velocidad';
   @override
   String get totalTransferred => 'Total transferido';
+  @override
+  String get sessionTraffic => 'Tráfico de esta sesión';
+  @override
+  String get downloadSpeed => 'Velocidad de descarga';
 }
 
 // Path: general.toggle
@@ -3604,6 +3674,28 @@ class TranslationsHomeRoutingModeEs extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy global';
   @override
   String get smart => 'Enrutamiento inteligente';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpEs extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP de salida';
+  @override
+  String get notConnected => 'Conéctate para ver la IP de salida';
+  @override
+  String get tapToCheck => 'Toca para comprobar la IP de salida';
+  @override
+  String get checking => 'Comprobando…';
+  @override
+  String get failedRetry => 'Error al comprobar, toca para reintentar';
 }
 
 // Path: profile.subscription
@@ -4199,6 +4291,11 @@ class TranslationsFailureSingboxEs extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca del núcleo no instalada';
   @override
   String get startTimeout => 'Tiempo de inicio del servicio agotado';
+  @override
+  String get kernelUnresponsive =>
+      'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+  @override
+  String get kernelExited => 'El núcleo se cerró inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -4223,6 +4320,9 @@ class TranslationsFailureConnectivityEs
   String get core => 'Error central';
   @override
   String get networkUnavailable => 'Red no disponible';
+  @override
+  String get nativeUnresponsive =>
+      'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
 }
 
 // Path: failure.profiles
@@ -4727,6 +4827,10 @@ class TranslationsHomeFa extends TranslationsHomeEn {
       'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
   @override
   String get degradedRetry => 'بررسی مجدد';
+  @override
+  late final TranslationsHomeEgressIpFa egressIp = TranslationsHomeEgressIpFa._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -4757,6 +4861,10 @@ class TranslationsStatsFa extends TranslationsStatsEn {
   String get trafficUsage => 'مصرف ترافیک';
   @override
   String get liveSpeed => 'سرعت لحظه‌ای';
+  @override
+  String get sessionTraffic => 'ترافیک این نشست';
+  @override
+  String get downloadSpeed => 'سرعت دانلود';
 }
 
 // Path: profile
@@ -5305,6 +5413,28 @@ class TranslationsHomeRoutingModeFa extends TranslationsHomeRoutingModeEn {
   String get global => 'پروکسی سراسری';
   @override
   String get smart => 'مسیریابی هوشمند';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpFa extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'آی‌پی خروجی';
+  @override
+  String get notConnected => 'برای نمایش آی‌پی خروجی متصل شوید';
+  @override
+  String get tapToCheck => 'برای بررسی آی‌پی خروجی ضربه بزنید';
+  @override
+  String get checking => 'در حال بررسی…';
+  @override
+  String get failedRetry => 'بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید';
 }
 
 // Path: profile.subscription
@@ -5895,6 +6025,11 @@ class TranslationsFailureSingboxFa extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'کتابخانهٔ هسته نصب نشده است';
   @override
   String get startTimeout => 'زمان راه‌اندازی سرویس به پایان رسید';
+  @override
+  String get kernelUnresponsive =>
+      'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+  @override
+  String get kernelExited => 'هسته به‌طور غیرمنتظره متوقف شد';
 }
 
 // Path: failure.connectivity
@@ -5918,6 +6053,9 @@ class TranslationsFailureConnectivityFa
   String get core => 'خطای هسته';
   @override
   String get networkUnavailable => 'شبکه در دسترس نیست';
+  @override
+  String get nativeUnresponsive =>
+      'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
 }
 
 // Path: failure.profiles
@@ -6420,6 +6558,10 @@ class TranslationsHomeId extends TranslationsHomeEn {
       'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
   @override
   String get degradedRetry => 'Periksa Lagi';
+  @override
+  late final TranslationsHomeEgressIpId egressIp = TranslationsHomeEgressIpId._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -6450,6 +6592,10 @@ class TranslationsStatsId extends TranslationsStatsEn {
   String get speed => 'Kecepatan';
   @override
   String get totalTransferred => 'Total Ditransfer';
+  @override
+  String get sessionTraffic => 'Lalu lintas sesi ini';
+  @override
+  String get downloadSpeed => 'Kecepatan unduh';
 }
 
 // Path: profile
@@ -6998,6 +7144,28 @@ class TranslationsHomeRoutingModeId extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy Global';
   @override
   String get smart => 'Perutean Cerdas';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpId extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP keluar';
+  @override
+  String get notConnected => 'Hubungkan untuk melihat IP keluar';
+  @override
+  String get tapToCheck => 'Ketuk untuk memeriksa IP keluar';
+  @override
+  String get checking => 'Memeriksa…';
+  @override
+  String get failedRetry => 'Pemeriksaan gagal, ketuk untuk mencoba lagi';
 }
 
 // Path: profile.subscription
@@ -7584,6 +7752,11 @@ class TranslationsFailureSingboxId extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Pustaka Inti Belum Terpasang';
   @override
   String get startTimeout => 'Waktu Mulai Layanan Habis';
+  @override
+  String get kernelUnresponsive =>
+      'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+  @override
+  String get kernelExited => 'Inti berhenti secara tak terduga';
 }
 
 // Path: failure.connectivity
@@ -7607,6 +7780,9 @@ class TranslationsFailureConnectivityId
   String get core => 'Error Inti';
   @override
   String get networkUnavailable => 'Jaringan Tidak Tersedia';
+  @override
+  String get nativeUnresponsive =>
+      'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
 }
 
 // Path: failure.profiles
@@ -8113,6 +8289,9 @@ class TranslationsHomePtBr extends TranslationsHomeEn {
       'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
   @override
   String get degradedRetry => 'Verificar novamente';
+  @override
+  late final TranslationsHomeEgressIpPtBr egressIp =
+      TranslationsHomeEgressIpPtBr._(_root);
 }
 
 // Path: stats
@@ -8145,6 +8324,10 @@ class TranslationsStatsPtBr extends TranslationsStatsEn {
   String get trafficUsage => 'Uso de tráfego';
   @override
   String get liveSpeed => 'Velocidade ao vivo';
+  @override
+  String get sessionTraffic => 'Tráfego da sessão';
+  @override
+  String get downloadSpeed => 'Velocidade de download';
 }
 
 // Path: profile
@@ -8700,6 +8883,28 @@ class TranslationsHomeRoutingModePtBr extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy global';
   @override
   String get smart => 'Roteamento inteligente';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpPtBr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP de saída';
+  @override
+  String get notConnected => 'Conecte para ver o IP de saída';
+  @override
+  String get tapToCheck => 'Toque para verificar o IP de saída';
+  @override
+  String get checking => 'Verificando…';
+  @override
+  String get failedRetry => 'Falha na verificação, toque para tentar novamente';
 }
 
 // Path: profile.subscription
@@ -9298,6 +9503,11 @@ class TranslationsFailureSingboxPtBr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca do núcleo não instalada';
   @override
   String get startTimeout => 'Tempo de inicialização do serviço esgotado';
+  @override
+  String get kernelUnresponsive =>
+      'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+  @override
+  String get kernelExited => 'O núcleo foi encerrado inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -9322,6 +9532,9 @@ class TranslationsFailureConnectivityPtBr
   String get core => 'Erro central';
   @override
   String get networkUnavailable => 'Rede indisponível';
+  @override
+  String get nativeUnresponsive =>
+      'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
 }
 
 // Path: failure.profiles
@@ -9827,6 +10040,10 @@ class TranslationsHomeRu extends TranslationsHomeEn {
       'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
   @override
   String get degradedRetry => 'Проверить ещё раз';
+  @override
+  late final TranslationsHomeEgressIpRu egressIp = TranslationsHomeEgressIpRu._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -9857,6 +10074,10 @@ class TranslationsStatsRu extends TranslationsStatsEn {
   String get trafficUsage => 'Использование трафика';
   @override
   String get liveSpeed => 'Текущая скорость';
+  @override
+  String get sessionTraffic => 'Трафик за сеанс';
+  @override
+  String get downloadSpeed => 'Скорость загрузки';
 }
 
 // Path: profile
@@ -10407,6 +10628,28 @@ class TranslationsHomeRoutingModeRu extends TranslationsHomeRoutingModeEn {
   String get global => 'Глобальный прокси';
   @override
   String get smart => 'Умная маршрутизация';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpRu extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'Выходной IP';
+  @override
+  String get notConnected => 'Подключитесь, чтобы увидеть выходной IP';
+  @override
+  String get tapToCheck => 'Нажмите, чтобы проверить выходной IP';
+  @override
+  String get checking => 'Проверка…';
+  @override
+  String get failedRetry => 'Не удалось проверить, нажмите для повтора';
 }
 
 // Path: profile.subscription
@@ -10999,6 +11242,11 @@ class TranslationsFailureSingboxRu extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Библиотека ядра не установлена';
   @override
   String get startTimeout => 'Истекло время запуска службы';
+  @override
+  String get kernelUnresponsive =>
+      'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+  @override
+  String get kernelExited => 'Ядро неожиданно завершило работу';
 }
 
 // Path: failure.connectivity
@@ -11023,6 +11271,9 @@ class TranslationsFailureConnectivityRu
   String get core => 'Ошибка ядра';
   @override
   String get networkUnavailable => 'Сеть недоступна';
+  @override
+  String get nativeUnresponsive =>
+      'Потеряна связь с фоновой службой. Повторите попытку.';
 }
 
 // Path: failure.profiles
@@ -11527,6 +11778,10 @@ class TranslationsHomeTr extends TranslationsHomeEn {
       'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
   @override
   String get degradedRetry => 'Yeniden Denetle';
+  @override
+  late final TranslationsHomeEgressIpTr egressIp = TranslationsHomeEgressIpTr._(
+    _root,
+  );
 }
 
 // Path: stats
@@ -11557,6 +11812,10 @@ class TranslationsStatsTr extends TranslationsStatsEn {
   String get speed => 'Hız';
   @override
   String get totalTransferred => 'Toplam Aktarılan';
+  @override
+  String get sessionTraffic => 'Bu oturumun trafiği';
+  @override
+  String get downloadSpeed => 'İndirme hızı';
 }
 
 // Path: profile
@@ -12106,6 +12365,28 @@ class TranslationsHomeRoutingModeTr extends TranslationsHomeRoutingModeEn {
   String get global => 'Genel Proxy';
   @override
   String get smart => 'Akıllı Yönlendirme';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpTr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'Çıkış IP\'si';
+  @override
+  String get notConnected => 'Çıkış IP\'sini görmek için bağlanın';
+  @override
+  String get tapToCheck => 'Çıkış IP\'sini denetlemek için dokunun';
+  @override
+  String get checking => 'Denetleniyor…';
+  @override
+  String get failedRetry => 'Denetim başarısız, yeniden denemek için dokunun';
 }
 
 // Path: profile.subscription
@@ -12696,6 +12977,11 @@ class TranslationsFailureSingboxTr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Çekirdek Kitaplığı Yüklü Değil';
   @override
   String get startTimeout => 'Servis Başlatma Zaman Aşımı';
+  @override
+  String get kernelUnresponsive =>
+      'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+  @override
+  String get kernelExited => 'Çekirdek beklenmedik şekilde kapandı';
 }
 
 // Path: failure.connectivity
@@ -12719,6 +13005,9 @@ class TranslationsFailureConnectivityTr
   String get core => 'Temel Hata';
   @override
   String get networkUnavailable => 'Ağ Kullanılamıyor';
+  @override
+  String get nativeUnresponsive =>
+      'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
 }
 
 // Path: failure.profiles
@@ -13221,6 +13510,9 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
   String get degradedMsg => '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
   @override
   String get degradedRetry => '重新检测';
+  @override
+  late final TranslationsHomeEgressIpZhCn egressIp =
+      TranslationsHomeEgressIpZhCn._(_root);
 }
 
 // Path: stats
@@ -13253,6 +13545,10 @@ class TranslationsStatsZhCn extends TranslationsStatsEn {
   String get speed => '速度';
   @override
   String get totalTransferred => '总传输量';
+  @override
+  String get sessionTraffic => '本次流量';
+  @override
+  String get downloadSpeed => '下载速度';
 }
 
 // Path: profile
@@ -13794,6 +14090,28 @@ class TranslationsHomeRoutingModeZhCn extends TranslationsHomeRoutingModeEn {
   String get global => '全局代理';
   @override
   String get smart => '智能分流';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpZhCn extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => '出口 IP';
+  @override
+  String get notConnected => '连接后显示出口 IP';
+  @override
+  String get tapToCheck => '点击检测出口 IP';
+  @override
+  String get checking => '正在检测…';
+  @override
+  String get failedRetry => '检测失败，点击重试';
 }
 
 // Path: profile.subscription
@@ -14370,6 +14688,10 @@ class TranslationsFailureSingboxZhCn extends TranslationsFailureSingboxEn {
   String get start => '服务启动错误';
   @override
   String get startTimeout => '服务启动超时';
+  @override
+  String get kernelUnresponsive => '内核无响应，请重试或重启应用';
+  @override
+  String get kernelExited => '内核意外退出';
 }
 
 // Path: failure.connectivity
@@ -14393,6 +14715,8 @@ class TranslationsFailureConnectivityZhCn
   String get networkUnavailable => '网络不可用';
   @override
   String get core => '核心错误';
+  @override
+  String get nativeUnresponsive => '与后台服务失去联系，请重试';
 }
 
 // Path: failure.profiles
@@ -14898,6 +15222,9 @@ class TranslationsHomeZhTw extends TranslationsHomeEn {
   String get degradedMsg => '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
   @override
   String get degradedRetry => '重新檢測';
+  @override
+  late final TranslationsHomeEgressIpZhTw egressIp =
+      TranslationsHomeEgressIpZhTw._(_root);
 }
 
 // Path: stats
@@ -14930,6 +15257,10 @@ class TranslationsStatsZhTw extends TranslationsStatsEn {
   String get trafficUsage => '流量使用';
   @override
   String get liveSpeed => '即時速度';
+  @override
+  String get sessionTraffic => '本次流量';
+  @override
+  String get downloadSpeed => '下載速度';
 }
 
 // Path: profile
@@ -15471,6 +15802,28 @@ class TranslationsHomeRoutingModeZhTw extends TranslationsHomeRoutingModeEn {
   String get global => '全域代理';
   @override
   String get smart => '智慧分流';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpZhTw extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => '出口 IP';
+  @override
+  String get notConnected => '連線後顯示出口 IP';
+  @override
+  String get tapToCheck => '點擊檢測出口 IP';
+  @override
+  String get checking => '正在檢測…';
+  @override
+  String get failedRetry => '檢測失敗，點擊重試';
 }
 
 // Path: profile.subscription
@@ -16048,6 +16401,10 @@ class TranslationsFailureSingboxZhTw extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => '核心程式庫未安裝';
   @override
   String get startTimeout => '服務啟動逾時';
+  @override
+  String get kernelUnresponsive => '核心無回應，請重試或重新啟動應用程式';
+  @override
+  String get kernelExited => '核心意外結束';
 }
 
 // Path: failure.connectivity
@@ -16071,6 +16428,8 @@ class TranslationsFailureConnectivityZhTw
   String get core => '核心錯誤';
   @override
   String get networkUnavailable => '網路無法使用';
+  @override
+  String get nativeUnresponsive => '與背景服務失去連線，請重試';
 }
 
 // Path: failure.profiles
@@ -16472,6 +16831,16 @@ extension on Translations {
         return 'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
       case 'home.degradedRetry':
         return 'Check again';
+      case 'home.egressIp.label':
+        return 'Egress IP';
+      case 'home.egressIp.notConnected':
+        return 'Connect to show egress IP';
+      case 'home.egressIp.tapToCheck':
+        return 'Tap to check egress IP';
+      case 'home.egressIp.checking':
+        return 'Checking…';
+      case 'home.egressIp.failedRetry':
+        return 'Check failed, tap to retry';
       case 'stats.traffic':
         return 'Traffic';
       case 'stats.trafficLive':
@@ -16492,6 +16861,10 @@ extension on Translations {
         return 'Speed';
       case 'stats.totalTransferred':
         return 'Total Transferred';
+      case 'stats.sessionTraffic':
+        return 'Session traffic';
+      case 'stats.downloadSpeed':
+        return 'Download speed';
       case 'profile.overviewPageTitle':
         return 'Profiles';
       case 'profile.detailsPageTitle':
@@ -16968,6 +17341,10 @@ extension on Translations {
         return 'Service Startup Error';
       case 'failure.singbox.startTimeout':
         return 'Service Startup Timed Out';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'The core is not responding. Please try again, or restart the app.';
+      case 'failure.singbox.kernelExited':
+        return 'The core exited unexpectedly';
       case 'failure.connectivity.unexpected':
         return 'Unexpected Failure';
       case 'failure.connectivity.missingVpnPermission':
@@ -16978,6 +17355,8 @@ extension on Translations {
         return 'Network Unavailable';
       case 'failure.connectivity.core':
         return 'Core Error';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Lost contact with the background service. Please try again.';
       case 'failure.profiles.unexpected':
         return 'Unexpected Error';
       case 'failure.profiles.notFound':
@@ -17284,6 +17663,16 @@ extension on TranslationsAr {
         return 'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
       case 'home.degradedRetry':
         return 'إعادة الفحص';
+      case 'home.egressIp.label':
+        return 'عنوان IP الخارجي';
+      case 'home.egressIp.notConnected':
+        return 'اتصل لعرض عنوان IP الخارجي';
+      case 'home.egressIp.tapToCheck':
+        return 'اضغط للتحقق من عنوان IP الخارجي';
+      case 'home.egressIp.checking':
+        return 'جارٍ التحقق…';
+      case 'home.egressIp.failedRetry':
+        return 'فشل التحقق، اضغط لإعادة المحاولة';
       case 'stats.traffic':
         return 'حركة المرور';
       case 'stats.trafficLive':
@@ -17304,6 +17693,10 @@ extension on TranslationsAr {
         return 'استخدام البيانات';
       case 'stats.liveSpeed':
         return 'السرعة الحالية';
+      case 'stats.sessionTraffic':
+        return 'حركة البيانات في هذه الجلسة';
+      case 'stats.downloadSpeed':
+        return 'سرعة التنزيل';
       case 'profile.overviewPageTitle':
         return 'الملفات الشخصية';
       case 'profile.detailsPageTitle':
@@ -17779,6 +18172,10 @@ extension on TranslationsAr {
         return 'مكتبة النواة غير مثبتة';
       case 'failure.singbox.startTimeout':
         return 'انتهت مهلة بدء الخدمة';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+      case 'failure.singbox.kernelExited':
+        return 'توقفت النواة بشكل غير متوقع';
       case 'failure.connectivity.unexpected':
         return 'فشل غير متوقع';
       case 'failure.connectivity.missingVpnPermission':
@@ -17789,6 +18186,8 @@ extension on TranslationsAr {
         return 'خطأ في النواة';
       case 'failure.connectivity.networkUnavailable':
         return 'الشبكة غير متاحة';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
       case 'failure.profiles.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.profiles.notFound':
@@ -18096,6 +18495,16 @@ extension on TranslationsEs {
         return 'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
       case 'home.degradedRetry':
         return 'Comprobar de nuevo';
+      case 'home.egressIp.label':
+        return 'IP de salida';
+      case 'home.egressIp.notConnected':
+        return 'Conéctate para ver la IP de salida';
+      case 'home.egressIp.tapToCheck':
+        return 'Toca para comprobar la IP de salida';
+      case 'home.egressIp.checking':
+        return 'Comprobando…';
+      case 'home.egressIp.failedRetry':
+        return 'Error al comprobar, toca para reintentar';
       case 'profile.overviewPageTitle':
         return 'Perfiles';
       case 'profile.detailsPageTitle':
@@ -18574,6 +18983,10 @@ extension on TranslationsEs {
         return 'Biblioteca del núcleo no instalada';
       case 'failure.singbox.startTimeout':
         return 'Tiempo de inicio del servicio agotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+      case 'failure.singbox.kernelExited':
+        return 'El núcleo se cerró inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falla inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -18584,6 +18997,8 @@ extension on TranslationsEs {
         return 'Error central';
       case 'failure.connectivity.networkUnavailable':
         return 'Red no disponible';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
       case 'failure.profiles.unexpected':
         return 'Error Inesperado';
       case 'failure.profiles.notFound':
@@ -18826,6 +19241,10 @@ extension on TranslationsEs {
         return 'Velocidad';
       case 'stats.totalTransferred':
         return 'Total transferido';
+      case 'stats.sessionTraffic':
+        return 'Tráfico de esta sesión';
+      case 'stats.downloadSpeed':
+        return 'Velocidad de descarga';
       default:
         return null;
     }
@@ -18911,6 +19330,16 @@ extension on TranslationsFa {
         return 'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
       case 'home.degradedRetry':
         return 'بررسی مجدد';
+      case 'home.egressIp.label':
+        return 'آی‌پی خروجی';
+      case 'home.egressIp.notConnected':
+        return 'برای نمایش آی‌پی خروجی متصل شوید';
+      case 'home.egressIp.tapToCheck':
+        return 'برای بررسی آی‌پی خروجی ضربه بزنید';
+      case 'home.egressIp.checking':
+        return 'در حال بررسی…';
+      case 'home.egressIp.failedRetry':
+        return 'بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید';
       case 'stats.traffic':
         return 'مصرف';
       case 'stats.trafficLive':
@@ -18931,6 +19360,10 @@ extension on TranslationsFa {
         return 'مصرف ترافیک';
       case 'stats.liveSpeed':
         return 'سرعت لحظه‌ای';
+      case 'stats.sessionTraffic':
+        return 'ترافیک این نشست';
+      case 'stats.downloadSpeed':
+        return 'سرعت دانلود';
       case 'profile.overviewPageTitle':
         return 'پروفایل‌ها';
       case 'profile.detailsPageTitle':
@@ -19408,6 +19841,10 @@ extension on TranslationsFa {
         return 'کتابخانهٔ هسته نصب نشده است';
       case 'failure.singbox.startTimeout':
         return 'زمان راه‌اندازی سرویس به پایان رسید';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+      case 'failure.singbox.kernelExited':
+        return 'هسته به‌طور غیرمنتظره متوقف شد';
       case 'failure.connectivity.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.connectivity.missingVpnPermission':
@@ -19418,6 +19855,8 @@ extension on TranslationsFa {
         return 'خطای هسته';
       case 'failure.connectivity.networkUnavailable':
         return 'شبکه در دسترس نیست';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
       case 'failure.profiles.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.profiles.notFound':
@@ -19724,6 +20163,16 @@ extension on TranslationsId {
         return 'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
       case 'home.degradedRetry':
         return 'Periksa Lagi';
+      case 'home.egressIp.label':
+        return 'IP keluar';
+      case 'home.egressIp.notConnected':
+        return 'Hubungkan untuk melihat IP keluar';
+      case 'home.egressIp.tapToCheck':
+        return 'Ketuk untuk memeriksa IP keluar';
+      case 'home.egressIp.checking':
+        return 'Memeriksa…';
+      case 'home.egressIp.failedRetry':
+        return 'Pemeriksaan gagal, ketuk untuk mencoba lagi';
       case 'stats.traffic':
         return 'Trafik Langsung';
       case 'stats.trafficTotal':
@@ -19744,6 +20193,10 @@ extension on TranslationsId {
         return 'Kecepatan';
       case 'stats.totalTransferred':
         return 'Total Ditransfer';
+      case 'stats.sessionTraffic':
+        return 'Lalu lintas sesi ini';
+      case 'stats.downloadSpeed':
+        return 'Kecepatan unduh';
       case 'profile.overviewPageTitle':
         return 'Beberapa Profil';
       case 'profile.detailsPageTitle':
@@ -20221,6 +20674,10 @@ extension on TranslationsId {
         return 'Pustaka Inti Belum Terpasang';
       case 'failure.singbox.startTimeout':
         return 'Waktu Mulai Layanan Habis';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+      case 'failure.singbox.kernelExited':
+        return 'Inti berhenti secara tak terduga';
       case 'failure.connectivity.unexpected':
         return 'Kegagalan tidak terduga';
       case 'failure.connectivity.missingVpnPermission':
@@ -20231,6 +20688,8 @@ extension on TranslationsId {
         return 'Error Inti';
       case 'failure.connectivity.networkUnavailable':
         return 'Jaringan Tidak Tersedia';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
       case 'failure.profiles.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.profiles.notFound':
@@ -20538,6 +20997,16 @@ extension on TranslationsPtBr {
         return 'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
       case 'home.degradedRetry':
         return 'Verificar novamente';
+      case 'home.egressIp.label':
+        return 'IP de saída';
+      case 'home.egressIp.notConnected':
+        return 'Conecte para ver o IP de saída';
+      case 'home.egressIp.tapToCheck':
+        return 'Toque para verificar o IP de saída';
+      case 'home.egressIp.checking':
+        return 'Verificando…';
+      case 'home.egressIp.failedRetry':
+        return 'Falha na verificação, toque para tentar novamente';
       case 'stats.trafficLive':
         return 'Tráfego ao vivo';
       case 'stats.trafficTotal':
@@ -20558,6 +21027,10 @@ extension on TranslationsPtBr {
         return 'Uso de tráfego';
       case 'stats.liveSpeed':
         return 'Velocidade ao vivo';
+      case 'stats.sessionTraffic':
+        return 'Tráfego da sessão';
+      case 'stats.downloadSpeed':
+        return 'Velocidade de download';
       case 'profile.overviewPageTitle':
         return 'Perfis';
       case 'profile.detailsPageTitle':
@@ -21035,6 +21508,10 @@ extension on TranslationsPtBr {
         return 'Biblioteca do núcleo não instalada';
       case 'failure.singbox.startTimeout':
         return 'Tempo de inicialização do serviço esgotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+      case 'failure.singbox.kernelExited':
+        return 'O núcleo foi encerrado inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falha inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -21045,6 +21522,8 @@ extension on TranslationsPtBr {
         return 'Erro central';
       case 'failure.connectivity.networkUnavailable':
         return 'Rede indisponível';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
       case 'failure.profiles.unexpected':
         return 'Erro inesperado';
       case 'failure.profiles.notFound':
@@ -21352,6 +21831,16 @@ extension on TranslationsRu {
         return 'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
       case 'home.degradedRetry':
         return 'Проверить ещё раз';
+      case 'home.egressIp.label':
+        return 'Выходной IP';
+      case 'home.egressIp.notConnected':
+        return 'Подключитесь, чтобы увидеть выходной IP';
+      case 'home.egressIp.tapToCheck':
+        return 'Нажмите, чтобы проверить выходной IP';
+      case 'home.egressIp.checking':
+        return 'Проверка…';
+      case 'home.egressIp.failedRetry':
+        return 'Не удалось проверить, нажмите для повтора';
       case 'stats.traffic':
         return 'Трафик';
       case 'stats.trafficLive':
@@ -21372,6 +21861,10 @@ extension on TranslationsRu {
         return 'Использование трафика';
       case 'stats.liveSpeed':
         return 'Текущая скорость';
+      case 'stats.sessionTraffic':
+        return 'Трафик за сеанс';
+      case 'stats.downloadSpeed':
+        return 'Скорость загрузки';
       case 'profile.overviewPageTitle':
         return 'Профили';
       case 'profile.detailsPageTitle':
@@ -21849,6 +22342,10 @@ extension on TranslationsRu {
         return 'Библиотека ядра не установлена';
       case 'failure.singbox.startTimeout':
         return 'Истекло время запуска службы';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+      case 'failure.singbox.kernelExited':
+        return 'Ядро неожиданно завершило работу';
       case 'failure.connectivity.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.connectivity.missingVpnPermission':
@@ -21859,6 +22356,8 @@ extension on TranslationsRu {
         return 'Ошибка ядра';
       case 'failure.connectivity.networkUnavailable':
         return 'Сеть недоступна';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Потеряна связь с фоновой службой. Повторите попытку.';
       case 'failure.profiles.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.profiles.notFound':
@@ -22166,6 +22665,16 @@ extension on TranslationsTr {
         return 'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
       case 'home.degradedRetry':
         return 'Yeniden Denetle';
+      case 'home.egressIp.label':
+        return 'Çıkış IP\'si';
+      case 'home.egressIp.notConnected':
+        return 'Çıkış IP\'sini görmek için bağlanın';
+      case 'home.egressIp.tapToCheck':
+        return 'Çıkış IP\'sini denetlemek için dokunun';
+      case 'home.egressIp.checking':
+        return 'Denetleniyor…';
+      case 'home.egressIp.failedRetry':
+        return 'Denetim başarısız, yeniden denemek için dokunun';
       case 'stats.trafficLive':
         return 'Canlı Trafik';
       case 'stats.trafficTotal':
@@ -22186,6 +22695,10 @@ extension on TranslationsTr {
         return 'Hız';
       case 'stats.totalTransferred':
         return 'Toplam Aktarılan';
+      case 'stats.sessionTraffic':
+        return 'Bu oturumun trafiği';
+      case 'stats.downloadSpeed':
+        return 'İndirme hızı';
       case 'profile.overviewPageTitle':
         return 'Profiller';
       case 'profile.detailsPageTitle':
@@ -22663,6 +23176,10 @@ extension on TranslationsTr {
         return 'Çekirdek Kitaplığı Yüklü Değil';
       case 'failure.singbox.startTimeout':
         return 'Servis Başlatma Zaman Aşımı';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+      case 'failure.singbox.kernelExited':
+        return 'Çekirdek beklenmedik şekilde kapandı';
       case 'failure.connectivity.unexpected':
         return 'Beklenmedik Hata';
       case 'failure.connectivity.missingVpnPermission':
@@ -22673,6 +23190,8 @@ extension on TranslationsTr {
         return 'Temel Hata';
       case 'failure.connectivity.networkUnavailable':
         return 'Ağ Kullanılamıyor';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
       case 'failure.profiles.unexpected':
         return 'Beklenmedik hata';
       case 'failure.profiles.notFound':
@@ -22979,6 +23498,16 @@ extension on TranslationsZhCn {
         return '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
       case 'home.degradedRetry':
         return '重新检测';
+      case 'home.egressIp.label':
+        return '出口 IP';
+      case 'home.egressIp.notConnected':
+        return '连接后显示出口 IP';
+      case 'home.egressIp.tapToCheck':
+        return '点击检测出口 IP';
+      case 'home.egressIp.checking':
+        return '正在检测…';
+      case 'home.egressIp.failedRetry':
+        return '检测失败，点击重试';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -22999,6 +23528,10 @@ extension on TranslationsZhCn {
         return '速度';
       case 'stats.totalTransferred':
         return '总传输量';
+      case 'stats.sessionTraffic':
+        return '本次流量';
+      case 'stats.downloadSpeed':
+        return '下载速度';
       case 'profile.overviewPageTitle':
         return '配置文件';
       case 'profile.detailsPageTitle':
@@ -23474,6 +24007,10 @@ extension on TranslationsZhCn {
         return '服务启动错误';
       case 'failure.singbox.startTimeout':
         return '服务启动超时';
+      case 'failure.singbox.kernelUnresponsive':
+        return '内核无响应，请重试或重启应用';
+      case 'failure.singbox.kernelExited':
+        return '内核意外退出';
       case 'failure.connectivity.unexpected':
         return '意外失败';
       case 'failure.connectivity.missingVpnPermission':
@@ -23484,6 +24021,8 @@ extension on TranslationsZhCn {
         return '网络不可用';
       case 'failure.connectivity.core':
         return '核心错误';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '与后台服务失去联系，请重试';
       case 'failure.profiles.unexpected':
         return '意外错误';
       case 'failure.profiles.notFound':
@@ -23789,6 +24328,16 @@ extension on TranslationsZhTw {
         return '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
       case 'home.degradedRetry':
         return '重新檢測';
+      case 'home.egressIp.label':
+        return '出口 IP';
+      case 'home.egressIp.notConnected':
+        return '連線後顯示出口 IP';
+      case 'home.egressIp.tapToCheck':
+        return '點擊檢測出口 IP';
+      case 'home.egressIp.checking':
+        return '正在檢測…';
+      case 'home.egressIp.failedRetry':
+        return '檢測失敗，點擊重試';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -23809,6 +24358,10 @@ extension on TranslationsZhTw {
         return '流量使用';
       case 'stats.liveSpeed':
         return '即時速度';
+      case 'stats.sessionTraffic':
+        return '本次流量';
+      case 'stats.downloadSpeed':
+        return '下載速度';
       case 'profile.overviewPageTitle':
         return '設定檔';
       case 'profile.detailsPageTitle':
@@ -24284,6 +24837,10 @@ extension on TranslationsZhTw {
         return '核心程式庫未安裝';
       case 'failure.singbox.startTimeout':
         return '服務啟動逾時';
+      case 'failure.singbox.kernelUnresponsive':
+        return '核心無回應，請重試或重新啟動應用程式';
+      case 'failure.singbox.kernelExited':
+        return '核心意外結束';
       case 'failure.connectivity.unexpected':
         return '意外失敗';
       case 'failure.connectivity.missingVpnPermission':
@@ -24294,6 +24851,8 @@ extension on TranslationsZhTw {
         return '核心錯誤';
       case 'failure.connectivity.networkUnavailable':
         return '網路無法使用';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '與背景服務失去連線，請重試';
       case 'failure.profiles.unexpected':
         return '意外錯誤';
       case 'failure.profiles.notFound':

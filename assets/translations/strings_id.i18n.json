@@ -44,7 +44,14 @@
     "coreMissingMsg": "Aplikasi tidak dapat memuat inti jaringannya. Koneksi tidak tersedia. Pasang ulang aplikasi, atau pastikan berkas pustaka inti berada di samping berkas eksekusi.",
     "degradedTitle": "Tersambung, tetapi tidak ada akses internet",
     "degradedMsg": "Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.",
-    "degradedRetry": "Periksa Lagi"
+    "degradedRetry": "Periksa Lagi",
+    "egressIp": {
+      "label": "IP keluar",
+      "notConnected": "Hubungkan untuk melihat IP keluar",
+      "tapToCheck": "Ketuk untuk memeriksa IP keluar",
+      "checking": "Memeriksa…",
+      "failedRetry": "Pemeriksaan gagal, ketuk untuk mencoba lagi"
+    }
   },
   "stats": {
     "traffic": "Trafik Langsung",
@@ -56,7 +63,9 @@
     "trafficUsage": "Penggunaan Lalu Lintas",
     "liveSpeed": "Kecepatan Langsung",
     "speed": "Kecepatan",
-    "totalTransferred": "Total Ditransfer"
+    "totalTransferred": "Total Ditransfer",
+    "sessionTraffic": "Lalu lintas sesi ini",
+    "downloadSpeed": "Kecepatan unduh"
   },
   "profile": {
     "overviewPageTitle": "Beberapa Profil",
@@ -362,14 +371,17 @@
       "create": "Pembuatan Servis Error",
       "start": "Jalankan Servis Error",
       "coreLibraryMissing": "Pustaka Inti Belum Terpasang",
-      "startTimeout": "Waktu Mulai Layanan Habis"
+      "startTimeout": "Waktu Mulai Layanan Habis",
+      "kernelUnresponsive": "Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.",
+      "kernelExited": "Inti berhenti secara tak terduga"
     },
     "connectivity": {
       "unexpected": "Kegagalan tidak terduga",
       "missingVpnPermission": "Izin VPN Hilang",
       "missingNotificationPermission": "Izin Notifikasi Hilang",
       "core": "Error Inti",
-      "networkUnavailable": "Jaringan Tidak Tersedia"
+      "networkUnavailable": "Jaringan Tidak Tersedia",
+      "nativeUnresponsive": "Kehilangan kontak dengan layanan latar belakang. Coba lagi."
     },
     "profiles": {
       "unexpected": "Error Tidak Terduga",

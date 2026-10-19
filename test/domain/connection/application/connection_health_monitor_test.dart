@@ -7,13 +7,15 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../support/fake_connection_controller.dart';
 
 /// 可切换成功/失败的假 [HttpClientAdapter]，沿用仓库既有范式
 /// （`egress_ip_service_test.dart` 里的同款 `_FakeAdapter`）。
@@ -50,15 +52,7 @@ class _SwitchableAdapter implements HttpClientAdapter {
   void close({bool force = false}) {}
 }
 
-/// 直接把 connectionControllerProvider 推到任意状态的假 controller，
-/// 沿用 `home_page_test.dart` 里 `_FakeConnectionController` 的同款做法。
-class _FakeConnectionController extends ConnectionController {
-  _FakeConnectionController(super.ref);
-
-  void emit(BoxStatus status) => state = AsyncData(status);
-}
-
-Future<(ProviderContainer, _SwitchableAdapter, _FakeConnectionController)>
+Future<(ProviderContainer, _SwitchableAdapter, FakeConnectionController)>
 _makeContainer() async {
   SharedPreferences.setMockInitialValues({});
   final prefs = await SharedPreferences.getInstance();
@@ -73,14 +67,14 @@ _makeContainer() async {
       egressIpServiceProvider.overrideWith(
         (ref) => EgressIpService(ref, dio: dio),
       ),
-      connectionControllerProvider.overrideWith(_FakeConnectionController.new),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
   // 必须先 read 一次 notifier 才会真正构造出来（Riverpod 是惰性的）
   final controller =
       container.read(connectionControllerProvider.notifier)
-          as _FakeConnectionController;
+          as FakeConnectionController;
   return (container, adapter, controller);
 }
 
@@ -110,7 +104,7 @@ void main() {
       addTearDown(container.dispose);
       container.read(connectionHealthProvider.notifier).start();
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       await container.read(connectionHealthProvider.notifier).probeNow();
 
       expect(adapter.requestCount, greaterThan(0));
@@ -126,7 +120,7 @@ void main() {
       container.read(connectionHealthProvider.notifier).start();
       final notifier = container.read(connectionHealthProvider.notifier);
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       adapter.reachable = false;
 
       for (var i = 1; i < ConnectionHealthMonitor.failureThreshold; i++) {
@@ -154,7 +148,7 @@ void main() {
       container.read(connectionHealthProvider.notifier).start();
       final notifier = container.read(connectionHealthProvider.notifier);
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       adapter.reachable = false;
       for (var i = 0; i < ConnectionHealthMonitor.failureThreshold; i++) {
         await notifier.probeNow();
@@ -178,7 +172,7 @@ void main() {
       container.read(connectionHealthProvider.notifier).start();
       final notifier = container.read(connectionHealthProvider.notifier);
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       adapter.reachable = false;
       for (var i = 0; i < ConnectionHealthMonitor.failureThreshold; i++) {
         await notifier.probeNow();
@@ -188,7 +182,7 @@ void main() {
         ConnectionHealth.degraded,
       );
 
-      controller.emit(const BoxStopped());
+      controller.emit(ConnectionPhase.disconnected);
       expect(
         container.read(connectionHealthProvider),
         ConnectionHealth.unknown,
@@ -202,7 +196,7 @@ void main() {
       container.read(connectionHealthProvider.notifier).start();
       final notifier = container.read(connectionHealthProvider.notifier);
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       // 同时发起两次：第二次应该被 _probing 闸门挡掉
       await Future.wait([notifier.probeNow(), notifier.probeNow()]);
 
@@ -225,7 +219,7 @@ void main() {
             (ref) => EgressIpService(ref, dio: dio),
           ),
           connectionControllerProvider.overrideWith(
-            _FakeConnectionController.new,
+            FakeConnectionController.new,
           ),
         ],
       );
@@ -233,10 +227,10 @@ void main() {
       await container.read(sharedPreferencesProvider.future);
       final controller =
           container.read(connectionControllerProvider.notifier)
-              as _FakeConnectionController;
+              as FakeConnectionController;
       container.read(connectionHealthProvider.notifier).start();
 
-      controller.emit(const BoxStarted());
+      controller.emit(ConnectionPhase.connected);
       await container.read(connectionHealthProvider.notifier).probeNow();
 
       expect(

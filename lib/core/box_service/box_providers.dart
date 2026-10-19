@@ -42,7 +42,12 @@ final boxServiceProvider = Provider<BoxService>((ref) {
   return service;
 });
 
-/// 连接状态（核心层实时推送）
+/// 核心层实时推送的运行状态。
+///
+/// **只**用来给流量统计 / 代理分组这两路订阅做门控（内核没起来就没有可订阅的
+/// command server）。界面上一切「是否已连接」的判断都读
+/// `connectionControllerProvider` / `isConnectedProvider`（单一真值），架构测试
+/// 禁止 `features/` 与 `app/` 引用本 provider。
 final boxStatusProvider = StreamProvider<BoxStatus>((ref) {
   final service = ref.watch(boxServiceProvider);
   return service.watchStatus();
@@ -72,12 +77,6 @@ final outboundGroupsProvider = StreamProvider<List<OutboundGroup>>((ref) {
   }
   final service = ref.read(boxServiceProvider);
   return service.watchGroups();
-});
-
-/// 当前是否已连接
-final isConnectedProvider = Provider<bool>((ref) {
-  final status = ref.watch(boxStatusProvider);
-  return status.valueOrNull is BoxStarted;
 });
 
 /// 桌面端 libcore 加载失败、整个 App 实际是个空壳时为 true。

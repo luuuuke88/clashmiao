@@ -417,23 +417,28 @@ void main() {
   });
 
   group('行布局与选中态', () {
-    testWidgets('行距 8 dp（不再是外层 padding 与卡片 margin 叠加的 16 dp），行高不低于 72 dp', (
-      tester,
-    ) async {
-      final host = await _host(
-        connected: false,
-        groups: [
-          _group([_node('first'), _node('second')]),
-        ],
-      );
-      await tester.pumpWidget(host.widget);
-      await _settle(tester);
+    testWidgets(
+      '行距 8 dp（不再是外层 padding 与卡片 margin 叠加的 16 dp），正常字号行高在 68–72 dp（含描边）',
+      (tester) async {
+        final host = await _host(
+          connected: false,
+          groups: [
+            _group([_node('first'), _node('second')], selected: 'first'),
+          ],
+        );
+        await tester.pumpWidget(host.widget);
+        await _settle(tester);
 
-      final first = tester.getRect(_tileOf('first'));
-      final second = tester.getRect(_tileOf('second'));
-      expect(second.top - first.bottom, 8);
-      expect(first.height, greaterThanOrEqualTo(72));
-    });
+        final first = tester.getRect(_tileOf('first'));
+        final second = tester.getRect(_tileOf('second'));
+        expect(second.top - first.bottom, 8);
+        // 真机验收量到 74–85 dp：最小高度 72 加在描边里面，名称首选字体（Emoji）
+        // 的行度量又很高。spec 是 68–72 dp。
+        expect(first.height, inInclusiveRange(68, 72), reason: '选中行');
+        expect(second.height, inInclusiveRange(68, 72), reason: '未选中行');
+        expect(first.height, second.height, reason: '选中与否行高一致，不跳动');
+      },
+    );
 
     testWidgets('选中态：1.5 dp 品牌色描边 + 约 8% 品牌色底 + 18 dp 对勾', (tester) async {
       final host = await _host(

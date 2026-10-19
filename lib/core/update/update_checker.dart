@@ -11,6 +11,37 @@ const _checkIntervalMs = 24 * 60 * 60 * 1000;
 const _lastCheckKey = 'update_last_check_ms';
 const _latestTagKey = 'update_latest_tag';
 
+/// 一次检查更新的结论。
+///
+/// [UpdateChecker.checkOnce] 只回 `String?`，把「已是最新」和「检查失败」
+/// 都折成 null——启动时的静默检查正好需要这种折叠（两种情况都什么都不弹），
+/// 但用户手动点「检查更新」时必须能分清：失败却报「已是最新版本」是在骗人。
+enum UpdateCheckStatus {
+  /// 确认没有比当前更新的版本。
+  upToDate,
+
+  /// 有新版本，[UpdateCheckResult.tag] 非空。
+  available,
+
+  /// 没能得到结论：所有来源都失败，或检查被禁用 / 没有任何来源可问。
+  /// 此时无法断言「已是最新」。
+  failed,
+}
+
+class UpdateCheckResult {
+  const UpdateCheckResult._(this.status, [this.tag]);
+
+  const UpdateCheckResult.upToDate() : this._(UpdateCheckStatus.upToDate);
+  const UpdateCheckResult.available(String tag)
+    : this._(UpdateCheckStatus.available, tag);
+  const UpdateCheckResult.failed() : this._(UpdateCheckStatus.failed);
+
+  final UpdateCheckStatus status;
+
+  /// 仅 [UpdateCheckStatus.available] 时有值，形如 `v1.2.3`。
+  final String? tag;
+}
+
 /// 官网发布的版本清单。
 ///
 /// 优先问它、而不是直接问 GitHub API，原因有三：
@@ -25,8 +56,26 @@ const _latestTagKey = 'update_latest_tag';
 ///
 /// 地址来自编译期参数 `UPDATE_MANIFEST_URL`（见 build_config.dart），空表示
 /// 这条来源不可用——跟 GITHUB_REPO_SLUG 是同一套约定。
-
 class UpdateChecker {
+  /// 静默检查用：有新版本返回其 tag，其余（已是最新 / 失败）一律 null。
+  /// 需要区分失败的调用方用 [check]。
+  static Future<String?> checkOnce(
+    SharedPreferences prefs, {
+    Dio? dio,
+    int mixedPort = kDefaultMixedPort,
+    String manifestUrl = updateManifestUrl,
+    String? githubApiUrl,
+  }) async {
+    final result = await check(
+      prefs,
+      dio: dio,
+      mixedPort: mixedPort,
+      manifestUrl: manifestUrl,
+      githubApiUrl: githubApiUrl,
+    );
+    return result.tag;
+  }
+
   /// [dio] 可选注入，供单测使用；不传时用 [createAppHttpClient] 构造。
   /// `preferTunnel: true`——发布信息在部分受限地区跟订阅源一样可能被墙，
   /// 优先经本地 mixed 代理端口发出请求，失败（未连接 VPN / sing-box 未启动）
@@ -36,23 +85,26 @@ class UpdateChecker {
   /// 场景。[mixedPort] 同理，只在 [dio] 未提供时生效。
   ///
   /// [manifestUrl] / [githubApiUrl] 仅供测试指向本地假服务器。
-  static Future<String?> checkOnce(
+  static Future<UpdateCheckResult> check(
     SharedPreferences prefs, {
     Dio? dio,
     int mixedPort = kDefaultMixedPort,
     String manifestUrl = updateManifestUrl,
     String? githubApiUrl,
   }) async {
-    // 两条来源都没配置就直接返回——别去打一个不存在的地址
-    if (_disabled) return null;
+    // 两条来源都没配置就直接返回——别去打一个不存在的地址。这里无法得出
+    // 「已是最新」的结论，所以是 failed 而不是 upToDate。
+    if (_disabled) return const UpdateCheckResult.failed();
     if (manifestUrl.isEmpty && _repoSlug.isEmpty && githubApiUrl == null) {
-      return null;
+      return const UpdateCheckResult.failed();
     }
 
     final last = prefs.getInt(_lastCheckKey) ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch;
-    if (now - last < _checkIntervalMs) {
-      return _compareToCurrentVersion(prefs.getString(_latestTagKey));
+    final cachedTag = prefs.getString(_latestTagKey);
+    // 缓存里没有 tag（例如时间戳被写过但 tag 丢了）不能当「已是最新」。
+    if (now - last < _checkIntervalMs && cachedTag != null) {
+      return _compareToCurrentVersion(cachedTag);
     }
 
     final client =
@@ -79,7 +131,7 @@ class UpdateChecker {
       await prefs.setInt(_lastCheckKey, now);
       return _compareToCurrentVersion(tag);
     }
-    return null;
+    return const UpdateCheckResult.failed();
   }
 
   static Future<String?> _fetchGithubTag(Dio client, String? overrideUrl) {
@@ -120,12 +172,15 @@ class UpdateChecker {
     }
   }
 
-  static Future<String?> _compareToCurrentVersion(String? latestTag) async {
-    if (latestTag == null) return null;
+  static Future<UpdateCheckResult> _compareToCurrentVersion(
+    String latestTag,
+  ) async {
     final info = await PackageInfo.fromPlatform();
     final current = info.version;
     final latest = latestTag.replaceFirst('v', '');
-    return _isNewer(latest, current) ? latestTag : null;
+    return _isNewer(latest, current)
+        ? UpdateCheckResult.available(latestTag)
+        : const UpdateCheckResult.upToDate();
   }
 
   static bool _isNewer(String latest, String current) {

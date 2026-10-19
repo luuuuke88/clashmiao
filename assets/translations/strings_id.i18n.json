@@ -310,7 +310,12 @@
     "systemProxyEnabled": "Proxy sistem diaktifkan",
     "systemProxyDisabled": "Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)",
     "adminPrivilegesRequired": "Memerlukan hak administrator di macOS",
-    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku"
+    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku",
+    "groups": {
+      "general": "Umum",
+      "connection": "Koneksi",
+      "privacy": "Privasi"
+    }
   },
   "about": {
     "pageTitle": "Tentang",
@@ -320,7 +325,8 @@
     "checkForUpdate": "Periksa perbaruan",
     "privacyPolicy": "Kebijakan Privasi",
     "termsAndConditions": "Syarat dan Ketentuan Umum",
-    "appDescription": "Klien proxy lintas platform berbasis inti sing-box"
+    "appDescription": "Klien proxy lintas platform berbasis inti sing-box",
+    "openSourceLicenses": "Lisensi sumber terbuka"
   },
   "appUpdate": {
     "notAvailableMsg": "Sudah menggunakan versi terakhir",
@@ -330,7 +336,8 @@
     "newVersionLbl": "Versi Baru",
     "updateNowBtnTxt": "Perbarui Sekarang",
     "laterBtnTxt": "Nanti",
-    "ignoreBtnTxt": "Lewati"
+    "ignoreBtnTxt": "Lewati",
+    "checkFailedMsg": "Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi."
   },
   "tray": {
     "dashboard": "Dashboard",

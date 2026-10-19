@@ -9,6 +9,7 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
+import 'package:clashmiao/core/licenses/bundled_licenses.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -43,6 +44,10 @@ void main() async {
   // 开关影响——任何情况下都该记录，方便排障。必须尽早调用，尽量少漏掉
   // 启动过程中的异常。
   await initAppLogger();
+
+  // 登记随包分发但不在 pub 依赖树里的组件许可（sing-box 内核、规则集），
+  // 关于页的「开源许可」页才查得到。同步、无 IO，放最早处即可。
+  registerBundledLicenses();
 
   final container = ProviderContainer();
   // Ensure shared preferences are loaded before app runs

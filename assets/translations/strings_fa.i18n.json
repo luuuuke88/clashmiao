@@ -310,7 +310,12 @@
     "systemProxyEnabled": "پروکسی سیستم فعال شد",
     "systemProxyDisabled": "پروکسی سیستم غیرفعال شد (برای اعمال، دوباره وصل شوید)",
     "adminPrivilegesRequired": "در macOS به دسترسی مدیر نیاز است",
-    "portChangeNotice": "تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد"
+    "portChangeNotice": "تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد",
+    "groups": {
+      "general": "عمومی",
+      "connection": "اتصال",
+      "privacy": "حریم خصوصی"
+    }
   },
   "about": {
     "pageTitle": "درباره",
@@ -320,7 +325,8 @@
     "checkForUpdate": "بررسی برای به‌روزرسانی",
     "privacyPolicy": "سیاست‌های حفظ حریم خصوصی",
     "termsAndConditions": "شرایط و ضوابط استفاده",
-    "appDescription": "یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box"
+    "appDescription": "یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box",
+    "openSourceLicenses": "مجوزهای متن‌باز"
   },
   "appUpdate": {
     "notAvailableMsg": "در حال استفاده از آخرین نسخه هستید",
@@ -330,7 +336,8 @@
     "newVersionLbl": "نسخه‌ی جدید",
     "updateNowBtnTxt": "هم‌اکنون به‌روزرسانی شود",
     "laterBtnTxt": "بعداً",
-    "ignoreBtnTxt": "نادیده‌گرفتن"
+    "ignoreBtnTxt": "نادیده‌گرفتن",
+    "checkFailedMsg": "بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید."
   },
   "tray": {
     "dashboard": "داشبورد",

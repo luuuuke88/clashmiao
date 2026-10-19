@@ -310,7 +310,12 @@
     "systemProxyEnabled": "پڕۆکسی سیستەم چالاک کرا",
     "systemProxyDisabled": "پڕۆکسی سیستەم ناچالاک کرا (بۆ کاراکردن دووبارە پەیوەندی بکە)",
     "adminPrivilegesRequired": "لەسەر macOS مۆڵەتی بەڕێوەبەری پێویستە",
-    "portChangeNotice": "گۆڕانی پۆرت پێویستی بە پەیوەندی دووبارە هەیە بۆ کاراکردن"
+    "portChangeNotice": "گۆڕانی پۆرت پێویستی بە پەیوەندی دووبارە هەیە بۆ کاراکردن",
+    "groups": {
+      "general": "گشتی",
+      "connection": "پەیوەندی",
+      "privacy": "تایبەتمەندی"
+    }
   },
   "about": {
     "pageTitle": "سەبارەت",
@@ -320,7 +325,8 @@
     "checkForUpdate": "پشکنین بۆ نوێکاریی و بەڕۆژبوون",
     "privacyPolicy": "سیاسەتی پاراستنی نهێنی",
     "termsAndConditions": "مەرج و ڕێسای بەکارهێنان",
-    "appDescription": "ڕاژەخوازی پڕۆکسی فرە-سەکۆ لەسەر بنەمای ناوکی sing-box"
+    "appDescription": "ڕاژەخوازی پڕۆکسی فرە-سەکۆ لەسەر بنەمای ناوکی sing-box",
+    "openSourceLicenses": "مۆڵەتنامەکانی سەرچاوە کراوە"
   },
   "appUpdate": {
     "notAvailableMsg": "نوێترین وەشانی ClashMiao بەکاردەهێنیت",
@@ -330,7 +336,8 @@
     "newVersionLbl": "وەشانى نوێ",
     "updateNowBtnTxt": "ئیستا بەڕۆژی کەرەوە",
     "laterBtnTxt": "دواتر",
-    "ignoreBtnTxt": "پشتگوێخستن"
+    "ignoreBtnTxt": "پشتگوێخستن",
+    "checkFailedMsg": "نەتوانرا نوێکارییەکان بپشکنرێن. تۆڕەکەت بپشکنە و دووبارە هەوڵبدەوە."
   },
   "tray": {
     "dashboard": "داشبۆرد",

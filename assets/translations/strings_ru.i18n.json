@@ -310,7 +310,12 @@
     "systemProxyEnabled": "Системный прокси включён",
     "systemProxyDisabled": "Системный прокси отключён (переподключитесь для применения)",
     "adminPrivilegesRequired": "На macOS требуются права администратора",
-    "portChangeNotice": "Изменения порта применяются после переподключения"
+    "portChangeNotice": "Изменения порта применяются после переподключения",
+    "groups": {
+      "general": "Общие",
+      "connection": "Подключение",
+      "privacy": "Конфиденциальность"
+    }
   },
   "about": {
     "pageTitle": "О программе",
@@ -320,7 +325,8 @@
     "checkForUpdate": "Проверка обновления",
     "privacyPolicy": "Политика конфиденциальности",
     "termsAndConditions": "Условия и положения",
-    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box"
+    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box",
+    "openSourceLicenses": "Лицензии открытого ПО"
   },
   "appUpdate": {
     "notAvailableMsg": "Установлена последняя версия",
@@ -330,7 +336,8 @@
     "newVersionLbl": "Новая версия",
     "updateNowBtnTxt": "Обновить",
     "laterBtnTxt": "Позже",
-    "ignoreBtnTxt": "Пропустить"
+    "ignoreBtnTxt": "Пропустить",
+    "checkFailedMsg": "Не удалось проверить обновления. Проверьте сеть и повторите попытку."
   },
   "tray": {
     "dashboard": "Панель",

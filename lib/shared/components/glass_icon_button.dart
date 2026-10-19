@@ -72,14 +72,38 @@ class GlassIconButton extends StatelessWidget {
             ),
           );
 
-    return Semantics(
-      label: tooltip,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: RepaintBoundary(child: button),
+    // 视觉直径仍是 [size]（默认 40），交互区放大到至少 48×48（Material 与
+    // Android 无障碍的最小触控目标）。热区放在 GestureDetector 里、圆本身
+    // 居中，所以点圆外那一圈 4 dp 也算点中。
+    final Widget tappable = GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: kMinInteractiveDimension,
+          minHeight: kMinInteractiveDimension,
+        ),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: RepaintBoundary(child: button),
+        ),
       ),
+    );
+
+    // 真正构建 Tooltip：长按出可见的文字提示。无障碍标签由外层 Semantics 的
+    // label 提供（Tooltip 的 excludeFromSemantics 打开，免得读屏把同一句话念
+    // 两遍）。
+    final label = tooltip;
+    final Widget labelled = label == null
+        ? tappable
+        : Tooltip(message: label, excludeFromSemantics: true, child: tappable);
+
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: onTap != null,
+      child: labelled,
     );
   }
 }

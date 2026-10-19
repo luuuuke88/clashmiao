@@ -298,7 +298,12 @@
     "systemProxyEnabled": "Proxy del sistema activado",
     "systemProxyDisabled": "Proxy del sistema desactivado (reconecta para aplicar)",
     "adminPrivilegesRequired": "Se requieren privilegios de administrador en macOS",
-    "portChangeNotice": "Los cambios de puerto requieren reconectar para aplicarse"
+    "portChangeNotice": "Los cambios de puerto requieren reconectar para aplicarse",
+    "groups": {
+      "general": "General",
+      "connection": "Conexión",
+      "privacy": "Privacidad"
+    }
   },
   "about": {
     "pageTitle": "Acerca de",
@@ -308,7 +313,8 @@
     "checkForUpdate": "Buscar actualizaciones",
     "privacyPolicy": "Política de privacidad",
     "termsAndConditions": "Términos y condiciones",
-    "appDescription": "Un cliente proxy multiplataforma basado en el núcleo sing-box"
+    "appDescription": "Un cliente proxy multiplataforma basado en el núcleo sing-box",
+    "openSourceLicenses": "Licencias de código abierto"
   },
   "appUpdate": {
     "notAvailableMsg": "Ya estas usando la última versión.",
@@ -318,7 +324,8 @@
     "newVersionLbl": "Nueva versión",
     "updateNowBtnTxt": "Actualizar ahora",
     "laterBtnTxt": "Más tarde",
-    "ignoreBtnTxt": "Ignorar"
+    "ignoreBtnTxt": "Ignorar",
+    "checkFailedMsg": "No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo."
   },
   "tray": {
     "dashboard": "Panel",

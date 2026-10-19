@@ -125,6 +125,44 @@ Offset _titleSlide(WidgetTester tester) {
   return tester.widget<SlideTransition>(slide).position.value;
 }
 
+/// 整棵语义树（从根节点起）里所有节点的语义数据。
+List<SemanticsData> _wholeTree(WidgetTester tester) {
+  final all = <SemanticsData>[];
+  void visit(SemanticsNode node) {
+    all.add(node.getSemanticsData());
+    node.visitChildren((c) {
+      visit(c);
+      return true;
+    });
+  }
+
+  visit(
+    tester.binding.renderViews.first.owner!.semanticsOwner!.rootSemanticsNode!,
+  );
+  return all;
+}
+
+/// 断言整棵树：没有任何 progressBar 节点；没有任何节点带数值或范围；恰有
+/// 一个 loadingSpinner（进度未知的加载中）。
+void _expectUnknownProgressOnly(WidgetTester tester) {
+  final all = _wholeTree(tester);
+  expect(
+    all.where((d) => d.role == SemanticsRole.progressBar),
+    isEmpty,
+    reason: '不能出现确定进度（progressBar）节点',
+  );
+  for (final d in all) {
+    expect(d.value, anyOf(isNull, isEmpty), reason: '不能报出 75% 之类的数值');
+    expect(d.minValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
+    expect(d.maxValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
+  }
+  expect(
+    all.where((d) => d.role == SemanticsRole.loadingSpinner),
+    hasLength(1),
+    reason: '应当有且仅有一个「进度未知」的加载节点',
+  );
+}
+
 void main() {
   group('入场动画（profile_form_dialog 的 fadeIn / slideX，带 delay）', () {
     testWidgets('对照：正常模式下延迟期内还没显示', (tester) async {
@@ -313,50 +351,6 @@ void main() {
       child: SizedBox(width: 20, height: 20, child: MotionProgress()),
     );
 
-    /// 整棵语义树（从根节点起）里所有节点的语义数据。
-    List<SemanticsData> wholeTree(WidgetTester tester) {
-      final all = <SemanticsData>[];
-      void visit(SemanticsNode node) {
-        all.add(node.getSemanticsData());
-        node.visitChildren((c) {
-          visit(c);
-          return true;
-        });
-      }
-
-      visit(
-        tester
-            .binding
-            .renderViews
-            .first
-            .owner!
-            .semanticsOwner!
-            .rootSemanticsNode!,
-      );
-      return all;
-    }
-
-    /// 断言整棵树：没有任何 progressBar 节点；没有任何节点带数值或范围；恰有
-    /// 一个 loadingSpinner（进度未知的加载中）。
-    void expectUnknownProgressOnly(WidgetTester tester) {
-      final all = wholeTree(tester);
-      expect(
-        all.where((d) => d.role == SemanticsRole.progressBar),
-        isEmpty,
-        reason: '不能出现确定进度（progressBar）节点',
-      );
-      for (final d in all) {
-        expect(d.value, anyOf(isNull, isEmpty), reason: '不能报出 75% 之类的数值');
-        expect(d.minValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
-        expect(d.maxValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
-      }
-      expect(
-        all.where((d) => d.role == SemanticsRole.loadingSpinner),
-        hasLength(1),
-        reason: '应当有且仅有一个「进度未知」的加载节点',
-      );
-    }
-
     for (final reduced in [false, true]) {
       testWidgets('${reduced ? "减少动画（静态弧）" : "正常（转圈）"}：整棵语义树只有未知进度的加载节点', (
         tester,
@@ -364,7 +358,7 @@ void main() {
         final handle = tester.ensureSemantics();
         final (widget, _) = await _host(progress, reduced: reduced);
         await tester.pumpWidget(widget);
-        expectUnknownProgressOnly(tester);
+        _expectUnknownProgressOnly(tester);
         handle.dispose();
       });
     }
@@ -373,15 +367,102 @@ void main() {
       final handle = tester.ensureSemantics();
       final (widget, disabled) = await _host(progress, reduced: false);
       await tester.pumpWidget(widget);
-      expectUnknownProgressOnly(tester);
+      _expectUnknownProgressOnly(tester);
       disabled.value = true;
       await tester.pump();
-      expectUnknownProgressOnly(tester);
+      _expectUnknownProgressOnly(tester);
       disabled.value = false;
       await tester.pump();
-      expectUnknownProgressOnly(tester);
+      _expectUnknownProgressOnly(tester);
       handle.dispose();
     });
+  });
+
+  group('MotionProgress.linear（不确定进度的线性条）', () {
+    Widget bar(BuildContext _) => const Center(
+      child: SizedBox(width: 200, child: MotionProgress.linear(minHeight: 6)),
+    );
+
+    LinearProgressIndicator indicator(WidgetTester tester) =>
+        tester.widget<LinearProgressIndicator>(
+          find.descendant(
+            of: find.byType(MotionProgress),
+            matching: find.byType(LinearProgressIndicator),
+          ),
+        );
+
+    testWidgets('对照：正常模式是不确定进度、持续扫动的条，语义是未知进度', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, _) = await _host(bar, reduced: false);
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(indicator(tester).value, isNull);
+      expect(indicator(tester).minHeight, 6);
+      expect(tester.hasRunningAnimations, isTrue);
+      _expectUnknownProgressOnly(tester);
+      handle.dispose();
+    });
+
+    testWidgets('减少动画开着进入：静态条、没有在跑的动画，语义仍是未知进度', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, _) = await _host(bar, reduced: true);
+      await tester.pumpWidget(widget);
+      expect(indicator(tester).value, MotionProgress.staticBar);
+      expect(tester.hasRunningAnimations, isFalse);
+      _expectUnknownProgressOnly(tester);
+      await tester.pump(const Duration(seconds: 2));
+      expect(tester.hasRunningAnimations, isFalse);
+      handle.dispose();
+    });
+
+    testWidgets('运行途中打开减少动画：立刻变静态条并停下；关掉恢复扫动；每一步语义都是未知进度', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, disabled) = await _host(bar, reduced: false);
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(indicator(tester).value, isNull);
+      _expectUnknownProgressOnly(tester);
+
+      disabled.value = true;
+      await tester.pump();
+      expect(indicator(tester).value, MotionProgress.staticBar);
+      _expectUnknownProgressOnly(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.hasRunningAnimations, isFalse, reason: '打开后不应再有动画帧');
+
+      disabled.value = false;
+      await tester.pump();
+      expect(indicator(tester).value, isNull);
+      expect(tester.hasRunningAnimations, isTrue);
+      _expectUnknownProgressOnly(tester);
+      handle.dispose();
+    });
+
+    for (final reduced in [false, true]) {
+      testWidgets(
+        '添加订阅弹窗的「添加中」进度条走 MotionProgress.linear（${reduced ? "减少动画：静态条" : "正常：不确定进度"}）',
+        (tester) async {
+          final (widget, _) = await _host(_opener, reduced: reduced);
+          await tester.pumpWidget(widget);
+          await tester.tap(find.text('open'));
+          await tester.pumpAndSettle();
+
+          final linear = find.byType(LinearProgressIndicator);
+          expect(linear, findsOneWidget);
+          // 不能再有裸的 LinearProgressIndicator：它必须包在 MotionProgress 里。
+          expect(
+            find.ancestor(of: linear, matching: find.byType(MotionProgress)),
+            findsOneWidget,
+          );
+          expect(
+            tester.widget<LinearProgressIndicator>(linear).value,
+            reduced ? MotionProgress.staticBar : isNull,
+          );
+          await tester.tapAt(const Offset(10, 10));
+          await tester.pumpAndSettle();
+        },
+      );
+    }
   });
 
   group('GlassIconButton.loading', () {

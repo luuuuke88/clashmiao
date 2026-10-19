@@ -133,7 +133,7 @@ final class TunnelManager: ObservableObject {
         // multiple-profile mode.
         let fresh = NETunnelProviderManager()
         let proto = NETunnelProviderProtocol()
-        proto.providerBundleIdentifier = Bundle.main.clashMiaoBundleRoot + ".SingBoxPacketTunnel"
+        proto.providerBundleIdentifier = Bundle.main.tunnelProviderBundleIdentifier
         proto.serverAddress = "localhost"
         fresh.protocolConfiguration = proto
         fresh.localizedDescription = "ClashMiao"

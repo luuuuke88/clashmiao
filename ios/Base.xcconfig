@@ -11,6 +11,13 @@
 //  xcconfig files on top of this one in the Xcode build settings UI.
 //
 
+// The tunnel extension's build configurations are based on this file alone,
+// not on Flutter/{Debug,Release}.xcconfig, so it never saw FLUTTER_BUILD_NAME /
+// FLUTTER_BUILD_NUMBER: its CFBundleVersion came out empty and iOS refused to
+// install the app. Pull in Flutter's generated settings here — the extension's
+// version must match the app's for App Store uploads anyway.
+#include? "Flutter/Generated.xcconfig"
+
 // Root identifier used as the prefix for both the application bundle id
 // and the App Group. The runtime entitlements derive `group.<this>` from
 // it (see Runner.entitlements / SingBoxPacketTunnel.entitlements).

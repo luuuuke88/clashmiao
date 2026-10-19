@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
@@ -159,7 +160,8 @@ TrayIconSpec trayIconSpec({required bool isMacOS}) {
 /// ——`assets/images/tray_on/off/pending.png` 这几个资源文件目前并不存在，
 /// 每次 setIcon 都会失败，而且这个失败被完全吞掉，连 debugPrint 都没有，
 /// 排障时无从得知。这个函数统一收敛 setup() 里最初那次调用和状态变化时那次
-/// 调用的失败处理，保证至少有日志。
+/// 调用的失败处理，保证至少有日志：写进应用日志（app.log），同一错误只记一次，
+/// 不会随每次状态变化刷屏。
 @visibleForTesting
 Future<void> setTrayIconWithLogging(
   Future<void> Function(String path, {bool isTemplate}) setIcon,
@@ -168,8 +170,8 @@ Future<void> setTrayIconWithLogging(
 }) async {
   try {
     await setIcon(path, isTemplate: isTemplate);
-  } catch (e) {
-    if (kDebugMode) debugPrint('[Tray] setIcon failed: $e');
+  } catch (e, st) {
+    logAppFailureOnce('tray.setIcon', e, st);
   }
 }
 
@@ -298,21 +300,18 @@ Future<void> performShutdownCleanup({
   // 更不能让用户点了"退出"卡住退不出去。
   try {
     await disconnectUntilSettled().timeout(deadline - reserve);
-  } on TimeoutException {
+  } on TimeoutException catch (e, st) {
     abandoned = true; // 之后不再提交任何断开请求
-    debugPrint(
-      '[Quit] 停内核超过 ${(deadline - reserve).inMilliseconds}ms 仍无结论，'
-      '放弃等待（保留系统代理脏标记，留给下次启动自愈）',
-    );
-  } catch (e) {
+    logAppFailure('quit.disconnectTimeout', e, st);
+  } catch (e, st) {
     abandoned = true;
-    if (kDebugMode) debugPrint('[Quit] disconnect failed during quit: $e');
+    logAppFailure('quit.disconnect', e, st);
   }
   try {
     // 托盘清理只用剩下的预算：到总截止时间为止。
     await Future.any<void>([disposeTray(), overall.future]);
-  } catch (e) {
-    if (kDebugMode) debugPrint('[Tray] dispose failed during quit: $e');
+  } catch (e, st) {
+    logAppFailure('quit.disposeTray', e, st);
   }
   overallTimer.cancel();
   debugPrint('[Quit] 退出清理完成');
@@ -431,8 +430,8 @@ class TrayController extends TrayListener {
     );
     try {
       await trayManager.setContextMenu(menu);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Tray] setContextMenu failed: $e');
+    } catch (e, st) {
+      logAppFailureOnce('tray.setContextMenu', e, st);
     }
   }
 
@@ -526,8 +525,8 @@ class TrayController extends TrayListener {
         applyConfig: () =>
             c.read(connectionControllerProvider.notifier).applyConfig(),
       );
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Tray] switch proxy mode failed: $e');
+    } catch (e, st) {
+      logAppFailure('tray.switchProxyMode', e, st);
     }
     await _rebuildMenu(c.read(connectionPhaseProvider));
   }

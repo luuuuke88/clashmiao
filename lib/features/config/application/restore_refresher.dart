@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
@@ -12,7 +13,6 @@ import 'package:clashmiao/domain/routing/application/proxy_selection_store_notif
 import 'package:clashmiao/features/config/data/backup_codec.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 备份恢复进行中。为 true 期间订阅定时刷新暂停（由 `main.dart` 把它接给
@@ -166,7 +166,7 @@ class RestoreRefresher {
     try {
       await refresh();
     } catch (e, st) {
-      debugPrint('[restore] 刷新界面失败（忽略）: $e\n$st');
+      logAppFailure('restore.refresh', e, st);
     }
   }
 
@@ -205,8 +205,8 @@ class RestoreRefresher {
       try {
         await _fetchProfile(id);
         if (_activeProfileId() == id) await _reconnectIfConnected();
-      } catch (e) {
-        debugPrint('[restore] 补拉订阅失败 $id（可稍后手动刷新）: $e');
+      } catch (e, st) {
+        logAppFailure('restore.backfill $id', e, st);
       }
     }
   }

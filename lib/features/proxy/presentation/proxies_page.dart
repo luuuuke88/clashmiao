@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 
@@ -377,10 +378,10 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           .then((result) {
             if (result is! SelectionFailed) return;
             optimisticNotifier.revert(groupTag, previousSelection);
-            // 技术细节只进日志；用户看到的是类型化的本地化文案。
-            debugPrint(
-              '切换线路失败 [$groupTag -> $outboundTag]: '
-              '${result.code} ${result.message}',
+            // 技术细节只进应用日志；用户看到的是类型化的本地化文案。
+            logAppFailure(
+              'proxies.select $groupTag -> $outboundTag',
+              'SelectionFailed(${result.code}, ${result.message})',
             );
             if (!context.mounted) return;
             AppToast.error(context, t.proxies.switchFailed);
@@ -415,9 +416,9 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       await ref
           .read(latencyTestCoordinatorProvider.notifier)
           .manualTest(group.tag);
-    } catch (error) {
+    } catch (error, st) {
       // 技术细节（PlatformException 等）只进日志。
-      debugPrint('测速失败 [${group.tag}]: $error');
+      logAppFailure('proxies.latencyTest ${group.tag}', error, st);
       if (!context.mounted) return;
       AppToast.error(context, t.proxies.testFailed);
     }

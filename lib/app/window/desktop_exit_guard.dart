@@ -2,6 +2,7 @@ import 'dart:async';
 // AppExitResponse 定义在 dart:ui，flutter 的 barrel 文件没有 re-export。
 import 'dart:ui' show AppExitResponse;
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/widgets.dart';
@@ -82,14 +83,12 @@ class DesktopExitGuard {
             _container.read(connectionControllerProvider.notifier).disconnect(),
         disposeTray: TrayController.instance.dispose,
       ).timeout(kDesktopExitCleanupTimeout);
-    } on TimeoutException {
-      debugPrint(
-        '[Quit] 退出清理超时（${kDesktopExitCleanupTimeout.inSeconds}s），照常退出',
-      );
-    } catch (e) {
+    } on TimeoutException catch (e, st) {
+      logAppFailure('quit.cleanupTimeout', e, st);
+    } catch (e, st) {
       // performShutdownCleanup 内部已经逐步兜住异常了，这里只是最后一道：
       // 绝不能因为清理出错就把退出卡住。
-      debugPrint('[Quit] 退出清理异常，照常退出: $e');
+      logAppFailure('quit.cleanup', e, st);
     }
     return AppExitResponse.exit;
   }

@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
 import 'package:clashmiao/domain/profile/data/migrations/v1_profiles.dart';
 import 'package:flutter/foundation.dart';
@@ -39,7 +40,7 @@ Future<MigrationReport> prepareStorage(
     try {
       await checkRestoreMarker(prefs);
     } catch (e, st) {
-      debugPrint('[storage] 恢复标记检查失败，继续启动: $e\n$st');
+      logAppFailure('storage.restoreMarkerCheck', e, st);
     }
   }
   final report = await (migrator ?? _processMigrator).run(prefs);

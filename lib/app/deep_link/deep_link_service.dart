@@ -75,14 +75,14 @@ class DeepLinkService {
     try {
       _subscription = _appLinks.uriLinkStream.listen(
         (uri) => unawaited(handleDeepLink(uri, _ref)),
-        onError: (Object e) {
-          debugPrint('DeepLinkService: 链接流出错，已忽略: $e');
+        onError: (Object e, StackTrace st) {
+          logAppFailure('deepLink.stream', e, st);
         },
       );
-    } catch (e) {
+    } catch (e, st) {
       // 平台没有实现该 channel（例如部分测试/桌面环境没有做原生侧 scheme
       // 注册）时静默忽略——深链是锦上添花的功能，绝不能拖垮 App 启动主流程。
-      debugPrint('DeepLinkService: 订阅链接流失败，已忽略: $e');
+      logAppFailure('deepLink.subscribe', e, st);
     }
   }
 

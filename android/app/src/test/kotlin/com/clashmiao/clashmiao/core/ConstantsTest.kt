@@ -58,7 +58,6 @@ class ConstantsTest {
     @Test
     fun `BroadcastIntents action 字符串使用 app namespace 防止跟系统 intent 撞`() {
         val actions = listOf(
-            BroadcastIntents.START,
             BroadcastIntents.SHUTDOWN,
             BroadcastIntents.RELOAD,
         )

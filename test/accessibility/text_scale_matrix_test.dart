@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -53,13 +54,11 @@ const _scales = [1.3, 2.0];
 /// 首页「有订阅」场景下连接区的已知溢出，按 (缩放, 方向/语言) 逐场景列出，
 /// 每项带该场景在 320 dp 宽下**实测的溢出量基线**（容差见 [KnownOverflow]）。
 /// 来自对连接区现状的实测；连接区重写后整张表应当清空。
+/// 连接按钮已随连接区重写（子项目 B）不再溢出，只剩模式分段控件。
 final _homeKnownOverflows = <(double, TextDirection), List<KnownOverflow>>{
-  (1.3, TextDirection.ltr): [connectionButtonOverflow.at(5.5)],
+  (1.3, TextDirection.ltr): const [],
   (1.3, TextDirection.rtl): [modeSelectorOverflow.at(135)],
-  (2.0, TextDirection.ltr): [
-    connectionButtonOverflow.at(28),
-    modeSelectorOverflow.at(22),
-  ],
+  (2.0, TextDirection.ltr): [modeSelectorOverflow.at(22)],
   (2.0, TextDirection.rtl): [modeSelectorOverflow.at(308)],
 };
 

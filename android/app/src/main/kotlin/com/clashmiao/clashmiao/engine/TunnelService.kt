@@ -10,9 +10,6 @@ import com.clashmiao.clashmiao.core.Prefs
 import com.clashmiao.clashmiao.core.AppFilterMode
 import com.clashmiao.clashmiao.core.asAndroidPrefix
 import io.nekohasekai.libbox.TunOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withContext
 
 /**
  * VPN 模式下的前台 service。
@@ -20,7 +17,8 @@ import kotlinx.coroutines.withContext
  * 三个职责，**只**有这三个：
  *   1. 对 Android：是个 [VpnService]，处理 onStart / onBind / onRevoke
  *   2. 对 libbox：是个 [LibboxHost]，sing-box 通过 [openTun] 让我们建 TUN 拿 fd
- *   3. 把内核业务全部委托给 [KernelHost]（共用 PlainService 的同一份内核逻辑）
+ *   3. 把生命周期事件交给 [KernelHost]（再上报进程级 [KernelCoordinator]；
+ *      是否启动 / 何时停 / 何时退休都由协调器决定，Service 只是被动的载体）
  *
  * 把 TUN 配置过程拆成 5 段小函数（[wireAddresses]、[wireRoutes]、[wireAppFilter]、
  * [wireSystemProxy]），方便单独读 + 后续往里加 strict-route exceptions 之类的
@@ -47,22 +45,28 @@ class TunnelService : VpnService(), Runnable {
         }
     }
 
-    private val host: KernelHost = KernelHost(this, libboxHost)
+    private val host: KernelHost = KernelHost(this, ServiceType.Vpn, libboxHost)
 
     // === Android Service =================================================
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) =
         host.onStartCommand(intent, flags, startId)
 
-    override fun onBind(intent: Intent): IBinder {
-        // VpnService 自己也想 onBind（系统会调），如果它返回 binder 就让系统赢。
-        return super.onBind(intent) ?: host.onBind(intent)
+    /** Service 只作为 started service 存在；不再提供 AIDL 绑定，只保留 VpnService 自己的系统绑定。 */
+    override fun onBind(intent: Intent): IBinder? = super.onBind(intent)
+
+    override fun onDestroy() {
+        host.onDestroy()
+        super.onDestroy()
     }
 
-    override fun onDestroy() = host.onDestroy()
-
+    /**
+     * 系统或其他 VPN 撤销了我们的授权。onRevoke 在主线程回调：只上报事件，绝不阻塞
+     * （旧实现 runBlocking + withContext(Main) 会死锁成 ANR）。**不**调用 super：
+     * 默认实现会立即 stopSelf()，而内核回收与 Service 退休必须由协调器按顺序完成。
+     */
     override fun onRevoke() {
-        runBlocking { withContext(Dispatchers.Main) { host.onRevoke() } }
+        host.onRevoke()
     }
 
     // 占位用，Kotlin 要求至少有个能被外部调到的成员。

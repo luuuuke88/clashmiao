@@ -45,7 +45,14 @@
     "coreMissingMsg": "O aplicativo não conseguiu carregar seu núcleo de rede. A conexão não está disponível. Reinstale o aplicativo ou verifique se o arquivo da biblioteca do núcleo está junto do executável.",
     "degradedTitle": "Conectado, mas sem acesso à internet",
     "degradedMsg": "O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.",
-    "degradedRetry": "Verificar novamente"
+    "degradedRetry": "Verificar novamente",
+    "egressIp": {
+      "label": "IP de saída",
+      "notConnected": "Conecte para ver o IP de saída",
+      "tapToCheck": "Toque para verificar o IP de saída",
+      "checking": "Verificando…",
+      "failedRetry": "Falha na verificação, toque para tentar novamente"
+    }
   },
   "stats": {
     "trafficLive": "Tráfego ao vivo",
@@ -57,7 +64,9 @@
     "totalTransferred": "Total Transferido",
     "traffic": "Tráfego",
     "trafficUsage": "Uso de tráfego",
-    "liveSpeed": "Velocidade ao vivo"
+    "liveSpeed": "Velocidade ao vivo",
+    "sessionTraffic": "Tráfego da sessão",
+    "downloadSpeed": "Velocidade de download"
   },
   "profile": {
     "overviewPageTitle": "Perfis",
@@ -401,14 +410,17 @@
       "create": "Erro ao criar serviço",
       "start": "Erro de inicialização do serviço",
       "coreLibraryMissing": "Biblioteca do núcleo não instalada",
-      "startTimeout": "Tempo de inicialização do serviço esgotado"
+      "startTimeout": "Tempo de inicialização do serviço esgotado",
+      "kernelUnresponsive": "O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.",
+      "kernelExited": "O núcleo foi encerrado inesperadamente"
     },
     "connectivity": {
       "unexpected": "Falha inesperada",
       "missingVpnPermission": "Permissão VPN ausente",
       "missingNotificationPermission": "Permissão de notificação ausente",
       "core": "Erro central",
-      "networkUnavailable": "Rede indisponível"
+      "networkUnavailable": "Rede indisponível",
+      "nativeUnresponsive": "Perdeu-se o contato com o serviço em segundo plano. Tente novamente."
     },
     "profiles": {
       "unexpected": "Erro inesperado",

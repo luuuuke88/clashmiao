@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:clashmiao/core/localization/gen/translations.g.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/localization/gen/translations.g.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:flutter/services.dart' show PlatformException;
 
 /// 连接失败归类之后的类别。
 ///
@@ -91,3 +94,49 @@ String classifyBoxAlertMessage(BoxAlert alert, Translations t) =>
 /// 分类 + 本地化一步到位（异常版本）。
 String classifyExceptionMessage(Object error, Translations t) =>
     classifyException(error).localizedMessage(t);
+
+// ─────────────────────────────────────────────────────────────────────────
+// 类型化失败（子项目 B）：ConnectionFailure ↔ 文案 / 异常 → ConnectionFailure
+// ─────────────────────────────────────────────────────────────────────────
+
+/// 类型化连接失败 → 本地化文案。
+///
+/// 这是界面展示连接失败的唯一出口：toast 与阻断式弹窗用的都是这里的文案，
+/// 不再有第二份按字符串匹配的分类。
+String connectionFailureMessage(ConnectionFailure failure, Translations t) {
+  return switch (failure) {
+    NoActiveProfile() => t.failure.profiles.noActive,
+    ConfigMissing() => t.failure.profiles.notFound,
+    CoreUnavailable() => t.failure.singbox.coreLibraryMissing,
+    PermissionDenied() => t.failure.connectivity.missingVpnPermission,
+    StartTimeout() => t.failure.singbox.startTimeout,
+    KernelStartFailed(:final code) => switch (code) {
+      KernelFailureCode.emptyConfiguration => t.failure.singbox.invalidConfig,
+      KernelFailureCode.kernelExited => t.failure.singbox.kernelExited,
+      KernelFailureCode.permissionDenied =>
+        t.failure.connectivity.missingVpnPermission,
+      _ => t.failure.singbox.start,
+    },
+    KernelUnresponsive() => t.failure.singbox.kernelUnresponsive,
+    NativeUnresponsive() => t.failure.connectivity.nativeUnresponsive,
+    PlatformFailure() => t.failure.unexpected,
+    UnexpectedFailure() => t.failure.unexpected,
+  };
+}
+
+/// 本地调用（准备产物、`KernelPort.request`）抛出的异常 → [ConnectionFailure]。
+///
+/// 内核自己的失败不走这里（它们以快照里的 `lastFailure` 到达，由
+/// `ConnectionFailure.fromKernel` 映射）。
+ConnectionFailure failureFromError(Object error) {
+  if (error is KernelPortException) {
+    // 端口 2 s 内没有应答：与「状态流失联」同一类问题。
+    if (error.code == 'timeout') return const NativeUnresponsive();
+    return PlatformFailure(error.code, error.message);
+  }
+  if (error is PlatformException) {
+    return PlatformFailure(error.code, error.message ?? '');
+  }
+  if (error is TimeoutException) return const StartTimeout();
+  return UnexpectedFailure('$error');
+}

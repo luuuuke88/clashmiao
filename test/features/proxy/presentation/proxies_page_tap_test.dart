@@ -1,6 +1,12 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -21,7 +27,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../_fakes/fake_kernel_port.dart';
 import '../../../support/fake_box_service.dart';
+import '../../../support/fake_connection_controller.dart';
 import '../../../support/profile_store_support.dart';
 
 /// Toastification 的 auto-close 走 Timer（info=3s / error=5s），widget dispose 后
@@ -43,6 +51,7 @@ Future<void> _drainToasts(WidgetTester tester) async {
 class _SpyBoxService extends FakeBoxService {
   int selectOutboundCalls = 0;
   String? lastGroupTag;
+  int? lastExpectedAttempt;
   String? lastOutboundTag;
   final List<String> urlTestCalls = [];
   Future<void>? selectOutboundOverride;
@@ -57,17 +66,6 @@ class _SpyBoxService extends FakeBoxService {
   // `.then().catchError()` 能在同一轮里接住，不会被 zone 误判。
   Object? selectOutboundError;
 
-  @override
-  Future<void> selectOutbound(String groupTag, String outboundTag) async {
-    selectOutboundCalls++;
-    lastGroupTag = groupTag;
-    lastOutboundTag = outboundTag;
-    final error = selectOutboundError;
-    if (error != null) throw error;
-    final override = selectOutboundOverride;
-    if (override != null) await override;
-  }
-
   // 其余方法最小实现 —— 这条测试不会触发它们。
   @override
   Future<void> urlTest(String g) async {
@@ -80,6 +78,31 @@ class _SpyBoxService extends FakeBoxService {
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
+}
+
+/// 手选现在走 [KernelPort.selectOutbound]（带 expectedAttempt）而不是 BoxService：
+/// 这个替身把调用折回 [_SpyBoxService] 的计数 / 失败注入字段，保持各用例的断言不变。
+class _SpyPort extends FakeKernelPort {
+  _SpyPort(this.box);
+
+  final _SpyBoxService box;
+
+  @override
+  Future<SelectOutcome> selectOutbound(
+    String groupTag,
+    String outboundTag, {
+    int? expectedAttempt,
+  }) async {
+    box.selectOutboundCalls++;
+    box.lastExpectedAttempt = expectedAttempt;
+    box.lastGroupTag = groupTag;
+    box.lastOutboundTag = outboundTag;
+    final error = box.selectOutboundError;
+    if (error != null) return SelectFailed('exception', '$error');
+    final override = box.selectOutboundOverride;
+    if (override != null) await override;
+    return const SelectOk();
+  }
 }
 
 const _ssNode = OutboundProxy(tag: 'ss-node', type: 'shadowsocks');
@@ -122,6 +145,8 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
       profileStoreProvider.overrideWith((_) => Future.value(store)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
+      kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       // 离线 group 直接给一个：proxy / ss-node
       offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
       // isConnected 用 Provider override
@@ -273,6 +298,32 @@ void main() {
     await _drainToasts(tester);
   });
 
+  testWidgets('手选带上界面看到的当前 attempt（expectedAttempt），原生据此拒绝过期写入', (
+    tester,
+  ) async {
+    final (widget, container, spy) = await _host(connected: true);
+    // 把控制器状态换成「已连接，attempt = 4」。
+    (container.read(connectionControllerProvider.notifier)
+            as FakeConnectionController)
+        .set(
+          const ConnectionSnapshot(
+            phase: ConnectionPhase.connected,
+            epoch: 'e1',
+            attempt: 4,
+          ),
+        );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('ss-node'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(spy.lastExpectedAttempt, 4);
+    await _drainToasts(tester);
+  });
+
   testWidgets('已连接时 selectOutbound 失败 → 不持久化这次失败的选择', (tester) async {
     final (widget, container, spy) = await _hostWithGroups(
       connected: true,
@@ -317,6 +368,8 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
+      kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       offlineProxyGroupsProvider.overrideWith((_) async => groups),
       isConnectedProvider.overrideWith((_) => connected),
     ],
@@ -422,6 +475,8 @@ void _addProxiesPageExtraTests() {
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
         boxServiceProvider.overrideWithValue(spy),
+        kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+        connectionControllerProvider.overrideWith(FakeConnectionController.new),
         isConnectedProvider.overrideWith((_) => true),
         outboundGroupsProvider.overrideWith(
           (_) => Stream.value([
@@ -510,6 +565,8 @@ void _addProxiesPageExtraTests() {
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
         boxServiceProvider.overrideWithValue(spy),
+        kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+        connectionControllerProvider.overrideWith(FakeConnectionController.new),
         isConnectedProvider.overrideWith((_) => true),
         // 真实的实时分组：ss-node 存在但还没测出延迟（默认 delay: 0）。
         outboundGroupsProvider.overrideWith(

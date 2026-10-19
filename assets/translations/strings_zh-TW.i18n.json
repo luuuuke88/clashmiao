@@ -45,7 +45,14 @@
     "coreMissingMsg": "應用程式未能載入網路核心程式庫，無法建立連線。請重新安裝應用程式，或確認核心程式庫檔案與主程式在同一目錄下。",
     "degradedTitle": "已連線，但無法存取網路",
     "degradedMsg": "通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。",
-    "degradedRetry": "重新檢測"
+    "degradedRetry": "重新檢測",
+    "egressIp": {
+      "label": "出口 IP",
+      "notConnected": "連線後顯示出口 IP",
+      "tapToCheck": "點擊檢測出口 IP",
+      "checking": "正在檢測…",
+      "failedRetry": "檢測失敗，點擊重試"
+    }
   },
   "stats": {
     "traffic": "流量",
@@ -57,7 +64,9 @@
     "speed": "速度",
     "totalTransferred": "總傳輸量",
     "trafficUsage": "流量使用",
-    "liveSpeed": "即時速度"
+    "liveSpeed": "即時速度",
+    "sessionTraffic": "本次流量",
+    "downloadSpeed": "下載速度"
   },
   "profile": {
     "overviewPageTitle": "設定檔",
@@ -401,14 +410,17 @@
       "create": "服務建立錯誤",
       "start": "服務啟動錯誤",
       "coreLibraryMissing": "核心程式庫未安裝",
-      "startTimeout": "服務啟動逾時"
+      "startTimeout": "服務啟動逾時",
+      "kernelUnresponsive": "核心無回應，請重試或重新啟動應用程式",
+      "kernelExited": "核心意外結束"
     },
     "connectivity": {
       "unexpected": "意外失敗",
       "missingVpnPermission": "缺少 VPN 權限",
       "missingNotificationPermission": "缺少通知權限",
       "core": "核心錯誤",
-      "networkUnavailable": "網路無法使用"
+      "networkUnavailable": "網路無法使用",
+      "nativeUnresponsive": "與背景服務失去連線，請重試"
     },
     "profiles": {
       "unexpected": "意外錯誤",

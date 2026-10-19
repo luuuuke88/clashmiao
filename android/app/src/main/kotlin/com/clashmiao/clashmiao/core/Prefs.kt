@@ -3,8 +3,6 @@ package com.clashmiao.clashmiao.core
 import android.content.Context
 import android.content.SharedPreferences
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.engine.PlainService
-import com.clashmiao.clashmiao.engine.TunnelService
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -96,31 +94,6 @@ object Prefs {
         var disableMemoryLimit: Boolean
             get() = read(PrefsKey.DISABLE_MEMORY_LIMIT, false)
             set(value) = write(PrefsKey.DISABLE_MEMORY_LIMIT, value)
-
-        var startedByUser: Boolean
-            get() = read(PrefsKey.STARTED_BY_USER, false)
-            set(value) = write(PrefsKey.STARTED_BY_USER, value)
-
-        /** 把当前 [mode] 翻译成对应 Service class。 */
-        fun serviceClass(): Class<*> = when (mode) {
-            EngineMode.VPN -> TunnelService::class.java
-            else -> PlainService::class.java
-        }
-
-        @Volatile
-        private var lastBuiltMode: String? = null
-
-        /**
-         * 把当前 mode 跟上一次"已建"的 mode 比较，相同返回 false（不用重建 Service），
-         * 不同 cache 当前 mode 并返回 true（caller 应该 stopSelf + 起新 Service）。
-         */
-        @Synchronized
-        fun shouldRebuildService(): Boolean {
-            val cur = if (mode == EngineMode.VPN) EngineMode.VPN else EngineMode.PROXY_ONLY
-            if (lastBuiltMode == cur) return false
-            lastBuiltMode = cur
-            return true
-        }
     }
 
     // === Notification ====================================================

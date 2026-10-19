@@ -15,6 +15,11 @@ const _constantsPath =
 const _prefsPath =
     'android/app/src/main/kotlin/com/clashmiao/clashmiao/core/Prefs.kt';
 
+/// 内核协调器的持久化。旧版共享键（如 `started_by_user`）只在这里迁移时读一次，
+/// 读法是 `kv.getXxx(LEGACY_NAME, <default>)`，`LEGACY_NAME = PrefsKey.NAME`。
+const _kernelStorePath =
+    'android/app/src/main/kotlin/com/clashmiao/clashmiao/engine/KernelStore.kt';
+
 /// `object Name { const val X = "v" … }` → {Name.X: v}
 Map<String, String> _kotlinStringConstants(String source) {
   final out = <String, String>{};
@@ -44,6 +49,23 @@ Map<String, String> _kotlinDefaults(String source) => {
     m.group(1)!: m.group(2)!.trim(),
 };
 
+/// KernelStore 里迁移读取的旧键：`kv.getXxx(LEGACY_A, <default>)` 且
+/// `const val LEGACY_A = PrefsKey.NAME` → {NAME: <default 源码片段>}
+Map<String, String> _kernelStoreLegacyDefaults(String source) {
+  final alias = {
+    for (final m in RegExp(
+      r'const val (\w+) = PrefsKey\.(\w+)',
+    ).allMatches(source))
+      m.group(1)!: m.group(2)!,
+  };
+  return {
+    for (final m in RegExp(
+      r'kv\.get\w+\((\w+),\s*([^)]+?)\)',
+    ).allMatches(source))
+      if (alias[m.group(1)!] case final name?) name: m.group(2)!.trim(),
+  };
+}
+
 Object _resolveDefault(String token, Map<String, String> objects) {
   if (token == 'true') return true;
   if (token == 'false') return false;
@@ -71,7 +93,13 @@ void main() {
     prefs = pFile.readAsStringSync();
     sharedKeys = _kotlinSharedKeys(constants);
     objectConsts = _kotlinStringConstants(constants);
-    defaults = _kotlinDefaults(prefs);
+    final kernelStore = File(_kernelStorePath);
+    expect(kernelStore.existsSync(), isTrue, reason: '找不到 $_kernelStorePath');
+    // Prefs.kt 的读取优先；KernelStore 只补那些已改为「迁移时读一次」的旧键。
+    defaults = {
+      ..._kernelStoreLegacyDefaults(kernelStore.readAsStringSync()),
+      ..._kotlinDefaults(prefs),
+    };
   });
 
   test('解析器自检：Kotlin 源里确实读到了这些键（防止解析出错让断言平凡通过）', () {

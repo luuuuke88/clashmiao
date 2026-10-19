@@ -45,7 +45,14 @@
     "coreMissingMsg": "La aplicación no pudo cargar su núcleo de red. La conexión no está disponible. Reinstala la aplicación o asegúrate de que el archivo de la biblioteca del núcleo esté junto al ejecutable.",
     "degradedTitle": "Conectado, pero sin acceso a Internet",
     "degradedMsg": "El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.",
-    "degradedRetry": "Comprobar de nuevo"
+    "degradedRetry": "Comprobar de nuevo",
+    "egressIp": {
+      "label": "IP de salida",
+      "notConnected": "Conéctate para ver la IP de salida",
+      "tapToCheck": "Toca para comprobar la IP de salida",
+      "checking": "Comprobando…",
+      "failedRetry": "Error al comprobar, toca para reintentar"
+    }
   },
   "profile": {
     "overviewPageTitle": "Perfiles",
@@ -389,14 +396,17 @@
       "create": "Error de creación del servicio",
       "start": "Error de inicio del servicio",
       "coreLibraryMissing": "Biblioteca del núcleo no instalada",
-      "startTimeout": "Tiempo de inicio del servicio agotado"
+      "startTimeout": "Tiempo de inicio del servicio agotado",
+      "kernelUnresponsive": "El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.",
+      "kernelExited": "El núcleo se cerró inesperadamente"
     },
     "connectivity": {
       "unexpected": "Falla inesperada",
       "missingVpnPermission": "Permiso VPN faltante",
       "missingNotificationPermission": "Permiso de notificación faltante",
       "core": "Error central",
-      "networkUnavailable": "Red no disponible"
+      "networkUnavailable": "Red no disponible",
+      "nativeUnresponsive": "Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo."
     },
     "profiles": {
       "unexpected": "Error Inesperado",
@@ -538,6 +548,8 @@
     "downlink": "Bajada",
     "connection": "Conexión",
     "speed": "Velocidad",
-    "totalTransferred": "Total transferido"
+    "totalTransferred": "Total transferido",
+    "sessionTraffic": "Tráfico de esta sesión",
+    "downloadSpeed": "Velocidad de descarga"
   }
 }

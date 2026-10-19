@@ -86,4 +86,29 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
       jsonEncode(next),
     );
   }
+
+  /// 把 [groupTag] 的记录恢复成 [previous]（null = 原本没有记录，即删除）。
+  ///
+  /// 手选流程先写入新值再调用内核；内核拒绝时用它回滚，保持「失败不持久化」。
+  /// 与 [persist] 同走 `ProfileStore.writeAux`：订阅已删除或换代时回滚同样被丢弃。
+  Future<void> restore(String groupTag, String? previous) async {
+    final profileId = _profileId;
+    final store = _store;
+    if (profileId == null || profileId.isEmpty) return;
+    if (store == null) return;
+    if (state[groupTag] == previous) return;
+    final next = {...state};
+    if (previous == null) {
+      next.remove(groupTag);
+    } else {
+      next[groupTag] = previous;
+    }
+    state = Map.unmodifiable(next);
+    await store.writeAux(
+      profileId,
+      _profileInc ?? '',
+      _key(profileId),
+      jsonEncode(next),
+    );
+  }
 }

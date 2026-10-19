@@ -1,6 +1,10 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -16,7 +20,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../_fakes/fake_kernel_port.dart';
 import '../../../support/fake_box_service.dart';
+import '../../../support/fake_connection_controller.dart';
 
 /// 覆盖：wave4 触觉反馈扩展——代理节点切换 / 测速两个交互点。
 ///
@@ -28,11 +34,6 @@ import '../../../support/fake_box_service.dart';
 class _SpyBoxService extends FakeBoxService {
   int selectOutboundCalls = 0;
   final List<String> urlTestCalls = [];
-
-  @override
-  Future<void> selectOutbound(String groupTag, String outboundTag) async {
-    selectOutboundCalls++;
-  }
 
   @override
   Future<void> urlTest(String g) async {
@@ -74,6 +75,23 @@ Future<void> _drainToasts(WidgetTester tester) async {
 Iterable<MethodCall> _hapticCalls(List<MethodCall> calls) =>
     calls.where((c) => c.method == 'HapticFeedback.vibrate');
 
+/// 手选走 [KernelPort.selectOutbound]：把调用折回 [_SpyBoxService] 的计数。
+class _SpyPort extends FakeKernelPort {
+  _SpyPort(this.box);
+
+  final _SpyBoxService box;
+
+  @override
+  Future<SelectOutcome> selectOutbound(
+    String groupTag,
+    String outboundTag, {
+    int? expectedAttempt,
+  }) async {
+    box.selectOutboundCalls++;
+    return const SelectOk();
+  }
+}
+
 Future<(Widget, _SpyBoxService)> _host({
   required bool connected,
   bool hapticEnabled = true,
@@ -89,6 +107,8 @@ Future<(Widget, _SpyBoxService)> _host({
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
+      kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
       isConnectedProvider.overrideWith((_) => connected),
     ],

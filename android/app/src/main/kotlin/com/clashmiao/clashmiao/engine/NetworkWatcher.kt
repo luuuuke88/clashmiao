@@ -9,7 +9,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.bridge.StreamBridge
 import io.nekohasekai.libbox.InterfaceUpdateListener
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -74,7 +73,8 @@ object NetworkWatcher {
                 waiters.forEach { it.complete(op.n) }
                 waiters.clear()
                 subs.values.forEach { it(op.n) }
-                StreamBridge.emitNetworkChanged()
+                // 网络切换后是否重载由协调器决定：它按句柄去重、吸收初始事件并去抖。
+                KernelCoordinator.instance.onNetworkResolved(op.n.networkHandle)
             }
             is Op.Refreshed -> if (current == op.n) subs.values.forEach { it(op.n) }
             is Op.Lost -> if (current == op.n) {

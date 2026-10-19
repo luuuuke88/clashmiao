@@ -22,8 +22,9 @@
 //    - 其余的 `name: value`（自然语言、头部写法 `Authorization: Basic x`）：
 //      强字段（password / token / secret / api_key / uuid / authorization /
 //      cookie …，含 `obfs-password`、`access_token`、`Set-Cookie` 这类复合名）
-//      遮盖；弱字段（key / auth / sid / sig / signature / pwd …）只在值的第一个
-//      词像凭据时遮盖，`Invalid key: profiles` 原样保留。
+//      遮盖；弱字段（key / auth / sid / sig / signature / pwd …）把冒号后整行
+//      余下内容按非 token 字符拆成片段，任何一个片段像凭据就遮盖，
+//      `Invalid key: profiles` 原样保留。
 // 4. 游离的 `Bearer <token>`：token 像凭据时遮盖。
 
 import 'dart:collection';
@@ -34,7 +35,7 @@ const String kRedacted = '…';
 
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 5;
+const int kLogRedactionVersion = 6;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -252,9 +253,7 @@ String _redactKeyValues(String text) {
     final structured =
         m[1]!.isNotEmpty || m[3] == '=' || _inStructure(text, m.start);
     final mask =
-        structured ||
-        _isStrongSecretName(m[2]!) ||
-        _looksLikeToken(_firstWord(rest));
+        structured || _isStrongSecretName(m[2]!) || _containsToken(rest);
     if (!mask) continue;
     (out ??= StringBuffer())
       ..write(text.substring(copied, valueStart))
@@ -289,25 +288,26 @@ bool _inStructure(String text, int index) {
   return false;
 }
 
-/// 值的第一个词（剥掉开头的引号、转义引号与括号），只用来判断弱字段的值像不像
-/// 凭据。
-String _firstWord(String rest) {
-  var start = 0;
-  while (start < rest.length && _wordWrappers.contains(rest[start])) {
-    start++;
+/// 弱字段在自然语言写法里：冒号后整行余下的内容里有没有像凭据的片段。
+///
+/// 不去猜「第一个词」：按非 token 字符（空白、括号、引号、标点）拆开，每个片段
+/// 原样判断一次，再按 `.` `/` 拆成子片段各判断一次（句末句点、路径里的 token）。
+/// 只要有一个像凭据，就由调用方从值开头遮到行尾。
+bool _containsToken(String rest) {
+  for (final fragment in rest.split(_nonTokenChars)) {
+    if (fragment.isEmpty) continue;
+    if (_looksLikeToken(fragment)) return true;
+    if (fragment.contains(_fragmentSeparators) &&
+        fragment.split(_fragmentSeparators).any(_looksLikeToken)) {
+      return true;
+    }
   }
-  var end = start;
-  while (end < rest.length && !_wordTerminators.contains(rest[end])) {
-    end++;
-  }
-  return rest.substring(start, end);
+  return false;
 }
 
-const _wordTerminators = ' \t&,;}])"\'<>\\';
-
-/// 值开头的包装字符：引号（含转义引号 `\"`）、`[`、`(`、`<`。判断像不像凭据前
-/// 先剥掉；收尾的包装字符本来就在 [_wordTerminators] 里。
-const _wordWrappers = '"\'\\[(<';
+/// 不可能出现在 token 里的字符；`.`（JWT）与 `/`（base64）留在片段里。
+final RegExp _nonTokenChars = RegExp(r'[^A-Za-z0-9_\-+=~/.]+');
+final RegExp _fragmentSeparators = RegExp('[./]');
 
 int _endOfLine(String text, int from) {
   for (var k = from; k < text.length; k++) {

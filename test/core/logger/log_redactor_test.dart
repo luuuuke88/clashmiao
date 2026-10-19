@@ -180,6 +180,27 @@ void main() {
             "auth: '0123456789abcdef0123'",
         'sid: …\nsig: …\nauth: …',
       ),
+      ('弱字段：包装里带空格', 'Invalid key: [ 0123456789abcdef0123 ]', 'Invalid key: …'),
+      (
+        '弱字段：圆括号里带空格',
+        'Invalid key: ( 0123456789abcdef0123 )',
+        'Invalid key: …',
+      ),
+      (
+        '弱字段：包装后是制表符',
+        'Invalid key: [\t0123456789abcdef0123\t]',
+        'Invalid key: …',
+      ),
+      (
+        '弱字段：多层包装且层间有空白',
+        'Invalid key: [ ( "0123456789abcdef0123" ) ]',
+        'Invalid key: …',
+      ),
+      (
+        '弱字段：凭据不在第一个词',
+        'Invalid key: expected profiles, got 3f2504e0-4f89-11d3-9a0c-0305e82c3301.',
+        'Invalid key: …',
+      ),
       (
         '强字段在自然语言里同样遮到行尾（偏安全的过度遮盖）',
         'Invalid token: expired at 12:00',
@@ -333,6 +354,78 @@ void main() {
         'count': 2,
       });
     });
+  });
+
+  test('弱字段自然语言写法：任意前后缀、包装与空白包着的凭据都不残留', () {
+    const weakKeys = ['key', 'auth', 'sid', 'sig', 'signature', 'pwd'];
+    const prefixes = [
+      '',
+      'Invalid ',
+      '[ERROR] profiles.update: Invalid ',
+      'lookup failed, ',
+      'WARN (retry 2) ',
+    ];
+    const suffixes = [
+      '',
+      '.',
+      ', retry later',
+      ' (code 3)',
+      ': expired',
+      ' at 12:00!',
+      '; next',
+    ];
+    const opens = ['[', '(', '<', '"', "'", r'\"', '`', ''];
+    const closes = [']', ')', '>', '"', "'", r'\"', '`', ''];
+    const spaces = ['', ' ', '  ', '\t', ' \t '];
+    const alphabet =
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const hexDigits = '0123456789abcdef';
+
+    String pick(Random r, List<String> from) => from[r.nextInt(from.length)];
+    String chars(Random r, String from, int n) => String.fromCharCodes([
+      for (var i = 0; i < n; i++) from.codeUnitAt(r.nextInt(from.length)),
+    ]);
+    String token(Random r) {
+      switch (r.nextInt(4)) {
+        case 0: // 长十六进制
+          return chars(r, hexDigits, 16 + r.nextInt(24));
+        case 1: // UUID
+          return [8, 4, 4, 4, 12].map((n) => chars(r, hexDigits, n)).join('-');
+        case 2: // 字母数字混排，保证同时有字母和数字
+          return 'a1${chars(r, alphabet, 14 + r.nextInt(16))}';
+        default: // JWT
+          return 'eyJ${chars(r, alphabet, 10)}.${chars(r, alphabet, 12)}'
+              '.${chars(r, alphabet, 8)}';
+      }
+    }
+
+    for (var seed = 0; seed < 600; seed++) {
+      final r = Random(seed);
+      final secret = token(r);
+      final buffer = StringBuffer(pick(r, prefixes))
+        ..write(pick(r, weakKeys))
+        ..write(':')
+        ..write(pick(r, spaces));
+      final depth = r.nextInt(3);
+      final closing = <String>[];
+      for (var i = 0; i < depth; i++) {
+        final w = r.nextInt(opens.length);
+        buffer
+          ..write(opens[w])
+          ..write(pick(r, spaces));
+        closing.insert(0, '${pick(r, spaces)}${closes[w]}');
+      }
+      if (r.nextBool()) buffer.write('expected profiles, got ');
+      buffer
+        ..write(secret)
+        ..writeAll(closing)
+        ..write(pick(r, suffixes));
+      final input = buffer.toString();
+
+      final once = redactLogText(input);
+      expect(once, isNot(contains(secret)), reason: 'seed $seed\n$input');
+      expect(redactLogText(once), once, reason: 'seed $seed 幂等');
+    }
   });
 
   group('结构化遍历防循环引用', () {
@@ -538,6 +631,9 @@ void main() {
       // 普通诊断里的弱字段名不算凭据。
       'Invalid key: profiles',
       'Invalid key: [profiles]',
+      'Invalid key: [ profiles ]',
+      'Invalid key: profiles, retry later',
+      'Invalid key: [ ( "profiles" ) ] at 12:00',
       r'Invalid key: \"profiles\"',
       '[ERROR] profiles.update: Invalid key: profiles',
       'Missing key: "selected_outbound"',

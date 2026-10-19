@@ -362,14 +362,17 @@
       "create": "خطأ في إنشاء الخدمة",
       "start": "خطأ في بدء تشغيل الخدمة",
       "coreLibraryMissing": "مكتبة النواة غير مثبتة",
-      "startTimeout": "انتهت مهلة بدء الخدمة"
+      "startTimeout": "انتهت مهلة بدء الخدمة",
+      "kernelUnresponsive": "النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.",
+      "kernelExited": "توقفت النواة بشكل غير متوقع"
     },
     "connectivity": {
       "unexpected": "فشل غير متوقع",
       "missingVpnPermission": "غياب إذن VPN",
       "missingNotificationPermission": "غياب إذن الإشعارات",
       "core": "خطأ في النواة",
-      "networkUnavailable": "الشبكة غير متاحة"
+      "networkUnavailable": "الشبكة غير متاحة",
+      "nativeUnresponsive": "فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى."
     },
     "profiles": {
       "unexpected": "خطأ غير متوقع",

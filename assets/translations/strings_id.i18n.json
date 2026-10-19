@@ -362,14 +362,17 @@
       "create": "Pembuatan Servis Error",
       "start": "Jalankan Servis Error",
       "coreLibraryMissing": "Pustaka Inti Belum Terpasang",
-      "startTimeout": "Waktu Mulai Layanan Habis"
+      "startTimeout": "Waktu Mulai Layanan Habis",
+      "kernelUnresponsive": "Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.",
+      "kernelExited": "Inti berhenti secara tak terduga"
     },
     "connectivity": {
       "unexpected": "Kegagalan tidak terduga",
       "missingVpnPermission": "Izin VPN Hilang",
       "missingNotificationPermission": "Izin Notifikasi Hilang",
       "core": "Error Inti",
-      "networkUnavailable": "Jaringan Tidak Tersedia"
+      "networkUnavailable": "Jaringan Tidak Tersedia",
+      "nativeUnresponsive": "Kehilangan kontak dengan layanan latar belakang. Coba lagi."
     },
     "profiles": {
       "unexpected": "Error Tidak Terduga",

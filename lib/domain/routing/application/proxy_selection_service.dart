@@ -1,0 +1,109 @@
+// 手选节点流程：先把新选择写入存储，再让内核切换，失败（非 stale）则回滚。
+//
+// 为什么先写存储：选择存储是「用户最后一次选了什么」的唯一真值，手选重放
+// （`ConnectionController` 在每个新 attempt 进入 started 后执行）每一项都读
+// 存储里的最新值。如果等内核切换成功才写存储，就会出现「旧重放悬停 → 用户
+// 新选择 → 旧重放继续并把旧值写回内核」的错乱；先写存储，重放自己会收敛到
+// 用户最后的选择（见控制器的重放循环）。
+//
+// 为什么 stale 不回滚：stale 表示内核已经换了新 attempt（例如网络切换触发
+// 了重载）。新 attempt 的重放会按存储值重放这次选择，回滚反而会丢掉用户意图。
+
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
+import 'package:flutter/foundation.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+
+/// 一次手选的结果。
+sealed class SelectionResult {
+  const SelectionResult();
+}
+
+/// 内核已切换，选择已持久化。
+final class SelectionApplied extends SelectionResult {
+  const SelectionApplied();
+}
+
+/// 内核已换了新 attempt，这次没有写入内核；选择仍保留在存储里，由新 attempt
+/// 的重放应用。
+final class SelectionDeferred extends SelectionResult {
+  const SelectionDeferred();
+}
+
+/// 内核拒绝切换；存储已回滚到点击前的值。
+final class SelectionFailed extends SelectionResult {
+  const SelectionFailed(this.code, this.message);
+
+  final String code;
+  final String message;
+}
+
+class ProxySelectionService {
+  ProxySelectionService(this._ref);
+
+  final Ref _ref;
+
+  /// 选择 [groupTag] 组里的 [outboundTag]。[expectedAttempt] 是调用方看到的
+  /// 当前 attempt；原生在 attempt 不符时返回 stale 且不写入。
+  Future<SelectionResult> select(
+    String groupTag,
+    String outboundTag, {
+    int? expectedAttempt,
+  }) async {
+    final store = _ref.read(proxySelectionStoreProvider.notifier);
+    final previous = _ref.read(proxySelectionStoreProvider)[groupTag];
+    await store.persist(groupTag, outboundTag);
+
+    final port = _ref.read(kernelPortProvider);
+    var outcome = await _select(port, groupTag, outboundTag, expectedAttempt);
+
+    if (outcome is SelectStale) {
+      // 调用方的 attempt 可能只是比内核慢了一步：向内核要权威 attempt，若它
+      // 仍在运行就用它再试一次。
+      try {
+        final snap = await port.current();
+        if (snap.status == KernelStatus.started &&
+            snap.attempt != expectedAttempt) {
+          outcome = await _select(port, groupTag, outboundTag, snap.attempt);
+        }
+      } catch (e) {
+        debugPrint('手选 stale 后读取内核快照失败: $e');
+      }
+    }
+
+    switch (outcome) {
+      case SelectOk():
+        return const SelectionApplied();
+      case SelectStale():
+        return const SelectionDeferred();
+      case SelectFailed(:final code, :final message):
+        // 只在存储里仍是我们刚写的值时才回滚：期间用户又选了别的，那是更新
+        // 的意图，不能被这次失败覆盖。
+        final now = _ref.read(proxySelectionStoreProvider)[groupTag];
+        if (now == outboundTag) await store.restore(groupTag, previous);
+        return SelectionFailed(code, message);
+    }
+  }
+
+  Future<SelectOutcome> _select(
+    KernelPort port,
+    String groupTag,
+    String outboundTag,
+    int? expectedAttempt,
+  ) async {
+    try {
+      return await port.selectOutbound(
+        groupTag,
+        outboundTag,
+        expectedAttempt: expectedAttempt,
+      );
+    } catch (e) {
+      return SelectFailed('exception', '$e');
+    }
+  }
+}
+
+final proxySelectionServiceProvider = Provider<ProxySelectionService>((ref) {
+  return ProxySelectionService(ref);
+});

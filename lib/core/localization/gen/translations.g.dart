@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 3940 (394 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-19 at 16:40 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -933,6 +933,9 @@ class TranslationsFailureSingboxEn {
   String get create => 'Service Creation Error';
   String get start => 'Service Startup Error';
   String get startTimeout => 'Service Startup Timed Out';
+  String get kernelUnresponsive =>
+      'The core is not responding. Please try again, or restart the app.';
+  String get kernelExited => 'The core exited unexpectedly';
 }
 
 // Path: failure.connectivity
@@ -947,6 +950,8 @@ class TranslationsFailureConnectivityEn {
   String get missingNotificationPermission => 'Missing Notification Permission';
   String get networkUnavailable => 'Network Unavailable';
   String get core => 'Core Error';
+  String get nativeUnresponsive =>
+      'Lost contact with the background service. Please try again.';
 }
 
 // Path: failure.profiles
@@ -2498,6 +2503,11 @@ class TranslationsFailureSingboxAr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'مكتبة النواة غير مثبتة';
   @override
   String get startTimeout => 'انتهت مهلة بدء الخدمة';
+  @override
+  String get kernelUnresponsive =>
+      'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+  @override
+  String get kernelExited => 'توقفت النواة بشكل غير متوقع';
 }
 
 // Path: failure.connectivity
@@ -2521,6 +2531,9 @@ class TranslationsFailureConnectivityAr
   String get core => 'خطأ في النواة';
   @override
   String get networkUnavailable => 'الشبكة غير متاحة';
+  @override
+  String get nativeUnresponsive =>
+      'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
 }
 
 // Path: failure.profiles
@@ -4199,6 +4212,11 @@ class TranslationsFailureSingboxEs extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca del núcleo no instalada';
   @override
   String get startTimeout => 'Tiempo de inicio del servicio agotado';
+  @override
+  String get kernelUnresponsive =>
+      'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+  @override
+  String get kernelExited => 'El núcleo se cerró inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -4223,6 +4241,9 @@ class TranslationsFailureConnectivityEs
   String get core => 'Error central';
   @override
   String get networkUnavailable => 'Red no disponible';
+  @override
+  String get nativeUnresponsive =>
+      'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
 }
 
 // Path: failure.profiles
@@ -5895,6 +5916,11 @@ class TranslationsFailureSingboxFa extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'کتابخانهٔ هسته نصب نشده است';
   @override
   String get startTimeout => 'زمان راه‌اندازی سرویس به پایان رسید';
+  @override
+  String get kernelUnresponsive =>
+      'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+  @override
+  String get kernelExited => 'هسته به‌طور غیرمنتظره متوقف شد';
 }
 
 // Path: failure.connectivity
@@ -5918,6 +5944,9 @@ class TranslationsFailureConnectivityFa
   String get core => 'خطای هسته';
   @override
   String get networkUnavailable => 'شبکه در دسترس نیست';
+  @override
+  String get nativeUnresponsive =>
+      'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
 }
 
 // Path: failure.profiles
@@ -7584,6 +7613,11 @@ class TranslationsFailureSingboxId extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Pustaka Inti Belum Terpasang';
   @override
   String get startTimeout => 'Waktu Mulai Layanan Habis';
+  @override
+  String get kernelUnresponsive =>
+      'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+  @override
+  String get kernelExited => 'Inti berhenti secara tak terduga';
 }
 
 // Path: failure.connectivity
@@ -7607,6 +7641,9 @@ class TranslationsFailureConnectivityId
   String get core => 'Error Inti';
   @override
   String get networkUnavailable => 'Jaringan Tidak Tersedia';
+  @override
+  String get nativeUnresponsive =>
+      'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
 }
 
 // Path: failure.profiles
@@ -9298,6 +9335,11 @@ class TranslationsFailureSingboxPtBr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca do núcleo não instalada';
   @override
   String get startTimeout => 'Tempo de inicialização do serviço esgotado';
+  @override
+  String get kernelUnresponsive =>
+      'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+  @override
+  String get kernelExited => 'O núcleo foi encerrado inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -9322,6 +9364,9 @@ class TranslationsFailureConnectivityPtBr
   String get core => 'Erro central';
   @override
   String get networkUnavailable => 'Rede indisponível';
+  @override
+  String get nativeUnresponsive =>
+      'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
 }
 
 // Path: failure.profiles
@@ -10999,6 +11044,11 @@ class TranslationsFailureSingboxRu extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Библиотека ядра не установлена';
   @override
   String get startTimeout => 'Истекло время запуска службы';
+  @override
+  String get kernelUnresponsive =>
+      'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+  @override
+  String get kernelExited => 'Ядро неожиданно завершило работу';
 }
 
 // Path: failure.connectivity
@@ -11023,6 +11073,9 @@ class TranslationsFailureConnectivityRu
   String get core => 'Ошибка ядра';
   @override
   String get networkUnavailable => 'Сеть недоступна';
+  @override
+  String get nativeUnresponsive =>
+      'Потеряна связь с фоновой службой. Повторите попытку.';
 }
 
 // Path: failure.profiles
@@ -12696,6 +12749,11 @@ class TranslationsFailureSingboxTr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Çekirdek Kitaplığı Yüklü Değil';
   @override
   String get startTimeout => 'Servis Başlatma Zaman Aşımı';
+  @override
+  String get kernelUnresponsive =>
+      'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+  @override
+  String get kernelExited => 'Çekirdek beklenmedik şekilde kapandı';
 }
 
 // Path: failure.connectivity
@@ -12719,6 +12777,9 @@ class TranslationsFailureConnectivityTr
   String get core => 'Temel Hata';
   @override
   String get networkUnavailable => 'Ağ Kullanılamıyor';
+  @override
+  String get nativeUnresponsive =>
+      'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
 }
 
 // Path: failure.profiles
@@ -14370,6 +14431,10 @@ class TranslationsFailureSingboxZhCn extends TranslationsFailureSingboxEn {
   String get start => '服务启动错误';
   @override
   String get startTimeout => '服务启动超时';
+  @override
+  String get kernelUnresponsive => '内核无响应，请重试或重启应用';
+  @override
+  String get kernelExited => '内核意外退出';
 }
 
 // Path: failure.connectivity
@@ -14393,6 +14458,8 @@ class TranslationsFailureConnectivityZhCn
   String get networkUnavailable => '网络不可用';
   @override
   String get core => '核心错误';
+  @override
+  String get nativeUnresponsive => '与后台服务失去联系，请重试';
 }
 
 // Path: failure.profiles
@@ -16048,6 +16115,10 @@ class TranslationsFailureSingboxZhTw extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => '核心程式庫未安裝';
   @override
   String get startTimeout => '服務啟動逾時';
+  @override
+  String get kernelUnresponsive => '核心無回應，請重試或重新啟動應用程式';
+  @override
+  String get kernelExited => '核心意外結束';
 }
 
 // Path: failure.connectivity
@@ -16071,6 +16142,8 @@ class TranslationsFailureConnectivityZhTw
   String get core => '核心錯誤';
   @override
   String get networkUnavailable => '網路無法使用';
+  @override
+  String get nativeUnresponsive => '與背景服務失去連線，請重試';
 }
 
 // Path: failure.profiles
@@ -16968,6 +17041,10 @@ extension on Translations {
         return 'Service Startup Error';
       case 'failure.singbox.startTimeout':
         return 'Service Startup Timed Out';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'The core is not responding. Please try again, or restart the app.';
+      case 'failure.singbox.kernelExited':
+        return 'The core exited unexpectedly';
       case 'failure.connectivity.unexpected':
         return 'Unexpected Failure';
       case 'failure.connectivity.missingVpnPermission':
@@ -16978,6 +17055,8 @@ extension on Translations {
         return 'Network Unavailable';
       case 'failure.connectivity.core':
         return 'Core Error';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Lost contact with the background service. Please try again.';
       case 'failure.profiles.unexpected':
         return 'Unexpected Error';
       case 'failure.profiles.notFound':
@@ -17779,6 +17858,10 @@ extension on TranslationsAr {
         return 'مكتبة النواة غير مثبتة';
       case 'failure.singbox.startTimeout':
         return 'انتهت مهلة بدء الخدمة';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+      case 'failure.singbox.kernelExited':
+        return 'توقفت النواة بشكل غير متوقع';
       case 'failure.connectivity.unexpected':
         return 'فشل غير متوقع';
       case 'failure.connectivity.missingVpnPermission':
@@ -17789,6 +17872,8 @@ extension on TranslationsAr {
         return 'خطأ في النواة';
       case 'failure.connectivity.networkUnavailable':
         return 'الشبكة غير متاحة';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
       case 'failure.profiles.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.profiles.notFound':
@@ -18574,6 +18659,10 @@ extension on TranslationsEs {
         return 'Biblioteca del núcleo no instalada';
       case 'failure.singbox.startTimeout':
         return 'Tiempo de inicio del servicio agotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+      case 'failure.singbox.kernelExited':
+        return 'El núcleo se cerró inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falla inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -18584,6 +18673,8 @@ extension on TranslationsEs {
         return 'Error central';
       case 'failure.connectivity.networkUnavailable':
         return 'Red no disponible';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
       case 'failure.profiles.unexpected':
         return 'Error Inesperado';
       case 'failure.profiles.notFound':
@@ -19408,6 +19499,10 @@ extension on TranslationsFa {
         return 'کتابخانهٔ هسته نصب نشده است';
       case 'failure.singbox.startTimeout':
         return 'زمان راه‌اندازی سرویس به پایان رسید';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+      case 'failure.singbox.kernelExited':
+        return 'هسته به‌طور غیرمنتظره متوقف شد';
       case 'failure.connectivity.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.connectivity.missingVpnPermission':
@@ -19418,6 +19513,8 @@ extension on TranslationsFa {
         return 'خطای هسته';
       case 'failure.connectivity.networkUnavailable':
         return 'شبکه در دسترس نیست';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
       case 'failure.profiles.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.profiles.notFound':
@@ -20221,6 +20318,10 @@ extension on TranslationsId {
         return 'Pustaka Inti Belum Terpasang';
       case 'failure.singbox.startTimeout':
         return 'Waktu Mulai Layanan Habis';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+      case 'failure.singbox.kernelExited':
+        return 'Inti berhenti secara tak terduga';
       case 'failure.connectivity.unexpected':
         return 'Kegagalan tidak terduga';
       case 'failure.connectivity.missingVpnPermission':
@@ -20231,6 +20332,8 @@ extension on TranslationsId {
         return 'Error Inti';
       case 'failure.connectivity.networkUnavailable':
         return 'Jaringan Tidak Tersedia';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
       case 'failure.profiles.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.profiles.notFound':
@@ -21035,6 +21138,10 @@ extension on TranslationsPtBr {
         return 'Biblioteca do núcleo não instalada';
       case 'failure.singbox.startTimeout':
         return 'Tempo de inicialização do serviço esgotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+      case 'failure.singbox.kernelExited':
+        return 'O núcleo foi encerrado inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falha inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -21045,6 +21152,8 @@ extension on TranslationsPtBr {
         return 'Erro central';
       case 'failure.connectivity.networkUnavailable':
         return 'Rede indisponível';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
       case 'failure.profiles.unexpected':
         return 'Erro inesperado';
       case 'failure.profiles.notFound':
@@ -21849,6 +21958,10 @@ extension on TranslationsRu {
         return 'Библиотека ядра не установлена';
       case 'failure.singbox.startTimeout':
         return 'Истекло время запуска службы';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+      case 'failure.singbox.kernelExited':
+        return 'Ядро неожиданно завершило работу';
       case 'failure.connectivity.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.connectivity.missingVpnPermission':
@@ -21859,6 +21972,8 @@ extension on TranslationsRu {
         return 'Ошибка ядра';
       case 'failure.connectivity.networkUnavailable':
         return 'Сеть недоступна';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Потеряна связь с фоновой службой. Повторите попытку.';
       case 'failure.profiles.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.profiles.notFound':
@@ -22663,6 +22778,10 @@ extension on TranslationsTr {
         return 'Çekirdek Kitaplığı Yüklü Değil';
       case 'failure.singbox.startTimeout':
         return 'Servis Başlatma Zaman Aşımı';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+      case 'failure.singbox.kernelExited':
+        return 'Çekirdek beklenmedik şekilde kapandı';
       case 'failure.connectivity.unexpected':
         return 'Beklenmedik Hata';
       case 'failure.connectivity.missingVpnPermission':
@@ -22673,6 +22792,8 @@ extension on TranslationsTr {
         return 'Temel Hata';
       case 'failure.connectivity.networkUnavailable':
         return 'Ağ Kullanılamıyor';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
       case 'failure.profiles.unexpected':
         return 'Beklenmedik hata';
       case 'failure.profiles.notFound':
@@ -23474,6 +23595,10 @@ extension on TranslationsZhCn {
         return '服务启动错误';
       case 'failure.singbox.startTimeout':
         return '服务启动超时';
+      case 'failure.singbox.kernelUnresponsive':
+        return '内核无响应，请重试或重启应用';
+      case 'failure.singbox.kernelExited':
+        return '内核意外退出';
       case 'failure.connectivity.unexpected':
         return '意外失败';
       case 'failure.connectivity.missingVpnPermission':
@@ -23484,6 +23609,8 @@ extension on TranslationsZhCn {
         return '网络不可用';
       case 'failure.connectivity.core':
         return '核心错误';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '与后台服务失去联系，请重试';
       case 'failure.profiles.unexpected':
         return '意外错误';
       case 'failure.profiles.notFound':
@@ -24284,6 +24411,10 @@ extension on TranslationsZhTw {
         return '核心程式庫未安裝';
       case 'failure.singbox.startTimeout':
         return '服務啟動逾時';
+      case 'failure.singbox.kernelUnresponsive':
+        return '核心無回應，請重試或重新啟動應用程式';
+      case 'failure.singbox.kernelExited':
+        return '核心意外結束';
       case 'failure.connectivity.unexpected':
         return '意外失敗';
       case 'failure.connectivity.missingVpnPermission':
@@ -24294,6 +24425,8 @@ extension on TranslationsZhTw {
         return '核心錯誤';
       case 'failure.connectivity.networkUnavailable':
         return '網路無法使用';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '與背景服務失去連線，請重試';
       case 'failure.profiles.unexpected':
         return '意外錯誤';
       case 'failure.profiles.notFound':

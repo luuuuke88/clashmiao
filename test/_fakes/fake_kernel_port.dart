@@ -43,6 +43,9 @@ class FakeKernelPort implements KernelPort {
   SelectOutcome Function(String group, String tag, int? expectedAttempt)?
   selectResult;
 
+  /// 非空时 [selectOutbound] 先等它完成再返回（制造「在途的手选 / 重放」）。
+  Completer<void>? onSelectGate;
+
   /// 自定义 request 回调（在记录之后、返回回执之前执行），用于让替身像真内核
   /// 一样随请求推进快照。
   FutureOr<void> Function(DesiredRequest r)? onRequest;
@@ -108,6 +111,8 @@ class FakeKernelPort implements KernelPort {
       tag: outboundTag,
       expectedAttempt: expectedAttempt,
     ));
+    final gate = onSelectGate;
+    if (gate != null) await gate.future;
     return selectResult?.call(groupTag, outboundTag, expectedAttempt) ??
         const SelectOk();
   }

@@ -11,6 +11,19 @@ typedef RestoreMarkerCheck = Future<void> Function(SharedPreferences prefs);
 /// 本版本全部存储迁移，按版本递增排列。新增迁移只在这里追加。
 List<Migration> storageMigrations() => [profilesV1Migration()];
 
+/// 进程内唯一的迁移器：失败的粘滞记录挂在它身上，同一进程里重复调用
+/// [prepareStorage] 不会因为换了新实例而「忘记」失败（见 [StorageMigrator]）。
+final StorageMigrator _processMigrator = StorageMigrator(
+  migrations: storageMigrations(),
+);
+
+MigrationReport? _lastReport;
+
+/// 本进程最近一次 [prepareStorage] 的结果；启动前为 null。
+/// 迁移失败（[MigrationReport.failed]）时，本次会话里业务代码运行在内存视图上，
+/// 磁盘上的迁移留到下次启动重做。
+MigrationReport? get lastStorageMigrationReport => _lastReport;
+
 /// 启动屏障：在**任何**业务 provider 读取偏好、向原生推送配置、启动后台任务之前
 /// 调用并 `await`。
 ///
@@ -29,10 +42,8 @@ Future<MigrationReport> prepareStorage(
       debugPrint('[storage] 恢复标记检查失败，继续启动: $e\n$st');
     }
   }
-  final report =
-      await (migrator ?? StorageMigrator(migrations: storageMigrations())).run(
-        prefs,
-      );
+  final report = await (migrator ?? _processMigrator).run(prefs);
+  _lastReport = report;
   debugPrint('[storage] $report');
   return report;
 }

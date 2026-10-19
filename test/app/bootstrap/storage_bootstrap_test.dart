@@ -146,4 +146,30 @@ void main() {
       reason: '屏障需要先加载 prefs',
     );
   });
+
+  test('迁移失败：报告被记下；同一进程内再次调用仍是失败，不会变成 upToDate', () async {
+    final prefs = await _prefs(v0);
+    var runs = 0;
+    final migrator = StorageMigrator(
+      migrations: [
+        Migration(
+          toVersion: 1,
+          name: 'fails',
+          run: (p) async {
+            runs++;
+            await p.setInt(kStorageSchemaKey, 1); // 模拟平台缓存已改但落盘失败
+            return false;
+          },
+        ),
+      ],
+    );
+    final first = await prepareStorage(prefs, migrator: migrator);
+    expect(first.outcome, MigrationOutcome.failed);
+    expect(lastStorageMigrationReport?.outcome, MigrationOutcome.failed);
+    // 缓存里的 schema 已是 1，但不能据此认为迁移成功。
+    expect(prefs.getInt(kStorageSchemaKey), 1);
+    final second = await prepareStorage(prefs, migrator: migrator);
+    expect(second.outcome, MigrationOutcome.failed);
+    expect(runs, 1);
+  });
 }

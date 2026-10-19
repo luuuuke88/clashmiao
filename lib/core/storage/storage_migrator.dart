@@ -54,6 +54,8 @@ class MigrationReport {
   /// 失败的那一步的 `toVersion`。
   final int? failedStep;
 
+  bool get failed => outcome == MigrationOutcome.failed;
+
   @override
   String toString() =>
       'MigrationReport($outcome, $fromSchema -> $toSchema'
@@ -66,6 +68,19 @@ class MigrationReport {
 ///   下次启动再试；
 /// - 步骤失败即停，不推进 schema，也不跑后面的步骤；
 /// - 存储版本高于 [targetSchema]（降级）时不迁移，让上层按只读/保守模式运行。
+///
+/// **失败在本进程内粘滞**：任何一次写入返回 `false` 或抛出之后，这个迁移器实例
+/// 把失败的报告记在内存里（不持久化）；之后在同一进程内再调用 [run]，一律原样
+/// 返回这份失败报告——不读 schema、不写任何东西、不跑任何步骤，绝不会返回
+/// [MigrationOutcome.upToDate]。原因：平台后端（Android 原生 SharedPreferences、
+/// Linux/Windows 的实现等）都是「先改自己的内存缓存、再落盘」，写盘失败后缓存里
+/// 仍留着没落盘的值（例如 schema=1），`prefs.reload()` 也读回这份缓存，所以**不能
+/// 靠重新读取来判断迁移有没有成功**。本进程里业务代码就在这份内存视图上运行
+/// （迁移的数据步骤都在写 schema 之前完成，数据本身已经是新格式；读取代码同时
+/// 兼容新旧格式）；下次启动是新进程，重新读磁盘、幂等重跑迁移。
+///
+/// 并发调用共享同一次运行。因此需要「进程内只有一个迁移器实例」才有粘滞效果，
+/// 见 `prepareStorage`。
 class StorageMigrator {
   StorageMigrator({required List<Migration> migrations})
     : migrations = List.unmodifiable(migrations) {
@@ -84,7 +99,23 @@ class StorageMigrator {
 
   int get targetSchema => migrations.isEmpty ? 0 : migrations.last.toVersion;
 
-  Future<MigrationReport> run(SharedPreferences prefs) async {
+  MigrationReport? _failure;
+  Future<MigrationReport>? _running;
+
+  /// 本进程内已记录的失败（没有则为 null）。
+  MigrationReport? get failure => _failure;
+
+  Future<MigrationReport> run(SharedPreferences prefs) {
+    final sticky = _failure;
+    if (sticky != null) return Future.value(sticky);
+    final running = _running;
+    if (running != null) return running;
+    final future = _run(prefs).whenComplete(() => _running = null);
+    _running = future;
+    return future;
+  }
+
+  Future<MigrationReport> _run(SharedPreferences prefs) async {
     final from = readStorageSchema(prefs);
     if (from > targetSchema) {
       debugPrint('[StorageMigrator] 存储版本 $from 高于当前支持的 $targetSchema，不迁移');
@@ -114,14 +145,14 @@ class StorageMigrator {
         }
       }
       if (!ok) {
-        // 真实的 SharedPreferences 先改内存缓存、再写底层：写入返回 false 或抛出时，
-        // 缓存里留着没落盘的值（比如已经是新 schema）。重载使缓存与持久化状态一致，
-        // 之后的读取与重跑都以磁盘上最后确认成功的状态为准。
+        // 尽力让 Dart 侧缓存与存储对齐，但**正确性不依赖它**：见类注释，平台缓存
+        // 可能仍留着没落盘的值。真正的保证是下面的进程内粘滞失败记录。
         await _resync(prefs);
         debugPrint(
-          '[StorageMigrator] 步骤 v${step.toVersion}(${step.name}) 失败，停止；下次启动重试',
+          '[StorageMigrator] 步骤 v${step.toVersion}(${step.name}) 失败，停止；'
+          '本进程内不再重试，下次启动重新迁移',
         );
-        return MigrationReport(
+        return _failure = MigrationReport(
           outcome: MigrationOutcome.failed,
           fromSchema: from,
           toSchema: schema,

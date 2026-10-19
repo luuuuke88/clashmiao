@@ -202,6 +202,28 @@ final class PigeonBridge: BoxHostApi {
         }
     }
 
+    // MARK: - Kernel coordinator protocol (Android only)
+
+    /// 连接生命周期协议只有 Android 原生协调器实现；iOS 在 Dart 侧使用
+    /// `EmulatedKernelPort` 包装旧接口，这些方法不会被调用。
+    func getSnapshot(completion: @escaping (Result<KernelSnapshotMsg, Error>) -> Void) {
+        completion(.failure(PigeonError(code: "unsupported", message: "kernel coordinator is Android-only", details: nil)))
+    }
+
+    func request(
+        req: DesiredRequestMsg,
+        completion: @escaping (Result<ReceiptMsg, Error>) -> Void
+    ) {
+        completion(.failure(PigeonError(code: "unsupported", message: "kernel coordinator is Android-only", details: nil)))
+    }
+
+    func acknowledgeReplay(
+        attempt: Int64,
+        completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        completion(.failure(PigeonError(code: "unsupported", message: "kernel coordinator is Android-only", details: nil)))
+    }
+
     // MARK: - Logs
 
     func clearLogs(completion: @escaping (Result<Void, Error>) -> Void) {

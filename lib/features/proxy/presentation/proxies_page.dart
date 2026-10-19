@@ -617,6 +617,10 @@ class _ProxyTile extends ConsumerWidget {
   /// 对勾占位 18。
   static const double _rowFixedWidth = 36 + 12 + 8 + 8 + 18;
 
+  /// 延迟挪到下一行时，名称列（也是延迟换行的宽度）之外的固定宽度：旗帜区 36
+  /// + 间距 12 + 间距 8 + 对勾占位 18。
+  static const double _stackedFixedWidth = 36 + 12 + 8 + 18;
+
   /// 延迟列留在右侧时，名称至少要保有的行宽比例；不够就把延迟挪到下一行。
   static const double _minNameFraction = 0.4;
 
@@ -675,30 +679,33 @@ class _ProxyTile extends ConsumerWidget {
                     ),
                     child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final latencyLabel = LatencyLabel(
-                          state: latency.state,
-                          ms: latency.ms,
-                        );
-                        // 延迟列按内容宽度排开（数字不折断）。大字号 / 窄屏 /
-                        // 长的本地化文字下，列宽会把名称挤成一条缝：名称放不下
-                        // 行宽的 [_minNameFraction] 时，把延迟挪到协议下面一行
-                        // （允许在词间换行），名称拿回整行宽度。不缩小字号。
-                        final latencyWidth = math.max(
+                        // 布局只按「这套字体 / 缩放 / 语言下所有延迟状态的最大
+                        // 尺寸」定，不按当前结果定：测速从 `—` 变成长数字、超时
+                        // 文字、再回到测量中，名称宽度、行高、后面节点的位置都
+                        // 不变（见 [LatencyLabel.budget]）。
+                        //
+                        // 预算宽度放在右侧会把名称挤到行宽的 [_minNameFraction]
+                        // 以下时（大字号 / 窄屏 / 长的本地化文字），延迟整行挪到
+                        // 协议下面（允许在词间换行），名称拿回整行宽度；两种布局
+                        // 都按预算预留位置。不缩小字号。
+                        final inlineBudget = LatencyLabel.budget(context, t);
+                        final latencySlotWidth = math.max(
                           _latencyColumnMinWidth,
-                          LatencyLabel.measureWidth(
-                            context,
-                            t,
-                            latency.state,
-                            latency.ms,
-                          ),
+                          inlineBudget.width,
                         );
-                        final inlineNameWidth =
-                            constraints.maxWidth -
-                            _rowFixedWidth -
-                            latencyWidth;
                         final stacked =
-                            inlineNameWidth <
+                            constraints.maxWidth -
+                                _rowFixedWidth -
+                                latencySlotWidth <
                             constraints.maxWidth * _minNameFraction;
+                        final stackedBudget = stacked
+                            ? LatencyLabel.budget(
+                                context,
+                                t,
+                                wrapWidth:
+                                    constraints.maxWidth - _stackedFixedWidth,
+                              )
+                            : null;
                         return Row(
                           children: [
                             SizedBox(
@@ -736,13 +743,18 @@ class _ProxyTile extends ConsumerWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
-                                  if (stacked) ...[
+                                  if (stackedBudget != null) ...[
                                     const SizedBox(height: 2),
-                                    LatencyLabel(
-                                      state: latency.state,
-                                      ms: latency.ms,
-                                      textAlign: TextAlign.start,
-                                      wrap: true,
+                                    ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        minHeight: stackedBudget.height,
+                                      ),
+                                      child: LatencyLabel(
+                                        state: latency.state,
+                                        ms: latency.ms,
+                                        textAlign: TextAlign.start,
+                                        wrap: true,
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -751,11 +763,15 @@ class _ProxyTile extends ConsumerWidget {
                             if (!stacked) ...[
                               const SizedBox(width: 8),
                               Container(
-                                constraints: const BoxConstraints(
-                                  minWidth: _latencyColumnMinWidth,
+                                constraints: BoxConstraints(
+                                  minWidth: latencySlotWidth,
+                                  minHeight: inlineBudget.height,
                                 ),
                                 alignment: AlignmentDirectional.centerEnd,
-                                child: latencyLabel,
+                                child: LatencyLabel(
+                                  state: latency.state,
+                                  ms: latency.ms,
+                                ),
                               ),
                             ],
                             const SizedBox(width: 8),

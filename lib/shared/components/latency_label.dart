@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/shared/latency/node_latency.dart';
@@ -42,7 +44,10 @@ class LatencyLabel extends ConsumerWidget {
   /// 下方时传 true：长的本地化文字（如超时）可以在词间换行，而不是溢出。
   final bool wrap;
 
-  /// 标签实际显示的文字（与 [build] 同一份规则），供布局预先量宽度。
+  /// 标签实际显示的文字（与 [build] 同一份规则）。
+  ///
+  /// 未测一律是 `—`（忽略 [ms]）；超时是本地化文字；其余状态有有效数值就显示
+  /// `123ms`，否则 `—`。
   static String displayText(
     Translations t,
     LatencyDisplayState state,
@@ -50,8 +55,11 @@ class LatencyLabel extends ConsumerWidget {
   ) {
     final hasValue = ms != null && ms > 0;
     return switch (state) {
+      LatencyDisplayState.untested => '—',
       LatencyDisplayState.timeout => t.proxies.delayTimeout,
-      _ => hasValue ? '${ms}ms' : '—',
+      LatencyDisplayState.testing ||
+      LatencyDisplayState.success ||
+      LatencyDisplayState.stale => hasValue ? '${ms}ms' : '—',
     };
   }
 
@@ -62,26 +70,69 @@ class LatencyLabel extends ConsumerWidget {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
-  /// 按当前字体、文字缩放与方向，量出标签单行排开的宽度（逻辑像素）。
-  static double measureWidth(
+  /// 布局预算里「最长的合理数字」：测速超时前最多就是几秒，四位毫秒数封顶。
+  static const int budgetMs = 9999;
+
+  static final Map<Object, Size> _budgetCache = {};
+
+  /// 这一套字体、文字缩放、语言下，标签**所有状态**里最大的排版尺寸。
+  ///
+  /// 行布局（延迟放右侧还是挪到下一行、给它留多大的位置）只能按这个预算定，
+  /// 不能按当前结果定：否则测速从 `—` 变成长数字或超时文字时，行会改结构、
+  /// 改高度，把后面的节点整体推上推下。
+  ///
+  /// 量的是每种状态在「无值」与 [budgetMs] 下实际显示的文字（`—`、`9999ms`、
+  /// 本地化超时文字；历史值 / 测量中旧值与成功同样是 `9999ms`）。
+  /// - 宽度：单行排开的最大宽度；
+  /// - 高度：[wrapWidth] 为空时是单行的最大高度；给了 [wrapWidth] 时是按该宽度
+  ///   允许换行（挪到下一行的布局）排开后的最大高度。
+  ///
+  /// 结果按（样式、缩放、方向、各状态文字、换行宽度）缓存，同一屏所有行、
+  /// 每一帧共用一次测量。
+  static Size budget(
     BuildContext context,
-    Translations t,
-    LatencyDisplayState state,
-    int? ms, {
+    Translations t, {
     double fontSize = 13,
+    double? wrapWidth,
   }) {
-    final painter = TextPainter(
-      text: TextSpan(
-        text: displayText(t, state, ms),
-        style: DefaultTextStyle.of(context).style.merge(baseStyle(fontSize)),
-      ),
-      textDirection: Directionality.of(context),
-      textScaler: MediaQuery.textScalerOf(context),
-      maxLines: 1,
-    )..layout();
-    final width = painter.width;
-    painter.dispose();
-    return width;
+    final style = DefaultTextStyle.of(context).style.merge(baseStyle(fontSize));
+    final scaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final texts = <String>{
+      for (final state in LatencyDisplayState.values)
+        for (final ms in const <int?>[null, budgetMs])
+          displayText(t, state, ms),
+    }.toList()..sort();
+    final key = (style, scaler, direction, texts.join('\u0000'), wrapWidth);
+    final cached = _budgetCache[key];
+    if (cached != null) return cached;
+
+    var width = 0.0;
+    var height = 0.0;
+    for (final text in texts) {
+      final single = TextPainter(
+        text: TextSpan(text: text, style: style),
+        textDirection: direction,
+        textScaler: scaler,
+        maxLines: 1,
+      )..layout();
+      width = math.max(width, single.width);
+      if (wrapWidth == null) height = math.max(height, single.height);
+      single.dispose();
+      if (wrapWidth != null) {
+        final wrapped = TextPainter(
+          text: TextSpan(text: text, style: style),
+          textDirection: direction,
+          textScaler: scaler,
+        )..layout(maxWidth: math.max(0, wrapWidth));
+        height = math.max(height, wrapped.height);
+        wrapped.dispose();
+      }
+    }
+    final size = Size(width, height);
+    if (_budgetCache.length >= 64) _budgetCache.clear();
+    _budgetCache[key] = size;
+    return size;
   }
 
   @override

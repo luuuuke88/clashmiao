@@ -58,6 +58,9 @@ class _PresetCoordinator extends LatencyTestCoordinator {
       ) {
     state = preset;
   }
+
+  /// 测试里在同一个宿主内切换协调器状态。
+  void set(LatencyTestState next) => state = next;
 }
 
 OutboundGroup _group(
@@ -89,6 +92,7 @@ Future<_Host> _host({
   Brightness brightness = Brightness.light,
   AppLocale? locale,
   TextDirection? direction,
+  Stream<List<OutboundGroup>>? liveGroups,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn', ...prefsValues});
   final prefs = await SharedPreferences.getInstance();
@@ -103,7 +107,9 @@ Future<_Host> _host({
       if (locale != null)
         translationsProvider.overrideWithValue(locale.build()),
       if (connected)
-        outboundGroupsProvider.overrideWith((_) => Stream.value(groups))
+        outboundGroupsProvider.overrideWith(
+          (_) => liveGroups ?? Stream.value(groups),
+        )
       else
         outboundGroupsProvider.overrideWith((_) => Stream.value(const [])),
       offlineProxyGroupsProvider.overrideWith(
@@ -744,6 +750,133 @@ void main() {
           await _drain(tester);
         },
       );
+    }
+  });
+
+  group('测速状态切换时行不跳动（同一宿主内连续切换）', () {
+    const node = '香港 01 | 一个相当长的节点名称用来换行';
+    const next = 'Singapore 02';
+
+    for (final (width, scale) in [(320.0, 2.0), (390.0, 1.0)]) {
+      for (final direction in TextDirection.values) {
+        testWidgets(
+          '${width.toInt()} dp、$scale×、${direction.name.toUpperCase()}：'
+          '占位 → 长数字 → 超时 → 再次测速保留旧值 → 成功，行高 / 名称 / 下一行位置不变',
+          (tester) async {
+            tester.view.physicalSize = Size(width, 900);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            tester.platformDispatcher.textScaleFactorTestValue = scale;
+            addTearDown(
+              tester.platformDispatcher.clearTextScaleFactorTestValue,
+            );
+
+            final live = StreamController<List<OutboundGroup>>.broadcast();
+            addTearDown(live.close);
+            List<OutboundGroup> groupsWith(int delay) => [
+              _group([_node(node, delay: delay), _node(next)], selected: node),
+            ];
+
+            final host = await _host(
+              connected: true,
+              groups: groupsWith(0),
+              liveGroups: live.stream,
+              preset: const LatencyTestState(),
+              direction: direction,
+            );
+            await tester.pumpWidget(host.widget);
+            live.add(groupsWith(0));
+            await _settle(tester);
+            final coordinator =
+                host.container.read(latencyTestCoordinatorProvider.notifier)
+                    as _PresetCoordinator;
+
+            Future<void> step(int delay, LatencyTestState state) async {
+              coordinator.set(state);
+              live.add(groupsWith(delay));
+              await _settle(tester);
+            }
+
+            final steps =
+                <(String, int, LatencyTestState, LatencyDisplayState, String)>[
+                  (
+                    '占位',
+                    0,
+                    const LatencyTestState(),
+                    LatencyDisplayState.untested,
+                    '—',
+                  ),
+                  (
+                    '长数字',
+                    9999,
+                    const LatencyTestState(),
+                    LatencyDisplayState.success,
+                    '9999ms',
+                  ),
+                  (
+                    '超时',
+                    0,
+                    const LatencyTestState(timedOutNodes: {node}),
+                    LatencyDisplayState.timeout,
+                    '超时',
+                  ),
+                  (
+                    '再次测速保留旧值',
+                    9999,
+                    const LatencyTestState(
+                      testingGroups: {'proxy'},
+                      pendingNodes: {
+                        'proxy': {node},
+                      },
+                    ),
+                    LatencyDisplayState.testing,
+                    '9999ms',
+                  ),
+                  (
+                    '成功',
+                    120,
+                    const LatencyTestState(),
+                    LatencyDisplayState.success,
+                    '120ms',
+                  ),
+                ];
+
+            Rect? tile0;
+            Rect? name0;
+            double? next0;
+            for (final (label, delay, state, expected, text) in steps) {
+              await step(delay, state);
+              expect(tester.takeException(), isNull, reason: '$label：不应溢出');
+              final shown = _labels(tester).first;
+              expect(shown.state, expected, reason: '$label：状态要真的切到');
+              // 名称那一行的延迟文字确实变了（只在这一行里找）。
+              expect(
+                find.descendant(
+                  of: _tileOf(node).first,
+                  matching: find.text(text),
+                ),
+                findsOneWidget,
+                reason: '$label：应显示 $text',
+              );
+
+              final tile = tester.getRect(_tileOf(node).first);
+              final name = tester.getRect(find.text(node));
+              final nextTop = tester.getRect(_tileOf(next).first).top;
+              if (tile0 == null) {
+                tile0 = tile;
+                name0 = name;
+                next0 = nextTop;
+                continue;
+              }
+              expect(tile.height, tile0.height, reason: '$label：行高变了');
+              expect(name, name0, reason: '$label：名称位置 / 宽度变了');
+              expect(nextTop, next0, reason: '$label：下一行被推动了');
+            }
+            await _drain(tester);
+          },
+        );
+      }
     }
   });
 

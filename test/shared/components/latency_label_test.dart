@@ -127,6 +127,54 @@ void main() {
       }
     });
 
+    testWidgets('未测一律显示 —，即使传了数值（显示与语义一致）', (tester) async {
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(_host(LatencyDisplayState.untested, ms: 120));
+      expect(find.text('—'), findsOneWidget);
+      expect(find.text('120ms'), findsNothing);
+      expect(_text(tester).data, '—');
+      expect(find.bySemanticsLabel('延迟: 未测试'), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp('120')), findsNothing);
+      expect(
+        LatencyLabel.displayText(
+          AppLocale.zhCn.build(),
+          LatencyDisplayState.untested,
+          120,
+        ),
+        '—',
+      );
+      handle.dispose();
+    });
+
+    testWidgets('布局预算：不小于任一状态的实际宽度，并按样式 / 缩放 / 语言缓存', (tester) async {
+      await tester.pumpWidget(_host(LatencyDisplayState.untested));
+      final context = tester.element(find.byType(LatencyLabel));
+      for (final locale in AppLocale.values) {
+        final t = locale.build();
+        final budget = LatencyLabel.budget(context, t);
+        for (final text in ['—', '9999ms', '120ms', t.proxies.delayTimeout]) {
+          final painter = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: DefaultTextStyle.of(
+                context,
+              ).style.merge(LatencyLabel.baseStyle(13)),
+            ),
+            textDirection: TextDirection.ltr,
+            textScaler: MediaQuery.textScalerOf(context),
+          )..layout();
+          expect(
+            budget.width,
+            greaterThanOrEqualTo(painter.width - 0.01),
+            reason: '${locale.name} 「$text」超出了预算',
+          );
+          painter.dispose();
+        }
+        // 同一组参数第二次取：直接命中缓存（同一个对象），不再重新测量。
+        expect(identical(LatencyLabel.budget(context, t), budget), isTrue);
+      }
+    });
+
     testWidgets('等宽数字，且不会换行', (tester) async {
       await tester.pumpWidget(_host(LatencyDisplayState.success, ms: 88));
       final text = _text(tester);

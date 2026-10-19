@@ -1,5 +1,6 @@
 // 订阅（Profile）相关的 provider：仓库、订阅列表、当前激活订阅，以及调试用的假数据。
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -8,16 +9,30 @@ import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
 // ============ Profile Providers ============
 
+/// 订阅存储：进程级单例。锁与 in-flight 表都在它身上，所以它不能随
+/// [profileRepositoryProvider]（会因 box service 变化重建）一起重建——
+/// 这里刻意用 `read` 而不是 `watch` 取依赖。启动时先清理上次遗留的暂存文件。
+final profileStoreProvider = FutureProvider<ProfileStore>((ref) async {
+  final prefs = await ref.read(sharedPreferencesProvider.future);
+  final appDir = await getApplicationDocumentsDirectory();
+  final store = ProfileStore(prefs: prefs, configDir: Directory(appDir.path));
+  await store.cleanupResidue();
+  ref.onDispose(() => unawaited(store.dispose()));
+  return store;
+});
+
 final profileRepositoryProvider = FutureProvider<ProfileRepository>((
   ref,
 ) async {
   final prefs = await ref.watch(sharedPreferencesProvider.future);
+  final store = await ref.watch(profileStoreProvider.future);
   final appDir = await getApplicationDocumentsDirectory();
 
   // 核心 bug 修复：此前这里硬编码 `findProxy = (_) => 'DIRECT'`，订阅刷新
@@ -37,8 +52,16 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
     configDir: Directory(appDir.path),
     prefs: prefs,
     boxService: boxService,
+    store: store,
   );
 });
+
+/// 订阅存储每次提交成功后让调用它的 provider 重新计算，
+/// 这样任何入口（刷新、深链、备份恢复……）写入后界面都会跟上。
+void _rebuildOnStoreChange(Ref ref, ProfileStore store) {
+  final sub = store.changes.listen((_) => ref.invalidateSelf());
+  ref.onDispose(sub.cancel);
+}
 
 /// 所有订阅列表
 final profileListProvider = FutureProvider<List<ProfileEntity>>((ref) async {
@@ -60,6 +83,7 @@ final profileListProvider = FutureProvider<List<ProfileEntity>>((ref) async {
   }
 
   final repo = await ref.watch(profileRepositoryProvider.future);
+  _rebuildOnStoreChange(ref, repo.store);
   return repo.getAll();
 });
 
@@ -83,6 +107,7 @@ final activeProfileProvider = FutureProvider<ProfileEntity?>((ref) async {
   }
 
   final repo = await ref.watch(profileRepositoryProvider.future);
+  _rebuildOnStoreChange(ref, repo.store);
   return repo.getActive();
 });
 

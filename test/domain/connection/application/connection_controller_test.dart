@@ -27,6 +27,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../support/profile_store_support.dart';
 import '../../../support/temp_dirs.dart';
 
 /// 判断最近一次推给 native 的 configOptions 是不是"智能分流"模式产出的。
@@ -248,6 +249,13 @@ Future<void> _until(
     await Future<void>.delayed(const Duration(milliseconds: 5));
   }
 }
+
+const _selectionProfile = ProfileEntity(
+  id: 'profile-1',
+  name: 'p1',
+  url: 'https://example.com/p1',
+  active: true,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1195,25 +1203,21 @@ void main() {
     test('有持久化选择时，真正进入 BoxStarted 后逐条重放到 boxService.selectOutbound', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [_selectionProfile]);
       final spy = _SpyBoxService();
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           boxServiceProvider.overrideWithValue(spy),
+          profileStoreProvider.overrideWith((_) => Future.value(store)),
           activeProfileProvider.overrideWith(
-            (_) => Future.value(
-              const ProfileEntity(
-                id: 'profile-1',
-                name: 'p1',
-                url: 'https://example.com/p1',
-                active: true,
-              ),
-            ),
+            (_) => Future.value(_selectionProfile),
           ),
         ],
       );
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
+      await container.read(profileStoreProvider.future);
       await container.read(activeProfileProvider.future);
       await container
           .read(proxySelectionStoreProvider.notifier)
@@ -1236,25 +1240,21 @@ void main() {
     test('没有任何持久化选择时，进入 BoxStarted 不调用 selectOutbound', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [_selectionProfile]);
       final spy = _SpyBoxService();
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           boxServiceProvider.overrideWithValue(spy),
+          profileStoreProvider.overrideWith((_) => Future.value(store)),
           activeProfileProvider.overrideWith(
-            (_) => Future.value(
-              const ProfileEntity(
-                id: 'profile-1',
-                name: 'p1',
-                url: 'https://example.com/p1',
-                active: true,
-              ),
-            ),
+            (_) => Future.value(_selectionProfile),
           ),
         ],
       );
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
+      await container.read(profileStoreProvider.future);
       await container.read(activeProfileProvider.future);
       container.read(connectionControllerProvider.notifier);
 
@@ -1271,29 +1271,25 @@ void main() {
     test('某个 group 的持久化选择重放失败，不影响其它 group 继续重放', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [_selectionProfile]);
       final spy = _SpyBoxService()..selectOutboundFailFor.add('stale-group');
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           boxServiceProvider.overrideWithValue(spy),
+          profileStoreProvider.overrideWith((_) => Future.value(store)),
           activeProfileProvider.overrideWith(
-            (_) => Future.value(
-              const ProfileEntity(
-                id: 'profile-1',
-                name: 'p1',
-                url: 'https://example.com/p1',
-                active: true,
-              ),
-            ),
+            (_) => Future.value(_selectionProfile),
           ),
         ],
       );
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
+      await container.read(profileStoreProvider.future);
       await container.read(activeProfileProvider.future);
-      final store = container.read(proxySelectionStoreProvider.notifier);
-      await store.persist('stale-group', 'gone-tag');
-      await store.persist('proxy', 'JP-Reality-Stable');
+      final selections = container.read(proxySelectionStoreProvider.notifier);
+      await selections.persist('stale-group', 'gone-tag');
+      await selections.persist('proxy', 'JP-Reality-Stable');
       container.read(connectionControllerProvider.notifier);
 
       spy.statusStreamController.add(const BoxStarted());
@@ -1309,25 +1305,21 @@ void main() {
     test('同一次连接内重复推送 BoxStarted → 不重复重放（wasStarted 守卫）', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [_selectionProfile]);
       final spy = _SpyBoxService();
       final container = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           boxServiceProvider.overrideWithValue(spy),
+          profileStoreProvider.overrideWith((_) => Future.value(store)),
           activeProfileProvider.overrideWith(
-            (_) => Future.value(
-              const ProfileEntity(
-                id: 'profile-1',
-                name: 'p1',
-                url: 'https://example.com/p1',
-                active: true,
-              ),
-            ),
+            (_) => Future.value(_selectionProfile),
           ),
         ],
       );
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
+      await container.read(profileStoreProvider.future);
       await container.read(activeProfileProvider.future);
       await container
           .read(proxySelectionStoreProvider.notifier)

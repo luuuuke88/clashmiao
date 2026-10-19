@@ -373,7 +373,8 @@
       "coreLibraryMissing": "Pustaka Inti Belum Terpasang",
       "startTimeout": "Waktu Mulai Layanan Habis",
       "kernelUnresponsive": "Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.",
-      "kernelExited": "Inti berhenti secara tak terduga"
+      "kernelExited": "Inti berhenti secara tak terduga",
+      "runtimeFilesFull": "Terlalu banyak berkas konfigurasi sisa. Mulai ulang aplikasi lalu coba lagi"
     },
     "connectivity": {
       "unexpected": "Kegagalan tidak terduga",

@@ -12,6 +12,9 @@
 // 值、存储却是新值。所以重试前先确认自己仍是最新意图，否则丢弃——存储里的
 // 才是用户最后的选择，重放总是读最新存储。
 //
+// 订阅也是代际的一部分：重试前还要确认激活订阅仍是发起选择时的那一个——
+// 两份订阅可能有同名的组与节点，旧订阅的选择不能落到新订阅的内核实例上。
+//
 // 为什么 stale 不回滚：stale 表示内核已经换了新 attempt（例如网络切换触发
 // 了重载）。新 attempt 的重放会按存储值重放这次选择，回滚反而会丢掉用户意图。
 
@@ -38,8 +41,8 @@ final class SelectionDeferred extends SelectionResult {
   const SelectionDeferred();
 }
 
-/// 在等待内核期间用户又对同一个组做了新的选择；这次选择已被更新的意图取代，
-/// 不再向内核重试（存储里是更新的值）。
+/// 在等待内核期间用户又对同一个组做了新的选择，或切换了激活订阅；这次选择已被
+/// 取代，不再向内核重试（存储里是更新的值 / 它属于已不再激活的订阅）。
 final class SelectionSuperseded extends SelectionResult {
   const SelectionSuperseded();
 }
@@ -67,7 +70,7 @@ class ProxySelectionService {
     String outboundTag, {
     int? expectedAttempt,
   }) async {
-    final profileId = _ref.read(activeProfileProvider).valueOrNull?.id;
+    final profileId = _activeProfileId();
     final key = (profileId, groupTag);
     final gen = (_intent[key] ?? 0) + 1;
     _intent[key] = gen;
@@ -85,8 +88,11 @@ class ProxySelectionService {
       // 仍在运行就用它再试一次。
       try {
         final snap = await port.current();
-        // 等待期间用户有了新选择：不再用旧选择重试。
-        if (!isLatest()) return const SelectionSuperseded();
+        // 等待期间用户有了新选择，或者切换了激活订阅：旧选择属于旧订阅，不能再
+        // 对内核（现在属于新订阅的 attempt）重试，终止旧的内核操作。
+        if (!isLatest() || _activeProfileId() != profileId) {
+          return const SelectionSuperseded();
+        }
         if (snap.status == KernelStatus.started &&
             snap.attempt != expectedAttempt) {
           outcome = await _select(port, groupTag, outboundTag, snap.attempt);
@@ -111,6 +117,9 @@ class ProxySelectionService {
         return SelectionFailed(code, message);
     }
   }
+
+  String? _activeProfileId() =>
+      _ref.read(activeProfileProvider).valueOrNull?.id;
 
   Future<SelectOutcome> _select(
     KernelPort port,

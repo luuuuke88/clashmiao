@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:fake_async/fake_async.dart';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
@@ -399,68 +401,121 @@ void main() {
       expect(calls, ['disconnect', 'disconnect', 'disconnect', 'disposeTray']);
     });
 
-    test('superseded 超过三次也继续等最新的断开：第 5 次才成功，不能在第 3 次就带着可能在跑的内核退出', () async {
-      var n = 0;
-      final calls = <String>[];
-      await performShutdownCleanup(
-        disconnect: () async {
-          n++;
-          return n < 5 ? const RequestSuperseded() : const RequestSucceeded();
-        },
-        disposeTray: () async => calls.add('disposeTray'),
-      );
-      expect(n, 5);
-      expect(calls, ['disposeTray']);
+    // 以下用 fake_async 精确控制时间：总期限 5 s（kQuitCleanupDeadline），其中
+    // 停内核最多用到 4.5 s（预留 500 ms 给托盘），托盘用到 5 s 为止。
+    const reserveStart = Duration(milliseconds: 4500);
+    const total = Duration(seconds: 5);
+
+    /// 在 fake_async 里启动一次退出清理；返回完成时刻（未完成为 null）的查询。
+    Duration? Function() startQuit(
+      FakeAsync fa, {
+      required Future<RequestOutcome> Function() disconnect,
+      required Future<void> Function() disposeTray,
+    }) {
+      Duration? doneAt;
+      performShutdownCleanup(
+        disconnect: disconnect,
+        disposeTray: disposeTray,
+      ).then((_) => doneAt = fa.elapsed);
+      fa.flushMicrotasks();
+      return () => doneAt;
+    }
+
+    test('superseded 超过三次也继续等最新的断开：第 5 次才成功，不能在第 3 次就带着可能在跑的内核退出', () {
+      fakeAsync((fa) {
+        var n = 0;
+        final calls = <String>[];
+        final doneAt = startQuit(
+          fa,
+          disconnect: () async {
+            n++;
+            return n < 5 ? const RequestSuperseded() : const RequestSucceeded();
+          },
+          disposeTray: () async => calls.add('disposeTray'),
+        );
+        fa.elapse(const Duration(seconds: 1));
+        expect(n, 5);
+        expect(calls, ['disposeTray']);
+        expect(doneAt(), isNotNull);
+        expect(doneAt()! < const Duration(seconds: 1), isTrue);
+      });
     });
 
-    test('一直 superseded：到总期限为止持续重发，期限用尽后照常清托盘并返回', () async {
-      var n = 0;
-      final calls = <String>[];
-      final sw = Stopwatch()..start();
-      await performShutdownCleanup(
-        deadline: const Duration(milliseconds: 300),
-        disconnect: () async {
-          n++;
-          return const RequestSuperseded();
-        },
-        disposeTray: () async => calls.add('disposeTray'),
-      );
-      expect(n, greaterThan(3), reason: '期限内持续重发，而不是三轮封顶');
-      expect(calls, ['disposeTray']);
-      expect(sw.elapsed, lessThan(const Duration(seconds: 3)));
+    test('一直 superseded：持续重发到停内核预算（4.5 s）用尽；之后不再提交任何请求，托盘照常清理', () {
+      fakeAsync((fa) {
+        var n = 0;
+        final calls = <String>[];
+        final doneAt = startQuit(
+          fa,
+          disconnect: () async {
+            n++;
+            return const RequestSuperseded();
+          },
+          disposeTray: () async => calls.add('disposeTray'),
+        );
+
+        fa.elapse(reserveStart - const Duration(milliseconds: 1));
+        expect(doneAt(), isNull, reason: '预算用尽之前仍在重发');
+        expect(n, greaterThan(100), reason: '期限内持续重发（每轮间隔 20 ms），不是三轮封顶');
+
+        fa.elapse(const Duration(milliseconds: 1));
+        expect(doneAt(), reserveStart, reason: '预算用尽的那一刻放弃并清托盘');
+        expect(calls, ['disposeTray']);
+
+        final submitted = n;
+        fa.elapse(const Duration(seconds: 30));
+        expect(n, submitted, reason: '期限之后不再提交任何断开请求');
+      });
     });
 
-    test('断开悬停（Completer 不放行）：到期限放弃等待，仍清托盘退出；放弃后迟到的结果不再重发', () async {
-      final gate = Completer<RequestOutcome>();
-      var n = 0;
-      final calls = <String>[];
-      await performShutdownCleanup(
-        deadline: const Duration(milliseconds: 200),
-        disconnect: () {
-          n++;
-          return gate.future;
-        },
-        disposeTray: () async => calls.add('disposeTray'),
-      );
-      expect(n, 1);
-      expect(calls, ['disposeTray']);
+    test('断开与清托盘都悬停：整个流程恰在总期限 5 s 结束，托盘只拿到剩下的预算', () {
+      fakeAsync((fa) {
+        final disconnectGate = Completer<RequestOutcome>();
+        final trayGate = Completer<void>();
+        Duration? trayStartedAt;
+        var disconnects = 0;
+        final doneAt = startQuit(
+          fa,
+          disconnect: () {
+            disconnects++;
+            return disconnectGate.future;
+          },
+          disposeTray: () {
+            trayStartedAt = fa.elapsed;
+            return trayGate.future;
+          },
+        );
 
-      // 期限已过、退出清理已完成；迟到的 superseded 不能再触发新一轮断开。
-      gate.complete(const RequestSuperseded());
-      await pumpEventQueue();
-      await Future<void>.delayed(kQuitResubmitGap * 3);
-      expect(n, 1);
+        fa.elapse(reserveStart - const Duration(milliseconds: 1));
+        expect(trayStartedAt, isNull);
+        fa.elapse(const Duration(milliseconds: 1));
+        expect(trayStartedAt, reserveStart, reason: '停内核预算用尽，托盘开始');
+
+        fa.elapse(const Duration(milliseconds: 499));
+        expect(doneAt(), isNull, reason: '4.999 s 还没到总期限');
+        fa.elapse(const Duration(milliseconds: 1));
+        expect(doneAt(), total, reason: '总期限到点即结束，没有额外宽限');
+
+        // 放弃之后迟到的 superseded 不再触发新一轮断开。
+        disconnectGate.complete(const RequestSuperseded());
+        fa.elapse(const Duration(seconds: 10));
+        expect(disconnects, 1);
+      });
     });
 
-    test('清托盘卡住：也受总期限约束，不会把退出挂住', () async {
-      final hang = Completer<void>();
-      final sw = Stopwatch()..start();
-      await performShutdownCleanup(
-        deadline: const Duration(milliseconds: 200),
-        disconnect: () async => const RequestSucceeded(),
-        disposeTray: () => hang.future,
-      );
-      expect(sw.elapsed, lessThan(const Duration(seconds: 3)));
+    test('停内核提前完成、清托盘悬停：托盘用满剩余预算，仍恰在 5 s 结束', () {
+      fakeAsync((fa) {
+        final trayGate = Completer<void>();
+        final doneAt = startQuit(
+          fa,
+          disconnect: () async => const RequestSucceeded(),
+          disposeTray: () => trayGate.future,
+        );
+        fa.elapse(const Duration(milliseconds: 4999));
+        expect(doneAt(), isNull);
+        fa.elapse(const Duration(milliseconds: 1));
+        expect(doneAt(), total);
+      });
     });
 
     test('failed / interrupted：不重试（也不清标记——标记归控制器管），照常清理托盘退出', () async {

@@ -1243,6 +1243,57 @@ void main() {
     );
 
     _sim(
+      '新 on 的 mark 已排队、旧 off 的 stopped 快照才到达：旧清理作废，新标记全程保留',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.kernelStarted(e.requests.single);
+        expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+        final store = e.dirtyStore!;
+
+        // 用户断开：off 已发出，内核尚未停下。
+        final off = e.track(e.ctl.disconnect());
+        final offReq = e.requests.last;
+        expect(offReq.desired, Desired.off);
+
+        // 立刻又点了连接：新的 on 要先落标记，而标记的持久化悬停（已排队）。
+        final markGate = Completer<void>();
+        store.markGate = markGate;
+        e.ctl.connect();
+        e.settle();
+        expect(store.log.last, 'mark:start', reason: '新 on 的 mark 已排队 / 开始');
+        expect(
+          e.requests.where((r) => r.desired == Desired.on),
+          hasLength(1),
+          reason: '新 on 要等标记落盘才发送',
+        );
+
+        // 这时旧 off 的 stopped 快照才到达：它属于旧断开，清标记必须作废。
+        e.kernelStopped(offReq);
+        markGate.complete();
+        e.settle();
+
+        expect(off.single, const RequestSucceeded(), reason: '旧断开本身确实成功了');
+        expect(
+          store.log.where((l) => l.startsWith('clear')),
+          isEmpty,
+          reason: '旧 off 的清理被新 on 的意图作废，根本没有执行',
+        );
+        expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+
+        // 新 on 发出，连接成功：标记仍在。
+        final on2 = e.requests.last;
+        expect(on2.desired, Desired.on);
+        e.kernelStarted(on2, attempt: 2);
+        expect(e.phase, ConnectionPhase.connected);
+        expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+      },
+      desktop: true,
+      gateDirty: true,
+    );
+
+    _sim(
       '清标记只有一个入口：同一次断开不会重复清（效果清理之后 disconnect 收尾不再清第二次）',
       (e) {
         e.push();

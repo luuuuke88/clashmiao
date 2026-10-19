@@ -176,13 +176,15 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 请求前要等它排空，保证标记先落盘。
   Future<void> _dirtyChain = Future<void>.value();
 
-  /// 脏标记代际：每次**决定**置标记（发送 on 请求的那一刻）+1。清理在决定时
-  /// 记下当时的代际，执行时若代际已前进（期间有新连接置了标记）就放弃——
-  /// 迟到的旧断开不能清掉新连接的标记。
-  int _markGen = 0;
+  /// 「连接意图」代际：每提交一个 on 意图 +1（发送之前就算，不等标记落盘）。
+  int _onGen = 0;
 
-  /// 已经为哪一代标记安排过清理：同一代只清一次（效果清理与 `disconnect`
-  /// 收尾共用同一个入口，后到的那次直接并入）。
+  /// 最近一个断开意图提交时的 [_onGen]：这次断开产生的清标记归它所有。之后若
+  /// 又有新的 on 意图，代际前进，旧的清标记作废——哪怕新 on 的 mark 还没排上队。
+  int _lastOffOnGen = 0;
+
+  /// 已经为哪一代安排过清理：同一代只清一次（效果清理与 `disconnect` 收尾共用
+  /// 同一个入口，后到的那次直接并入）。
   int _clearedForGen = -1;
 
   ConnectionLauncher get _launcher => _ref.read(connectionLauncherProvider);
@@ -198,7 +200,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   Future<RequestOutcome> disconnect() async {
     // 这次断开「看到的」脏标记代际：清标记只对它有效，之后若有新的连接置了
     // 标记，迟到的清理必须让位（见 [_clearSystemProxyDirty]）。
-    final gen = _markGen;
+    final gen = _onGen;
     final outcome = await _submit(Desired.off, RequestReason.userDisconnect);
     if (outcome is RequestSucceeded) await _clearSystemProxyDirty(gen);
     return outcome;
@@ -256,6 +258,11 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
 
   Future<RequestOutcome> _submit(Desired desired, RequestReason reason) {
     final id = ++_nextId;
+    if (desired == Desired.on) {
+      _onGen++;
+    } else {
+      _lastOffOnGen = _onGen;
+    }
     final completer = Completer<RequestOutcome>();
     _completers[id] = completer;
     _lastIntent = desired;
@@ -386,6 +393,16 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   }
 
   Future<void> _send(int id, DesiredRequest request) async {
+    try {
+      await _sendRequest(id, request);
+    } finally {
+      // 发送路径（含回执处理）走完：发送元数据（绑定 seq 时内核的 attempt）才可
+      // 以丢弃。意图可能早已因快照先到而终结，那不是丢弃它的理由。
+      if (mounted) _launcher.sendFinished(id);
+    }
+  }
+
+  Future<void> _sendRequest(int id, DesiredRequest request) async {
     // 先等系统代理脏标记落盘：一旦请求启动，内核就可能已经改了系统代理。
     // （循环：等待期间排进来的新操作也要一并等完。）
     Future<void> tail;
@@ -453,7 +470,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         case SideEffectKind.markSystemProxyDirty:
           await _markSystemProxyDirty();
         case SideEffectKind.clearSystemProxyDirty:
-          await _clearSystemProxyDirty(_markGen);
+          await _clearSystemProxyDirty(_lastOffOnGen);
         case SideEffectKind.reportFailure:
           if (_shouldReportAnalytics() && effect.failure != null) {
             _ref.read(fatalFailureReporterProvider)(effect.failure!);
@@ -524,9 +541,8 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 移动端不设系统代理（走 TUN），桌面端才看用户开关。多标的代价是下次启动
   /// 多跑几条只读命令，漏标则是真残留没人清。
   ///
-  /// 「决定置标记」这一刻同步推进代际，写入则排进串行队列。
+  /// 写入排进串行队列。
   Future<void> _markSystemProxyDirty() {
-    _markGen++;
     if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
     if (!_ref.read(networkSettingsProvider).setSystemProxy) {
       return Future<void>.value();
@@ -541,14 +557,15 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   }
 
   /// 清除脏标记的**唯一入口**。只在内核确认已停止之后调用——那时 sing-box 已经
-  /// 走完 listener 的 Close、还原了系统代理。[decidedGen] 是决定清理时的脏标记
-  /// 代际；执行时代际已前进说明其间有新连接置了标记，这次清理作废。
+  /// 走完 listener 的 Close、还原了系统代理。[decidedGen] 是产生这次清理的断开
+  /// 意图提交时的连接意图代际；执行时代际已前进说明之后又有了新的连接意图，
+  /// 这次清理属于旧断开，作废。
   Future<void> _clearSystemProxyDirty(int decidedGen) {
     if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
     if (_clearedForGen == decidedGen) return _dirtyChain;
     _clearedForGen = decidedGen;
     return _enqueueDirty(() async {
-      if (decidedGen != _markGen) return;
+      if (decidedGen != _onGen) return;
       try {
         await _ref.read(systemProxyDirtyStoreProvider).clear();
       } catch (e) {

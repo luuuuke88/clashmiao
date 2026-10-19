@@ -43,6 +43,8 @@ lib/
 | `app` | 全部 |
 | `main.dart` | 全部 |
 
+`app` 与 `main.dart` 只豁免上表的**依赖方向**；相对 URI 的规范性检查对所有文件一视同仁，`app/` 与 `main.dart` 也不例外。
+
 **domain 概念的固定顺序**（从低到高）：`config` → `profile` → `routing` → `connection`。高的可以依赖低的，反之不行。这是按真实依赖推出来的：订阅仓库要读代理端口（profile → config），节点选择按订阅 id 存（routing → profile），连接状态机要组装订阅、路由和配置（connection → 全部）。用固定顺序而不是「不成环」，是因为它更好懂，也能挡住「两个概念互相引用一次」这种还没成环但已经开始缠绕的情况。新增概念必须先在 `kDomainOrder` 登记位置。
 
 四个 domain 概念的内容：
@@ -59,7 +61,7 @@ lib/
 - **模型纯净（按传递闭包检查）**：从 `domain/*/model/**` 出发，沿项目内 import / export 走到的所有文件（含自身）都不得引用 `package:flutter/*`、Riverpod 系列包、`dart:io`、`dart:ui`，也不得到达任何 `domain/*/data` 或 `domain/*/application`。只查直接 import 会放行「模型 → 工具函数 → 翻译 → Flutter」这种间接依赖。
 - **只用 package 导入**：`analysis_options.yaml` 启用了官方 lint `always_use_package_imports`，`flutter analyze --fatal-warnings` 会拦相对导入。
 - **功能之间不互相引用**，唯一的口子是白名单（见下）。
-- **没有转发用的 barrel 文件**：barrel 会把真实依赖藏起来，架构测试就看不见了。
+- **没有转发用的 barrel 文件**：barrel 会增加一层间接依赖、让依赖归属更难追踪，所以直接导入定义所在的文件。
 
 ### 架构测试
 
@@ -68,8 +70,8 @@ lib/
 | 文件 | 作用 |
 |---|---|
 | `layering_test.dart` | 对真实的 `lib/` 跑全部规则 |
-| `layering_rules.dart` | 规则判定（层间依赖、domain 顺序、模型纯净、白名单合法性与过期条目），`kDomainOrder` 在这里 |
-| `import_scanner.dart` | 用官方 `analyzer` 解析器提取 `import` / `export` / 条件导入 / `part` 的 URI，不用正则 |
+| `layering_rules.dart` | 规则判定：层间依赖、domain 顺序（`kDomainOrder`）、模型纯净、非规范相对 URI（`checkLayering` / `checkModelPurity`），以及白名单的过期条目（`staleEntries`）与合法性、上限（`checkAllowlist`） |
+| `import_scanner.dart` | 用官方 `analyzer` 解析器提取 `import` / `export` 指令的 URI（含条件导入的每个分支），不用正则；`part` / `part of` 不产生依赖边，不提取。`projectPath` 把 URI 还原成 `lib/` 内路径，`nonCanonicalRelativeUriReason` 判定相对 URI 是否规范 |
 | `allowlist.dart` | 功能之间依赖的白名单与上限 |
 | `*_test.dart`（扫描器、规则） | 检查器自测：用合成源码覆盖正反用例，保证检查器真的会报错，不是永远绿 |
 
@@ -80,6 +82,7 @@ lib/
 3. **模型纯净违规**：报错里带有最短的传递链，沿链找到把 Flutter / Riverpod / `dart:io` 带进模型的那个文件，把那部分挪出 `model/`。
 4. **「白名单条目对应的依赖已经消除」**：依赖已经没了，把那几条从 `allowlist.dart` 删掉即可（见下面的棘轮）。
 5. **提示不在任何一层里**：文件放错了位置，按下面「新文件归属」归位。
+6. **「非规范相对 URI」**：`import` / `export`（含条件导入分支）里写了含反斜杠、百分号转义、空段或越出 `lib/` 的相对路径，检查器无法可靠还原依赖边，一律按违规处理（失败即关闭）。改成 `package:clashmiao/...` 导入。
 
 ### 白名单：只减不增
 
@@ -108,7 +111,9 @@ lib/
 |------|------|
 | Android / iOS | `PlatformBoxService` — Pigeon 强类型调用 + EventChannel 推送流 |
 | macOS / Linux / Windows | `FFIBoxService` — 直接 `DynamicLibrary.open` 加载 `libcore`，dart:ffi 调 Go 导出符号 |
-| 桌面端加载失败 / 其他平台 | `StubBoxService` — 占位实现，操作返回空数据，避免 UI 崩；桌面端加载失败时带 `StubReason.coreLoadFailed`，首页据此告警 |
+| 其他平台（或工厂里 `FFIBoxService()` 构造抛异常） | `StubBoxService` — 占位实现，操作返回空数据，避免 UI 崩；构造抛异常时带 `StubReason.coreLoadFailed` |
+
+桌面端加载 libcore 并不发生在构造时，而发生在稍后的 `FFIBoxService.init()`（`_loadLibrary()`）。`main.dart` 在 `init()` 失败时只打一行日志（`sing-box 初始化失败`），`boxService` 仍是 `FFIBoxService` 实例，并不会被换成 `StubBoxService`；因此首页读 `coreLibraryMissingProvider` 的「核心库缺失」告警目前不会因为动态库加载失败而触发（见「已知技术债」）。
 
 接口方法：`init` / `setup` / `validateConfig` / `changeConfigOptions` / `start` / `stop` / `restart` / `selectOutbound` / `urlTest` / `generateFullConfig` / `generateWarpConfig` / `clearLogs` / `resetTunnel`，以及监听流 `watchStatus` / `watchAlerts` / `watchStats` / `watchGroups` / `watchLogs` / `watchNetworkChanged`。持有需要显式释放资源的实现（目前是 `FFIBoxService`）额外实现 `DisposableBoxService`。
 
@@ -123,19 +128,19 @@ lib/
 | Channel | 内容 |
 |---------|------|
 | `/service.status` | 内核状态（`Started` / `Starting` / `Stopping` / `Stopped`） |
-| `/service.alerts` | 非致命错误（VPN 权限缺失、配置为空、启动失败等） |
+| `/service.alerts` | 内核 / VPN 层的告警（VPN 权限缺失、配置为空、启动失败等）。`isFatal` 的告警由 `ShellPage` 弹阻断式对话框，其余告警弹 toast |
 | `/stats` | 上下行速率、累计流量与连接数 |
 | `/groups` | 代理组列表（JSON 字符串） |
 | `/service.logs` | 核心日志 |
 | `/network` | 默认网络切换事件（仅 Android 原生侧有实现） |
 
-原生侧推送的状态名是 PascalCase（`Started`），`_parseStatus` 做 `toLowerCase()` 后再匹配。同一条流在 Dart 侧缓存一份、不重复 `receiveBroadcastStream()`：同一时刻 EventChannel 只服务一个活跃的平台订阅，重复新建会把先前的订阅静默顶掉。
+原生侧推送的状态名是 PascalCase（`Started`），`_parseStatus` 做 `toLowerCase()` 后再匹配。`watchStatus`（共享的 `ValueStream`）、`watchAlerts`、`watchStats`、`watchGroups`、`watchNetworkChanged` 在 Dart 侧各缓存一份流、不重复 `receiveBroadcastStream()`：同一时刻 EventChannel 只服务一个活跃的平台订阅，重复新建会把先前的订阅静默顶掉。**`watchLogs()` 例外**：它每次调用都新建一个 `receiveBroadcastStream()`，没有缓存，所以同时存在多个日志订阅者时，后订阅的会把先前的顶掉；目前只有日志页一处订阅（`boxLogStreamProvider`）。
 
 **3. 裸 MethodChannel（少数没走 Pigeon 的原生能力）**：
 
 | Channel | 用途 |
 |---------|------|
-| `com.clashmiao.app/method` | 只剩 `generate_warp_config`（WARP 账号注册） |
+| `com.clashmiao.app/method` | Dart 当前只用它调 `generate_warp_config`（WARP 账号注册）；Android 原生侧同样只保留这一个方法，iOS 原生侧（`ChannelMethodHandler.swift`）仍注册着 setup / start / stop 等旧方法，Dart 不再调用 |
 | `com.clashmiao.app/platform` | 电池优化豁免查询与申请（仅 Android，`BatteryOptimizationService`） |
 | `com.clashmiao/auto_start` | macOS 开机启动（`auto_start_notifier.dart`） |
 
@@ -232,7 +237,7 @@ ios/
 ### Flutter 端关键 provider
 
 - `boxStatusProvider`（StreamProvider<BoxStatus>）— 全局连接状态，UI 都 watch 它（`lib/core/box_service/box_providers.dart`）
-- `boxAlertsProvider`（StreamProvider<BoxAlert>）— 错误流，`ShellPage` 用 `ref.listen` 弹阻断式弹窗（`lib/app/shell_page.dart`）
+- `boxAlertsProvider`（StreamProvider<BoxAlert>）— 告警流，`ShellPage` 用 `ref.listen`：fatal 告警弹阻断式对话框，其余告警弹 toast（`lib/app/shell_page.dart`）
 - `boxStatsProvider`、`outboundGroupsProvider` — 只在已连接时才订阅，避免无谓 IPC
 - `connectionControllerProvider`（`lib/domain/connection/application/connection_controller.dart`）— 连接状态机：连接 / 断开 / 重连，网络设置变更后防抖自动重连
 - `proxyModeProvider` — 智能 / 全局模式持久化（`lib/domain/routing/application/proxy_mode_notifier.dart`，默认 1 = 智能）
@@ -273,6 +278,7 @@ final setSystemProxyFinal = (isMobile || isSmoke) ? false : s.setSystemProxy;  /
 
 - `*.g.dart` / `*.freezed.dart` 提交进了 git（避免 fresh clone 跑 build_runner）。CI 接入后应该改回 ignore + CI 生成。
 - `core/build.sh` 不是发布用 libcore 的来源（见「内核版本」）。libcore 二进制目前由外部构建后挂到 GitHub Release tag，CI / release flow 已通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 libcore tag，并让 tag 名反映真实内核版本。
+- 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
 - iOS 原生侧没有实现 `/network` EventChannel（`ios/Runner/Handlers/` 里只有 status / alerts / stats / groups / logs 五条），Dart 侧 `watchNetworkChanged` 在 iOS 上收不到事件。
 - 原生层测试很薄：Android 只有 5 个纯逻辑的 JVM 单测（`android/app/src/test/`，CI 的 `test-android-unit` 跑：常量、日志缓冲、权限 gate、AIDL 解码），iOS 只有 Xcode 模板自带的占位测试；各条 EventChannel 的推送与解析主要靠真机连接验证。

@@ -11,9 +11,9 @@ class AppDelegate: FlutterAppDelegate {
 
   // 特意**不**重写 applicationShouldTerminate：引擎的 FlutterAppDelegate 已经
   // 实现了它，会发 `System.requestAppExit` 交给 Dart 侧的
-  // AppLifecycleListener.onExitRequested 处理（见 lib/core/window/
-  // desktop_exit_guard.dart）。在这里重写等于把框架那条通路遮蔽掉，还得自己
-  // 写一遍异步回复和超时，而且只覆盖 macOS 一个平台。
+  // AppLifecycleListener.onExitRequested 处理（见 lib/app/window/desktop_exit_guard.dart）。
+  // 在这里重写等于把框架那条通路遮蔽掉，还得自己写一遍异步回复和超时，
+  // 而且只覆盖 macOS 一个平台。
 
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     return true

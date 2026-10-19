@@ -648,49 +648,88 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 记录（先写后删）→ 只重放运行时存在的分组 → 确认。每一步都核对归属，过期
   /// 即丢弃。出口探测在确认之后才开始。
   ///
-  /// 流水线因激活订阅变化被丢弃（[ReplayPipelineOutcome.droppedOwnerChanged]）
-  /// 而这个实例仍待重放时，记为欠账，由 [_maybeRescheduleReplay] 在订阅切换
-  /// 引发的请求终结后按新归属重新调度——切到运行时配置相同的订阅不会产生新
-  /// attempt，不重新调度的话 `replayPending` 会一直挂着、出口探测永远不开始。
+  /// 内核实例上的手选必须与**当前**激活订阅一致。流水线确认后记下「这个实例
+  /// 已按哪个归属 (profileId, inc) 应用过」（[_applied]）；之后归属变了而实例
+  /// 没变（切到运行时配置 revision 相同的订阅不会产生新 attempt；无论重放是
+  /// 否已确认），由 [_maybeRescheduleReplay] 按新归属对同一 epoch/attempt 重跑
+  /// 一遍（确认是幂等的：同一 attempt 再确认一次是无操作，见
+  /// `KernelPort.acknowledgeReplay`）。归属变化同时带来新 attempt 时只由新
+  /// attempt 自己的重放处理一次。
   Future<void> _replaySelections(String epoch, int attempt) async {
     if (!mounted) return;
     final key = (epoch: epoch, attempt: attempt);
     if (_replayRunning == key) return;
     _replayRunning = key;
-    ReplayPipelineOutcome? outcome;
+    final pipeline = SelectionReplayPipeline(
+      ref: _ref,
+      port: _port,
+      isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
+      // 配置变更暂停期间（备份恢复）激活订阅随时可能再变：不按任何订阅重放、
+      // 确认，记成欠账，释放后再按最终归属评估。
+      ownerUnsettled: () => _configPauses > 0,
+      groupsWait: _ref.read(replayGroupsWaitProvider),
+    );
+    final ReplayPipelineOutcome outcome;
     try {
-      outcome = await SelectionReplayPipeline(
-        ref: _ref,
-        port: _port,
-        isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
-        // 配置变更暂停期间（备份恢复）激活订阅随时可能再变：不按任何订阅重放、
-        // 确认，记成欠账，释放后再按最终归属评估。
-        ownerUnsettled: () => _configPauses > 0,
-        groupsWait: _ref.read(replayGroupsWaitProvider),
-      ).run(epoch, attempt);
+      outcome = await pipeline.run(epoch, attempt);
       debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
     } finally {
       if (_replayRunning == key) _replayRunning = null;
     }
     if (!mounted) return;
-    if (outcome == ReplayPipelineOutcome.droppedOwnerChanged ||
-        outcome == ReplayPipelineOutcome.deferred) {
-      _replayOwed = key;
-    } else if (_replayOwed == key) {
-      _replayOwed = null;
+    switch (outcome) {
+      case ReplayPipelineOutcome.acknowledged ||
+          ReplayPipelineOutcome.acknowledgedWithoutGroups:
+        final owner = pipeline.owner;
+        if (owner != null) _applied = owner;
+      case ReplayPipelineOutcome.droppedOwnerChanged ||
+          ReplayPipelineOutcome.deferred:
+        _replayOwed = key;
+      case ReplayPipelineOutcome.dropped:
+        break;
     }
     _maybeRescheduleReplay();
   }
 
-  /// 因订阅切换被丢弃、等待按新归属重新调度的实例。
+  /// 激活订阅的归属 (id, inc) 变了（由 [connectionControllerProvider] 的监听器
+  /// 在处理完 [onActiveProfileChanged] 之后调用——那里可能已经发出重新应用）：
+  /// 内核正在运行就记为欠账，交给 [_maybeRescheduleReplay] 决定是否按新归属
+  /// 重放这个实例。
+  void onActiveOwnerChanged() {
+    if (!mounted) return;
+    final s = _mstate.snapshot;
+    if (s == null || s.status != KernelStatus.started) return;
+    _replayOwed = (epoch: s.epoch, attempt: s.attempt);
+    _maybeRescheduleReplay();
+  }
+
+  /// 可能需要（重新）按当前归属重放的实例：流水线因订阅切换被丢弃 / 因配置
+  /// 暂停而延后，或者确认之后归属又变了。
   ({String epoch, int attempt})? _replayOwed;
 
   /// 正在跑流水线的实例（同一实例不并发跑两条）。
   ({String epoch, int attempt})? _replayRunning;
 
-  /// 欠账的实例若仍是当前实例、仍待重放，且没有未终结的请求（订阅切换引发的
-  /// 重新应用已经落定：要么产生了新 attempt——它有自己的流水线，欠账作废；
-  /// 要么 revision 相同、实例不变），就按当前归属重新跑一遍流水线。
+  /// 最近一次确认时，手选是按哪个归属应用到哪个实例的。
+  ReplayOwner? _applied;
+
+  /// 当前实例上的手选是否已按当前激活订阅应用过。
+  bool _appliedForCurrentOwner(String epoch, int attempt) {
+    final applied = _applied;
+    if (applied == null ||
+        applied.epoch != epoch ||
+        applied.attempt != attempt) {
+      return false;
+    }
+    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    return applied.profileId == profile?.id &&
+        applied.profileInc == profile?.inc;
+  }
+
+  /// 欠账的实例若仍是当前实例、且（仍待重放，或已应用的归属不是当前归属），
+  /// 并且没有未终结的请求（订阅切换引发的重新应用已经落定：要么产生了新
+  /// attempt——它有自己的流水线，欠账作废；要么 revision 相同、实例不变），就
+  /// 按当前归属重新跑一遍流水线。
   ///
   /// 配置变更暂停期间只记账、不调度：最终归属要等最后一次释放、先处理完最终
   /// 配置意图（[_releaseConfigPause]）之后才确定。
@@ -708,11 +747,12 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       return;
     }
     if (s.status != KernelStatus.started) return;
-    if (!s.selectionsReplayNeeded) {
-      _replayOwed = null;
+    if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
+    if (!s.selectionsReplayNeeded &&
+        _appliedForCurrentOwner(owed.epoch, owed.attempt)) {
+      _replayOwed = null; // 已按当前归属应用过
       return;
     }
-    if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
     _replayOwed = null;
     debugPrint('手选编排 [${owed.epoch}/${owed.attempt}]：激活订阅已变，按新归属重新调度');
     unawaited(
@@ -812,16 +852,25 @@ final connectionControllerProvider =
 
       // 激活订阅变化：连接中最后一个订阅被删 → 断开；切到另一个订阅 → 应用新
       // 配置。只看已稳定的值（刷新中的 loading 不算变化）。
+      //
+      // 同一个监听器里先处理配置（可能发出重新应用），再通知归属 (id, inc)
+      // 变化——手选重放据此判断要不要等这次重新应用落定。
       String? lastActiveId;
+      String? lastActiveInc;
       var activeKnown = false;
       ref.listen<AsyncValue<ProfileEntity?>>(activeProfileProvider, (_, next) {
         if (!next.hasValue || next.isLoading) return;
         final id = next.valueOrNull?.id;
+        final inc = next.valueOrNull?.inc;
+        final ownerChanged =
+            activeKnown && (id != lastActiveId || inc != lastActiveInc);
         if (activeKnown && id != lastActiveId) {
           controller.onActiveProfileChanged(lastActiveId, id);
         }
         lastActiveId = id;
+        lastActiveInc = inc;
         activeKnown = true;
+        if (ownerChanged) controller.onActiveOwnerChanged();
       }, fireImmediately: true);
 
       return controller;

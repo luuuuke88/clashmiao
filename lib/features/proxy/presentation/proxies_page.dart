@@ -622,7 +622,11 @@ class _ProxyTile extends ConsumerWidget {
   static const double _stackedFixedWidth = 36 + 12 + 8 + 18;
 
   /// 延迟列留在右侧时，名称至少要保有的行宽比例；不够就把延迟挪到下一行。
-  static const double _minNameFraction = 0.4;
+  ///
+  /// 预算按有效上限 `65000ms` 留位置（见 [LatencyLabel.budget]）。取 35%：
+  /// 360 dp、1.0× 的常见手机上名称约 110 dp 以上、延迟仍在右侧同一行；大字号或
+  /// 窄屏下名称会被挤到这条线以下时才挪行。
+  static const double _minNameFraction = 0.35;
 
   final OutboundProxy proxy;
   final bool isSelected;

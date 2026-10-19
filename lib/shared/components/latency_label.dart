@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:clashmiao/core/latency/latency_rules.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/shared/latency/node_latency.dart';
@@ -70,8 +71,11 @@ class LatencyLabel extends ConsumerWidget {
     fontFeatures: const [FontFeature.tabularFigures()],
   );
 
-  /// 布局预算里「最长的合理数字」：测速超时前最多就是几秒，四位毫秒数封顶。
-  static const int budgetMs = 9999;
+  /// 布局预算里最宽的数值：有效延迟的上限（[kDelayTimeoutSentinelMs]，
+  /// 即 `65000ms`）。实时值和新旧缓存都可能是这个范围里的任意数，所以预算
+  /// 跟着有效范围走，不手写某个「常见」上限。数字用等宽数字
+  /// （`tabularFigures`）排版，同样位数的数宽度相同，量上限就是量最宽的。
+  static const int budgetMs = kDelayTimeoutSentinelMs;
 
   static final Map<Object, Size> _budgetCache = {};
 
@@ -81,8 +85,8 @@ class LatencyLabel extends ConsumerWidget {
   /// 不能按当前结果定：否则测速从 `—` 变成长数字或超时文字时，行会改结构、
   /// 改高度，把后面的节点整体推上推下。
   ///
-  /// 量的是每种状态在「无值」与 [budgetMs] 下实际显示的文字（`—`、`9999ms`、
-  /// 本地化超时文字；历史值 / 测量中旧值与成功同样是 `9999ms`）。
+  /// 量的是每种状态在「无值」与 [budgetMs] 下实际显示的文字（`—`、`65000ms`、
+  /// 本地化超时文字；历史值 / 测量中旧值与成功同样是 `65000ms`）。
   /// - 宽度：单行排开的最大宽度；
   /// - 高度：[wrapWidth] 为空时是单行的最大高度；给了 [wrapWidth] 时是按该宽度
   ///   允许换行（挪到下一行的布局）排开后的最大高度。

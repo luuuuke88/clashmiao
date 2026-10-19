@@ -25,10 +25,19 @@ class CoreHarness(
     /** 持久化动作自动以「确认落盘」回应。 */
     var autoPersist: Boolean = true,
     config: CoordinatorCore.Config = CoordinatorCore.Config(),
+    /** true = 与生产一致，Service 形态取自请求 spec 的 options（[tun]），不看 [mode]。 */
+    private val modeFromSpec: Boolean = false,
 ) {
+    /** [modeFromSpec] 时写进 spec options 的 `enable-tun`。 */
+    var tun: Boolean = true
+
     data class InFlight(val token: Long, val inst: Int, val isStart: Boolean, val soft: Boolean)
 
-    val core = CoordinatorCore("epoch-A", { mode }, config)
+    val core = CoordinatorCore(
+        "epoch-A",
+        { spec -> if (modeFromSpec) spec.serviceType() else mode },
+        config,
+    )
     val effects = ArrayList<Effect>()
     val snapshots = arrayListOf(core.snapshot)
     var inFlight: InFlight? = null
@@ -43,8 +52,12 @@ class CoreHarness(
 
     val snap get() = core.snapshot
 
-    fun spec(rev: Long, name: String = "p$rev") =
-        LaunchSpec("/cfg/runtime-$rev.json", "{\"r\":$rev}", name, rev)
+    fun spec(rev: Long, name: String = "p$rev") = LaunchSpec(
+        "/cfg/runtime-$rev.json",
+        if (modeFromSpec) "{\"r\":$rev,\"enable-tun\":$tun}" else "{\"r\":$rev}",
+        name,
+        rev,
+    )
 
     // --- 事件注入（每个都会跑完自动回应的连锁）---
 

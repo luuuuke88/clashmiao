@@ -75,7 +75,7 @@ class KernelCoordinatorTest {
             post(Runnable { coordinator.onServiceStarted(h, h.nextStartId()) })
         }
 
-        override fun currentMode() = mode
+        override fun serviceTypeOf(spec: LaunchSpec) = mode
         override fun log(line: String) {
             logs += line
         }

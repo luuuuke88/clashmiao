@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:flutter/material.dart';
@@ -204,6 +205,40 @@ void main() {
       expect(find.text('设置 WARP'), findsNothing);
       expect(find.text('未配置'), findsNothing);
       expect(find.byType(Switch), findsNWidgets(2));
+    });
+
+    // 真机验收 BUG-4：升级后（两个开关都没动过，系统线路开关默认 true）移动端
+    // 分段控件两段都不亮——当前值落在移动端没有的「系统线路」档上。
+    testWidgets('移动端默认设置：VPN 档带选中底色与 selected 语义（升级后首次打开）', (tester) async {
+      debugServiceModePlatformOverride = ServiceModePlatform.android;
+      addTearDown(() => debugServiceModePlatformOverride = null);
+      final handle = tester.ensureSemantics();
+      final (widget, _) =
+          await _host(); // set_system_proxy=true, enable_tun=false
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(
+        tester.getSemantics(find.text('VPN')),
+        isSemantics(isSelected: true, isButton: true),
+      );
+      expect(
+        tester.getSemantics(find.text('仅线路')),
+        isSemantics(isSelected: false, hasSelectedState: true, isButton: true),
+      );
+      final scheme = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme;
+      final box = tester.widget<AnimatedContainer>(
+        find
+            .ancestor(
+              of: find.text('VPN'),
+              matching: find.byType(AnimatedContainer),
+            )
+            .first,
+      );
+      expect((box.decoration! as BoxDecoration).color, scheme.primaryContainer);
+      handle.dispose();
     });
 
     testWidgets('服务模式分段控件：选中项带 selected 语义并用 primaryContainer', (tester) async {

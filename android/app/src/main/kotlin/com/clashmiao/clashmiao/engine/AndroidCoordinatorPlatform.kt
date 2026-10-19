@@ -9,7 +9,6 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.core.EngineMode
 import com.clashmiao.clashmiao.core.Prefs
 import io.nekohasekai.libbox.Libbox
 import java.util.UUID
@@ -80,8 +79,7 @@ class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform
         ContextCompat.startForegroundService(app, Intent(app, cls))
     }
 
-    override fun currentMode(): ServiceType =
-        if (Prefs.Engine.mode == EngineMode.VPN) ServiceType.Vpn else ServiceType.Proxy
+    override fun serviceTypeOf(spec: LaunchSpec): ServiceType = spec.serviceType()
 
     override fun log(line: String) {
         Log.i(TAG, line)

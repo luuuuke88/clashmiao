@@ -85,8 +85,8 @@ class CoreStep(val effects: List<Effect>, val receipt: Receipt? = null)
 
 class CoordinatorCore(
     val epoch: String,
-    /** 当前设置的 Service 形态；只在受理开启请求时读取（形态是意图的一部分）。 */
-    private val modeProvider: () -> ServiceType,
+    /** 一份开启请求要求的 Service 形态；只在受理开启请求时读取（形态是意图的一部分）。 */
+    private val modeProvider: (LaunchSpec) -> ServiceType,
     private val config: Config = Config(),
     /** 构造时存储里的持久化 spec 路径（外部入口在冷进程里读它）；无持久化 spec 为空。 */
     storedSpecPath: String? = null,
@@ -582,7 +582,7 @@ class CoordinatorCore(
                 val s = requireNotNull(newSpec)
                 val changed = desired == Desired.Off || spec != s
                 spec = s
-                wantType = modeProvider()
+                wantType = modeProvider(s)
                 desired = Desired.On
                 if (changed) persist()
             }

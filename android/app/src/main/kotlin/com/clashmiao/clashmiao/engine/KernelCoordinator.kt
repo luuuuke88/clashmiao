@@ -51,7 +51,8 @@ interface CoordinatorPlatform {
     /** 拉起承载内核的 Service；可能抛异常（后台启动限制等）。 */
     fun startService(type: ServiceType)
 
-    fun currentMode(): ServiceType
+    /** [spec] 要求的 Service 形态（生产实现见 [LaunchSpec.serviceType]）。 */
+    fun serviceTypeOf(spec: LaunchSpec): ServiceType
     fun log(line: String)
 }
 
@@ -77,7 +78,7 @@ class KernelCoordinator(
     private val persistIo: java.util.concurrent.Executor = defaultPersistIo(),
 ) {
     private val core: CoordinatorCore = readStoredSpecPath().let { (path, known) ->
-        CoordinatorCore(epoch, platform::currentMode, config, storedSpecPath = path, storedSpecKnown = known)
+        CoordinatorCore(epoch, platform::serviceTypeOf, config, storedSpecPath = path, storedSpecKnown = known)
     }
 
     /**

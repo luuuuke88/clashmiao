@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/warp_config_service.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
@@ -26,8 +27,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-enum _ServiceMode { proxy, systemProxy, tun }
 
 const _logLevelChoices = ['trace', 'debug', 'info', 'warn'];
 const _regionChoices = ['ir', 'cn', 'ru', 'af', 'id', 'other'];
@@ -305,20 +304,20 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             icon: FluentIcons.box_arrow_left_24_regular,
                             iconColor: Colors.orange,
                             children: [
-                              _ChoiceTile<_ServiceMode>(
+                              _ChoiceTile<ServiceMode>(
                                 title: t.config.serviceMode,
                                 subtitle: _presentServiceMode(t, settings),
                                 icon: FluentIcons.settings_24_regular,
-                                selected: _serviceModeOf(settings),
-                                choices: _serviceModeChoices,
+                                selected: serviceModeOf(settings),
+                                choices: serviceModeChoices(),
                                 itemLabel: (value) =>
                                     _serviceModeLabel(t, value),
                                 itemIcon: (value) => switch (value) {
-                                  _ServiceMode.proxy =>
+                                  ServiceMode.proxyOnly =>
                                     FluentIcons.plug_disconnected_24_regular,
-                                  _ServiceMode.systemProxy =>
+                                  ServiceMode.systemProxy =>
                                     FluentIcons.globe_search_24_regular,
-                                  _ServiceMode.tun =>
+                                  ServiceMode.vpn =>
                                     FluentIcons.arrow_routing_24_regular,
                                 },
                                 onSelected: (value) =>
@@ -466,34 +465,18 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
   }
 }
 
-/// 桌面端**没有** TUN 档：仓库里不带 wintun 驱动，macOS 的 entitlements 也只有
-/// `network.client/server`，既没有网络扩展权限、也没有特权 helper。选了 TUN
-/// 只会让内核起 tun 设备失败——给用户一个必定失败的选项，比不给这个选项糟糕。
-///
-/// 桌面因此只做到"系统代理级接管"，泄漏面（不遵循系统代理的程序会直连）
-/// 由 `t.config.desktopProxyScopeNotice` 明确告知，不藏着。
-List<_ServiceMode> get _serviceModeChoices {
-  if (Platform.isIOS || Platform.isAndroid) {
-    return const [_ServiceMode.proxy, _ServiceMode.tun];
-  }
-  return const [_ServiceMode.proxy, _ServiceMode.systemProxy];
-}
-
-_ServiceMode _serviceModeOf(NetworkSettings settings) {
-  if (settings.enableTun) return _ServiceMode.tun;
-  if (settings.setSystemProxy) return _ServiceMode.systemProxy;
-  return _ServiceMode.proxy;
-}
+// 档位与选中态：service_mode.dart 的 [serviceModeChoices] / [serviceModeOf]
+// （与快速设置弹层同一口径）。
 
 String _presentServiceMode(TranslationsEn t, NetworkSettings settings) {
-  return _serviceModeLabel(t, _serviceModeOf(settings));
+  return _serviceModeLabel(t, serviceModeOf(settings));
 }
 
-String _serviceModeLabel(TranslationsEn t, _ServiceMode mode) {
+String _serviceModeLabel(TranslationsEn t, ServiceMode mode) {
   return switch (mode) {
-    _ServiceMode.proxy => t.config.serviceModes.proxy,
-    _ServiceMode.systemProxy => t.config.serviceModes.systemProxy,
-    _ServiceMode.tun => t.config.serviceModes.tun,
+    ServiceMode.proxyOnly => t.config.serviceModes.proxy,
+    ServiceMode.systemProxy => t.config.serviceModes.systemProxy,
+    ServiceMode.vpn => t.config.serviceModes.tun,
   };
 }
 
@@ -535,23 +518,13 @@ Future<void> _setServiceMode(
   WidgetRef ref,
   BuildContext context,
   TranslationsEn t,
-  _ServiceMode mode,
+  ServiceMode mode,
 ) async {
-  final notifier = ref.read(networkSettingsProvider.notifier);
-  switch (mode) {
-    case _ServiceMode.proxy:
-      await notifier.setEnableTun(false);
-      await notifier.setSystemProxy(false);
-    case _ServiceMode.systemProxy:
-      await notifier.setEnableTun(false);
-      await notifier.setSystemProxy(true);
-    case _ServiceMode.tun:
-      if (!Platform.isAndroid && !Platform.isIOS) {
-        AppToast.info(context, t.settings.adminPrivilegesRequired);
-      }
-      await notifier.setSystemProxy(false);
-      await notifier.setEnableTun(true);
+  if (mode == ServiceMode.vpn &&
+      serviceModePlatform == ServiceModePlatform.desktop) {
+    AppToast.info(context, t.settings.adminPrivilegesRequired);
   }
+  await applyServiceMode(ref.read(networkSettingsProvider.notifier), mode);
 }
 
 void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {

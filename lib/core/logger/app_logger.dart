@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:flutter/foundation.dart';
 import 'package:loggy/loggy.dart';
 import 'package:path_provider/path_provider.dart';
@@ -112,8 +113,12 @@ class AppLogger {
 
   /// 追加一行日志并在超阈值时触发截断。返回的 Future 也保存在
   /// [_pendingWrite] 里，测试可以用 [flush] 等待它写完。
+  ///
+  /// 这是 app.log 唯一的写入口：业务失败（[logAppFailure]）、loggy、未处理异常
+  /// 兜底都从这里落盘，所以脱敏（[redactLogText]：订阅地址凭据、键值秘密、代理
+  /// 分享链接）只在这里做一次，任何来源都绕不过去。
   Future<void> append(String line) {
-    final future = _appendInternal(line);
+    final future = _appendInternal(redactLogText(line));
     _pendingWrite = future;
     return future;
   }
@@ -238,7 +243,9 @@ void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
   if (stackTrace != null && stackTrace != StackTrace.empty) {
     buffer.write('\n$stackTrace');
   }
-  final line = buffer.toString();
+  // 落盘时 [AppLogger.append] 还会再过一次（幂等）；这里先脱敏，控制台与测试
+  // 接缝看到的就是将要写进 app.log 的内容。
+  final line = redactLogText(buffer.toString());
   debugPrint(line);
   final sink = debugAppFailureSink;
   if (sink != null) {
@@ -257,7 +264,7 @@ class AppFailureRecord {
   final Object error;
   final StackTrace? stackTrace;
 
-  /// 本该写进 app.log 的那一行（含时间戳与堆栈）。
+  /// 本该写进 app.log 的那一行（含时间戳与堆栈，已脱敏）。
   final String line;
 }
 

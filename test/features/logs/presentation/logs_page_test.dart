@@ -136,5 +136,20 @@ void main() {
       expect(appContent, contains('app-layer log line'));
       expect(appContent, isNot(contains('core log line one')));
     });
+
+    test('导出的核心日志过同一个脱敏器：订阅凭据与分享链接不进文件', () async {
+      final corePath = await writeCoreLogsTempFile([
+        'INFO outbound/vless[hk]: started',
+        'ERROR fetch https://example.test/sub?token=SECRET failed',
+        'WARN parse link trojan://pass@h.example.test:443#jp',
+      ]);
+
+      final content = await File(corePath).readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(content, isNot(contains('pass@h.example.test')));
+      expect(content, contains('INFO outbound/vless[hk]: started'));
+      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('trojan://…'));
+    });
   });
 }

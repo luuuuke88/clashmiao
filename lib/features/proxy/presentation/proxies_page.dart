@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 
@@ -517,12 +518,13 @@ class _AutoSelectCard extends HookConsumerWidget {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
 
-    final textColor = isSelected
-        ? theme.colorScheme.primary
-        : theme.colorScheme.onSurface;
-    final subTextColor = isSelected
-        ? theme.colorScheme.primary.withValues(alpha: 0.8)
-        : aiUi.secondaryTextColor;
+    // 两行字选中与否同色、都不叠 alpha：选中靠品牌色描边、实心图标块与对勾
+    // 表达（与节点行同一套）。原来选中时标题用 primary、说明用 80% primary，
+    // 压在半透明卡片 + 品牌晕染上，浅色主题下标题只有 4.48:1、11 sp 说明更低，
+    // 达不到小字 4.5:1。说明用不透明的 onSurfaceVariant（与延迟列中性色同源）。
+    final textColor = theme.colorScheme.onSurface;
+    final subTextColor = theme.colorScheme.onSurfaceVariant;
+    final accent = theme.colorScheme.primary;
 
     return GestureDetector(
       onTap: onTap,
@@ -574,11 +576,7 @@ class _AutoSelectCard extends HookConsumerWidget {
                 ),
               ),
               if (isSelected)
-                Icon(
-                  FluentIcons.checkmark_24_filled,
-                  color: textColor,
-                  size: 20,
-                )
+                Icon(FluentIcons.checkmark_24_filled, color: accent, size: 20)
               else
                 Icon(
                   FluentIcons.chevron_right_24_regular,
@@ -612,6 +610,16 @@ class _EmptyProxy extends ConsumerWidget {
 /// 旗帜只在左侧旗帜区出现一次：名称里开头的旗帜已被搬走（见 [NodeDisplay]），
 /// 推断不出国家时用中性地球图标，而不是随便挂一面旗。
 class _ProxyTile extends ConsumerWidget {
+  /// 延迟列最小宽度（spec：右对齐列宽约 64 dp）。
+  static const double _latencyColumnMinWidth = 64;
+
+  /// 行里除名称与延迟列外的固定宽度：旗帜区 36 + 间距 12 + 间距 8 + 间距 8 +
+  /// 对勾占位 18。
+  static const double _rowFixedWidth = 36 + 12 + 8 + 8 + 18;
+
+  /// 延迟列留在右侧时，名称至少要保有的行宽比例；不够就把延迟挪到下一行。
+  static const double _minNameFraction = 0.4;
+
   final OutboundProxy proxy;
   final bool isSelected;
   final NodeLatency latency;
@@ -634,9 +642,8 @@ class _ProxyTile extends ConsumerWidget {
     // 名字只有一面旗帜（或干脆为空）：旗帜已在左侧旗帜区出现一次，名称位
     // 放一个中性占位，而不是把旗帜再写一遍。
     final hasLabel = display.label.isNotEmpty;
-    final label = hasLabel
-        ? display.label
-        : ref.watch(translationsProvider).general.unknown;
+    final t = ref.watch(translationsProvider);
+    final label = hasLabel ? display.label : t.general.unknown;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -666,66 +673,106 @@ class _ProxyTile extends ConsumerWidget {
                       horizontal: isSelected ? 13.5 : 14,
                       vertical: isSelected ? 9.5 : 10,
                     ),
-                    child: Row(
-                      children: [
-                        SizedBox(
-                          width: 36,
-                          child: Center(child: _FlagGlyph(display: display)),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                label,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: hasLabel
-                                      ? theme.colorScheme.onSurface
-                                      : aiUi.secondaryTextColor,
-                                  fontFamily: 'Emoji',
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final latencyLabel = LatencyLabel(
+                          state: latency.state,
+                          ms: latency.ms,
+                        );
+                        // 延迟列按内容宽度排开（数字不折断）。大字号 / 窄屏 /
+                        // 长的本地化文字下，列宽会把名称挤成一条缝：名称放不下
+                        // 行宽的 [_minNameFraction] 时，把延迟挪到协议下面一行
+                        // （允许在词间换行），名称拿回整行宽度。不缩小字号。
+                        final latencyWidth = math.max(
+                          _latencyColumnMinWidth,
+                          LatencyLabel.measureWidth(
+                            context,
+                            t,
+                            latency.state,
+                            latency.ms,
+                          ),
+                        );
+                        final inlineNameWidth =
+                            constraints.maxWidth -
+                            _rowFixedWidth -
+                            latencyWidth;
+                        final stacked =
+                            inlineNameWidth <
+                            constraints.maxWidth * _minNameFraction;
+                        return Row(
+                          children: [
+                            SizedBox(
+                              width: 36,
+                              child: Center(
+                                child: _FlagGlyph(display: display),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _formatType(proxy.type),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: aiUi.secondaryTextColor,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: hasLabel
+                                          ? theme.colorScheme.onSurface
+                                          : aiUi.secondaryTextColor,
+                                      fontFamily: 'Emoji',
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatType(proxy.type),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: aiUi.secondaryTextColor,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  if (stacked) ...[
+                                    const SizedBox(height: 2),
+                                    LatencyLabel(
+                                      state: latency.state,
+                                      ms: latency.ms,
+                                      textAlign: TextAlign.start,
+                                      wrap: true,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            if (!stacked) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                constraints: const BoxConstraints(
+                                  minWidth: _latencyColumnMinWidth,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: latencyLabel,
                               ),
                             ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          constraints: const BoxConstraints(minWidth: 64),
-                          alignment: AlignmentDirectional.centerEnd,
-                          child: LatencyLabel(
-                            state: latency.state,
-                            ms: latency.ms,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: isSelected
-                              ? Icon(
-                                  FluentIcons.checkmark_24_filled,
-                                  size: 18,
-                                  color: primary,
-                                )
-                              : null,
-                        ),
-                      ],
+                            const SizedBox(width: 8),
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: isSelected
+                                  ? Icon(
+                                      FluentIcons.checkmark_24_filled,
+                                      size: 18,
+                                      color: primary,
+                                    )
+                                  : null,
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
                 ),

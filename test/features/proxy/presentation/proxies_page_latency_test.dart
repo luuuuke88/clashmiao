@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -86,6 +87,8 @@ Future<_Host> _host({
   Map<String, Object> prefsValues = const {},
   LatencyTestState? preset,
   Brightness brightness = Brightness.light,
+  AppLocale? locale,
+  TextDirection? direction,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn', ...prefsValues});
   final prefs = await SharedPreferences.getInstance();
@@ -97,6 +100,8 @@ Future<_Host> _host({
       boxServiceProvider.overrideWithValue(box),
       isConnectedProvider.overrideWith((_) => connected),
       latencyClockProvider.overrideWithValue(() => _now),
+      if (locale != null)
+        translationsProvider.overrideWithValue(locale.build()),
       if (connected)
         outboundGroupsProvider.overrideWith((_) => Stream.value(groups))
       else
@@ -124,6 +129,10 @@ Future<_Host> _host({
             brightness == Brightness.light ? AiUiTheme.light : AiUiTheme.dark,
           ],
         ),
+        builder: direction == null
+            ? null
+            : (context, child) =>
+                  Directionality(textDirection: direction, child: child!),
         home: const ProxiesPage(),
       ),
     ),
@@ -541,6 +550,200 @@ void main() {
         expect(find.byIcon(FluentIcons.checkmark_24_filled), findsOneWidget);
         expect(find.text('120ms'), findsOneWidget);
       });
+    }
+  });
+
+  group('延迟列大字号布局矩阵（320 dp、2.0×、LTR / RTL）', () {
+    // 本地化超时文字里实际排出来最宽的那条（按标签同款字号、2.0× 量），不手写
+    // 某个语言：以后谁的翻译更长，这里自动换成它。
+    (AppLocale, String) widestTimeout() {
+      AppLocale? best;
+      var bestWidth = -1.0;
+      for (final locale in AppLocale.values) {
+        final text = locale.build().proxies.delayTimeout;
+        final painter = TextPainter(
+          text: TextSpan(
+            text: text,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          textDirection: TextDirection.ltr,
+          textScaler: const TextScaler.linear(2),
+        )..layout();
+        if (painter.width > bestWidth) {
+          bestWidth = painter.width;
+          best = locale;
+        }
+        painter.dispose();
+      }
+      return (best!, best.build().proxies.delayTimeout);
+    }
+
+    const node = '香港 01 | 一个相当长的节点名称用来换行';
+    final fresh = _now.subtract(const Duration(minutes: 1));
+    final old = _now.subtract(const Duration(minutes: 10));
+    String cache(DateTime at) =>
+        '{"$node":{"ms":9999,"measuredAt":${at.millisecondsSinceEpoch}}}';
+
+    final cases =
+        <
+          ({
+            String name,
+            bool connected,
+            int liveDelay,
+            DateTime cachedAt,
+            LatencyTestState preset,
+            LatencyDisplayState expected,
+          })
+        >[
+          (
+            name: '成功 9999ms',
+            connected: true,
+            liveDelay: 9999,
+            cachedAt: fresh,
+            preset: const LatencyTestState(),
+            expected: LatencyDisplayState.success,
+          ),
+          (
+            name: '历史值 9999ms',
+            connected: false,
+            liveDelay: 0,
+            cachedAt: old,
+            preset: const LatencyTestState(),
+            expected: LatencyDisplayState.stale,
+          ),
+          (
+            name: '测量中保留旧值 9999ms',
+            connected: true,
+            liveDelay: 9999,
+            cachedAt: old,
+            preset: const LatencyTestState(
+              testingGroups: {'proxy'},
+              pendingNodes: {
+                'proxy': {node},
+              },
+            ),
+            expected: LatencyDisplayState.testing,
+          ),
+          (
+            name: '超时（最长本地化文字）',
+            connected: true,
+            liveDelay: 0,
+            cachedAt: old,
+            preset: const LatencyTestState(timedOutNodes: {node}),
+            expected: LatencyDisplayState.timeout,
+          ),
+        ];
+
+    for (final direction in TextDirection.values) {
+      for (final c in cases) {
+        testWidgets(
+          '${direction.name.toUpperCase()} / ${c.name}：行不溢出，名称保有合理宽度',
+          (tester) async {
+            tester.view.physicalSize = const Size(320, 800);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+            tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+            addTearDown(
+              tester.platformDispatcher.clearTextScaleFactorTestValue,
+            );
+
+            final (locale, timeoutText) = widestTimeout();
+            final host = await _host(
+              connected: c.connected,
+              groups: [
+                _group([
+                  _node(node, delay: c.liveDelay),
+                  _node('Singapore 02'),
+                ], selected: node),
+              ],
+              prefsValues: {'proxy_delays_profile-1': cache(c.cachedAt)},
+              preset: c.preset,
+              locale: locale,
+              direction: direction,
+            );
+            await tester.pumpWidget(host.widget);
+            await _settle(tester);
+
+            expect(tester.takeException(), isNull, reason: '不应有任何溢出');
+
+            final label = _labels(tester).first;
+            expect(label.state, c.expected, reason: '用例要真的落在 ${c.name}');
+            final shown = c.expected == LatencyDisplayState.timeout
+                ? timeoutText
+                : '9999ms';
+            final latency = find.text(shown);
+            expect(latency, findsOneWidget);
+
+            final tile = tester.getRect(_tileOf(node).first);
+            final name = tester.getRect(find.text(node));
+            final lat = tester.getRect(latency);
+
+            // 全部落在屏内、落在自己那张卡里。
+            for (final r in [tile, name, lat]) {
+              expect(r.left, greaterThanOrEqualTo(-0.5));
+              expect(r.right, lessThanOrEqualTo(320.5));
+            }
+            for (final r in [name, lat]) {
+              expect(r.left, greaterThanOrEqualTo(tile.left - 0.5));
+              expect(r.right, lessThanOrEqualTo(tile.right + 0.5));
+              expect(r.bottom, lessThanOrEqualTo(tile.bottom + 0.5));
+            }
+            // 名称与延迟不重叠。
+            expect(name.overlaps(lat), isFalse, reason: '名称与延迟文字不能叠在一起');
+            // 名称保有合理宽度：至少是卡片宽度的 40%，不被延迟列挤成一条缝。
+            expect(
+              name.width,
+              greaterThanOrEqualTo(tile.width * 0.4),
+              reason: '名称只剩 ${name.width} dp（卡片 ${tile.width} dp）',
+            );
+            // 选中对勾仍在。
+            expect(
+              find.byIcon(FluentIcons.checkmark_24_filled),
+              findsOneWidget,
+            );
+            await _drain(tester);
+          },
+        );
+      }
+    }
+    for (final direction in TextDirection.values) {
+      testWidgets(
+        '对照：${direction.name.toUpperCase()} / 360 dp、1.0×、120ms：延迟仍在名称末端的右对齐列里，不被挪到下一行',
+        (tester) async {
+          tester.view.physicalSize = const Size(360, 800);
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+
+          final host = await _host(
+            connected: true,
+            groups: [
+              _group([_node(node, delay: 120)]),
+            ],
+            prefsValues: {
+              'proxy_delays_profile-1':
+                  '{"$node":{"ms":120,"measuredAt":${fresh.millisecondsSinceEpoch}}}',
+            },
+            preset: const LatencyTestState(),
+            direction: direction,
+          );
+          await tester.pumpWidget(host.widget);
+          await _settle(tester);
+          expect(tester.takeException(), isNull);
+
+          final name = tester.getRect(find.text(node));
+          final lat = tester.getRect(find.text('120ms'));
+          // 同一行：延迟的竖向范围与名称块相交，且排在名称的末端一侧。
+          expect(lat.top, lessThan(name.bottom), reason: '延迟不应被挪到名称下方');
+          if (direction == TextDirection.ltr) {
+            expect(lat.left, greaterThanOrEqualTo(name.right));
+          } else {
+            expect(lat.right, lessThanOrEqualTo(name.left));
+          }
+          await _drain(tester);
+        },
+      );
     }
   });
 

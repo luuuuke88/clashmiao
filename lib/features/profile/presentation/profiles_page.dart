@@ -127,7 +127,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   loading: () => const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
+                      child: MotionProgress(strokeWidth: 4),
                     ),
                   ),
                   error: (e, _) => Center(
@@ -257,7 +257,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () =>
+                  const Center(child: MotionProgress(strokeWidth: 4)),
               error: (e, _) =>
                   Center(child: Text('${t.failure.unexpected}: $e')),
             ),
@@ -739,10 +740,7 @@ class _EmptyState extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             '',
-            style: TextStyle(
-              fontSize: 13,
-              color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
-            ),
+            style: TextStyle(fontSize: 13, color: aiUi.secondaryTextColor),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(

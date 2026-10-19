@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -58,7 +59,9 @@ class BackupService {
     final date = DateTime.now().toIso8601String().substring(0, 10);
     final file = File('${dir.path}/clashmiao-backup-$date.json');
     await file.writeAsString(BackupCodec.encode(backup));
-    await Share.shareXFiles([XFile(file.path)], text: 'ClashMiao 备份');
+    await Share.shareXFiles([
+      XFile(file.path),
+    ], text: container.read(translationsProvider).settings.backup.shareText);
   }
 
   /// 让用户选一个备份文件并完整校验。用户取消返回 null；文件不可用抛

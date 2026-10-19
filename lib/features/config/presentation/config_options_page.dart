@@ -555,7 +555,7 @@ void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
       final raw = controller.text.trim();
       final port = int.tryParse(raw);
       if (port == null || port < 1024 || port > 65535) {
-        AppToast.error(context, '端口范围 1024-65535');
+        AppToast.error(context, t.config.portRangeError);
         return false;
       }
       await ref.read(networkSettingsProvider.notifier).setMixedPort(port);
@@ -577,7 +577,7 @@ void _showDnsEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
     onConfirm: () async {
       final address = controller.text.trim();
       if (address.isEmpty) {
-        AppToast.error(context, 'DNS 地址不能为空');
+        AppToast.error(context, t.config.dnsEmptyError);
         return false;
       }
       await ref
@@ -605,7 +605,7 @@ void _showDirectDnsEditor(
     onConfirm: () async {
       final address = controller.text.trim();
       if (address.isEmpty) {
-        AppToast.error(context, 'DNS 地址不能为空');
+        AppToast.error(context, t.config.dnsEmptyError);
         return false;
       }
       await ref
@@ -632,7 +632,7 @@ void _showTlsFragmentSizeEditor(
     onConfirm: () async {
       final range = controller.text.trim();
       if (!_isOptionalRange(range)) {
-        AppToast.error(context, '请输入数字或范围，例如 10-30');
+        AppToast.error(context, t.config.rangeFormatError);
         return false;
       }
       await ref
@@ -664,7 +664,7 @@ void _showConnectionTestUrlEditor(
       final url = controller.text.trim();
       final uri = Uri.tryParse(url);
       if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) {
-        AppToast.error(context, 'URL 必须以 http:// 或 https:// 开头');
+        AppToast.error(context, t.config.urlSchemeError);
         return false;
       }
       await ref
@@ -798,7 +798,7 @@ void _showWarpPortEditor(
     onConfirm: () async {
       final port = int.tryParse(controller.text.trim());
       if (port == null || port < 1024 || port > 65535) {
-        AppToast.error(context, '端口范围 1024-65535');
+        AppToast.error(context, t.config.portRangeError);
         return false;
       }
       await ref.read(networkSettingsProvider.notifier).setWarpPort(port);
@@ -845,9 +845,19 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
       await ref
           .read(warpConfigServiceProvider)
           .generateAndStore(licenseKey: settings.warpLicenseKey);
-      if (mounted) AppToast.success(context, 'WARP 配置生成成功');
+      if (!mounted) return;
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).config.warpConfigGenerated,
+      );
     } catch (e) {
-      if (mounted) AppToast.error(context, 'WARP 配置生成失败: $e');
+      // 技术细节只进日志；用户看到的是本地化文案。
+      debugPrint('生成 WARP 配置失败: $e');
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        ref.read(translationsProvider).config.warpConfigFailed,
+      );
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -1369,7 +1379,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                   child: Text(
-                    '更多选项',
+                    t.general.moreOptions,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5,
@@ -1436,7 +1446,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.arrow_upload_20_regular,
-                  label: '导出备份',
+                  label: t.settings.backup.exportAction,
                   onTap: () async {
                     final container = ProviderScope.containerOf(context);
                     final navContext = Navigator.of(
@@ -1447,8 +1457,12 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                     try {
                       await BackupService.export(container);
                     } catch (e) {
+                      debugPrint('导出备份失败: $e');
                       if (navContext.mounted) {
-                        AppToast.error(navContext, '导出失败: $e');
+                        AppToast.error(
+                          navContext,
+                          t.settings.backup.exportFailed,
+                        );
                       }
                     }
                   },
@@ -1456,13 +1470,13 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.arrow_download_20_regular,
-                  label: '导入备份',
+                  label: t.settings.backup.importAction,
                   onTap: () => _importBackup(context, ref),
                 ),
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.database_20_regular,
-                  label: '规则库管理',
+                  label: t.config.manageRuleAssets,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
@@ -1556,10 +1570,11 @@ Future<void> _importNetworkSettingsFromClipboard(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final t = ref.read(translationsProvider);
   final data = await Clipboard.getData(Clipboard.kTextPlain);
   final text = data?.text;
   if (text == null || text.trim().isEmpty) {
-    if (context.mounted) AppToast.error(context, '剪贴板为空');
+    if (context.mounted) AppToast.error(context, t.general.clipboardEmpty);
     return;
   }
 
@@ -1569,17 +1584,19 @@ Future<void> _importNetworkSettingsFromClipboard(
   if (!context.mounted) return;
 
   if (result.hasParseError) {
-    AppToast.error(context, result.parseError!);
+    AppToast.error(context, t.settings.importOptionsInvalid);
     return;
   }
   if (result.appliedKeys.isEmpty) {
-    AppToast.error(context, '未识别到可导入的配置项');
+    AppToast.error(context, t.settings.importOptionsNothing);
     return;
   }
   final message = result.skippedKeys.isEmpty
-      ? '已导入 ${result.appliedKeys.length} 项配置'
-      : '已导入 ${result.appliedKeys.length} 项配置，'
-            '${result.skippedKeys.length} 项因格式无效被跳过';
+      ? t.settings.importOptionsDone(count: result.appliedKeys.length)
+      : t.settings.importOptionsPartial(
+          applied: result.appliedKeys.length,
+          skipped: result.skippedKeys.length,
+        );
   AppToast.success(context, message);
 }
 

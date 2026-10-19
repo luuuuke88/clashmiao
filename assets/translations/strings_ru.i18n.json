@@ -25,7 +25,11 @@
     "grantPermission": "Дать права доступа",
     "underDevelopment": "В разработке",
     "confirm": "Подтвердить",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "cancel": "Отмена",
+    "clipboardEmpty": "Буфер обмена пуст",
+    "clipboardReadFailed": "Не удалось прочитать буфер обмена",
+    "moreOptions": "Дополнительно"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "Продолжая, Вы соглашаетесь с ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "Нажмите, чтобы проверить выходной IP",
       "checking": "Проверка…",
       "failedRetry": "Не удалось проверить, нажмите для повтора"
-    }
+    },
+    "emptyProfilesHint": "Нажмите кнопку ниже, чтобы начать",
+    "noActiveProfileTitle": "Профиль не выбран"
   },
   "stats": {
     "traffic": "Трафик",
@@ -109,7 +115,12 @@
       "manuallyDescription": "Введите конфигурацию сервера вручную",
       "addWarp": "Добавить WARP",
       "warpDescription": "Бесплатное ускорение через Cloudflare WARP",
-      "addingWarpMsg": "Подождите, идёт регистрация WARP."
+      "addingWarpMsg": "Подождите, идёт регистрация WARP.",
+      "importedNamed": "Подписка импортирована: ${name}",
+      "clipboardEmpty": "Буфер обмена пуст, импортировать нечего",
+      "deepLinkMissingUrl": "В ссылке нет адреса подписки",
+      "successMsg": "Профиль добавлен",
+      "nameAutoHint": "Определяется автоматически (необязательно)"
     },
     "update": {
       "buttonTxt": "Обновить",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "Удалить",
       "confirmationMsg": "Безвозвратно удалить профиль?",
-      "successMsg": "Профиль успешно удалён"
+      "successMsg": "Профиль успешно удалён",
+      "confirmTitle": "Удалить профиль",
+      "namedConfirmMsg": "Удалить «${name}»? Это действие нельзя отменить."
     },
     "save": {
       "buttonText": "Сохранить",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Выкл.",
+      "updateIntervalHours": "${hours} ч",
+      "updateIntervalDays": "${days} дн."
     },
     "actionButtons": {
       "add": "Добавить",
@@ -181,7 +197,10 @@
       "currentlyUsing": "Используется сейчас",
       "remainingDays": "Осталось ${days} дн."
     },
-    "remoteProfile": "Удалённый профиль"
+    "remoteProfile": "Удалённый профиль",
+    "defaultLocalName": "Локальный импорт",
+    "defaultDeepLinkName": "Импорт по ссылке",
+    "switchFailedMsg": "Не удалось переключить профиль"
   },
   "proxies": {
     "pageTitle": "Прокси",
@@ -236,7 +255,10 @@
     "logsCleared": "Журналы очищены",
     "logsCopied": "Журналы скопированы",
     "logsUnderDevelopment": "Функция журналов в разработке",
-    "noLogsWhenDisconnected": "Нет подключения, журналы отсутствуют"
+    "noLogsWhenDisconnected": "Нет подключения, журналы отсутствуют",
+    "loadFailed": "Не удалось загрузить журнал",
+    "empty": "Журнал пока пуст",
+    "clearFailed": "Не удалось очистить журнал"
   },
   "settings": {
     "pageTitle": "Настройки",
@@ -270,7 +292,11 @@
       "recoveryUnrecoverableMsg": "Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.",
       "recoveryRetry": "Повторить",
       "recoveryClose": "Закрыть",
-      "recoveryRetried": "Данные возвращены в состояние до прерванного импорта."
+      "recoveryRetried": "Данные возвращены в состояние до прерванного импорта.",
+      "exportAction": "Экспорт резервной копии",
+      "importAction": "Импорт резервной копии",
+      "exportFailed": "Не удалось экспортировать резервную копию",
+      "shareText": "Резервная копия ClashMiao"
     },
     "general": {
       "sectionTitle": "Основные",
@@ -358,7 +384,11 @@
       "general": "Общие",
       "connection": "Подключение",
       "privacy": "Конфиденциальность"
-    }
+    },
+    "importOptionsInvalid": "В буфере обмена нет корректного JSON настроек",
+    "importOptionsNothing": "Не найдено настроек для импорта",
+    "importOptionsDone": "Импортировано настроек: ${count}",
+    "importOptionsPartial": "Импортировано: ${applied}; пропущено как некорректные: ${skipped}"
   },
   "about": {
     "pageTitle": "О программе",
@@ -392,7 +422,8 @@
       "disconnect": "Отключиться",
       "disconnecting": "Отключение"
     },
-    "hide": "Скрыть"
+    "hide": "Скрыть",
+    "proxyModeMenu": "Режим прокси"
   },
   "failure": {
     "unexpected": "Непредвиденная ошибка",
@@ -443,7 +474,8 @@
       "unexpected": "Неожиданная ошибка",
       "notUpdate": "Нет доступных обновлений",
       "activeNotFound": "Активный географический актив не найден"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Нажмите для подключения",
@@ -451,7 +483,7 @@
     "disconnecting": "Отключение",
     "connected": "Подключено",
     "reconnect": "Восстановить соединение",
-    "connectAnyWay": "Подключиться",
+    "connectAnyWay": "Всё равно подключиться",
     "experimentalNotice": "Экспериментальные функции в использовании",
     "experimentalNoticeMsg": "Вы включили некоторые экспериментальные функции, которые могут повлиять на качество соединения и вызвать непредвиденные ошибки. Вы всегда можете изменить или сбросить эти параметры на странице параметров конфигурации.",
     "disableExperimentalNotice": "Больше не показывать",
@@ -553,6 +585,13 @@
     "warpNoiseMode": "Режим шума",
     "warpNoiseDelay": "Задержка шума",
     "desktopProxyScopeNotice": "На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.",
-    "serviceModeIosVpnOnly": "iOS поддерживает только режим VPN"
+    "serviceModeIosVpnOnly": "iOS поддерживает только режим VPN",
+    "warpGenerating": "Создание конфигурации WARP…",
+    "warpConfigFailed": "Не удалось создать конфигурацию WARP. Повторите попытку позже.",
+    "portRangeError": "Порт должен быть от 1024 до 65535",
+    "dnsEmptyError": "Адрес DNS не может быть пустым",
+    "rangeFormatError": "Введите число или диапазон, например 10-30",
+    "urlSchemeError": "URL должен начинаться с http:// или https://",
+    "manageRuleAssets": "Наборы правил"
   }
 }

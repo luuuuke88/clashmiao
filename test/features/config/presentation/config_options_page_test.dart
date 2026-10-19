@@ -310,7 +310,7 @@ void main() {
       await tester.tap(find.text('生成 WARP 配置文件'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('WARP 配置生成成功'), findsOneWidget);
+      expect(find.text('WARP 配置文件已生成'), findsOneWidget);
       final settings = container.read(networkSettingsProvider);
       expect(settings.warpAccountId, 'acc-real');
       expect(settings.warpAccessToken, 'token-real');
@@ -352,7 +352,12 @@ void main() {
       await tester.tap(find.text('生成 WARP 配置文件'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('WARP 配置生成失败'), findsOneWidget);
+      expect(find.text('WARP 配置生成失败，请稍后重试'), findsOneWidget);
+      expect(
+        find.textContaining('rate limited'),
+        findsNothing,
+        reason: '异常原文只进日志',
+      );
       final settings = container.read(networkSettingsProvider);
       expect(settings.warpAccountId, '');
       expect(settings.warpAccessToken, '');
@@ -483,7 +488,8 @@ void main() {
 
       final settings = container.read(networkSettingsProvider);
       expect(settings.mtu, 9000); // 默认值，没被改动
-      expect(find.textContaining('JSON 解析失败'), findsOneWidget);
+      expect(find.text('剪贴板内容不是有效的配置 JSON'), findsOneWidget);
+      expect(find.textContaining('FormatException'), findsNothing);
 
       await _drainToasts(tester);
     });

@@ -46,22 +46,12 @@ TrayMenuLabels buildTrayMenuLabels(ConnectionPhase phase, Translations t) {
   );
 }
 
-/// "服务模式"子菜单自身的标题（不是子菜单里"智能/全局"两个选项的文案，那两个走
-/// 正规 i18n：`t.home.routingMode.global` / `t.home.routingMode.smart`）。
+/// 「代理模式」（智能分流 / 全局代理）子菜单自身的标题，走 `tray.proxyModeMenu`。
 ///
-/// 现有 `translations.g.dart` 里找不到一个不会引起歧义的现成 key 给这个子菜单
-/// 标题用：`config.serviceMode`（"服务模式"）名字本身很贴切，但在这个 App 里已经
-/// 被"仅线路 / 系统线路 / VPN"这个完全不同的概念占用了（见
-/// `quick_settings_modal.dart` 的 `_QuickServiceMode`：那是决定客户端本身怎么接入
-/// 网络的选项，不是这里的"智能分流 / 全局代理"路由模式），复用会造成同名不同义。
-/// 本任务的约束又只允许改这一个文件，没法去 `assets/translations` 加新 key。
-/// 这里退而求其次，手动按当前 locale 二选一，只用于这一个子菜单的容器标题；
-/// 其它语言一律回退英文——跟 [buildTrayMenuLabels] 里 `hide` 字段既有的回退策略
-/// 一致（`fallback_strategy: base_locale`），不是新发明的处理方式。
+/// 不复用 `config.serviceMode`（「服务模式」）：那是「仅线路 / 系统线路 / VPN」
+/// 这个完全不同的概念（客户端怎么接入网络），同名不同义会误导。
 @visibleForTesting
-String proxyModeSubmenuLabel(Translations t) {
-  return t.$meta.locale == AppLocale.zhCn ? '服务模式' : 'Service Mode';
-}
+String proxyModeSubmenuLabel(Translations t) => t.tray.proxyModeMenu;
 
 /// 根据当前连接状态 + 当前语言 + 当前生效的代理模式（[proxyMode]，对齐
 /// `proxyModeProvider`：0 = 全局，1 = 智能），构建完整的托盘右键菜单结构。

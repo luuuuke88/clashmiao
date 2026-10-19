@@ -25,7 +25,11 @@
     "openAppSettings": "Abrir configurações do app",
     "underDevelopment": "Em desenvolvimento",
     "confirm": "Confirmar",
-    "close": "Fechar"
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "clipboardEmpty": "A área de transferência está vazia",
+    "clipboardReadFailed": "Não foi possível ler a área de transferência",
+    "moreOptions": "Mais opções"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "ao continuar você concorda com ${tap( @:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "Toque para verificar o IP de saída",
       "checking": "Verificando…",
       "failedRetry": "Falha na verificação, toque para tentar novamente"
-    }
+    },
+    "emptyProfilesHint": "Toque no botão abaixo para começar",
+    "noActiveProfileTitle": "Nenhum perfil selecionado"
   },
   "stats": {
     "trafficLive": "Tráfego ao vivo",
@@ -109,7 +115,12 @@
       "manuallyDescription": "Insira a configuração do servidor manualmente",
       "addWarp": "Adicionar WARP",
       "warpDescription": "Aceleração gratuita com Cloudflare WARP",
-      "addingWarpMsg": "Aguarde enquanto registramos o WARP."
+      "addingWarpMsg": "Aguarde enquanto registramos o WARP.",
+      "importedNamed": "Assinatura importada: ${name}",
+      "clipboardEmpty": "A área de transferência está vazia; não há nada para importar",
+      "deepLinkMissingUrl": "O link não contém um endereço de assinatura",
+      "successMsg": "Perfil adicionado",
+      "nameAutoHint": "Detectado automaticamente (opcional)"
     },
     "update": {
       "buttonTxt": "Atualizar",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "Deletar",
       "confirmationMsg": "Deletar perfil permanentemente?",
-      "successMsg": "Perfil deletado com sucesso"
+      "successMsg": "Perfil deletado com sucesso",
+      "confirmTitle": "Excluir perfil",
+      "namedConfirmMsg": "Excluir \"${name}\"? Essa ação não pode ser desfeita."
     },
     "save": {
       "buttonText": "Salvar",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Desativado",
+      "updateIntervalHours": "${hours} h",
+      "updateIntervalDays": "${days} d"
     },
     "actionButtons": {
       "add": "Adicionar",
@@ -181,7 +197,10 @@
       "currentlyUsing": "Em uso",
       "remainingDays": "Restam ${days} dias"
     },
-    "remoteProfile": "Perfil remoto"
+    "remoteProfile": "Perfil remoto",
+    "defaultLocalName": "Importação local",
+    "defaultDeepLinkName": "Importado por link",
+    "switchFailedMsg": "Não foi possível trocar de perfil"
   },
   "proxies": {
     "pageTitle": "Proxies",
@@ -236,7 +255,10 @@
     "logsCleared": "Registros limpos",
     "logsCopied": "Registros copiados",
     "logsUnderDevelopment": "O recurso de registros está em desenvolvimento",
-    "noLogsWhenDisconnected": "Desconectado, sem registros"
+    "noLogsWhenDisconnected": "Desconectado, sem registros",
+    "loadFailed": "Não foi possível carregar os logs",
+    "empty": "Ainda não há logs",
+    "clearFailed": "Não foi possível limpar os logs"
   },
   "settings": {
     "pageTitle": "Configurações",
@@ -348,7 +370,11 @@
       "recoveryUnrecoverableMsg": "A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.",
       "recoveryRetry": "Tentar novamente",
       "recoveryClose": "Fechar",
-      "recoveryRetried": "Seus dados foram restaurados ao estado anterior à importação interrompida."
+      "recoveryRetried": "Seus dados foram restaurados ao estado anterior à importação interrompida.",
+      "exportAction": "Exportar backup",
+      "importAction": "Importar backup",
+      "exportFailed": "Não foi possível exportar o backup",
+      "shareText": "Backup do ClashMiao"
     },
     "systemProxyEnabled": "Proxy do sistema ativado",
     "systemProxyDisabled": "Proxy do sistema desativado (reconecte para aplicar)",
@@ -358,7 +384,11 @@
       "general": "Geral",
       "connection": "Conexão",
       "privacy": "Privacidade"
-    }
+    },
+    "importOptionsInvalid": "A área de transferência não contém um JSON de configurações válido",
+    "importOptionsNothing": "Nenhuma configuração importável encontrada",
+    "importOptionsDone": "${count} configurações importadas",
+    "importOptionsPartial": "${applied} configurações importadas; ${skipped} ignoradas por serem inválidas"
   },
   "about": {
     "pageTitle": "Sobre",
@@ -392,7 +422,8 @@
       "disconnect": "desconectar",
       "disconnecting": "Desconectando"
     },
-    "hide": "Ocultar"
+    "hide": "Ocultar",
+    "proxyModeMenu": "Modo de proxy"
   },
   "failure": {
     "unexpected": "Erro inesperado",
@@ -443,7 +474,8 @@
       "unexpected": "Erro inesperado",
       "notUpdate": "Nenhuma atualização disponível",
       "activeNotFound": "Recurso geográfico ativo não encontrado"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Toque para conectar",
@@ -454,7 +486,7 @@
     "experimentalNoticeMsg": "Você ativou alguns recursos experimentais que podem afetar a qualidade da conexão e causar erros inesperados. Você sempre pode alterar ou redefinir essas opções na página de opções de configuração.",
     "disableExperimentalNotice": "Não mostrar novamente",
     "reconnect": "Reconectar",
-    "connectAnyWay": "Conectar",
+    "connectAnyWay": "Conectar mesmo assim",
     "reconnectMsg": "Reconectando para aplicar as alterações...",
     "staleSystemProxyCleaned": "Configurações de proxy do sistema deixadas por um encerramento anormal foram limpas"
   },
@@ -553,6 +585,13 @@
     "warpNoiseSize": "Tamanho do ruído",
     "warpNoiseMode": "Modo de ruído",
     "desktopProxyScopeNotice": "No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.",
-    "serviceModeIosVpnOnly": "O iOS só oferece suporte ao modo VPN"
+    "serviceModeIosVpnOnly": "O iOS só oferece suporte ao modo VPN",
+    "warpGenerating": "Gerando a configuração do WARP…",
+    "warpConfigFailed": "Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.",
+    "portRangeError": "A porta deve estar entre 1024 e 65535",
+    "dnsEmptyError": "O endereço DNS não pode ficar vazio",
+    "rangeFormatError": "Digite um número ou um intervalo, por exemplo 10-30",
+    "urlSchemeError": "A URL deve começar com http:// ou https://",
+    "manageRuleAssets": "Gerenciar conjuntos de regras"
   }
 }

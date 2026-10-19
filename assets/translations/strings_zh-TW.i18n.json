@@ -25,7 +25,11 @@
     "grantPermission": "授予權限",
     "underDevelopment": "功能開發中",
     "confirm": "確認",
-    "close": "關閉"
+    "close": "關閉",
+    "cancel": "取消",
+    "clipboardEmpty": "剪貼簿為空",
+    "clipboardReadFailed": "讀取剪貼簿失敗",
+    "moreOptions": "更多選項"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "繼續即表示您同意合約 ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "點擊檢測出口 IP",
       "checking": "正在檢測…",
       "failedRetry": "檢測失敗，點擊重試"
-    }
+    },
+    "emptyProfilesHint": "點擊下方按鈕開始探索",
+    "noActiveProfileTitle": "未選擇設定檔"
   },
   "stats": {
     "traffic": "流量",
@@ -109,7 +115,12 @@
       "failureMsg": "新增設定檔失敗",
       "modalSubtitle": "選擇新增設定檔的方式",
       "manuallyDescription": "手動輸入伺服器設定",
-      "warpDescription": "使用 Cloudflare WARP 免費加速"
+      "warpDescription": "使用 Cloudflare WARP 免費加速",
+      "importedNamed": "已匯入訂閱：${name}",
+      "clipboardEmpty": "剪貼簿為空，無法匯入訂閱",
+      "deepLinkMissingUrl": "連結中缺少訂閱位址",
+      "successMsg": "新增成功",
+      "nameAutoHint": "自動識別（選填）"
     },
     "update": {
       "buttonTxt": "更新",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "刪除",
       "confirmationMsg": "要永久刪除設定檔嗎？",
-      "successMsg": "設定檔刪除成功"
+      "successMsg": "設定檔刪除成功",
+      "confirmTitle": "刪除設定檔",
+      "namedConfirmMsg": "確定要刪除「${name}」嗎？此操作無法復原。"
     },
     "save": {
       "buttonText": "儲存",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "關閉",
+      "updateIntervalHours": "${hours} 小時",
+      "updateIntervalDays": "${days} 天"
     },
     "actionButtons": {
       "add": "新增",
@@ -181,7 +197,10 @@
       "currentlyUsing": "目前使用中",
       "remainingDays": "剩餘 ${days} 天"
     },
-    "remoteProfile": "遠端訂閱"
+    "remoteProfile": "遠端訂閱",
+    "defaultLocalName": "本機匯入",
+    "defaultDeepLinkName": "連結匯入",
+    "switchFailedMsg": "切換設定檔失敗"
   },
   "proxies": {
     "pageTitle": "線路",
@@ -236,7 +255,10 @@
     "logsCleared": "日誌已清空",
     "logsCopied": "日誌已複製",
     "logsUnderDevelopment": "日誌功能開發中",
-    "noLogsWhenDisconnected": "未連線，無日誌"
+    "noLogsWhenDisconnected": "未連線，無日誌",
+    "loadFailed": "日誌讀取失敗",
+    "empty": "暫無日誌",
+    "clearFailed": "清除日誌失敗"
   },
   "settings": {
     "pageTitle": "設定",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。",
       "recoveryRetry": "重試",
       "recoveryClose": "關閉",
-      "recoveryRetried": "已把資料還原到被中斷的匯入之前。"
+      "recoveryRetried": "已把資料還原到被中斷的匯入之前。",
+      "exportAction": "匯出備份",
+      "importAction": "匯入備份",
+      "exportFailed": "匯出失敗",
+      "shareText": "ClashMiao 備份"
     },
     "general": {
       "sectionTitle": "一般",
@@ -358,7 +384,11 @@
       "general": "一般",
       "connection": "連線",
       "privacy": "隱私"
-    }
+    },
+    "importOptionsInvalid": "剪貼簿內容不是有效的設定 JSON",
+    "importOptionsNothing": "未識別到可匯入的設定項",
+    "importOptionsDone": "已匯入 ${count} 項設定",
+    "importOptionsPartial": "已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過"
   },
   "about": {
     "pageTitle": "關於",
@@ -392,7 +422,8 @@
       "disconnect": "中斷連線",
       "disconnecting": "中斷連線中"
     },
-    "hide": "隱藏"
+    "hide": "隱藏",
+    "proxyModeMenu": "代理模式"
   },
   "failure": {
     "unexpected": "意外錯誤",
@@ -443,7 +474,8 @@
       "unexpected": "意外錯誤",
       "notUpdate": "暫無可用更新",
       "activeNotFound": "未找到活動 GEO 資源文件"
-    }
+    },
+    "withReason": "${message}：${reason}"
   },
   "connection": {
     "tapToConnect": "點擊以連線",
@@ -451,9 +483,9 @@
     "disconnecting": "中斷連線中",
     "connected": "已連線",
     "reconnect": "重新連線",
-    "connectAnyWay": "連線",
-    "experimentalNotice": "使用中的實驗性功能",
-    "experimentalNoticeMsg": "您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。",
+    "connectAnyWay": "仍然連線",
+    "experimentalNotice": "實驗性功能提醒",
+    "experimentalNoticeMsg": "目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。",
     "disableExperimentalNotice": "不再提示",
     "reconnectMsg": "重新連線以使變更生效",
     "staleSystemProxyCleaned": "已清理上次異常結束殘留的系統代理設定"
@@ -553,6 +585,13 @@
     "warpNoiseSize": "雜訊大小",
     "warpNoiseMode": "雜訊模式",
     "desktopProxyScopeNotice": "桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。",
-    "serviceModeIosVpnOnly": "iOS 僅支援 VPN 模式"
+    "serviceModeIosVpnOnly": "iOS 僅支援 VPN 模式",
+    "warpGenerating": "正在產生 WARP 設定…",
+    "warpConfigFailed": "WARP 設定產生失敗，請稍後再試",
+    "portRangeError": "連接埠範圍 1024-65535",
+    "dnsEmptyError": "DNS 位址不能為空",
+    "rangeFormatError": "請輸入數字或範圍，例如 10-30",
+    "urlSchemeError": "URL 必須以 http:// 或 https:// 開頭",
+    "manageRuleAssets": "規則庫管理"
   }
 }

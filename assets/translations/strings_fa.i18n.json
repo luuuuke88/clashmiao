@@ -25,7 +25,11 @@
     "grantPermission": "اجازه دادن",
     "underDevelopment": "در حال توسعه",
     "confirm": "تأیید",
-    "close": "بستن"
+    "close": "بستن",
+    "cancel": "لغو",
+    "clipboardEmpty": "کلیپ‌بورد خالی است",
+    "clipboardReadFailed": "خواندن کلیپ‌بورد ناموفق بود",
+    "moreOptions": "گزینه‌های بیشتر"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "در صورت ادامه با ${tap(@:about.termsAndConditions)} موافقت می‌کنید",
@@ -52,7 +56,9 @@
       "tapToCheck": "برای بررسی آی‌پی خروجی ضربه بزنید",
       "checking": "در حال بررسی…",
       "failedRetry": "بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید"
-    }
+    },
+    "emptyProfilesHint": "برای شروع، دکمهٔ زیر را بزنید",
+    "noActiveProfileTitle": "هیچ پروفایلی انتخاب نشده است"
   },
   "stats": {
     "traffic": "مصرف",
@@ -109,7 +115,12 @@
       "failureMsg": "افزودن پروفایل ناموفق بود",
       "modalSubtitle": "نحوهٔ افزودن فایل پیکربندی را انتخاب کنید",
       "manuallyDescription": "پیکربندی سرور را دستی وارد کنید",
-      "warpDescription": "شتاب‌دهی رایگان با Cloudflare WARP"
+      "warpDescription": "شتاب‌دهی رایگان با Cloudflare WARP",
+      "importedNamed": "اشتراک درون‌ریزی شد: ${name}",
+      "clipboardEmpty": "کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد",
+      "deepLinkMissingUrl": "پیوند نشانی اشتراک ندارد",
+      "successMsg": "پروفایل افزوده شد",
+      "nameAutoHint": "به‌طور خودکار تشخیص داده می‌شود (اختیاری)"
     },
     "update": {
       "buttonTxt": "به‌روزرسانی",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "حذف",
       "confirmationMsg": "پروفایل برای همیشه حذف شود؟",
-      "successMsg": "پروفایل با موفقیت حذف شد"
+      "successMsg": "پروفایل با موفقیت حذف شد",
+      "confirmTitle": "حذف پروفایل",
+      "namedConfirmMsg": "«${name}» حذف شود؟ این کار برگشت‌پذیر نیست."
     },
     "save": {
       "buttonText": "ذخیره",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "خاموش",
+      "updateIntervalHours": "${hours} ساعت",
+      "updateIntervalDays": "${days} روز"
     },
     "actionButtons": {
       "add": "افزودن",
@@ -181,7 +197,10 @@
       "currentlyUsing": "در حال استفاده",
       "remainingDays": "${days} روز باقی مانده"
     },
-    "remoteProfile": "پروفایل راه دور"
+    "remoteProfile": "پروفایل راه دور",
+    "defaultLocalName": "درون‌ریزی محلی",
+    "defaultDeepLinkName": "درون‌ریزی از پیوند",
+    "switchFailedMsg": "تغییر پروفایل ناموفق بود"
   },
   "proxies": {
     "pageTitle": "پروکسی‌ها",
@@ -236,7 +255,10 @@
     "logsCleared": "گزارش‌ها پاک شد",
     "logsCopied": "گزارش‌ها کپی شد",
     "logsUnderDevelopment": "قابلیت گزارش‌گیری در حال توسعه است",
-    "noLogsWhenDisconnected": "متصل نیست، گزارشی وجود ندارد"
+    "noLogsWhenDisconnected": "متصل نیست، گزارشی وجود ندارد",
+    "loadFailed": "بارگیری گزارش‌ها ناموفق بود",
+    "empty": "هنوز گزارشی وجود ندارد",
+    "clearFailed": "پاک کردن گزارش‌ها ناموفق بود"
   },
   "settings": {
     "pageTitle": "تنظیمات",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.",
       "recoveryRetry": "تلاش دوباره",
       "recoveryClose": "بستن",
-      "recoveryRetried": "داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد."
+      "recoveryRetried": "داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.",
+      "exportAction": "برون‌بری پشتیبان",
+      "importAction": "درون‌ریزی پشتیبان",
+      "exportFailed": "برون‌بری پشتیبان ناموفق بود",
+      "shareText": "پشتیبان ClashMiao"
     },
     "general": {
       "sectionTitle": "عمومی",
@@ -358,7 +384,11 @@
       "general": "عمومی",
       "connection": "اتصال",
       "privacy": "حریم خصوصی"
-    }
+    },
+    "importOptionsInvalid": "محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست",
+    "importOptionsNothing": "هیچ تنظیم قابل درون‌ریزی پیدا نشد",
+    "importOptionsDone": "${count} تنظیم درون‌ریزی شد",
+    "importOptionsPartial": "${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد"
   },
   "about": {
     "pageTitle": "درباره",
@@ -392,7 +422,8 @@
       "disconnect": "قطع اتصال",
       "disconnecting": "در حال قطع اتصال"
     },
-    "hide": "پنهان کردن"
+    "hide": "پنهان کردن",
+    "proxyModeMenu": "حالت پروکسی"
   },
   "failure": {
     "unexpected": "خطای غیرمنتظره",
@@ -443,7 +474,8 @@
       "unexpected": "خطای غیرمنتظره",
       "notUpdate": "هیچ به‌روزرسانی موجود نیست",
       "activeNotFound": "فایل جغرافیایی فعال یافت نشد"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "برای اتصال ضربه بزنید",
@@ -451,7 +483,7 @@
     "disconnecting": "در حال قطع اتصال",
     "connected": "متصل شد",
     "reconnect": "اتصال دوباره",
-    "connectAnyWay": "متصل کردن",
+    "connectAnyWay": "در هر صورت متصل شو",
     "experimentalNotice": "ویژگی‌های آزمایشی در حال استفاده",
     "experimentalNoticeMsg": "شما برخی از ویژگی‌های آزمایشی را فعال کرده‌اید که ممکن است بر کیفیت اتصال تأثیر گذاشته و باعث بروز خطاهای غیرمنتظره شود. شما همیشه می‌توانید این گزینه‌ها را از صفحه‌ی تنظیمات پیکربندی تغییر دهید یا بازنشانی کنید.",
     "disableExperimentalNotice": "دیگر نشان نده",
@@ -553,6 +585,13 @@
     "quickSettingsSubtitle": "تجربهٔ اتصال خود را سفارشی کنید",
     "allAdvancedOptions": "همهٔ گزینه‌های پیشرفته",
     "desktopProxyScopeNotice": "در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.",
-    "serviceModeIosVpnOnly": "iOS فقط از حالت VPN پشتیبانی می‌کند"
+    "serviceModeIosVpnOnly": "iOS فقط از حالت VPN پشتیبانی می‌کند",
+    "warpGenerating": "در حال ساخت پیکربندی WARP…",
+    "warpConfigFailed": "ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
+    "portRangeError": "پورت باید بین 1024 و 65535 باشد",
+    "dnsEmptyError": "نشانی DNS نمی‌تواند خالی باشد",
+    "rangeFormatError": "یک عدد یا بازه وارد کنید، مثلاً 10-30",
+    "urlSchemeError": "نشانی باید با http:// یا https:// شروع شود",
+    "manageRuleAssets": "مدیریت مجموعه‌قواعد"
   }
 }

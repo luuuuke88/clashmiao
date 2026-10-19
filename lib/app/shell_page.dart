@@ -390,9 +390,17 @@ void _handleDeepLinkResult(
 ) {
   switch (result) {
     case DeepLinkImportSuccess(:final profileName):
-      AppToast.success(context, '已导入订阅：$profileName');
+      AppToast.success(
+        context,
+        ref
+            .read(translationsProvider)
+            .profile
+            .add
+            .importedNamed(name: profileName),
+      );
     case DeepLinkImportFailure(:final message):
-      AppToast.error(context, '导入订阅失败：$message');
+      // message 已是本地化文案（见 DeepLinkImportFailure）。
+      AppToast.error(context, message);
   }
   ref.read(deepLinkImportResultProvider.notifier).state = null;
 }

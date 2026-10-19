@@ -317,7 +317,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
 
     if (!mounted || _isGeneratingWarp) return;
     setState(() => _isGeneratingWarp = true);
-    AppToast.info(context, '正在生成 WARP 配置…');
+    final t = ref.read(translationsProvider);
+    AppToast.info(context, t.config.warpGenerating);
     try {
       final licenseKey = ref.read(networkSettingsProvider).warpLicenseKey;
       await ref
@@ -325,10 +326,12 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
           .generateAndStore(licenseKey: licenseKey);
       await notifier.setEnableWarp(true);
       if (!mounted) return;
-      AppToast.success(context, 'WARP 配置生成成功');
+      AppToast.success(context, t.config.warpConfigGenerated);
       unawaited(Navigator.of(context).maybePop());
     } catch (e) {
-      if (mounted) AppToast.error(context, 'WARP 配置生成失败: $e');
+      // 技术细节只进日志；用户看到的是本地化文案。
+      debugPrint('生成 WARP 配置失败: $e');
+      if (mounted) AppToast.error(context, t.config.warpConfigFailed);
     } finally {
       if (mounted) setState(() => _isGeneratingWarp = false);
     }
@@ -432,7 +435,7 @@ Future<void> showProfileManualFormDialog(
                       label: t.profile.detailsForm.nameLabel,
                       hint: isEdit
                           ? t.profile.detailsForm.nameHint
-                          : '自动识别（可选）',
+                          : t.profile.add.nameAutoHint,
                     ),
                     _ProfileTextField(
                       controller: urlCtrl,
@@ -741,18 +744,34 @@ Future<void> doAddProfile(
     if (isHttpDownloadUrl(urlOrUri)) {
       await repo.addByUrl(urlOrUri, customName: customName);
     } else {
-      await repo.addByContent(urlOrUri, name: customName ?? '');
+      final name = customName ?? '';
+      await repo.addByContent(
+        urlOrUri,
+        name: name.trim().isEmpty
+            ? ref.read(translationsProvider).profile.defaultLocalName
+            : name,
+      );
     }
     ref.invalidate(profileListProvider);
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);
-    if (context.mounted) AppToast.success(context, '添加成功');
+    if (context.mounted) {
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).profile.add.successMsg,
+      );
+    }
   } catch (e) {
     if (context.mounted) {
+      final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
-            '添加失败: $e',
+        profileFailureMessage(
+          e,
+          t,
+          failed: t.profile.add.failureMsg,
+          operation: 'addProfile',
+        ),
       );
     }
   }
@@ -771,13 +790,23 @@ Future<void> doEditProfile(
     final repo = await ref.read(profileRepositoryProvider.future);
     await repo.editProfile(id, newName: name, newUrl: url);
     ref.invalidate(profileListProvider);
-    if (context.mounted) AppToast.success(context, '保存成功');
+    if (context.mounted) {
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).profile.save.successMsg,
+      );
+    }
   } catch (e) {
     if (context.mounted) {
+      final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
-            '保存失败: $e',
+        profileFailureMessage(
+          e,
+          t,
+          failed: t.profile.save.failureMsg,
+          operation: 'saveProfile',
+        ),
       );
     }
   }

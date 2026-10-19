@@ -25,7 +25,11 @@
     "grantPermission": "Grant Permission",
     "underDevelopment": "Under Development",
     "confirm": "Confirm",
-    "close": "Close"
+    "close": "Close",
+    "cancel": "Cancel",
+    "clipboardEmpty": "Clipboard is empty",
+    "clipboardReadFailed": "Couldn't read the clipboard",
+    "moreOptions": "More options"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "By Continuing You Agree With ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "Tap to check egress IP",
       "checking": "Checking…",
       "failedRetry": "Check failed, tap to retry"
-    }
+    },
+    "emptyProfilesHint": "Tap the button below to get started",
+    "noActiveProfileTitle": "No profile selected"
   },
   "stats": {
     "traffic": "Traffic",
@@ -116,7 +122,12 @@
       "warpDescription": "Free acceleration with Cloudflare WARP",
       "addingWarpMsg": "Please wait while we register WARP.",
       "addingProfileMsg": "Adding Profile",
-      "failureMsg": "Failed to Add Profile"
+      "failureMsg": "Failed to Add Profile",
+      "importedNamed": "Imported subscription: ${name}",
+      "clipboardEmpty": "The clipboard is empty, nothing to import",
+      "deepLinkMissingUrl": "The link has no subscription address",
+      "successMsg": "Profile added",
+      "nameAutoHint": "Detected automatically (optional)"
     },
     "details": {
       "basicInfo": "Basic Information",
@@ -159,7 +170,9 @@
     "delete": {
       "buttonTxt": "Delete",
       "confirmationMsg": "Delete Profile Permanently?",
-      "successMsg": "Profile Deleted Successfully"
+      "successMsg": "Profile Deleted Successfully",
+      "confirmTitle": "Delete profile",
+      "namedConfirmMsg": "Delete \"${name}\"? This can't be undone."
     },
     "save": {
       "buttonText": "Save",
@@ -179,9 +192,15 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Off",
+      "updateIntervalHours": "${hours} h",
+      "updateIntervalDays": "${days} d"
     },
-    "remoteProfile": "Remote Profile"
+    "remoteProfile": "Remote Profile",
+    "defaultLocalName": "Local import",
+    "defaultDeepLinkName": "Link import",
+    "switchFailedMsg": "Couldn't switch profile"
   },
   "proxies": {
     "pageTitle": "Lines",
@@ -236,7 +255,10 @@
     "logsCleared": "Logs cleared",
     "logsCopied": "Logs copied",
     "logsUnderDevelopment": "Log feature is under development",
-    "noLogsWhenDisconnected": "Not connected, no logs"
+    "noLogsWhenDisconnected": "Not connected, no logs",
+    "loadFailed": "Couldn't load logs",
+    "empty": "No logs yet",
+    "clearFailed": "Couldn't clear logs"
   },
   "settings": {
     "pageTitle": "Settings",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.",
       "recoveryRetry": "Retry",
       "recoveryClose": "Close",
-      "recoveryRetried": "Your data was restored to before the interrupted import."
+      "recoveryRetried": "Your data was restored to before the interrupted import.",
+      "exportAction": "Export backup",
+      "importAction": "Import backup",
+      "exportFailed": "Couldn't export the backup",
+      "shareText": "ClashMiao backup"
     },
     "general": {
       "sectionTitle": "General",
@@ -358,7 +384,11 @@
       "general": "General",
       "connection": "Connection",
       "privacy": "Privacy"
-    }
+    },
+    "importOptionsInvalid": "The clipboard doesn't contain valid settings JSON",
+    "importOptionsNothing": "No importable settings found",
+    "importOptionsDone": "Imported ${count} settings",
+    "importOptionsPartial": "Imported ${applied} settings; ${skipped} were skipped because they were invalid"
   },
   "about": {
     "pageTitle": "About",
@@ -392,7 +422,8 @@
       "connecting": "Connecting",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting"
-    }
+    },
+    "proxyModeMenu": "Proxy Mode"
   },
   "failure": {
     "unexpected": "Unexpected Error",
@@ -443,7 +474,8 @@
       "unexpected": "Unexpected Error",
       "notUpdate": "No Update Available",
       "activeNotFound": "Active Geo Asset Not Found"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Tap To Connect",
@@ -451,7 +483,7 @@
     "disconnecting": "Disconnecting",
     "connected": "Connected",
     "reconnect": "Reconnect",
-    "connectAnyWay": "Connect",
+    "connectAnyWay": "Connect Anyway",
     "experimentalNotice": "Experimental Features In Use",
     "experimentalNoticeMsg": "You've enabled some experimental features which might affect connection quality and cause unexpected errors. You can always change or reset these options from Config options page.",
     "disableExperimentalNotice": "Don't Show Again",
@@ -553,6 +585,13 @@
     "warpNoiseMode": "Noise Mode",
     "warpNoiseDelay": "Noise Delay",
     "desktopProxyScopeNotice": "On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.",
-    "serviceModeIosVpnOnly": "iOS supports VPN mode only"
+    "serviceModeIosVpnOnly": "iOS supports VPN mode only",
+    "warpGenerating": "Generating WARP configuration…",
+    "warpConfigFailed": "Couldn't generate the WARP configuration. Please try again later.",
+    "portRangeError": "Port must be between 1024 and 65535",
+    "dnsEmptyError": "DNS address can't be empty",
+    "rangeFormatError": "Enter a number or a range, e.g. 10-30",
+    "urlSchemeError": "URL must start with http:// or https://",
+    "manageRuleAssets": "Manage rule sets"
   }
 }

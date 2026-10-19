@@ -17,7 +17,6 @@ import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
-import 'package:clashmiao/domain/connection/application/selection_store_reconciler.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
@@ -189,8 +188,6 @@ void main() async {
   // 与出口 IP 都不依赖某个页面在不在。
   container.read(connectionControllerProvider);
   container.read(egressIpProbeProvider);
-  // 手选存储与运行时分组对齐（运行时不存在的分组记录迁移 / 删除）。
-  container.read(selectionStoreReconcilerProvider);
 
   // 订阅自动更新调度器：读每条订阅的 updateInterval，到期的用跟"立即更新"
   // 按钮同一条刷新逻辑静默更新一次。触发时机三条：这里的启动时查一次

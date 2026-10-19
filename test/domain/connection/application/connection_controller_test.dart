@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
@@ -146,6 +148,8 @@ class _Env {
     port = FakeKernelPort();
     container = ProviderContainer(
       overrides: [
+        // 每个内核实例的实时分组由测试推送（见 [kernelStarted] / [pushGroups]）。
+        liveGroupsProvider.overrideWith((_) => liveGroups.stream),
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         // 手选写入经 ProfileStore.writeAux 校验订阅存在：种好 p1 / p2。
         profileStoreProvider.overrideWith((_) => Future.value(store)),
@@ -179,6 +183,8 @@ class _Env {
     container.read(connectionLauncherProvider);
     container.read(hapticServiceProvider);
     container.read(storeReviewServiceProvider);
+    // 保持实时分组 provider 常驻：推送发生在任何读取之前也不会丢。
+    container.listen(liveGroupsProvider, (_, _) {});
     ctl = container.read(connectionControllerProvider.notifier);
     if (analytics) prefs.setBool('clashmiao_analytics_enabled', true);
     fa.flushMicrotasks();
@@ -187,11 +193,15 @@ class _Env {
   static ProfileEntity? _activeProfile(Ref ref) {
     final id = ref.watch(activeProfileIdProvider);
     if (id == null) return null;
+    // 代际取自存储里的真实记录：手选写入经 writeAux 按 (id, inc) 校验。
+    final inc =
+        ref.watch(profileStoreProvider).valueOrNull?.view().find(id)?.inc ?? '';
     return ProfileEntity(
       id: id,
       name: 'P-$id',
       url: 'https://example.invalid/$id',
       active: true,
+      inc: inc,
     );
   }
 
@@ -200,6 +210,42 @@ class _Env {
 
   /// 非空时激活订阅的加载悬停在它上面（模拟订阅晚于内核快照到达）。
   Completer<void>? profileGate;
+
+  /// 实时分组流（带实例归属）。
+  final StreamController<LiveGroups?> liveGroups =
+      StreamController<LiveGroups?>.broadcast();
+
+  /// 运行时分组：[kernelStarted] 默认随快照推送这一份。
+  List<OutboundGroup> runtimeGroups = const [
+    OutboundGroup(
+      tag: 'proxy',
+      type: 'selector',
+      selected: 'hk',
+      items: [
+        OutboundProxy(tag: 'hk', type: 'vless'),
+        OutboundProxy(tag: 'old', type: 'vless'),
+        OutboundProxy(tag: 'new', type: 'vless'),
+      ],
+    ),
+    OutboundGroup(
+      tag: 'auto',
+      type: 'urltest',
+      selected: 'sg',
+      items: [OutboundProxy(tag: 'sg', type: 'vless')],
+    ),
+  ];
+
+  /// 推一份归属于 [attempt] 实例的实时分组。
+  void pushGroups({
+    required int attempt,
+    String epoch = 'e1',
+    List<OutboundGroup>? groups,
+  }) {
+    liveGroups.add(
+      LiveGroups((epoch: epoch, attempt: attempt), groups ?? runtimeGroups),
+    );
+    fa.flushMicrotasks();
+  }
 
   /// 非空时系统代理脏标记的持久化可被悬停。
   _GatedDirtyStore? dirtyStore;
@@ -248,7 +294,13 @@ class _Env {
   }
 
   /// 内核受理 on 请求 [r] 并走到 started。
-  void kernelStarted(DesiredRequest r, {int attempt = 1, bool replay = false}) {
+  /// [withGroups]：随后推送这个实例的实时分组（真机上 started 之后很快就到）。
+  void kernelStarted(
+    DesiredRequest r, {
+    int attempt = 1,
+    bool replay = false,
+    bool withGroups = true,
+  }) {
     push(
       status: KernelStatus.started,
       attempt: attempt,
@@ -258,6 +310,7 @@ class _Env {
       revision: r.launch!.configRevision,
       replay: replay,
     );
+    if (withGroups) pushGroups(attempt: attempt);
   }
 
   void kernelStopped(DesiredRequest r, {int attempt = 1}) {
@@ -302,6 +355,7 @@ class _Env {
     if (_disposed) return;
     _disposed = true;
     container.dispose();
+    unawaited(liveGroups.close());
     fa.flushMicrotasks();
   }
 }
@@ -329,10 +383,13 @@ void _sim(
         ),
     ]);
     fakeAsync((fa) {
+      // 存储内部的异步锁要在 fake 区里创建：在真实区里建的锁，其首个排队动作会
+      // 被调度到真实微任务队列，fake 时钟永远推不动（订阅附属数据写入会悬停）。
+      final fakeZoneStore = ProfileStore(prefs: p, configDir: store.configDir);
       final e = _Env._(
         fa,
         p,
-        store,
+        fakeZoneStore,
         desktop: desktop,
         analytics: analytics,
         holdProfile: holdProfile,
@@ -891,6 +948,112 @@ void main() {
       },
       holdProfile: true,
       prefs: stored({'proxy': 'hk'}),
+    );
+  });
+
+  // 评审 Important 4：迁移与重放不是一条流水线时，首次升级的重放仍会先对不存在
+  // 的 `proxy` 调 selectOutbound。真实控制器 + 编排流水线一起跑。
+  group('启动后编排：校验 → 迁移 → 只重放运行时分组 → 确认', () {
+    const runtime = [
+      OutboundGroup(
+        tag: 'select',
+        type: 'selector',
+        selected: 'auto',
+        items: [
+          OutboundProxy(tag: 'auto', type: 'urltest'),
+          OutboundProxy(tag: 'hk', type: 'vless'),
+          OutboundProxy(tag: 'sg', type: 'vless'),
+        ],
+      ),
+      OutboundGroup(
+        tag: 'auto',
+        type: 'urltest',
+        selected: 'sg',
+        items: [
+          OutboundProxy(tag: 'hk', type: 'vless'),
+          OutboundProxy(tag: 'sg', type: 'vless'),
+        ],
+      ),
+    ];
+
+    _sim(
+      '升级用户的旧记录（proxy）：分组迟到也等它，迁到 select 后只对 select 重放，绝不碰 proxy',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+
+        e.kernelStarted(
+          e.requests.single,
+          attempt: 3,
+          replay: true,
+          withGroups: false,
+        );
+        e.fa.elapse(const Duration(seconds: 2));
+        expect(e.port.selectCalls, isEmpty, reason: '分组没到之前什么都不发');
+        expect(e.port.acknowledged, isEmpty);
+
+        e.pushGroups(attempt: 3, groups: runtime);
+        e.fa.flushMicrotasks();
+
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'hk', expectedAttempt: 3),
+        ]);
+        expect(e.port.selectCalls.where((c) => c.group == 'proxy'), isEmpty);
+        expect(e.container.read(proxySelectionStoreProvider), {'select': 'hk'});
+        expect(e.prefs.getString('proxy_selection_p1'), '{"select":"hk"}');
+        expect(e.port.acknowledged, [3]);
+      },
+      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
+    );
+
+    _sim(
+      '等不到这个实例的分组（5 s）：不重放任何记录、不删任何记录，确认（出口探测得以开始）',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+
+        e.kernelStarted(
+          e.requests.single,
+          attempt: 1,
+          replay: true,
+          withGroups: false,
+        );
+        e.pushGroups(attempt: 0, groups: runtime); // 别的实例的分组不算
+        e.fa.elapse(const Duration(seconds: 4, milliseconds: 900));
+        expect(e.port.acknowledged, isEmpty);
+        e.fa.elapse(const Duration(milliseconds: 200));
+
+        expect(e.port.selectCalls, isEmpty);
+        expect(e.port.acknowledged, [1]);
+        expect(e.container.read(proxySelectionStoreProvider), {'proxy': 'hk'});
+      },
+      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
+    );
+
+    _sim(
+      '迁移等待期间重连（新 attempt）：旧流水线丢弃，新 attempt 自己完成迁移与确认',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r = e.requests.single;
+
+        e.kernelStarted(r, attempt: 1, replay: true, withGroups: false);
+        e.kernelStarted(r, attempt: 2, replay: true, withGroups: false);
+        e.pushGroups(attempt: 2, groups: runtime);
+        e.fa.elapse(const Duration(seconds: 6));
+
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'hk', expectedAttempt: 2),
+        ]);
+        expect(e.port.acknowledged, [2], reason: 'attempt 1 已过期，不确认');
+      },
+      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
     );
   });
 

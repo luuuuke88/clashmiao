@@ -27,7 +27,7 @@
 
 ---
 
-## 里程碑 3 — iOS PacketTunnel 🟡 代码就绪 / 卡签名
+## 里程碑 3 — iOS PacketTunnel 🟡 代码就绪 / 未上真机
 
 **代码完成**：
 - `ios/SingBoxPacketTunnel/` Network Extension target（com.apple.product-type.app-extension）
@@ -36,9 +36,9 @@
 - Podfile 已加 extension target 段
 - CI `build-ios` job (`flutter build ios --debug --no-codesign`) 跑绿
 
-**阻塞**（用户层硬约束，无法绕开）：
-1. Apple Developer 账号（$99/年）—— https://developer.apple.com/programs/enroll/
-2. NetworkExtension capability 申请审批（1–2 个工作日人工审）
+**剩下要做的事**：
+1. ✅ Apple Developer 付费账号
+2. 确认账号类型：App Store 只允许**以组织身份**注册的开发者上架 VPN 类 App（审核指南 5.4），个人账号只能走 TestFlight / 开发安装
 3. App ID `com.clashmiao.clashmiao` + `com.clashmiao.clashmiao.SingBoxPacketTunnel` 注册
 4. App Group `group.com.clashmiao.shared` 注册
 5. Provisioning Profile 下载到本机 Xcode
@@ -48,25 +48,14 @@
 
 ---
 
-## 里程碑 4 — Windows 🟡 代码 + lib 就绪 / 卡真机
+## 里程碑 4 — Windows ✅ 完成
 
-**当前状态**：
+**结果**：已在 Windows 真机上验证可用（系统代理模式）。`release.yml` 随 tag 产出 Windows 包。
+
+**技术要点**：
 - ✅ `libcore-windows-amd64.dll`（41M，amd64 c-shared，含 setup/start/stop/parse 等 11 个 FFI 符号）在 GitHub Release tag `libcore-v1.11.0`
 - ✅ `windows/CMakeLists.txt` install 阶段把 dll 拷到 `.exe` 同级
 - ✅ CI `build-windows` 跑 `flutter build windows --release`，bundle 校验 + `clashmiao-windows-release` artifact 上传
-- ❌ 没有 Windows 物理机 / VM 跑过一次连接 smoke（设系统代理 + 浏览器 → 出口 IP 变化）
-
-**剩下要做的事**（拿到 Windows 机器后）：
-```powershell
-git clone luke501/clashmiao
-bash bin/fetch-libcore.sh windows
-flutter pub get
-flutter build windows --release
-build\windows\x64\runner\Release\clashmiao.exe
-# 添加订阅、点连接、看 Edge / Chrome 出口 IP
-```
-
-可能踩坑：`set-system-proxy: true` 写 IE 注册表需要管理员权限；macOS / Linux 编 dll 的 CGo 链接方式跟 native MSVC 不完全一致，可能要重编一次。
 
 ---
 
@@ -81,7 +70,7 @@ build\windows\x64\runner\Release\clashmiao.exe
 
 **剩下要做的事**（拿到 Linux 桌面后）：
 ```bash
-git clone luke501/clashmiao
+git clone https://github.com/luuuuke88/clashmiao.git
 bash bin/fetch-libcore.sh linux
 flutter pub get
 flutter build linux --release
@@ -102,12 +91,13 @@ flutter build linux --release
 
 ### CI/CD ✅
 
-GitHub Actions 8 个 job 并行 gate：
-- analyze / test-unit / test-android-unit（PR gate）
-- build-android / build-macos / build-ios / build-windows / build-linux（5 平台 release/debug build）
+`ci.yml` 并行 gate：
+- public-links / analyze / test-unit / test-android-unit
+- build-android / build-macos / build-ios / build-windows / build-linux（5 平台构建）
+- smoke-android / smoke-macos / smoke-windows / smoke-linux（产物启动冒烟）
 - Windows / Linux build 后校验 libcore 真被 install 到产物，Linux 还 `nm -D` 抽查 FFI 符号
 
-`release.yml` 跟 `v*` tag 触发 Android APK/AAB + macOS dmg 自动发布。
+`release.yml` 由 `v*` tag 触发，产出 Android APK、macOS dmg、Windows、Linux（deb + tar.gz）四个平台的包和 `SHA256SUMS.txt`，发到 GitHub Releases。某个平台失败时其余平台照常发布，release 正文里会显式标出缺了哪个平台。
 
 ### 文档
 

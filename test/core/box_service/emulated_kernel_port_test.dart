@@ -599,6 +599,56 @@ void main() {
       });
     });
 
+    test('平台先推 Stopped、stop() 调用仍悬停：20 s 照样发布失败，通道不放行，释放后正常收尾并执行下一个请求', () {
+      rig((async, b, p, snaps) {
+        p.request(_on(1));
+        async.flushMicrotasks();
+        expect(snaps.last.status, KernelStatus.started);
+
+        final gate = Completer<void>();
+        b.stopBehavior = () async {
+          b.status.add(const BoxStopped()); // 状态先到
+          await gate.future; // 调用却不返回
+        };
+        p.request(_off(2));
+        async.flushMicrotasks();
+        expect(snaps.last.status, KernelStatus.stopping);
+
+        async.elapse(const Duration(seconds: 19, milliseconds: 900));
+        expect(snaps.last.lastFailure, isNull);
+        async.elapse(const Duration(milliseconds: 200));
+        expect(
+          snaps.last.lastFailure?.code,
+          KernelFailureCode.kernelUnresponsive,
+        );
+        expect(snaps.last.lastFailure?.seq, 2);
+        expect(snaps.last.status, KernelStatus.stopping);
+
+        // 通道仍被占用：新的 on 受理了，但不会并发地发任何调用。
+        p.request(_on(3, rev: 2));
+        async.elapse(const Duration(seconds: 60));
+        expect(b.calls, ['start:/rc/runtime-config-1.json', 'stop']);
+        expect(snaps.last.appliedSeq, 3);
+        expect(snaps.last.status, KernelStatus.stopping);
+
+        // 释放：本次停止正常收尾（failure 作为历史保留），随后执行下一个请求。
+        gate.complete();
+        async.flushMicrotasks();
+        expect(b.calls, [
+          'start:/rc/runtime-config-1.json',
+          'stop',
+          'start:/rc/runtime-config-3.json',
+        ]);
+        expect(snaps.last.status, KernelStatus.started);
+        expect(snaps.last.desired, Desired.on);
+        expect(snaps.last.activeConfigRevision, 2);
+        expect(
+          snaps.last.lastFailure?.code,
+          KernelFailureCode.kernelUnresponsive,
+        );
+      });
+    });
+
     test('stop() 返回但平台一直不推 Stopped：20 s 边界，随后由新请求重新回收', () {
       rig((async, b, p, snaps) {
         p.request(_on(1));

@@ -13,6 +13,7 @@ class AiUiModalWrapper extends StatelessWidget {
     required this.child,
     this.showHandle = true,
     this.scrollableContent = true,
+    this.routeProvidesSurface = false,
   });
 
   final Widget child;
@@ -25,8 +26,15 @@ class AiUiModalWrapper extends StatelessWidget {
   /// （比如设置里的语言选择）传 false，不然 `Flexible` 落进无界高度里会炸。
   final bool scrollableContent;
 
+  /// 表面、圆角、拖拽柄、入场动画都由弹出它的路由提供时传 true（快速设置：
+  /// 实色底的 `showModalBottomSheet` + `showDragHandle`）。此时这里只负责
+  /// 高度封顶、安全区与滚动，不再画半透明毛玻璃底、自己的拖拽柄和二次入场
+  /// 动画。默认 false，其余所有调用点行为不变。
+  final bool routeProvidesSurface;
+
   @override
   Widget build(BuildContext context) {
+    if (routeProvidesSurface) return _buildBare(context);
     final isLight = Theme.of(context).brightness == Brightness.light;
     final media = MediaQuery.of(context);
     // 封顶写在这里而不是 showAiUiModal 里：项目里有好几处直接调
@@ -111,6 +119,25 @@ class AiUiModalWrapper extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildBare(BuildContext context) {
+    final media = MediaQuery.of(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        // 系统拖拽柄占一个最小交互高度，也要从封顶里扣掉，否则整张弹层会
+        // 比 [_modalTopHeadroom] 允许的再高一截。
+        maxHeight:
+            media.size.height -
+            media.padding.top -
+            _modalTopHeadroom -
+            kMinInteractiveDimension,
+      ),
+      child: SafeArea(
+        top: false,
+        child: scrollableContent ? SingleChildScrollView(child: child) : child,
       ),
     );
   }

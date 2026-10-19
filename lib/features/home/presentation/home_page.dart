@@ -142,10 +142,7 @@ class HomePage extends ConsumerWidget {
                           children: [
                             _HeaderButton(
                               icon: FluentIcons.options_24_regular,
-                              onTap: () => showAiUiModal<void>(
-                                context: context,
-                                builder: (_) => const QuickSettingsModal(),
-                              ),
+                              onTap: () => QuickSettingsModal.show(context),
                             ),
                             const SizedBox(width: 12),
                             _HeaderButton(

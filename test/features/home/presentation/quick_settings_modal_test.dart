@@ -5,6 +5,7 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,9 @@ import 'package:toastification/toastification.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   Map<String, Object> initialPrefs = const {},
+  bool viaRoute = false,
+  bool disableAnimations = false,
+  ThemeData? theme,
 }) async {
   SharedPreferences.setMockInitialValues({
     'locale': 'zhCn',
@@ -32,10 +36,29 @@ Future<(Widget, ProviderContainer)> _host({
       container: container,
       child: ToastificationWrapper(
         child: MaterialApp(
-          theme: ThemeData.light().copyWith(
-            extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+          theme:
+              theme ??
+              ThemeData.light().copyWith(
+                extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+              ),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(disableAnimations: disableAnimations),
+            child: child!,
           ),
-          home: const Scaffold(body: QuickSettingsModal()),
+          home: viaRoute
+              ? Scaffold(
+                  body: Builder(
+                    builder: (context) => Center(
+                      child: ElevatedButton(
+                        onPressed: () => QuickSettingsModal.show(context),
+                        child: const Text('open'),
+                      ),
+                    ),
+                  ),
+                )
+              : const Scaffold(body: QuickSettingsModal()),
         ),
       ),
     ),
@@ -60,7 +83,8 @@ void main() {
         expect(find.text('系统线路'), findsOneWidget);
         expect(find.text('VPN'), findsNothing);
       }
-      expect(find.text('启用 WARP'), findsOneWidget);
+      // 默认未授权 WARP：入口行是「设置 WARP」，不是开关。
+      expect(find.text('设置 WARP'), findsOneWidget);
       expect(find.text('启用 TLS 数据分段'), findsOneWidget);
       expect(find.text('所有进阶选项'), findsOneWidget);
       expect(find.text('全局代理'), findsNothing);
@@ -149,6 +173,189 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(container.read(networkSettingsProvider).enableWarp, isTrue);
+    });
+
+    testWidgets('WARP 未授权：显示「设置 WARP」与「未配置」，不出现开关', (tester) async {
+      final (widget, _) = await _host();
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('设置 WARP'), findsOneWidget);
+      expect(find.text('未配置'), findsOneWidget);
+      expect(find.text('启用 WARP'), findsNothing, reason: '未授权时不能假装有一个能开的开关');
+      expect(find.byType(Switch), findsOneWidget, reason: '只有 TLS 分段那一个开关');
+    });
+
+    testWidgets('WARP 已授权：保持「启用 WARP」开关，没有「未配置」', (tester) async {
+      final (widget, _) = await _host(
+        initialPrefs: {'clashmiao_warp_consent_given': true},
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('启用 WARP'), findsOneWidget);
+      expect(find.text('设置 WARP'), findsNothing);
+      expect(find.text('未配置'), findsNothing);
+      expect(find.byType(Switch), findsNWidgets(2));
+    });
+
+    testWidgets('服务模式分段控件：选中项带 selected 语义并用 primaryContainer', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, _) = await _host(
+        initialPrefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      const selectedLabel = '仅线路';
+      final unselectedLabel = (Platform.isAndroid || Platform.isIOS)
+          ? 'VPN'
+          : '系统线路';
+
+      final selected = tester.getSemantics(find.text(selectedLabel));
+      expect(selected, isSemantics(isSelected: true, isButton: true));
+      final other = tester.getSemantics(find.text(unselectedLabel));
+      expect(
+        other,
+        isSemantics(isSelected: false, hasSelectedState: true, isButton: true),
+      );
+
+      final scheme = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme;
+      final selectedText = tester.widget<Text>(find.text(selectedLabel));
+      expect(selectedText.style?.color, scheme.onPrimaryContainer);
+      final box = tester.widget<AnimatedContainer>(
+        find
+            .ancestor(
+              of: find.text(selectedLabel),
+              matching: find.byType(AnimatedContainer),
+            )
+            .first,
+      );
+      expect((box.decoration! as BoxDecoration).color, scheme.primaryContainer);
+      handle.dispose();
+    });
+
+    group('作为底部弹层路由', () {
+      final darkTheme = ThemeData.dark().copyWith(
+        extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
+      );
+
+      testWidgets('实色表面、遮罩 black@0.40、24dp 顶角、系统拖拽柄，且没有模糊和内部入场动画', (
+        tester,
+      ) async {
+        final (widget, _) = await _host(viaRoute: true, theme: darkTheme);
+        await tester.pumpWidget(widget);
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('快速设置'), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == '_DragHandle',
+          ),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(
+            of: find.byType(QuickSettingsModal),
+            matching: find.byType(BackdropFilter),
+          ),
+          findsNothing,
+          reason: '半透明 + 模糊会让背景节点透进内容区',
+        );
+        expect(
+          find.descendant(
+            of: find.byType(QuickSettingsModal),
+            matching: find.byType(Animate),
+          ),
+          findsNothing,
+          reason: '路由动画之外不允许再有位移/淡入',
+        );
+
+        final sheet = tester.widget<BottomSheet>(find.byType(BottomSheet));
+        expect(sheet.backgroundColor, const Color(0xFF1C1C22));
+        final shape = sheet.shape! as RoundedRectangleBorder;
+        expect(
+          shape.borderRadius,
+          const BorderRadius.vertical(top: Radius.circular(24)),
+        );
+        final barrier = tester.widget<ModalBarrier>(
+          find.byType(ModalBarrier).last,
+        );
+        expect(barrier.color!.a, closeTo(0.40, 0.01));
+        expect(barrier.color!.r, 0);
+      });
+
+      testWidgets('浅色主题使用 surfaceContainerLow', (tester) async {
+        final (widget, _) = await _host(viaRoute: true);
+        await tester.pumpWidget(widget);
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
+
+        final scheme = Theme.of(
+          tester.element(find.byType(BottomSheet)),
+        ).colorScheme;
+        final sheet = tester.widget<BottomSheet>(find.byType(BottomSheet));
+        expect(sheet.backgroundColor, scheme.surfaceContainerLow);
+      });
+
+      testWidgets('只有路由这一次入场动画：250ms 到位，退出 200ms', (tester) async {
+        final (widget, _) = await _host(viaRoute: true, theme: darkTheme);
+        await tester.pumpWidget(widget);
+        await tester.tap(find.text('open'));
+        await tester.pump();
+        // 路由动画结束时刻：位置已经是终点。旧版内容区还有最长 600ms 的横移。
+        await tester.pump(const Duration(milliseconds: 250));
+        final top250 = tester.getTopLeft(find.byType(BottomSheet)).dy;
+        final left250 = tester.getTopLeft(find.text('快速设置')).dx;
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.byType(BottomSheet)).dy, top250);
+        expect(
+          tester.getTopLeft(find.text('快速设置')).dx,
+          left250,
+          reason: '内容区不能在路由到位之后还在横移',
+        );
+
+        Navigator.of(tester.element(find.byType(QuickSettingsModal))).pop();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(
+          find.byType(QuickSettingsModal),
+          findsNothing,
+          reason: '退出 200ms 内完成',
+        );
+      });
+
+      testWidgets('减少动画：弹出与关闭各只需一帧', (tester) async {
+        final (widget, _) = await _host(
+          viaRoute: true,
+          theme: darkTheme,
+          disableAnimations: true,
+        );
+        await tester.pumpWidget(widget);
+        await tester.tap(find.text('open'));
+        await tester.pump();
+        await tester.pump();
+        expect(find.text('快速设置'), findsOneWidget);
+        final top = tester.getTopLeft(find.byType(BottomSheet)).dy;
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(find.byType(BottomSheet)).dy,
+          top,
+          reason: '没有位移动画：第二帧就已在终点',
+        );
+
+        Navigator.of(tester.element(find.byType(QuickSettingsModal))).pop();
+        await tester.pump();
+        await tester.pump();
+        expect(find.byType(QuickSettingsModal), findsNothing);
+      });
     });
 
     // 桌面端仓库里不带 wintun 驱动，macOS 也没有网络扩展权限/特权 helper，

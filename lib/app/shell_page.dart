@@ -116,10 +116,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal<void>(
-          context: context,
-          builder: (_) => const QuickSettingsModal(),
-        );
+        QuickSettingsModal.show(context);
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_LOGS') &&

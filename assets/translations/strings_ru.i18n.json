@@ -486,6 +486,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Настроить WARP",
+    "warpNotConfigured": "Не настроено",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "proxyOverWarp": "Работа прокси через WARP",

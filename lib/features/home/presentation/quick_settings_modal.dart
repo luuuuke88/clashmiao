@@ -7,7 +7,6 @@ import 'package:clashmiao/features/config/presentation/config_options_page.dart'
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 enum _QuickServiceMode { proxy, systemProxy, tun }
@@ -39,6 +38,35 @@ String _quickServiceModeLabel(TranslationsEn t, _QuickServiceMode mode) {
 class QuickSettingsModal extends ConsumerWidget {
   const QuickSettingsModal({super.key});
 
+  /// 以底部弹层路由打开。整个入场/退场动画只来自这一条路由（250/200 ms），
+  /// 内容区没有任何二次位移或延迟；系统开了「减少动画」就直接不播。
+  /// 表面是实色，不透出背后的页面。
+  static Future<void> show(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useRootNavigator: true,
+      showDragHandle: true,
+      backgroundColor: isDark
+          ? const Color(0xFF1C1C22)
+          : theme.colorScheme.surfaceContainerLow,
+      barrierColor: Colors.black.withValues(alpha: 0.40),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
+          ? AnimationStyle.noAnimation
+          : const AnimationStyle(
+              duration: Duration(milliseconds: 250),
+              reverseDuration: Duration(milliseconds: 200),
+            ),
+      builder: (_) => const QuickSettingsModal(),
+    );
+  }
+
   Future<void> _changeServiceMode(WidgetRef ref, _QuickServiceMode mode) async {
     final notifier = ref.read(networkSettingsProvider.notifier);
     switch (mode) {
@@ -58,134 +86,134 @@ class QuickSettingsModal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider);
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final settings = ref.watch(networkSettingsProvider);
     final selectedMode = _quickServiceModeOf(settings);
 
     return AiUiModalWrapper(
+      routeProvidesSurface: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-                padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
-                child: Column(
-                  children: [
-                    Text(
-                      t.config.quickSettings,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      t.config.quickSettingsSubtitle.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: theme.aiUi.secondaryTextColor,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-              .animate()
-              .fadeIn(duration: 300.ms, delay: 200.ms)
-              .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
-          Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: theme.aiUi.softBackgroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: theme.aiUi.borderColor),
+            padding: const EdgeInsets.fromLTRB(28, 8, 28, 12),
+            child: Column(
+              children: [
+                Text(
+                  t.config.quickSettings,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
                   ),
-                  child: Row(
-                    children: _quickServiceModeChoices.map((mode) {
-                      final isSelected = selectedMode == mode;
-                      return Expanded(
-                        child: GestureDetector(
-                          onTap: () => _changeServiceMode(ref, mode),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  t.config.quickSettingsSubtitle.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: theme.aiUi.secondaryTextColor,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: theme.aiUi.softBackgroundColor,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.aiUi.borderColor),
+              ),
+              child: Row(
+                children: _quickServiceModeChoices.map((mode) {
+                  final isSelected = selectedMode == mode;
+                  return Expanded(
+                    child: Semantics(
+                      button: true,
+                      selected: isSelected,
+                      inMutuallyExclusiveGroup: true,
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _changeServiceMode(ref, mode),
+                        child: AnimatedContainer(
+                          duration: reduceMotion
+                              ? Duration.zero
+                              : const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? scheme.primaryContainer
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            _quickServiceModeLabel(t, mode),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.w500,
                               color: isSelected
-                                  ? theme.colorScheme.primary
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: isSelected
-                                  ? theme.aiUi.primaryShadow
-                                  : null,
-                            ),
-                            child: Text(
-                              _quickServiceModeLabel(t, mode),
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.bold
-                                    : FontWeight.w500,
-                                color: isSelected
-                                    ? Colors.white
-                                    : theme.aiUi.secondaryTextColor,
-                              ),
+                                  ? scheme.onPrimaryContainer
+                                  : theme.aiUi.secondaryTextColor,
                             ),
                           ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              )
-              .animate()
-              .fadeIn(duration: 300.ms, delay: 250.ms)
-              .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Column(
-                  children: [
-                    _SettingTile(
-                      label: t.config.enableWarp,
-                      value: settings.warpConsentGiven
-                          ? settings.enableWarp
-                          : null,
-                      icon: FluentIcons.shield_24_regular,
-                      color: Colors.orange.shade400,
-                      onChanged: settings.warpConsentGiven
-                          ? ref
-                                .read(networkSettingsProvider.notifier)
-                                .setEnableWarp
-                          : null,
-                      onTap: settings.warpConsentGiven
-                          ? null
-                          : () => _pushConfigOptions(context),
-                    ),
-                    const SizedBox(height: 12),
-                    _SettingTile(
-                      label: t.config.enableTlsFragment,
-                      value: settings.enableTlsFragment,
-                      icon: FluentIcons.leaf_one_24_regular,
-                      color: Colors.green.shade400,
-                      onChanged: ref
-                          .read(networkSettingsProvider.notifier)
-                          .setEnableTlsFragment,
-                    ),
-                    const SizedBox(height: 12),
-                    _SettingTile(
-                      label: t.config.allAdvancedOptions,
-                      icon: FluentIcons.settings_24_regular,
-                      color: Colors.blue.shade400,
-                      onTap: () => _pushConfigOptions(context),
-                    ),
-                  ],
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
+              children: [
+                _SettingTile(
+                  label: settings.warpConsentGiven
+                      ? t.config.enableWarp
+                      : t.config.setUpWarp,
+                  trailingText: settings.warpConsentGiven
+                      ? null
+                      : t.config.warpNotConfigured,
+                  value: settings.warpConsentGiven ? settings.enableWarp : null,
+                  icon: FluentIcons.shield_24_regular,
+                  color: Colors.orange.shade400,
+                  onChanged: settings.warpConsentGiven
+                      ? ref.read(networkSettingsProvider.notifier).setEnableWarp
+                      : null,
+                  onTap: settings.warpConsentGiven
+                      ? null
+                      : () => _pushConfigOptions(context),
                 ),
-              )
-              .animate()
-              .fadeIn(duration: 300.ms, delay: 300.ms)
-              .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
+                const SizedBox(height: 12),
+                _SettingTile(
+                  label: t.config.enableTlsFragment,
+                  value: settings.enableTlsFragment,
+                  icon: FluentIcons.leaf_one_24_regular,
+                  color: Colors.green.shade400,
+                  onChanged: ref
+                      .read(networkSettingsProvider.notifier)
+                      .setEnableTlsFragment,
+                ),
+                const SizedBox(height: 12),
+                _SettingTile(
+                  label: t.config.allAdvancedOptions,
+                  icon: FluentIcons.settings_24_regular,
+                  color: Colors.blue.shade400,
+                  onTap: () => _pushConfigOptions(context),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -205,6 +233,7 @@ class _SettingTile extends StatelessWidget {
     this.value,
     required this.icon,
     required this.color,
+    this.trailingText,
     this.onChanged,
     this.onTap,
   });
@@ -213,6 +242,9 @@ class _SettingTile extends StatelessWidget {
   final bool? value;
   final IconData icon;
   final Color color;
+
+  /// 尾部的状态文字（例如 WARP 未授权时的「未配置」），显示在箭头之前。
+  final String? trailingText;
   final ValueChanged<bool>? onChanged;
   final VoidCallback? onTap;
 
@@ -255,12 +287,23 @@ class _SettingTile extends StatelessWidget {
                 height: 32,
                 child: Switch.adaptive(value: value!, onChanged: onChanged),
               )
-            else
+            else ...[
+              if (trailingText != null) ...[
+                Text(
+                  trailingText!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.aiUi.secondaryTextColor,
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
               Icon(
                 FluentIcons.chevron_right_24_regular,
                 size: 16,
                 color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
               ),
+            ],
           ],
         ),
       ),

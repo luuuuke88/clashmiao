@@ -486,6 +486,8 @@
     "muxProtocol": "復用器控制",
     "muxMaxStreams": "最大並發數",
     "enableWarp": "啟用 WARP",
+    "setUpWarp": "設定 WARP",
+    "warpNotConfigured": "未設定",
     "warpDetourMode": "鏈式線路",
     "warpDetourModes": {
       "proxyOverWarp": "透過 WARP 連線線路",

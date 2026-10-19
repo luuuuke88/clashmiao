@@ -489,6 +489,8 @@
     "muxProtocol": "Mux 协议",
     "muxMaxStreams": "Mux 最大并发数",
     "enableWarp": "启用 WARP",
+    "setUpWarp": "设置 WARP",
+    "warpNotConfigured": "未配置",
     "warpDetourMode": "链式线路",
     "warpDetourModes": {
       "proxyOverWarp": "通过 WARP 连接线路",

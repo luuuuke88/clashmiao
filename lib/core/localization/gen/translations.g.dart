@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4020 (402 per locale)
+/// Strings: 4030 (403 per locale)
 ///
-/// Built on 2026-10-19 at 16:20 UTC
+/// Built on 2026-10-19 at 17:26 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -162,6 +162,7 @@ class TranslationsGeneralEn {
   String get grantPermission => 'Grant Permission';
   String get underDevelopment => 'Under Development';
   String get confirm => 'Confirm';
+  String get close => 'Close';
 }
 
 // Path: intro
@@ -1304,6 +1305,8 @@ class TranslationsGeneralAr extends TranslationsGeneralEn {
   String get underDevelopment => 'قيد التطوير';
   @override
   String get confirm => 'تأكيد';
+  @override
+  String get close => 'إغلاق';
 }
 
 // Path: intro
@@ -3030,6 +3033,8 @@ class TranslationsGeneralEs extends TranslationsGeneralEn {
   String get underDevelopment => 'En desarrollo';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Cerrar';
 }
 
 // Path: intro
@@ -4772,6 +4777,8 @@ class TranslationsGeneralFa extends TranslationsGeneralEn {
   String get underDevelopment => 'در حال توسعه';
   @override
   String get confirm => 'تأیید';
+  @override
+  String get close => 'بستن';
 }
 
 // Path: intro
@@ -6504,6 +6511,8 @@ class TranslationsGeneralId extends TranslationsGeneralEn {
   String get underDevelopment => 'Dalam Pengembangan';
   @override
   String get confirm => 'Konfirmasi';
+  @override
+  String get close => 'Tutup';
 }
 
 // Path: intro
@@ -8232,6 +8241,8 @@ class TranslationsGeneralPtBr extends TranslationsGeneralEn {
   String get underDevelopment => 'Em desenvolvimento';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Fechar';
 }
 
 // Path: intro
@@ -9989,6 +10000,8 @@ class TranslationsGeneralRu extends TranslationsGeneralEn {
   String get underDevelopment => 'В разработке';
   @override
   String get confirm => 'Подтвердить';
+  @override
+  String get close => 'Закрыть';
 }
 
 // Path: intro
@@ -11728,6 +11741,8 @@ class TranslationsGeneralTr extends TranslationsGeneralEn {
   String get underDevelopment => 'Geliştirme Aşamasında';
   @override
   String get confirm => 'Onayla';
+  @override
+  String get close => 'Kapat';
 }
 
 // Path: intro
@@ -13461,6 +13476,8 @@ class TranslationsGeneralZhCn extends TranslationsGeneralEn {
   String get underDevelopment => '功能开发中';
   @override
   String get confirm => '确认';
+  @override
+  String get close => '关闭';
 }
 
 // Path: intro
@@ -15174,6 +15191,8 @@ class TranslationsGeneralZhTw extends TranslationsGeneralEn {
   String get underDevelopment => '功能開發中';
   @override
   String get confirm => '確認';
+  @override
+  String get close => '關閉';
 }
 
 // Path: intro
@@ -16809,6 +16828,8 @@ extension on Translations {
         return 'Under Development';
       case 'general.confirm':
         return 'Confirm';
+      case 'general.close':
+        return 'Close';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -17644,6 +17665,8 @@ extension on TranslationsAr {
         return 'قيد التطوير';
       case 'general.confirm':
         return 'تأكيد';
+      case 'general.close':
+        return 'إغلاق';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18478,6 +18501,8 @@ extension on TranslationsEs {
         return 'En desarrollo';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Cerrar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19316,6 +19341,8 @@ extension on TranslationsFa {
         return 'در حال توسعه';
       case 'general.confirm':
         return 'تأیید';
+      case 'general.close':
+        return 'بستن';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20152,6 +20179,8 @@ extension on TranslationsId {
         return 'Dalam Pengembangan';
       case 'general.confirm':
         return 'Konfirmasi';
+      case 'general.close':
+        return 'Tutup';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20988,6 +21017,8 @@ extension on TranslationsPtBr {
         return 'Em desenvolvimento';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Fechar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -21825,6 +21856,8 @@ extension on TranslationsRu {
         return 'В разработке';
       case 'general.confirm':
         return 'Подтвердить';
+      case 'general.close':
+        return 'Закрыть';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -22662,6 +22695,8 @@ extension on TranslationsTr {
         return 'Geliştirme Aşamasında';
       case 'general.confirm':
         return 'Onayla';
+      case 'general.close':
+        return 'Kapat';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -23499,6 +23534,8 @@ extension on TranslationsZhCn {
         return '功能开发中';
       case 'general.confirm':
         return '确认';
+      case 'general.close':
+        return '关闭';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -24331,6 +24368,8 @@ extension on TranslationsZhTw {
         return '功能開發中';
       case 'general.confirm':
         return '確認';
+      case 'general.close':
+        return '關閉';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [

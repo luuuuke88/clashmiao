@@ -1,9 +1,13 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,10 +16,36 @@ import 'package:toastification/toastification.dart';
 /// 「减少动画」（`MediaQuery.disableAnimations`）在真实组件上的行为：入场动画
 /// 直接停在终态、加载转圈改成静态弧；并且运行**途中**打开开关也立刻生效。
 
+/// 键盘高度（viewInsets.bottom），测试里按需改它来模拟键盘弹出 / 收起。
+final _inset = ValueNotifier<double>(0);
+
+/// 记录路由事件，用来确认「原弹窗确实被关闭 / 手动表单确实被打开」。
+class _Routes extends NavigatorObserver {
+  final events = <String>[];
+  final pushed = <Route<dynamic>>[];
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    events.add('push ${route.runtimeType}');
+    pushed.add(route);
+  }
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      events.add('pop ${route.runtimeType}');
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      events.add('remove ${route.runtimeType}');
+}
+
+final _routes = _Routes();
+
 Future<(Widget, ValueNotifier<bool>)> _host(
   Widget Function(BuildContext) home, {
   required bool reduced,
 }) async {
+  _inset.value = 0;
+  _routes.events.clear();
+  _routes.pushed.clear();
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
@@ -38,10 +68,17 @@ Future<(Widget, ValueNotifier<bool>)> _host(
               splashFactory: NoSplash.splashFactory,
               extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
             ),
-            builder: (context, child) => MediaQuery(
-              data: MediaQuery.of(context).copyWith(disableAnimations: value),
-              child: child!,
+            builder: (context, child) => ValueListenableBuilder<double>(
+              valueListenable: _inset,
+              builder: (context, inset, _) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(
+                  disableAnimations: value,
+                  viewInsets: EdgeInsets.only(bottom: inset),
+                ),
+                child: child!,
+              ),
             ),
+            navigatorObservers: [_routes],
             home: Builder(builder: home),
           ),
         ),
@@ -125,6 +162,182 @@ void main() {
       // 控制器已停止：再走时间也不会回退。
       await tester.pump(const Duration(milliseconds: 500));
       expect(_titleOpacity(tester), 1.0);
+    });
+  });
+
+  group('关闭「减少动画」不重播已经显示完的入场', () {
+    testWidgets('已完成的入场：开→关全程停在终态，不回到透明', (tester) async {
+      final (widget, disabled) = await _host(_opener, reduced: false);
+      await tester.pumpWidget(widget);
+      await _openProfileDialog(tester);
+      // 分两段走：先越过延迟，再走完时长（单次大步长时控制器还没起跑）。
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(_titleOpacity(tester), 1.0);
+
+      disabled.value = true;
+      await tester.pump();
+      expect(_titleOpacity(tester), 1.0);
+
+      disabled.value = false;
+      await tester.pump();
+      expect(_titleOpacity(tester), 1.0, reason: '关闭后不应回到透明重播');
+      expect(_titleSlide(tester), Offset.zero);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_titleOpacity(tester), 1.0);
+      await tester.pump(const Duration(seconds: 1));
+      expect(_titleOpacity(tester), 1.0);
+    });
+
+    testWidgets('减少动画下挂载的内容：关掉后留在终态；只有之后新挂载的才播放入场', (tester) async {
+      final showSecond = ValueNotifier<bool>(false);
+      addTearDown(showSecond.dispose);
+      final (widget, disabled) = await _host(
+        (context) => ValueListenableBuilder<bool>(
+          valueListenable: showSecond,
+          builder: (context, second, _) => Column(
+            children: [
+              const Text('first')
+                  .animateWithMotion(context)
+                  .fadeIn(duration: 300.ms, delay: 200.ms),
+              if (second)
+                const Text('second')
+                    .animateWithMotion(context)
+                    .fadeIn(duration: 300.ms, delay: 200.ms),
+            ],
+          ),
+        ),
+        reduced: true,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+      double opacityOf(String text) => tester
+          .widget<FadeTransition>(
+            find
+                .ancestor(
+                  of: find.text(text),
+                  matching: find.byType(FadeTransition),
+                )
+                .first,
+          )
+          .opacity
+          .value;
+      expect(opacityOf('first'), 1.0);
+
+      disabled.value = false;
+      await tester.pump();
+      expect(opacityOf('first'), 1.0, reason: '减少动画下已显示的内容不重播');
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(opacityOf('first'), 1.0);
+
+      // 关掉之后新挂载的：照常入场（延迟内仍透明，走完变不透明）。
+      showSecond.value = true;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(opacityOf('second'), lessThan(1));
+      expect(opacityOf('first'), 1.0);
+      await tester.pump(const Duration(seconds: 1));
+      expect(opacityOf('second'), 1.0);
+    });
+  });
+
+  group('添加订阅 → 手动输入：原弹窗销毁后环境变化不抛异常', () {
+    testWidgets('键盘高度变化 + 切换减少动画（含往返）', (tester) async {
+      final (widget, disabled) = await _host(_opener, reduced: false);
+      await tester.pumpWidget(widget);
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+      // 选「手动输入」：原弹窗被关闭（销毁），再打开手动表单。
+      await tester.tap(find.text('手动输入'));
+      await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.byType(TextField), findsWidgets, reason: '手动表单已打开');
+      // 原弹窗（第一个 BottomSheet 路由）此刻要么已被关闭、要么即将被关闭——
+      // 真实应用里 `_showManualForm` 就是「关原弹窗 + 用它的 context 开手动表单」。
+      // 这里显式把它移除，确保它的 State 一定被销毁，手动表单手里那个
+      // 原弹窗 context 一定失效，再检验后续重建不会去读它。
+      final sheets = _routes.pushed
+          .whereType<ModalBottomSheetRoute<void>>()
+          .toList();
+      expect(sheets, hasLength(2));
+      final navigator = Navigator.of(tester.element(find.text('open')));
+      if (sheets.first.isActive) navigator.removeRoute(sheets.first);
+      await tester.pumpAndSettle();
+      expect(find.text('从剪贴板添加'), findsNothing, reason: '前置：原弹窗已销毁');
+
+      // 键盘弹出 / 收起、减少动画开 / 关 / 再开：手动表单的重建都不能去读
+      // 已销毁弹窗的 context。
+      _inset.value = 300;
+      await tester.pump();
+      disabled.value = true;
+      await tester.pump();
+      _inset.value = 0;
+      await tester.pump();
+      disabled.value = false;
+      await tester.pump();
+      _inset.value = 280;
+      disabled.value = true;
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(TextField), findsWidgets);
+    });
+  });
+
+  group('MotionProgress 语义始终是「进度未知的加载中」', () {
+    Widget progress(BuildContext _) => const Center(
+      child: SizedBox(width: 20, height: 20, child: MotionProgress()),
+    );
+
+    SemanticsData spinnerData(WidgetTester tester) {
+      // 取 MotionProgress 子树里带 loadingSpinner / progressBar 角色的节点。
+      final root = tester.getSemantics(find.byType(MotionProgress));
+      SemanticsNode? found;
+      void visit(SemanticsNode node) {
+        final data = node.getSemanticsData();
+        if (found == null &&
+            (data.role == SemanticsRole.loadingSpinner ||
+                data.role == SemanticsRole.progressBar)) {
+          found = node;
+        }
+        node.visitChildren((c) {
+          visit(c);
+          return true;
+        });
+      }
+
+      visit(root);
+      return (found ?? root).getSemanticsData();
+    }
+
+    for (final reduced in [false, true]) {
+      testWidgets(
+        '${reduced ? "减少动画（静态弧）" : "正常（转圈）"}：loadingSpinner，无数值、无 0–100 范围',
+        (tester) async {
+          final handle = tester.ensureSemantics();
+          final (widget, _) = await _host(progress, reduced: reduced);
+          await tester.pumpWidget(widget);
+          final data = spinnerData(tester);
+          expect(data.role, SemanticsRole.loadingSpinner);
+          expect(data.value, anyOf(isNull, isEmpty), reason: '不能报出 75% 之类的百分比');
+          expect(data.maxValue, anyOf(isNull, isEmpty));
+          expect(data.minValue, anyOf(isNull, isEmpty));
+          handle.dispose();
+        },
+      );
+    }
+
+    testWidgets('运行中切换：语义始终不出现 progressBar', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, disabled) = await _host(progress, reduced: false);
+      await tester.pumpWidget(widget);
+      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      disabled.value = true;
+      await tester.pump();
+      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      disabled.value = false;
+      await tester.pump();
+      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      handle.dispose();
     });
   });
 

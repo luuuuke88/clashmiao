@@ -24,7 +24,8 @@
     "openAppSettings": "打开应用设置",
     "grantPermission": "授予权限",
     "underDevelopment": "功能开发中",
-    "confirm": "确认"
+    "confirm": "确认",
+    "close": "关闭"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "继续即表示您同意 ${tap(@:about.termsAndConditions)}",

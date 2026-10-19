@@ -7,6 +7,7 @@ import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
+import 'package:clashmiao/features/config/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
@@ -184,6 +185,9 @@ final _quickSettings = _Page(
 
 final _about = _Page('关于页', () => const AboutPage());
 
+/// 快速设置里「所有进阶选项」的目的页。
+final _configOptions = _Page('高级选项页', () => const ConfigOptionsPage());
+
 void _useView(WidgetTester tester, {required double height, double scale = 1}) {
   tester.view.physicalSize = Size(320, height);
   tester.view.devicePixelRatio = 1;
@@ -239,6 +243,7 @@ void main() {
     _settings,
     _quickSettings,
     _about,
+    _configOptions,
   ];
 
   for (final page in pages) {
@@ -295,7 +300,7 @@ void main() {
   }
 
   // 可滚动：窄屏 + 2.0× 时内容比视口高，且能滚到底。
-  for (final page in [_settings, _about]) {
+  for (final page in [_settings, _about, _configOptions]) {
     testWidgets('${page.name} / 320×640 / 2.0×：内容比视口高且可滚动到底', (tester) async {
       _useView(tester, height: 640, scale: 2.0);
       await tester.pumpWidget(

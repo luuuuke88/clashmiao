@@ -24,7 +24,8 @@
     "clipboardExportSuccessMsg": "Panoya kopyalandı",
     "openAppSettings": "Uygulama Ayarlarını Aç",
     "underDevelopment": "Geliştirme Aşamasında",
-    "confirm": "Onayla"
+    "confirm": "Onayla",
+    "close": "Kapat"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "devam ederek ${tap(@:about.termsAndConditions)} kabul etmiş olursunuz",

@@ -24,7 +24,8 @@
     "openAppSettings": "Открыть настройки",
     "grantPermission": "Дать права доступа",
     "underDevelopment": "В разработке",
-    "confirm": "Подтвердить"
+    "confirm": "Подтвердить",
+    "close": "Закрыть"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "Продолжая, Вы соглашаетесь с ${tap(@:about.termsAndConditions)}",

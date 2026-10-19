@@ -102,9 +102,14 @@ class FakeKernelPort implements KernelPort {
     );
   }
 
+  /// 非空时 [acknowledgeReplay] 记录之后抛它（模拟确认超时 / 通道错误）。
+  Object? acknowledgeError;
+
   @override
   Future<void> acknowledgeReplay(int attempt) async {
     acknowledged.add(attempt);
+    final error = acknowledgeError;
+    if (error != null) throw error;
   }
 
   @override

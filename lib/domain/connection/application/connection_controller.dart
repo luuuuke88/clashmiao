@@ -341,8 +341,25 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     _deferredActiveFrom = null;
     _deferredActiveTo = null;
 
+    // 先定最终配置意图（断开 / 重新应用 / 什么都不做），再按最终归属重新评估
+    // 暂停期间欠下的重放：重新应用发出后要等它落定才会调度（见
+    // [_maybeRescheduleReplay]）。
+    _resolveDeferredConfig(
+      settings: settings,
+      activeChanged: active && from != to,
+      from: from,
+      to: to,
+    );
+    _maybeRescheduleReplay();
+  }
+
+  void _resolveDeferredConfig({
+    required bool settings,
+    required bool activeChanged,
+    required String? from,
+    required String? to,
+  }) {
     if (!_wantsConnection) return;
-    final activeChanged = active && from != to;
     if (activeChanged && to == null) {
       unawaited(disconnect());
       return;
@@ -646,6 +663,9 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         ref: _ref,
         port: _port,
         isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
+        // 配置变更暂停期间（备份恢复）激活订阅随时可能再变：不按任何订阅重放、
+        // 确认，记成欠账，释放后再按最终归属评估。
+        ownerUnsettled: () => _configPauses > 0,
         groupsWait: _ref.read(replayGroupsWaitProvider),
       ).run(epoch, attempt);
       debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
@@ -653,7 +673,8 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       if (_replayRunning == key) _replayRunning = null;
     }
     if (!mounted) return;
-    if (outcome == ReplayPipelineOutcome.droppedOwnerChanged) {
+    if (outcome == ReplayPipelineOutcome.droppedOwnerChanged ||
+        outcome == ReplayPipelineOutcome.deferred) {
       _replayOwed = key;
     } else if (_replayOwed == key) {
       _replayOwed = null;
@@ -670,9 +691,16 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 欠账的实例若仍是当前实例、仍待重放，且没有未终结的请求（订阅切换引发的
   /// 重新应用已经落定：要么产生了新 attempt——它有自己的流水线，欠账作废；
   /// 要么 revision 相同、实例不变），就按当前归属重新跑一遍流水线。
+  ///
+  /// 配置变更暂停期间只记账、不调度：最终归属要等最后一次释放、先处理完最终
+  /// 配置意图（[_releaseConfigPause]）之后才确定。
+  ///
+  /// 重新调度与原始入口一样经 [_runEffect]，异常（确认超时、通道错误、销毁
+  /// 后的读取）统一捕获记录，不会成为未处理异常。
   void _maybeRescheduleReplay() {
     final owed = _replayOwed;
     if (owed == null || !mounted || _replayRunning != null) return;
+    if (_configPauses > 0) return;
     final s = _mstate.snapshot;
     if (s == null) return;
     if (s.epoch != owed.epoch || s.attempt != owed.attempt) {
@@ -687,7 +715,15 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
     _replayOwed = null;
     debugPrint('手选编排 [${owed.epoch}/${owed.attempt}]：激活订阅已变，按新归属重新调度');
-    unawaited(_replaySelections(owed.epoch, owed.attempt));
+    unawaited(
+      _runEffect(
+        SideEffect(
+          SideEffectKind.replaySelections,
+          epoch: owed.epoch,
+          attempt: owed.attempt,
+        ),
+      ),
+    );
   }
 
   /// 状态机当前接受的内核快照是否仍是 [epoch] / [attempt] 且已启动。

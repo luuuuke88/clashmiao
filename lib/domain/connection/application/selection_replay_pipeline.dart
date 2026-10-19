@@ -17,7 +17,9 @@
 // 不是就整条丢弃——过期任务不确认、不写、不删任何记录。新实例有自己的流水线；
 // 实例没变而订阅变了（切到运行时配置相同的订阅不会产生新 attempt）时返回
 // [ReplayPipelineOutcome.droppedOwnerChanged]，由调用方按新归属为同一实例重新
-// 调度。
+// 调度。配置变更暂停期间（备份恢复）激活订阅随时可能再变，归属视为未定：
+// 不迁移、不重放、不确认，返回 [ReplayPipelineOutcome.deferred]，由调用方在
+// 暂停释放、最终配置意图处理完之后重新评估。
 
 import 'dart:async';
 
@@ -61,6 +63,10 @@ enum ReplayPipelineOutcome {
   /// 必须为这个实例按新归属重新调度——切到运行时配置相同的订阅不会产生新
   /// attempt，没人重新调度的话 `replayPending` 会一直挂着。
   droppedOwnerChanged,
+
+  /// 归属尚未落定（配置变更暂停中：激活订阅随时可能再变）：不迁移、不重放、
+  /// 不确认。调用方在暂停释放、最终配置意图处理完之后重新评估。
+  deferred,
 }
 
 /// 流水线阶段（日志用）。
@@ -71,15 +77,23 @@ class SelectionReplayPipeline {
     required Ref ref,
     required KernelPort port,
     required bool Function(String epoch, int attempt) isCurrentInstance,
+    bool Function()? ownerUnsettled,
     Duration groupsWait = kReplayGroupsWait,
   }) : _ref = ref,
        _port = port,
        _isCurrentInstance = isCurrentInstance,
+       _ownerUnsettled = ownerUnsettled ?? _never,
        _groupsWait = groupsWait;
+
+  static bool _never() => false;
 
   final Ref _ref;
   final KernelPort _port;
   final bool Function(String epoch, int attempt) _isCurrentInstance;
+
+  /// 为 true 时归属尚未落定（配置变更暂停中）：任何一步都不往下走，整条以
+  /// [ReplayPipelineOutcome.deferred] 结束。
+  final bool Function() _ownerUnsettled;
   final Duration _groupsWait;
 
   Future<ReplayPipelineOutcome> run(String epoch, int attempt) async {
@@ -93,6 +107,10 @@ class SelectionReplayPipeline {
     }
     if (!_isCurrentInstance(epoch, attempt)) {
       return ReplayPipelineOutcome.dropped;
+    }
+    if (_ownerUnsettled()) {
+      debugPrint('手选编排 [$epoch/$attempt]：配置变更暂停中，归属未定，延后');
+      return ReplayPipelineOutcome.deferred;
     }
     // 激活订阅在第一个 await 之前就切换了也无妨：归属在这里才捕获。
 
@@ -256,6 +274,7 @@ class SelectionReplayPipeline {
 
   bool _owns(ReplayOwner owner) {
     if (!_isCurrentInstance(owner.epoch, owner.attempt)) return false;
+    if (_ownerUnsettled()) return false;
     final profile = _ref.read(activeProfileProvider).valueOrNull;
     return profile?.id == owner.profileId && profile?.inc == owner.profileInc;
   }
@@ -266,10 +285,14 @@ class SelectionReplayPipeline {
     final profile = _ref.read(activeProfileProvider).valueOrNull;
     final profileChanged =
         profile?.id != owner.profileId || profile?.inc != owner.profileInc;
-    final outcome =
+    final current =
         stage != _Stage.replayStale &&
-            profileChanged &&
-            _isCurrentInstance(owner.epoch, owner.attempt)
+        _isCurrentInstance(owner.epoch, owner.attempt);
+    final outcome = !current
+        ? ReplayPipelineOutcome.dropped
+        : _ownerUnsettled()
+        ? ReplayPipelineOutcome.deferred
+        : profileChanged
         ? ReplayPipelineOutcome.droppedOwnerChanged
         : ReplayPipelineOutcome.dropped;
     debugPrint(

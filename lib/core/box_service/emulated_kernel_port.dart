@@ -431,8 +431,17 @@ class EmulatedKernelPort implements KernelPort {
     _status = KernelStatus.stopping;
     _commit();
 
-    final exec = _stopExec = _StopExec(seq: seq);
-    if (_native is BoxStopped) exec.done.complete();
+    final exec = _StopExec(seq: seq);
+    _stopExec = exec;
+    if (_native is BoxStopped) {
+      // 平台已经停了：没有调用要发，也没有状态要等。
+      exec.stoppedSeen = true;
+      exec.callReturned = true;
+      exec.check();
+    }
+    // 截止时间从停止执行开始计，同时覆盖「stop() 调用返回」与「平台推送
+    // Stopped」：二者都达成才取消。到点后发布 kernelUnresponsive，但执行通道
+    // 仍占用到 stop() 调用真正返回（check 在 timedOut 时只等调用返回）。
     final timer = Timer(stopTimeout, () {
       if (exec.done.isCompleted) return;
       exec.timedOut = true;
@@ -445,22 +454,23 @@ class EmulatedKernelPort implements KernelPort {
         );
         _commit();
       }
-      exec.done.complete();
+      exec.check();
     });
     _Fault? error;
-    try {
-      if (_native is! BoxStopped) {
+    if (!exec.callReturned) {
+      try {
         await _service.stop();
-        if (_native is BoxStopped && !exec.done.isCompleted) {
-          exec.done.complete();
+      } catch (e) {
+        if (_native is! BoxStopped) {
+          error = _Fault(KernelFailureCode.unknown, _describe(e));
+          exec.callFailed = true;
         }
       }
-      await exec.done.future;
-    } catch (e) {
-      if (_native is! BoxStopped) {
-        error = _Fault(KernelFailureCode.unknown, _describe(e));
-      }
+      exec.callReturned = true;
+      if (_native is BoxStopped) exec.stoppedSeen = true;
+      exec.check();
     }
+    await exec.done.future;
     timer.cancel();
     _stopExec = null;
 
@@ -527,7 +537,10 @@ class EmulatedKernelPort implements KernelPort {
 
     final stop = _stopExec;
     if (stop != null) {
-      if (s is BoxStopped && !stop.done.isCompleted) stop.done.complete();
+      if (s is BoxStopped) {
+        stop.stoppedSeen = true;
+        stop.check();
+      }
       return;
     }
 
@@ -606,9 +619,26 @@ class _StopExec {
   _StopExec({required this.seq});
   final int seq;
 
-  /// 平台已 Stopped，或超时时完成。
-  final Completer<void> done = Completer<void>();
+  /// 平台已推送 Stopped。
+  bool stoppedSeen = false;
+
+  /// `stop()` 调用已返回（含抛异常）。
+  bool callReturned = false;
+
+  /// `stop()` 调用抛了异常且平台并未停止。
+  bool callFailed = false;
   bool timedOut = false;
+
+  /// 执行可以收尾：调用已返回，并且 平台已 Stopped / 已超时 / 调用失败。
+  /// 调用未返回时永不完成——执行通道不放行，不会并发再发 stop。
+  final Completer<void> done = Completer<void>();
+
+  void check() {
+    if (done.isCompleted) return;
+    if (callReturned && (stoppedSeen || timedOut || callFailed)) {
+      done.complete();
+    }
+  }
 }
 
 class _Fault {

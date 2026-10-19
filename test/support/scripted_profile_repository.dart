@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -19,6 +20,9 @@ class ScriptedProfileRepository extends ProfileRepository {
       );
 
   Object? updateError;
+
+  /// 非空时，[update] 先等它完成（用来把刷新「卡在半路」，再在页面销毁后放行）。
+  Completer<void>? updateGate;
   Object? updateAllError;
   Object? setActiveError;
   Object? editError;
@@ -29,6 +33,7 @@ class ScriptedProfileRepository extends ProfileRepository {
   @override
   Future<ProfileEntity> update(String profileId) async {
     updateCalls++;
+    await updateGate?.future;
     final error = updateError;
     if (error != null) throw error;
     return getAll().firstWhere((p) => p.id == profileId);

@@ -20,6 +20,7 @@ import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:dio/dio.dart';
+import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -457,6 +458,49 @@ void main() {
     expect(find.text('香港 01 | SS'), findsOneWidget);
     expect(find.text('128ms'), findsOneWidget);
     expect(find.textContaining('已连接 '), findsNothing);
+  });
+
+  testWidgets('节点胶囊的延迟用共用延迟标签：成功/占位，且不再有 Wi-Fi 图标', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        status: const BoxStarted(),
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [
+              OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks', delay: 128),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final label = tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+    expect(label.state, LatencyDisplayState.success);
+    expect(label.ms, 128);
+    expect(find.byIcon(FluentIcons.wifi_1_24_filled), findsNothing);
+
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        status: const BoxStarted(),
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks')],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      tester.widget<LatencyLabel>(find.byType(LatencyLabel)).state,
+      LatencyDisplayState.untested,
+    );
   });
 
   testWidgets('节点行看得出能点：带箭头，点了跳到线路页', (tester) async {

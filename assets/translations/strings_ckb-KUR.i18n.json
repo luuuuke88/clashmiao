@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "دواکەوتن: ${delay}ms",
       "timeout": "وادەی تاقیکردنەوەی دواکەوتن بەسەرچوو",
-      "testing": "دواکەوتن: خەریکی تاقیکردنەوە..."
+      "testing": "دواکەوتن: خەریکی تاقیکردنەوە...",
+      "untested": "دواکەوتن: تاقی نەکراوەتەوە",
+      "stale": "دواکەوتن: ${delay}ms (ئەنجامی پێشوو)"
     },
     "ipInfoSemantics": {
       "address": "ناونیشانی IP",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "تکایە پێش گۆڕینی هێڵەکان پەیوەندی بکە",
     "startDelayTestForGroups": "تاقیکردنەوەی دواکەوتن بۆ ${count} هێڵ دەستی پێکرد",
     "delayTestBtn": "دواکەوتن",
+    "delayTimeout": "بەسەرچوو",
+    "connectBeforeTest": "سەرەتا پەیوەندی بکە بۆ تاقیکردنەوەی دواکەوتن",
     "lineCount": "${count} هێڵ",
     "manualSelect": "هەڵبژاردنی دەستی",
     "autoTest": "تاقیکردنەوەی خۆکار"

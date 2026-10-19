@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "atraso: ${delay}ms",
       "timeout": "atrasar o tempo limite do teste",
-      "testing": "atraso: testando..."
+      "testing": "atraso: testando...",
+      "untested": "atraso: não testado",
+      "stale": "atraso: ${delay}ms (resultado anterior)"
     },
     "ipInfoSemantics": {
       "address": "Endereço de IP",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "Conecte-se antes de trocar de linha",
     "startDelayTestForGroups": "Teste de latência iniciado para ${count} linhas",
     "delayTestBtn": "Latência",
+    "delayTimeout": "Esgotado",
+    "connectBeforeTest": "Conecte primeiro para testar o atraso",
     "lineCount": "${count} linhas",
     "manualSelect": "Seleção manual",
     "autoTest": "Teste automático"

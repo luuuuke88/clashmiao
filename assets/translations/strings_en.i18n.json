@@ -192,7 +192,9 @@
     "delaySemantics": {
       "result": "Delay: ${delay}ms",
       "timeout": "Delay Test Timeout",
-      "testing": "Delay: Testing..."
+      "testing": "Delay: Testing...",
+      "untested": "Delay: Not tested",
+      "stale": "Delay: ${delay}ms (earlier result)"
     },
     "ipInfoSemantics": {
       "address": "IP Address",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "Please connect before switching lines",
     "startDelayTestForGroups": "Started delay test for ${count} lines",
     "delayTestBtn": "Delay",
+    "delayTimeout": "Timeout",
+    "connectBeforeTest": "Connect first to test delay",
     "lineCount": "${count} lines",
     "manualSelect": "Manual Select",
     "autoTest": "Auto Test"

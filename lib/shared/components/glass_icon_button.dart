@@ -18,6 +18,7 @@ class GlassIconButton extends StatelessWidget {
     this.size = 40,
     this.iconSize = 20,
     this.tooltip,
+    this.loading = false,
   });
 
   final IconData icon;
@@ -29,11 +30,25 @@ class GlassIconButton extends StatelessWidget {
   /// 同时用作无障碍标签：圆按钮上只有一个图标，读屏没有文字可念。
   final String? tooltip;
 
+  /// 进行中：图标换成同尺寸区域内的 18 dp 圆形进度指示器（按钮本身保持不变，
+  /// 点击仍由 [onTap] 决定是否响应）。
+  final bool loading;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
     final isLight = theme.brightness == Brightness.light;
+
+    Widget glyph(Color color) => loading
+        ? Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            ),
+          )
+        : Icon(icon, size: iconSize, color: color);
 
     final Widget button = filled
         ? Container(
@@ -44,7 +59,7 @@ class GlassIconButton extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: aiUi.primaryShadow,
             ),
-            child: Icon(icon, size: iconSize, color: Colors.white),
+            child: glyph(Colors.white),
           )
         // 跟 GlassCard 一样不用 BackdropFilter，理由见那边的注释。
         : ClipOval(
@@ -62,10 +77,8 @@ class GlassIconButton extends StatelessWidget {
                       : Colors.white.withValues(alpha: 0.14),
                 ),
               ),
-              child: Icon(
-                icon,
-                size: iconSize,
-                color: isLight
+              child: glyph(
+                isLight
                     ? aiUi.secondaryTextColor
                     : Colors.white.withValues(alpha: 0.8),
               ),

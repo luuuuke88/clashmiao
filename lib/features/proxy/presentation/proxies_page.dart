@@ -4,33 +4,28 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/routing/application/latency_clock.dart';
+import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/proxy/application/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/domain/routing/model/node_display.dart';
+import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/latency_label.dart';
+import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:collection/collection.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-const _urlTestType = 'urltest';
-
-final _proxyTestExecutingProvider = StateProvider.autoDispose<bool>(
-  (ref) => false,
-);
-
-String _normalizeGroupType(String type) {
-  final trimmed = type.trim().toLowerCase();
-  return trimmed.replaceAll('-', '').replaceAll('_', '');
-}
 
 class ProxiesPage extends ConsumerStatefulWidget {
   const ProxiesPage({super.key, this.debugOpenProxyNameModal = false});
@@ -45,13 +40,35 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   bool _debugProxyNameModalOpened = false;
 
   @override
+  void initState() {
+    super.initState();
+    // 代理页常驻在 IndexedStack 里，initState 早于用户真正「打开」它；这里只
+    // 处理「启动即停在代理页」（CLASHMIAO_INITIAL_TAB）的情形，其余靠下面
+    // build 里对 selectedTabProvider 的监听。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (ref.read(selectedTabProvider) == AppTab.proxies) {
+        ref.read(latencyTestCoordinatorProvider.notifier).onProxiesPageOpened();
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = ref.watch(translationsProvider);
     final isConnected = ref.watch(isConnectedProvider);
     final sortBy = ref.watch(proxiesSortProvider);
     final optimisticSelections = ref.watch(optimisticProxySelectionsProvider);
     final cachedDelays = ref.watch(proxyDelayCacheProvider);
-    final isTestingProxies = ref.watch(_proxyTestExecutingProvider);
+    // watch 它同时让协调器随页面常驻：连接后 2 s 的自动测速不依赖用户看着这页。
+    final latencyState = ref.watch(latencyTestCoordinatorProvider);
+    final now = ref.watch(latencyClockProvider)();
+
+    ref.listen<int>(selectedTabProvider, (previous, next) {
+      if (next == AppTab.proxies && previous != next) {
+        ref.read(latencyTestCoordinatorProvider.notifier).onProxiesPageOpened();
+      }
+    });
 
     ref.listen<AsyncValue<List<OutboundGroup>>>(outboundGroupsProvider, (
       _,
@@ -84,11 +101,11 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       });
     }
 
-    // 是否真的在用实时分组数据——只有这个为 false 时才需要拿本地缓存的历史
+    // 是否真的在用实时分组数据——只有这个为 false 时才允许拿本地缓存的历史
     // 延迟兜底展示。已连接且实时数据非空时必须信任实时数据本身：这个分支下
     // 哪怕某个节点延迟还是 0（没测出来），也不能用缓存里冻结的旧数值顶替，
     // 否则会显示一个永远不变的假数字（"每次都是同一个数字"那个 bug 的根因）。
-    bool isLiveData = false;
+    var isLiveData = false;
     List<OutboundGroup> rawGroups;
     if (isConnected) {
       rawGroups = liveGroups.when<List<OutboundGroup>>(
@@ -106,15 +123,34 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
 
     // 过滤掉内部保留字分组，并把订阅原始 selector 与修复出的 proxy
     // selector 这类等价分组折叠成一个可操作的主分组。
-    final collapsedGroups = _collapseDuplicateGroups(
-      rawGroups.where(_isUserVisibleGroup).toList(),
+    final visibleRawGroups = collapseDuplicateGroups(
+      rawGroups.where(isUserVisibleGroup).toList(),
     );
-    final List<OutboundGroup> visibleRawGroups = isLiveData
-        ? collapsedGroups
-        : _applyCachedDelays(collapsedGroups, cachedDelays);
+
+    // 每个节点的延迟展示状态：实时值 > 测量中 > 超时 > 缓存值（含历史值），
+    // 规则见 [resolveNodeLatency]。
+    NodeLatency latencyOf(OutboundGroup group, OutboundProxy proxy) {
+      final cached = cachedDelays[proxy.tag];
+      return resolveNodeLatency(
+        liveMs: proxy.delay,
+        cachedMs: cached?.ms,
+        cachedAt: cached?.measuredAt,
+        testing: latencyState.isGroupTesting(group.tag),
+        timedOut: latencyState.timedOutNodes.contains(proxy.tag),
+        now: now,
+        cacheIsFallback: !isLiveData,
+      );
+    }
+
     final List<OutboundGroup> groups = [];
+    final Map<String, NodeLatency> latencies = {};
     for (final group in visibleRawGroups) {
-      final sortedItems = group.items.where(_isVisibleProxy).toList();
+      final sortedItems = group.items
+          .where((item) => !NodeDisplay.isHidden(item.tag))
+          .toList();
+      for (final item in sortedItems) {
+        latencies[item.tag] = latencyOf(group, item);
+      }
       // 分组类型优先：嵌套代理组（selector/urltest）排在普通代理节点前面，
       // 组内再按各自排序规则（名称/延迟）细排——不这样做的话，嵌套代理组
       // 和普通节点会按名称/延迟随意混排在一起。`unsorted` 保持原始顺序，
@@ -123,14 +159,16 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         sortedItems.sort((a, b) {
           final groupFirst = _compareGroupFirst(a, b);
           if (groupFirst != 0) return groupFirst;
-          return _proxyDisplayName(a.tag).compareTo(_proxyDisplayName(b.tag));
+          return NodeDisplay.stripSuffix(
+            a.tag,
+          ).compareTo(NodeDisplay.stripSuffix(b.tag));
         });
       } else if (sortBy == ProxiesSort.delay) {
         sortedItems.sort((a, b) {
           final groupFirst = _compareGroupFirst(a, b);
           if (groupFirst != 0) return groupFirst;
-          final ai = a.delay;
-          final bi = b.delay;
+          final ai = latencies[a.tag]?.ms ?? 0;
+          final bi = latencies[b.tag]?.ms ?? 0;
           if (ai <= 0 && bi <= 0) return 0;
           if (ai <= 0 && bi > 0) return 1;
           if (ai > 0 && bi <= 0) return -1;
@@ -184,6 +222,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                     children: [
                       _HeaderButton(
                         icon: FluentIcons.arrow_sort_24_regular,
+                        tooltip: t.proxies.sortTooltip,
                         onTap: () {
                           showAiUiModal<void>(
                             context: context,
@@ -194,8 +233,17 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                       const SizedBox(width: 12),
                       _HeaderButton(
                         icon: FluentIcons.flash_24_regular,
+                        loading:
+                            primaryGroup != null &&
+                            latencyState.isGroupTesting(primaryGroup.tag),
+                        tooltip:
+                            primaryGroup != null &&
+                                latencyState.isGroupTesting(primaryGroup.tag)
+                            ? t.proxies.delaySemantics.testing
+                            : t.proxies.delayTestTooltip,
                         onTap:
-                            primaryGroup != null && _canDelayTest(primaryGroup)
+                            primaryGroup != null &&
+                                canDelayTestGroup(primaryGroup)
                             ? () => _testDelay(
                                 context,
                                 ref,
@@ -225,7 +273,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                           final autoProxy =
                               group.items.firstWhereOrNull(
                                 (e) =>
-                                    _normalizeGroupType(e.type) == _urlTestType,
+                                    normalizeGroupType(e.type) ==
+                                    kUrlTestGroupType,
                               ) ??
                               group.items.firstWhereOrNull(
                                 (e) => e.tag.toLowerCase() == 'auto',
@@ -257,19 +306,20 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                               }
                               final proxy = otherProxies[index - autoCardCount];
                               final isSelected = group.selected == proxy.tag;
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _ProxyTile(
-                                  proxy: proxy,
-                                  isSelected: isSelected,
-                                  showLoading: isTestingProxies,
-                                  onTap: () => _selectProxy(
-                                    context,
-                                    ref,
-                                    group.tag,
-                                    proxy.tag,
-                                    isConnected,
-                                  ),
+                              return _ProxyTile(
+                                proxy: proxy,
+                                isSelected: isSelected,
+                                latency:
+                                    latencies[proxy.tag] ??
+                                    const NodeLatency(
+                                      LatencyDisplayState.untested,
+                                    ),
+                                onTap: () => _selectProxy(
+                                  context,
+                                  ref,
+                                  group.tag,
+                                  proxy.tag,
+                                  isConnected,
                                 ),
                               );
                             },
@@ -339,129 +389,36 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     OutboundGroup group,
     bool isConnected,
   ) async {
-    if (!_canDelayTest(group)) return;
+    if (!canDelayTestGroup(group)) return;
     final t = ref.read(translationsProvider);
     if (!isConnected) {
-      AppToast.error(context, '请连接后测速');
+      AppToast.error(context, t.proxies.connectBeforeTest);
       return;
     }
 
-    final testing = ref.read(_proxyTestExecutingProvider.notifier);
-    if (testing.state) return;
-
-    testing.state = true;
     try {
       // fire-and-forget，跟 _selectProxy／connect/disconnect 两处既有触点一致：
       // 触觉反馈绝不能 await 阻塞真正的测速调用（尤其是没有 mock 平台通道的
       // 测试环境下，await 会让这个 Future 永远挂起，拖死 urlTest）。
       unawaited(ref.read(hapticServiceProvider).lightImpact());
-      await Future.wait([
-        ref.read(boxServiceProvider).urlTest(group.tag),
-        Future<void>.delayed(const Duration(milliseconds: 1500)),
-      ]);
+      // 该组已有在途测速（含自动测速）时协调器会复用它，不会重复发起。
+      await ref
+          .read(latencyTestCoordinatorProvider.notifier)
+          .manualTest(group.tag);
     } catch (error) {
       if (!context.mounted) return;
       AppToast.error(context, '${t.failure.unexpected}: $error');
-    } finally {
-      testing.state = false;
     }
   }
-
-  bool _canDelayTest(OutboundGroup group) {
-    if (group.items.isEmpty) return false;
-
-    final groupType = _normalizeGroupType(group.type);
-    return groupType == _urlTestType ||
-        groupType == 'selector' ||
-        groupType == 'select';
-  }
 }
 
-bool _isUserVisibleGroup(OutboundGroup group) {
-  final tag = group.tag.toUpperCase();
-  return tag != 'GLOBAL' && tag != 'DIRECT' && tag != 'REJECT';
-}
-
-List<OutboundGroup> _collapseDuplicateGroups(List<OutboundGroup> groups) {
-  final proxy = groups.firstWhereOrNull(
-    (group) => group.tag == 'proxy' && group.items.isNotEmpty,
-  );
-  if (proxy == null) return groups;
-
-  final proxyItems = _itemTagSet(proxy);
-  if (proxyItems.isEmpty) return groups;
-
-  return groups.where((group) {
-    if (identical(group, proxy) || group.tag == proxy.tag) return true;
-    if (!_isSelectableGroup(group)) return true;
-    return !_sameItemTags(proxyItems, _itemTagSet(group));
-  }).toList();
-}
-
-bool _isSelectableGroup(OutboundGroup group) {
-  return _isGroupProxyType(group.type);
-}
-
-/// 判断一个 outbound 的 type 是否为"分组类型"（selector/urltest），而不是
-/// shadowsocks/vmess 这类叶子代理节点。分组类型优先排序（见
-/// `_compareGroupFirst`）和 `_isSelectableGroup` 共用同一套判定标准。
-bool _isGroupProxyType(String type) {
-  final normalized = _normalizeGroupType(type);
-  return normalized == 'selector' ||
-      normalized == 'select' ||
-      normalized == _urlTestType;
-}
-
-/// 排序时"分组类型优先"的比较器：嵌套代理组排在普通代理节点前面，
+/// 排序时「分组类型优先」的比较器：嵌套代理组排在普通代理节点前面，
 /// 两者类型相同时返回 0，交给调用方按名称/延迟继续细排。
 int _compareGroupFirst(OutboundProxy a, OutboundProxy b) {
-  final aIsGroup = _isGroupProxyType(a.type);
-  final bIsGroup = _isGroupProxyType(b.type);
+  final aIsGroup = isGroupProxyType(a.type);
+  final bIsGroup = isGroupProxyType(b.type);
   if (aIsGroup == bIsGroup) return 0;
   return aIsGroup ? -1 : 1;
-}
-
-Set<String> _itemTagSet(OutboundGroup group) {
-  return group.items
-      .map((item) => item.tag)
-      .where((tag) => tag.isNotEmpty)
-      .toSet();
-}
-
-bool _sameItemTags(Set<String> left, Set<String> right) {
-  if (left.length != right.length) return false;
-  return left.containsAll(right);
-}
-
-bool _isVisibleProxy(OutboundProxy proxy) {
-  return !proxy.tag.contains('§hide§');
-}
-
-String _proxyDisplayName(String tag) {
-  final markerIndex = tag.indexOf('§');
-  return (markerIndex == -1 ? tag : tag.substring(0, markerIndex)).trimRight();
-}
-
-List<OutboundGroup> _applyCachedDelays(
-  List<OutboundGroup> groups,
-  Map<String, int> cachedDelays,
-) {
-  if (cachedDelays.isEmpty) return groups;
-
-  return groups.map((group) {
-    return OutboundGroup(
-      tag: group.tag,
-      type: group.type,
-      selected: group.selected,
-      items: group.items.map((item) {
-        if (item.delay > 0) return item;
-        final cachedDelay = cachedDelays[item.tag];
-        return cachedDelay != null && cachedDelay > 0
-            ? item.copyWith(delay: cachedDelay)
-            : item;
-      }).toList(),
-    );
-  }).toList();
 }
 
 class ProxiesSortModal extends HookConsumerWidget {
@@ -532,12 +489,24 @@ class ProxiesSortModal extends HookConsumerWidget {
 class _HeaderButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
+  final String? tooltip;
+  final bool loading;
 
-  const _HeaderButton({required this.icon, required this.onTap});
+  const _HeaderButton({
+    required this.icon,
+    required this.onTap,
+    this.tooltip,
+    this.loading = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GlassIconButton(icon: icon, onTap: onTap);
+    return GlassIconButton(
+      icon: icon,
+      onTap: onTap,
+      tooltip: tooltip,
+      loading: loading,
+    );
   }
 }
 
@@ -563,7 +532,7 @@ class _AutoSelectCard extends HookConsumerWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
+        margin: const EdgeInsets.only(bottom: 8),
         child: GlassCard(
           borderRadius: 14,
           padding: const EdgeInsets.all(14),
@@ -637,16 +606,24 @@ class _EmptyProxy extends ConsumerWidget {
   }
 }
 
+/// 代理页的一行节点。
+///
+/// 布局（从左到右）：旗帜区 36 dp → 名称 + 协议（两行）→ 延迟列（最小 64 dp、
+/// 右对齐）→ 18 dp 对勾占位（选中才画，但**始终占位**，免得文字位移）。
+/// 行高基准 72 dp，字体放大时自然增高；行距 8 dp 只来自外层这一处 padding。
+///
+/// 旗帜只在左侧旗帜区出现一次：名称里开头的旗帜已被搬走（见 [NodeDisplay]），
+/// 推断不出国家时用中性地球图标，而不是随便挂一面旗。
 class _ProxyTile extends StatelessWidget {
   final OutboundProxy proxy;
   final bool isSelected;
-  final bool showLoading;
+  final NodeLatency latency;
   final VoidCallback onTap;
 
   const _ProxyTile({
     required this.proxy,
     required this.isSelected,
-    required this.showLoading,
+    required this.latency,
     required this.onTap,
   });
 
@@ -654,101 +631,101 @@ class _ProxyTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
-    final delay = proxy.delay;
-    final delayColor = _getDelayColor(delay);
-    final displayName = _proxyDisplayName(proxy.tag);
+    final primary = theme.colorScheme.primary;
+    // 展示名只用于显示；选择、缓存一律用 proxy.tag。
+    final display = NodeDisplay.parse(proxy.tag);
 
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: () => _showProxyNameModal(context, displayName),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        child: GlassCard(
-          borderRadius: 14,
-          padding: const EdgeInsets.all(14),
-          borderColor: isSelected ? theme.colorScheme.primary : null,
-          borderWidth: isSelected ? 2 : 1,
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: aiUi.softBackgroundColor,
-                  borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          selected: isSelected,
+          child: GlassCard(
+            borderRadius: 14,
+            padding: EdgeInsets.zero,
+            borderColor: isSelected ? primary : null,
+            borderWidth: isSelected ? 1.5 : 1,
+            child: Ink(
+              color: isSelected ? primary.withValues(alpha: 0.08) : null,
+              child: InkWell(
+                onTap: onTap,
+                onLongPress: () => _showProxyNameModal(
+                  context,
+                  NodeDisplay.stripSuffix(proxy.tag),
                 ),
-                child: Center(
-                  child: Text(
-                    _getCountryFlag(displayName),
-                    style: const TextStyle(fontSize: 20),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      displayName,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Emoji',
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 72),
+                  child: Padding(
+                    // 选中描边 1.5 dp、未选中 1 dp：差的 0.5 dp 从内边距里扣掉，
+                    // 选中与否内容都不位移。
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSelected ? 13.5 : 14,
+                      vertical: isSelected ? 9.5 : 10,
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    child: Row(
                       children: [
+                        SizedBox(
+                          width: 36,
+                          child: Center(child: _FlagGlyph(display: display)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                display.label,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                  fontFamily: 'Emoji',
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _formatType(proxy.type),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: aiUi.secondaryTextColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
+                          constraints: const BoxConstraints(minWidth: 64),
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: LatencyLabel(
+                            state: latency.state,
+                            ms: latency.ms,
                           ),
-                          decoration: BoxDecoration(
-                            color: aiUi.softBackgroundColor,
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: aiUi.borderColor.withValues(alpha: 0.05),
-                            ),
-                          ),
-                          child: Text(
-                            _formatType(proxy.type).toUpperCase(),
-                            style: TextStyle(
-                              fontSize: 9,
-                              fontFamily: 'Monospace',
-                              color: aiUi.secondaryTextColor,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: isSelected
+                              ? Icon(
+                                  FluentIcons.checkmark_24_filled,
+                                  size: 18,
+                                  color: primary,
+                                )
+                              : null,
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  if (showLoading)
-                    _DelayTestingBars(color: theme.colorScheme.primary)
-                  else ...[
-                    Text(
-                      delay != 0 ? (delay > 65000 ? '×' : '${delay}ms') : '--',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: delayColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Icon(_getSignalIcon(delay), color: delayColor, size: 16),
-                  ],
-                ],
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -779,44 +756,28 @@ class _ProxyTile extends StatelessWidget {
   }
 }
 
-class _DelayTestingBars extends StatelessWidget {
-  const _DelayTestingBars({required this.color});
+/// 左侧旗帜区：有旗帜画旗帜，没有就画中性地球图标。
+class _FlagGlyph extends StatelessWidget {
+  const _FlagGlyph({required this.display});
 
-  final Color color;
+  final NodeDisplay display;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 24,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: List.generate(4, (index) {
-          return Container(
-                width: 3.5,
-                height: 6 + (index * 4.0),
-                margin: const EdgeInsets.only(left: 2),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [color.withValues(alpha: 0.4), color],
-                  ),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              )
-              .animate(onPlay: (controller) => controller.repeat())
-              .scaleY(
-                begin: 0.1,
-                end: 1,
-                duration: 800.ms,
-                delay: (index * 120).ms,
-                curve: Curves.elasticOut,
-              )
-              .fadeIn(delay: (index * 120).ms)
-              .shimmer(delay: (index * 120).ms, duration: 1500.ms);
-        }),
+    final flag = display.flag;
+    if (flag == null) {
+      return ExcludeSemantics(
+        child: Icon(
+          FluentIcons.globe_24_regular,
+          size: 24,
+          color: Theme.of(context).aiUi.secondaryTextColor,
+        ),
+      );
+    }
+    return ExcludeSemantics(
+      child: Text(
+        flag,
+        style: const TextStyle(fontSize: 24, fontFamily: 'Emoji'),
       ),
     );
   }
@@ -864,125 +825,4 @@ void _showProxyNameModal(BuildContext context, String name) {
       );
     },
   );
-}
-
-String _getCountryFlag(String name) {
-  final nameLower = name.toLowerCase();
-
-  const rules = [
-    (flag: '🇭🇰', keywords: ['hk', 'hong kong', 'hongkong', '香港']),
-    (
-      flag: '🇨🇳',
-      keywords: ['tw', 'taiwan', 'tai wan', '台湾', '台北', 'taipei', 'roc'],
-    ),
-    (flag: '🇲🇴', keywords: ['mo', 'macau', 'macao', '澳门']),
-    (flag: '🇸🇬', keywords: ['sg', 'singapore', '新加坡', '狮城']),
-    (
-      flag: '🇯🇵',
-      keywords: ['jp', 'japan', '日本', '东京', '大阪', 'tokyo', 'osaka'],
-    ),
-    (
-      flag: '🇺🇸',
-      keywords: ['us', 'usa', 'united states', 'america', '美国', '美'],
-    ),
-    (
-      flag: '🇬🇧',
-      keywords: ['uk', 'united kingdom', 'britain', '英国', '伦敦', 'london'],
-    ),
-    (
-      flag: '🇰🇷',
-      keywords: ['kr', 'korea', 'south korea', '韩国', '首尔', 'seoul'],
-    ),
-    (flag: '🇩🇪', keywords: ['de', 'germany', 'deutschland', '德国']),
-    (flag: '🇫🇷', keywords: ['fr', 'france', '法国']),
-    (flag: '🇨🇦', keywords: ['ca', 'canada', '加拿大']),
-    (flag: '🇦🇺', keywords: ['au', 'australia', '澳大利亚', '澳洲']),
-    (flag: '🇷🇺', keywords: ['ru', 'russia', '俄罗斯']),
-    (flag: '🇮🇳', keywords: ['in', 'india', '印度']),
-    (flag: '🇳🇱', keywords: ['nl', 'netherlands', '荷兰']),
-    (
-      flag: '🇨🇳',
-      keywords: [
-        'cn',
-        'china',
-        '中国',
-        '内地',
-        '江苏',
-        '北京',
-        '上海',
-        'beijing',
-        'shanghai',
-      ],
-    ),
-    (flag: '🇲🇾', keywords: ['my', 'malaysia', '马来西亚']),
-    (flag: '🇹🇭', keywords: ['th', 'thailand', '泰国']),
-    (flag: '🇻🇳', keywords: ['vn', 'vietnam', '越南']),
-    (flag: '🇵🇭', keywords: ['ph', 'philippines', '菲律宾']),
-    (flag: '🇮🇩', keywords: ['id', 'indonesia', '印尼']),
-    (flag: '🇧🇷', keywords: ['br', 'brazil', '巴西']),
-    (flag: '🇮🇹', keywords: ['it', 'italy', '意大利']),
-    (flag: '🇪🇸', keywords: ['es', 'spain', '西班牙']),
-    (flag: '🇹🇷', keywords: ['tr', 'turkey', '土耳其']),
-    (flag: '🇺🇦', keywords: ['ua', 'ukraine', '乌克兰']),
-    (flag: '🇨🇭', keywords: ['ch', 'switzerland', '瑞士']),
-    (flag: '🇸🇪', keywords: ['se', 'sweden', '瑞典']),
-    (flag: '🇳🇴', keywords: ['no', 'norway', '挪威']),
-    (flag: '🇫🇮', keywords: ['fi', 'finland', '芬兰']),
-    (flag: '🇩🇰', keywords: ['dk', 'denmark', '丹麦']),
-    (flag: '🇧🇪', keywords: ['be', 'belgium', '比利时']),
-    (flag: '🇮🇪', keywords: ['ie', 'ireland', '爱尔兰']),
-    (flag: '🇦🇹', keywords: ['at', 'austria', '奥地利']),
-    (flag: '🇵🇱', keywords: ['pl', 'poland', '波兰']),
-    (flag: '🇭🇺', keywords: ['hu', 'hungary', '匈牙利']),
-    (flag: '🇨🇿', keywords: ['cz', 'czech', '捷克']),
-    (flag: '🇷🇴', keywords: ['ro', 'romania', '罗马尼亚']),
-    (flag: '🇬🇷', keywords: ['gr', 'greece', '希腊']),
-    (flag: '🇵🇹', keywords: ['pt', 'portugal', '葡萄牙']),
-    (flag: '🇿🇦', keywords: ['za', 'south africa', '南非']),
-    (flag: '🇦🇷', keywords: ['ar', 'argentina', '阿根廷']),
-    (flag: '🇲🇽', keywords: ['mx', 'mexico', '墨西哥']),
-    (flag: '🇨🇱', keywords: ['cl', 'chile', '智利']),
-    (flag: '🇨🇴', keywords: ['co', 'colombia', '哥伦比亚']),
-    (flag: '🇵🇪', keywords: ['pe', 'peru', '秘鲁']),
-    (
-      flag: '🇦🇪',
-      keywords: ['ae', 'uae', 'united arab emirates', '阿联酋', '迪拜', 'dubai'],
-    ),
-    (flag: '🇮🇱', keywords: ['il', 'israel', '以色列']),
-    (flag: '🇸🇦', keywords: ['sa', 'saudi arabia', '沙特']),
-    (flag: '🇧🇬', keywords: ['bg', 'bulgaria', '保加利亚']),
-    (flag: '🇭🇷', keywords: ['hr', 'croatia', '克罗地亚']),
-    (flag: '🇮🇷', keywords: ['ir', 'iran', '伊朗']),
-    (flag: '🇰🇵', keywords: ['kp', 'north korea', '朝鲜']),
-  ];
-
-  for (final rule in rules) {
-    for (final keyword in rule.keywords) {
-      if (keyword.length <= 2) {
-        if (RegExp('(^|[^a-z])$keyword([^a-z]|\$)').hasMatch(nameLower)) {
-          return rule.flag;
-        }
-      } else if (nameLower.contains(keyword)) {
-        return rule.flag;
-      }
-    }
-  }
-
-  return '🌐';
-}
-
-Color _getDelayColor(int delay) {
-  if (delay == 0) return Colors.grey.withValues(alpha: 0.5);
-  if (delay > 65000) return Colors.red;
-  if (delay < 250) return const Color(0xFF10B981);
-  if (delay < 600) return Colors.orangeAccent;
-  return Colors.red;
-}
-
-IconData _getSignalIcon(int delay) {
-  if (delay == 0) return FluentIcons.wifi_1_24_regular;
-  if (delay > 65000) return FluentIcons.error_circle_24_regular;
-  if (delay < 250) return FluentIcons.wifi_1_24_filled;
-  if (delay < 600) return FluentIcons.wifi_warning_24_regular;
-  return FluentIcons.wifi_off_24_regular;
 }

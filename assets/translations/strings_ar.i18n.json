@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "التأخير: ${delay} مللي ثانية",
       "timeout": "انتهاء الوقت في اختبار التأخير",
-      "testing": "التأخير: قيد الاختبار..."
+      "testing": "التأخير: قيد الاختبار...",
+      "untested": "التأخير: لم يُختبر بعد",
+      "stale": "التأخير: ${delay} مللي ثانية (نتيجة سابقة)"
     },
     "ipInfoSemantics": {
       "address": "عنوان IP",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "يرجى الاتصال قبل تبديل الخطوط",
     "startDelayTestForGroups": "بدأ اختبار التأخير لـ ${count} خط",
     "delayTestBtn": "التأخير",
+    "delayTimeout": "انتهت المهلة",
+    "connectBeforeTest": "اتصل أولاً لاختبار التأخير",
     "lineCount": "${count} خط",
     "manualSelect": "اختيار يدوي",
     "autoTest": "اختبار تلقائي"

@@ -10,6 +10,9 @@ abstract final class BrandColors {
   /// 猫脸上那道闪电的黄，品牌里唯一的暖色。
   static const Color gold = Color(0xFFFCD13C);
 
+  /// "已连接 / 线路通"的绿：连接状态、延迟这类"一切正常"的信号统一用它。
+  static const Color connected = Color(0xFF10B981);
+
   /// 未连接（休眠）时的品牌蓝：色相不动、饱和度收掉、亮度提上去。
   ///
   /// 还是那只猫，但整体从"通电"退回"待机"——满饱和的靛蓝在没连上的时候会读成

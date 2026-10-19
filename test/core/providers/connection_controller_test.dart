@@ -1022,6 +1022,67 @@ void main() {
     });
   });
 
+  group('connectionStartedAtProvider 只在亲眼看到"连接中 → 已连接"时记时', () {
+    Future<(ProviderContainer, _SpyBoxService)> setUp() async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final spy = _SpyBoxService();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(spy),
+          storeReviewServiceProvider.overrideWith(_FakeStoreReviewService.new),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      container.read(connectionControllerProvider.notifier);
+      return (container, spy);
+    }
+
+    test('连接中 → 已连接：记下进入已连接的时间', () async {
+      final (container, spy) = await setUp();
+
+      spy.statusStreamController.add(const BoxStarting());
+      await Future<void>.delayed(Duration.zero);
+      final before = DateTime.now();
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      final startedAt = container.read(connectionStartedAtProvider);
+      expect(startedAt, isNotNull);
+      expect(startedAt!.isBefore(before), isFalse);
+
+      container.dispose();
+    });
+
+    test('直接以已连接出现（App 重启后挂上早就在跑的隧道）：不记时，'
+        '否则"已连接时长"会从 0 开始，显示的是错的', () async {
+      final (container, spy) = await setUp();
+
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(connectionStartedAtProvider), isNull);
+
+      container.dispose();
+    });
+
+    test('断开后清零', () async {
+      final (container, spy) = await setUp();
+
+      spy.statusStreamController.add(const BoxStarting());
+      await Future<void>.delayed(Duration.zero);
+      spy.statusStreamController.add(const BoxStarted());
+      await Future<void>.delayed(Duration.zero);
+      spy.statusStreamController.add(const BoxStopped());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(container.read(connectionStartedAtProvider), isNull);
+
+      container.dispose();
+    });
+  });
+
   group('首次成功连接触发商店评分请求', () {
     test(
       'watchStatus 推 BoxStarted（首次进入已连接态）→ 调用一次 maybeRequestReview',

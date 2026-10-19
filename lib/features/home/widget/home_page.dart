@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/core/health/connection_health_monitor.dart';
@@ -898,8 +900,8 @@ class _ConnectionInfo extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     status is BoxStarting
-                        ? 'Connecting...'
-                        : 'Disconnecting...',
+                        ? t.connection.connecting
+                        : t.connection.disconnecting,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: theme.aiUi.secondaryTextColor,
@@ -909,52 +911,65 @@ class _ConnectionInfo extends ConsumerWidget {
               );
             }
             if (isConnected) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    FluentIcons.server_24_filled,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 200),
-                    child: Text(
-                      nodeName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              final delayColor = delay > 0
+                  ? BrandColors.connected
+                  : theme.aiUi.secondaryTextColor;
+              // 做成带箭头的胶囊而不是一行字：原来那样看不出能点，左边的服务器
+              // 图标在小尺寸下还像一部手机。点了直接跳线路页换节点。
+              return Semantics(
+                button: true,
+                child: GestureDetector(
+                  onTap: () => ref.read(selectedTabProvider.notifier).state =
+                      AppTab.proxies,
+                  child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+                    decoration: BoxDecoration(
+                      color: theme.aiUi.softBackgroundColor,
+                      borderRadius: BorderRadius.circular(22),
+                      border: Border.all(color: theme.aiUi.borderColor),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 200),
+                          child: Text(
+                            nodeName,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Icon(
+                          FluentIcons.wifi_1_24_filled,
+                          size: 16,
+                          color: delayColor,
+                        ),
+                        const SizedBox(width: 4),
+                        // 延迟还没测出来就是不知道，显示破折号——写"检测中"是
+                        // 假的，那时并没有在测。
+                        Text(
+                          delay > 0 ? '${delay}ms' : '—',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: delayColor,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          FluentIcons.chevron_right_16_regular,
+                          size: 16,
+                          color: theme.aiUi.secondaryTextColor,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    width: 1,
-                    height: 12,
-                    color: theme.aiUi.borderColor,
-                  ),
-                  const SizedBox(width: 12),
-                  Icon(
-                    FluentIcons.wifi_1_24_filled,
-                    size: 16,
-                    color: delay > 0
-                        ? const Color(0xFF10B981)
-                        : theme.aiUi.secondaryTextColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    delay > 0 ? "${delay}ms" : "Checking",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: delay > 0
-                          ? const Color(0xFF10B981)
-                          : theme.aiUi.secondaryTextColor,
-                    ),
-                  ),
-                ],
+                ),
               );
             }
             return const SizedBox(height: 20);
@@ -1033,17 +1048,19 @@ class _SegmentTab extends StatelessWidget {
         duration: 200.ms,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         alignment: Alignment.center,
+        // 选中项用实心品牌色 + 白字。原来填的是 colorScheme.surface：深色
+        // 主题下它比底槽还暗，选中跟没选中只差一点字重，真机上分不出来。
         decoration: BoxDecoration(
           color: isSelected
-              ? theme.colorScheme.surface
-              : theme.colorScheme.surface.withValues(alpha: 0),
+              ? BrandColors.indigo
+              : BrandColors.indigo.withValues(alpha: 0),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: isSelected
-                  ? Colors.black.withValues(alpha: 0.08)
+                  ? BrandColors.indigo.withValues(alpha: 0.35)
                   : Colors.transparent,
-              blurRadius: 4,
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -1053,9 +1070,7 @@ class _SegmentTab extends StatelessWidget {
           style: TextStyle(
             fontSize: 13,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected
-                ? theme.colorScheme.primary
-                : theme.aiUi.secondaryTextColor,
+            color: isSelected ? Colors.white : theme.aiUi.secondaryTextColor,
           ),
           child: Text(text),
         ),

@@ -242,19 +242,19 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
-  testWidgets('已连接时闪电持续冒电火花，而且不规则地窜（不是规律呼吸）', (tester) async {
+  testWidgets('已连接时只剩慢呼吸：没有电火花、流动高光和扩散光环', (tester) async {
+    // 连上之后一直在动的东西（火花乱窜、高光流动、光环往外扩）读起来就是
+    // "还在加载 / 还在连接"。动画只该在连接中出现，连上之后应该是安静的。
     await tester.pumpWidget(_host(const BoxStarted()));
     await tester.pump(const Duration(milliseconds: 120));
 
-    expect(
-      find.byKey(const ValueKey('connection-spark-0')),
-      findsOneWidget,
-      reason: '连上之后闪电周围要一直有电弧窜出来',
-    );
+    expect(find.byKey(const ValueKey('connection-spark-0')), findsNothing);
+    expect(find.byKey(const ValueKey('connection-bolt-current')), findsNothing);
+    expect(find.byKey(const ValueKey('connection-halo-ring')), findsNothing);
 
-    // 连着三帧取辉光亮度：电流的抖动不该是单调升或单调降。
+    // 连续几帧的辉光亮度只能单调变化——呼吸是平滑的，不是滋滋地抖。
     final samples = <double>[];
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       await tester.pump(const Duration(milliseconds: 45));
       samples.add(
         tester
@@ -262,31 +262,14 @@ void main() {
             .opacity,
       );
     }
-    expect(samples.toSet().length, 3, reason: '每帧都该变，否则不是"滋滋"是"呼吸"');
-
-    await tester.pumpWidget(const SizedBox.shrink());
-  });
-
-  testWidgets('已连接时闪电内部有一道流动的电流高光', (tester) async {
-    await tester.pumpWidget(_host(const BoxStarted()));
-    await tester.pump(const Duration(milliseconds: 120));
+    final rising = [for (var i = 1; i < 4; i++) samples[i] >= samples[i - 1]];
     expect(
-      find.byKey(const ValueKey('connection-bolt-current')),
-      findsOneWidget,
+      rising.every((r) => r) || rising.every((r) => !r),
+      isTrue,
+      reason: '辉光在抖：$samples',
     );
 
     await tester.pumpWidget(const SizedBox.shrink());
-  });
-
-  testWidgets('未连接和减少动态效果时都不冒电火花', (tester) async {
-    await tester.pumpWidget(_host(const BoxStopped()));
-    await tester.pump();
-    expect(find.byKey(const ValueKey('connection-spark-0')), findsNothing);
-
-    await tester.pumpWidget(_host(const BoxStarted(), disableAnimations: true));
-    await tester.pump(const Duration(milliseconds: 120));
-    expect(find.byKey(const ValueKey('connection-spark-0')), findsNothing);
-    expect(find.byKey(const ValueKey('connection-bolt-current')), findsNothing);
   });
 
   testWidgets('减少动态效果时保留静态分层 Logo', (tester) async {

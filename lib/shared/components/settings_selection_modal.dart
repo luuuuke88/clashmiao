@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'ai_ui_modal_wrapper.dart';
+import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 
 class SettingsSelectionModal<T> extends StatelessWidget {
   const SettingsSelectionModal({

@@ -99,6 +99,21 @@ void main() {
         'https://example.test/s/…',
       ),
       (
+        '含编码 / 的 base64 段（%2F）：整段解码后仍要查',
+        'https://example.test/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
+        'https://example.test/s/…',
+      ),
+      (
+        '含编码 / 的 base64 段（%252F，两层）',
+        'https://example.test/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
+        'https://example.test/s/…',
+      ),
+      (
+        '含编码 / 的 base64 段（%25252F，三层）',
+        'https://example.test/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
+        'https://example.test/s/…',
+      ),
+      (
         '转义斜杠的 http URL：userinfo 与路径 token',
         r'{"u":"http:\/\/u:p@example.test\/s\/'
             r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
@@ -148,6 +163,22 @@ void main() {
         '弱字段在自然语言里：值像凭据时也遮',
         'Invalid key: 0123456789abcdef0123',
         'Invalid key: …',
+      ),
+      (
+        '弱字段：值包在转义引号里也识别',
+        r'Invalid key: \"0123456789abcdef0123\"',
+        'Invalid key: …',
+      ),
+      (
+        '弱字段：值包在方括号里也识别',
+        'Invalid key: [0123456789abcdef0123]',
+        'Invalid key: …',
+      ),
+      (
+        '弱字段：值包在圆括号、尖括号、单引号里也识别',
+        "sid: (0123456789abcdef0123)\nsig: <0123456789abcdef0123>\n"
+            "auth: '0123456789abcdef0123'",
+        'sid: …\nsig: …\nauth: …',
       ),
       (
         '强字段在自然语言里同样遮到行尾（偏安全的过度遮盖）',
@@ -304,6 +335,103 @@ void main() {
     });
   });
 
+  group('结构化遍历防循环引用', () {
+    void expectSafe(Object root) {
+      late Object? out;
+      expect(() => out = redactStructuredValue(root), returnsNormally);
+      final text = jsonEncode(out); // 结果里不再有环，能序列化
+      expect(text, isNot(contains('SECRET')));
+      expect(text, contains(kCyclePlaceholder));
+      expect(redactLogText('$out'), isNot(contains('SECRET')));
+    }
+
+    test('自引用 Map', () {
+      final map = <String, Object?>{'password': 'SECRET', 'server': 'h'};
+      map['self'] = map;
+      expectSafe(map);
+      expect((redactStructuredValue(map)! as Map)['self'], kCyclePlaceholder);
+    });
+
+    test('自引用 List', () {
+      final list = <Object?>[
+        {'token': 'SECRET'},
+        'https://example.test/sub?token=SECRET',
+      ];
+      list.add(list);
+      expectSafe(list);
+    });
+
+    test('两个结构互相引用', () {
+      final a = <String, Object?>{'password': 'SECRET'};
+      final b = <Object?>[a, 'https://example.test/sub?token=SECRET'];
+      a['b'] = b;
+      expectSafe(a);
+      expectSafe(b);
+    });
+
+    test('共享但无环的子结构照常展开，不当成循环', () {
+      final shared = {'host': 'h.example.test', 'uuid': 'SECRET'};
+      final out = redactStructuredValue([shared, shared])! as List;
+      expect(out, [
+        {'host': 'h.example.test', 'uuid': '…'},
+        {'host': 'h.example.test', 'uuid': '…'},
+      ]);
+    });
+
+    test('toString 抛异常的对象换成占位，不往外抛', () {
+      expect(redactStructuredValue({'value': _ThrowingToString()}), {
+        'value': kUnprintablePlaceholder,
+      });
+    });
+
+    test('随机带环的嵌套 Map / List：从不抛异常，秘密不残留', () {
+      const secretKeys = ['password', 'token', 'key', 'uuid', 'auth'];
+      const plainKeys = ['host', 'name', 'items', 'next', 'meta'];
+      for (var seed = 0; seed < 400; seed++) {
+        final r = Random(seed);
+        final nodes = <Object>[
+          for (var i = r.nextInt(6) + 1; i > 0; i--)
+            r.nextBool() ? <String, Object?>{} : <Object?>[],
+        ];
+        Object? child({required bool underSecret}) {
+          switch (r.nextInt(4)) {
+            case 0:
+            case 1:
+              return nodes[r.nextInt(nodes.length)]; // 可能指回祖先或自己
+            case 2:
+              return underSecret ? 'SECRET ${r.nextInt(9)}' : 'plain';
+            default:
+              return r.nextInt(100);
+          }
+        }
+
+        for (final node in nodes) {
+          final n = r.nextInt(4);
+          for (var i = 0; i < n; i++) {
+            if (node is Map<String, Object?>) {
+              final secret = r.nextInt(3) == 0;
+              final key = secret
+                  ? secretKeys[r.nextInt(secretKeys.length)]
+                  : '${plainKeys[r.nextInt(plainKeys.length)]}$i';
+              node[key] = child(underSecret: secret);
+            } else if (node is List<Object?>) {
+              node.add(child(underSecret: false));
+            }
+          }
+        }
+
+        late Object? out;
+        expect(
+          () => out = redactStructuredValue(nodes.first),
+          returnsNormally,
+          reason: 'seed $seed',
+        );
+        final text = jsonEncode(out);
+        expect(text, isNot(contains('SECRET')), reason: 'seed $seed');
+      }
+    });
+  });
+
   test('随机生成的 Map / JSON：秘密值由任意标点、括号、引号组成也不泄露', () {
     const secretKeys = [
       'password',
@@ -409,6 +537,8 @@ void main() {
       'selected outbound 香港 01 for group proxy',
       // 普通诊断里的弱字段名不算凭据。
       'Invalid key: profiles',
+      'Invalid key: [profiles]',
+      r'Invalid key: \"profiles\"',
       '[ERROR] profiles.update: Invalid key: profiles',
       'Missing key: "selected_outbound"',
       'SharedPreferences key: clashmiao_analytics_enabled',
@@ -467,4 +597,9 @@ void main() {
     expect(once, isNot(contains('u:p@')));
     expect(once, isNot(contains('token=t')));
   });
+}
+
+class _ThrowingToString {
+  @override
+  String toString() => throw StateError('no');
 }

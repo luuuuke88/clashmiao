@@ -26,6 +26,7 @@
 //      词像凭据时遮盖，`Invalid key: profiles` 原样保留。
 // 4. 游离的 `Bearer <token>`：token 像凭据时遮盖。
 
+import 'dart:collection';
 import 'dart:convert';
 
 /// 脱敏后的占位符。
@@ -33,7 +34,7 @@ const String kRedacted = '…';
 
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 4;
+const int kLogRedactionVersion = 5;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -170,28 +171,70 @@ bool _isStrongSecretName(String name) {
 /// 字段（[isSecretFieldName]）的整项（含整个子树）换成 [kRedacted]，其余字符串
 /// 过 [redactLogText]；数字、布尔、null 原样；其它对象转成字符串后再过
 /// [redactLogText]。
-Object? redactStructuredValue(Object? value) => switch (value) {
-  null || bool() || num() => value,
-  final String s => redactLogText(s),
-  final Map<String, dynamic> m => redactStructuredMap(m),
-  final Map<dynamic, dynamic> m => {
-    for (final entry in m.entries)
-      entry.key: _redactStructuredEntry(entry.key, entry.value),
-  },
-  final Iterable<dynamic> l => [for (final v in l) redactStructuredValue(v)],
-  _ => redactLogText(value.toString()),
-};
+///
+/// 循环引用安全：按对象身份记录当前递归路径上的 Map / List，再次遇到时换成
+/// [kCyclePlaceholder]，不会栈溢出（日志、loggy、Sentry 都走这里）。
+/// `toString()` 自己抛异常的对象换成 [kUnprintablePlaceholder]。
+Object? redactStructuredValue(Object? value) =>
+    _redactStructured(value, HashSet<Object>.identity());
 
 /// [redactStructuredValue] 的 `Map<String, dynamic>` 版本，保持类型。
-Map<String, dynamic> redactStructuredMap(Map<String, dynamic> map) => {
+Map<String, dynamic> redactStructuredMap(Map<String, dynamic> map) =>
+    _redactStringKeyedMap(map, HashSet<Object>.identity()..add(map));
+
+/// 结构化遍历里循环引用节点的占位。
+const String kCyclePlaceholder = '<cycle>';
+
+/// 结构化遍历里 `toString()` 抛异常的对象的占位。
+const String kUnprintablePlaceholder = '<unprintable>';
+
+Object? _redactStructured(Object? value, Set<Object> path) {
+  switch (value) {
+    case null || bool() || num():
+      return value;
+    case final String s:
+      return redactLogText(s);
+    case final Map<dynamic, dynamic> m:
+      if (!path.add(m)) return kCyclePlaceholder;
+      try {
+        if (m is Map<String, dynamic>) return _redactStringKeyedMap(m, path);
+        return {
+          for (final entry in m.entries)
+            entry.key: _redactStructuredEntry(entry.key, entry.value, path),
+        };
+      } finally {
+        path.remove(m);
+      }
+    case final Iterable<dynamic> l:
+      if (!path.add(l)) return kCyclePlaceholder;
+      try {
+        return [for (final v in l) _redactStructured(v, path)];
+      } finally {
+        path.remove(l);
+      }
+    default:
+      String text;
+      try {
+        text = value.toString();
+      } catch (_) {
+        return kUnprintablePlaceholder;
+      }
+      return redactLogText(text);
+  }
+}
+
+Map<String, dynamic> _redactStringKeyedMap(
+  Map<String, dynamic> map,
+  Set<Object> path,
+) => {
   for (final entry in map.entries)
-    entry.key: _redactStructuredEntry(entry.key, entry.value),
+    entry.key: _redactStructuredEntry(entry.key, entry.value, path),
 };
 
-Object? _redactStructuredEntry(Object? key, Object? value) {
+Object? _redactStructuredEntry(Object? key, Object? value, Set<Object> path) {
   if (value == null) return null;
   if (key is String && isSecretFieldName(key)) return kRedacted;
-  return redactStructuredValue(value);
+  return _redactStructured(value, path);
 }
 
 // ─── 键值 ─────────────────────────────────────────────────────────────
@@ -246,10 +289,11 @@ bool _inStructure(String text, int index) {
   return false;
 }
 
-/// 值的第一个词（去掉开头的引号），只用来判断弱字段的值像不像凭据。
+/// 值的第一个词（剥掉开头的引号、转义引号与括号），只用来判断弱字段的值像不像
+/// 凭据。
 String _firstWord(String rest) {
   var start = 0;
-  while (start < rest.length && (rest[start] == '"' || rest[start] == "'")) {
+  while (start < rest.length && _wordWrappers.contains(rest[start])) {
     start++;
   }
   var end = start;
@@ -259,7 +303,11 @@ String _firstWord(String rest) {
   return rest.substring(start, end);
 }
 
-const _wordTerminators = ' \t&,;}])"\'<>';
+const _wordTerminators = ' \t&,;}])"\'<>\\';
+
+/// 值开头的包装字符：引号（含转义引号 `\"`）、`[`、`(`、`<`。判断像不像凭据前
+/// 先剥掉；收尾的包装字符本来就在 [_wordTerminators] 里。
+const _wordWrappers = '"\'\\[(<';
 
 int _endOfLine(String text, int from) {
   for (var k = from; k < text.length; k++) {
@@ -340,13 +388,16 @@ String _redactUrlMatch(Match m) {
   return buffer.toString();
 }
 
-/// 路径段：原样以及每一轮宽松解码（最多三轮，应对重复编码）之后，都按解出的
-/// `/` 拆成子段逐个判断；任何一个子段像 token，整个原始段都算敏感。
+/// 路径段：原样以及每一轮宽松解码（最多三轮，应对重复编码）之后，整段与按解出
+/// 的 `/` 拆开的每个子段都判断一次；任何一个像 token，整个原始段都算敏感。
 bool _isSensitiveSegment(String segment) {
   if (segment.isEmpty || segment == kRedacted) return false;
   var current = segment;
   for (var round = 0; ; round++) {
-    if (current.split('/').any(_looksLikeToken)) return true;
+    // 整段（含 `/` 的 base64 之类）与按 `/` 拆开的子段都要查。
+    if (_looksLikeToken(current) || current.split('/').any(_looksLikeToken)) {
+      return true;
+    }
     if (round == 3 || !current.contains('%')) return false;
     final decoded = _percentDecodeLenient(current);
     if (decoded == current) return false;

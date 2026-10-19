@@ -372,6 +372,28 @@ void main() {
     expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
   });
 
+  test('循环引用的抛出物、extra、面包屑 data：不抛异常，秘密不残留', () {
+    final thrown = <String, Object?>{'password': 'SECRET'};
+    thrown['self'] = thrown;
+    final list = <Object?>['https://example.test/sub?token=SECRET'];
+    list.add(list);
+    final crumbData = <String, dynamic>{'token': 'SECRET'};
+    crumbData['loop'] = crumbData;
+    final event = SentryEvent(
+      exceptions: [
+        SentryException(type: '_Map', value: 'cyclic', throwable: thrown),
+      ],
+      extra: {'list': list},
+      breadcrumbs: [Breadcrumb(message: 'x', data: crumbData)],
+    );
+
+    late SentryEvent out;
+    expect(() => out = redactSentryEvent(event), returnsNormally);
+    final json = jsonEncode(out.toJson());
+    expect(json, isNot(contains('SECRET')));
+    expect(json, contains('<cycle>'));
+  });
+
   test('beforeBreadcrumb：消息与 data 脱敏；null 原样返回', () {
     final crumb = redactBreadcrumb(
       Breadcrumb(

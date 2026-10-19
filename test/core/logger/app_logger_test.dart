@@ -106,6 +106,18 @@ void main() {
       );
     });
 
+    test('结构化错误里有循环引用：不抛异常，秘密不进日志', () async {
+      final error = <String, Object?>{'password': 'SECRET', 'server': 'h'};
+      error['self'] = error;
+
+      expect(() => logAppFailure('profiles.parse', error), returnsNormally);
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(content, contains('[ERROR] profiles.parse:'));
+    });
+
     test('脱敏在唯一写入口：直接 append 的行（loggy、未处理异常兜底）也过滤', () async {
       await AppLogger.instance.append(
         '[PlatformDispatcher] fetch failed: https://u:pw@example.test/s?key=K '

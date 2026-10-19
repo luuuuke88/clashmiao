@@ -179,9 +179,14 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 「连接意图」代际：每提交一个 on 意图 +1（发送之前就算，不等标记落盘）。
   int _onGen = 0;
 
-  /// 最近一个断开意图提交时的 [_onGen]：这次断开产生的清标记归它所有。之后若
-  /// 又有新的 on 意图，代际前进，旧的清标记作废——哪怕新 on 的 mark 还没排上队。
-  int _lastOffOnGen = 0;
+  /// 每个断开意图（按意图 id）提交时的 [_onGen]：这次断开产生的清标记归它所有。
+  final Map<int, int> _offGenById = {};
+
+  /// 已发出的断开请求（`epoch/seq`）→ 它提交时的 [_onGen]。停止快照用自己的
+  /// `appliedSeq` 在这里查它到底属于哪一次断开，而不是「最近一次」断开——否则
+  /// `on1 → off1 → on2 → off2` 里旧快照会被记到 off2 名下。之后若有新的 on 意图，
+  /// 代际前进，旧的清标记作废（哪怕新 on 的 mark 还没排上队）。
+  final Map<String, int> _offGenBySeq = {};
 
   /// 已经为哪一代安排过清理：同一代只清一次（效果清理与 `disconnect` 收尾共用
   /// 同一个入口，后到的那次直接并入）。
@@ -261,7 +266,10 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     if (desired == Desired.on) {
       _onGen++;
     } else {
-      _lastOffOnGen = _onGen;
+      _offGenById[id] = _onGen;
+      while (_offGenById.length > 64) {
+        _offGenById.remove(_offGenById.keys.first);
+      }
     }
     final completer = Completer<RequestOutcome>();
     _completers[id] = completer;
@@ -325,6 +333,9 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         case PrepareLaunch(:final id):
           unawaited(_prepare(id));
         case SendRequest(:final id, :final request):
+          if (request.desired == Desired.off) {
+            _recordOffSend(id, request);
+          }
           unawaited(_send(id, request));
         case Resync():
           unawaited(_resync());
@@ -392,6 +403,15 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     }
   }
 
+  void _recordOffSend(int id, DesiredRequest request) {
+    final gen = _offGenById.remove(id);
+    if (gen == null) return;
+    _offGenBySeq['${request.epoch}/${request.seq}'] = gen;
+    while (_offGenBySeq.length > 64) {
+      _offGenBySeq.remove(_offGenBySeq.keys.first);
+    }
+  }
+
   Future<void> _send(int id, DesiredRequest request) async {
     try {
       await _sendRequest(id, request);
@@ -438,11 +458,6 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       _dispatch(SendFailed(id: id, failure: failureFromError(e), now: _now()));
       return;
     }
-    if (receipt.accepted && req.launch != null) {
-      unawaited(
-        _launcher.accepted(id, req.launch!, epoch: req.epoch, seq: req.seq),
-      );
-    }
     _dispatch(ReceiptReceived(id: id, receipt: receipt, now: _now()));
   }
 
@@ -470,7 +485,16 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         case SideEffectKind.markSystemProxyDirty:
           await _markSystemProxyDirty();
         case SideEffectKind.clearSystemProxyDirty:
-          await _clearSystemProxyDirty(_lastOffOnGen);
+          // 这份停止快照对应哪一次断开：看它的 appliedSeq 指向的请求。
+          final snap = _mstate.snapshot;
+          final gen = snap == null
+              ? null
+              : _offGenBySeq['${snap.epoch}/${snap.appliedSeq}'];
+          if (gen == null) {
+            debugPrint('停止快照对应的断开请求未知，不清系统代理脏标记');
+          } else {
+            await _clearSystemProxyDirty(gen);
+          }
         case SideEffectKind.reportFailure:
           if (_shouldReportAnalytics() && effect.failure != null) {
             _ref.read(fatalFailureReporterProvider)(effect.failure!);

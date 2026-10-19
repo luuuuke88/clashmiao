@@ -373,8 +373,7 @@
       "coreLibraryMissing": "核心程式庫未安裝",
       "startTimeout": "服務啟動逾時",
       "kernelUnresponsive": "核心無回應，請重試或重新啟動應用程式",
-      "kernelExited": "核心意外結束",
-      "runtimeFilesFull": "殘留的執行設定檔過多，請重新啟動應用程式後再試"
+      "kernelExited": "核心意外結束"
     },
     "connectivity": {
       "unexpected": "意外失敗",

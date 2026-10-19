@@ -359,8 +359,7 @@
       "coreLibraryMissing": "Biblioteca del núcleo no instalada",
       "startTimeout": "Tiempo de inicio del servicio agotado",
       "kernelUnresponsive": "El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.",
-      "kernelExited": "El núcleo se cerró inesperadamente",
-      "runtimeFilesFull": "Hay demasiados archivos de configuración residuales. Reinicia la aplicación e inténtalo de nuevo"
+      "kernelExited": "El núcleo se cerró inesperadamente"
     },
     "connectivity": {
       "unexpected": "Falla inesperada",

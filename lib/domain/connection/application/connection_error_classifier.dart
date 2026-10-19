@@ -107,7 +107,6 @@ String connectionFailureMessage(ConnectionFailure failure, Translations t) {
   return switch (failure) {
     NoActiveProfile() => t.failure.profiles.noActive,
     ConfigMissing() => t.failure.profiles.notFound,
-    RuntimeFilesExhausted() => t.failure.singbox.runtimeFilesFull,
     CoreUnavailable() => t.failure.singbox.coreLibraryMissing,
     PermissionDenied() => t.failure.connectivity.missingVpnPermission,
     StartTimeout() => t.failure.singbox.startTimeout,

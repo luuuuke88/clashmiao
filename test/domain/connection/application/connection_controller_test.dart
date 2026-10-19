@@ -28,7 +28,7 @@ import '../../../_fakes/fake_kernel_port.dart';
 // 测试替身
 // ─────────────────────────────────────────────────────────────────────────
 
-/// 不碰磁盘的启动产物准备：可编程失败 / 悬停，记录 bindSeq / accepted / discard。
+/// 不碰磁盘的启动产物准备：可编程失败 / 悬停，记录 bindSeq / sendFinished / discard。
 class _FakeLauncher extends ConnectionLauncher {
   _FakeLauncher(super.ref);
 
@@ -41,7 +41,7 @@ class _FakeLauncher extends ConnectionLauncher {
   int revision = 1;
   final List<int> prepared = [];
   final List<({int id, int seq, String path})> bound = [];
-  final List<int> accepts = [];
+  final List<int> finished = [];
   final List<int> discards = [];
 
   @override
@@ -72,12 +72,7 @@ class _FakeLauncher extends ConnectionLauncher {
   }
 
   @override
-  Future<void> accepted(
-    int id,
-    LaunchSpec spec, {
-    required String epoch,
-    required int seq,
-  }) async => accepts.add(id);
+  void sendFinished(int id) => finished.add(id);
 
   @override
   Future<void> discard(int id) async => discards.add(id);
@@ -394,7 +389,7 @@ void main() {
         expect(r.seq, 5);
         expect(r.epoch, 'e1');
         expect(r.launch!.runtimeConfigPath, '/work/runtime-config-5.json');
-        expect(e.launcher.accepts, [1], reason: '受理后交给 launcher 清理旧文件');
+        expect(e.launcher.finished, [1], reason: '发送路径走完后通知 launcher 释放引用');
         expect(e.phase, ConnectionPhase.connecting);
         expect(out, isEmpty, reason: '受理不等于完成');
 
@@ -1288,6 +1283,63 @@ void main() {
         e.kernelStarted(on2, attempt: 2);
         expect(e.phase, ConnectionPhase.connected);
         expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+      },
+      desktop: true,
+      gateDirty: true,
+    );
+
+    _sim(
+      'on1 → off1 → on2 → off2：on2 的 mark 悬停时 off1 的 stopped 到达，off2 的 RPC 失败而 on2 发送成功：标记必须保留',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.kernelStarted(e.requests.single); // on1
+        expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+        final store = e.dirtyStore!;
+
+        final off1 = e.track(e.ctl.disconnect()); // off1
+        final off1Req = e.requests.last;
+        expect(off1Req.desired, Desired.off);
+
+        // on2：它的 mark 悬停。
+        final markGate = Completer<void>();
+        store.markGate = markGate;
+        e.ctl.connect();
+        e.settle();
+        // off2：紧接着又点了断开。
+        final off2 = e.track(e.ctl.disconnect());
+        e.settle();
+
+        // off1 的 stopped 快照这时才到：它属于 off1，不属于「最近一次」的 off2。
+        e.kernelStopped(off1Req);
+        expect(store.log.where((l) => l.startsWith('clear')), isEmpty);
+
+        // 放行：on2 的发送成功，off2 的 RPC 失败。
+        e.port.requestErrorFor = (r) =>
+            r.desired == Desired.off && r.seq > off1Req.seq
+            ? StateError('off2 rpc failed')
+            : null;
+        markGate.complete();
+        e.settle();
+
+        final on2 = e.requests.lastWhere((r) => r.desired == Desired.on);
+        expect(on2.seq, greaterThan(off1Req.seq), reason: 'on2 确实发出去了');
+        e.kernelStarted(on2, attempt: 2);
+
+        expect(off1.single, const RequestSucceeded());
+        expect(off2, isNotEmpty);
+        expect(
+          store.log.where((l) => l.startsWith('clear')),
+          isEmpty,
+          reason: 'off1 的停止快照（appliedSeq=off1）按它自己的断开归属，被 on2 作废',
+        );
+        expect(
+          e.prefs.getBool(kSystemProxyDirtyKey),
+          isTrue,
+          reason: '内核在跑，标记必须还在',
+        );
+        expect(e.phase, ConnectionPhase.connected);
       },
       desktop: true,
       gateDirty: true,

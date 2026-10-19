@@ -373,8 +373,7 @@
       "coreLibraryMissing": "Çekirdek Kitaplığı Yüklü Değil",
       "startTimeout": "Servis Başlatma Zaman Aşımı",
       "kernelUnresponsive": "Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.",
-      "kernelExited": "Çekirdek beklenmedik şekilde kapandı",
-      "runtimeFilesFull": "Çok fazla artık yapılandırma dosyası var. Lütfen uygulamayı yeniden başlatıp tekrar deneyin"
+      "kernelExited": "Çekirdek beklenmedik şekilde kapandı"
     },
     "connectivity": {
       "unexpected": "Beklenmedik Hata",

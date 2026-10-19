@@ -1,18 +1,18 @@
-// 连接启动产物的准备：每个 on 请求一份独立的运行时配置文件与内联 options。
+// 连接启动产物的准备：每个 on 请求一份内联 options 与运行时配置文件。
 //
 // 设计见 docs/superpowers/specs/2026-10-19-connection-state-machine-design.md
-// §5「ConnectionLauncher」与计划补充 P4 ①：
-// - 先写 `runtime-config-prep-<token>.json`（此时还不知道 seq，也不知道意图是否
-//   仍然有效）；
-// - 状态机确认意图仍有效、分配 seq 之后，改名为 `runtime-config-<seq>.json`；
+// §5「ConnectionLauncher」：
 // - `configRevision` = 对（options JSON + 运行时配置内容）的稳定哈希：相同配置
 //   得到相同 revision、协调器不会重载；
-// - 清理旧文件的规则是「拿不准就留」：运行中的 spec、仍在执行（尚未被协调器
-//   处理）的 spec、持久化引用的 spec（最新一份已处理的）一律保护；能证明无引用
-//   的中间产物（更新的 spec 已确认运行、相同 revision 的请求被协调器无操作
-//   合并、被更新的请求取代且并非运行中的）才释放；
-// - 留存有上限（[kMaxRetainedRuntimeFiles]）：回收之后仍超限且无法证明可释放
-//   时，新的准备请求以 [RuntimeFilesExhausted] 失败，不再继续写文件。
+// - 运行时配置文件**按 revision 命名**：`runtime-<revision>.json`。相同 revision
+//   的请求复用同一份文件——先写 `runtime-prep-<token>.json`，仅当目标不存在或
+//   内容不同时才用改名（原子）覆盖，内容相同则丢弃临时文件，所以读取方永远看
+//   不到半份文件，也不会出现「相同 revision 删掉自己的文件」；
+// - 删除只依据**权威快照与本进程已知的引用**，绝不依据修改时间或文件年龄：
+//   受保护 = 快照 `activeConfigRevision` 的文件（原生运行 / 持久化引用的就是它）
+//   ∪ 尚未终结（准备中 / 发送中 / 回执未处理）的请求的文件 ∪ 本进程最近准备
+//   的 3 个不同 revision。受保护集合之外的才删；本进程收到首个权威快照之前
+//   什么都不删（冷启动时原生的持久化引用只能从快照得知）。
 
 import 'dart:async';
 import 'dart:convert';
@@ -66,10 +66,13 @@ int computeConfigRevision(String optionsJson, List<int> runtimeConfigBytes) {
   return h & 0x7fffffffffffffff;
 }
 
-/// 除「运行中」与「最新一份」之外，最多允许留存的运行时配置文件数。
-const kMaxRetainedRuntimeFiles = 4;
+/// 本进程最近准备的不同 revision 里，受保护的个数。
+const kRecentRevisionsProtected = 3;
 
 typedef WorkingDirectoryResolver = Future<Directory> Function();
+
+/// 运行时配置文件名（按 revision）。
+String runtimeConfigFileName(int revision) => 'runtime-$revision.json';
 
 class ConnectionLauncher {
   ConnectionLauncher(
@@ -87,32 +90,38 @@ class ConnectionLauncher {
   static String _defaultToken() =>
       '${DateTime.now().microsecondsSinceEpoch}-${_tokenCounter++}';
 
-  /// 每个未终结意图当前的运行时配置文件路径（prep 名或已绑定 seq 的名字）。
-  final Map<int, String> _files = {};
+  /// 尚未终结的意图对运行时配置文件的引用：从 [prepare] 完成起，到意图终结
+  /// （[discard]）且发送路径走完（[sendFinished]）为止。
+  final Map<int, _Hold> _holds = {};
 
-  /// 意图 [id] 最近一次绑定 seq（发送）时内核已知的 attempt：之后 attempt 增长
-  /// 才说明有新实例启动。**发送元数据保持不变直到 [sendFinished]**（回执路径
-  /// 走完）——意图提前终结（快照先于回执）不会让它消失；缺失（从未得知内核
-  /// attempt）一律视为「无法确认」，绝不据此推断发生过新启动。
-  final Map<int, int> _attemptAtSend = {};
+  /// 本进程最近准备的不同 revision（新的在后，至多 [kRecentRevisionsProtected]）。
+  final List<int> _recent = [];
 
-  /// 被协调器受理的请求所引用的运行时配置文件，按受理顺序。它们可能是运行中
-  /// 实例、正在执行的请求或持久化 spec 的引用，是否可以释放由 [_released] 判断。
-  final List<_AcceptedSpec> _accepted = [];
+  /// 正在构建中的临时文件（绝不能被清理删掉）。
+  final Set<String> _prepInProgress = {};
 
-  /// 最近观察到的内核快照；尚未观察到为 null（此时一律保守保留）。
+  /// 最近观察到的内核快照；尚未观察到为 null——此时**什么都不删**。
   KernelSnapshot? _kernel;
 
-  /// 串行化清理，避免两次清理并发删除/扫描。
-  Future<void> _cleanupChain = Future<void>.value();
+  /// 串行化「定稿目标文件」与「清理」：清理按快照与引用计算受保护集合并据此
+  /// 删除，期间不允许有别的请求同时定稿，否则刚复用 / 写好的文件可能被误删。
+  Future<void> _ioChain = Future<void>.value();
 
-  /// 没有任何记录引用的 seq 文件（请求已终结但可能仍在协调器手里）至少保留这
-  /// 么久：协调器收到请求后几秒内就会读取 spec，两分钟足够保守。
-  static const untrackedGrace = Duration(minutes: 2);
+  /// 排队中的定稿 / 清理全部完成（测试用）。
+  @visibleForTesting
+  Future<void> get idle async {
+    Future<void> seen;
+    do {
+      seen = _ioChain;
+      await seen;
+    } while (!identical(seen, _ioChain));
+  }
 
-  /// 没有记录引用的 seq 文件中，最新的这几份始终保留（上次进程留下的、可能仍
-  /// 是运行中或持久化引用的那份）。
-  static const _untrackedKeepNewest = 2;
+  Future<T> _serialized<T>(Future<T> Function() op) {
+    final run = _ioChain.then((_) => op());
+    _ioChain = run.then((_) {}, onError: (_) {});
+    return run;
+  }
 
   /// 为意图 [id] 准备启动产物。失败抛 [LaunchPreparationException]。
   Future<LaunchSpec> prepare(int id) async {
@@ -130,6 +139,7 @@ class ConnectionLauncher {
 
     final ProfileEntity active = await _resolveActiveWithSelfHeal(repo);
 
+    String? prepPath;
     try {
       final isGlobal = _ref.read(proxyModeProvider) == 0;
       final settings = _ref.read(networkSettingsProvider);
@@ -143,27 +153,73 @@ class ConnectionLauncher {
       );
 
       final workingDir = await _workingDirectory();
-      await _enforceQuota(workingDir);
-      final prepName = 'runtime-config-prep-${_token()}.json';
-      final runtimeConfig = await RuntimeConfigBuilder().build(
+      final prepName = 'runtime-prep-${_token()}.json';
+      prepPath = '${workingDir.path}/$prepName';
+      _prepInProgress.add(prepPath);
+      final built = await RuntimeConfigBuilder().build(
         baseProfile: File(repo.configFilePath(active.id)),
         workingDir: workingDir,
         remoteDnsAddress: settings.remoteDnsAddress,
         advancedConfig: active.advancedConfig,
         outputFileName: prepName,
       );
-      final bytes = await runtimeConfig.readAsBytes();
-      _files[id] = runtimeConfig.path;
+      final bytes = await built.readAsBytes();
+      final revision = computeConfigRevision(optionsJson, bytes);
+      final target = File(
+        '${workingDir.path}/${runtimeConfigFileName(revision)}',
+      );
+
+      // 定稿：登记引用、复用或原子落盘，与清理串行。
+      await _serialized(() async {
+        _holds[id] = _Hold(revision);
+        _touchRecent(revision);
+        await _finalize(built, target, bytes);
+      });
       return LaunchSpec(
-        runtimeConfigPath: runtimeConfig.path,
+        runtimeConfigPath: target.path,
         optionsJson: optionsJson,
         profileName: active.name,
-        configRevision: computeConfigRevision(optionsJson, bytes),
+        configRevision: revision,
       );
     } on LaunchPreparationException {
       rethrow;
     } catch (e) {
       throw LaunchPreparationException(UnexpectedFailure('$e'));
+    } finally {
+      if (prepPath != null) {
+        _prepInProgress.remove(prepPath);
+        try {
+          final f = File(prepPath);
+          if (await f.exists()) await f.delete();
+        } catch (_) {}
+      }
+    }
+  }
+
+  /// 目标文件已存在且内容相同：直接复用（不写、不改名），临时文件由调用方删除；
+  /// 否则用改名把临时文件原子地放到目标位置（覆盖时读取方要么看到旧的完整文件，
+  /// 要么看到新的完整文件）。
+  Future<void> _finalize(File temp, File target, List<int> bytes) async {
+    if (await target.exists()) {
+      final existing = await target.readAsBytes();
+      if (_sameBytes(existing, bytes)) return;
+    }
+    await temp.rename(target.path);
+  }
+
+  static bool _sameBytes(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  void _touchRecent(int revision) {
+    _recent.remove(revision);
+    _recent.add(revision);
+    if (_recent.length > kRecentRevisionsProtected) {
+      _recent.removeRange(0, _recent.length - kRecentRevisionsProtected);
     }
   }
 
@@ -226,299 +282,125 @@ class ConnectionLauncher {
   /// 异常类型，所以暂时一律返回 null。
   ConnectionFailure? _mapSelfHealException(Object error) => null;
 
-  /// 状态机分配了 [seq] 之后，把 prep 文件改名为 `runtime-config-<seq>.json`。
-  /// 同一意图因 stale / wrongEpoch 被重发时会用新的 seq 再调一次，所以这里按
-  /// 「当前路径 → 新名字」处理，已经是目标名字则不动。
+  /// 请求 [id] 开始走发送路径（绑定 seq 之后）。运行时配置文件按 revision 命名、
+  /// 与 seq 无关，所以这里不再改名，只把「发送中」记下来：回执处理完之前这份
+  /// 文件的引用不能释放。
   Future<LaunchSpec> bindSeq(int id, LaunchSpec spec, int seq) async {
-    final current = _files[id] ?? spec.runtimeConfigPath;
-    final target = '${File(current).parent.path}/runtime-config-$seq.json';
-    if (current != target) {
-      await File(current).rename(target);
-      _files[id] = target;
-    }
-    final attempt = _kernel?.attempt;
-    if (attempt != null) {
-      _attemptAtSend[id] = attempt;
-    } else {
-      _attemptAtSend.remove(id);
-    }
-    return LaunchSpec(
-      runtimeConfigPath: target,
-      optionsJson: spec.optionsJson,
-      profileName: spec.profileName,
-      configRevision: spec.configRevision,
-    );
+    _holds[id]?.sending = true;
+    return spec;
   }
 
-  /// 协调器受理了（[epoch] 纪元内序号 [seq] 的）引用 [spec] 的请求：记下它，
-  /// 并按规则清理旧文件。
-  Future<void> accepted(
-    int id,
-    LaunchSpec spec, {
-    required String epoch,
-    required int seq,
-  }) async {
-    _accepted.removeWhere((a) => a.path == spec.runtimeConfigPath);
-    final entry = _AcceptedSpec(
-      path: spec.runtimeConfigPath,
-      revision: spec.configRevision,
-      epoch: epoch,
-      seq: seq,
-      attemptAtSend: _attemptAtSend[id],
-    );
-    _accepted.add(entry);
-    _files.remove(id);
-    _resolve(entry);
-    await _scheduleCleanup(File(spec.runtimeConfigPath).parent);
+  /// 意图 [id] 的发送路径（含回执处理）已全部走完。
+  void sendFinished(int id) {
+    final h = _holds[id];
+    if (h == null) return;
+    h.sending = false;
+    _releaseIfDone(id);
   }
 
-  /// 意图 [id] 的发送路径（含回执处理）已全部走完：发送元数据可以丢弃了。
-  void sendFinished(int id) => _attemptAtSend.remove(id);
-
-  /// 控制器每收到一份内核快照就调用：运行中的 spec、已执行到哪一步都来自它。
-  /// 与文件释放相关的状态变化时触发一次清理。
-  Future<void> observe(KernelSnapshot snapshot) async {
-    final before = _signature();
-    _kernel = snapshot;
-    for (final a in _accepted) {
-      _resolve(a);
-    }
-    if (_accepted.isEmpty || _signature() == before) return;
-    await _scheduleCleanup(File(_accepted.last.path).parent);
-  }
-
-  /// 清理相关状态的指纹：确认运行的、最新已处理的、可释放的各是哪些。
-  String _signature() =>
-      '${_confirmed()?.path}|${_newestApplied()?.path}|'
-      '${_accepted.where(_released).map((a) => a.path).join(',')}';
-
-  /// 用快照给 [a] 定性（只定一次）：协调器已处理到它、内核已启动时，
-  /// - attempt 在发送之后增长且 revision 一致 → 它启动了新实例（[_AcceptedSpec.started]）；
-  /// - attempt 未变且 revision 一致 → 相同 revision 的请求被协调器无操作合并
-  ///   （[_AcceptedSpec.noop]），它的文件从未被运行实例引用。
-  /// 缺发送元数据时无法判定，保持未定性（保留）。
-  void _resolve(_AcceptedSpec a) {
-    final k = _kernel;
-    final sent = a.attemptAtSend;
-    if (a.resolved || sent == null || k == null) return;
-    if (k.epoch != a.epoch || k.appliedSeq < a.seq) return;
-    if (k.status != KernelStatus.started) return;
-    if (k.activeConfigRevision != a.revision) return;
-    if (k.attempt > sent) {
-      a.started = true;
-      a.resolved = true;
-    } else if (k.attempt == sent) {
-      a.noop = true;
-      a.resolved = true;
-    }
-  }
-
-  /// 最新的、已确认「正在运行」的 spec：它启动了当前仍在运行的实例。
-  _AcceptedSpec? _confirmed() {
-    final k = _kernel;
-    if (k == null || k.status != KernelStatus.started) return null;
-    _AcceptedSpec? best;
-    for (final a in _accepted) {
-      if (!a.started || a.epoch != k.epoch) continue;
-      if (a.revision != k.activeConfigRevision) continue;
-      if (best == null || a.seq > best.seq) best = a;
-    }
-    return best;
-  }
-
-  /// 当前纪元里协调器已处理的最新一份（持久化引用的那份）。
-  _AcceptedSpec? _newestApplied() {
-    final k = _kernel;
-    if (k == null) return null;
-    _AcceptedSpec? best;
-    for (final a in _accepted) {
-      if (a.epoch != k.epoch || a.seq > k.appliedSeq) continue;
-      if (best == null || a.seq > best.seq) best = a;
-    }
-    return best;
-  }
-
-  /// 意图终结：删除还没绑定 seq 的 prep 文件（没有任何人引用）。
-  ///
-  /// **已经绑定 seq 的文件不在这里删**：请求可能已经交给协调器（回执在路上，或
-  /// 协调器已受理但随后被更新的请求取代），协调器此刻可能正要读取它——删了会让
-  /// 一次本来成功的启动在读取配置时失败。它们之后按清理规则（更新的 spec 确认
-  /// 运行且超过宽限期）回收。
+  /// 意图终结（成功、失败、被取代、被中断都算）。文件不在这里删：它可能仍被
+  /// 协调器读取，也可能被相同 revision 的别的请求复用，是否可删只由清理按
+  /// 受保护集合判断。
   Future<void> discard(int id) async {
-    final path = _files.remove(id);
-    if (path == null) return;
-    if (!_prepFile.hasMatch(File(path).uri.pathSegments.last)) return;
+    final h = _holds[id];
+    if (h == null) return;
+    h.terminal = true;
+    _releaseIfDone(id);
+  }
+
+  void _releaseIfDone(int id) {
+    final h = _holds[id];
+    if (h == null || !h.terminal || h.sending) return;
+    _holds.remove(id);
+    if (_kernel != null) unawaited(_scheduleCleanup());
+  }
+
+  /// 控制器每收到一份权威内核快照就调用。首个快照到达前不删任何文件；运行中的
+  /// revision 变化时（旧 revision 的文件可能不再受保护）触发清理。
+  Future<void> observe(KernelSnapshot snapshot) async {
+    final previous = _kernel;
+    _kernel = snapshot;
+    if (previous != null &&
+        previous.activeConfigRevision == snapshot.activeConfigRevision) {
+      return;
+    }
+    await _scheduleCleanup();
+  }
+
+  Future<void> _scheduleCleanup() => _serialized(_cleanup);
+
+  static final RegExp _revisionFile = RegExp(r'^runtime-(\d+)\.json$');
+  static final RegExp _prepFile = RegExp(r'^runtime-prep-.+\.json$');
+  // 早期（每请求按 seq 命名）版本留下的文件，来历不明，按同一规则处理。
+  static final RegExp _legacySeqFile = RegExp(r'^runtime-config-\d+\.json$');
+  static final RegExp _legacyPrepFile = RegExp(
+    r'^runtime-config-prep-.+\.json$',
+  );
+
+  /// 受保护的 revision：快照里运行 / 持久化引用的、尚未终结的请求的、本进程最近
+  /// 准备的。
+  Set<int> _protectedRevisions() => {
+    ?_kernel?.activeConfigRevision,
+    for (final h in _holds.values) h.revision,
+    ..._recent,
+  };
+
+  /// 删除受保护集合之外的运行时配置文件。没有首个快照时什么都不做。
+  Future<void> _cleanup() async {
+    final kernel = _kernel;
+    if (kernel == null) return;
+    final Directory dir;
     try {
-      final f = File(path);
-      if (await f.exists()) await f.delete();
+      dir = await _workingDirectory();
+      if (!await dir.exists()) return;
     } catch (e) {
-      debugPrint('删除未使用的运行时配置失败（忽略）: $e');
+      debugPrint('清理运行时配置：无法定位目录（忽略）: $e');
+      return;
     }
-  }
+    final keep = _protectedRevisions();
+    final activeRevision = kernel.activeConfigRevision;
+    // 旧版按 seq 命名的文件无法与 revision 对应：只要内核还在运行、而新命名的
+    // 运行中文件并不存在，说明运行中的可能正是某个旧文件，保守保留。
+    final legacyMayBeRunning =
+        activeRevision != null &&
+        !await File(
+          '${dir.path}/${runtimeConfigFileName(activeRevision)}',
+        ).exists();
 
-  static final RegExp _seqFile = RegExp(r'^runtime-config-(\d+)\.json$');
-  static final RegExp _prepFile = RegExp(r'^runtime-config-prep-.+\.json$');
-
-  Future<void> _scheduleCleanup(Directory dir) {
-    final run = _cleanupChain.then((_) async {
-      try {
-        await _cleanup(dir);
-      } catch (e) {
-        debugPrint('清理旧运行时配置失败（忽略）: $e');
-      }
-    });
-    _cleanupChain = run;
-    return run;
-  }
-
-  /// [a] 现在可以释放吗？只有**能证明**无引用才可以，拿不准就留：
-  /// - 别的纪元的记录：当前纪元已有确认运行的 spec 才算被替换；
-  /// - 当前纪元里序号还没被协调器处理到的（仍在执行 / 可能被持久化）不放；
-  /// - 最新一份已处理的（持久化引用）、确认运行的那份不放；
-  /// - 比确认运行的更旧的：新实例已经在跑，放；
-  /// - 相同 revision 被协调器无操作合并的：从未被运行实例引用，放；
-  /// - 已被更新的已处理请求取代、且并非当前运行 revision 的：放；
-  /// - 其余（revision 与运行中的相同却无法证明没被引用）：留。
-  bool _released(_AcceptedSpec a) {
-    final k = _kernel;
-    if (k == null) return false;
-    final confirmed = _confirmed();
-    if (a.epoch != k.epoch) return confirmed != null;
-    if (a.seq > k.appliedSeq) return false;
-    if (identical(a, _newestApplied()) || identical(a, confirmed)) return false;
-    if (confirmed != null && a.seq < confirmed.seq) return true;
-    if (a.noop) return true;
-    final running =
-        k.status == KernelStatus.started &&
-        k.activeConfigRevision == a.revision;
-    return !running;
-  }
-
-  /// 没有任何记录引用的 seq 文件，哪些可以删：保留最新 [_untrackedKeepNewest]
-  /// 份与宽限期内的；其余只有在已有确认运行的 spec 时才删（拿不准就留）。
-  Future<List<File>> _untrackedSeqFiles(Directory dir) async {
-    final tracked = {for (final a in _accepted) a.path};
-    final inFlight = {..._files.values};
-    final found = <({File file, DateTime modified})>[];
-    await for (final entity in dir.list(followLinks: false)) {
-      if (entity is! File) continue;
-      if (!_seqFile.hasMatch(entity.uri.pathSegments.last)) continue;
-      if (tracked.contains(entity.path) || inFlight.contains(entity.path)) {
-        continue;
-      }
-      found.add((file: entity, modified: await entity.lastModified()));
-    }
-    found.sort((a, b) => b.modified.compareTo(a.modified));
-    return [for (final f in found) f.file];
-  }
-
-  /// 删除可以释放的文件。绝不删：仍在准备/发送中的意图的文件、受保护的记录。
-  /// 孤立的 prep 文件（上次进程被杀留下的）只在超过一小时后删除，避免误伤别的
-  /// 在途准备。
-  Future<void> _cleanup(Directory dir) async {
-    final inFlight = {..._files.values};
-    final now = DateTime.now();
-
-    for (final a in [
-      for (final a in _accepted)
-        if (_released(a)) a,
-    ]) {
-      if (inFlight.contains(a.path)) continue;
-      try {
-        final f = File(a.path);
-        if (await f.exists()) await f.delete();
-      } catch (e) {
-        debugPrint('删除旧运行时配置失败（忽略）: $e');
-        continue;
-      }
-      _accepted.remove(a);
-    }
-
-    // 孤立 prep 文件。
-    await for (final entity in dir.list(followLinks: false)) {
-      if (entity is! File) continue;
-      if (!_prepFile.hasMatch(entity.uri.pathSegments.last)) continue;
-      if (inFlight.contains(entity.path)) continue;
-      final modified = await entity.lastModified();
-      if (now.difference(modified) > const Duration(hours: 1)) {
-        await entity.delete();
-      }
-    }
-
-    // 没有记录引用的 seq 文件：最新几份留着，宽限期内的留着。
-    final untracked = await _untrackedSeqFiles(dir);
-    for (final f in untracked.skip(_untrackedKeepNewest)) {
-      final modified = await f.lastModified();
-      if (now.difference(modified) < untrackedGrace) continue;
-      try {
-        await f.delete();
-      } catch (e) {
-        debugPrint('删除遗留运行时配置失败（忽略）: $e');
-      }
-    }
-    if (_confirmed() != null) {
-      for (final f in untracked.take(_untrackedKeepNewest)) {
-        final modified = await f.lastModified();
-        if (now.difference(modified) < untrackedGrace) continue;
+    try {
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.last;
         try {
-          await f.delete();
+          final m = _revisionFile.firstMatch(name);
+          if (m != null) {
+            final revision = int.tryParse(m.group(1)!);
+            if (revision != null && keep.contains(revision)) continue;
+            await entity.delete();
+          } else if (_prepFile.hasMatch(name) ||
+              _legacyPrepFile.hasMatch(name)) {
+            if (_prepInProgress.contains(entity.path)) continue;
+            await entity.delete();
+          } else if (_legacySeqFile.hasMatch(name)) {
+            if (legacyMayBeRunning) continue;
+            await entity.delete();
+          }
         } catch (e) {
-          debugPrint('删除遗留运行时配置失败（忽略）: $e');
+          debugPrint('删除运行时配置失败（忽略）: $name $e');
         }
       }
+    } catch (e) {
+      debugPrint('清理运行时配置失败（忽略）: $e');
     }
-  }
-
-  /// 留存配额：除「确认运行的」「最新已处理的」和在途的之外，仍留存的运行时
-  /// 配置文件数 ≥ [kMaxRetainedRuntimeFiles] 时，先尝试回收；回收后仍超限就
-  /// 以 [RuntimeFilesExhausted] 拒绝这次准备，不再继续写文件。
-  Future<void> _enforceQuota(Directory dir) async {
-    if (await _retainedExtras(dir) < kMaxRetainedRuntimeFiles) return;
-    await _scheduleCleanup(dir);
-    if (await _retainedExtras(dir) >= kMaxRetainedRuntimeFiles) {
-      throw const LaunchPreparationException(RuntimeFilesExhausted());
-    }
-  }
-
-  Future<int> _retainedExtras(Directory dir) async {
-    final protected = {
-      _confirmed()?.path,
-      _newestApplied()?.path,
-      ..._files.values,
-    };
-    var n = _accepted.where((a) => !protected.contains(a.path)).length;
-    final untracked = await _untrackedSeqFiles(dir);
-    n += untracked.skip(_untrackedKeepNewest).length;
-    return n;
   }
 }
 
-/// 一次被协调器受理的请求所引用的运行时配置文件。
-class _AcceptedSpec {
-  _AcceptedSpec({
-    required this.path,
-    required this.revision,
-    required this.epoch,
-    required this.seq,
-    required this.attemptAtSend,
-  });
+class _Hold {
+  _Hold(this.revision);
 
-  final String path;
   final int revision;
-  final String epoch;
-  final int seq;
-
-  /// 发送时内核已知的 attempt；null = 未知（无法确认是否启动过新实例）。
-  final int? attemptAtSend;
-
-  /// 已经被 [ConnectionLauncher._resolve] 定性（启动了新实例 / 无操作合并）。
-  bool resolved = false;
-
-  /// 启动了当前这一代实例。
-  bool started = false;
-
-  /// 相同 revision，被协调器无操作合并。
-  bool noop = false;
+  bool terminal = false;
+  bool sending = false;
 }
 
 final connectionLauncherProvider = Provider<ConnectionLauncher>((ref) {

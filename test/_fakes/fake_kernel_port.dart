@@ -40,6 +40,9 @@ class FakeKernelPort implements KernelPort {
   KernelSnapshot? currentResult;
   Object? requestError;
 
+  /// 按请求决定是否抛错（非空返回值即抛它）；优先于 [requestError]。
+  Object? Function(DesiredRequest r)? requestErrorFor;
+
   /// 自定义回执；默认受理。
   RequestReceipt Function(DesiredRequest r)? receiptFor;
 
@@ -87,7 +90,7 @@ class FakeKernelPort implements KernelPort {
   @override
   Future<RequestReceipt> request(DesiredRequest request) async {
     requests.add(request);
-    final err = requestError;
+    final err = requestErrorFor?.call(request) ?? requestError;
     if (err != null) throw err;
     await onRequest?.call(request);
     final custom = receiptFor;

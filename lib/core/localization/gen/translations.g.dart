@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4390 (439 per locale)
+/// Strings: 4410 (441 per locale)
 ///
-/// Built on 2026-10-19 at 18:46 UTC
+/// Built on 2026-10-19 at 19:59 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -301,8 +301,10 @@ class TranslationsProxiesEn {
   String testingDelayInfo({required Object name}) =>
       'Testing delay for: ${name}';
   String switchedTo({required Object name}) => 'Switched to ${name}';
-  String switchToFailed({required Object error}) =>
-      'Failed to switch: ${error}';
+  String get switchFailed => 'Couldn\'t switch the server. Please try again.';
+  String get testFailed => 'Latency test failed. Please try again.';
+  String get groupsLoading =>
+      'Server list is still loading. Please try again in a moment.';
   String get connectBeforeSwitch => 'Please connect before switching lines';
   String startDelayTestForGroups({required Object count}) =>
       'Started delay test for ${count} lines';
@@ -1594,7 +1596,12 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'تم التبديل إلى ${name}';
   @override
-  String switchToFailed({required Object error}) => 'فشل التبديل: ${error}';
+  String get switchFailed => 'تعذّر تبديل الخادم. يُرجى المحاولة مرة أخرى.';
+  @override
+  String get testFailed => 'فشل اختبار زمن الاستجابة. يُرجى المحاولة مرة أخرى.';
+  @override
+  String get groupsLoading =>
+      'لا تزال قائمة الخوادم قيد التحميل. يُرجى المحاولة بعد قليل.';
   @override
   String get connectBeforeSwitch => 'يرجى الاتصال قبل تبديل الخطوط';
   @override
@@ -3410,8 +3417,13 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Cambiado a ${name}';
   @override
-  String switchToFailed({required Object error}) =>
-      'Error al cambiar: ${error}';
+  String get switchFailed =>
+      'No se pudo cambiar de servidor. Inténtalo de nuevo.';
+  @override
+  String get testFailed => 'La prueba de latencia falló. Inténtalo de nuevo.';
+  @override
+  String get groupsLoading =>
+      'La lista de servidores aún se está cargando. Inténtalo en un momento.';
   @override
   String get connectBeforeSwitch => 'Conéctate antes de cambiar de línea';
   @override
@@ -5314,8 +5326,12 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'به ${name} تغییر یافت';
   @override
-  String switchToFailed({required Object error}) =>
-      'تعویض ناموفق بود: ${error}';
+  String get switchFailed => 'تغییر سرور انجام نشد. لطفاً دوباره تلاش کنید.';
+  @override
+  String get testFailed => 'آزمون تأخیر ناموفق بود. لطفاً دوباره تلاش کنید.';
+  @override
+  String get groupsLoading =>
+      'فهرست سرورها هنوز در حال بارگذاری است. لطفاً کمی بعد دوباره تلاش کنید.';
   @override
   String get connectBeforeSwitch => 'پیش از تعویض خط، متصل شوید';
   @override
@@ -7171,7 +7187,12 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Beralih ke ${name}';
   @override
-  String switchToFailed({required Object error}) => 'Gagal beralih: ${error}';
+  String get switchFailed => 'Gagal mengganti server. Silakan coba lagi.';
+  @override
+  String get testFailed => 'Uji latensi gagal. Silakan coba lagi.';
+  @override
+  String get groupsLoading =>
+      'Daftar server masih dimuat. Silakan coba lagi sebentar lagi.';
   @override
   String get connectBeforeSwitch =>
       'Sambungkan terlebih dahulu sebelum mengganti jalur';
@@ -9027,7 +9048,13 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Alterado para ${name}';
   @override
-  String switchToFailed({required Object error}) => 'Falha ao trocar: ${error}';
+  String get switchFailed =>
+      'Não foi possível trocar de servidor. Tente novamente.';
+  @override
+  String get testFailed => 'O teste de latência falhou. Tente novamente.';
+  @override
+  String get groupsLoading =>
+      'A lista de servidores ainda está carregando. Tente novamente em instantes.';
   @override
   String get connectBeforeSwitch => 'Conecte-se antes de trocar de linha';
   @override
@@ -10908,8 +10935,13 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Переключено на ${name}';
   @override
-  String switchToFailed({required Object error}) =>
-      'Не удалось переключить: ${error}';
+  String get switchFailed =>
+      'Не удалось переключить сервер. Попробуйте ещё раз.';
+  @override
+  String get testFailed => 'Не удалось проверить задержку. Попробуйте ещё раз.';
+  @override
+  String get groupsLoading =>
+      'Список серверов ещё загружается. Повторите попытку через минуту.';
   @override
   String get connectBeforeSwitch => 'Подключитесь перед сменой линии';
   @override
@@ -12775,7 +12807,13 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '${name} olarak değiştirildi';
   @override
-  String switchToFailed({required Object error}) => 'Geçiş başarısız: ${error}';
+  String get switchFailed => 'Sunucu değiştirilemedi. Lütfen tekrar deneyin.';
+  @override
+  String get testFailed =>
+      'Gecikme testi başarısız oldu. Lütfen tekrar deneyin.';
+  @override
+  String get groupsLoading =>
+      'Sunucu listesi hâlâ yükleniyor. Lütfen birazdan tekrar deneyin.';
   @override
   String get connectBeforeSwitch => 'Hat değiştirmeden önce bağlanın';
   @override
@@ -14632,7 +14670,11 @@ class TranslationsProxiesZhCn extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '已切换到 ${name}';
   @override
-  String switchToFailed({required Object error}) => '切换失败: ${error}';
+  String get switchFailed => '切换线路失败，请稍后重试';
+  @override
+  String get testFailed => '测速失败，请稍后重试';
+  @override
+  String get groupsLoading => '线路信息加载中，请稍候再试';
   @override
   String get connectBeforeSwitch => '请先连接后再切换节点';
   @override
@@ -16457,7 +16499,11 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '已切換到 ${name}';
   @override
-  String switchToFailed({required Object error}) => '切換失敗：${error}';
+  String get switchFailed => '切換線路失敗，請稍後重試';
+  @override
+  String get testFailed => '測速失敗，請稍後重試';
+  @override
+  String get groupsLoading => '線路資訊載入中，請稍候再試';
   @override
   String get connectBeforeSwitch => '請先連線再切換線路';
   @override
@@ -18284,8 +18330,12 @@ extension on Translations {
         return ({required Object name}) => 'Testing delay for: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Switched to ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Failed to switch: ${error}';
+      case 'proxies.switchFailed':
+        return 'Couldn\'t switch the server. Please try again.';
+      case 'proxies.testFailed':
+        return 'Latency test failed. Please try again.';
+      case 'proxies.groupsLoading':
+        return 'Server list is still loading. Please try again in a moment.';
       case 'proxies.connectBeforeSwitch':
         return 'Please connect before switching lines';
       case 'proxies.startDelayTestForGroups':
@@ -19199,8 +19249,12 @@ extension on TranslationsAr {
         return ({required Object name}) => 'جارٍ اختبار التأخير لـ: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'تم التبديل إلى ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'فشل التبديل: ${error}';
+      case 'proxies.switchFailed':
+        return 'تعذّر تبديل الخادم. يُرجى المحاولة مرة أخرى.';
+      case 'proxies.testFailed':
+        return 'فشل اختبار زمن الاستجابة. يُرجى المحاولة مرة أخرى.';
+      case 'proxies.groupsLoading':
+        return 'لا تزال قائمة الخوادم قيد التحميل. يُرجى المحاولة بعد قليل.';
       case 'proxies.connectBeforeSwitch':
         return 'يرجى الاتصال قبل تبديل الخطوط';
       case 'proxies.startDelayTestForGroups':
@@ -20092,8 +20146,12 @@ extension on TranslationsEs {
         return ({required Object name}) => 'Probando latencia de: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Cambiado a ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Error al cambiar: ${error}';
+      case 'proxies.switchFailed':
+        return 'No se pudo cambiar de servidor. Inténtalo de nuevo.';
+      case 'proxies.testFailed':
+        return 'La prueba de latencia falló. Inténtalo de nuevo.';
+      case 'proxies.groupsLoading':
+        return 'La lista de servidores aún se está cargando. Inténtalo en un momento.';
       case 'proxies.connectBeforeSwitch':
         return 'Conéctate antes de cambiar de línea';
       case 'proxies.startDelayTestForGroups':
@@ -21032,8 +21090,12 @@ extension on TranslationsFa {
         return ({required Object name}) => 'در حال آزمایش تأخیر: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'به ${name} تغییر یافت';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'تعویض ناموفق بود: ${error}';
+      case 'proxies.switchFailed':
+        return 'تغییر سرور انجام نشد. لطفاً دوباره تلاش کنید.';
+      case 'proxies.testFailed':
+        return 'آزمون تأخیر ناموفق بود. لطفاً دوباره تلاش کنید.';
+      case 'proxies.groupsLoading':
+        return 'فهرست سرورها هنوز در حال بارگذاری است. لطفاً کمی بعد دوباره تلاش کنید.';
       case 'proxies.connectBeforeSwitch':
         return 'پیش از تعویض خط، متصل شوید';
       case 'proxies.startDelayTestForGroups':
@@ -21948,8 +22010,12 @@ extension on TranslationsId {
         return ({required Object name}) => 'Menguji jeda untuk: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Beralih ke ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Gagal beralih: ${error}';
+      case 'proxies.switchFailed':
+        return 'Gagal mengganti server. Silakan coba lagi.';
+      case 'proxies.testFailed':
+        return 'Uji latensi gagal. Silakan coba lagi.';
+      case 'proxies.groupsLoading':
+        return 'Daftar server masih dimuat. Silakan coba lagi sebentar lagi.';
       case 'proxies.connectBeforeSwitch':
         return 'Sambungkan terlebih dahulu sebelum mengganti jalur';
       case 'proxies.startDelayTestForGroups':
@@ -22865,8 +22931,12 @@ extension on TranslationsPtBr {
         return ({required Object name}) => 'Testando latência de: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Alterado para ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Falha ao trocar: ${error}';
+      case 'proxies.switchFailed':
+        return 'Não foi possível trocar de servidor. Tente novamente.';
+      case 'proxies.testFailed':
+        return 'O teste de latência falhou. Tente novamente.';
+      case 'proxies.groupsLoading':
+        return 'A lista de servidores ainda está carregando. Tente novamente em instantes.';
       case 'proxies.connectBeforeSwitch':
         return 'Conecte-se antes de trocar de linha';
       case 'proxies.startDelayTestForGroups':
@@ -23782,8 +23852,12 @@ extension on TranslationsRu {
         return ({required Object name}) => 'Проверка задержки: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Переключено на ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Не удалось переключить: ${error}';
+      case 'proxies.switchFailed':
+        return 'Не удалось переключить сервер. Попробуйте ещё раз.';
+      case 'proxies.testFailed':
+        return 'Не удалось проверить задержку. Попробуйте ещё раз.';
+      case 'proxies.groupsLoading':
+        return 'Список серверов ещё загружается. Повторите попытку через минуту.';
       case 'proxies.connectBeforeSwitch':
         return 'Подключитесь перед сменой линии';
       case 'proxies.startDelayTestForGroups':
@@ -24699,8 +24773,12 @@ extension on TranslationsTr {
         return ({required Object name}) => 'Gecikme test ediliyor: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '${name} olarak değiştirildi';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Geçiş başarısız: ${error}';
+      case 'proxies.switchFailed':
+        return 'Sunucu değiştirilemedi. Lütfen tekrar deneyin.';
+      case 'proxies.testFailed':
+        return 'Gecikme testi başarısız oldu. Lütfen tekrar deneyin.';
+      case 'proxies.groupsLoading':
+        return 'Sunucu listesi hâlâ yükleniyor. Lütfen birazdan tekrar deneyin.';
       case 'proxies.connectBeforeSwitch':
         return 'Hat değiştirmeden önce bağlanın';
       case 'proxies.startDelayTestForGroups':
@@ -25613,8 +25691,12 @@ extension on TranslationsZhCn {
         return ({required Object name}) => '正在测速: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '已切换到 ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => '切换失败: ${error}';
+      case 'proxies.switchFailed':
+        return '切换线路失败，请稍后重试';
+      case 'proxies.testFailed':
+        return '测速失败，请稍后重试';
+      case 'proxies.groupsLoading':
+        return '线路信息加载中，请稍候再试';
       case 'proxies.connectBeforeSwitch':
         return '请先连接后再切换节点';
       case 'proxies.startDelayTestForGroups':
@@ -26521,8 +26603,12 @@ extension on TranslationsZhTw {
         return ({required Object name}) => '正在檢測延遲：${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '已切換到 ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => '切換失敗：${error}';
+      case 'proxies.switchFailed':
+        return '切換線路失敗，請稍後重試';
+      case 'proxies.testFailed':
+        return '測速失敗，請稍後重試';
+      case 'proxies.groupsLoading':
+        return '線路資訊載入中，請稍候再試';
       case 'proxies.connectBeforeSwitch':
         return '請先連線再切換線路';
       case 'proxies.startDelayTestForGroups':

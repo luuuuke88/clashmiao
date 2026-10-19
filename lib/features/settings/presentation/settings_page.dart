@@ -290,8 +290,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         AppToast.success(context, t.settings.advanced.resetTunnelSuccess);
       }
     } catch (e) {
+      // 技术细节只进日志，界面只给本地化文案。
+      debugPrint('重置隧道失败: $e');
       if (context.mounted) {
-        AppToast.error(context, '${t.failure.unexpected}: $e');
+        AppToast.error(context, t.failure.unexpected);
       }
     }
   }

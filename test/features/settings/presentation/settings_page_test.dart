@@ -538,7 +538,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(spy.resetTunnelCalls, 1);
-      expect(find.textContaining('native reset failed'), findsOneWidget);
+      // 提示是本地化文案，技术细节（异常原文）只进日志、不展示给用户。
+      expect(find.text('意外错误'), findsOneWidget);
+      expect(find.textContaining('native reset failed'), findsNothing);
 
       // 收尾：drain toast 的 auto-close timer。
       await tester.pump(const Duration(seconds: 6));

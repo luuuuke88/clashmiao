@@ -342,8 +342,10 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
         AppToast.success(context, message);
       }
     } catch (e) {
+      // 技术细节只进日志，界面只给本地化文案。
+      debugPrint('复制订阅失败: $e');
       if (context.mounted) {
-        AppToast.error(context, '${t.failure.unexpected}: $e');
+        AppToast.error(context, t.failure.unexpected);
       }
     }
   }
@@ -454,10 +456,11 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.info(context, t.profile.delete.successMsg);
     } catch (e) {
+      debugPrint('删除订阅失败: $e');
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(e, () => t) ?? '${t.failure.unexpected}: $e',
+          profileStoreErrorMessage(e, () => t) ?? t.failure.unexpected,
         );
       }
     }

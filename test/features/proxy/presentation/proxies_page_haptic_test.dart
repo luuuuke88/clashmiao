@@ -110,6 +110,11 @@ Future<(Widget, _SpyBoxService)> _host({
       kernelPortProvider.overrideWithValue(_SpyPort(spy)),
       connectionControllerProvider.overrideWith(FakeConnectionController.new),
       offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
+      // 已连接时内核推送同一份实时分组：选择 / 测速只对实时分组发起。
+      if (connected)
+        outboundGroupsProvider.overrideWith(
+          (_) => Stream.value([_proxyGroup()]),
+        ),
       isConnectedProvider.overrideWith((_) => connected),
     ],
   );

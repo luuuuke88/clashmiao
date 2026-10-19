@@ -56,6 +56,9 @@ Future<_SpyBoxService> _pumpPage(
       activeProfileProvider.overrideWith((_) async => _profile),
       boxServiceProvider.overrideWithValue(spy),
       offlineProxyGroupsProvider.overrideWith((_) async => groups),
+      // 已连接时内核推送同一份实时分组：选择只对实时分组发起。
+      if (connected)
+        outboundGroupsProvider.overrideWith((_) => Stream.value(groups)),
       isConnectedProvider.overrideWith((_) => connected),
     ],
   );
@@ -81,7 +84,8 @@ Future<_SpyBoxService> _pumpPage(
 }
 
 Future<void> _drainToasts(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 6));
+  // 已连接、有实时分组时测速协调器有 2 s 预热与 10 s 一轮的定时器：推过去。
+  await tester.pump(const Duration(seconds: 13));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }

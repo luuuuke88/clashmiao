@@ -683,6 +683,148 @@ void main() {
     });
   });
 
+  group('回滚里「只删配置」的收尾失败 → 不宣布完整回滚，重启后删完而不复活', () {
+    /// 订阅 b 在列表里但没有配置文件；导入装进 b.json / c.json 后失败，回滚要把
+    /// 这两个新装的文件删掉（b 仍在列表里 = 「只删配置」）。返回回滚前的完整状态。
+    Future<Map<String, Object?>> prepare() async {
+      h = await _seededHarness();
+      File(h.store.configFilePath('b')).deleteSync();
+      return h.state();
+    }
+
+    BackupEngine hookedEngine({
+      Future<void> Function(File)? deleteFile,
+      Future<File> Function(File, String)? renameFile,
+    }) {
+      final store = ProfileStore(
+        prefs: h.prefs,
+        configDir: h.tmp,
+        deleteFile: deleteFile,
+        renameFile: renameFile,
+      );
+      return BackupEngine(
+        store: store,
+        prefs: h.prefs,
+        backupsDir: h.backupsDir,
+      );
+    }
+
+    void failImportOnce() {
+      var armed = true;
+      h.prefs.failWhen = (op, key) {
+        if (armed && op == 'set' && key == 'clashmiao_mixed_port') {
+          armed = false;
+          return true;
+        }
+        return false;
+      };
+    }
+
+    Future<BackupEngine> restartedEngine() async => BackupEngine(
+      store: h.restartedStore(),
+      prefs: h.real,
+      backupsDir: h.backupsDir,
+    );
+
+    Matcher notRolledBack() => throwsA(
+      isA<RestoreFailure>().having(
+        (e) => e.kind,
+        'kind',
+        RestoreFailureKind.notRolledBack,
+      ),
+    );
+
+    test('收尾删除失败（残留 .del）：报告 notRolledBack、标记保留；重启恢复后文件集合与导入前一致', () async {
+      final before = await prepare();
+      final engine = hookedEngine(
+        deleteFile: (_) async => throw const FileSystemException('busy'),
+      );
+      failImportOnce();
+
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        notRolledBack(),
+      );
+      expect(h.real.containsKey(_markerKey), isTrue, reason: '不能清标记');
+      expect(
+        h.allProfileFiles().keys.where((n) => n.endsWith('.del')),
+        isNotEmpty,
+        reason: '前提：确实留下了 .del 残留',
+      );
+
+      // 重启：启动清理删完 .del，订阅 b 仍在列表里也不会被复活。
+      h.prefs.failWhen = null;
+      final restarted = await restartedEngine();
+      expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
+      expect(await h.state(via: h.restartedStore()), before);
+      expect(File(h.store.configFilePath('b')).existsSync(), isFalse);
+      expect(h.real.containsKey(_markerKey), isFalse);
+    });
+
+    test('重启恢复时删除仍然失败：outcome 是 failed，标记保留；修好后再重试成功', () async {
+      final before = await prepare();
+      final engine = hookedEngine(
+        deleteFile: (_) async => throw const FileSystemException('busy'),
+      );
+      failImportOnce();
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        notRolledBack(),
+      );
+      h.prefs.failWhen = null;
+
+      final stillFailing = hookedEngine(
+        deleteFile: (_) async => throw const FileSystemException('busy'),
+      );
+      expect(await stillFailing.recoverInterrupted(), RecoveryOutcome.failed);
+      expect(h.real.containsKey(_markerKey), isTrue);
+      expect(File(h.store.configFilePath('b')).existsSync(), isFalse);
+
+      final healthy = await restartedEngine();
+      expect(await healthy.recoverInterrupted(), RecoveryOutcome.recovered);
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+
+    test('改名与删除都失败（残留 .undo，订阅在列表里）：重启恢复再次删掉被还原出来的文件', () async {
+      final before = await prepare();
+      final engine = hookedEngine(
+        deleteFile: (_) async => throw const FileSystemException('busy'),
+        renameFile: (_, _) async => throw const FileSystemException('busy'),
+      );
+      failImportOnce();
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        notRolledBack(),
+      );
+      expect(h.real.containsKey(_markerKey), isTrue);
+
+      h.prefs.failWhen = null;
+      final restarted = await restartedEngine();
+      // 启动清理会把 b.json.*.undo 还原成 b.json（订阅在列表里）——恢复线索还在，
+      // 所以随后的精确还原会把它再删一次，最终与导入前一致。
+      expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+
+    test('对照：收尾全部成功时照常报告 rolledBack、清标记', () async {
+      final before = await prepare();
+      final engine = hookedEngine();
+      failImportOnce();
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.rolledBack,
+          ),
+        ),
+      );
+      expect(h.real.containsKey(_markerKey), isFalse);
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+  });
+
   group('快照读取失败 → 中止导入', () {
     BackupEngine engineReading(Future<String> Function(File file) reader) =>
         BackupEngine(

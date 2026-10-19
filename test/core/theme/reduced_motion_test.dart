@@ -241,29 +241,54 @@ void main() {
     });
   });
 
-  group('添加订阅 → 手动输入：原弹窗销毁后环境变化不抛异常', () {
-    testWidgets('键盘高度变化 + 切换减少动画（含往返）', (tester) async {
-      final (widget, disabled) = await _host(_opener, reduced: false);
-      await tester.pumpWidget(widget);
+  group('添加订阅 → 手动输入', () {
+    List<ModalBottomSheetRoute<Object?>> sheets() =>
+        _routes.pushed.whereType<ModalBottomSheetRoute<Object?>>().toList();
+
+    Future<void> openManual(WidgetTester tester) async {
       await tester.tap(find.text('open'));
       await tester.pumpAndSettle();
-      // 选「手动输入」：原弹窗被关闭（销毁），再打开手动表单。
       await tester.tap(find.text('手动输入'));
       await tester.pumpAndSettle();
-      await tester.pump(const Duration(seconds: 2));
-      expect(find.byType(TextField), findsWidgets, reason: '手动表单已打开');
-      // 原弹窗（第一个 BottomSheet 路由）此刻要么已被关闭、要么即将被关闭——
-      // 真实应用里 `_showManualForm` 就是「关原弹窗 + 用它的 context 开手动表单」。
-      // 这里显式把它移除，确保它的 State 一定被销毁，手动表单手里那个
-      // 原弹窗 context 一定失效，再检验后续重建不会去读它。
-      final sheets = _routes.pushed
-          .whereType<ModalBottomSheetRoute<void>>()
-          .toList();
-      expect(sheets, hasLength(2));
-      final navigator = Navigator.of(tester.element(find.text('open')));
-      if (sheets.first.isActive) navigator.removeRoute(sheets.first);
+    }
+
+    testWidgets('原弹窗自然退出（不叠两层），手动表单由调用方页面打开', (tester) async {
+      final (widget, _) = await _host(_opener, reduced: false);
+      await tester.pumpWidget(widget);
+      await openManual(tester);
+
+      expect(sheets(), hasLength(2), reason: '一共推过两张弹窗：添加弹窗 + 手动表单');
+      expect(sheets().first.isActive, isFalse, reason: '添加弹窗已正常退出，没有被叠在手动表单底下');
+      expect(sheets().last.isActive, isTrue);
+      expect(_routes.events, contains(startsWith('pop ModalBottomSheetRoute')));
+      // 画面上只剩手动表单。
+      expect(find.text('从剪贴板添加'), findsNothing);
+      expect(find.byType(TextField), findsWidgets);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('关闭手动表单回到调用方页面，而不是添加弹窗', (tester) async {
+      final (widget, _) = await _host(_opener, reduced: false);
+      await tester.pumpWidget(widget);
+      await openManual(tester);
+
+      // 点遮罩关闭手动表单（弹层顶部的空白处）。
+      await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
-      expect(find.text('从剪贴板添加'), findsNothing, reason: '前置：原弹窗已销毁');
+
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text('从剪贴板添加'), findsNothing, reason: '不应退回添加弹窗');
+      expect(find.text('open'), findsOneWidget, reason: '回到了调用方页面');
+      expect(sheets().where((r) => r.isActive), isEmpty);
+      expect(sheets(), hasLength(2), reason: '没有再多开任何弹窗');
+    });
+
+    testWidgets('添加弹窗销毁后：键盘高度变化 + 切换减少动画（含往返）不抛异常', (tester) async {
+      final (widget, disabled) = await _host(_opener, reduced: false);
+      await tester.pumpWidget(widget);
+      await openManual(tester);
+      expect(find.text('从剪贴板添加'), findsNothing, reason: '前置：添加弹窗已销毁');
+      expect(find.byType(TextField), findsWidgets, reason: '手动表单已打开');
 
       // 键盘弹出 / 收起、减少动画开 / 关 / 再开：手动表单的重建都不能去读
       // 已销毁弹窗的 context。
@@ -288,55 +313,73 @@ void main() {
       child: SizedBox(width: 20, height: 20, child: MotionProgress()),
     );
 
-    SemanticsData spinnerData(WidgetTester tester) {
-      // 取 MotionProgress 子树里带 loadingSpinner / progressBar 角色的节点。
-      final root = tester.getSemantics(find.byType(MotionProgress));
-      SemanticsNode? found;
+    /// 整棵语义树（从根节点起）里所有节点的语义数据。
+    List<SemanticsData> wholeTree(WidgetTester tester) {
+      final all = <SemanticsData>[];
       void visit(SemanticsNode node) {
-        final data = node.getSemanticsData();
-        if (found == null &&
-            (data.role == SemanticsRole.loadingSpinner ||
-                data.role == SemanticsRole.progressBar)) {
-          found = node;
-        }
+        all.add(node.getSemanticsData());
         node.visitChildren((c) {
           visit(c);
           return true;
         });
       }
 
-      visit(root);
-      return (found ?? root).getSemanticsData();
+      visit(
+        tester
+            .binding
+            .renderViews
+            .first
+            .owner!
+            .semanticsOwner!
+            .rootSemanticsNode!,
+      );
+      return all;
     }
 
-    for (final reduced in [false, true]) {
-      testWidgets(
-        '${reduced ? "减少动画（静态弧）" : "正常（转圈）"}：loadingSpinner，无数值、无 0–100 范围',
-        (tester) async {
-          final handle = tester.ensureSemantics();
-          final (widget, _) = await _host(progress, reduced: reduced);
-          await tester.pumpWidget(widget);
-          final data = spinnerData(tester);
-          expect(data.role, SemanticsRole.loadingSpinner);
-          expect(data.value, anyOf(isNull, isEmpty), reason: '不能报出 75% 之类的百分比');
-          expect(data.maxValue, anyOf(isNull, isEmpty));
-          expect(data.minValue, anyOf(isNull, isEmpty));
-          handle.dispose();
-        },
+    /// 断言整棵树：没有任何 progressBar 节点；没有任何节点带数值或范围；恰有
+    /// 一个 loadingSpinner（进度未知的加载中）。
+    void expectUnknownProgressOnly(WidgetTester tester) {
+      final all = wholeTree(tester);
+      expect(
+        all.where((d) => d.role == SemanticsRole.progressBar),
+        isEmpty,
+        reason: '不能出现确定进度（progressBar）节点',
+      );
+      for (final d in all) {
+        expect(d.value, anyOf(isNull, isEmpty), reason: '不能报出 75% 之类的数值');
+        expect(d.minValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
+        expect(d.maxValue, anyOf(isNull, isEmpty), reason: '不能有 0–100 范围');
+      }
+      expect(
+        all.where((d) => d.role == SemanticsRole.loadingSpinner),
+        hasLength(1),
+        reason: '应当有且仅有一个「进度未知」的加载节点',
       );
     }
 
-    testWidgets('运行中切换：语义始终不出现 progressBar', (tester) async {
+    for (final reduced in [false, true]) {
+      testWidgets('${reduced ? "减少动画（静态弧）" : "正常（转圈）"}：整棵语义树只有未知进度的加载节点', (
+        tester,
+      ) async {
+        final handle = tester.ensureSemantics();
+        final (widget, _) = await _host(progress, reduced: reduced);
+        await tester.pumpWidget(widget);
+        expectUnknownProgressOnly(tester);
+        handle.dispose();
+      });
+    }
+
+    testWidgets('运行中来回切换减少动画：每一步整棵语义树都只有未知进度', (tester) async {
       final handle = tester.ensureSemantics();
       final (widget, disabled) = await _host(progress, reduced: false);
       await tester.pumpWidget(widget);
-      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      expectUnknownProgressOnly(tester);
       disabled.value = true;
       await tester.pump();
-      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      expectUnknownProgressOnly(tester);
       disabled.value = false;
       await tester.pump();
-      expect(spinnerData(tester).role, SemanticsRole.loadingSpinner);
+      expectUnknownProgressOnly(tester);
       handle.dispose();
     });
   });

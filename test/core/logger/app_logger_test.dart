@@ -235,6 +235,123 @@ void main() {
     });
   });
 
+  group('升级前写下的旧日志：启动迁移与导出副本都脱敏', () {
+    const rawLine =
+        '2026-06-01T10:00:00.000 [ERROR] profiles.update: HttpException: '
+        'Connection closed, uri = https://example.test/sub?token=SECRET';
+    const rawJson = '{"password":"hello world","server":"h.example.test"}';
+
+    tearDown(resetAppLoggerInitializedForTesting);
+
+    Future<void> seedOldLog() async {
+      await logFile.writeAsString('$rawLine\n$rawJson\nplain line\n');
+    }
+
+    void expectRedacted(String content) {
+      expect(content, isNot(contains('SECRET')));
+      expect(content, isNot(contains('hello world')));
+      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('"password":"…"'));
+      expect(content, contains('plain line'));
+    }
+
+    test('迁移把 app.log 与 app.log.<数字> 重写为脱敏内容，别的文件不碰', () async {
+      await seedOldLog();
+      final rotated = File('${tempDir.path}/app.log.1');
+      await rotated.writeAsString('$rawLine\n');
+      final unrelated = File('${tempDir.path}/notes.txt');
+      await unrelated.writeAsString(rawLine);
+      // 上次迁移被打断留下的临时文件。
+      final leftover = File('${tempDir.path}/app.log.redacting');
+      await leftover.writeAsString(rawLine);
+
+      await AppLogger.instance.redactExistingLogFiles();
+
+      expectRedacted(await logFile.readAsString());
+      expect(await rotated.readAsString(), isNot(contains('SECRET')));
+      expect(await unrelated.readAsString(), rawLine);
+      expect(leftover.existsSync(), isFalse);
+    });
+
+    test('迁移幂等：重复运行、去掉完成标记再跑，内容都不再变化', () async {
+      await seedOldLog();
+      await AppLogger.instance.redactExistingLogFiles();
+      final first = await logFile.readAsString();
+
+      await AppLogger.instance.redactExistingLogFiles();
+      expect(await logFile.readAsString(), first);
+
+      for (final entity in tempDir.listSync()) {
+        final name = entity.uri.pathSegments.last;
+        if (name != 'app.log') entity.deleteSync();
+      }
+      await AppLogger.instance.redactExistingLogFiles();
+      expect(await logFile.readAsString(), first);
+      expectRedacted(first);
+    });
+
+    test('迁移只跑一次：完成标记在且版本一致时直接跳过', () async {
+      await AppLogger.instance.redactExistingLogFiles();
+      await seedOldLog(); // 迁移完成之后才出现的原文（正常不会发生）
+
+      await AppLogger.instance.redactExistingLogFiles();
+
+      expect(await logFile.readAsString(), contains('SECRET'));
+    });
+
+    test('迁移期间来的新行排在后面，不会被改名覆盖吞掉', () async {
+      await seedOldLog();
+
+      final migration = AppLogger.instance.redactExistingLogFiles();
+      final appended = AppLogger.instance.append('new line after upgrade');
+      await Future.wait([migration, appended]);
+
+      final content = await logFile.readAsString();
+      expectRedacted(content);
+      expect(content.trimRight().split('\n').last, 'new line after upgrade');
+    });
+
+    test('旧日志里有非法 UTF-8 也照样迁移，不抛异常', () async {
+      await logFile.writeAsBytes([
+        ...'$rawLine\n'.codeUnits,
+        0xE9, 0xA6, // 截断的多字节字符
+        ...'\nplain line\n'.codeUnits,
+      ]);
+
+      await AppLogger.instance.redactExistingLogFiles();
+
+      final content = await logFile.readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(content, contains('plain line'));
+    });
+
+    test('initAppLogger 启动时触发迁移', () async {
+      final previousFlutter = FlutterError.onError;
+      final previousPlatform = PlatformDispatcher.instance.onError;
+      addTearDown(() {
+        FlutterError.onError = previousFlutter;
+        PlatformDispatcher.instance.onError = previousPlatform;
+      });
+      await seedOldLog();
+
+      await initAppLogger();
+      await AppLogger.instance.flush();
+
+      expectRedacted(await logFile.readAsString());
+    });
+
+    test('导出副本：没迁移过的旧日志也脱敏，原文件不交出去', () async {
+      await seedOldLog();
+      final outDir = Directory('${tempDir.path}/share');
+
+      final copy = await AppLogger.instance.writeRedactedCopy(outDir);
+
+      expect(copy.path, isNot(logFile.path));
+      expect(copy.parent.path, outDir.path);
+      expectRedacted(await copy.readAsString());
+    });
+  });
+
   group('日志目录消失时 append 不能抛异常', () {
     test('目录被删掉之后再 append，静默丢弃而不是抛 PathNotFoundException', () async {
       final tmp = await Directory.systemTemp.createTemp('app_logger_gone_');

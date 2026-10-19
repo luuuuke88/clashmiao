@@ -29,10 +29,16 @@ Future<String> writeCoreLogsTempFile(List<String> lines) async {
   return file.path;
 }
 
-/// "分享应用日志"用的文件路径：AppLogger 落地的本地 app.log，和上面的核心
-/// 日志临时文件是完全独立的数据源。
+/// "分享应用日志"用的文件路径：AppLogger 落地的本地 app.log 的**脱敏副本**
+/// （写在临时目录），和上面的核心日志临时文件是完全独立的数据源。
+///
+/// 从不交出原始 app.log：升级前写下的旧内容可能还带着没脱敏的凭据。
 @visibleForTesting
-Future<String> resolveAppLogSharePath() => AppLogger.instance.getLogFilePath();
+Future<String> resolveAppLogSharePath() async {
+  final dir = await getTemporaryDirectory();
+  final copy = await AppLogger.instance.writeRedactedCopy(dir);
+  return copy.path;
+}
 
 class LogsPage extends ConsumerStatefulWidget {
   const LogsPage({super.key, this.debugShowShareMenu});
@@ -58,7 +64,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     await Share.shareXFiles([XFile(path)], text: 'ClashMiao Core Logs');
   }
 
-  /// 分享应用（Dart/Flutter）日志：AppLogger 落地的本地 app.log，包含
+  /// 分享应用（Dart/Flutter）日志：AppLogger 落地的本地 app.log（脱敏副本），包含
   /// FlutterError.onError / PlatformDispatcher.onError 兜底捕获到的未处理
   /// 异常，和上面的核心日志是完全独立的数据源。
   Future<void> _shareAppLogs() async {

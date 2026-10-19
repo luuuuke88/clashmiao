@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/log_redactor.dart';
@@ -15,11 +16,12 @@ import 'package:path_provider/path_provider.dart';
 /// 不做多级别、多文件的日志框架；持久化就是"追加写 + 超阈值截断"，运行时
 /// 的分级过滤已经由 `log_filter_notifier.dart` 处理，职责不重叠。
 ///
-/// 调用 [initAppLogger] 完成两件事：
-/// 1. 挂载 `FlutterError.onError` / `PlatformDispatcher.instance.onError`
+/// 调用 [initAppLogger] 完成三件事：
+/// 1. 把升级前写下的旧日志过一遍脱敏器（[AppLogger.redactExistingLogFiles]）。
+/// 2. 挂载 `FlutterError.onError` / `PlatformDispatcher.instance.onError`
 ///    兜底，把捕获到的错误写入日志文件（且不会吞掉之前已经注册的 handler，
 ///    原有的会在写完日志后继续被调用）。
-/// 2. 用 loggy 的自定义 [LoggyPrinter] 把之后所有 `logDebug`/`logInfo`/
+/// 3. 用 loggy 的自定义 [LoggyPrinter] 把之后所有 `logDebug`/`logInfo`/
 ///    `logWarning`/`logError` 调用也写入同一个文件。
 ///
 /// 这个初始化不受"数据分析"开关影响——纯本地文件，不涉及任何上报，任何
@@ -35,6 +37,16 @@ const int kAppLogMaxLines = 4000;
 
 /// 本地应用日志文件名。
 const String kAppLogFileName = 'app.log';
+
+/// 「分享应用日志」导出的脱敏副本文件名（写在临时目录，见
+/// [AppLogger.writeRedactedCopy]）。
+const String kAppLogShareFileName = 'clashmiao-app-logs.log';
+
+/// 旧日志迁移完成的标记文件（内容是 [kLogRedactionVersion]），与 app.log 同目录。
+const String _kRedactionMarkerName = '.app_log_redaction';
+
+/// 迁移时临时文件的后缀：`app.log.redacting`，写完再改名覆盖。
+const String _kRedactionTempSuffix = 'redacting';
 
 typedef LogFileResolver = Future<File> Function();
 
@@ -85,7 +97,17 @@ class AppLogger {
   final int maxLines;
 
   File? _cachedFile;
-  Future<void>? _pendingWrite;
+
+  /// 所有对日志文件的读写都串在这条链上：追加、截断、旧文件迁移、导出副本
+  /// 互不交错——迁移「写临时文件 → 改名覆盖」期间来的新行会排在后面，不会被
+  /// 改名吞掉；导出读到的也是已经落盘的完整内容。
+  Future<void> _queue = Future<void>.value();
+
+  Future<T> _serialized<T>(Future<T> Function() task) {
+    final result = _queue.then((_) => task());
+    _queue = result.then<void>((_) {}, onError: (Object _) {});
+    return result;
+  }
 
   static Future<File> _defaultResolver() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -105,22 +127,97 @@ class AppLogger {
     return resolved;
   }
 
-  /// 日志文件路径，给"分享应用日志"功能使用。
+  /// 原始日志文件的路径。**不要**把它直接交给分享：那会把升级前写下、没有
+  /// 脱敏的旧内容原样送出去；分享一律用 [writeRedactedCopy]。
+  @visibleForTesting
   Future<String> getLogFilePath() async {
     final file = await _file();
     return file.path;
   }
 
-  /// 追加一行日志并在超阈值时触发截断。返回的 Future 也保存在
-  /// [_pendingWrite] 里，测试可以用 [flush] 等待它写完。
+  /// 把当前日志过一遍脱敏器，写成 [directory] 下的一个临时副本，返回副本。
+  /// 「分享应用日志」只分享这个副本，从不交出原始 app.log——即便启动迁移
+  /// 还没跑完或者失败了，分享出去的内容也是脱敏过的。
+  Future<File> writeRedactedCopy(Directory directory) {
+    return _serialized(() async {
+      final source = await _file();
+      final content = await _readLenient(source);
+      await directory.create(recursive: true);
+      final copy = File('${directory.path}/$kAppLogShareFileName');
+      await copy.writeAsString(redactLogText(content), flush: true);
+      return copy;
+    });
+  }
+
+  /// 启动时的一次性迁移：把升级前写下的 app.log（以及按 `app.log.<数字>`
+  /// 命名的旧滚动文件）整个过一遍脱敏器。
+  ///
+  /// - 一次性：完成后在同目录写下 [kLogRedactionVersion] 标记，之后启动直接
+  ///   跳过；脱敏规则升级（版本号变了）会再跑一次。
+  /// - 幂等：脱敏器本身幂等，内容没变的文件不重写。
+  /// - 崩溃安全：先写同目录的临时文件并刷盘，再改名覆盖原文件；任何一步被
+  ///   打断，原文件要么是旧的完整内容，要么是新的完整内容。残留的临时文件
+  ///   下次启动时清掉。
+  /// - 不抛异常：迁移失败只是这次没迁，分享时的脱敏副本照样兜底。
+  Future<void> redactExistingLogFiles() {
+    return _serialized(() async {
+      try {
+        final log = await _resolveLogFile();
+        final dir = log.parent;
+        if (!await dir.exists()) return;
+        final marker = File('${dir.path}/$_kRedactionMarkerName');
+        if (await marker.exists() &&
+            (await marker.readAsString()).trim() == '$kLogRedactionVersion') {
+          return;
+        }
+        final logName = log.uri.pathSegments.last;
+        final rotated = RegExp('^${RegExp.escape(logName)}\\.\\d+\$');
+        const tempSuffix = '.$_kRedactionTempSuffix';
+        final targets = <File>[];
+        await for (final entity in dir.list(followLinks: false)) {
+          if (entity is! File) continue;
+          final name = entity.uri.pathSegments.last;
+          if (name.endsWith(tempSuffix)) {
+            await entity.delete(); // 上次迁移被打断留下的
+          } else if (name == logName || rotated.hasMatch(name)) {
+            targets.add(entity);
+          }
+        }
+        for (final file in targets) {
+          await _rewriteRedacted(file);
+        }
+        await marker.writeAsString('$kLogRedactionVersion', flush: true);
+      } catch (_) {
+        // 同 _appendInternal：日志系统自己的失败不往外抛，也不再打日志。
+      }
+    });
+  }
+
+  Future<void> _rewriteRedacted(File file) async {
+    final original = await _readLenient(file);
+    final redacted = redactLogText(original);
+    if (redacted == original) return;
+    final temp = File('${file.path}.$_kRedactionTempSuffix');
+    await temp.writeAsString(redacted, flush: true);
+    await temp.rename(file.path);
+  }
+
+  /// 读文本，遇到非法 UTF-8 用替换字符而不是抛异常（日志可能被截断在多字节
+  /// 字符中间）。
+  static Future<String> _readLenient(File file) async {
+    if (!await file.exists()) return '';
+    return utf8.decode(await file.readAsBytes(), allowMalformed: true);
+  }
+
+  /// 追加一行日志并在超阈值时触发截断。返回的 Future 在这一行真正落盘后
+  /// 完成；测试可以用 [flush] 等待所有排队的写入。
   ///
   /// 这是 app.log 唯一的写入口：业务失败（[logAppFailure]）、loggy、未处理异常
   /// 兜底都从这里落盘，所以脱敏（[redactLogText]：订阅地址凭据、键值秘密、代理
   /// 分享链接）只在这里做一次，任何来源都绕不过去。
   Future<void> append(String line) {
-    final future = _appendInternal(redactLogText(line));
-    _pendingWrite = future;
-    return future;
+    final redacted = redactLogText(line);
+    return _serialized(() => _appendInternal(redacted));
   }
 
   Future<void> _appendInternal(String line) async {
@@ -158,9 +255,10 @@ class AppLogger {
     await file.writeAsString(kept.isEmpty ? '' : '${kept.join('\n')}\n');
   }
 
-  /// 测试专用：等待最近一次 [append] 真正落地磁盘，避免断言在写入完成前跑。
+  /// 测试专用：等待已排队的写入（追加、迁移、导出）全部完成，避免断言在
+  /// 写入完成前跑。
   @visibleForTesting
-  Future<void> flush() => _pendingWrite ?? Future<void>.value();
+  Future<void> flush() => _queue;
 }
 
 bool _appLoggerInitialized = false;
@@ -174,6 +272,10 @@ bool _appLoggerInitialized = false;
 Future<void> initAppLogger() async {
   if (_appLoggerInitialized) return;
   _appLoggerInitialized = true;
+
+  // 升级前写下的旧日志可能带着没脱敏的凭据：排进写入队列里迁移一次，不阻塞
+  // 启动；之后的追加自动排在它后面。
+  unawaited(AppLogger.instance.redactExistingLogFiles());
 
   Loggy.initLoggy(logPrinter: const _AppFileLoggyPrinter());
 

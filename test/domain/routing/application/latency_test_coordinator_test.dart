@@ -470,6 +470,28 @@ void main() {
       hung.complete();
     });
 
+    _fake('开测前遗留超时哨兵 + 有效缓存 + 本轮无事件：未确认（历史值），不标超时；本轮确认失败仍标超时', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      final oldAt = _t0.subtract(const Duration(minutes: 1));
+      rig.cache['old-sentinel'] = CachedDelay(150, oldAt);
+      rig.cache['fails-now'] = CachedDelay(120, oldAt);
+      rig.groups = [
+        _group({'old-sentinel': 65535, 'fails-now': 120}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      // 只有 fails-now 在本轮出了结果：测失败，变成哨兵。
+      rig.push([
+        _group({'old-sentinel': 65535, 'fails-now': 65535}),
+      ]);
+      rig.elapse(const Duration(seconds: 10));
+
+      expect(rig.recorded, isEmpty);
+      expect(rig.cache['old-sentinel'], CachedDelay(150, oldAt));
+      expect(rig.coordinator.state.unconfirmedNodes, {'old-sentinel'});
+      expect(rig.coordinator.state.timedOutNodes, {'fails-now'});
+    });
+
     _fake('内核悬挂、一点旧值都没有的节点：到点标超时（本轮测了没结果）', (rig, async) {
       rig.urlTestResult = () => Completer<void>().future;
       rig.groups = [

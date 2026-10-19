@@ -126,6 +126,38 @@ void main() {
     );
   });
 
+  test('开测前遗留的超时哨兵 + 有效缓存 + 本轮没确认：历史值 150，不是超时', () {
+    for (final fallback in [true, false]) {
+      final r = resolve(
+        liveMs: 65535,
+        cachedMs: 150,
+        cachedAt: ago(const Duration(minutes: 1)),
+        unconfirmed: true,
+        cacheIsFallback: fallback,
+      );
+      expect(r.state, LatencyDisplayState.stale, reason: 'fallback=$fallback');
+      expect(r.ms, 150);
+    }
+  });
+
+  test('本轮确认失败（timedOut）仍显示超时，哪怕有缓存旧值、实时值是哨兵', () {
+    final r = resolve(
+      liveMs: 65535,
+      cachedMs: 150,
+      cachedAt: ago(const Duration(minutes: 1)),
+      timedOut: true,
+    );
+    expect(r.state, LatencyDisplayState.timeout);
+    expect(r.ms, isNull);
+  });
+
+  test('裸哨兵、没有任何旧值，即使标了未确认也是超时', () {
+    expect(
+      resolve(liveMs: 65535, unconfirmed: true, cacheIsFallback: false).state,
+      LatencyDisplayState.timeout,
+    );
+  });
+
   test('上一轮到点没确认出结果（unconfirmed）：显示历史值带旧值，不是超时也不是成功', () {
     // 实时旧值，缓存时间还在 5 分钟内：没确认就不能当成功。
     final live = resolve(

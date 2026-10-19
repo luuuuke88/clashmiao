@@ -430,6 +430,213 @@ void main() {
     });
   });
 
+  // 「约 40 s」只约束重试阶段（ConnectionTiming.retryPhaseBudget）：回执贴着 2 s 端口
+  // 契约、每轮重同步贴着 10 s 截止时间、连续 wrongEpoch 直到重发次数用尽。最后一次请求
+  // 被受理之后，终结由原生协调器给出，可以晚于这个预算。全程只推进可控时钟。
+  group('带延迟的确定性脚本：重试阶段预算与受理后的终结', () {
+    const receiptDelay = Duration(milliseconds: 1990);
+
+    /// 第一次发送在 e1；之后每次回执都说原生已换到下一个纪元。每轮重同步：先失败
+    /// （2 s 后 current() 抛错）→ 1 s 后重试却悬挂（3 s 宽限到期）→ 1 s 后第三次在
+    /// 2.9 s 后取回新纪元：一轮等待 9.9 s，贴着 10 s 截止时间。[last] 回应第四次发送。
+    _ScriptedNative script(
+      _TimedHarness h,
+      void Function(_ScriptedNative n, SendRequest a) last,
+    ) {
+      final n = _ScriptedNative(h);
+      for (final next in ['e2', 'e3', 'e4']) {
+        n.onSend.add(
+          (a) => n.later(
+            receiptDelay,
+            () => h.receipt(
+              a.id,
+              MachineHarness.rejected(RequestRejection.wrongEpoch, epoch: next),
+            ),
+          ),
+        );
+        n.onResync
+          ..add(() => n.later(const Duration(seconds: 2), h.resyncFailed))
+          ..add(() {}) // 悬挂：既无快照也无失败
+          ..add(
+            () => n.later(
+              const Duration(milliseconds: 2900),
+              () => h.snap(_s(epoch: next), fromResync: true),
+            ),
+          );
+      }
+      n.onSend.add((a) => last(n, a));
+      return n;
+    }
+
+    // 4 × 1.99 s 回执 + 3 × 9.9 s 重同步等待。
+    const retryPhase = Duration(milliseconds: 4 * 1990 + 3 * 9900);
+
+    void expectRetryPhase(_TimedHarness h) {
+      expect(h.sends.map((s) => s.request.epoch), ['e1', 'e2', 'e3', 'e4']);
+      expect(h.sends.map((s) => s.request.seq), [
+        1,
+        1,
+        1,
+        1,
+      ], reason: '每个新纪元都以重同步取回的基线重新分配 seq');
+      expect(h.resyncs, 9, reason: '每轮：失败 → 重试悬挂 → 再试取回新纪元');
+    }
+
+    test('最后一次受理后协调器启动 28.5 s：重试阶段在预算内，Future 由 started 终结', () {
+      expect(ConnectionTiming.retryPhaseBudget, const Duration(seconds: 38));
+      final h = _TimedHarness()..snap(_s());
+      DateTime? acceptedAt;
+      final n = script(h, (n, a) {
+        n.later(receiptDelay, () {
+          acceptedAt = h.now;
+          h.receipt(a.id, MachineHarness.accepted(a.request.seq, epoch: 'e4'));
+          final seq = a.request.seq;
+          n
+            ..later(
+              const Duration(milliseconds: 500),
+              () => h.snap(
+                _s(
+                  epoch: 'e4',
+                  version: 2,
+                  status: KernelStatus.starting,
+                  attempt: 1,
+                  desired: Desired.on,
+                  appliedSeq: seq,
+                ),
+              ),
+            )
+            // 仍在协调器 30 s 启动超时之内。
+            ..later(
+              const Duration(seconds: 28, milliseconds: 500),
+              () => h.snap(
+                _s(
+                  epoch: 'e4',
+                  version: 3,
+                  status: KernelStatus.started,
+                  attempt: 1,
+                  desired: Desired.on,
+                  appliedSeq: seq,
+                  rev: 1,
+                ),
+              ),
+            );
+        });
+      });
+      final t0 = h.now;
+      // 预算之外、协调器仍在启动：机器不自作主张终结，也不报失败。
+      n.at(t0.add(const Duration(seconds: 50)), () {
+        expect(h.outcomes[1], isNull);
+        expect(h.view.phase, ConnectionPhase.connecting);
+        expect(h.view.failure, isNull);
+      });
+      h.intent(1, Desired.on);
+      n.runFor(const Duration(seconds: 120));
+
+      expectRetryPhase(h);
+      expect(acceptedAt!.difference(t0), retryPhase);
+      expect(
+        acceptedAt!.difference(t0),
+        lessThanOrEqualTo(ConnectionTiming.retryPhaseBudget),
+      );
+      expect(n.probesRun, 1);
+      expect(h.outcomes[1], [const RequestSucceeded()]);
+      expect(
+        h.settledAt(1)!.difference(t0),
+        retryPhase + const Duration(seconds: 28, milliseconds: 500),
+      );
+      expect(
+        h.settledAt(1)!.difference(t0),
+        greaterThan(ConnectionTiming.retryPhaseBudget),
+        reason: '预算只覆盖重试阶段，不是整个 Future 的上界',
+      );
+      expect(h.view.phase, ConnectionPhase.connected);
+      _expectOneOutcomeEach(h, [1]);
+    });
+
+    test('最后一次受理后协调器 30 s 启动超时：Future 以协调器写入的失败终结', () {
+      final h = _TimedHarness()..snap(_s());
+      DateTime? acceptedAt;
+      final n = script(h, (n, a) {
+        n.later(receiptDelay, () {
+          acceptedAt = h.now;
+          h.receipt(a.id, MachineHarness.accepted(a.request.seq, epoch: 'e4'));
+          final seq = a.request.seq;
+          n
+            ..later(
+              const Duration(milliseconds: 500),
+              () => h.snap(
+                _s(
+                  epoch: 'e4',
+                  version: 2,
+                  status: KernelStatus.starting,
+                  attempt: 1,
+                  desired: Desired.on,
+                  appliedSeq: seq,
+                ),
+              ),
+            )
+            ..later(
+              const Duration(seconds: 30),
+              () => h.snap(
+                _s(
+                  epoch: 'e4',
+                  version: 3,
+                  attempt: 1,
+                  appliedSeq: seq,
+                  failure: KernelFailure(
+                    code: KernelFailureCode.startTimeout,
+                    message: '',
+                    attempt: 1,
+                    seq: seq,
+                  ),
+                ),
+              ),
+            );
+        });
+      });
+      final t0 = h.now;
+      h.intent(1, Desired.on);
+      n.runFor(const Duration(seconds: 120));
+
+      expectRetryPhase(h);
+      expect(acceptedAt!.difference(t0), retryPhase);
+      expect(h.outcomes[1], [const RequestFailed(StartTimeout())]);
+      expect(
+        h.settledAt(1)!.difference(acceptedAt!),
+        const Duration(seconds: 30),
+      );
+      expect(h.view.phase, ConnectionPhase.disconnected);
+      expect(h.view.failure, const StartTimeout());
+      _expectOneOutcomeEach(h, [1]);
+    });
+
+    test('第四次仍是 wrongEpoch：重发用尽，在重试阶段预算内有界地失败', () {
+      final h = _TimedHarness()..snap(_s());
+      final n = script(
+        h,
+        (n, a) => n.later(
+          receiptDelay,
+          () => h.receipt(
+            a.id,
+            MachineHarness.rejected(RequestRejection.wrongEpoch, epoch: 'e5'),
+          ),
+        ),
+      );
+      final t0 = h.now;
+      h.intent(1, Desired.on);
+      n.runFor(const Duration(seconds: 120));
+
+      expectRetryPhase(h);
+      expect(h.outcomes[1]!.single, isA<RequestFailed>());
+      expect(h.settledAt(1)!.difference(t0), retryPhase);
+      expect(
+        h.settledAt(1)!.difference(t0),
+        lessThanOrEqualTo(ConnectionTiming.retryPhaseBudget),
+      );
+      _expectOneOutcomeEach(h, [1]);
+    });
+  });
+
   test('随机世界（固定种子 300 条）：每个意图都在有界时间内恰好终结一次', () {
     for (var seed = 0; seed < 300; seed++) {
       _RandomWorld(seed).runAndCheck();
@@ -696,5 +903,75 @@ class _RandomWorld {
       );
     }
     expect(h.state.requests, isEmpty, reason: '$ctx 请求表必须清空');
+  }
+}
+
+/// 按脚本、带延迟回应机器动作的假原生：第 n 次 [SendRequest] / [Resync] 交给
+/// [onSend] / [onResync] 的第 n 项处理（处理函数用 [later] 安排带延迟的回应）；
+/// [PrepareLaunch] 立即以 revision 1 完成。时间只来自可控时钟与机器的 nextWake。
+class _ScriptedNative {
+  _ScriptedNative(this.h);
+
+  final _TimedHarness h;
+  final onSend = <void Function(SendRequest a)>[];
+  final onResync = <void Function()>[];
+  int probesRun = 0;
+
+  final _queue = <(DateTime, int, void Function())>[];
+  var _order = 0;
+  var _cursor = 0;
+  var _sends = 0;
+  var _resyncs = 0;
+
+  void later(Duration d, void Function() f) =>
+      _queue.add((h.now.add(d), _order++, f));
+
+  /// 在绝对时刻 [t] 执行一次检查（计入 [probesRun]）。
+  void at(DateTime t, void Function() check) => _queue.add((
+    t,
+    _order++,
+    () {
+      probesRun++;
+      check();
+    },
+  ));
+
+  void _pump() {
+    while (_cursor < h.actions.length) {
+      final a = h.actions[_cursor++];
+      switch (a) {
+        case PrepareLaunch():
+          h.prepared(a.id, revision: 1);
+        case SendRequest():
+          onSend[_sends++](a);
+        case Resync():
+          onResync[_resyncs++]();
+        case RunEffect() || SettleRequest():
+          break;
+      }
+    }
+  }
+
+  void runFor(Duration d) {
+    final end = h.now.add(d);
+    for (var guard = 0; guard < 10000; guard++) {
+      _pump();
+      _queue.sort((a, b) {
+        final c = a.$1.compareTo(b.$1);
+        return c != 0 ? c : a.$2.compareTo(b.$2);
+      });
+      final wake = h.last.nextWake;
+      final due = _queue.isEmpty ? null : _queue.first.$1;
+      DateTime? next = wake;
+      if (due != null && (next == null || due.isBefore(next))) next = due;
+      if (next == null || next.isAfter(end)) break;
+      if (next.isAfter(h.now)) h.now = next;
+      if (due != null && !due.isAfter(h.now)) {
+        _queue.removeAt(0).$3();
+      } else {
+        h.feed(Tick(now: h.now));
+      }
+    }
+    _pump();
   }
 }

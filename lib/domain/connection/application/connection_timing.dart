@@ -27,6 +27,24 @@ abstract final class ConnectionTiming {
   /// 重试前的间隔。
   static const resyncRetryDelay = Duration(seconds: 1);
 
+  /// KernelPort 契约（spec §2）：`request()` / `current()` 必须在此时长内返回或抛
+  /// `KernelPortException`。状态机不自己计时这一段，只把它当作估算预算的前提。
+  static const kernelPortCallBound = Duration(seconds: 2);
+
+  /// **重试阶段**的最坏耗时估算，即常说的「约 40 s」：从首次发送起，到最后一次重发
+  /// 被受理（或意图因反复拒绝 / 重同步用尽而失败）为止。每次发送的回执不超过
+  /// [kernelPortCallBound]；每次 wrongEpoch 之后等待有效重同步结果不超过
+  /// [resyncWaitTimeout]；同一意图最多重发 [maxResends] 次——
+  /// (3 + 1) × 2 s + 3 × 10 s = 38 s。
+  ///
+  /// 它**不是**整个请求 Future 的上界。最后一次请求被受理之后，终结由原生协调器
+  /// 给出：启动 / 重载最长 30 s 启动超时，停止时单个阻塞调用超过 20 s 报
+  /// kernelUnresponsive（停止仍会在调用返回后完成）；快照迟迟追不上 appliedSeq 时，
+  /// 状态机另以 [unconfirmedRequestTimeout] + [resyncGrace] 判 nativeUnresponsive。
+  /// 发送之前准备启动产物（本地文件 IO）也不计在内。
+  static Duration get retryPhaseBudget =>
+      kernelPortCallBound * (maxResends + 1) + resyncWaitTimeout * maxResends;
+
   /// 界面加载指示延迟出现的时间（§10.9：120–150 ms 之间），防止闪烁。
   static const loadingIndicatorDelay = Duration(milliseconds: 140);
 }

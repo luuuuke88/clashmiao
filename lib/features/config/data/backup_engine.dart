@@ -125,6 +125,11 @@ class BackupEngine {
           // 确实没有这个配置文件：快照里也记为「没有」。
         }
       }
+      // 快照要记下 profiles/ 里**全部**既有的配置文件，包括不属于任何列表订阅的
+      // （被隔离的订阅、遗留的孤儿）：回滚只能删「这次恢复新装进来」的文件。
+      final orphans = includeAux
+          ? await _readOrphanConfigs({for (final p in view.profiles) p.id})
+          : const <String, String>{};
       return BackupBundle(
         schema: store.schema,
         createdAt: _now().millisecondsSinceEpoch,
@@ -135,8 +140,36 @@ class BackupEngine {
         auxPreferences: includeAux
             ? _exportAux([for (final p in view.profiles) p.id])
             : const {},
+        orphanConfigs: orphans,
       );
     });
+  }
+
+  /// `profiles/` 里合法 `<id>.json` 中不属于 [listed] 的文件内容。读取失败照样抛
+  /// （和订阅配置同一条规则：读不出来的东西不能当作没有）。
+  Future<Map<String, String>> _readOrphanConfigs(Set<String> listed) async {
+    final out = <String, String>{};
+    final dir = Directory(store.profilesDirPath);
+    if (!await dir.exists()) return out;
+    for (final entry in await dir.list(followLinks: false).toList()) {
+      if (entry is! File) continue;
+      final id = _configIdOf(entry.path);
+      if (id == null || listed.contains(id)) continue;
+      try {
+        out[id] = await _readConfigFile(entry);
+      } on PathNotFoundException {
+        // 列举之后被删掉了：等同于不存在。
+      }
+    }
+    return out;
+  }
+
+  /// `<id>.json` → id；不是合法订阅配置文件名则 null。
+  static String? _configIdOf(String path) {
+    final name = p.basename(path);
+    if (!name.endsWith('.json')) return null;
+    final id = name.substring(0, name.length - '.json'.length);
+    return ProfileStore.isValidId(id) ? id : null;
   }
 
   Map<String, String> _exportAux(List<String> ids) {
@@ -227,7 +260,7 @@ class BackupEngine {
     final removed = removedBy(plan).length;
 
     // 上次恢复若被中断（或回滚没完成），先回到那次恢复之前，再开始新的一次。
-    final previous = await _recover();
+    final previous = await recoverHoldingLock();
     if (previous == RecoveryOutcome.failed) {
       throw const RestoreFailure(RestoreFailureKind.unresolvedPrevious);
     }
@@ -272,8 +305,14 @@ class BackupEngine {
     );
   }
 
-  /// 把 [plan] 写进本机：配置文件暂存 → Store 锁内整表替换（列表、激活、配置文件、
-  /// 不在计划里的订阅及其附属键）→ 偏好。回滚时用的是同一个流程。
+  /// 把 [plan] 写进本机：配置文件暂存 → **一次** Store 提交（同一临界区里完成列表 /
+  /// 激活替换、配置文件安装、不在计划里的订阅及其附属键的删除，以及——精确模式下——
+  /// 清掉这次恢复新装进来的文件）→ 偏好。回滚时用的是同一个流程。
+  ///
+  /// 精确模式（回滚 / 启动恢复）的文件规则：计划里的 [RestorePlan.configs]（快照记下的
+  /// 全部既有文件，含隔离 / 孤儿）原样装回；`profiles/` 里其余的 `<id>.json` 都不是
+  /// 恢复前就有的，才删。列举目录发生在提交的 plan 里（锁内），所以普通仓库提交
+  /// 无法插在「替换列表」与「清文件」之间。
   Future<void> _apply(RestorePlan plan) async {
     final staged = <StagedConfig>[];
     try {
@@ -283,19 +322,46 @@ class BackupEngine {
         await file.writeAsString(entry.value, flush: true);
       }
       final newIds = {for (final profile in plan.profiles) profile.id};
-      final result = await store.commit<void>(
-        (view) => Plan<void>(
+      final result = await store.commit<void>((view) {
+        // 不在新列表里的当前订阅：连文件带附属键删掉。若它的 id 恰好有要装回的
+        // 文件（恢复前它是游离文件），文件交给 staged 覆盖，只清它的附属键。
+        final removedProfiles = <String>[];
+        final staleAux = <String>[];
+        for (final profile in view.profiles) {
+          if (newIds.contains(profile.id)) continue;
+          if (plan.configs.containsKey(profile.id)) {
+            staleAux.addAll(ProfileStore.auxKeysFor(profile.id));
+          } else {
+            removedProfiles.add(profile.id);
+          }
+        }
+        final removedConfigs = <String>[];
+        if (plan.exactPrefs) {
+          final dir = Directory(store.profilesDirPath);
+          if (dir.existsSync()) {
+            for (final entry in dir.listSync(followLinks: false)) {
+              if (entry is! File) continue;
+              final id = _configIdOf(entry.path);
+              if (id == null ||
+                  plan.configs.containsKey(id) ||
+                  removedProfiles.contains(id)) {
+                continue;
+              }
+              removedConfigs.add(id);
+            }
+          }
+        }
+        return Plan<void>(
           profiles: plan.profiles,
           activeId: plan.activeId == null
               ? const Patch<String>.clear()
               : Patch<String>.set(plan.activeId!),
           staged: staged,
-          removedProfileIds: [
-            for (final profile in view.profiles)
-              if (!newIds.contains(profile.id)) profile.id,
-          ],
-        ),
-      );
+          removedProfileIds: removedProfiles,
+          removedConfigIds: removedConfigs,
+          deleteKeys: staleAux,
+        );
+      });
       if (!result.isCommitted) {
         throw StateError('订阅提交未成功: ${result.status.name} ${result.error}');
       }
@@ -305,27 +371,7 @@ class BackupEngine {
       }
       rethrow;
     }
-    if (plan.exactPrefs) await _pruneConfigFiles(plan.configs.keys.toSet());
     await _writePrefs(plan);
-  }
-
-  /// 精确还原配置文件集合：`profiles/` 里除 [keep] 之外的 `<id>.json` 全部删除。
-  /// 快照里「没有配置」的订阅、以及这次恢复装进来却还没入列表的文件都在此清掉。
-  /// 在 Store 锁内做，删不掉就抛（回滚没完成要如实报告，不能假装还原了）。
-  Future<void> _pruneConfigFiles(Set<String> keep) {
-    return store.readConsistent((_) async {
-      final dir = Directory(store.profilesDirPath);
-      if (!await dir.exists()) return;
-      final entries = await dir.list(followLinks: false).toList();
-      for (final entry in entries) {
-        if (entry is! File) continue;
-        final name = p.basename(entry.path);
-        if (!name.endsWith('.json')) continue;
-        final id = name.substring(0, name.length - '.json'.length);
-        if (!ProfileStore.isValidId(id) || keep.contains(id)) continue;
-        await entry.delete();
-      }
-    });
   }
 
   Future<void> _writePrefs(RestorePlan plan) async {
@@ -472,13 +518,15 @@ class BackupEngine {
     if (state.busy) return RecoveryOutcome.busy;
     state.busy = true;
     try {
-      return await _recover();
+      return await recoverHoldingLock();
     } finally {
       state.busy = false;
     }
   }
 
-  Future<RecoveryOutcome> _recover() async {
+  /// [recoverInterrupted] 的本体，调用者必须已经在 [runExclusive] 里（启动重试要在
+  /// 同一次互斥里完成暂停 → 恢复 → 刷新）。永不抛出。
+  Future<RecoveryOutcome> recoverHoldingLock() async {
     final Object? marker;
     try {
       marker = prefs.get(kRestoreMarkerKey);

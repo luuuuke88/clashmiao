@@ -100,6 +100,7 @@ class Plan<T> {
     this.activeId = const Patch<String>.unset(),
     this.staged = const [],
     this.removedProfileIds = const [],
+    this.removedConfigIds = const [],
     this.deleteKeys = const [],
   }) : isStale = false;
 
@@ -109,6 +110,7 @@ class Plan<T> {
       activeId = const Patch<String>.unset(),
       staged = const [],
       removedProfileIds = const [],
+      removedConfigIds = const [],
       deleteKeys = const [],
       isStale = false;
 
@@ -119,6 +121,7 @@ class Plan<T> {
       activeId = const Patch<String>.unset(),
       staged = const [],
       removedProfileIds = const [],
+      removedConfigIds = const [],
       deleteKeys = const [],
       isStale = true;
 
@@ -138,6 +141,11 @@ class Plan<T> {
   /// `proxy_delays_*` 附属键。
   final List<String> removedProfileIds;
 
+  /// 只删配置文件、不动附属键的 id（与列表无关的游离文件）。同样先改名 `.undo`、
+  /// 提交失败可还原。备份回滚用它精确清掉「这次恢复新装进来」的文件。
+  /// 不得与 [staged] 或 [removedProfileIds] 重叠。
+  final List<String> removedConfigIds;
+
   /// 额外要删除的偏好键。
   final List<String> deleteKeys;
 
@@ -148,6 +156,7 @@ class Plan<T> {
       !activeId.isUnset ||
       staged.isNotEmpty ||
       removedProfileIds.isNotEmpty ||
+      removedConfigIds.isNotEmpty ||
       deleteKeys.isNotEmpty;
 }
 
@@ -451,6 +460,9 @@ class ProfileStore {
       for (final id in plan.removedProfileIds) {
         configFilePath(id);
       }
+      for (final id in plan.removedConfigIds) {
+        configFilePath(id);
+      }
       final newActive = plan.activeId;
       if (newActive.isSet && !isValidId(newActive.value)) {
         throw ArgumentError.value(newActive.value, 'activeId', '非法');
@@ -479,7 +491,7 @@ class ProfileStore {
         await staged.file.rename(formal.path);
         entry.installed = true;
       }
-      for (final id in plan.removedProfileIds) {
+      for (final id in [...plan.removedProfileIds, ...plan.removedConfigIds]) {
         final formal = File(configFilePath(id));
         if (!await formal.exists()) continue;
         final entry = _Undo(formal, File('${formal.path}.${_newOpId()}.undo'));

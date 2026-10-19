@@ -27,7 +27,8 @@ class RestorePlan {
   /// 最终激活订阅；列表为空则为 null。
   final String? activeId;
 
-  /// 订阅 id → 配置文件内容。只含最终订阅集合内、内容合法的条目。
+  /// 订阅 id → 配置文件内容。只含最终订阅集合内、内容合法的条目；
+  /// 信任模式（快照）下还包含游离配置文件（隔离 / 孤儿），它们同样要原样装回。
   final Map<String, String> configs;
 
   /// 远程订阅里备份没带（或带的不合法）配置文件的 id：导入后后台补拉。
@@ -197,6 +198,19 @@ class BackupCodec {
           continue;
         }
         prefs[key] = _copy(value!);
+      }
+    }
+
+    // 游离配置文件（订阅被隔离 / 孤儿）：只认快照，id 必须合法且不与列表订阅重名。
+    // 并进 configs：回滚时与订阅配置一起暂存、安装，「保留集合」也由此而来。
+    final rawOrphans = decoded['orphanConfigs'];
+    if (trusted && rawOrphans is Map) {
+      for (final entry in rawOrphans.entries) {
+        final key = entry.key;
+        final value = entry.value;
+        if (key is! String || value is! String) continue;
+        if (!ProfileStore.isValidId(key) || ids.contains(key)) continue;
+        configs[key] = value;
       }
     }
 

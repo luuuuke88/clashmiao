@@ -1,6 +1,5 @@
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/config/application/restore_refresher.dart';
 import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -19,7 +18,6 @@ Future<void> showRestoreRecoveryNotice(
   BuildContext context,
   WidgetRef ref,
 ) async {
-  final container = ProviderScope.containerOf(context, listen: false);
   while (true) {
     if (!context.mounted) return;
     final outcome = ref.read(startupRestoreRecoveryProvider);
@@ -56,13 +54,7 @@ Future<void> showRestoreRecoveryNotice(
     if (next == RecoveryOutcome.busy) return;
     ref.read(startupRestoreRecoveryProvider.notifier).state = next;
     if (next == RecoveryOutcome.recovered || next == RecoveryOutcome.none) {
-      // 数据回到了导入之前：让界面立刻跟上磁盘。
-      try {
-        await RestoreRefresher(
-          container: container,
-          extraInvalidations: container.read(restoreExtraInvalidationsProvider),
-        ).refresh();
-      } catch (_) {}
+      // 界面刷新已在重试的协调流程里完成（成败都刷新）。
       ref.read(startupRestoreRecoveryProvider.notifier).state = null;
       if (context.mounted) AppToast.success(context, b.recoveryRetried);
       return;

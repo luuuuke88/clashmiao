@@ -106,6 +106,30 @@ class RestoreRefresher {
     });
   }
 
+  /// 启动时没完成的自动恢复的重试，走与导入同一套协调：拿到互斥 → 暂停定时刷新 →
+  /// [BackupEngine.recoverHoldingLock] → **无论成败**都刷新界面（失败时回滚可能已经
+  /// 写回了一部分偏好 / 订阅，缓存必须跟上磁盘）→ 最后才解除暂停。
+  ///
+  /// 已有恢复在进行时返回 [RecoveryOutcome.busy]，不碰暂停标志。永不抛出。
+  Future<RecoveryOutcome> recoverInterrupted(BackupEngine engine) async {
+    try {
+      return await engine.runExclusive(() async {
+        final flag = container.read(restoreInProgressProvider.notifier);
+        flag.state = true;
+        try {
+          final outcome = await engine.recoverHoldingLock();
+          if (outcome != RecoveryOutcome.none) await _refreshQuietly();
+          return outcome;
+        } finally {
+          flag.state = false;
+        }
+      });
+    } on RestoreFailure catch (e) {
+      if (e.kind == RestoreFailureKind.busy) return RecoveryOutcome.busy;
+      rethrow;
+    }
+  }
+
   Future<void> _refreshQuietly() async {
     try {
       await refresh();

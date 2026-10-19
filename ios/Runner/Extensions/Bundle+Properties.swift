@@ -24,12 +24,14 @@ extension Bundle {
         return value
     }
 
-    /// Root bundle id used to derive the App Group identifier and the
-    /// network extension's provider bundle.
-    var clashMiaoBundleRoot: String {
-        guard let value = infoDictionary?["BASE_BUNDLE_IDENTIFIER"] as? String else {
-            fatalError("[ClashMiao] BASE_BUNDLE_IDENTIFIER missing from Info.plist")
+    /// Bundle id of the embedded packet tunnel extension. Xcode requires an
+    /// embedded extension's id to be prefixed by the host app's id, so it
+    /// is derived from `bundleIdentifier` — not from BASE_BUNDLE_IDENTIFIER,
+    /// which is only the App Group root and does not share that prefix.
+    var tunnelProviderBundleIdentifier: String {
+        guard let value = bundleIdentifier else {
+            fatalError("[ClashMiao] CFBundleIdentifier missing from Info.plist")
         }
-        return value
+        return value + ".SingBoxPacketTunnel"
     }
 }

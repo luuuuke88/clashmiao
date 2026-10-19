@@ -36,6 +36,7 @@ class AllowedEdge {
 const _lintRule = '层间依赖';
 const _illegalAllowRule = '白名单条目非法';
 const _purityRule = 'R1 模型纯净';
+const _relativeUriRule = '非规范相对 URI';
 
 const _knownLayers = {'core', 'shared', 'domain', 'features'};
 
@@ -70,6 +71,17 @@ class _Unit {
 bool _isFeatureEdge(AllowedEdge e) =>
     e.from.startsWith('features/') && e.to.startsWith('features/');
 
+/// 白名单里不是 `features/<F> → features/<G>` 的非法条目。
+/// [checkLayering]（逐条报违规）与 [checkAllowlist]（汇总问题）都从这里取，
+/// 「什么算合法条目」只有这一份判定。
+List<AllowedEdge> _illegalEntries(List<AllowedEdge> entries) => [
+  for (final e in entries)
+    if (!_isFeatureEdge(e)) e,
+];
+
+String _relativeUriHint(String uri, String reason) =>
+    '非规范的相对 URI，请改用 package:clashmiao/ 导入（$reason）：$uri';
+
 /// 层间依赖检查。[uris] 的键是 `lib/` 内相对路径，值是该文件的全部 URI。
 ///
 /// 白名单**只**豁免 `features/<F> → features/<G>`：跨层的口子一旦能开，
@@ -80,17 +92,15 @@ List<Violation> checkLayering(
 }) {
   final violations = <Violation>[];
 
-  for (final e in allowlist) {
-    if (!_isFeatureEdge(e)) {
-      violations.add(
-        Violation(
-          e.from,
-          e.to,
-          _illegalAllowRule,
-          '白名单只能豁免 features/<F> → features/<G> 的依赖，其他层间依赖必须改代码',
-        ),
-      );
-    }
+  for (final e in _illegalEntries(allowlist)) {
+    violations.add(
+      Violation(
+        e.from,
+        e.to,
+        _illegalAllowRule,
+        '白名单只能豁免 features/<F> → features/<G> 的依赖，其他层间依赖必须改代码',
+      ),
+    );
   }
   final allowed = {
     for (final e in allowlist)
@@ -114,6 +124,14 @@ List<Violation> checkLayering(
     if (fromUnit.isUnrestricted) continue;
 
     for (final uri in entry.value) {
+      final reason = nonCanonicalRelativeUriReason(uri, from: from);
+      if (reason != null) {
+        // 失败即关闭：非规范写法无法可靠还原成依赖边，不能当作「没有依赖」。
+        violations.add(
+          Violation(from, uri, _relativeUriRule, _relativeUriHint(uri, reason)),
+        );
+        continue;
+      }
       final to = projectPath(uri, from: from);
       if (to == null) continue;
       final toUnit = _Unit.of(to);
@@ -233,6 +251,21 @@ List<Violation> checkModelPurity(Map<String, List<String>> uris) {
           }
           continue;
         }
+        final reason = nonCanonicalRelativeUriReason(uri, from: node);
+        if (reason != null) {
+          // 无法可靠还原依赖边，传递闭包可能因此漏掉 Flutter / data：按违规处理。
+          if (reported.add(uri)) {
+            violations.add(
+              Violation(
+                seed,
+                uri,
+                _purityRule,
+                '${_relativeUriHint(uri, reason)}，出现在 ${chainTo(node, uri)}',
+              ),
+            );
+          }
+          continue;
+        }
         final path = projectPath(uri, from: node);
         if (path == null || parent.containsKey(path)) continue;
         if (_nonModelFile.hasMatch(path)) {
@@ -274,20 +307,18 @@ List<AllowedEdge> staleEntries(
 
 /// 白名单自身的合法性校验，返回问题描述；空列表表示合法。
 ///
-/// 真实仓库测试与合成测试共用这一个入口，上限与「只能豁免 feature 间依赖」
-/// 因此只有一份实现：删掉这里的检查，两边测试同时失败。
+/// 真实仓库测试与合成测试共用这个入口：上限在这里判定；「条目必须是
+/// features → features」与 [checkLayering] 共用 [_illegalEntries]，不会各写一份。
 /// [ceiling] 由调用方传入，保证测试可以用写死的数字验证，而不是拿常量自己比自己。
 List<String> checkAllowlist(List<AllowedEdge> entries, {required int ceiling}) {
   final problems = <String>[];
   if (entries.length > ceiling) {
     problems.add('白名单只减不增：当前 ${entries.length} 条，上限 $ceiling');
   }
-  for (final e in entries) {
-    if (!_isFeatureEdge(e)) {
-      problems.add(
-        '$_illegalAllowRule：${e.from} → ${e.to}（只能是 features/<F> → features/<G>）',
-      );
-    }
+  for (final e in _illegalEntries(entries)) {
+    problems.add(
+      '$_illegalAllowRule：${e.from} → ${e.to}（只能是 features/<F> → features/<G>）',
+    );
   }
   return problems;
 }

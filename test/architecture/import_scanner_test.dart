@@ -162,8 +162,48 @@ part 'a.g.dart';
       );
     });
 
-    test('跳出 lib/ 返回 null', () {
+    test('跳出 lib/ 返回 null（规则层会把它报为违规，不是放过）', () {
       expect(projectPath('../../x.dart', from: 'core/a.dart'), isNull);
+      expect(
+        nonCanonicalRelativeUriReason('../../x.dart', from: 'core/a.dart'),
+        contains('越出'),
+      );
+    });
+
+    test('非规范写法：反斜杠、百分号、query/fragment、空段都有原因', () {
+      for (final uri in [
+        r'..\a.dart',
+        '%2e%2e/a.dart',
+        'a.dart?x',
+        'a.dart#f',
+        'b//a.dart',
+        '/a.dart',
+      ]) {
+        expect(
+          nonCanonicalRelativeUriReason(uri, from: 'core/x/a.dart'),
+          isNotNull,
+          reason: uri,
+        );
+        expect(projectPath(uri, from: 'core/x/a.dart'), isNull, reason: uri);
+      }
+    });
+
+    test('规范写法与带 scheme 的 URI 没有「非规范」原因', () {
+      for (final uri in [
+        './b.dart',
+        '../b.dart',
+        'x/y.dart',
+        '../../core/b.dart',
+        'dart:io',
+        'package:flutter/material.dart',
+        'package:clashmiao/a.dart',
+      ]) {
+        expect(
+          nonCanonicalRelativeUriReason(uri, from: 'core/x/a.dart'),
+          isNull,
+          reason: uri,
+        );
+      }
     });
 
     test('没有导入方路径的相对 URI、绝对路径、其他 scheme 返回 null', () {

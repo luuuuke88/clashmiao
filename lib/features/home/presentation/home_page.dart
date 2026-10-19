@@ -13,6 +13,9 @@ import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart
 import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/domain/routing/model/node_display.dart';
+import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -786,10 +789,20 @@ class _ConnectionInfo extends ConsumerWidget {
     final offlineGroups =
         ref.watch(offlineProxyGroupsProvider).valueOrNull ?? [];
     final isLiveData = liveGroups.any((g) => g.items.isNotEmpty);
-    final groups = isLiveData ? liveGroups : offlineGroups;
+    // 离线兜底叠加存储里的手选（与代理页同一口径）：重放的就是它。
+    final groups = isLiveData
+        ? liveGroups
+        : applyStoredSelections(
+            offlineGroups,
+            ref.watch(proxySelectionStoreProvider),
+          );
     final t = ref.watch(translationsProvider);
     final activeItem = resolveActiveProxy(groups);
-    final String nodeName = activeItem?.tag ?? t.general.unknown;
+    // 展示名与代理页同一套逻辑（node_display）：去掉 `§` 后缀，旗帜放在名称前。
+    // 原始 tag 只用于选择与缓存。
+    final String nodeName = activeItem == null
+        ? t.general.unknown
+        : NodeDisplay.parse(activeItem.tag).capsuleName ?? t.general.unknown;
     // 延迟展示与代理页同一套：同一个缓存、同一个协调器状态、同一个解析函数，
     // 两处不会出现一个有数字一个是破折号的分歧。
     final latencyState = ref.watch(latencyTestCoordinatorProvider);

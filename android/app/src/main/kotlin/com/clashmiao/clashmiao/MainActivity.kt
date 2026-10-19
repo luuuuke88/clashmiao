@@ -49,17 +49,12 @@ class MainActivity : FlutterFragmentActivity(),
     }
 
     // === PermissionGate.Listener ==========================================
-    // VPN 授权由协调器按 requestCode 归属（见 onActivityResult），不经 PermissionGate 的固定 REQ_VPN；
     // 通知权限被拒走非生命周期 alert，通知授权不是任何功能的前置条件。
+    // VPN 授权由协调器按 requestCode 归属（见 onActivityResult），不经 PermissionGate。
 
-    override fun onVpnConsented() = Unit
-    override fun onVpnDenied() = Unit
     override fun onNotificationConsented() = Unit
     override fun onNotificationDenied() =
         KernelCoordinator.instance.emitAlert(AlertCode.RequestNotificationPermission, null)
-
-    override fun onPreflightFailure(code: AlertCode, message: String?) =
-        KernelCoordinator.instance.emitAlert(code, message)
 
     // === Activity 生命周期 ================================================
 
@@ -71,8 +66,9 @@ class MainActivity : FlutterFragmentActivity(),
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (KernelCoordinator.onVpnConsentResult(requestCode, resultCode == RESULT_OK)) return
-        permissionGate.handleActivityResult(requestCode, resultCode)
+        // super 已把结果分发给插件注册的 ActivityResultListener（如电池优化豁免）；
+        // 这里只处理协调器弹出的 VPN 授权对话框。
+        KernelCoordinator.onVpnConsentResult(requestCode, resultCode == RESULT_OK)
     }
 
     override fun onRequestPermissionsResult(

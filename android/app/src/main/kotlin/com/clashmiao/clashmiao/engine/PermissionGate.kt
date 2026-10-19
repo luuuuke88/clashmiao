@@ -2,41 +2,32 @@ package com.clashmiao.clashmiao.engine
 
 import android.Manifest
 import android.app.Activity
-import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.VpnService
 import android.os.Build
 import androidx.core.app.ActivityCompat
-import com.clashmiao.clashmiao.core.AlertCode
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 /**
- * 把 VPN 权限 + POST_NOTIFICATIONS（Android 13+）的申请 + onActivityResult /
- * onRequestPermissionsResult 回调那一坨 boilerplate 抽出 Activity 主体。
+ * POST_NOTIFICATIONS（Android 13+）的申请 + onRequestPermissionsResult 回调，从 Activity
+ * 主体里抽出来。
+ *
+ * VPN 授权不在这里：它由进程级 [KernelCoordinator] 经 [VpnConsentBroker] 为每个对话框分配
+ * 唯一 requestCode，结果只归弹出它的请求。
  *
  * Activity 这边只需要：
  *   1. 在 [bindActivity] 里把自己注入进来
- *   2. 在 [onActivityResult] / [onRequestPermissionsResult] 回调里转手给本类的
- *      [handleActivityResult] / [handleRequestPermissionsResult]
- *   3. 调 [askVpnPermissionIfNeeded] / [askNotificationPermissionIfNeeded]
- *      触发实际申请；用户决定结果通过 [Listener] 回调
+ *   2. 在 onRequestPermissionsResult 回调里转手给 [handleRequestPermissionsResult]
+ *   3. 调 [askNotificationPermissionIfNeeded] 触发实际申请；用户决定结果通过 [Listener] 回调
  *
  * 写成 class（不是 object）是因为它持有 Activity 引用，跟 Activity 同生命周期。
  */
 class PermissionGate(private val listener: Listener) {
 
     interface Listener {
-        fun onVpnConsented()
-        fun onVpnDenied()
         fun onNotificationConsented()
         fun onNotificationDenied()
-        /** 弹申请之前 throw 了（VpnService.prepare 偶尔会抛 SecurityException 之类）。 */
-        fun onPreflightFailure(code: AlertCode, message: String?)
     }
 
     companion object {
-        const val REQ_VPN = 1001
         const val REQ_NOTIFICATION = 1010
     }
 
@@ -48,27 +39,6 @@ class PermissionGate(private val listener: Listener) {
 
     fun unbindActivity() {
         activity = null
-    }
-
-    /**
-     * 检查并申请 VPN 权限。
-     * @return `true` 表示已经有权限 / 不需要弹（可以直接走 startService）；
-     *         `false` 表示弹了 system dialog，等 [handleActivityResult] 回调
-     */
-    suspend fun askVpnPermissionIfNeeded(): Boolean = withContext(Dispatchers.Main) {
-        val act = activity ?: return@withContext false
-        try {
-            val pendingIntent = VpnService.prepare(act)
-            if (pendingIntent == null) {
-                true
-            } else {
-                act.startActivityForResult(pendingIntent, REQ_VPN)
-                false
-            }
-        } catch (e: Exception) {
-            listener.onPreflightFailure(AlertCode.RequestVPNPermission, e.message)
-            false
-        }
     }
 
     /**
@@ -85,24 +55,7 @@ class PermissionGate(private val listener: Listener) {
         return false
     }
 
-    // === Activity 转手回来的 callback ====================================
-
-    /** Activity.onActivityResult 把 result code 转发到这里。返回 true 表示这个 requestCode 我们消费了。 */
-    fun handleActivityResult(requestCode: Int, resultCode: Int): Boolean = when (requestCode) {
-        REQ_VPN -> {
-            if (resultCode == Activity.RESULT_OK) listener.onVpnConsented()
-            else listener.onVpnDenied()
-            true
-        }
-        REQ_NOTIFICATION -> {
-            // 老版 OS 用 startActivityForResult 走这一支；新版走 handleRequestPermissionsResult
-            if (resultCode == Activity.RESULT_OK) listener.onNotificationConsented()
-            else listener.onNotificationDenied()
-            true
-        }
-        else -> false
-    }
-
+    /** Activity.onRequestPermissionsResult 转发到这里。返回 true 表示这个 requestCode 我们消费了。 */
     fun handleRequestPermissionsResult(requestCode: Int, grantResults: IntArray): Boolean {
         if (requestCode != REQ_NOTIFICATION) return false
         val granted = grantResults.isNotEmpty() &&

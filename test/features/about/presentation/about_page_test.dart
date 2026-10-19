@@ -6,6 +6,7 @@ import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/about/application/update_check_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
+import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +48,10 @@ Future<Widget> _host({List<Override> extraOverrides = const []}) async {
 }
 
 void main() {
+  // AppToast 对同文案做 800 ms（真实时钟）去重，状态是进程级静态的；每个用例前
+  // 清掉，避免上一例弹过的提示让下一例的提示被吞——否则用例顺序一换就红。
+  setUp(AppToast.resetForTest);
+
   testWidgets('AboutPage renders app overview', (tester) async {
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
@@ -216,12 +221,6 @@ void main() {
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-
-      // AppToast 用真实时钟对「同一条文案 800 ms 内」去重；上一条用例刚弹过
-      // 同样的失败提示，这里让真实时间走过去重窗口，免得这条被当成重复吞掉。
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 900)),
-      );
 
       await tester.pumpWidget(
         await _host(

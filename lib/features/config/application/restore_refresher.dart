@@ -110,12 +110,13 @@ class RestoreRefresher {
   /// [BackupEngine.recoverHoldingLock] → **无论成败**都刷新界面（失败时回滚可能已经
   /// 写回了一部分偏好 / 订阅，缓存必须跟上磁盘）→ 最后才解除暂停。
   ///
-  /// 已有恢复在进行时返回 [RecoveryOutcome.busy]，不碰暂停标志。永不抛出。
+  /// 已有恢复在进行时返回 [RecoveryOutcome.busy]，不碰暂停标志——哪怕那次恢复已经
+  /// 清了标记、正在刷新界面（所以先拿互斥、再看线索）。拿到互斥后发现没有恢复线索
+  /// 则返回 [RecoveryOutcome.none]：不暂停、不刷新。永不抛出。
   Future<RecoveryOutcome> recoverInterrupted(BackupEngine engine) async {
-    // 没有恢复线索：什么都不用做，更不该暂停调度器或刷新 provider。
-    if (!engine.hasRecoveryClue) return RecoveryOutcome.none;
     try {
       return await engine.runExclusive(() async {
+        if (!engine.hasRecoveryClue) return RecoveryOutcome.none;
         final flag = container.read(restoreInProgressProvider.notifier);
         flag.state = true;
         try {

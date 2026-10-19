@@ -38,6 +38,9 @@ void main() {
   late ProviderContainer container;
   late GateAdapter gate;
   late ProfileUpdateScheduler scheduler;
+  late BackupEngine engine;
+  late ProfileRepository repo;
+  late List<Override> overrides;
 
   setUp(() async {
     h = await RestoreHarness.create(
@@ -81,28 +84,27 @@ void main() {
 
     // 「新进程」：全新的 Store 与引擎，只看磁盘与偏好。
     final restarted = h.restartedStore();
-    final engine = BackupEngine(
+    engine = BackupEngine(
       store: restarted,
       prefs: h.prefs,
       backupsDir: h.backupsDir,
       extraValidators: networkPrefValidators,
     );
     gate = GateAdapter();
-    final repo = ProfileRepository(
+    repo = ProfileRepository(
       dio: Dio()..httpClientAdapter = gate,
       configDir: h.tmp,
       prefs: h.prefs,
       boxService: const StubBoxService(),
       store: restarted,
     );
-    container = ProviderContainer(
-      overrides: [
-        sharedPreferencesProvider.overrideWith((ref) async => h.prefs),
-        profileStoreProvider.overrideWith((ref) async => restarted),
-        profileRepositoryProvider.overrideWith((ref) async => repo),
-        backupEngineProvider.overrideWith((ref) async => engine),
-      ],
-    );
+    overrides = [
+      sharedPreferencesProvider.overrideWith((ref) async => h.prefs),
+      profileStoreProvider.overrideWith((ref) async => restarted),
+      profileRepositoryProvider.overrideWith((ref) async => repo),
+      backupEngineProvider.overrideWith((ref) async => engine),
+    ];
+    container = ProviderContainer(overrides: overrides);
     await container.read(sharedPreferencesProvider.future);
     scheduler = ProfileUpdateScheduler(
       repositoryProvider: () =>
@@ -209,5 +211,53 @@ void main() {
 
     expect(flagChanges, isEmpty, reason: '没有可恢复的东西，不能碰暂停标志');
     expect([networkRebuilds, listRebuilds, activeRebuilds], [0, 0, 0]);
+  });
+
+  test('并发重试：前一次已清标记、正在刷新 provider 时，后一次返回 busy，且不动暂停标志', () async {
+    // 让刷新卡在「重读订阅列表」上：此刻前一次恢复已清掉标记，但仍持有恢复互斥。
+    var hold = false;
+    final reached = Completer<void>();
+    final release = Completer<void>();
+    final held = ProviderContainer(
+      overrides: [
+        ...overrides,
+        profileListProvider.overrideWith((ref) async {
+          final r = await ref.watch(profileRepositoryProvider.future);
+          if (hold) {
+            if (!reached.isCompleted) reached.complete();
+            await release.future;
+          }
+          return r.getAll();
+        }),
+      ],
+    );
+    addTearDown(held.dispose);
+    await held.read(sharedPreferencesProvider.future);
+    await held.read(profileListProvider.future);
+
+    // 标记被清掉之后才开始卡：之前的重建（提交触发的）照常放行。
+    h.prefs.beforeWrite = (op, key) async {
+      if (op == 'remove' && key == kRestoreMarkerKey) hold = true;
+    };
+    Future<RecoveryOutcome> retryIn(ProviderContainer c) =>
+        c.read(startupRestoreRetryProvider)();
+
+    final first = retryIn(held);
+    await reached.future;
+    h.prefs.beforeWrite = null;
+    expect(h.real.containsKey(kRestoreMarkerKey), isFalse, reason: '前提：标记已清');
+    expect(engine.hasRecoveryClue, isFalse, reason: '前提：已没有恢复线索');
+    expect(held.read(restoreInProgressProvider), isTrue);
+
+    final flagChanges = <bool>[];
+    held.listen(restoreInProgressProvider, (_, next) => flagChanges.add(next));
+    expect(await retryIn(held), RecoveryOutcome.busy, reason: '不能误报 none');
+    expect(held.read(restoreInProgressProvider), isTrue);
+    expect(flagChanges, isEmpty, reason: '被拒的重试不能碰暂停标志');
+
+    release.complete();
+    expect(await first, RecoveryOutcome.recovered);
+    expect(held.read(restoreInProgressProvider), isFalse);
+    expect(flagChanges, [false]);
   });
 }

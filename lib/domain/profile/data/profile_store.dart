@@ -50,13 +50,29 @@ class CommitResult<T> {
 
   /// 提交已成功，但「只删配置文件」（[Plan.removedConfigIds]）的收尾没做完——
   /// 文件已移出正式路径、残留还在磁盘上（路径列表）。调用者必须当作「删除未完成」
-  /// 处理（保留恢复线索重试），不能宣布完成。下次启动清理会把这类残留**删完**，
-  /// 绝不会还原。普通替换 / 删订阅的残留不在此列（它们的 `.undo` 本来就无害）。
+  /// 处理（保留恢复线索重试），不能宣布完成。残留是 `.del` 时启动清理只会删完它；
+  /// 连改名都失败、残留仍是 `.undo` 时，启动清理会把它还原成正式文件——所以线索
+  /// 必须留到重试证明没有残留为止（见 [ProfileStore.unsettledResidue]）。普通替换 /
+  /// 删订阅的残留不在此列（提交不报告它们，同样由 `unsettledResidue` 暴露）。
   final List<String> incompleteCleanup;
 
   bool get isCommitted => status == CommitStatus.committed;
   bool get isStale => status == CommitStatus.stale;
   bool get isFailed => status == CommitStatus.failed;
+}
+
+/// [ProfileStore.cleanupResidue] 的结果：这次没能处理掉的残留。
+///
+/// 清理不会吞掉失败：任何一个残留没处理成（删除 / 还原失败，或处理后文件仍在），
+/// 都列在 [unprocessed] 里。备份恢复据此判断「配置文件集合是否已经确定」——
+/// 留下的 `.undo` 下次启动可能被还原成正式文件，不能在那之前宣布恢复完成。
+class ResidueCleanupReport {
+  const ResidueCleanupReport(this.unprocessed);
+
+  /// 没处理掉的残留路径；目录本身列举失败时是 `profiles/` 目录的路径。
+  final List<String> unprocessed;
+
+  bool get isComplete => unprocessed.isEmpty;
 }
 
 /// schema 高于当前代码支持的版本（用户降级运行）时，订阅存储拒绝写入。
@@ -196,7 +212,8 @@ class ProfileStore {
        _deleteFile = deleteFile ?? ((f) => f.delete()),
        _renameFile = renameFile ?? ((f, to) => f.rename(to));
 
-  /// 「只删配置」收尾与残留清理里用的文件操作（测试注入故障用）。
+  /// 残留相关的文件操作（测试注入故障用）：提交成功后的 `.undo` 收尾、提交失败时的
+  /// 还原、「只删配置」的 `.del` 收尾，以及 [cleanupResidue] 的全部删除 / 还原。
   final Future<void> Function(File file) _deleteFile;
   final Future<File> Function(File file, String newPath) _renameFile;
 
@@ -655,7 +672,7 @@ class ProfileStore {
       try {
         if (entry.installed) await _deleteQuietly(entry.formal);
         if (entry.movedOld && await entry.undo.exists()) {
-          await entry.undo.rename(entry.formal.path);
+          await _renameFile(entry.undo, entry.formal.path);
         }
       } catch (e) {
         debugPrint('[ProfileStore] 还原文件失败 ${entry.formal.path}: $e');
@@ -751,11 +768,19 @@ class ProfileStore {
   /// - `.undo`：若正式文件存在则保留正式文件、删 `.undo`——这是刷新时进程死在
   ///   「文件已替换」与「列表已写入」之间的良性窗口（较新的同源配置配较旧元数据）；
   ///   正式文件缺失且该订阅仍在列表里 → 还原 `.undo`；订阅已不在列表 → 删除。
-  Future<void> cleanupResidue() {
-    return _lock.synchronized<void>(() async {
+  ///
+  /// 永不抛出，但**不吞失败**：没处理掉的残留全部列在返回的报告里（处理后再核对
+  /// 一遍文件确实已不在原处）。
+  ///
+  /// [includeStaging] 为 false 时不碰暂存文件：进程运行中（备份回滚 / 恢复重试）调用
+  /// 时锁外可能正有刷新在写自己的暂存文件，删掉会让它失败。暂存文件只会被删、绝不会
+  /// 变成正式文件，所以跳过它们不影响「可见配置集合」；它们留给下次启动清理。
+  Future<ResidueCleanupReport> cleanupResidue({bool includeStaging = true}) {
+    return _lock.synchronized<ResidueCleanupReport>(() async {
+      final unprocessed = <String>[];
       try {
         final dir = Directory(profilesDirPath);
-        if (!await dir.exists()) return;
+        if (!await dir.exists()) return const ResidueCleanupReport([]);
         final ids = {for (final e in view().profiles) e.id};
         // 先取完整清单再逐个处理：边遍历边删 / 改名，目录枚举可能漏项。
         final entries = await dir.list(followLinks: false).toList();
@@ -767,48 +792,68 @@ class ProfileStore {
                 name.contains('.staging.') ||
                 name.endsWith('.json.next') ||
                 name.endsWith('.json.tmp')) {
-              await entity.delete();
+              if (!includeStaging) continue;
+              await _deleteFile(entity);
             } else if (name.endsWith('.del')) {
               // 已提交的「只删配置」残留：只能删完，绝不还原（订阅即使仍在列表里）。
               await _deleteFile(entity);
             } else if (name.endsWith('.undo')) {
               final id = name.split('.').first;
-              if (!isValidId(id)) {
-                await entity.delete();
-                continue;
-              }
-              final formal = File(configFilePath(id));
-              if (!await formal.exists() && ids.contains(id)) {
-                await entity.rename(formal.path);
+              final formal = isValidId(id) ? File(configFilePath(id)) : null;
+              if (formal != null &&
+                  !await formal.exists() &&
+                  ids.contains(id)) {
+                await _renameFile(entity, formal.path);
               } else {
-                await entity.delete();
+                await _deleteFile(entity);
               }
+            } else {
+              continue;
+            }
+            if (await entity.exists()) {
+              throw FileSystemException('处理后残留仍在', entity.path);
             }
           } catch (e) {
             debugPrint('[ProfileStore] 清理残留失败 $name: $e');
+            unprocessed.add(entity.path);
           }
         }
       } catch (e) {
         debugPrint('[ProfileStore] 清理残留失败: $e');
+        unprocessed.add(profilesDirPath);
       }
+      return ResidueCleanupReport(List.unmodifiable(unprocessed));
     });
   }
 
-  /// 磁盘上还没清掉的「只删配置」残留（`.del`）与（订阅仍在列表里、本应被删的）
-  /// 文件名。备份恢复据此判断删除是否真正完成。
-  Future<List<String>> pendingConfigDeletions() async {
-    final dir = Directory(profilesDirPath);
-    if (!await dir.exists()) return const [];
-    return [
-      for (final e in await dir.list(followLinks: false).toList())
-        if (e is File && p.basename(e.path).endsWith('.del')) e.path,
-    ];
+  /// 锁内列出磁盘上仍在的 `.undo` / `.del` 残留——它们是唯一可能在之后改变「可见
+  /// 配置文件集合」的东西：`.undo` 可能被下次启动清理还原成正式文件；`.del` 是没删完
+  /// 的已提交删除。备份的精确还原只有在这里为空时才算「配置集合已确定」。
+  ///
+  /// `.staging` 不在此列：清理只会删它、绝不会把它变成正式文件，而且锁外正在进行的
+  /// 刷新会合法地持有暂存文件。列举失败照样抛出（证明不了就不能当作没有）。
+  Future<List<String>> unsettledResidue() {
+    return _lock.synchronized<List<String>>(() async {
+      final dir = Directory(profilesDirPath);
+      if (!await dir.exists()) return const [];
+      return [
+        for (final e in await dir.list(followLinks: false).toList())
+          if (e is File &&
+              (p.basename(e.path).endsWith('.undo') ||
+                  p.basename(e.path).endsWith('.del')))
+            e.path,
+      ];
+    });
   }
 
-  static Future<void> _deleteQuietly(File file) async {
+  /// 尽力删除（失败只记日志）：提交成功后的普通 `.undo` 与回滚时的新装文件。
+  /// 留下的 `.undo` 由 [cleanupResidue] 处理、由 [unsettledResidue] 暴露。
+  Future<void> _deleteQuietly(File file) async {
     try {
-      if (await file.exists()) await file.delete();
-    } catch (_) {}
+      if (await file.exists()) await _deleteFile(file);
+    } catch (e) {
+      debugPrint('[ProfileStore] 删除失败（留给启动清理）${file.path}: $e');
+    }
   }
 
   static String _randomHex8() => _randomHex(8);

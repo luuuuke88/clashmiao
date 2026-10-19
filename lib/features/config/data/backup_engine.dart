@@ -367,7 +367,7 @@ class BackupEngine {
       }
       if (result.incompleteCleanup.isNotEmpty) {
         // 列表已换，但要删的配置文件没删干净。不能报告成功 / 清标记：留着恢复线索，
-        // 之后重试（启动清理会删完 `.del`，不会复活）。
+        // 之后重试（重试的精确还原会先清理残留、再核对没有残留）。
         throw StateError('配置文件删除未完成: ${result.incompleteCleanup}');
       }
     } catch (_) {
@@ -490,8 +490,30 @@ class BackupEngine {
       currentSchema: kCurrentStorageSchema,
       trusted: true,
     );
-    await _apply(plan);
+    await _applyExact(plan);
     await _clearMarker();
+  }
+
+  /// 精确还原到快照（回滚与启动恢复共用）。返回即**证明**了磁盘上的配置文件集合
+  /// 与快照一致、且之后不会再被残留改变；任何一步没做完都抛错，调用方据此保留
+  /// 标记与内存线索、不宣布完成。
+  ///
+  /// ①[ProfileStore.cleanupResidue] 处理上次留下的 `.undo` / `.del`（它不吞失败）；
+  /// ②按快照应用（一次提交里精确装回 / 删掉配置文件）；③锁内核对已没有
+  /// `.undo` / `.del`——
+  /// `.undo` 会在下次启动被还原成正式文件（复活本应不存在的配置），`.del` 是没删完
+  /// 的删除。①没做完也照样做②：让可见状态尽量回到快照，但最终仍报失败。
+  Future<void> _applyExact(RestorePlan plan) async {
+    // 运行中调用：锁外可能有刷新正在写暂存文件，不碰它们（暂存不会变成正式文件）。
+    final cleanup = await store.cleanupResidue(includeStaging: false);
+    await _apply(plan);
+    if (!cleanup.isComplete) {
+      throw StateError('残留清理未完成: ${cleanup.unprocessed}');
+    }
+    final left = await store.unsettledResidue();
+    if (left.isNotEmpty) {
+      throw StateError('残留仍在，配置文件集合尚未确定: $left');
+    }
   }
 
   /// 只保留最近 [keepSnapshots] 份快照。
@@ -577,12 +599,7 @@ class BackupEngine {
         _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
       }
-      await store.cleanupResidue();
-      final stuck = await store.pendingConfigDeletions();
-      if (stuck.isNotEmpty) {
-        throw StateError('上次遗留的配置文件删除仍未完成: $stuck');
-      }
-      await _apply(plan);
+      await _applyExact(plan);
       await _clearMarker();
       _state.pendingSnapshot = null;
       debugPrint('[backup] 已用恢复前快照回到上次恢复之前的状态');

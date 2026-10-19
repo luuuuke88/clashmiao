@@ -366,7 +366,8 @@ class KernelCoordinator(
         fun attachActivity(host: ActivityHost) = wiring.platform.attachActivity(host)
         fun detachActivity(host: ActivityHost) = wiring.platform.detachActivity(host)
 
-        /** VPN 授权对话框的结果。 */
-        fun onVpnConsentResult(granted: Boolean) = wiring.platform.onConsentResult(granted)
+        /** VPN 授权对话框的结果，按弹窗的 requestCode 归属；false = 不是授权对话框的 requestCode。 */
+        fun onVpnConsentResult(requestCode: Int, granted: Boolean): Boolean =
+            VpnConsentBroker.owns(requestCode) && wiring.platform.onConsentResult(requestCode, granted)
     }
 }

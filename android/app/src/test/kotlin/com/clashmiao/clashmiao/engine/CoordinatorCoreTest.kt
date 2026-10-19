@@ -438,10 +438,10 @@ class CoordinatorCoreTest {
         h.on(2, rev = 2) // 意图变了，旧序列已在阻塞调用里
         h.assertSnap(desired = Desired.On)
         h.finishJob(JobResult.Failed(FailureCode.StartService, "old spec exploded"))
-        // 旧失败只回收，不改 desired，不写 failure
+        // 旧失败只回收，不改 desired，不写 failure；失败可能留下半初始化资源 → 完整回收
         assertNull(h.snap.lastFailure)
         h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
-        assertTrue(h.last<Effect.RunTeardown>().soft)
+        assertFalse(h.last<Effect.RunTeardown>().soft)
         h.finishTeardown()
         assertEquals(2L, h.last<Effect.RunStart>().spec.configRevision)
         h.finishJob(JobResult.Started)
@@ -490,8 +490,8 @@ class CoordinatorCoreTest {
         // seq=1 的失败不写给 seq=2，也不关 desired
         assertNull(h.snap.lastFailure)
         h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
-        // seq=2 自己的序列：先软回收旧任务留下的局部资源，再启动一次
-        assertTrue(h.last<Effect.RunTeardown>().soft)
+        // seq=2 自己的序列：先完整回收失败启动留下的资源（不复用半初始化的 command server），再启动一次
+        assertFalse(h.last<Effect.RunTeardown>().soft)
         h.finishTeardown()
         assertEquals(2, h.count<Effect.RunStart>())
         h.assertSnap(attempt = 2)

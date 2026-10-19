@@ -2,8 +2,8 @@
 
 import 'dart:io';
 
-import 'package:clashmiao/core/model/outbound.dart';
-import 'package:clashmiao/core/utils/config_parser.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/routing/data/config_parser.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

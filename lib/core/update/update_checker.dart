@@ -1,4 +1,4 @@
-import 'package:clashmiao/core/config/build_config.dart';
+import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';

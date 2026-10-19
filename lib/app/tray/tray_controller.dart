@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:clashmiao/app/state/selected_tab.dart';
+import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
+import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:tray_manager/tray_manager.dart';

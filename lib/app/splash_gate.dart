@@ -1,5 +1,5 @@
 import 'package:clashmiao/app/shell_page.dart';
-import 'package:clashmiao/features/splash/widget/splash_page.dart';
+import 'package:clashmiao/features/splash/presentation/splash_page.dart';
 import 'package:flutter/material.dart';
 
 /// 冷启动时先放开屏动画，放完换成 [ShellPage]。

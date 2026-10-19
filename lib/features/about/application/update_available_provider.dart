@@ -1,6 +1,6 @@
 // 「有新版本可用」的 provider：把 UpdateChecker 的一次性检查接到 Riverpod 上。
 
-import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

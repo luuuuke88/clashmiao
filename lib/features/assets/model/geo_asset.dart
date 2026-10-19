@@ -1,4 +1,4 @@
-import 'package:clashmiao/core/config/build_config.dart';
+import 'package:clashmiao/core/env/build_config.dart';
 
 enum GeoAssetType { geoip, geosite }
 

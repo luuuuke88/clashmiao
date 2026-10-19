@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/core/model/outbound.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/shortcuts/desktop_shortcuts.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';

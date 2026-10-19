@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
-import 'package:clashmiao/core/settings/network_settings.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/shared/components/update_available_dialog.dart';
 import 'package:dio/dio.dart';

@@ -1,13 +1,13 @@
 import 'dart:async';
 
 import 'package:clashmiao/app/shell_page.dart';
-import 'package:clashmiao/app/state/selected_tab.dart';
+import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/core/deep_link/deep_link_service.dart';
-import 'package:clashmiao/core/model/box_alert.dart';
-import 'package:clashmiao/core/model/box_stats.dart';
-import 'package:clashmiao/core/model/outbound.dart';
+import 'package:clashmiao/app/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/box_service/model/box_stats.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';

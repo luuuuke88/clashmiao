@@ -14,7 +14,7 @@ fail=0
 
 # 从源码里抽出所有写死的 https 链接（排除注释里的示例与协议命名空间）
 urls=$(grep -rhoE 'https://[a-zA-Z0-9._~:/?#@!$&*+,;=%-]+' \
-        lib/core/config/build_config.dart README.md 2>/dev/null \
+        lib/core/env/build_config.dart README.md 2>/dev/null \
       | sed 's/[.,)"]*$//' \
       | grep -vE 'example\.(com|test)|schemas\.android\.com|www\.w3\.org|keepachangelog\.com' \
       | sort -u)

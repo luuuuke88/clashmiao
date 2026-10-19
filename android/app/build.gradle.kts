@@ -76,10 +76,6 @@ android {
         }
     }
 
-    buildFeatures {
-        aidl = true
-    }
-
     testOptions {
         unitTests {
             // host JVM 跑 Android stub 时遇到没实现的 framework call 直接返回默认值

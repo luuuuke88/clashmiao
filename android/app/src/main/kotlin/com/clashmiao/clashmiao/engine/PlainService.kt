@@ -2,6 +2,7 @@ package com.clashmiao.clashmiao.engine
 
 import android.app.Service
 import android.content.Intent
+import android.os.IBinder
 
 /**
  * Proxy-only 模式的前台 service —— 不申请 VPN 权限，只跑 mixed-port HTTP/SOCKS。
@@ -17,14 +18,18 @@ class PlainService : Service() {
             host.writeLog(message)
         }
     }
-    private val host: KernelHost = KernelHost(this, libboxHost)
+    private val host: KernelHost = KernelHost(this, ServiceType.Proxy, libboxHost)
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int) =
         host.onStartCommand(intent, flags, startId)
 
-    override fun onBind(intent: Intent) = host.onBind(intent)
+    /** 只作为 started service 存在，不提供绑定。 */
+    override fun onBind(intent: Intent): IBinder? = null
 
-    override fun onDestroy() = host.onDestroy()
+    override fun onDestroy() {
+        host.onDestroy()
+        super.onDestroy()
+    }
 
     fun writeLog(message: String) = host.writeLog(message)
 }

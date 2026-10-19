@@ -158,12 +158,22 @@ class ForegroundNotice(private val service: Service) :
         }
     }
 
-    fun close() {
+    /**
+     * 停止动态更新（断开统计流、注销屏幕广播），**保留**前台通知。
+     * 重载 / 内核回收期间用：Android 12+ 后台不允许重新 startForeground，
+     * 所以回收期间绝不能把 Service 降级成非前台。
+     */
+    fun stopUpdates() {
         statsStream.disconnect()
-        ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
         if (screenReceiverArmed) {
             runCatching { service.unregisterReceiver(this) }
             screenReceiverArmed = false
         }
+    }
+
+    /** 彻底关闭：停止更新并撤掉前台通知（Service 退休 / 销毁时）。 */
+    fun close() {
+        stopUpdates()
+        ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 }

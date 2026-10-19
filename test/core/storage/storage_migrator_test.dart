@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../support/crashable_prefs.dart';
+import '../../support/failing_prefs_store.dart';
 
 Future<SharedPreferences> _prefs([
   Map<String, Object> initial = const {},
@@ -123,6 +124,90 @@ void main() {
         () => StorageMigrator(migrations: [_step(1, []), _step(1, [])]),
         throwsArgumentError,
       );
+    });
+  });
+
+  // 真实 SharedPreferences 先改内存缓存再写底层：底层写失败时缓存里留着没落盘的值。
+  group('写入失败后缓存与磁盘对齐', () {
+    for (final byThrowing in [false, true]) {
+      final how = byThrowing ? '底层抛异常' : '底层返回 false';
+
+      test('写 schema 失败（$how）：缓存重载回磁盘状态，报告一致，不再有后续写入，重跑会真正迁移', () async {
+        final (store, prefs) = await FailingPrefsStore.install({'keep': 'v'});
+        store
+          ..failKeys = {kStorageSchemaKey}
+          ..failByThrowing = byThrowing;
+        final log = <int>[];
+
+        final report = await StorageMigrator(
+          migrations: [_step(1, log), _step(2, log)],
+        ).run(prefs);
+
+        expect(report.outcome, MigrationOutcome.failed);
+        expect(report.toSchema, 0);
+        expect(report.failedStep, 1);
+        expect(log, [1], reason: '失败后不再跑后面的步骤');
+        expect(store.attempts, [kStorageSchemaKey], reason: '失败后没有任何别的写入');
+        // 缓存已与磁盘对齐：读不到没落盘的 schema。
+        expect(prefs.getInt(kStorageSchemaKey), isNull);
+        expect(
+          (await store.persisted()).containsKey(kStorageSchemaKey),
+          isFalse,
+        );
+        expect(prefs.getString('keep'), 'v');
+
+        // 底层恢复后重跑：不是 upToDate，而是真的把步骤跑完并落盘。
+        store.failKeys = {};
+        final again = await StorageMigrator(
+          migrations: [_step(1, log), _step(2, log)],
+        ).run(prefs);
+        expect(again.outcome, MigrationOutcome.migrated);
+        expect(log, [1, 1, 2]);
+        expect((await store.persisted())[kStorageSchemaKey], 2);
+        expect(prefs.getInt(kStorageSchemaKey), 2);
+      });
+    }
+
+    test('步骤自己的写入失败：缓存里没落盘的值被清掉，停止，不推进 schema', () async {
+      final (store, prefs) = await FailingPrefsStore.install({});
+      store.failKeys = {'marker'};
+      final migration = Migration(
+        toVersion: 1,
+        name: 'writes',
+        run: (p) async {
+          if (!await p.setString('first', 'ok')) return false;
+          if (!await p.setString('marker', 'lost')) return false;
+          return p.setString('never', 'x'); // 不该走到这里
+        },
+      );
+
+      final report = await StorageMigrator(migrations: [migration]).run(prefs);
+
+      expect(report.outcome, MigrationOutcome.failed);
+      expect(store.attempts, ['first', 'marker']);
+      expect(prefs.getString('marker'), isNull, reason: '没落盘的值不能留在缓存里');
+      expect(prefs.getString('first'), 'ok');
+      expect(prefs.getInt(kStorageSchemaKey), isNull);
+    });
+
+    test('步骤抛出 PlatformException：同样重载、停止、不向外抛', () async {
+      final (store, prefs) = await FailingPrefsStore.install({});
+      store
+        ..failKeys = {'marker'}
+        ..failByThrowing = true;
+      final migration = Migration(
+        toVersion: 1,
+        name: 'throws',
+        run: (p) async {
+          await p.setString('marker', 'lost');
+          return true;
+        },
+      );
+      final report = await StorageMigrator(migrations: [migration]).run(prefs);
+      expect(report.outcome, MigrationOutcome.failed);
+      expect(prefs.getString('marker'), isNull);
+      expect(prefs.getInt(kStorageSchemaKey), isNull);
+      expect(store.attempts, ['marker']);
     });
   });
 }

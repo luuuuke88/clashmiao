@@ -250,14 +250,23 @@ class ProfileStore {
     final frozen = _frozen;
     if (frozen != null) return frozen;
     try {
+      final legacyMode = schema < _firstSchemaWithoutActiveFlag;
       final parsed = _parse();
       final stored = _readString(activeProfileKey);
       String? effective;
       if (parsed.entities.isNotEmpty) {
         if (stored != null && parsed.entities.any((e) => e.id == stored)) {
           effective = stored;
-        } else if (stored != null) {
-          effective = parsed.entities.first.id;
+        } else {
+          // 迁移未完成（schema < 1）时，激活键缺失或悬空就退回旧版本留下的
+          // 条目级 `active` 标记，与迁移步骤选激活 id 的规则一致；否则迁移早期
+          // 失败后，旧的激活信息会在业务读写中被悄悄换成第一条。
+          final legacy = legacyMode ? parsed.legacyActiveId : null;
+          if (legacy != null) {
+            effective = legacy;
+          } else if (stored != null) {
+            effective = parsed.entities.first.id;
+          }
         }
       }
       return ProfileListView(
@@ -299,6 +308,10 @@ class ProfileStore {
     }
   }
 
+  /// 条目级 `active` 标记在 schema 1 起不再使用（激活只认 `clashmiao_active_profile`）。
+  /// 此前（迁移未完成）读取要能回退到它，写回也要继续带着它。
+  static const _firstSchemaWithoutActiveFlag = 1;
+
   /// schema 高于当前代码支持的版本：只读。
   bool get isReadOnly => schema > kCurrentStorageSchema;
 
@@ -334,6 +347,7 @@ class ProfileStore {
     final entities = <ProfileEntity>[];
     final quarantined = <Object?>[];
     final seen = <String>{};
+    String? legacyActiveId;
     for (final item in decoded) {
       try {
         if (item is! Map<String, dynamic>) throw const FormatException('非对象');
@@ -341,11 +355,14 @@ class ProfileStore {
         if (!isValidId(entity.id)) throw const FormatException('非法 id');
         if (!seen.add(entity.id)) throw const FormatException('重复 id');
         entities.add(entity);
+        if (legacyActiveId == null && item['active'] == true) {
+          legacyActiveId = entity.id;
+        }
       } catch (_) {
         quarantined.add(item);
       }
     }
-    return _ParsedList(entities, quarantined);
+    return _ParsedList(entities, quarantined, legacyActiveId: legacyActiveId);
   }
 
   // ───────────────────────── 路径 ─────────────────────────
@@ -467,10 +484,7 @@ class ProfileStore {
       final writes = <Future<bool>>[];
       if (profiles != null) {
         writes.add(
-          prefs.setString(
-            profilesKey,
-            jsonEncode([for (final e in profiles) e.toJson()]),
-          ),
+          prefs.setString(profilesKey, jsonEncode(_serialize(profiles, plan))),
         );
       }
       final newActive = plan.activeId;
@@ -516,6 +530,25 @@ class ProfileStore {
     }
     if (!_changes.isClosed) _changes.add(null);
     return CommitResult<T>.committed(plan.value);
+  }
+
+  /// 序列化主列表。迁移未完成（schema < 1）时继续写条目级 `active` 标记
+  /// （值为本次提交后的生效激活 id），这样业务写回不会抹掉尚未持久化到
+  /// 激活键的旧激活信息；schema ≥ 1 时不写。
+  List<Map<String, dynamic>> _serialize(
+    List<ProfileEntity> profiles,
+    Plan<Object?> plan,
+  ) {
+    final legacy = schema < _firstSchemaWithoutActiveFlag;
+    final String? finalActive = plan.activeId.isSet
+        ? plan.activeId.value
+        : plan.activeId.isClear
+        ? null
+        : _frozen?.activeId;
+    return [
+      for (final e in profiles)
+        {...e.toJson(), if (legacy) 'active': e.id == finalActive},
+    ];
   }
 
   Future<void> _rollback({
@@ -695,16 +728,25 @@ class ProfileStore {
 }
 
 class _ParsedList {
-  const _ParsedList(this.entities, this.quarantined, {this.corruptRaw});
+  const _ParsedList(
+    this.entities,
+    this.quarantined, {
+    this.corruptRaw,
+    this.legacyActiveId,
+  });
 
   const _ParsedList.empty()
     : entities = const [],
       quarantined = const [],
-      corruptRaw = null;
+      corruptRaw = null,
+      legacyActiveId = null;
 
   final List<ProfileEntity> entities;
   final List<Object?> quarantined;
   final String? corruptRaw;
+
+  /// 旧版本留下的条目级 `active=true` 中第一个合法条目的 id。
+  final String? legacyActiveId;
 }
 
 class _Undo {

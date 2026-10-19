@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:dio/dio.dart';
@@ -33,6 +34,7 @@ class ProfileHarness {
 
   static Future<ProfileHarness> create({
     bool flaky = false,
+    bool legacy = false,
     Map<String, Object> initialPrefs = const {},
   }) async {
     // 固定起点的时钟：每次取值比上一次晚一分钟，需要「更晚的时间」时不必真等。
@@ -42,7 +44,12 @@ class ProfileHarness {
       return tick;
     }
 
-    SharedPreferences.setMockInitialValues(Map.of(initialPrefs));
+    // 默认是「启动迁移已经跑完」的状态（schema 1）；要测迁移未完成（旧数据、
+    // 没有 schema 键），传 `legacy: true`。
+    SharedPreferences.setMockInitialValues({
+      if (!legacy) kStorageSchemaKey: kCurrentStorageSchema,
+      ...initialPrefs,
+    });
     final real = await SharedPreferences.getInstance();
     final wrapped = flaky ? FlakyPrefs(real) : null;
     final prefs = wrapped ?? real;

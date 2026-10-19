@@ -22,7 +22,7 @@ Migration profilesV1Migration({String Function()? incGenerator}) => Migration(
 /// 每个写入都检查返回值，失败即返回 `false`（调用方据此不推进 schema）。
 ///
 /// 顺序（顺序本身是正确性的一部分）：
-/// 0. 把订阅列表与激活键的原值备份到 [kMigrationBackupV0Key]（只在它不存在时写）；
+/// 0. 把订阅列表与激活键的原值（含错误类型的脏值）备份到 [kMigrationBackupV0Key]（只在它不存在时写）；
 /// 1. 算出激活 id 并**先写激活键**——此时订阅 JSON 里的 `active` 标记还在，
 ///    即使在这之后被中断，重跑也会得到同一个结果；
 /// 2. 重写订阅 JSON：去掉 `active`，补 `rev`（已有保留）与 `inc`（已有保留）；
@@ -43,9 +43,15 @@ Future<bool> migrateProfilesToV1(
     // 0. 备份。两个键都没有就没有可保护的东西，不造多余的键。
     if (!prefs.containsKey(kMigrationBackupV0Key) &&
         (rawProfiles != null || rawActive != null)) {
+      // 原值原样保存（偏好里的值都是可 JSON 编码的：字符串/数字/布尔/字符串数组），
+      // 包括类型不对的脏值——这正是最需要留作取证的；`present` 区分「不存在」与「值为 null」。
       final backup = jsonEncode({
-        ProfileStore.profilesKey: rawProfiles is String ? rawProfiles : null,
-        ProfileStore.activeProfileKey: rawActive is String ? rawActive : null,
+        ProfileStore.profilesKey: rawProfiles,
+        ProfileStore.activeProfileKey: rawActive,
+        'present': {
+          ProfileStore.profilesKey: rawProfiles != null,
+          ProfileStore.activeProfileKey: rawActive != null,
+        },
       });
       if (!await prefs.setString(kMigrationBackupV0Key, backup)) return false;
     }

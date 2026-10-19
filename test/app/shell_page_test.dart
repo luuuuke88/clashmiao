@@ -1,3 +1,7 @@
+import 'package:clashmiao/features/about/presentation/about_page.dart';
+import 'package:clashmiao/features/settings/presentation/settings_page.dart';
+import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
+import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'dart:async';
 
 import 'package:clashmiao/app/shell_page.dart';
@@ -377,5 +381,40 @@ void main() {
 
       await _drainToasts(tester);
     });
+  });
+
+  testWidgets('IndexedStack 里只有当前 tab 的 Ticker 开着（TickerMode）', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    /// 四个页面各自上下文里生效的 TickerMode。
+    List<bool> tickerModes() => [
+      for (final page in [HomePage, ProxiesPage, SettingsPage, AboutPage])
+        TickerMode.valuesOf(
+          tester.element(find.byType(page, skipOffstage: false)),
+        ).enabled,
+    ];
+
+    expect(tickerModes(), [true, false, false, false]);
+
+    for (var i = 1; i < 4; i++) {
+      await tester.tap(find.byKey(ValueKey('bottom_nav_$i')));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tickerModes(), [
+        for (var k = 0; k < 4; k++) k == i,
+      ], reason: '选中第 $i 个 tab 时只有它的 Ticker 开着');
+    }
+
+    // 切回首页：恢复。
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_0')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tickerModes(), [true, false, false, false]);
   });
 }

@@ -15,7 +15,7 @@ LatencyBand latencyBandOf(int ms) {
 /// 8% 品牌色选中底）上对比度仍 ≥ 4.5:1；深色主题用提亮的色值。不要在这里
 /// 再叠 alpha——压低透明度会把对比度吃掉。
 ///
-/// 本期（U3）只放延迟分档，其余状态色由后续任务补进来。
+/// 目前有两类：延迟分档，以及「已连接 / 线路通」的绿点（[connected]）。
 abstract final class StatusColors {
   // 浅色：emerald-800 / 加深琥珀 / red-700。
   static const Color _latencyFastLight = Color(0xFF065F46);
@@ -26,6 +26,14 @@ abstract final class StatusColors {
   static const Color _latencyFastDark = Color(0xFF34D399);
   static const Color _latencyMediumDark = Color(0xFFFBBF24);
   static const Color _latencySlowDark = Color(0xFFF87171);
+
+  // 「已连接」绿点：浅色 emerald-700（压白 ≥ 4.5:1，小标记也读得清）/ 深色 emerald-400。
+  static const Color _connectedLight = Color(0xFF047857);
+  static const Color _connectedDark = Color(0xFF34D399);
+
+  /// 「已连接 / 线路通」的状态绿，用于页面里的小圆点、徽记之类的状态标记。
+  static Color connected(Brightness brightness) =>
+      brightness == Brightness.light ? _connectedLight : _connectedDark;
 
   static Color latency(Brightness brightness, LatencyBand band) {
     final light = brightness == Brightness.light;

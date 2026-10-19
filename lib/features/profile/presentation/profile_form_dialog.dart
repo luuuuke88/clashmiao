@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -63,7 +64,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: AnimatedSize(
-          duration: const Duration(milliseconds: 250),
+          duration: Motion.duration(context, Motion.medium),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final buttonWidth =
@@ -258,7 +259,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                     crossFadeState: _isLoading
                         ? CrossFadeState.showFirst
                         : CrossFadeState.showSecond,
-                    duration: const Duration(milliseconds: 250),
+                    duration: Motion.duration(context, Motion.medium),
                   ),
                 ],
               );
@@ -388,7 +389,6 @@ Future<void> showProfileManualFormDialog(
                         FilledButton(
                           onPressed: submit,
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 10,

@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
@@ -60,8 +61,11 @@ class QuickSettingsModal extends ConsumerWidget {
       sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
           ? AnimationStyle.noAnimation
           : const AnimationStyle(
-              duration: Duration(milliseconds: 250),
+              duration: Motion.medium,
+              // 退场比入场快一档（规格：250 / 200 ms），不属于 token 的三档。
               reverseDuration: Duration(milliseconds: 200),
+              curve: Motion.emphasized,
+              reverseCurve: Motion.exit,
             ),
       builder: (_) => const QuickSettingsModal(),
     );
@@ -141,9 +145,13 @@ class QuickSettingsModal extends ConsumerWidget {
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _changeServiceMode(ref, mode),
                         child: AnimatedContainer(
-                          duration: reduceMotion
-                              ? Duration.zero
-                              : const Duration(milliseconds: 200),
+                          duration: reduceMotion ? Duration.zero : Motion.short,
+                          // 最小 48 dp 的交互高度（Android 触控目标）；文字放大时
+                          // 随内容增高。
+                          constraints: const BoxConstraints(
+                            minHeight: kMinInteractiveDimension,
+                          ),
+                          alignment: Alignment.center,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           decoration: BoxDecoration(
                             color: isSelected
@@ -186,7 +194,6 @@ class QuickSettingsModal extends ConsumerWidget {
                       : t.config.warpNotConfigured,
                   value: settings.warpConsentGiven ? settings.enableWarp : null,
                   icon: FluentIcons.shield_24_regular,
-                  color: Colors.orange.shade400,
                   onChanged: settings.warpConsentGiven
                       ? ref.read(networkSettingsProvider.notifier).setEnableWarp
                       : null,
@@ -199,7 +206,6 @@ class QuickSettingsModal extends ConsumerWidget {
                   label: t.config.enableTlsFragment,
                   value: settings.enableTlsFragment,
                   icon: FluentIcons.leaf_one_24_regular,
-                  color: Colors.green.shade400,
                   onChanged: ref
                       .read(networkSettingsProvider.notifier)
                       .setEnableTlsFragment,
@@ -208,7 +214,6 @@ class QuickSettingsModal extends ConsumerWidget {
                 _SettingTile(
                   label: t.config.allAdvancedOptions,
                   icon: FluentIcons.settings_24_regular,
-                  color: Colors.blue.shade400,
                   onTap: () => _pushConfigOptions(context),
                 ),
               ],
@@ -232,7 +237,6 @@ class _SettingTile extends StatelessWidget {
     required this.label,
     this.value,
     required this.icon,
-    required this.color,
     this.trailingText,
     this.onChanged,
     this.onTap,
@@ -241,7 +245,6 @@ class _SettingTile extends StatelessWidget {
   final String label;
   final bool? value;
   final IconData icon;
-  final Color color;
 
   /// 尾部的状态文字（例如 WARP 未授权时的「未配置」），显示在箭头之前。
   final String? trailingText;
@@ -285,72 +288,90 @@ class _SettingTile extends StatelessWidget {
     final theme = Theme.of(context);
     final status = trailingText;
     final hasSwitch = onChanged != null && value != null;
-    return GestureDetector(
-      onTap: onTap ?? (onChanged != null ? () => onChanged!(!value!) : null),
-      child: Container(
-        constraints: const BoxConstraints(minHeight: 56),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: theme.aiUi.softBackgroundColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: theme.aiUi.borderColor),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final inline =
-                status != null &&
-                !hasSwitch &&
-                _statusFitsBesideLabel(context, constraints.maxWidth);
-            final stacked = status != null && !hasSwitch && !inline;
-            final statusStyle = TextStyle(
-              fontSize: 12,
-              color: theme.aiUi.secondaryTextColor,
-            );
-            return Row(
-              children: [
-                Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(icon, color: color, size: 16),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(label, style: _labelStyle),
-                      if (stacked) ...[
-                        const SizedBox(height: 2),
+    // 整行是一个语义节点：开关行读作「标题、开关、已开启/已关闭」，点哪都能切；
+    // 入口行读作按钮。不合并的话读屏会把标题、开关、箭头拆成三四个焦点。
+    return MergeSemantics(
+      child: Semantics(
+        button: !hasSwitch,
+        child: GestureDetector(
+          // 开关行的点击语义交给里面的 Switch，免得同一动作暴露两次。
+          excludeFromSemantics: hasSwitch,
+          onTap:
+              onTap ?? (onChanged != null ? () => onChanged!(!value!) : null),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 56),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: theme.aiUi.softBackgroundColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.aiUi.borderColor),
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final inline =
+                    status != null &&
+                    !hasSwitch &&
+                    _statusFitsBesideLabel(context, constraints.maxWidth);
+                final stacked = status != null && !hasSwitch && !inline;
+                final statusStyle = TextStyle(
+                  fontSize: 12,
+                  color: theme.aiUi.secondaryTextColor,
+                );
+                return Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        // 图标统一用品牌 primary 的低饱和底：绿/橙/红只留给状态。
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        icon,
+                        color: theme.colorScheme.primary,
+                        size: 16,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(label, style: _labelStyle),
+                          if (stacked) ...[
+                            const SizedBox(height: 2),
+                            Text(status, style: statusStyle),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (hasSwitch)
+                      SizedBox(
+                        height: 32,
+                        child: Switch.adaptive(
+                          value: value!,
+                          onChanged: onChanged,
+                        ),
+                      )
+                    else ...[
+                      if (inline) ...[
+                        const SizedBox(width: 8),
                         Text(status, style: statusStyle),
+                        const SizedBox(width: 4),
                       ],
+                      Icon(
+                        FluentIcons.chevron_right_24_regular,
+                        size: 16,
+                        color: theme.aiUi.secondaryTextColor,
+                      ),
                     ],
-                  ),
-                ),
-                if (hasSwitch)
-                  SizedBox(
-                    height: 32,
-                    child: Switch.adaptive(value: value!, onChanged: onChanged),
-                  )
-                else ...[
-                  if (inline) ...[
-                    const SizedBox(width: 8),
-                    Text(status, style: statusStyle),
-                    const SizedBox(width: 4),
                   ],
-                  Icon(
-                    FluentIcons.chevron_right_24_regular,
-                    size: 16,
-                    color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
-                  ),
-                ],
-              ],
-            );
-          },
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

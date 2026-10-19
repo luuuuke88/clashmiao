@@ -317,9 +317,7 @@ Future<(Widget, ProviderContainer)> _hostForEgressRace({
 }
 
 void main() {
-  testWidgets('HomePage renders package version and remote update entry', (
-    tester,
-  ) async {
+  testWidgets('HomePage 页头不再带版本号，保留远程订阅更新入口与页头按钮提示', (tester) async {
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -342,7 +340,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('ClashMiao'), findsWidgets);
-    expect(find.text('V1.2.3'), findsOneWidget);
+    // 版本号已从首页页头移除（「关于」页里有）。
+    expect(find.text('V1.2.3'), findsNothing);
+    expect(find.textContaining('1.2.3'), findsNothing);
+    // 页头两颗圆按钮的提示走 i18n（简中）。
+    expect(find.byTooltip('快速设置'), findsOneWidget);
+    expect(find.byTooltip('新的配置文件'), findsOneWidget);
     expect(find.text('ClashMiao Pro'), findsOneWidget);
     expect(find.byTooltip('更新配置文件'), findsOneWidget);
   });

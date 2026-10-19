@@ -339,6 +339,54 @@ void main() {
       autoCheck: false,
     );
 
+    _sim('重放未确认时点击检测：只记下点击（显示检测中），确认后才查询，并给出重放后的出口', (fa, c, ctl, s) {
+      ctl.set(_conn(replayPending: true));
+      fa.flushMicrotasks();
+      expect(_state(c).status, EgressIpStatus.idle);
+
+      var done = false;
+      c
+          .read(egressIpProbeProvider.notifier)
+          .checkNow()
+          .then((_) => done = true);
+      fa.elapse(const Duration(seconds: 10));
+
+      expect(s.callTimes, isEmpty, reason: '手动入口也不能绕过重放确认');
+      expect(_state(c).status, EgressIpStatus.checking, reason: '点击有反馈');
+      expect(done, isFalse);
+
+      // 重放确认：排队的点击执行；自动探测不再重复发起第二轮。
+      ctl.set(_conn(replayPending: false));
+      fa.flushMicrotasks();
+      expect(s.callTimes, hasLength(1));
+      expect(_state(c), const EgressIpState(EgressIpStatus.success, _fresh));
+      fa.elapse(const Duration(seconds: 30));
+      expect(s.callTimes, hasLength(1), reason: '手动已查过，确认后不再追加自动查询');
+      expect(done, isTrue);
+    }, results: [() => _fresh]);
+
+    _sim('重放未确认时点击后连接换了 attempt：排队的点击作废，不用旧点击去查新连接', (fa, c, ctl, s) {
+      ctl.set(_conn(replayPending: true));
+      fa.flushMicrotasks();
+      var done = false;
+      c
+          .read(egressIpProbeProvider.notifier)
+          .checkNow()
+          .then((_) => done = true);
+      fa.flushMicrotasks();
+      expect(_state(c).status, EgressIpStatus.checking);
+
+      ctl.set(_conn(attempt: 2, replayPending: true));
+      fa.flushMicrotasks();
+      expect(done, isTrue, reason: '作废的点击要放行等待它的调用方');
+      expect(_state(c).status, EgressIpStatus.idle);
+
+      ctl.set(_conn(attempt: 2, replayPending: false));
+      fa.flushMicrotasks();
+      // 自动检测开着：新 attempt 确认后走自动查询，只有一次。
+      expect(s.callTimes, hasLength(1));
+    }, results: [() => _fresh]);
+
     _sim('未连接时手动查询无效', (fa, c, ctl, s) {
       ctl.set(_conn(phase: ConnectionPhase.disconnected));
       c.read(egressIpProbeProvider.notifier).checkNow();

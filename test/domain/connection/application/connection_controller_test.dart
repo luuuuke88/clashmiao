@@ -9,6 +9,7 @@ import 'package:clashmiao/core/store_review/store_review_service.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
+import 'package:clashmiao/domain/connection/application/connection_timing.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
@@ -71,7 +72,12 @@ class _FakeLauncher extends ConnectionLauncher {
   }
 
   @override
-  Future<void> accepted(int id, LaunchSpec spec) async => accepts.add(id);
+  Future<void> accepted(
+    int id,
+    LaunchSpec spec, {
+    required String epoch,
+    required int seq,
+  }) async => accepts.add(id);
 
   @override
   Future<void> discard(int id) async => discards.add(id);
@@ -97,6 +103,35 @@ class _FakeReview extends StoreReviewService {
   Future<void> maybeRequestReview() async => calls++;
 }
 
+/// 可悬停的脏标记持久化：真实写 prefs，但 mark / clear 之前各自可以等一个
+/// Completer，用来在「持久化尚未完成」的窗口里构造交错。
+class _GatedDirtyStore implements SystemProxyDirtyStore {
+  _GatedDirtyStore(this._prefs);
+
+  final SharedPreferences _prefs;
+  Completer<void>? markGate;
+  Completer<void>? clearGate;
+  final List<String> log = [];
+
+  @override
+  Future<void> mark() async {
+    log.add('mark:start');
+    final g = markGate;
+    if (g != null) await g.future;
+    await markSystemProxyDirty(_prefs);
+    log.add('mark:done');
+  }
+
+  @override
+  Future<void> clear() async {
+    log.add('clear:start');
+    final g = clearGate;
+    if (g != null) await g.future;
+    await clearSystemProxyDirty(_prefs);
+    log.add('clear:done');
+  }
+}
+
 /// 一个跑在 fake_async 里的完整环境：真实控制器 + 状态机，假端口 / 假 launcher。
 class _Env {
   _Env._(
@@ -104,8 +139,12 @@ class _Env {
     this.prefs, {
     required bool desktop,
     required bool analytics,
+    required bool holdProfile,
+    required bool gateDirty,
   }) {
     final clk = fa.getClock(DateTime.utc(2026, 1, 1, 12));
+    if (holdProfile) profileGate = Completer<void>();
+    if (gateDirty) dirtyStore = _GatedDirtyStore(prefs);
     port = FakeKernelPort();
     container = ProviderContainer(
       overrides: [
@@ -121,7 +160,14 @@ class _Env {
           (ref) => review = _FakeReview(ref),
         ),
         fatalFailureReporterProvider.overrideWithValue(reported.add),
-        activeProfileProvider.overrideWith((ref) async => _activeProfile(ref)),
+        activeProfileProvider.overrideWith((ref) async {
+          final p = _activeProfile(ref);
+          final gate = profileGate;
+          if (gate != null) await gate.future;
+          return p;
+        }),
+        if (dirtyStore != null)
+          systemProxyDirtyStoreProvider.overrideWithValue(dirtyStore!),
       ],
     );
     container.read(sharedPreferencesProvider);
@@ -150,6 +196,12 @@ class _Env {
 
   final FakeAsync fa;
   final SharedPreferences prefs;
+
+  /// 非空时激活订阅的加载悬停在它上面（模拟订阅晚于内核快照到达）。
+  Completer<void>? profileGate;
+
+  /// 非空时系统代理脏标记的持久化可被悬停。
+  _GatedDirtyStore? dirtyStore;
   late final FakeKernelPort port;
   late final ProviderContainer container;
   late final ConnectionController ctl;
@@ -259,13 +311,22 @@ void _sim(
   void Function(_Env e) body, {
   bool desktop = false,
   bool analytics = false,
+  bool holdProfile = false,
+  bool gateDirty = false,
   Map<String, Object> prefs = const {},
 }) {
   test(name, () async {
     SharedPreferences.setMockInitialValues(prefs);
     final p = await SharedPreferences.getInstance();
     fakeAsync((fa) {
-      final e = _Env._(fa, p, desktop: desktop, analytics: analytics);
+      final e = _Env._(
+        fa,
+        p,
+        desktop: desktop,
+        analytics: analytics,
+        holdProfile: holdProfile,
+        gateDirty: gateDirty,
+      );
       try {
         body(e);
       } finally {
@@ -753,6 +814,60 @@ void main() {
       );
       expect(e.port.acknowledged, [3]);
     }, prefs: stored({'proxy': 'old'}));
+
+    _sim(
+      '内核快照先于激活订阅到达：等订阅就绪后才重放，绝不确认「空重放」',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+
+        // 快照先到：订阅仍在加载（profileGate 悬停）。
+        e.kernelStarted(e.requests.single, attempt: 1, replay: true);
+        e.rebuild();
+        expect(e.port.acknowledged, isEmpty, reason: '订阅没就绪，存储还是空的：不能确认');
+        expect(e.port.selectCalls, isEmpty);
+
+        // 订阅就绪：存储按订阅 p1 读出手选，重放并确认。
+        e.profileGate!.complete();
+        e.rebuild();
+
+        expect(e.port.selectCalls, [
+          (group: 'proxy', tag: 'hk', expectedAttempt: 1),
+        ]);
+        expect(e.port.acknowledged, [1]);
+      },
+      holdProfile: true,
+      prefs: stored({'proxy': 'hk'}),
+    );
+
+    _sim(
+      '等订阅期间内核换了新 attempt：旧目标作废，不重放也不确认旧 attempt',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        final r = e.requests.single;
+        e.kernelStarted(r, attempt: 1, replay: true);
+        e.rebuild();
+        // 等订阅期间网络切换触发重载：attempt 2 起来，同样需要重放。
+        e.kernelStarted(r, attempt: 2, replay: true);
+        e.rebuild();
+        expect(e.port.acknowledged, isEmpty);
+
+        e.profileGate!.complete();
+        e.rebuild();
+
+        expect(
+          e.port.selectCalls.map((c) => c.expectedAttempt),
+          [2],
+          reason: 'attempt 1 的重放已过期，只为当前 attempt 重放',
+        );
+        expect(e.port.acknowledged, [2], reason: '不得确认已过期的 attempt 1');
+      },
+      holdProfile: true,
+      prefs: stored({'proxy': 'hk'}),
+    );
   });
 
   group('失联与超时（Tick 由控制器按 nextWake 安排）', () {
@@ -796,6 +911,124 @@ void main() {
       e.settle();
 
       expect(e.port.currentCalls, greaterThan(syncs));
+    });
+
+    // 失联后点击 = 先重新同步、拿到有效基线之后才发送最新意图。用 Completer 悬停
+    // current()，逐条钉住「发送时机 / 请求内容 / 最终 outcome」三件事。
+    /// 已连接 → 状态流失联 10 s（nativeUnresponsive）→ 用户点击；current() 悬停。
+    ({Completer<void> gate, List<RequestOutcome> out}) lostThenTap(_Env e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.kernelStarted(e.requests.single);
+      expect(e.requests, hasLength(1));
+      e.port.pushLink(KernelLink.lost);
+      e.fa.elapse(const Duration(seconds: 11));
+      expect(e.view.failure, const NativeUnresponsive());
+
+      final gate = Completer<void>();
+      e.port.currentGate = gate;
+      final before = e.port.currentCalls;
+      final out = e.track(e.ctl.toggle());
+      e.settle();
+      expect(e.port.currentCalls, before + 1, reason: '点击立即发起重新同步');
+      return (gate: gate, out: out);
+    }
+
+    _sim('重同步成功：完成前不发送；完成后以取回的新基线分配 seq 并发送，最终 succeeded', (e) {
+      final (:gate, :out) = lostThenTap(e);
+      // 失联期间别人（磁贴）把 appliedSeq 推进到 5：只有重同步能带回这份基线。
+      e.port.currentResult = FakeKernelPort.snap(
+        version: 100,
+        status: KernelStatus.started,
+        attempt: 1,
+        desired: Desired.on,
+        source: DesiredSource.tile,
+        appliedSeq: 5,
+        activeConfigRevision: 1,
+      );
+
+      e.fa.elapse(const Duration(seconds: 1));
+      expect(e.requests, hasLength(1), reason: '重同步没完成：不得发送');
+
+      gate.complete();
+      e.settle();
+
+      expect(e.requests, hasLength(2));
+      final r = e.requests.last;
+      expect(r.seq, 6, reason: '用重同步取回的 appliedSeq(5)+1 作为序号');
+      expect(r.desired, Desired.on);
+      expect(r.epoch, 'e1');
+      expect(r.launch, isNotNull);
+      expect(out, isEmpty);
+
+      e.port.push(
+        FakeKernelPort.snap(
+          version: 101, // 必须新于重同步取回的基线（version 100）
+          status: KernelStatus.started,
+          attempt: 1,
+          desired: Desired.on,
+          source: DesiredSource.app,
+          appliedSeq: 6,
+          activeConfigRevision: 1,
+        ),
+      );
+      e.settle();
+      expect(out, [const RequestSucceeded()]);
+      expect(e.view.failure, isNull);
+    });
+
+    _sim('重同步失败：一直不发送；重试次数有界；最终 failed(nativeUnresponsive)', (e) {
+      final (:gate, :out) = lostThenTap(e);
+      e.port.currentError = const KernelPortException('timeout', 'x');
+
+      gate.complete();
+      e.settle();
+      expect(e.requests, hasLength(1), reason: '重同步失败：仍不得发送');
+      expect(out, isEmpty, reason: '还在重试');
+
+      e.fa.elapse(const Duration(seconds: 30));
+
+      expect(e.requests, hasLength(1), reason: '从未发送过任何请求');
+      expect(out, hasLength(1));
+      expect(out.single, isA<RequestFailed>());
+      expect((out.single as RequestFailed).failure, const NativeUnresponsive());
+      // 重试有界：首次 + 最多 maxResyncAttempts 次，不会无限打 current()。
+      expect(
+        e.port.currentCalls,
+        lessThanOrEqualTo(2 + ConnectionTiming.maxResyncAttempts + 1),
+      );
+    });
+
+    _sim('重同步带回新纪元（原生进程重启）：基线重设，请求发往新纪元，最终 succeeded', (e) {
+      final (:gate, :out) = lostThenTap(e);
+      e.port.currentResult = FakeKernelPort.snap(
+        epoch: 'e2',
+        version: 1,
+        status: KernelStatus.stopped,
+        attempt: 0,
+        appliedSeq: 0,
+      );
+
+      gate.complete();
+      e.settle();
+
+      expect(e.requests, hasLength(2));
+      final r = e.requests.last;
+      expect(r.epoch, 'e2', reason: '请求必须发往新纪元，而不是失联前的 e1');
+      expect(r.seq, 1, reason: '新纪元从 appliedSeq(0)+1 开始');
+      expect(r.desired, Desired.on);
+
+      e.push(
+        epoch: 'e2',
+        status: KernelStatus.started,
+        attempt: 1,
+        desired: Desired.on,
+        source: DesiredSource.app,
+        appliedSeq: 1,
+        revision: 1,
+      );
+      expect(out, [const RequestSucceeded()]);
     });
 
     _sim('请求已发出但快照 5 s 追不上：控制器执行重新同步', (e) {
@@ -953,6 +1186,83 @@ void main() {
       expect(out.single, isA<RequestFailed>());
       expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
     }, desktop: true);
+
+    _sim(
+      '旧断开的清标记悬停期间用户重新连接：新连接的标记不得被迟到的清理删掉',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.kernelStarted(e.requests.single);
+        expect(e.prefs.getBool(kSystemProxyDirtyKey), isTrue);
+
+        // 断开：内核停止后，清标记的持久化悬停在 Completer 上。
+        final store = e.dirtyStore!;
+        final clearGate = Completer<void>();
+        store.clearGate = clearGate;
+        final out = e.track(e.ctl.disconnect());
+        e.kernelStopped(e.requests.last);
+        expect(store.log, ['mark:start', 'mark:done', 'clear:start']);
+        expect(out, isEmpty, reason: '清标记没落盘，断开请求还不放行');
+
+        // 清标记悬停期间，用户重新连接：置新标记的写入必须排在旧清理之后。
+        e.ctl.connect();
+        e.settle();
+        expect(e.requests.where((r) => r.desired == Desired.on), hasLength(1));
+        expect(
+          e.requests.last.desired,
+          Desired.off,
+          reason: '新的 on 要等标记落盘才发送，而标记排在悬停的清理之后',
+        );
+
+        clearGate.complete();
+        e.settle();
+
+        expect(out, [const RequestSucceeded()]);
+        expect(store.log, [
+          'mark:start',
+          'mark:done',
+          'clear:start',
+          'clear:done',
+          'mark:start',
+          'mark:done',
+        ], reason: 'mark / clear 严格按序串行');
+        expect(
+          e.prefs.getBool(kSystemProxyDirtyKey),
+          isTrue,
+          reason: '迟到的旧清理没有清掉新标记',
+        );
+        expect(
+          e.requests.where((r) => r.desired == Desired.on),
+          hasLength(2),
+          reason: '标记落盘后新的 on 才发出',
+        );
+      },
+      desktop: true,
+      gateDirty: true,
+    );
+
+    _sim(
+      '清标记只有一个入口：同一次断开不会重复清（效果清理之后 disconnect 收尾不再清第二次）',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.kernelStarted(e.requests.single);
+
+        final out = e.track(e.ctl.disconnect());
+        e.kernelStopped(e.requests.last);
+
+        expect(out, [const RequestSucceeded()]);
+        expect(
+          e.dirtyStore!.log.where((l) => l == 'clear:start'),
+          hasLength(1),
+          reason: '效果清理与 disconnect 收尾合并为一次',
+        );
+      },
+      desktop: true,
+      gateDirty: true,
+    );
   });
 
   group('设置变更触发重新应用（防抖 + 提示）', () {
@@ -1084,6 +1394,61 @@ void main() {
       e.rebuild();
 
       expect(e.requests, isEmpty);
+    });
+
+    _sim('resolving 期间（首个快照前）连接意图已准备好，此时删除激活订阅 → 不发送旧订阅的 on', (e) {
+      // 内核还没有任何快照：意图已记录并准备完毕，但 phase 仍是 resolving。
+      final out = e.track(e.ctl.connect());
+      expect(e.phase, ConnectionPhase.resolving);
+      expect(e.launcher.prepared, [1], reason: '前提：准备已完成，只等首个快照');
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = null;
+      e.rebuild();
+
+      e.push(); // 首个快照：已停止
+      e.settle();
+      expect(
+        e.requests.where((r) => r.desired == Desired.on),
+        isEmpty,
+        reason: '旧订阅产物不能在首个快照到达后被发出去',
+      );
+      expect(out.single, isA<RequestSuperseded>());
+      expect(e.requests.map((r) => r.desired), [
+        Desired.off,
+      ], reason: '用户意图现在是「断开」：只发断开');
+    });
+
+    _sim('resolving 期间连接意图已准备好，此时切换激活订阅 → 以新订阅的产物发送', (e) {
+      e.ctl.connect();
+      e.settle();
+      expect(e.phase, ConnectionPhase.resolving);
+      expect(e.launcher.prepared, [1]);
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      expect(e.launcher.prepared, [1, 2], reason: '切换订阅 = 重新应用配置，重新准备');
+
+      e.push();
+      e.settle();
+
+      final ons = e.requests.where((r) => r.desired == Desired.on).toList();
+      expect(ons, hasLength(1), reason: '只发新订阅那一份');
+      expect(e.launcher.bound.single.id, 2);
+      expect(e.launcher.discards, contains(1), reason: '旧订阅的产物被丢弃');
+    });
+
+    _sim('resolving 期间用户已经点了断开，随后订阅变化：不能反过来把连接顶起来', (e) {
+      e.ctl.connect();
+      e.settle();
+      e.ctl.disconnect();
+      e.settle();
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.push();
+      e.settle();
+
+      expect(e.requests.where((r) => r.desired == Desired.on), isEmpty);
     });
 
     _sim('冷启动首次读到激活订阅不算「变化」', (e) {

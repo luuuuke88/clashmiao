@@ -87,6 +87,38 @@ Desired toggleTarget(ConnectionSnapshot s) {
   }
 }
 
+// ============ 系统代理脏标记存储 ============
+
+/// 「系统代理由我们设着」脏标记的持久化。抽成可覆盖的 provider：生产写
+/// SharedPreferences；测试里换成可悬停的替身，才能在「持久化尚未完成」的窗口
+/// 里构造交错。
+abstract class SystemProxyDirtyStore {
+  Future<void> mark();
+  Future<void> clear();
+}
+
+class _PrefsDirtyStore implements SystemProxyDirtyStore {
+  _PrefsDirtyStore(this._ref);
+
+  final Ref _ref;
+
+  @override
+  Future<void> mark() async {
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await markSystemProxyDirty(prefs);
+  }
+
+  @override
+  Future<void> clear() async {
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await clearSystemProxyDirty(prefs);
+  }
+}
+
+final systemProxyDirtyStoreProvider = Provider<SystemProxyDirtyStore>(
+  _PrefsDirtyStore.new,
+);
+
 // ============ Connection Controller ============
 
 class ConnectionController extends StateNotifier<ConnectionSnapshot> {
@@ -140,8 +172,18 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 上一个用户意图（用于原生失联时「重发最新意图」）。
   Desired? _lastIntent;
 
-  /// 待完成的「置系统代理脏标记」：发送 on 请求前必须先落盘。
-  Future<void> _dirty = Future<void>.value();
+  /// 系统代理脏标记的所有读写操作按序串行（mark / clear 一条队列）。发送 on
+  /// 请求前要等它排空，保证标记先落盘。
+  Future<void> _dirtyChain = Future<void>.value();
+
+  /// 脏标记代际：每次**决定**置标记（发送 on 请求的那一刻）+1。清理在决定时
+  /// 记下当时的代际，执行时若代际已前进（期间有新连接置了标记）就放弃——
+  /// 迟到的旧断开不能清掉新连接的标记。
+  int _markGen = 0;
+
+  /// 已经为哪一代标记安排过清理：同一代只清一次（效果清理与 `disconnect`
+  /// 收尾共用同一个入口，后到的那次直接并入）。
+  int _clearedForGen = -1;
 
   ConnectionLauncher get _launcher => _ref.read(connectionLauncherProvider);
 
@@ -154,8 +196,11 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 断开。成功（内核确认已停止）时清系统代理脏标记；失败/被中断时不清，让
   /// 下次启动的自愈去处理残留。
   Future<RequestOutcome> disconnect() async {
+    // 这次断开「看到的」脏标记代际：清标记只对它有效，之后若有新的连接置了
+    // 标记，迟到的清理必须让位（见 [_clearSystemProxyDirty]）。
+    final gen = _markGen;
     final outcome = await _submit(Desired.off, RequestReason.userDisconnect);
-    if (outcome is RequestSucceeded) await _clearSystemProxyDirty();
+    if (outcome is RequestSucceeded) await _clearSystemProxyDirty(gen);
     return outcome;
   }
 
@@ -183,13 +228,19 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 当前连接阶段（供 provider 体内的监听器读取）。
   ConnectionPhase get phase => state.phase;
 
-  /// 当前是否有「想保持连接」的会话：connected / connecting / reconnecting。
-  bool get _wantsConnection => switch (state.phase) {
-    ConnectionPhase.connected ||
-    ConnectionPhase.connecting ||
-    ConnectionPhase.reconnecting => true,
-    _ => false,
-  };
+  /// 当前是否「想保持连接」。以状态机里**最新的未终结意图**为准——包括首个
+  /// 快照到达前（resolving）已经记录、甚至已经准备好的连接意图；没有未终结
+  /// 意图时，才看快照派生的阶段（connected / connecting / reconnecting）。
+  bool get _wantsConnection {
+    final pending = _mstate.latestRequest;
+    if (pending != null) return pending.desired == Desired.on;
+    return switch (state.phase) {
+      ConnectionPhase.connected ||
+      ConnectionPhase.connecting ||
+      ConnectionPhase.reconnecting => true,
+      _ => false,
+    };
+  }
 
   /// 激活订阅变化（由 [connectionControllerProvider] 的监听器调用）。
   /// - 连接中/已连接时激活订阅被删光（变为 null）→ 断开；
@@ -235,6 +286,10 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     _mstate = t.state;
     state = t.snapshot;
     _rearm(t.nextWake);
+    if (e is SnapshotReceived) {
+      final accepted = _mstate.snapshot;
+      if (accepted != null) unawaited(_launcher.observe(accepted));
+    }
     _execute(t.actions);
   }
 
@@ -332,9 +387,12 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
 
   Future<void> _send(int id, DesiredRequest request) async {
     // 先等系统代理脏标记落盘：一旦请求启动，内核就可能已经改了系统代理。
-    try {
-      await _dirty;
-    } catch (_) {}
+    // （循环：等待期间排进来的新操作也要一并等完。）
+    Future<void> tail;
+    do {
+      tail = _dirtyChain;
+      await tail;
+    } while (!identical(tail, _dirtyChain));
 
     var req = request;
     final launch = request.launch;
@@ -364,7 +422,9 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       return;
     }
     if (receipt.accepted && req.launch != null) {
-      unawaited(_launcher.accepted(id, req.launch!));
+      unawaited(
+        _launcher.accepted(id, req.launch!, epoch: req.epoch, seq: req.seq),
+      );
     }
     _dispatch(ReceiptReceived(id: id, receipt: receipt, now: _now()));
   }
@@ -389,12 +449,11 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         case SideEffectKind.hapticMedium:
           await _ref.read(hapticServiceProvider).mediumImpact();
         case SideEffectKind.replaySelections:
-          await _replaySelections(effect.attempt!);
+          await _replaySelections(effect.epoch!, effect.attempt!);
         case SideEffectKind.markSystemProxyDirty:
-          _dirty = _markSystemProxyDirty();
-          await _dirty;
+          await _markSystemProxyDirty();
         case SideEffectKind.clearSystemProxyDirty:
-          await _clearSystemProxyDirty();
+          await _clearSystemProxyDirty(_markGen);
         case SideEffectKind.reportFailure:
           if (_shouldReportAnalytics() && effect.failure != null) {
             _ref.read(fatalFailureReporterProvider)(effect.failure!);
@@ -405,11 +464,26 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     }
   }
 
-  /// 重放用户手选的节点（spec §10.7）：每一项发送前都读存储里的最新值；发送后
-  /// 若存储里的值又变了（用户在重放期间改了选择），继续发最新值，直到收敛。
-  /// stale（内核已换新 attempt）立即放弃且不确认——新 attempt 会触发自己的
-  /// 重放。单项失败只记日志；最后（含有失败项）确认重放，保证出口探测能触发。
-  Future<void> _replaySelections(int attempt) async {
+  /// 重放用户手选的节点（spec §10.7）。
+  ///
+  /// 先等激活订阅与选择存储就绪——内核快照可能先于订阅加载到达，此时存储还是
+  /// 空的，直接重放会确认一次「空重放」，出口探测随即用默认节点。就绪后再核对
+  /// 目标 `(epoch, attempt)` 仍是内核当前的，才开始重放。
+  ///
+  /// 每一项发送前都读存储里的最新值；发送后若存储里的值又变了（用户在重放期
+  /// 间改了选择），继续发最新值，直到收敛。stale（内核已换新 attempt）立即放弃
+  /// 且不确认——新 attempt 会触发自己的重放。单项失败只记日志；最后（含有失败
+  /// 项）确认重放，保证出口探测能触发。
+  Future<void> _replaySelections(String epoch, int attempt) async {
+    try {
+      await _ref.read(sharedPreferencesProvider.future);
+      await _ref.read(activeProfileProvider.future);
+    } catch (e) {
+      // 订阅读不出来：没有可重放的选择，照常确认，免得出口探测永远等下去。
+      debugPrint('重放手选前等待订阅就绪失败: $e');
+    }
+    if (!mounted || !_isCurrentTarget(epoch, attempt)) return;
+
     final sent = <String, String>{};
     for (var pass = 0; pass < 4; pass++) {
       var sentAny = false;
@@ -432,34 +506,61 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       }
       if (!sentAny) break;
     }
+    if (!mounted || !_isCurrentTarget(epoch, attempt)) return;
     await _port.acknowledgeReplay(attempt);
+  }
+
+  /// 状态机当前接受的内核快照是否仍是 [epoch] / [attempt] 且已启动。
+  bool _isCurrentTarget(String epoch, int attempt) {
+    final s = _mstate.snapshot;
+    return s != null &&
+        s.epoch == epoch &&
+        s.attempt == attempt &&
+        s.status == KernelStatus.started;
   }
 
   /// 置「系统代理由我们设着」的脏标记——仅在这次连接**真的会去改系统代理**时。
   /// 判定条件跟 `getDefaultConfigOptions` 里 `setSystemProxyFinal` 保持一致：
   /// 移动端不设系统代理（走 TUN），桌面端才看用户开关。多标的代价是下次启动
   /// 多跑几条只读命令，漏标则是真残留没人清。
-  Future<void> _markSystemProxyDirty() async {
-    if (!_ref.read(isDesktopPlatformProvider)) return;
-    if (!_ref.read(networkSettingsProvider).setSystemProxy) return;
-    try {
-      final prefs = await _ref.read(sharedPreferencesProvider.future);
-      await markSystemProxyDirty(prefs);
-    } catch (e) {
-      debugPrint('置系统代理脏标记失败: $e');
+  ///
+  /// 「决定置标记」这一刻同步推进代际，写入则排进串行队列。
+  Future<void> _markSystemProxyDirty() {
+    _markGen++;
+    if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
+    if (!_ref.read(networkSettingsProvider).setSystemProxy) {
+      return Future<void>.value();
     }
+    return _enqueueDirty(() async {
+      try {
+        await _ref.read(systemProxyDirtyStoreProvider).mark();
+      } catch (e) {
+        debugPrint('置系统代理脏标记失败: $e');
+      }
+    });
   }
 
-  /// 清除脏标记。只在内核确认已停止之后调用——那时 sing-box 已经走完 listener
-  /// 的 Close、还原了系统代理。
-  Future<void> _clearSystemProxyDirty() async {
-    if (!_ref.read(isDesktopPlatformProvider)) return;
-    try {
-      final prefs = await _ref.read(sharedPreferencesProvider.future);
-      await clearSystemProxyDirty(prefs);
-    } catch (e) {
-      debugPrint('清除系统代理脏标记失败: $e');
-    }
+  /// 清除脏标记的**唯一入口**。只在内核确认已停止之后调用——那时 sing-box 已经
+  /// 走完 listener 的 Close、还原了系统代理。[decidedGen] 是决定清理时的脏标记
+  /// 代际；执行时代际已前进说明其间有新连接置了标记，这次清理作废。
+  Future<void> _clearSystemProxyDirty(int decidedGen) {
+    if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
+    if (_clearedForGen == decidedGen) return _dirtyChain;
+    _clearedForGen = decidedGen;
+    return _enqueueDirty(() async {
+      if (decidedGen != _markGen) return;
+      try {
+        await _ref.read(systemProxyDirtyStoreProvider).clear();
+      } catch (e) {
+        debugPrint('清除系统代理脏标记失败: $e');
+      }
+    });
+  }
+
+  Future<void> _enqueueDirty(Future<void> Function() op) {
+    final run = _dirtyChain.then((_) => op());
+    _dirtyChain = run;
+    return run;
   }
 
   /// 设置页「数据分析」开关；prefs 还没就绪时保守按「不上报」处理。

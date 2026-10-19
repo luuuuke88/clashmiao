@@ -6,11 +6,18 @@
 // 新选择 → 旧重放继续并把旧值写回内核」的错乱；先写存储，重放自己会收敛到
 // 用户最后的选择（见控制器的重放循环）。
 //
+// 为什么按意图代际：同一 (订阅, 组) 的每次点击是一个新的「意图代际」。旧意图
+// 在 stale 之后要先去问内核权威 attempt（异步），这期间用户可能已经在新
+// attempt 里选了别的；旧意图恢复后若仍按自己捕获的节点重试，内核最终会是旧
+// 值、存储却是新值。所以重试前先确认自己仍是最新意图，否则丢弃——存储里的
+// 才是用户最后的选择，重放总是读最新存储。
+//
 // 为什么 stale 不回滚：stale 表示内核已经换了新 attempt（例如网络切换触发
 // 了重载）。新 attempt 的重放会按存储值重放这次选择，回滚反而会丢掉用户意图。
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -31,6 +38,12 @@ final class SelectionDeferred extends SelectionResult {
   const SelectionDeferred();
 }
 
+/// 在等待内核期间用户又对同一个组做了新的选择；这次选择已被更新的意图取代，
+/// 不再向内核重试（存储里是更新的值）。
+final class SelectionSuperseded extends SelectionResult {
+  const SelectionSuperseded();
+}
+
 /// 内核拒绝切换；存储已回滚到点击前的值。
 final class SelectionFailed extends SelectionResult {
   const SelectionFailed(this.code, this.message);
@@ -44,6 +57,9 @@ class ProxySelectionService {
 
   final Ref _ref;
 
+  /// 每个 (订阅, 组) 的最新意图代际。
+  final Map<(String?, String), int> _intent = {};
+
   /// 选择 [groupTag] 组里的 [outboundTag]。[expectedAttempt] 是调用方看到的
   /// 当前 attempt；原生在 attempt 不符时返回 stale 且不写入。
   Future<SelectionResult> select(
@@ -51,6 +67,12 @@ class ProxySelectionService {
     String outboundTag, {
     int? expectedAttempt,
   }) async {
+    final profileId = _ref.read(activeProfileProvider).valueOrNull?.id;
+    final key = (profileId, groupTag);
+    final gen = (_intent[key] ?? 0) + 1;
+    _intent[key] = gen;
+    bool isLatest() => _intent[key] == gen;
+
     final store = _ref.read(proxySelectionStoreProvider.notifier);
     final previous = _ref.read(proxySelectionStoreProvider)[groupTag];
     await store.persist(groupTag, outboundTag);
@@ -63,6 +85,8 @@ class ProxySelectionService {
       // 仍在运行就用它再试一次。
       try {
         final snap = await port.current();
+        // 等待期间用户有了新选择：不再用旧选择重试。
+        if (!isLatest()) return const SelectionSuperseded();
         if (snap.status == KernelStatus.started &&
             snap.attempt != expectedAttempt) {
           outcome = await _select(port, groupTag, outboundTag, snap.attempt);
@@ -78,10 +102,12 @@ class ProxySelectionService {
       case SelectStale():
         return const SelectionDeferred();
       case SelectFailed(:final code, :final message):
-        // 只在存储里仍是我们刚写的值时才回滚：期间用户又选了别的，那是更新
-        // 的意图，不能被这次失败覆盖。
+        // 只在仍是最新意图、且存储里仍是我们刚写的值时才回滚：期间用户又选了
+        // 别的，那是更新的意图，不能被这次失败覆盖。
         final now = _ref.read(proxySelectionStoreProvider)[groupTag];
-        if (now == outboundTag) await store.restore(groupTag, previous);
+        if (isLatest() && now == outboundTag) {
+          await store.restore(groupTag, previous);
+        }
         return SelectionFailed(code, message);
     }
   }

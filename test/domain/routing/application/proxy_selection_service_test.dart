@@ -159,4 +159,57 @@ void main() {
     expect(r, isA<SelectionFailed>());
     expect(store()['proxy'], 'old');
   });
+
+  test('stale 后等待权威 attempt 期间用户在新 attempt 选了别的：旧意图被丢弃，不覆盖新选择', () async {
+    // A 在旧 attempt(3) 上收到 stale；它去问内核当前 attempt 的那一步悬停。
+    port.selectResult = (_, tag, attempt) =>
+        tag == 'hk' && attempt == 3 ? const SelectStale() : const SelectOk();
+    port.push(
+      FakeKernelPort.snap(
+        version: 2,
+        status: KernelStatus.started,
+        attempt: 4,
+        desired: Desired.on,
+      ),
+    );
+    final gate = Completer<void>();
+    port.currentGate = gate;
+
+    final a = service().select('proxy', 'hk', expectedAttempt: 3);
+    await pumpEventQueue();
+    expect(port.currentCalls, 1, reason: '前提：A 正悬停在读取权威 attempt');
+
+    // 用户在新 attempt 里选了 sg，成功。
+    final b = await service().select('proxy', 'sg', expectedAttempt: 4);
+    expect(b, isA<SelectionApplied>());
+
+    gate.complete();
+    final ra = await a;
+
+    expect(ra, isA<SelectionSuperseded>());
+    expect(
+      port.selectCalls.map((c) => (c.tag, c.expectedAttempt)),
+      [('hk', 3), ('sg', 4)],
+      reason: 'A 不得再带着 hk 重试：否则内核最终是 hk、存储却是 sg',
+    );
+    expect(store()['proxy'], 'sg');
+  });
+
+  test('旧意图失败时若更新的意图选了同一个节点：不回滚', () async {
+    final gate = Completer<void>();
+    port.onSelectGate = gate;
+    var calls = 0;
+    // 第一次（旧意图）失败，第二次成功。
+    port.selectResult = (_, _, _) =>
+        ++calls == 1 ? const SelectFailed('boom') : const SelectOk();
+
+    final first = service().select('proxy', 'hk', expectedAttempt: 3);
+    await pumpEventQueue();
+    port.onSelectGate = null;
+    final second = service().select('proxy', 'hk', expectedAttempt: 3);
+    gate.complete();
+    await Future.wait([first, second]);
+
+    expect(store()['proxy'], 'hk', reason: '更新的意图也选了 hk 且成功，旧失败不能把它回滚');
+  });
 }

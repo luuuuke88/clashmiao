@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
@@ -398,18 +399,68 @@ void main() {
       expect(calls, ['disconnect', 'disconnect', 'disconnect', 'disposeTray']);
     });
 
-    test('一直 superseded：最多重发 kQuitDisconnectMaxRounds 轮，之后照常退出', () async {
+    test('superseded 超过三次也继续等最新的断开：第 5 次才成功，不能在第 3 次就带着可能在跑的内核退出', () async {
       var n = 0;
       final calls = <String>[];
       await performShutdownCleanup(
+        disconnect: () async {
+          n++;
+          return n < 5 ? const RequestSuperseded() : const RequestSucceeded();
+        },
+        disposeTray: () async => calls.add('disposeTray'),
+      );
+      expect(n, 5);
+      expect(calls, ['disposeTray']);
+    });
+
+    test('一直 superseded：到总期限为止持续重发，期限用尽后照常清托盘并返回', () async {
+      var n = 0;
+      final calls = <String>[];
+      final sw = Stopwatch()..start();
+      await performShutdownCleanup(
+        deadline: const Duration(milliseconds: 300),
         disconnect: () async {
           n++;
           return const RequestSuperseded();
         },
         disposeTray: () async => calls.add('disposeTray'),
       );
-      expect(n, kQuitDisconnectMaxRounds);
+      expect(n, greaterThan(3), reason: '期限内持续重发，而不是三轮封顶');
       expect(calls, ['disposeTray']);
+      expect(sw.elapsed, lessThan(const Duration(seconds: 3)));
+    });
+
+    test('断开悬停（Completer 不放行）：到期限放弃等待，仍清托盘退出；放弃后迟到的结果不再重发', () async {
+      final gate = Completer<RequestOutcome>();
+      var n = 0;
+      final calls = <String>[];
+      await performShutdownCleanup(
+        deadline: const Duration(milliseconds: 200),
+        disconnect: () {
+          n++;
+          return gate.future;
+        },
+        disposeTray: () async => calls.add('disposeTray'),
+      );
+      expect(n, 1);
+      expect(calls, ['disposeTray']);
+
+      // 期限已过、退出清理已完成；迟到的 superseded 不能再触发新一轮断开。
+      gate.complete(const RequestSuperseded());
+      await pumpEventQueue();
+      await Future<void>.delayed(kQuitResubmitGap * 3);
+      expect(n, 1);
+    });
+
+    test('清托盘卡住：也受总期限约束，不会把退出挂住', () async {
+      final hang = Completer<void>();
+      final sw = Stopwatch()..start();
+      await performShutdownCleanup(
+        deadline: const Duration(milliseconds: 200),
+        disconnect: () async => const RequestSucceeded(),
+        disposeTray: () => hang.future,
+      );
+      expect(sw.elapsed, lessThan(const Duration(seconds: 3)));
     });
 
     test('failed / interrupted：不重试（也不清标记——标记归控制器管），照常清理托盘退出', () async {

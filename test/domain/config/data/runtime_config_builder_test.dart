@@ -147,4 +147,62 @@ void main() {
       );
     });
   });
+
+  group('runtimeSelectorDefaults：运行时选择组默认值', () {
+    test('内核重建的主选择组 select：默认自动选择组 auto（成员 auto + 全部节点）', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {
+            'type': 'selector',
+            'tag': 'proxy',
+            'outbounds': ['hk', 'sg'],
+            'default': 'sg',
+          },
+          {
+            'type': 'urltest',
+            'tag': 'u',
+            'outbounds': ['hk', 'sg'],
+          },
+          {'type': 'vless', 'tag': 'hk'},
+          {'type': 'vless', 'tag': 'sg'},
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+      });
+      expect(d[kRuntimeMainSelectorTag], kRuntimeAutoGroupTag);
+      expect(d['proxy'], 'sg', reason: '配置里的 selector：default 字段');
+      expect(d.containsKey('u'), isFalse, reason: 'urltest 没有可还原的默认值');
+    });
+
+    test('selector 没有 default 或 default 不是成员：取 outbounds 第一项', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {
+            'type': 'selector',
+            'tag': 'a',
+            'outbounds': ['x', 'y'],
+          },
+          {
+            'type': 'selector',
+            'tag': 'b',
+            'outbounds': ['x', 'y'],
+            'default': 'gone',
+          },
+          {'type': 'selector', 'tag': 'empty', 'outbounds': <String>[]},
+        ],
+      });
+      expect(d['a'], 'x');
+      expect(d['b'], 'x');
+      expect(d.containsKey('empty'), isFalse);
+    });
+
+    test('节点带默认标记但 tag 本身不等于标记：主选择组默认值不是成员，取第一项 auto', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {'type': 'vless', 'tag': 'hk §default§'},
+          {'type': 'vless', 'tag': 'sg §hide§'},
+        ],
+      });
+      expect(d[kRuntimeMainSelectorTag], kRuntimeAutoGroupTag);
+    });
+  });
 }

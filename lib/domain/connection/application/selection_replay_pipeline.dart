@@ -6,7 +6,8 @@
 //   3. 迁移运行时不存在的分组记录（旧版本按配置文件 tag 记下的 `proxy` 等）到
 //      运行时主组——先写目标、确认落盘后才删来源，失败保留来源以便下次重试，
 //      重复执行幂等；
-//   4. 只重放运行时存在的分组（且节点在该组里）；
+//   4. 只重放运行时存在的分组（且节点在该组里）；订阅没有手选记录的选择组
+//      回到这份运行时配置的默认值（内核当前不在默认值上才发）；
 //   5. 确认重放（`acknowledgeReplay`）；出口探测在确认之后才开始（探测器只认
 //      `replayPending == false`）。
 //
@@ -79,16 +80,22 @@ class SelectionReplayPipeline {
     required bool Function(String epoch, int attempt) isCurrentInstance,
     bool Function()? ownerUnsettled,
     void Function()? beforeKernelWrite,
+    Future<Map<String, String>> Function()? selectorDefaults,
     Duration groupsWait = kReplayGroupsWait,
   }) : _ref = ref,
        _port = port,
        _isCurrentInstance = isCurrentInstance,
        _ownerUnsettled = ownerUnsettled ?? _never,
        _beforeKernelWrite = beforeKernelWrite ?? _noop,
+       _selectorDefaults = selectorDefaults ?? _noDefaults,
        _groupsWait = groupsWait;
 
   static bool _never() => false;
   static void _noop() {}
+  static Future<Map<String, String>> _noDefaults() async => const {};
+
+  /// 这个实例所跑的运行时配置的选择组默认值（选择组 tag → 默认出站）。
+  final Future<Map<String, String>> Function() _selectorDefaults;
 
   /// 每次 `selectOutbound` 之前调用：内核上的选择即将被这条流水线改动，此前
   /// 「已按某归属应用」的记录从这一刻起不再可信（调用方据此作废）。
@@ -153,20 +160,44 @@ class SelectionReplayPipeline {
       return _drop(owner, _Stage.migrate);
     }
 
+    // 运行时选择组默认值（这份运行时配置的）：订阅里没有手选记录的选择组要
+    // 回到它，不能留着上一个订阅的选择。
+    final defaults = await _selectorDefaults();
+    if (!owned()) return _drop(owner, _Stage.replay);
+    final selectorTags = [
+      for (final g in live.groups)
+        if (g.type == 'selector' && runtimeTags.contains(g.tag)) g.tag,
+    ];
+
     // 重放：每一项发送前读存储里的最新值；只发运行时存在的分组、且节点就在该组
     // 里；发送后若存储里的值又变了（用户在重放期间改了选择），继续发最新值直到
-    // 收敛。stale（内核已换新 attempt）立即放弃且不确认。
+    // 收敛。没有手选记录的选择组：内核当前选中的（实时分组）不是默认值才发默认
+    // 值；自动选择（urltest）组永远不碰。stale（内核已换新 attempt）立即放弃且
+    // 不确认。
     final sent = <String, String>{};
     for (var pass = 0; pass < 4; pass++) {
       var sentAny = false;
       final selections = _ownedSelections(owner);
       if (selections == null) return _drop(owner, _Stage.replay);
-      for (final group in selections.keys.toList()) {
+      for (final group in {...selections.keys, ...selectorTags}) {
         if (!owned()) return _drop(owner, _Stage.replay);
-        final tag = _ownedSelections(owner)?[group];
-        if (tag == null || sent[group] == tag) continue;
+        final stored = _ownedSelections(owner)?[group];
         final runtimeGroup = groupsByTag[group];
         if (runtimeGroup == null || !runtimeTags.contains(group)) continue;
+        final String tag;
+        if (stored != null) {
+          tag = stored;
+        } else {
+          final fallback = defaults[group];
+          if (fallback == null || runtimeGroup.type != 'selector') continue;
+          tag = fallback;
+          if (sent[group] == tag) continue;
+          if (_liveSelected(owner, group) == tag) {
+            sent[group] = tag; // 内核已经在默认值上：不必调用
+            continue;
+          }
+        }
+        if (sent[group] == tag) continue;
         if (!runtimeGroup.items.any((item) => item.tag == tag)) {
           debugPrint('手选编排：[$group] 里没有节点 [$tag]，不重放');
           sent[group] = tag;
@@ -183,6 +214,8 @@ class SelectionReplayPipeline {
         if (outcome is SelectStale) return _drop(owner, _Stage.replayStale);
         if (outcome is SelectFailed) {
           debugPrint('重放手选代理失败 [$group -> $tag]: ${outcome.code}');
+        } else if (stored == null) {
+          debugPrint('手选编排：[$group] 没有手选记录，回到默认值 [$tag]');
         }
       }
       if (!sentAny) break;
@@ -269,6 +302,20 @@ class SelectionReplayPipeline {
       debugPrint('手选编排：存储写入异常（按未落盘处理）: $e');
       return false;
     }
+  }
+
+  /// 这个实例最新的实时分组里 [group] 当前选中的出站（没有则 null）。
+  String? _liveSelected(ReplayOwner owner, String group) {
+    final live = _ref.read(liveGroupsProvider).valueOrNull;
+    if (live == null ||
+        live.instance.epoch != owner.epoch ||
+        live.instance.attempt != owner.attempt) {
+      return null;
+    }
+    for (final g in live.groups) {
+      if (g.tag == group) return g.selected;
+    }
+    return null;
   }
 
   /// 归属仍有效时返回当前订阅存储里的手选，否则 null。

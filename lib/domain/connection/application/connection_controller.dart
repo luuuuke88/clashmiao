@@ -670,6 +670,16 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       // 写内核之前先作废「已应用」记录：这条流水线中途被丢弃时，内核上可能
       // 已经是它（另一个归属）的部分选择，不能再假定任何归属已应用。
       beforeKernelWrite: () => _applied = null,
+      // 这个实例所跑的运行时配置（按 revision）的选择组默认值：没有手选记录的
+      // 选择组回到它。
+      selectorDefaults: () {
+        final snap = _mstate.snapshot;
+        final revision =
+            snap != null && snap.epoch == epoch && snap.attempt == attempt
+            ? snap.activeConfigRevision
+            : null;
+        return _launcher.selectorDefaults(revision);
+      },
       groupsWait: _ref.read(replayGroupsWaitProvider),
     );
     ReplayPipelineOutcome? outcome;

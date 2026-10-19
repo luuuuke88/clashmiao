@@ -28,6 +28,7 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -283,10 +284,13 @@ class ConnectionLauncher {
   /// 把自愈刷新抛出的异常映射为连接失败；返回 null 表示「照常重读当前激活订阅
   /// 再继续」（stale / 取消 / 网络失败都属于这一类）。
   ///
-  /// TODO(C 合并): 在这里把 `StoreReadOnlyException` 映射为对应的失败（i18n
-  /// 键 `failure.profiles.readOnlyUpgrade`）。本分支还看不到持久化子项目的
-  /// 异常类型，所以暂时一律返回 null。
-  ConnectionFailure? _mapSelfHealException(Object error) => null;
+  /// 订阅存储只读（降级安装后磁盘数据版本更高）时刷新必然写不进去，重读也
+  /// 只会得到「配置不存在」这种误导性的结论：直接报类型化失败，界面提示用户
+  /// 升级 App（`failure.profiles.readOnlyUpgrade`）。
+  ConnectionFailure? _mapSelfHealException(Object error) => switch (error) {
+    StoreReadOnlyException(:final schema) => ProfileStoreReadOnly(schema),
+    _ => null,
+  };
 
   /// 请求 [id] 开始走发送路径（绑定 seq 之后）。运行时配置文件按 revision 命名、
   /// 与 seq 无关，所以这里不再改名，只把「发送中」记下来：回执处理完之前这份

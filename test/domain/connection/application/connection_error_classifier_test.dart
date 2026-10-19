@@ -154,6 +154,7 @@ void main() {
       final failures = <ConnectionFailure>[
         const NoActiveProfile(),
         const ConfigMissing(),
+        const ProfileStoreReadOnly(2),
         const CoreUnavailable(),
         const PermissionDenied(),
         const StartTimeout(),
@@ -168,6 +169,17 @@ void main() {
         expect(connectionFailureMessage(f, en), isNotEmpty, reason: '$f');
         expect(connectionFailureMessage(f, zhCn), isNotEmpty, reason: '$f');
       }
+    });
+
+    test('订阅存储只读 → 「请升级 App 后再修改订阅」，与订阅页 / 备份恢复同一条文案', () {
+      expect(
+        connectionFailureMessage(const ProfileStoreReadOnly(2), en),
+        en.failure.profiles.readOnlyUpgrade,
+      );
+      expect(
+        connectionFailureMessage(const ProfileStoreReadOnly(2), zhCn),
+        '请升级 App 后再修改订阅',
+      );
     });
 
     test('沿用既有文案：缺订阅 / 缺配置 / 核心库缺失 / VPN 授权 / 启动超时', () {

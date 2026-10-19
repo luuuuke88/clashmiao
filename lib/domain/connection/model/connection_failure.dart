@@ -59,6 +59,24 @@ final class ConfigMissing extends ConnectionFailure {
   String toString() => 'ConfigMissing';
 }
 
+/// 订阅存储处于只读模式（磁盘上的数据版本 [schema] 高于本应用支持的版本，
+/// 通常是降级安装）：缺配置时的自愈刷新无法写入，需要用户升级 App。
+final class ProfileStoreReadOnly extends ConnectionFailure {
+  const ProfileStoreReadOnly(this.schema);
+
+  final int schema;
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProfileStoreReadOnly && other.schema == schema;
+
+  @override
+  int get hashCode => Object.hash(ProfileStoreReadOnly, schema);
+
+  @override
+  String toString() => 'ProfileStoreReadOnly($schema)';
+}
+
 /// 核心库不可用（桌面 libcore 加载失败）。
 final class CoreUnavailable extends ConnectionFailure {
   const CoreUnavailable();

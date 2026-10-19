@@ -13,11 +13,16 @@
 // 3. 其它 URL：去掉 userinfo；查询串换成 `?…`、片段换成 `#…`；路径段先做宽松的
 //    百分号解码再判断像不像 token（长十六进制、UUID、长 base64、16 位以上字母
 //    数字混排、JWT），像就把**整个原始段**换成 `…`，不像就原样保留（包括原来的
-//    编码）。scheme、主机、端口保留。`file://` 不处理（堆栈帧）。
+//    编码）。scheme、主机、端口保留。`file://` 不处理（堆栈帧）。JSON 里转义成
+//    `https:\/\/host\/path` 的 URL 先还原 `\/` 再按同样规则处理，处理完再转义回去。
 // 4. 键值形式的秘密：字段名可带引号（含转义引号），分隔符 `=` 或 `:`；值分
 //    引号值（正确跳过转义引号，可含空白与分隔符）、`[...]` 列表与裸值三种解析。
 //    - 强字段（password / token / secret / api_key / uuid / authorization /
 //      cookie …，含 `obfs-password`、`access_token` 这类复合名）：任何写法都遮盖。
+//      Dart `Map.toString` 写法（`{password: hello world, other: x}`：字段名不带
+//      引号、冒号分隔、位于未闭合的 `{` 里）的值不在空白处结束，而是遮到同一
+//      嵌套层的下一个 `, ` / `}` / `]` 或行尾；值本身是 Map / List 时整块遮盖。
+//      平铺的 `key=value` 文本仍按裸值（到空白为止）处理。
 //    - 弱字段（key / auth / sid / sig / signature / pwd …）：只在结构化写法里
 //      遮盖——`key=`、带引号的字段名 `"key":`——或者值本身像凭据；
 //      `Invalid key: profiles` 这类自然语言诊断原样保留。
@@ -30,7 +35,7 @@ const String kRedacted = '…';
 
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 2;
+const int kLogRedactionVersion = 3;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -66,6 +71,12 @@ final RegExp _headerLine = RegExp(
   r'''(?<![A-Za-z0-9_\-])(\\*["']?)((?:proxy-)?authorization|set-cookie|cookie)\1[ \t]*:[ \t]*(?![\\"'\[{])([^\r\n]*)''',
   caseSensitive: false,
 );
+
+/// JSON 里转义过斜杠的 URL：`https:\/\/example.test\/sub?token=x`。
+final RegExp _escapedUrl = RegExp(
+  r'''\b[a-zA-Z][a-zA-Z0-9+.\-]*:\\/\\/[^\s"'<>]*''',
+);
+final RegExp _trailingBackslashes = RegExp(r'\\+$');
 
 final RegExp _url = RegExp(
   r'\b([a-zA-Z][a-zA-Z0-9+.\-]*)://([^\s/?#"'
@@ -150,6 +161,7 @@ String redactLogText(String input) {
     return '${m[0]!.substring(0, m[0]!.length - value.length)}$kRedacted';
   });
   out = out.replaceAllMapped(_url, _redactUrlMatch);
+  out = out.replaceAllMapped(_escapedUrl, _redactEscapedUrlMatch);
   out = _redactKeyValues(out);
   out = out.replaceAllMapped(_bearer, (m) {
     final token = m[1]!;
@@ -176,14 +188,19 @@ String _redactKeyValues(String text) {
   var resume = 0; // 已遮盖区域的末尾；落在里面的匹配跳过
   for (final m in _kvField.allMatches(text)) {
     if (m.start < resume) continue;
-    final value = _readValue(text, m.end);
+    final name = m[2]!;
+    final strong = _isStrongSecretName(name);
+    final mapEntry =
+        strong &&
+        m[1]!.isEmpty &&
+        m[3] == ':' &&
+        _insideOpenBrace(text, m.start);
+    final value = _readValue(text, m.end, mapEntry: mapEntry);
     if (value == null) continue;
     final content = text.substring(value.contentStart, value.contentEnd);
     if (content.isEmpty || content == kRedacted) continue;
-    final name = m[2]!;
     final structured = m[1]!.isNotEmpty || m[3] == '=';
-    final mask =
-        _isStrongSecretName(name) || structured || _looksLikeToken(content);
+    final mask = strong || structured || _looksLikeToken(content);
     if (!mask) continue;
     (out ??= StringBuffer())
       ..write(text.substring(copied, value.contentStart))
@@ -202,7 +219,8 @@ typedef _Value = ({int contentStart, int contentEnd, int end});
 
 const _bareTerminators = ' \t\r\n&,;}])"\'<>';
 
-_Value? _readValue(String text, int start) {
+/// [mapEntry]：Dart `Map.toString` 写法里强字段的值，按 [_readMapValue] 读。
+_Value? _readValue(String text, int start, {bool mapEntry = false}) {
   if (start >= text.length) return null;
 
   // 引号值：开头可以有转义反斜杠（嵌在另一个字符串里的 JSON：`\"x\"`）。
@@ -216,6 +234,8 @@ _Value? _readValue(String text, int start) {
       return _readQuoted(text, quoteAt + 1, q, quoteAt - start);
     }
   }
+
+  if (mapEntry) return _readMapValue(text, start);
 
   final first = text[start];
   if (first == '{') return null; // 嵌套对象：里面的字段各自匹配
@@ -266,6 +286,59 @@ _Value _readQuoted(String text, int contentStart, String q, int depth) {
   );
 }
 
+/// Dart `Map.toString` 里一项的值：到同一嵌套层的下一个 `, ` / `}` / `]`，或
+/// 行尾为止；值里的冒号、空白、嵌套的 Map / List 都算值的一部分，反斜杠转义
+/// 的字符跳过。末尾空白不算。
+_Value? _readMapValue(String text, int start) {
+  var depth = 0;
+  var k = start;
+  scan:
+  while (k < text.length) {
+    switch (text[k]) {
+      case '\n' || '\r':
+        break scan;
+      case '\\':
+        final next = k + 1 < text.length ? text[k + 1] : '\n';
+        if (next == '\n' || next == '\r') break scan;
+        k += 2;
+        continue scan;
+      case '{' || '[' || '(':
+        depth++;
+      case '}' || ']' || ')':
+        if (depth == 0) break scan;
+        depth--;
+      case ',':
+        if (depth == 0 && k + 1 < text.length && text[k + 1] == ' ') {
+          break scan;
+        }
+    }
+    k++;
+  }
+  var end = k;
+  while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t')) {
+    end--;
+  }
+  if (end == start) return null;
+  return (contentStart: start, contentEnd: end, end: end);
+}
+
+/// [index] 之前、同一行内是否有还没闭合的 `{`（即位于 Map / Set 打印里）。
+bool _insideOpenBrace(String text, int index) {
+  var closed = 0;
+  for (var k = index - 1; k >= 0; k--) {
+    switch (text[k]) {
+      case '\n' || '\r':
+        return false;
+      case '}':
+        closed++;
+      case '{':
+        if (closed == 0) return true;
+        closed--;
+    }
+  }
+  return false;
+}
+
 int _endOfLine(String text, int from) {
   for (var k = from; k < text.length; k++) {
     final c = text[k];
@@ -284,6 +357,24 @@ int _lineIndexOf(String text, String char, int from) {
 }
 
 // ─── URL ──────────────────────────────────────────────────────────────
+
+/// 转义过斜杠的 URL：还原 `\/`，按普通 URL 与分享链接的规则处理，再把 `/`
+/// 转义回去。末尾的反斜杠（属于后面的 `\"`）原样留在外面。
+String _redactEscapedUrlMatch(Match m) {
+  var whole = m[0]!;
+  var tail = '';
+  final trailing = _trailingBackslashes.firstMatch(whole);
+  if (trailing != null) {
+    tail = trailing[0]!;
+    whole = whole.substring(0, trailing.start);
+  }
+  final plain = whole.replaceAll(r'\/', '/');
+  final redacted = plain
+      .replaceAllMapped(_shareLink, (s) => '${s[1]}://$kRedacted')
+      .replaceAllMapped(_url, _redactUrlMatch);
+  if (redacted == plain) return m[0]!;
+  return '${redacted.replaceAll('/', r'\/')}$tail';
+}
 
 String _redactUrlMatch(Match m) {
   final whole = m[0]!;

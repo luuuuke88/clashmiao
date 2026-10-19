@@ -32,9 +32,13 @@ final restoreExtraInvalidationsProvider = Provider<List<ProviderOrFamily>>(
 /// 恢复成功（或回滚）之后，让界面与各 provider 立刻反映磁盘上的新状态。
 ///
 /// 顺序（spec §10.4 ⑥）：先失效各偏好类 provider 与订阅相关 provider；主动读取
-/// 并等待订阅列表、激活订阅就绪；最后才失效并重读网络设置——连接控制器监听
-/// 网络设置变化，已连接时由它去抖后重连一次，此刻订阅与激活都已是最终状态，
-/// 不会在中间态上重连。
+/// 并等待订阅列表、激活订阅就绪；最后才失效并重读网络设置。
+///
+/// 恢复期间（拿到互斥到界面刷新完成）连接控制器的「配置变更 → 重新应用」是
+/// 暂停的（[ConnectionController.pauseConfigChanges]）：恢复开始前已排队的
+/// 防抖重新应用被取消，期间的网络设置 / 激活订阅变化只记下；暂停释放时按最终
+/// 状态至多处理一次（激活订阅没了 → 断开，否则重新应用一次），绝不在中间态上
+/// 重载内核。
 class RestoreRefresher {
   RestoreRefresher({
     required this.container,
@@ -42,17 +46,21 @@ class RestoreRefresher {
     Future<void> Function(String profileId)? fetchProfile,
     String? Function()? activeProfileId,
     Future<void> Function()? reconnectIfConnected,
+    ConfigChangePause? Function()? pauseConfigChanges,
   }) : _extra = extraInvalidations,
        _fetchProfile = fetchProfile ?? _defaultFetch(container),
        _activeProfileId = activeProfileId ?? _defaultActiveId(container),
        _reconnectIfConnected =
-           reconnectIfConnected ?? _defaultReconnect(container);
+           reconnectIfConnected ?? _defaultReconnect(container),
+       _pauseConfigChanges =
+           pauseConfigChanges ?? _defaultPauseConfigChanges(container);
 
   final ProviderContainer container;
   final List<ProviderOrFamily> _extra;
   final Future<void> Function(String profileId) _fetchProfile;
   final String? Function() _activeProfileId;
   final Future<void> Function() _reconnectIfConnected;
+  final ConfigChangePause? Function() _pauseConfigChanges;
 
   static Future<void> Function(String) _defaultFetch(
     ProviderContainer container,
@@ -68,13 +76,24 @@ class RestoreRefresher {
           ?.getActive()
           ?.id;
 
-  /// 唯一接触连接控制器的地方：已连接则重连一次。连接控制器重写后（子项目 B）
-  /// 在这里接新 API 即可。
+  /// 补拉到激活订阅的新配置后：已连接 / 连接中则以新配置重新应用一次
+  /// （`applyConfig` 未连接时无副作用）。控制器还没建出来就说明没有连接可重载。
   static Future<void> Function() _defaultReconnect(
     ProviderContainer container,
   ) => () async {
-    // applyConfig 未连接时无副作用，已连接 / 连接中时以最新配置重新应用一次。
+    if (!container.exists(connectionControllerProvider)) return;
     await container.read(connectionControllerProvider.notifier).applyConfig();
+  };
+
+  /// 暂停控制器的「配置变更 → 重新应用」。控制器还没建出来时没有监听器，
+  /// 也就没有需要暂停的东西。
+  static ConfigChangePause? Function() _defaultPauseConfigChanges(
+    ProviderContainer container,
+  ) => () {
+    if (!container.exists(connectionControllerProvider)) return null;
+    return container
+        .read(connectionControllerProvider.notifier)
+        .pauseConfigChanges();
   };
 
   /// 恢复整个流程：拿到恢复互斥 → 暂停定时刷新 → [BackupEngine.restoreHoldingLock]
@@ -90,6 +109,7 @@ class RestoreRefresher {
     return engine.runExclusive(() async {
       final flag = container.read(restoreInProgressProvider.notifier);
       flag.state = true;
+      final pause = _pauseConfigChanges();
       try {
         final RestoreReport report;
         try {
@@ -99,8 +119,12 @@ class RestoreRefresher {
           rethrow;
         }
         await refresh();
+        // 先释放暂停（按最终状态至多重新应用一次），再开始后台补拉：补拉到的
+        // 激活订阅新配置由 [_reconnectIfConnected] 另行应用。
+        pause?.release();
         return RestoreOutcome(report, _startBackfill(plan.needsFetch));
       } finally {
+        pause?.release();
         flag.state = false;
       }
     });
@@ -119,6 +143,7 @@ class RestoreRefresher {
         if (!engine.hasRecoveryClue) return RecoveryOutcome.none;
         final flag = container.read(restoreInProgressProvider.notifier);
         flag.state = true;
+        final pause = _pauseConfigChanges();
         try {
           final outcome = await engine.recoverHoldingLock();
           if (outcome != RecoveryOutcome.none &&
@@ -127,6 +152,7 @@ class RestoreRefresher {
           }
           return outcome;
         } finally {
+          pause?.release();
           flag.state = false;
         }
       });
@@ -161,7 +187,8 @@ class RestoreRefresher {
     await container.read(profileListProvider.future);
     await container.read(activeProfileProvider.future);
 
-    // 网络设置最后：它的变化会触发（已连接时的）去抖重连。
+    // 网络设置最后。恢复期间控制器的配置变更处理是暂停的：这里的变化只记下，
+    // 由暂停释放时按最终状态统一处理（见类注释）。
     container.invalidate(networkSettingsProvider);
     container.read(networkSettingsProvider);
   }

@@ -1605,6 +1605,159 @@ void main() {
     });
   });
 
+  group('暂停配置变更（备份恢复期间）', () {
+    void connect(_Env e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.kernelStarted(e.requests.single);
+    }
+
+    Future<void> change(_Env e, int port) =>
+        e.container.read(networkSettingsProvider.notifier).setMixedPort(port);
+
+    void setActive(_Env e, String? id) {
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = id;
+      e.rebuild();
+    }
+
+    const after = Duration(milliseconds: 500);
+
+    _sim('暂停前已排队的防抖重新应用被取消，释放时按最终状态只应用一次', (e) {
+      connect(e);
+      final base = e.requests.length;
+      final nonce = e.container.read(configChangeReconnectNoticeProvider);
+
+      change(e, 3000);
+      e.settle();
+      final pause = e.ctl.pauseConfigChanges();
+      expect(e.ctl.configChangesPaused, isTrue);
+      e.fa.elapse(kConfigChangeReconnectDebounce + after);
+      expect(e.requests.length, base, reason: '暂停中：排队的那一次不能在中间态上发出');
+
+      pause.release();
+      e.settle();
+      expect(e.ctl.configChangesPaused, isFalse);
+      expect(e.requests.length - base, 1);
+      expect(e.requests.last.reason, RequestReason.applyConfig);
+      expect(e.container.read(configChangeReconnectNoticeProvider) - nonce, 1);
+
+      e.fa.elapse(kConfigChangeReconnectDebounce + after);
+      expect(e.requests.length - base, 1, reason: '释放后不再有迟到的防抖请求');
+    });
+
+    _sim('暂停期间设置与激活订阅都变了：期间零请求，释放时合并成一次 applyConfig', (e) {
+      connect(e);
+      final base = e.requests.length;
+
+      final pause = e.ctl.pauseConfigChanges();
+      change(e, 3001);
+      e.settle();
+      setActive(e, 'p2');
+      change(e, 3002);
+      e.settle();
+      e.fa.elapse(kConfigChangeReconnectDebounce + after);
+      expect(e.requests.length, base);
+
+      pause.release();
+      e.settle();
+      expect(e.requests.length - base, 1);
+      expect(e.requests.last.desired, Desired.on);
+      expect(e.requests.last.reason, RequestReason.applyConfig);
+    });
+
+    _sim('暂停期间激活订阅被清空：释放时断开（off），不是重新应用', (e) {
+      connect(e);
+      final base = e.requests.length;
+
+      final pause = e.ctl.pauseConfigChanges();
+      setActive(e, 'p2');
+      setActive(e, null);
+      change(e, 3003);
+      e.settle();
+      expect(e.requests.length, base);
+
+      pause.release();
+      e.settle();
+      expect(e.requests.length - base, 1);
+      expect(e.requests.last.desired, Desired.off);
+    });
+
+    _sim('暂停期间订阅换走又换回：最终没变，只因设置变化应用一次；什么都没变则零请求', (e) {
+      connect(e);
+      final base = e.requests.length;
+
+      var pause = e.ctl.pauseConfigChanges();
+      setActive(e, 'p2');
+      setActive(e, 'p1');
+      pause.release();
+      e.settle();
+      expect(e.requests.length, base, reason: '激活订阅最终没变、设置也没变');
+
+      pause = e.ctl.pauseConfigChanges();
+      setActive(e, 'p2');
+      setActive(e, 'p1');
+      change(e, 3004);
+      e.settle();
+      pause.release();
+      e.settle();
+      expect(e.requests.length - base, 1);
+    });
+
+    _sim('嵌套暂停：最后一个释放才处理；release 幂等', (e) {
+      connect(e);
+      final base = e.requests.length;
+
+      final outer = e.ctl.pauseConfigChanges();
+      final inner = e.ctl.pauseConfigChanges();
+      change(e, 3005);
+      e.settle();
+
+      inner.release();
+      inner.release();
+      e.settle();
+      expect(e.ctl.configChangesPaused, isTrue, reason: '重复释放内层不能顺带释放外层');
+      expect(e.requests.length, base);
+
+      outer.release();
+      e.settle();
+      expect(e.requests.length - base, 1);
+      outer.release();
+      e.settle();
+      expect(e.requests.length - base, 1);
+    });
+
+    _sim('未连接时暂停与释放：无请求、无提示', (e) {
+      e.push();
+      final nonce = e.container.read(configChangeReconnectNoticeProvider);
+
+      final pause = e.ctl.pauseConfigChanges();
+      change(e, 3006);
+      setActive(e, 'p2');
+      pause.release();
+      e.fa.elapse(kConfigChangeReconnectDebounce + after);
+
+      expect(e.requests, isEmpty);
+      expect(e.container.read(configChangeReconnectNoticeProvider), nonce);
+    });
+
+    _sim('暂停期间用户断开：释放时不把连接顶回去', (e) {
+      connect(e);
+
+      final pause = e.ctl.pauseConfigChanges();
+      change(e, 3007);
+      e.settle();
+      e.ctl.disconnect();
+      e.settle();
+      e.kernelStopped(e.requests.last);
+      final base = e.requests.length;
+
+      pause.release();
+      e.fa.elapse(kConfigChangeReconnectDebounce + after);
+      expect(e.requests.length, base);
+    });
+  });
+
   group('释放', () {
     _sim('控制器销毁时，未终结的请求以 interrupted 结束', (e) {
       e.push();

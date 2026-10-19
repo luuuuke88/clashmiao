@@ -248,6 +248,42 @@ void main() {
       expect(prefs.getString('proxy_selection_profile-r'), '{}');
     });
 
+    test('restore(ifVersion)：只撤销仍属那次写入的状态；之后有新写入则内存、磁盘都不动', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [
+        _profile('profile-v', inc: 'g1'),
+      ]);
+      final notifier = ProxySelectionStoreNotifier(
+        prefs: prefs,
+        store: store,
+        profileId: 'profile-v',
+        profileInc: 'g1',
+      );
+
+      final mine = notifier.persistTracked('select', 'hk');
+      expect(notifier.versionOf('select'), mine.version);
+      await mine.persisted;
+      await notifier.persist('select', 'sg'); // 更新的选择
+      expect(notifier.versionOf('select'), isNot(mine.version));
+
+      expect(
+        await notifier.restore('select', null, ifVersion: mine.version),
+        isFalse,
+      );
+      expect(notifier.state, {'select': 'sg'});
+      expect(prefs.getString('proxy_selection_profile-v'), '{"select":"sg"}');
+
+      final latest = notifier.versionOf('select');
+      expect(
+        await notifier.restore('select', null, ifVersion: latest),
+        isTrue,
+        reason: '仍是那次写入：照常回滚',
+      );
+      expect(notifier.state, isEmpty);
+      expect(prefs.getString('proxy_selection_profile-v'), '{}');
+    });
+
     test('restore：订阅已删除后旧 notifier 的回滚同样被丢弃，不复活孤儿键', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

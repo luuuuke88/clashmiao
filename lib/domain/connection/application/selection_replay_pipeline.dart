@@ -14,8 +14,10 @@
 // 绝不对运行时不存在的分组调用 `selectOutbound`。
 //
 // 归属：每一步 await 之后都核对 (profileId, inc, epoch, attempt) 仍是当前的；
-// 不是就整条丢弃——过期任务不确认、不写、不删任何记录（新实例 / 新订阅有自己
-// 的流水线）。
+// 不是就整条丢弃——过期任务不确认、不写、不删任何记录。新实例有自己的流水线；
+// 实例没变而订阅变了（切到运行时配置相同的订阅不会产生新 attempt）时返回
+// [ReplayPipelineOutcome.droppedOwnerChanged]，由调用方按新归属为同一实例重新
+// 调度。
 
 import 'dart:async';
 
@@ -51,8 +53,14 @@ enum ReplayPipelineOutcome {
   /// 等不到这个实例的实时分组：未重放，已确认。
   acknowledgedWithoutGroups,
 
-  /// 归属已过期（实例或订阅变了）：整条丢弃，未确认。
+  /// 内核实例已过期（新 attempt / 已停止）：整条丢弃，未确认。新实例有自己的
+  /// 流水线。
   dropped,
+
+  /// 实例仍是当前的，但激活订阅（id 或代际）变了：整条丢弃，未确认。调用方
+  /// 必须为这个实例按新归属重新调度——切到运行时配置相同的订阅不会产生新
+  /// attempt，没人重新调度的话 `replayPending` 会一直挂着。
+  droppedOwnerChanged,
 }
 
 /// 流水线阶段（日志用）。
@@ -86,6 +94,7 @@ class SelectionReplayPipeline {
     if (!_isCurrentInstance(epoch, attempt)) {
       return ReplayPipelineOutcome.dropped;
     }
+    // 激活订阅在第一个 await 之前就切换了也无妨：归属在这里才捕获。
 
     final profile = _ref.read(activeProfileProvider).valueOrNull;
     final ReplayOwner owner = (
@@ -96,7 +105,7 @@ class SelectionReplayPipeline {
     );
     bool owned() => _owns(owner);
 
-    final live = await _awaitLiveGroups(epoch, attempt);
+    final live = await _awaitLiveGroups(owner);
     if (!owned()) return _drop(owner, _Stage.awaitGroups);
     if (live == null) {
       debugPrint(
@@ -183,11 +192,22 @@ class SelectionReplayPipeline {
       if (s == null) return false;
       final previous = _ownedSelections(owner)?[target];
       debugPrint('手选编排：迁移 [$source -> $node] 到运行时分组 [$target]');
-      final persisted = await _write(() => s.persist(target, node));
+      // 记下这次写入的版本：写入失败时只撤销仍属于本次迁移的内存记录——
+      // 等待落盘期间用户若又选了别的节点，那是更新的意图，内存与磁盘都不动。
+      var version = 0;
+      final persisted = await _write(() {
+        final w = s.persistTracked(target, node);
+        version = w.version;
+        return w.persisted;
+      });
       if (!_owns(owner)) return false;
       if (!persisted) {
         debugPrint('手选编排：目标 [$target] 写入未落盘，保留来源 [$source] 待下次重试');
-        await _write(() => s.restore(target, previous));
+        if (s.versionOf(target) == version) {
+          await _write(() => s.restore(target, previous, ifVersion: version));
+        } else {
+          debugPrint('手选编排：[$target] 期间已有更新的选择，不回滚');
+        }
         if (!_owns(owner)) return false;
         continue;
       }
@@ -241,15 +261,27 @@ class SelectionReplayPipeline {
   }
 
   ReplayPipelineOutcome _drop(ReplayOwner owner, _Stage stage) {
+    // 只有「实例仍是当前的、且激活订阅确实换了」才算归属变化——调用方据此重新
+    // 调度；归属没变却被丢弃（不应发生）按 dropped 处理，避免原地空转。
+    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    final profileChanged =
+        profile?.id != owner.profileId || profile?.inc != owner.profileInc;
+    final outcome =
+        stage != _Stage.replayStale &&
+            profileChanged &&
+            _isCurrentInstance(owner.epoch, owner.attempt)
+        ? ReplayPipelineOutcome.droppedOwnerChanged
+        : ReplayPipelineOutcome.dropped;
     debugPrint(
-      '手选编排 [${owner.epoch}/${owner.attempt}]：${stage.name} 阶段归属已过期，'
-      '丢弃（不确认、不写不删）',
+      '手选编排 [${owner.epoch}/${owner.attempt}]：${stage.name} 阶段归属已过期'
+      '（${outcome.name}），丢弃（不确认、不写不删）',
     );
-    return ReplayPipelineOutcome.dropped;
+    return outcome;
   }
 
   /// 有界等待 [epoch]/[attempt] 这个实例的第一份实时分组；超时返回 null。
-  Future<LiveGroups?> _awaitLiveGroups(String epoch, int attempt) {
+  Future<LiveGroups?> _awaitLiveGroups(ReplayOwner owner) {
+    final ReplayOwner(:epoch, :attempt) = owner;
     bool mine(LiveGroups? g) =>
         g != null && g.instance.epoch == epoch && g.instance.attempt == attempt;
 
@@ -264,12 +296,17 @@ class SelectionReplayPipeline {
       final g = next.valueOrNull;
       if (mine(g) && !done.isCompleted) done.complete(g);
     });
+    // 等待期间激活订阅变了：不必干等到超时，立刻醒来，由调用方按归属丢弃。
+    final profileSub = _ref.listen(activeProfileProvider, (_, _) {
+      if (!_owns(owner) && !done.isCompleted) done.complete(null);
+    });
     final timer = Timer(_groupsWait, () {
       if (!done.isCompleted) done.complete(null);
     });
     return done.future.whenComplete(() {
       timer.cancel();
       sub.close();
+      profileSub.close();
     });
   }
 }

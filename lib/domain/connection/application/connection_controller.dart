@@ -393,6 +393,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     } finally {
       _draining = false;
     }
+    _maybeRescheduleReplay();
   }
 
   void _step(MachineEvent e) {
@@ -629,15 +630,64 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// 有界等待这个实例的实时分组 → 用运行时分组校验 → 迁移运行时不存在的分组
   /// 记录（先写后删）→ 只重放运行时存在的分组 → 确认。每一步都核对归属，过期
   /// 即丢弃。出口探测在确认之后才开始。
+  ///
+  /// 流水线因激活订阅变化被丢弃（[ReplayPipelineOutcome.droppedOwnerChanged]）
+  /// 而这个实例仍待重放时，记为欠账，由 [_maybeRescheduleReplay] 在订阅切换
+  /// 引发的请求终结后按新归属重新调度——切到运行时配置相同的订阅不会产生新
+  /// attempt，不重新调度的话 `replayPending` 会一直挂着、出口探测永远不开始。
   Future<void> _replaySelections(String epoch, int attempt) async {
     if (!mounted) return;
-    final outcome = await SelectionReplayPipeline(
-      ref: _ref,
-      port: _port,
-      isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
-      groupsWait: _ref.read(replayGroupsWaitProvider),
-    ).run(epoch, attempt);
-    debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
+    final key = (epoch: epoch, attempt: attempt);
+    if (_replayRunning == key) return;
+    _replayRunning = key;
+    ReplayPipelineOutcome? outcome;
+    try {
+      outcome = await SelectionReplayPipeline(
+        ref: _ref,
+        port: _port,
+        isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
+        groupsWait: _ref.read(replayGroupsWaitProvider),
+      ).run(epoch, attempt);
+      debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
+    } finally {
+      if (_replayRunning == key) _replayRunning = null;
+    }
+    if (!mounted) return;
+    if (outcome == ReplayPipelineOutcome.droppedOwnerChanged) {
+      _replayOwed = key;
+    } else if (_replayOwed == key) {
+      _replayOwed = null;
+    }
+    _maybeRescheduleReplay();
+  }
+
+  /// 因订阅切换被丢弃、等待按新归属重新调度的实例。
+  ({String epoch, int attempt})? _replayOwed;
+
+  /// 正在跑流水线的实例（同一实例不并发跑两条）。
+  ({String epoch, int attempt})? _replayRunning;
+
+  /// 欠账的实例若仍是当前实例、仍待重放，且没有未终结的请求（订阅切换引发的
+  /// 重新应用已经落定：要么产生了新 attempt——它有自己的流水线，欠账作废；
+  /// 要么 revision 相同、实例不变），就按当前归属重新跑一遍流水线。
+  void _maybeRescheduleReplay() {
+    final owed = _replayOwed;
+    if (owed == null || !mounted || _replayRunning != null) return;
+    final s = _mstate.snapshot;
+    if (s == null) return;
+    if (s.epoch != owed.epoch || s.attempt != owed.attempt) {
+      _replayOwed = null; // 新实例：由它自己的重放副作用负责
+      return;
+    }
+    if (s.status != KernelStatus.started) return;
+    if (!s.selectionsReplayNeeded) {
+      _replayOwed = null;
+      return;
+    }
+    if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
+    _replayOwed = null;
+    debugPrint('手选编排 [${owed.epoch}/${owed.attempt}]：激活订阅已变，按新归属重新调度');
+    unawaited(_replaySelections(owed.epoch, owed.attempt));
   }
 
   /// 状态机当前接受的内核快照是否仍是 [epoch] / [attempt] 且已启动。

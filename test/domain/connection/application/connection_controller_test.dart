@@ -12,6 +12,8 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
 import 'package:clashmiao/domain/connection/application/connection_timing.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
@@ -164,6 +166,11 @@ class _Env {
           (ref) => review = _FakeReview(ref),
         ),
         fatalFailureReporterProvider.overrideWithValue(reported.add),
+        // 出口探测：只记次数，查询悬停（这里只关心「探测开始了没有」）。
+        egressProbeFetchProvider.overrideWithValue(() {
+          egressFetches++;
+          return Completer<EgressIpResult>().future;
+        }),
         activeProfileProvider.overrideWith((ref) async {
           final p = _activeProfile(ref);
           final gate = profileGate;
@@ -257,6 +264,9 @@ class _Env {
   late final _FakeReview review;
   final List<ConnectionFailure> reported = [];
   int _version = 0;
+
+  /// 出口探测发起的查询次数（只有读过 [egressIpProbeProvider] 才会探测）。
+  int egressFetches = 0;
 
   static final activeProfileIdProvider = StateProvider<String?>((_) => 'p1');
 
@@ -1054,6 +1064,59 @@ void main() {
         expect(e.port.acknowledged, [2], reason: 'attempt 1 已过期，不确认');
       },
       prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
+    );
+
+    _sim(
+      '等待分组期间切到 revision 相同的订阅：attempt 不变，按新订阅重新调度，重放、确认、出口探测开始',
+      (e) {
+        e.container.listen(egressIpProbeProvider, (_, _) {});
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+        e.fa.elapse(const Duration(seconds: 1));
+        expect(e.port.acknowledged, isEmpty);
+
+        // 切到 p2：重新应用配置，revision 相同（launcher.revision 不变）→ 内核
+        // 合并为无操作，同一 attempt 继续运行、仍待重放。
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        final r2 = e.requests.last;
+        expect(r2, isNot(same(r1)));
+        expect(r2.launch!.configRevision, r1.launch!.configRevision);
+        e.kernelStarted(r2, attempt: 1, replay: true, withGroups: false);
+        e.settle();
+        expect(e.port.acknowledged, isEmpty, reason: '旧归属（p1）的流水线不确认');
+        expect(e.egressFetches, 0, reason: '重放确认前出口探测不开始');
+
+        e.pushGroups(attempt: 1, groups: runtime);
+        e.fa.flushMicrotasks();
+
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+        ], reason: '按当前订阅 p2 的手选重放，p1 的 hk 不发');
+        expect(e.port.acknowledged, [1], reason: '同一 attempt 由新归属确认');
+        expect(e.prefs.getString('proxy_selection_p1'), '{"select":"hk"}');
+
+        // 原生确认后 replay=false 的快照到达：出口探测门槛解除。
+        e.push(
+          status: KernelStatus.started,
+          attempt: 1,
+          desired: Desired.on,
+          source: DesiredSource.app,
+          appliedSeq: r2.seq,
+          revision: r2.launch!.configRevision,
+        );
+        e.fa.flushMicrotasks();
+        expect(e.egressFetches, 1);
+      },
+      prefs: {
+        'proxy_selection_p1': '{"select":"hk"}',
+        'proxy_selection_p2': '{"select":"sg"}',
+      },
     );
   });
 

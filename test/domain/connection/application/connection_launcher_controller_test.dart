@@ -113,10 +113,15 @@ void main() {
     await deleteTempDirBestEffort(tmp);
   });
 
-  bool runtimeFileExists(int seq) =>
-      File('${workDir.path}/runtime-config-$seq.json').existsSync();
+  List<String> runtimeFiles() =>
+      workDir
+          .listSync()
+          .map((e) => e.uri.pathSegments.last)
+          .where((n) => n.startsWith('runtime'))
+          .toList()
+        ..sort();
 
-  test('相同 revision 的请求、快照先于回执到达：运行中的 runtime-1 不会被误删', () async {
+  test('相同 revision 的请求、快照先于回执到达：运行中的文件原封不动，且始终只有这一份', () async {
     final ctl = container.read(connectionControllerProvider.notifier);
     await pumpEventQueue();
 
@@ -142,29 +147,33 @@ void main() {
       container.read(connectionControllerProvider).phase,
       ConnectionPhase.connected,
     );
-    expect(runtimeFileExists(1), isTrue);
-
-    // 同一配置再应用一次：revision 相同，协调器无操作（attempt 不变），而且
-    // 快照先到、控制器已终结意图并 discard，回执才到。
-    expect(await ctl.applyConfig(), const RequestSucceeded());
-    await pumpEventQueue();
-    await pumpEventQueue();
-
-    expect(port.requests, hasLength(2));
+    final first = port.requests.single.launch!;
     expect(
-      port.requests[0].launch!.configRevision,
-      port.requests[1].launch!.configRevision,
-      reason: '前提：相同 revision',
+      first.runtimeConfigPath,
+      '${workDir.path}/runtime-${first.configRevision}.json',
     );
-    expect(runtimeFileExists(1), isTrue, reason: 'runtime-1 仍是运行中实例引用的 spec');
-    expect(runtimeFileExists(2), isTrue, reason: '最新一份（持久化引用）');
+    final file = File(first.runtimeConfigPath);
+    final past = DateTime(2020, 1, 1);
+    file.setLastModifiedSync(past);
+    final content = file.readAsStringSync();
 
-    // 再来一次：被无操作合并的 seq2 现在能证明无引用，被回收；seq1 仍然保留。
+    // 同一配置再应用两次：revision 相同，协调器无操作（attempt 不变）；快照先
+    // 到、控制器已终结意图并 discard，回执才到。
+    expect(await ctl.applyConfig(), const RequestSucceeded());
+    await pumpEventQueue();
     expect(await ctl.applyConfig(), const RequestSucceeded());
     await pumpEventQueue();
     await pumpEventQueue();
-    expect(runtimeFileExists(1), isTrue);
-    expect(runtimeFileExists(2), isFalse, reason: '无操作合并的中间产物回收');
-    expect(runtimeFileExists(3), isTrue);
+
+    expect(port.requests, hasLength(3));
+    expect(
+      {for (final r in port.requests) r.launch!.runtimeConfigPath},
+      {first.runtimeConfigPath},
+      reason: '相同 revision 的请求共用同一份文件',
+    );
+    expect(file.existsSync(), isTrue, reason: '运行中的文件没有被误删');
+    expect(file.lastModifiedSync(), past, reason: '也没有被重写');
+    expect(file.readAsStringSync(), content);
+    expect(runtimeFiles(), ['runtime-${first.configRevision}.json']);
   });
 }

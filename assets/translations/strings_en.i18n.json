@@ -373,8 +373,7 @@
       "start": "Service Startup Error",
       "startTimeout": "Service Startup Timed Out",
       "kernelUnresponsive": "The core is not responding. Please try again, or restart the app.",
-      "kernelExited": "The core exited unexpectedly",
-      "runtimeFilesFull": "Too many leftover runtime config files. Please restart the app and try again"
+      "kernelExited": "The core exited unexpectedly"
     },
     "connectivity": {
       "unexpected": "Unexpected Failure",

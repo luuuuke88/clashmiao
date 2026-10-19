@@ -28,9 +28,8 @@ class RuntimeConfigBuilder {
   /// 读 [baseProfile]，写到 [workingDir]/[outputFileName]（默认
   /// `runtime-config.json`）并返回该 File。
   ///
-  /// 连接生命周期（子项目 B）里每个请求使用独立文件（先
-  /// `runtime-config-prep-<token>.json`，分配 seq 后改名为
-  /// `runtime-config-<seq>.json`），所以文件名由调用方决定。
+  /// 连接生命周期（子项目 B）里先写临时文件 `runtime-prep-<token>.json`，算出
+  /// revision 后再定稿为 `runtime-<revision>.json`，所以文件名由调用方决定。
   ///
   /// [remoteDnsAddress] 会覆盖 profile 里 `dns.servers[tag=remote]` 的 address。
   /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）

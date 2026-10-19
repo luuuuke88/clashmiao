@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4020 (402 per locale)
+/// Strings: 4010 (401 per locale)
 ///
-/// Built on 2026-10-19 at 17:41 UTC
+/// Built on 2026-10-19 at 17:06 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -955,8 +955,6 @@ class TranslationsFailureSingboxEn {
   String get kernelUnresponsive =>
       'The core is not responding. Please try again, or restart the app.';
   String get kernelExited => 'The core exited unexpectedly';
-  String get runtimeFilesFull =>
-      'Too many leftover runtime config files. Please restart the app and try again';
 }
 
 // Path: failure.connectivity
@@ -2559,9 +2557,6 @@ class TranslationsFailureSingboxAr extends TranslationsFailureSingboxEn {
       'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
   @override
   String get kernelExited => 'توقفت النواة بشكل غير متوقع';
-  @override
-  String get runtimeFilesFull =>
-      'هناك عدد كبير جدًا من ملفات الإعداد المتبقية. أعد تشغيل التطبيق وحاول مرة أخرى';
 }
 
 // Path: failure.connectivity
@@ -4301,9 +4296,6 @@ class TranslationsFailureSingboxEs extends TranslationsFailureSingboxEn {
       'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
   @override
   String get kernelExited => 'El núcleo se cerró inesperadamente';
-  @override
-  String get runtimeFilesFull =>
-      'Hay demasiados archivos de configuración residuales. Reinicia la aplicación e inténtalo de nuevo';
 }
 
 // Path: failure.connectivity
@@ -6038,9 +6030,6 @@ class TranslationsFailureSingboxFa extends TranslationsFailureSingboxEn {
       'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
   @override
   String get kernelExited => 'هسته به‌طور غیرمنتظره متوقف شد';
-  @override
-  String get runtimeFilesFull =>
-      'فایل‌های پیکربندی باقی‌مانده بیش از حد است. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید';
 }
 
 // Path: failure.connectivity
@@ -7768,9 +7757,6 @@ class TranslationsFailureSingboxId extends TranslationsFailureSingboxEn {
       'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
   @override
   String get kernelExited => 'Inti berhenti secara tak terduga';
-  @override
-  String get runtimeFilesFull =>
-      'Terlalu banyak berkas konfigurasi sisa. Mulai ulang aplikasi lalu coba lagi';
 }
 
 // Path: failure.connectivity
@@ -9522,9 +9508,6 @@ class TranslationsFailureSingboxPtBr extends TranslationsFailureSingboxEn {
       'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
   @override
   String get kernelExited => 'O núcleo foi encerrado inesperadamente';
-  @override
-  String get runtimeFilesFull =>
-      'Há arquivos de configuração residuais demais. Reinicie o app e tente novamente';
 }
 
 // Path: failure.connectivity
@@ -11264,9 +11247,6 @@ class TranslationsFailureSingboxRu extends TranslationsFailureSingboxEn {
       'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
   @override
   String get kernelExited => 'Ядро неожиданно завершило работу';
-  @override
-  String get runtimeFilesFull =>
-      'Слишком много остаточных файлов конфигурации. Перезапустите приложение и повторите попытку';
 }
 
 // Path: failure.connectivity
@@ -13002,9 +12982,6 @@ class TranslationsFailureSingboxTr extends TranslationsFailureSingboxEn {
       'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
   @override
   String get kernelExited => 'Çekirdek beklenmedik şekilde kapandı';
-  @override
-  String get runtimeFilesFull =>
-      'Çok fazla artık yapılandırma dosyası var. Lütfen uygulamayı yeniden başlatıp tekrar deneyin';
 }
 
 // Path: failure.connectivity
@@ -14715,8 +14692,6 @@ class TranslationsFailureSingboxZhCn extends TranslationsFailureSingboxEn {
   String get kernelUnresponsive => '内核无响应，请重试或重启应用';
   @override
   String get kernelExited => '内核意外退出';
-  @override
-  String get runtimeFilesFull => '残留的运行配置文件过多，请重启应用后再试';
 }
 
 // Path: failure.connectivity
@@ -16430,8 +16405,6 @@ class TranslationsFailureSingboxZhTw extends TranslationsFailureSingboxEn {
   String get kernelUnresponsive => '核心無回應，請重試或重新啟動應用程式';
   @override
   String get kernelExited => '核心意外結束';
-  @override
-  String get runtimeFilesFull => '殘留的執行設定檔過多，請重新啟動應用程式後再試';
 }
 
 // Path: failure.connectivity
@@ -17372,8 +17345,6 @@ extension on Translations {
         return 'The core is not responding. Please try again, or restart the app.';
       case 'failure.singbox.kernelExited':
         return 'The core exited unexpectedly';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Too many leftover runtime config files. Please restart the app and try again';
       case 'failure.connectivity.unexpected':
         return 'Unexpected Failure';
       case 'failure.connectivity.missingVpnPermission':
@@ -18205,8 +18176,6 @@ extension on TranslationsAr {
         return 'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
       case 'failure.singbox.kernelExited':
         return 'توقفت النواة بشكل غير متوقع';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'هناك عدد كبير جدًا من ملفات الإعداد المتبقية. أعد تشغيل التطبيق وحاول مرة أخرى';
       case 'failure.connectivity.unexpected':
         return 'فشل غير متوقع';
       case 'failure.connectivity.missingVpnPermission':
@@ -19018,8 +18987,6 @@ extension on TranslationsEs {
         return 'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
       case 'failure.singbox.kernelExited':
         return 'El núcleo se cerró inesperadamente';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Hay demasiados archivos de configuración residuales. Reinicia la aplicación e inténtalo de nuevo';
       case 'failure.connectivity.unexpected':
         return 'Falla inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -19878,8 +19845,6 @@ extension on TranslationsFa {
         return 'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
       case 'failure.singbox.kernelExited':
         return 'هسته به‌طور غیرمنتظره متوقف شد';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'فایل‌های پیکربندی باقی‌مانده بیش از حد است. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید';
       case 'failure.connectivity.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.connectivity.missingVpnPermission':
@@ -20713,8 +20678,6 @@ extension on TranslationsId {
         return 'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
       case 'failure.singbox.kernelExited':
         return 'Inti berhenti secara tak terduga';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Terlalu banyak berkas konfigurasi sisa. Mulai ulang aplikasi lalu coba lagi';
       case 'failure.connectivity.unexpected':
         return 'Kegagalan tidak terduga';
       case 'failure.connectivity.missingVpnPermission':
@@ -21549,8 +21512,6 @@ extension on TranslationsPtBr {
         return 'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
       case 'failure.singbox.kernelExited':
         return 'O núcleo foi encerrado inesperadamente';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Há arquivos de configuração residuais demais. Reinicie o app e tente novamente';
       case 'failure.connectivity.unexpected':
         return 'Falha inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -22385,8 +22346,6 @@ extension on TranslationsRu {
         return 'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
       case 'failure.singbox.kernelExited':
         return 'Ядро неожиданно завершило работу';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Слишком много остаточных файлов конфигурации. Перезапустите приложение и повторите попытку';
       case 'failure.connectivity.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.connectivity.missingVpnPermission':
@@ -23221,8 +23180,6 @@ extension on TranslationsTr {
         return 'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
       case 'failure.singbox.kernelExited':
         return 'Çekirdek beklenmedik şekilde kapandı';
-      case 'failure.singbox.runtimeFilesFull':
-        return 'Çok fazla artık yapılandırma dosyası var. Lütfen uygulamayı yeniden başlatıp tekrar deneyin';
       case 'failure.connectivity.unexpected':
         return 'Beklenmedik Hata';
       case 'failure.connectivity.missingVpnPermission':
@@ -24054,8 +24011,6 @@ extension on TranslationsZhCn {
         return '内核无响应，请重试或重启应用';
       case 'failure.singbox.kernelExited':
         return '内核意外退出';
-      case 'failure.singbox.runtimeFilesFull':
-        return '残留的运行配置文件过多，请重启应用后再试';
       case 'failure.connectivity.unexpected':
         return '意外失败';
       case 'failure.connectivity.missingVpnPermission':
@@ -24886,8 +24841,6 @@ extension on TranslationsZhTw {
         return '核心無回應，請重試或重新啟動應用程式';
       case 'failure.singbox.kernelExited':
         return '核心意外結束';
-      case 'failure.singbox.runtimeFilesFull':
-        return '殘留的執行設定檔過多，請重新啟動應用程式後再試';
       case 'failure.connectivity.unexpected':
         return '意外失敗';
       case 'failure.connectivity.missingVpnPermission':

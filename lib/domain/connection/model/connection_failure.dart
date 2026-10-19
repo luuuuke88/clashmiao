@@ -59,21 +59,6 @@ final class ConfigMissing extends ConnectionFailure {
   String toString() => 'ConfigMissing';
 }
 
-/// 运行时配置文件留存已达上限且无法证明可以回收：为避免继续写盘，这次连接
-/// 被拒绝。用户重启应用通常可以恢复。
-final class RuntimeFilesExhausted extends ConnectionFailure {
-  const RuntimeFilesExhausted();
-
-  @override
-  bool operator ==(Object other) => other is RuntimeFilesExhausted;
-
-  @override
-  int get hashCode => (RuntimeFilesExhausted).hashCode;
-
-  @override
-  String toString() => 'RuntimeFilesExhausted';
-}
-
 /// 核心库不可用（桌面 libcore 加载失败）。
 final class CoreUnavailable extends ConnectionFailure {
   const CoreUnavailable();

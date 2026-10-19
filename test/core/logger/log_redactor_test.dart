@@ -178,6 +178,81 @@ void main() {
     }
   });
 
+  group('Dart Map / List / Set 打印写法与转义 URL', () {
+    const cases = <(String, String, String)>[
+      (
+        'Map 打印：多词值遮到下一个逗号空格',
+        '{password: hello world, server: h.example.test}',
+        '{password: …, server: h.example.test}',
+      ),
+      ('Map 打印：值里带冒号', '{token: a:b c:d, port: 443}', '{token: …, port: 443}'),
+      (
+        'Map 打印：值里的逗号不跟空格时不算分隔',
+        '{secret: a,b c, port: 443}',
+        '{secret: …, port: 443}',
+      ),
+      (
+        'Map 打印：嵌套 Map 里的字段',
+        '{profile: {name: 机场 A, auth: {user: alice, password: hello world}}, '
+            'port: 443}',
+        '{profile: {name: 机场 A, auth: {user: alice, password: …}}, port: 443}',
+      ),
+      (
+        'Map 打印：强字段的值本身是 Map / List，整块遮盖',
+        '{secret: {a: b, c: d}, uuid: [1, 2], port: 443}',
+        '{secret: …, uuid: …, port: 443}',
+      ),
+      (
+        'List 里的 Map',
+        '[{password: hello world}, {password: second one, x: 1}]',
+        '[{password: …}, {password: …, x: 1}]',
+      ),
+      (
+        'Set 里的 Map',
+        '{{token: abc def}, {token: ghi}}',
+        '{{token: …}, {token: …}}',
+      ),
+      (
+        'Map 打印：行尾没有右括号，遮到行尾',
+        '{server: h.example.test, password: hello world\nnext line',
+        '{server: h.example.test, password: …\nnext line',
+      ),
+      (
+        '平铺的 key=value 仍按裸值处理',
+        'password=hello world next=1',
+        'password=… world next=1',
+      ),
+      (
+        '转义斜杠的 https URL',
+        r'{\"url\":\"https:\/\/example.test\/sub?token=SECRET\"}',
+        r'{\"url\":\"https:\/\/example.test\/sub?…\"}',
+      ),
+      (
+        '转义斜杠的 http URL：userinfo 与路径 token',
+        r'{"url":"http:\/\/u:p@example.test\/s\/'
+            r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
+        r'{"url":"http:\/\/example.test\/s\/…\/clash"}',
+      ),
+      (
+        '转义斜杠的分享链接',
+        r'{"link":"vless:\/\/uuid@1.2.3.4:443#hk"}',
+        r'{"link":"vless:\/\/…"}',
+      ),
+    ];
+    for (final (name, input, expected) in cases) {
+      test(name, () {
+        final once = redactLogText(input);
+        expect(once, expected);
+        expect(redactLogText(once), once, reason: '幂等');
+      });
+    }
+
+    test('转义斜杠的普通 URL 原样保留', () {
+      const text = r'{"url":"https:\/\/example.test\/api\/v1\/profiles"}';
+      expect(redactLogText(text), text);
+    });
+  });
+
   group('不敏感的内容原样通过', () {
     const passthrough = <String>[
       'Bad state: boom',

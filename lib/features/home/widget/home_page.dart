@@ -5,7 +5,9 @@ import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/model/outbound.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
@@ -56,7 +58,7 @@ class HomePage extends ConsumerWidget {
 
     // 配置变更触发的自动重连之前是纯静默的，用户可能把它误当成网络抖动。
     // ConnectionController 每次因为网络设置变更而自动重连时都会推进这个
-    // nonce（见 app_providers.dart 里的文档），这里弹一条轻量提示，不阻断
+    // nonce（见 connection_controller.dart 里的文档），这里弹一条轻量提示，不阻断
     // 操作。
     ref.listen<int>(configChangeReconnectNoticeProvider, (prev, next) {
       if (prev == next) return;

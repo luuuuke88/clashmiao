@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:clashmiao/core/egress_ip/egress_ip_service.dart';
 import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

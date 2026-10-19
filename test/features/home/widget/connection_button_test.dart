@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';

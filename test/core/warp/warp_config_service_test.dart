@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/warp/warp_config_service.dart';
 import 'package:flutter/services.dart';

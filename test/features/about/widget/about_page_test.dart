@@ -1,9 +1,9 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/config/build_config.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/features/about/application/update_available_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/about/widget/about_page.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

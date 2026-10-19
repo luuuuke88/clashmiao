@@ -37,7 +37,7 @@ class AppDirectories {
 /// 本身没问题，维持原状。
 ///
 /// `lib/main.dart`（首次 provision rule-set）和
-/// `lib/core/providers/app_providers.dart`（每次 connect/reconnect 现场拼
+/// `lib/domain/connection/application/connection_controller.dart`（每次 connect/reconnect 现场拼
 /// runtime-config.json）共用这一个函数，避免两处各自计算出不一致的目录
 /// ——这正是本次修复之前的 bug 根源之一。
 Future<Directory> resolveSingBoxWorkingDirectory() {

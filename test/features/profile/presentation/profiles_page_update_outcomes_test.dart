@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -143,5 +144,54 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(upgrade), findsOneWidget);
     await _drainToasts(tester);
+  });
+
+  testWidgets('刷新进行中页面被销毁，随后旧刷新作废（stale）：不抛异常', (tester) async {
+    SharedPreferences.setMockInitialValues({
+      'locale': 'zhCn',
+      ProfileStore.profilesKey: jsonEncode([_profileA.toJson()]),
+      ProfileStore.activeProfileKey: _profileA.id,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final repo = await scriptedRepository(prefs);
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        boxServiceProvider.overrideWithValue(const StubBoxService()),
+        profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const ProfilesPage(),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gate = Completer<void>();
+    repo
+      ..updateGate = gate
+      ..updateError = const ProfileUpdateStaleException('profile-a');
+    // 页头「更新全部」是第一个同图标按钮，卡片上的单条刷新是其后的。
+    await tester.tap(find.byIcon(FluentIcons.arrow_sync_24_regular).at(1));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(repo.updateCalls, 1, reason: '刷新已发出并卡住');
+
+    await tester.pumpWidget(const SizedBox());
+    gate.complete();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(tester.takeException(), isNull);
   });
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -95,5 +97,62 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.textContaining('配置文件保存失败'), findsOneWidget);
     await _drainToasts(tester);
+  });
+
+  testWidgets('手动刷新进行中页面被销毁，随后旧刷新作废（stale）：不抛异常', (tester) async {
+    // 够高的视口，「立即更新」不会落在懒加载列表的屏幕之外。
+    tester.view.physicalSize = const Size(800, 3000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    // 「立即更新」只在远程且已取到流量信息的订阅上出现。
+    final profile = _profile.copyWith(
+      subInfo: const SubscriptionInfo(upload: 0, download: 0, total: 100),
+    );
+    SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+    final prefs = await SharedPreferences.getInstance();
+    final repo = await scriptedRepository(prefs);
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        boxServiceProvider.overrideWithValue(const StubBoxService()),
+        profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
+        profileListProvider.overrideWith((_) => Future.value([profile])),
+        activeProfileProvider.overrideWith((_) => Future.value(profile)),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+    await container.read(profileListProvider.future);
+    await container.read(activeProfileProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+              splashFactory: NoSplash.splashFactory,
+            ),
+            home: ProfileDetailsPage(_profile.id),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final gate = Completer<void>();
+    repo
+      ..updateGate = gate
+      ..updateError = const ProfileUpdateStaleException('p1');
+    await tester.tap(find.text('立即更新'));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(repo.updateCalls, 1, reason: '刷新已发出并卡住');
+
+    await tester.pumpWidget(const SizedBox());
+    gate.complete();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(tester.takeException(), isNull);
   });
 }

@@ -368,8 +368,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
     } catch (error) {
       if (isStaleRefresh(error)) {
         // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
-        ref.invalidate(profileListProvider);
-        ref.invalidate(activeProfileProvider);
+        // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
+        // 让两个 provider 重新计算；而页面此时可能已销毁，销毁后碰 ref 会抛异常。
       } else if (mounted) {
         AppToast.error(
           context,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -98,5 +100,64 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text('更新配置文件失败'), findsOneWidget);
     await _drainToasts(tester);
+  });
+
+  testWidgets('刷新进行中页面被销毁，随后旧刷新作废（stale）：不抛异常', (tester) async {
+    SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+    PackageInfo.setMockInitialValues(
+      appName: 'ClashMiao',
+      packageName: 'com.clashmiao.app',
+      version: '1.2.3',
+      buildNumber: '45',
+      buildSignature: '',
+    );
+    final prefs = await SharedPreferences.getInstance();
+    final repo = await scriptedRepository(prefs);
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        boxServiceProvider.overrideWithValue(const StubBoxService()),
+        profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
+        activeProfileProvider.overrideWith((_) => Future.value(_profile)),
+        profileListProvider.overrideWith((_) => Future.value([_profile])),
+        outboundGroupsProvider.overrideWith(
+          (_) => Stream<List<OutboundGroup>>.value(const []),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(sharedPreferencesProvider.future);
+    await container.read(activeProfileProvider.future);
+    await container.read(profileListProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: ToastificationWrapper(
+          child: MaterialApp(
+            theme: ThemeData.light().copyWith(
+              extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+            ),
+            home: const HomePage(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    // 刷新卡在半路 → 页面被销毁 → 旧请求以 stale 结束。
+    final gate = Completer<void>();
+    repo
+      ..updateGate = gate
+      ..updateError = const ProfileUpdateStaleException('profile-1');
+    await tester.tap(find.byTooltip('更新配置文件'));
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(repo.updateCalls, 1, reason: '刷新已发出并卡住');
+
+    await tester.pumpWidget(const SizedBox());
+    gate.complete();
+    await tester.pump(const Duration(milliseconds: 50));
+
+    expect(tester.takeException(), isNull);
   });
 }

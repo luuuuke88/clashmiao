@@ -632,13 +632,23 @@ class _EmptyProxy extends ConsumerWidget {
 ///
 /// 布局（从左到右）：旗帜区 36 dp → 名称 + 协议（两行）→ 延迟列（最小 64 dp、
 /// 右对齐）→ 18 dp 对勾占位（选中才画，但**始终占位**，免得文字位移）。
-/// 行高基准 72 dp，字体放大时自然增高；行距 8 dp 只来自外层这一处 padding。
+/// 行高基准 [rowHeight]（含描边，选中与否一样高），字体放大时自然增高；行距 8 dp
+/// 只来自外层这一处 padding。
 ///
 /// 旗帜只在左侧旗帜区出现一次：名称里开头的旗帜已被搬走（见 [NodeDisplay]），
 /// 推断不出国家时用中性地球图标，而不是随便挂一面旗。
 class _ProxyTile extends ConsumerWidget {
   /// 延迟列最小宽度（spec：右对齐列宽约 64 dp）。
   static const double _latencyColumnMinWidth = 64;
+
+  /// 正常字号下的行高（spec 68–72 dp），**含**描边。之前最小高度 72 加在描边
+  /// 里面，真机量出来 74（选中 75）dp。
+  @visibleForTesting
+  static const double rowHeight = 70;
+
+  /// 名称 / 协议两行的行高倍数。名称用的是自带的 Emoji 字体做首选字体，它的
+  /// 行度量很高（真机单行名称约 33 dp），不固定倍数行高就由字体决定、无从控制。
+  static const double _lineHeight = 1.3;
 
   /// 行里除名称与延迟列外的固定宽度：旗帜区 36 + 间距 12 + 间距 8 + 间距 8 +
   /// 对勾占位 18。
@@ -700,7 +710,11 @@ class _ProxyTile extends ConsumerWidget {
                   NodeDisplay.stripSuffix(proxy.tag),
                 ),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 72),
+                  // 描边画在卡片内侧：最小高度扣掉上下描边，整行（含描边）正好
+                  // [rowHeight]，选中（1.5 dp）与未选中（1 dp）一样高。
+                  constraints: BoxConstraints(
+                    minHeight: rowHeight - 2 * (isSelected ? 1.5 : 1),
+                  ),
                   child: Padding(
                     // 选中描边 1.5 dp、未选中 1 dp：差的 0.5 dp 从内边距里扣掉，
                     // 选中与否内容都不位移。
@@ -755,6 +769,9 @@ class _ProxyTile extends ConsumerWidget {
                                     label,
                                     style: TextStyle(
                                       fontSize: 15,
+                                      height: _lineHeight,
+                                      leadingDistribution:
+                                          TextLeadingDistribution.even,
                                       fontWeight: FontWeight.w600,
                                       color: hasLabel
                                           ? theme.colorScheme.onSurface
@@ -769,6 +786,9 @@ class _ProxyTile extends ConsumerWidget {
                                     _formatType(proxy.type),
                                     style: TextStyle(
                                       fontSize: 12,
+                                      height: _lineHeight,
+                                      leadingDistribution:
+                                          TextLeadingDistribution.even,
                                       color: aiUi.secondaryTextColor,
                                     ),
                                     maxLines: 1,

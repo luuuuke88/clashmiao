@@ -13,7 +13,6 @@ import android.os.Build
 import android.util.Base64
 import com.clashmiao.clashmiao.Application
 import com.google.gson.Gson
-import com.google.gson.annotations.SerializedName
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -257,7 +256,7 @@ class MethodBridge(
                 rows.add(AppRow(p.packageName, label, isSystem))
             }
             rows.sortBy { it.name }
-            result.success(gson.toJson(rows))
+            result.success(gson.toJson(rows.map { it.toWire() }))
         }
     }
 
@@ -278,12 +277,23 @@ class MethodBridge(
     }
 }
 
-/** Dart 端按 'package-name'/'name'/'is-system-app' kebab-case 解析（gson @SerializedName）。 */
+/**
+ * Dart 端按 'package-name'/'name'/'is-system-app' kebab-case 解析。
+ *
+ * 键名显式写在 [toWire] 里，不靠反射 + `@SerializedName`：release 包经 R8 混淆后字段会
+ * 改名、注解被剥掉，Gson 会按混淆名输出（见 OutboundSnapshot 的说明）。
+ */
 private data class AppRow(
-    @SerializedName("package-name") val packageName: String,
-    @SerializedName("name") val name: String,
-    @SerializedName("is-system-app") val isSystemApp: Boolean,
-)
+    val packageName: String,
+    val name: String,
+    val isSystemApp: Boolean,
+) {
+    fun toWire(): Map<String, Any> = linkedMapOf(
+        "package-name" to packageName,
+        "name" to name,
+        "is-system-app" to isSystemApp,
+    )
+}
 
 private typealias KernelOp = suspend (MethodCall, MethodChannel.Result) -> Unit
 private typealias PlatformOp = (MethodCall, MethodChannel.Result) -> Unit

@@ -1,5 +1,6 @@
 package com.clashmiao.clashmiao.engine
 
+import android.util.Log
 import com.clashmiao.clashmiao.core.drain
 import go.Seq
 import io.nekohasekai.libbox.CommandClient
@@ -103,6 +104,7 @@ class LibboxCommandStream internal constructor(
                             adopted = true
                         }
                     }
+                    if (!ok) Log.w(TAG, "command client gave up after $MAX_ATTEMPTS attempts")
                 } finally {
                     if (!adopted) runCatching { candidate.abandon() }
                 }
@@ -169,7 +171,9 @@ class LibboxCommandStream internal constructor(
 
     private class SubscriberBridge(private val subscriber: Subscriber) : CommandClientHandler {
         override fun connected() = Unit
-        override fun disconnected(message: String?) = Unit
+        override fun disconnected(message: String?) {
+            Log.i(TAG, "command client disconnected: $message")
+        }
         override fun clearLog() = Unit
         override fun writeLog(message: String?) = Unit
         override fun initializeClashMode(modeList: StringIterator, currentMode: String) {
@@ -193,6 +197,7 @@ class LibboxCommandStream internal constructor(
     }
 
     private companion object {
+        private const val TAG = "engine/CommandStream"
         // libbox status 推送间隔：2 秒（纳秒制）。
         private const val STATS_INTERVAL_NANOS: Long = 2L * 1000 * 1000 * 1000
         private const val MAX_ATTEMPTS = 10

@@ -11,7 +11,6 @@ import com.clashmiao.clashmiao.engine.KernelSnapshot
 import com.clashmiao.clashmiao.engine.LibboxCommandStream
 import com.clashmiao.clashmiao.engine.LogBuffer
 import com.clashmiao.clashmiao.engine.OutboundSnapshot
-import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
@@ -49,8 +48,6 @@ class StreamBridge : FlutterPlugin {
         private const val CHANNEL_GROUPS_LITE = "com.clashmiao.app/active-groups"
         private const val CHANNEL_LOGS = "com.clashmiao.app/service.logs"
         private const val CHANNEL_NETWORK = "com.clashmiao.app/network"
-        private val gson = Gson()
-
         /** 唯一实例引用，供 NetworkWatcher 等原生组件推送事件。 */
         @Volatile var instance: StreamBridge? = null
             private set
@@ -290,13 +287,10 @@ private class StatsSubscriber(private val sink: EventChannel.EventSink) :
 private class GroupsSubscriber(private val sink: EventChannel.EventSink) :
     LibboxCommandStream.Subscriber {
 
-    private val gson = Gson()
-
     override fun onGroups(groups: List<OutboundGroup>) {
-        StreamBridge.postMain {
-            val payload = groups.map { OutboundSnapshot.from(it) }
-            sink.success(gson.toJson(payload))
-        }
+        // 在回调线程上拍平（go 迭代器不跨线程），编码见 [OutboundSnapshot.encode]。
+        val payload = OutboundSnapshot.encode(groups.map { OutboundSnapshot.from(it) })
+        StreamBridge.postMain { sink.success(payload) }
     }
 }
 

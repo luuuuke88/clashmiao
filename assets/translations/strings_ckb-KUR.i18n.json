@@ -24,7 +24,8 @@
     "openAppSettings": "کردنەوەی ڕێکخستنەکانی ئەپەکە",
     "grantPermission": "مۆڵەتدان",
     "underDevelopment": "لە ژێر گەشەپێداندایە",
-    "confirm": "دڵنیاکردنەوە"
+    "confirm": "دڵنیاکردنەوە",
+    "close": "داخستن"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بە بەردەوام بوون تۆ ڕازیت لەگەڵ ${tap(@:about.termsAndConditions)}",

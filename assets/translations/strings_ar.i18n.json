@@ -24,7 +24,8 @@
     "openAppSettings": "فتح إعدادات التطبيق",
     "grantPermission": "منح الإذن",
     "underDevelopment": "قيد التطوير",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "close": "إغلاق"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بمواصلة استخدامك، فإنك توافق على ${tap(@:about.termsAndConditions)}",

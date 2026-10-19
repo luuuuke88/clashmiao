@@ -24,7 +24,8 @@
     "clipboardExportSuccessMsg": "Copiado para a área de transferência",
     "openAppSettings": "Abrir configurações do app",
     "underDevelopment": "Em desenvolvimento",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "close": "Fechar"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "ao continuar você concorda com ${tap( @:about.termsAndConditions)}",

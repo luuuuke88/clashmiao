@@ -24,7 +24,8 @@
     "openAppSettings": "باز کردن تنظیمات برنامه",
     "grantPermission": "اجازه دادن",
     "underDevelopment": "در حال توسعه",
-    "confirm": "تأیید"
+    "confirm": "تأیید",
+    "close": "بستن"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "در صورت ادامه با ${tap(@:about.termsAndConditions)} موافقت می‌کنید",

@@ -7,6 +7,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/config/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
 import 'package:flutter/material.dart';
@@ -46,7 +47,16 @@ void _useView(WidgetTester tester, Size size, double scale) {
   addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 }
 
+/// 记录推入的路由，用来断言「点了入口就真的导航了」。
+class _PushObserver extends NavigatorObserver {
+  final pushed = <Route<dynamic>>[];
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      pushed.add(route);
+}
+
 Future<Widget> _app({
+  _PushObserver? observer,
   required String locale,
   required TextDirection direction,
   required Widget home,
@@ -77,6 +87,7 @@ Future<Widget> _app({
         ),
         builder: (context, child) =>
             Directionality(textDirection: direction, child: child!),
+        navigatorObservers: [?observer],
         home: home,
       ),
     ),
@@ -197,8 +208,10 @@ void main() {
           '${view.width.toInt()}×${view.height.toInt()} / 2.0× / $dirName：'
           '手势滚到末项，末项可见且可点', (tester) async {
         _useView(tester, view, 2.0);
+        final observer = _PushObserver();
         await tester.pumpWidget(
           await _app(
+            observer: observer,
             locale: locale,
             direction: direction,
             home: Scaffold(
@@ -245,9 +258,18 @@ void main() {
           await tester.pumpAndSettle();
         }
 
-        // 末项是「所有进阶选项」入口：点它会推到配置页（另一个页面，不在本矩阵里），
-        // 这里只断言它在视口内、没被遮挡、命中测试能打到它。
         _expectReachable(tester, last, view);
+        // 真的点它：应当导航到高级选项页（配置页在 2.0× 下也不溢出，见文字矩阵）。
+        final pushedBefore = observer.pushed.length;
+        await tester.tap(last);
+        await tester.pumpAndSettle();
+        expect(
+          observer.pushed.length,
+          greaterThan(pushedBefore),
+          reason: '点击末项应当推入新路由',
+        );
+        expect(observer.pushed.last, isA<MaterialPageRoute<void>>());
+        expect(find.byType(ConfigOptionsPage), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }

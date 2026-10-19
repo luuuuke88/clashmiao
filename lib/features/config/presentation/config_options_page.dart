@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:convert';
@@ -137,24 +138,19 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    t.config.pageTitle,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+              // 与其它页同一个 PageHeader：标题可折行，大字号 / 窄屏下右侧胶囊
+              // 按钮不被挤出屏。
+              PageHeader(
+                title: t.config.pageTitle,
+                actions: [
                   _HeaderControlPill(
                     onMore: () => showAiUiModal<void>(
                       context: context,
                       builder: (_) => const _ConfigOptionsActionsModal(),
                     ),
                     onClose: () => Navigator.of(context).maybePop(),
+                    moreLabel: t.general.showMore,
+                    closeLabel: t.general.close,
                   ),
                 ],
               ),
@@ -1007,18 +1003,29 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
 }
 
 class _HeaderControlPill extends StatelessWidget {
-  const _HeaderControlPill({required this.onMore, required this.onClose});
+  const _HeaderControlPill({
+    required this.onMore,
+    required this.onClose,
+    required this.moreLabel,
+    required this.closeLabel,
+  });
 
   final VoidCallback onMore;
   final VoidCallback onClose;
 
+  /// 两颗图标按钮的无障碍标签 / 提示文字（i18n）。
+  final String moreLabel;
+  final String closeLabel;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
+      // 48 dp 高：两颗按钮各有 ≥48×48 的交互区（Android 最小触控目标）。
+      // 外框含上下各 1 dp 描边，所以外框 50、内部按钮 48。
+      height: kMinInteractiveDimension + 2,
       decoration: BoxDecoration(
         color: Theme.of(context).aiUi.glassColor,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(25),
         border: Border.all(color: Theme.of(context).aiUi.borderColor),
         boxShadow: Theme.of(context).aiUi.cardShadow,
       ),
@@ -1030,6 +1037,7 @@ class _HeaderControlPill extends StatelessWidget {
               apple: FluentIcons.more_horizontal_24_regular,
               other: FluentIcons.more_vertical_24_regular,
             ),
+            label: moreLabel,
             onTap: onMore,
           ),
           Container(
@@ -1039,6 +1047,7 @@ class _HeaderControlPill extends StatelessWidget {
           ),
           _PillButton(
             icon: FluentIcons.dismiss_24_regular,
+            label: closeLabel,
             onTap: onClose,
             isDestructive: true,
           ),
@@ -1051,28 +1060,40 @@ class _HeaderControlPill extends StatelessWidget {
 class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.icon,
+    required this.label,
     required this.onTap,
     this.isDestructive = false,
   });
 
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Semantics(
+      label: label,
+      button: true,
+      excludeSemantics: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: SizedBox(
-        width: 52,
-        height: 44,
-        child: Icon(
-          icon,
-          size: 20,
-          color: isDestructive
-              ? Colors.red.withValues(alpha: 0.8)
-              : Theme.of(context).aiUi.secondaryTextColor,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            width: 52,
+            height: kMinInteractiveDimension,
+            child: Icon(
+              icon,
+              size: 20,
+              color: isDestructive
+                  ? Colors.red.withValues(alpha: 0.8)
+                  : Theme.of(context).aiUi.secondaryTextColor,
+            ),
+          ),
         ),
       ),
     );
@@ -1129,14 +1150,17 @@ class _ConfigGroup extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  Text(
-                    title.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      fontFamily: 'monospace',
-                      color: Theme.of(context).aiUi.secondaryTextColor,
+                  // Expanded：组标题放大后换行，不把整行撑出卡片。
+                  Expanded(
+                    child: Text(
+                      title.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        fontFamily: 'monospace',
+                        color: Theme.of(context).aiUi.secondaryTextColor,
+                      ),
                     ),
                   ),
                 ],

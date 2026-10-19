@@ -24,7 +24,8 @@
     "openAppSettings": "Open App Settings",
     "grantPermission": "Grant Permission",
     "underDevelopment": "Under Development",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "close": "Close"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "By Continuing You Agree With ${tap(@:about.termsAndConditions)}",

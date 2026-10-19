@@ -53,12 +53,21 @@ abstract final class Motion {
 
 /// flutter_animate 的统一入口：用它代替 `.animate()`。
 ///
-/// 系统开了「减少动画」时直接把时间轴放在终点（`value: 1`、不自动播放）：
-/// 所有 `fadeIn` / `slide` 的 duration 与 delay 都被跳过，内容立刻呈现终态；
-/// 运行中途打开「减少动画」，`value` 变化会让控制器立刻跳到终点并停止。
+/// 系统开了「减少动画」时挂一个把时间轴放在终点的 [Adapter]：所有 `fadeIn` /
+/// `slide` 的 duration 与 delay 都被跳过，内容立刻呈现终态；运行中途打开，
+/// 适配器接上就把控制器跳到终点并停止。
+///
+/// 为什么用 adapter 而不是 `value`：关闭「减少动画」时，`value` 从 1 变回 null
+/// 会让 flutter_animate 重新 `forward(from: 0)`，把已经显示完的内容又重播一遍。
+/// 换成 adapter 的话，adapter 变成 null 只是卸掉适配器，**不会**触发重播——
+/// 已完成的内容留在终态，只有之后新挂载的才播放入场。
 extension MotionAnimate on Widget {
-  Animate animateWithMotion(BuildContext context) {
-    final reduced = Motion.reduced(context);
-    return animate(autoPlay: !reduced, value: reduced ? 1 : null);
-  }
+  Animate animateWithMotion(BuildContext context) =>
+      animate(adapter: Motion.reduced(context) ? _EndStateAdapter() : null);
+}
+
+/// 接上控制器时把它放在终点（1.0）的适配器。
+class _EndStateAdapter extends Adapter {
+  @override
+  void attach(AnimationController controller) => config(controller, 1);
 }

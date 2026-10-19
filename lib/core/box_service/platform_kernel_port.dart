@@ -64,10 +64,15 @@ class PlatformKernelPort implements KernelPort {
   /// 最近一次被接受的快照。版本过滤的基准。
   KernelSnapshot? _accepted;
 
-  /// 查询 token：每次 [current] 递增；每次从流接受快照也递增（此时在途查询已
-  /// 老于手上的快照，其结果不再被采纳）。
+  /// 查询 token（代际）。以下任一事件都会递增，使此前发出的在途查询作废：
+  /// 发起新查询、从流接受快照（此时在途查询已老于手上的快照）、一轮订阅结束
+  /// 或被取消、全部订阅取消、dispose。只有持有当前 token 的查询才能更新缓存。
   int _queryToken = 0;
-  Future<KernelSnapshot>? _newestQuery;
+  _Query? _newestQuery;
+
+  /// 订阅轮次（代际）。每次（重）订阅开始 +1，结束/取消时再 +1；旧一轮的流
+  /// 事件、同步结果和同步失败一律按轮次丢弃，不得改缓存或链路状态。
+  int _round = 0;
 
   // ── 订阅管理 ────────────────────────────────────────────────
 
@@ -92,6 +97,8 @@ class PlatformKernelPort implements KernelPort {
     if (_snapshots.hasListeners || _links.hasListeners) return;
     _upstreamActive = false;
     _generation++;
+    _round++;
+    _queryToken++; // 取消全部订阅：在途查询作废，返回后不得回填已清空的缓存
     final sub = _sub;
     _sub = null;
     if (sub != null) unawaited(sub.cancel());
@@ -107,12 +114,15 @@ class PlatformKernelPort implements KernelPort {
   Future<void> _runUpstream(int gen) async {
     var retry = 0;
     while (_upstreamActive && gen == _generation) {
+      final round = ++_round;
+      bool live() => _upstreamActive && gen == _generation && round == _round;
+
       final ended = Completer<void>();
       var sawEvent = false;
       try {
         _sub = _eventStream().listen(
           (event) {
-            if (gen != _generation) return;
+            if (!live()) return;
             final snap = _parse(event);
             if (snap == null) return;
             sawEvent = true;
@@ -134,16 +144,16 @@ class PlatformKernelPort implements KernelPort {
         ended.complete();
       }
 
-      // 订阅（或重订阅）之后立即带 token 重新同步；失败不致命，流若在推数据
-      // 就算已恢复，否则按失联处理并退避。
+      // 订阅（或重订阅）之后立即重新同步；结果只对本轮有效。失败不致命，流若
+      // 在推数据就算已恢复，否则按失联处理并退避。
       unawaited(
         current().then<void>(
           (_) {
-            if (gen != _generation) return;
+            if (!live()) return;
             _setLink(KernelLink.connected);
           },
           onError: (Object e) {
-            if (gen != _generation) return;
+            if (!live()) return;
             debugPrint('kernel.snapshot 重新同步失败: $e');
             if (!sawEvent) {
               _setLink(KernelLink.lost);
@@ -156,6 +166,9 @@ class PlatformKernelPort implements KernelPort {
 
       await ended.future;
       if (!_upstreamActive || gen != _generation) return;
+      // 本轮结束：作废本轮的一切迟到回调与在途查询。
+      _round++;
+      _queryToken++;
       final old = _sub;
       _sub = null;
       if (old != null) unawaited(old.cancel());
@@ -220,20 +233,23 @@ class PlatformKernelPort implements KernelPort {
   @override
   Stream<KernelLink> watchLink() => _links.stream();
 
+  /// 整个调用共用一个 2 s 截止时间：等待较新查询的结果也只花剩余预算。
   @override
   Future<KernelSnapshot> current() {
-    final token = ++_queryToken;
-    final future = _query(token);
-    _newestQuery = future;
-    return future;
+    final q = _Query(++_queryToken);
+    _newestQuery = q;
+    q.future = _query(q);
+    return q.future.timeout(
+      requestTimeout,
+      onTimeout: () =>
+          throw const KernelPortException('timeout', 'getSnapshot 超过 2 s 未返回'),
+    );
   }
 
-  Future<KernelSnapshot> _query(int token) async {
+  Future<KernelSnapshot> _query(_Query q) async {
     final pigeon.KernelSnapshotMsg msg;
     try {
-      msg = await _host.getSnapshot().timeout(requestTimeout);
-    } on TimeoutException {
-      throw const KernelPortException('timeout', 'getSnapshot 超过 2 s 未返回');
+      msg = await _host.getSnapshot();
     } on PlatformException catch (e) {
       throw KernelPortException(e.code, e.message ?? '');
     }
@@ -241,11 +257,18 @@ class PlatformKernelPort implements KernelPort {
     if (snap == null) {
       throw const KernelPortException('malformed', 'getSnapshot 返回了非法快照');
     }
-    if (token == _queryToken) {
+    // 无订阅时不缓存：没有订阅者，也就没有谁来保证缓存不过期。
+    if (q.token == _queryToken && _upstreamActive) {
       if (_accepts(snap, fromCurrentSource: true)) _accept(snap);
+      return _accepted ?? snap;
     }
-    // 过期 token 的结果丢弃：改返回已接受的较新快照；还没有就等最新查询。
-    return _accepted ?? await _newestQuery!;
+    // 作废的查询：结果丢弃（不改缓存、不推送）。返回已接受的较新快照；还没有
+    // 就等较新的那次查询；没有更新的查询（订阅被取消）则如实返回自己拿到的值。
+    final cached = _accepted;
+    if (cached != null) return cached;
+    final newest = _newestQuery;
+    if (newest != null && !identical(newest, q)) return newest.future;
+    return snap;
   }
 
   @override
@@ -320,6 +343,8 @@ class PlatformKernelPort implements KernelPort {
   Future<void> dispose() async {
     _upstreamActive = false;
     _generation++;
+    _round++;
+    _queryToken++;
     final sub = _sub;
     _sub = null;
     await sub?.cancel();
@@ -351,4 +376,12 @@ class PlatformKernelPort implements KernelPort {
             },
     };
   }
+}
+
+/// 一次 [PlatformKernelPort.current] 查询：token 即代际，[future] 供被取代的
+/// 旧查询等待较新的结果。
+class _Query {
+  _Query(this.token);
+  final int token;
+  late final Future<KernelSnapshot> future;
 }

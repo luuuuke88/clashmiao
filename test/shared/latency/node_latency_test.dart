@@ -11,6 +11,7 @@ void main() {
     DateTime? cachedAt,
     bool testing = false,
     bool timedOut = false,
+    bool unconfirmed = false,
     bool cacheIsFallback = true,
   }) => resolveNodeLatency(
     liveMs: liveMs,
@@ -18,6 +19,7 @@ void main() {
     cachedAt: cachedAt,
     testing: testing,
     timedOut: timedOut,
+    unconfirmed: unconfirmed,
     now: now,
     cacheIsFallback: cacheIsFallback,
   );
@@ -124,15 +126,32 @@ void main() {
     );
   });
 
-  test('本轮没确认出结果的节点：即使实时值还是旧数字也显示超时', () {
-    final r = resolve(
+  test('上一轮到点没确认出结果（unconfirmed）：显示历史值带旧值，不是超时也不是成功', () {
+    // 实时旧值，缓存时间还在 5 分钟内：没确认就不能当成功。
+    final live = resolve(
       liveMs: 100,
       cachedMs: 100,
       cachedAt: ago(const Duration(minutes: 1)),
-      timedOut: true,
+      unconfirmed: true,
     );
-    expect(r.state, LatencyDisplayState.timeout);
-    expect(r.ms, isNull);
+    expect(live.state, LatencyDisplayState.stale);
+    expect(live.ms, 100);
+
+    // 实时值缺席、只有缓存旧值（已连接、不允许兜底）：同样显示历史值。
+    final cached = resolve(
+      cachedMs: 150,
+      cachedAt: ago(const Duration(minutes: 1)),
+      unconfirmed: true,
+      cacheIsFallback: false,
+    );
+    expect(cached.state, LatencyDisplayState.stale);
+    expect(cached.ms, 150);
+
+    // 一点旧值都没有：不会冒出历史值，退回未测。
+    expect(
+      resolve(unconfirmed: true, cacheIsFallback: false).state,
+      LatencyDisplayState.untested,
+    );
   });
 
   test('本轮超时：显示超时，且不再用缓存里的旧数字顶替', () {

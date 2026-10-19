@@ -408,7 +408,7 @@ void main() {
       expect(rig.coordinator.state.timedOutNodes, {'b'});
     });
 
-    _fake('毫秒数与旧值相同的节点：无从确认出了新结果，不刷新测量时间，到点标超时', (rig, async) {
+    _fake('内核立即回复 urlTest（测试只是开始）、同值且没变化：不刷新测量时间，显示历史值而非超时', (rig, async) {
       final measuredAt = _t0.subtract(const Duration(minutes: 1));
       rig.cache['a'] = CachedDelay(100, measuredAt);
       rig.groups = [
@@ -416,6 +416,7 @@ void main() {
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
+      async.flushMicrotasks(); // urlTest 已正常返回
 
       // 分组流推来的值与开测基线相同。
       rig.push([
@@ -424,15 +425,21 @@ void main() {
       rig.elapse(const Duration(seconds: 10));
       expect(rig.recorded, isEmpty, reason: '没确认的旧值不能记成本轮结果');
       expect(rig.cache['a'], CachedDelay(100, measuredAt));
-      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.coordinator.state.unconfirmedNodes, {'a'});
+      expect(
+        rig.coordinator.state.timedOutNodes,
+        isEmpty,
+        reason: '稳定的快节点不能被标成超时',
+      );
     });
 
-    _fake('内核悬挂且没有任何分组事件：10 s 到点不刷新任何测量时间，全部标超时', (rig, async) {
+    _fake('内核悬挂且没有任何分组事件：旧值保留旧时间、显示历史值，没有任何节点标超时', (rig, async) {
       final hung = Completer<void>();
       rig.urlTestResult = () => hung.future;
       final aAt = _t0.subtract(const Duration(minutes: 2));
       rig.cache['a'] = CachedDelay(100, aAt);
       rig.cache['b'] = const CachedDelay(250, null); // 旧格式历史值
+      rig.cache['c'] = CachedDelay(180, aAt); // 实时值缺席，只有缓存
       rig.groups = [
         _group({'a': 100, 'b': 250, 'c': 0}),
       ];
@@ -451,32 +458,53 @@ void main() {
       expect(rig.coordinator.state.pendingNodes, isEmpty);
       expect(rig.recorded, isEmpty);
       expect(rig.cache['a'], CachedDelay(100, aAt), reason: '保留原测量时间');
-      expect(rig.cache['b'], const CachedDelay(250, null), reason: '历史值仍是历史值');
-      expect(rig.coordinator.state.timedOutNodes, {'a', 'b', 'c'});
+      expect(
+        rig.cache['b'],
+        const CachedDelay(250, null),
+        reason: '旧格式历史值仍是历史值',
+      );
+      expect(rig.cache['c'], CachedDelay(180, aAt));
+      expect(rig.coordinator.state.unconfirmedNodes, {'a', 'b', 'c'});
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
       expect(async.nonPeriodicTimerCount, 0);
       hung.complete();
     });
 
-    _fake('部分节点确认出结果：只刷新它们的测量时间，其余保留原时间并标超时', (rig, async) {
-      final oldAt = _t0.subtract(const Duration(minutes: 3));
-      rig.cache['a'] = CachedDelay(100, oldAt);
-      rig.cache['b'] = CachedDelay(200, oldAt);
+    _fake('内核悬挂、一点旧值都没有的节点：到点标超时（本轮测了没结果）', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
       rig.groups = [
-        _group({'a': 100, 'b': 200}),
+        _group({'a': 0}),
       ];
       rig.coordinator.onConnectionChanged(true);
-      rig.elapse(const Duration(seconds: 2));
+      unawaited(rig.coordinator.manualTest('proxy'));
+      rig.elapse(const Duration(seconds: 10));
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
+    });
+
+    _fake('内核悬挂但部分分组事件到了：确认的刷新、没确认的显示历史值、确认失败与无值的标超时', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      final oldAt = _t0.subtract(const Duration(minutes: 3));
+      rig.cache['ok'] = CachedDelay(100, oldAt);
+      rig.cache['same'] = CachedDelay(200, oldAt);
+      rig.cache['dead'] = CachedDelay(300, oldAt);
+      rig.groups = [
+        _group({'ok': 100, 'same': 200, 'dead': 300, 'none': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2)); // 自动开测
       rig.push([
-        _group({'a': 140, 'b': 200}),
+        _group({'ok': 140, 'same': 200, 'dead': 0, 'none': 0}),
       ]);
-      expect(rig.coordinator.state.pendingNodes['proxy'], {'b'});
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'same', 'none'});
 
       rig.elapse(const Duration(seconds: 10));
       final (ms, at) = rig.recorded.single;
-      expect(ms, {'a': 140});
+      expect(ms, {'ok': 140});
       expect(at, _t0.add(const Duration(seconds: 12)));
-      expect(rig.cache['b'], CachedDelay(200, oldAt));
-      expect(rig.coordinator.state.timedOutNodes, {'b'});
+      expect(rig.cache['same'], CachedDelay(200, oldAt));
+      expect(rig.coordinator.state.unconfirmedNodes, {'same'});
+      expect(rig.coordinator.state.timedOutNodes, {'dead', 'none'});
     });
 
     _fake('确认是累积的：先出结果的节点不会因为后续事件变回没结果', (rig, async) {
@@ -498,23 +526,37 @@ void main() {
       expect(rig.coordinator.state.timedOutNodes, {'a'});
     });
 
-    _fake('超时标记之后实时值变了（出了新结果）：撤掉超时标记', (rig, async) {
+    _fake('标记之后实时值变了（出了新结果）：撤掉未确认 / 超时标记', (rig, async) {
+      rig.groups = [
+        _group({'a': 100, 'b': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 12));
+      expect(rig.coordinator.state.unconfirmedNodes, {'a'});
+      expect(rig.coordinator.state.timedOutNodes, {'b'});
+
+      rig.push([
+        _group({'a': 100, 'b': 0}),
+      ]);
+      expect(rig.coordinator.state.unconfirmedNodes, {'a'}, reason: '值没变，标记保留');
+      expect(rig.coordinator.state.timedOutNodes, {'b'});
+
+      rig.push([
+        _group({'a': 95, 'b': 210}),
+      ]);
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
+    _fake('新一轮开始时清掉上一轮的未确认标记', (rig, async) {
       rig.groups = [
         _group({'a': 100}),
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 12));
-      expect(rig.coordinator.state.timedOutNodes, {'a'});
-
-      rig.push([
-        _group({'a': 100}),
-      ]);
-      expect(rig.coordinator.state.timedOutNodes, {'a'}, reason: '值没变，标记保留');
-
-      rig.push([
-        _group({'a': 95}),
-      ]);
-      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.coordinator.state.unconfirmedNodes, {'a'});
+      unawaited(rig.coordinator.manualTest('proxy'));
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
     });
 
     _fake('新一轮开始时清掉上一轮的超时标记', (rig, async) {

@@ -872,6 +872,9 @@ class _ConnectionInfo extends ConsumerWidget {
       timedOut:
           activeItem != null &&
           latencyState.timedOutNodes.contains(activeItem.tag),
+      unconfirmed:
+          activeItem != null &&
+          latencyState.unconfirmedNodes.contains(activeItem.tag),
       now: ref.watch(latencyClockProvider)(),
       cacheIsFallback: !isLiveData,
     );

@@ -17,16 +17,18 @@ const Duration kLatencyWarmupDelay = Duration(seconds: 2);
 /// 同一个分组两次自动测速的最小间隔。手动测速不受它约束。
 const Duration kLatencyAutoCooldown = Duration(seconds: 30);
 
-/// 一轮测速最长等多久：到点就收尾，没结果的节点标为超时。
+/// 一轮测速最长等多久：到点就收尾。没确认出结果、但有旧值的节点显示历史值；
+/// 连旧值都没有的节点标为超时。
 const Duration kLatencyRoundTimeout = Duration(seconds: 10);
 
 /// 协调器对外暴露的状态：哪些组在测、在测的组里哪些节点还没有本轮结果、
-/// 哪些节点上一轮没测出结果。
+/// 哪些节点上一轮没测出结果、哪些节点上一轮没确认而保留着旧值。
 class LatencyTestState {
   const LatencyTestState({
     this.testingGroups = const {},
     this.pendingNodes = const {},
     this.timedOutNodes = const {},
+    this.unconfirmedNodes = const {},
   });
 
   /// 正在测速的分组 tag。
@@ -38,9 +40,18 @@ class LatencyTestState {
   /// 已经出了本轮结果的节点不在这里，界面可以直接展示新值。
   final Map<String, Set<String>> pendingNodes;
 
-  /// 最近一轮测完仍没有有效结果的节点 tag（展示为「超时」）。之后实时值
-  /// 一旦变化（出了新的测量结果）就会被移出。
+  /// 最近一轮测完仍没有有效结果的节点 tag（展示为「超时」）：本轮确认测
+  /// 失败的，或到点没确认、手上也没有任何旧值的。之后实时值一旦变化（出了
+  /// 新的测量结果）就会被移出。
   final Set<String> timedOutNodes;
+
+  /// 最近一轮到点收尾时**没确认**出结果、但手上有旧值（实时或缓存）的节点
+  /// tag（展示为「历史值」，带旧值和旧的测量时间，不显示超时）。
+  ///
+  /// 内核回复 `urlTest` 时测试只是**开始**了，结果陆续写进分组流；到点仍没
+  /// 变化的节点无从判断是没测完还是恰好测出同一个数，所以既不能当新结果，
+  /// 也不能判超时。实时值之后一变就会被移出。
+  final Set<String> unconfirmedNodes;
 
   bool get isTesting => testingGroups.isNotEmpty;
   bool isGroupTesting(String groupTag) => testingGroups.contains(groupTag);
@@ -57,10 +68,12 @@ class LatencyTestState {
     Set<String>? testingGroups,
     Map<String, Set<String>>? pendingNodes,
     Set<String>? timedOutNodes,
+    Set<String>? unconfirmedNodes,
   }) => LatencyTestState(
     testingGroups: testingGroups ?? this.testingGroups,
     pendingNodes: pendingNodes ?? this.pendingNodes,
     timedOutNodes: timedOutNodes ?? this.timedOutNodes,
+    unconfirmedNodes: unconfirmedNodes ?? this.unconfirmedNodes,
   );
 
   @override
@@ -68,7 +81,8 @@ class LatencyTestState {
       other is LatencyTestState &&
       _setEquals(other.testingGroups, testingGroups) &&
       _mapOfSetsEquals(other.pendingNodes, pendingNodes) &&
-      _setEquals(other.timedOutNodes, timedOutNodes);
+      _setEquals(other.timedOutNodes, timedOutNodes) &&
+      _setEquals(other.unconfirmedNodes, unconfirmedNodes);
 
   @override
   int get hashCode => Object.hash(
@@ -78,6 +92,7 @@ class LatencyTestState {
         Object.hash(e.key, Object.hashAllUnordered(e.value)),
     ]),
     Object.hashAllUnordered(timedOutNodes),
+    Object.hashAllUnordered(unconfirmedNodes),
   );
 }
 
@@ -103,8 +118,9 @@ class _Round {
   final Map<String, int> baseline;
 
   /// 本轮已确认出了结果的节点（值与开测基线不同）。只有它们会在收尾时
-  /// 刷新测量时间；没确认的节点保留原来的测量时间并标为超时——即使它恰好
-  /// 被重测成了同一个毫秒数，也无从分辨，宁可不把旧值记成新结果。
+  /// 刷新测量时间；没确认的节点保留原来的值与测量时间，展示为历史值——它
+  /// 可能还没测完，也可能恰好被重测成同一个毫秒数，无从分辨，所以既不把旧值
+  /// 记成新结果，也不判它超时。
   final Set<String> confirmed = {};
   final Completer<void> done = Completer<void>();
   Timer? timeout;
@@ -120,7 +136,8 @@ class _Round {
 /// - 手动测速绕过冷却，但在途时复用同一个任务；
 /// - 断开、重连、切订阅取消旧任务；
 /// - 一轮的完成条件 = 组内所有节点都有了本轮结果，或 [kLatencyRoundTimeout]。
-///   收尾时只刷新本轮**确认**出了结果的节点的测量时间，其余标为超时。
+///   收尾时只刷新本轮**确认**出了结果的节点的测量时间；没确认的保留旧值
+///   显示历史值，连旧值都没有的才标超时。
 ///
 /// 依赖全部通过构造函数注入（回调），时间只读 [Timer] 与 `now`，所以可以用
 /// fake_async 完整驱动。Riverpod 接线见 [latencyTestCoordinatorProvider]。
@@ -151,9 +168,9 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   final Map<String, _Round> _rounds = {};
   final Map<String, DateTime> _lastStart = {};
 
-  /// 被标为超时的节点 → 标记那一刻的实时延迟。实时值之后变了，说明出了新的
-  /// 测量结果（比如订阅自带的自动选择组在后台测过），超时标记随之撤掉。
-  final Map<String, int> _timedOutAt = {};
+  /// 被标为超时或未确认的节点 → 标记那一刻的实时延迟。实时值之后变了，说明
+  /// 出了新的测量结果（比如订阅自带的自动选择组在后台测过），标记随之撤掉。
+  final Map<String, int> _markedAt = {};
 
   // --------------------------------------------------------------- 外部事件
 
@@ -276,7 +293,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     final ownTags = {
       for (final item in live?.items ?? const <OutboundProxy>[]) item.tag,
     };
-    ownTags.forEach(_timedOutAt.remove);
+    ownTags.forEach(_markedAt.remove);
     _emit(
       state.copyWith(
         testingGroups: {...state.testingGroups, groupTag},
@@ -285,6 +302,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
           groupTag: live == null ? const {} : _pendingOf(round, live),
         },
         timedOutNodes: state.timedOutNodes.difference(ownTags),
+        unconfirmedNodes: state.unconfirmedNodes.difference(ownTags),
       ),
     );
 
@@ -322,20 +340,23 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     return items.every((item) => round.confirmed.contains(item.tag));
   }
 
-  /// 超时标记之后实时值变了：出了新结果，撤掉标记。
+  /// 超时 / 未确认标记之后实时值变了：出了新结果，撤掉标记。
   void _releaseTimeouts(List<OutboundGroup> groups) {
-    if (_timedOutAt.isEmpty) return;
+    if (_markedAt.isEmpty) return;
     final released = <String>{};
     for (final group in groups) {
       for (final item in group.items) {
-        final markedAt = _timedOutAt[item.tag];
+        final markedAt = _markedAt[item.tag];
         if (markedAt != null && item.delay != markedAt) released.add(item.tag);
       }
     }
     if (released.isEmpty) return;
-    released.forEach(_timedOutAt.remove);
+    released.forEach(_markedAt.remove);
     _emit(
-      state.copyWith(timedOutNodes: state.timedOutNodes.difference(released)),
+      state.copyWith(
+        timedOutNodes: state.timedOutNodes.difference(released),
+        unconfirmedNodes: state.unconfirmedNodes.difference(released),
+      ),
     );
   }
 
@@ -344,26 +365,40 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   /// 收尾一轮：取消超时定时器、把**本轮确认的**结果写进缓存、更新状态、
   /// 放行等待者。
   ///
-  /// 没确认的节点不写缓存（保留原测量时间）；[markTimeouts] 为真时它们与
-  /// 确认了但没有有效值的节点一起标为超时。内核调用失败时不标超时——那不是
-  /// 节点的问题。
+  /// - 确认了且有效：写缓存（刷新测量时间），展示成功；
+  /// - 确认了但没有有效值（测失败）：标超时；
+  /// - 没确认：不写缓存，保留原值与原测量时间。[markTimeouts] 为真时，手上
+  ///   有旧值（实时或缓存）的标为未确认（展示历史值），一点旧值都没有的标超时。
+  ///
+  /// 内核调用失败时（[markTimeouts] 为假）只写确认的结果，不打任何标记——那
+  /// 不是节点的问题。
   void _end(_Round round, {required bool markTimeouts}) {
     if (!identical(_rounds[round.group], round)) return;
     _rounds.remove(round.group);
     round.timeout?.cancel();
 
     final group = _find(_liveGroups(), round.group);
+    final cache = _cache();
     final timedOut = <String>{};
+    final unconfirmed = <String>{};
     final measured = <String, int>{};
     if (group != null) {
       for (final item in _testableItems(group)) {
         final confirmed = round.confirmed.contains(item.tag);
         if (confirmed && isMeasurableDelay(item.delay)) {
           measured[item.tag] = item.delay;
-        } else if (markTimeouts) {
-          timedOut.add(item.tag);
-          _timedOutAt[item.tag] = item.delay;
+          continue;
         }
+        if (!markTimeouts) continue;
+        final hasOldValue =
+            isMeasurableDelay(item.delay) ||
+            isMeasurableDelay(cache[item.tag]?.ms);
+        if (!confirmed && hasOldValue) {
+          unconfirmed.add(item.tag);
+        } else {
+          timedOut.add(item.tag);
+        }
+        _markedAt[item.tag] = item.delay;
       }
     }
     if (measured.isNotEmpty) _recordMeasured(measured, _now());
@@ -373,6 +408,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
         testingGroups: {...state.testingGroups}..remove(round.group),
         pendingNodes: {...state.pendingNodes}..remove(round.group),
         timedOutNodes: {...state.timedOutNodes, ...timedOut},
+        unconfirmedNodes: {...state.unconfirmedNodes, ...unconfirmed},
       ),
     );
     if (!round.done.isCompleted) round.done.complete();
@@ -389,7 +425,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     }
     _rounds.clear();
     _lastStart.clear();
-    _timedOutAt.clear();
+    _markedAt.clear();
     _emit(const LatencyTestState());
   }
 

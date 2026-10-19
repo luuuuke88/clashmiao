@@ -114,6 +114,10 @@ class StorageMigrator {
         }
       }
       if (!ok) {
+        // 真实的 SharedPreferences 先改内存缓存、再写底层：写入返回 false 或抛出时，
+        // 缓存里留着没落盘的值（比如已经是新 schema）。重载使缓存与持久化状态一致，
+        // 之后的读取与重跑都以磁盘上最后确认成功的状态为准。
+        await _resync(prefs);
         debugPrint(
           '[StorageMigrator] 步骤 v${step.toVersion}(${step.name}) 失败，停止；下次启动重试',
         );
@@ -133,5 +137,13 @@ class StorageMigrator {
       fromSchema: from,
       toSchema: schema,
     );
+  }
+}
+
+Future<void> _resync(SharedPreferences prefs) async {
+  try {
+    await prefs.reload();
+  } catch (e) {
+    debugPrint('[StorageMigrator] 失败后重载偏好也失败: $e');
   }
 }

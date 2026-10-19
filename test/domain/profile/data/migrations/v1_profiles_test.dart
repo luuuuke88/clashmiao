@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../support/crashable_prefs.dart';
+import '../../../../support/profile_harness.dart';
 
 const _profiles = ProfileStore.profilesKey;
 const _active = ProfileStore.activeProfileKey;
@@ -194,6 +195,32 @@ void main() {
       expect(backup[_active], 'a');
     });
 
+    test('备份保存原值与存在标记，包括类型不对的脏值', () async {
+      final prefs = await _seed({_profiles: 42, _active: true});
+      await _run(prefs);
+      final backup =
+          jsonDecode(prefs.getString(kMigrationBackupV0Key)!)
+              as Map<String, dynamic>;
+      expect(backup[_profiles], 42);
+      expect(backup[_active], true);
+      expect(backup['present'], {_profiles: true, _active: true});
+
+      final lists = await _seed({_profiles: '[]', _active: 'x'});
+      await prefs.reload();
+      await _run(lists);
+      // 字符串数组之类的脏值同样原样（可 JSON 编码）保存。
+      final withList = await _seed({
+        _profiles: ['a', 'b'],
+      });
+      await _run(withList);
+      final b2 =
+          jsonDecode(withList.getString(kMigrationBackupV0Key)!)
+              as Map<String, dynamic>;
+      expect(b2[_profiles], ['a', 'b']);
+      expect(b2[_active], isNull);
+      expect(b2['present'], {_profiles: true, _active: false});
+    });
+
     test('备份键已存在：不覆盖', () async {
       final prefs = await _seed({
         ..._v0(list: [_p('a')]),
@@ -346,6 +373,89 @@ void main() {
       expect(inner.getString(_active), 'ghost');
       expect(inner.getString(_profiles), (fixture[_profiles]));
       expect(inner.getInt(kStorageSchemaKey), isNull);
+    });
+  });
+
+  group('迁移早期失败后继续使用：旧的激活信息不丢', () {
+    // 评审用例：第一条是 a，旧版本标记激活的是 b，激活键悬空（ghost）或缺失；
+    // 迁移在最前面的备份写入就失败，启动照常继续，业务写回，下次启动再迁移。
+    for (final danglingKey in [true, false]) {
+      final label = danglingKey ? '激活键悬空 ghost' : '激活键缺失';
+      test('$label：读取退回旧 active 标记；业务写回保留标记；重跑后激活仍是 b', () async {
+        final h = await ProfileHarness.create(
+          legacy: true,
+          initialPrefs: _v0(
+            list: [_p('a', active: false), _p('b', active: true)],
+            active: danglingKey ? 'ghost' : null,
+          ),
+        );
+        addTearDown(h.dispose);
+
+        // 迁移在备份写入处失败（一个写入都没生效）。
+        final first = await StorageMigrator(
+          migrations: [profilesV1Migration(incGenerator: _incs())],
+        ).run(CrashablePrefs(h.prefs, allowedWrites: 0));
+        expect(first.outcome, MigrationOutcome.failed);
+        expect(h.prefs.getInt(kStorageSchemaKey), isNull);
+
+        // 迁移没完成，业务读取也必须看到 b，而不是第一条 a（或 null）。
+        expect(h.repo.getActive()?.id, 'b');
+        expect(h.store.readActiveId(), 'b');
+        expect(
+          {for (final e in h.repo.getAll()) e.id: e.active},
+          {'a': false, 'b': true},
+        );
+
+        // 业务写回（编辑非激活的 a、也编辑激活的 b）：整张列表被重写。
+        await h.repo.editProfile('a', newName: 'a2');
+        await h.repo.editProfile('b', newName: 'b2');
+        expect(h.repo.getActive()?.id, 'b');
+        final stored = h.storedJson;
+        expect(
+          {for (final e in stored) e['id']: e['active']},
+          {'a': false, 'b': true},
+          reason: '迁移未完成期间写回仍带着 active 标记',
+        );
+        expect(
+          h.prefs.getString(_active),
+          danglingKey ? 'ghost' : isNull,
+          reason: '业务写回不碰激活键',
+        );
+
+        // 下次启动重跑迁移：激活恰好是 b，名字改动保留，active 标记被清理。
+        final second = await StorageMigrator(
+          migrations: [profilesV1Migration(incGenerator: _incs())],
+        ).run(h.prefs);
+        expect(second.outcome, MigrationOutcome.migrated);
+        expect(h.prefs.getString(_active), 'b');
+        expect(h.repo.getActive()?.id, 'b');
+        final after = h.storedJson;
+        expect(after.map((e) => e['name']), ['a2', 'b2']);
+        expect(after.every((e) => !e.containsKey('active')), isTrue);
+      });
+    }
+
+    test('迁移完成（schema 1）后恢复现行行为：悬空激活键回落第一条，写回不再带 active', () async {
+      final h = await ProfileHarness.create(
+        initialPrefs: _v0(
+          list: [_p('a'), _p('b', active: true)],
+          active: 'ghost',
+        ),
+      );
+      addTearDown(h.dispose);
+      expect(h.prefs.getInt(kStorageSchemaKey), 1);
+      expect(h.repo.getActive()?.id, 'a', reason: 'schema 1 起旧标记不再参与');
+      await h.repo.editProfile('a', newName: 'x');
+      expect(h.storedJson.every((e) => !e.containsKey('active')), isTrue);
+    });
+
+    test('激活键有效时，迁移未完成期间也以激活键为准', () async {
+      final h = await ProfileHarness.create(
+        legacy: true,
+        initialPrefs: _v0(list: [_p('a'), _p('b', active: true)], active: 'a'),
+      );
+      addTearDown(h.dispose);
+      expect(h.repo.getActive()?.id, 'a');
     });
   });
 }

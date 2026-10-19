@@ -13,6 +13,7 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/config/application/restore_refresher.dart';
@@ -31,6 +32,53 @@ import '../../../support/restore_harness.dart';
 /// - 已连接时删掉激活订阅、还有别的 → 以新的激活订阅 applyConfig；
 /// - 已连接时导入空备份 → 断开；
 /// - 恢复期间配置变更不在中间态上重载，结束后按最终状态只应用一次。
+///
+/// 全程不靠真实时间：防抖窗口由可控调度器 [_ManualTimers] 推进；断言请求数之前
+/// 先等控制器在途的准备 / 发送任务（真实文件 IO）全部结束（[settle]）。
+
+/// 可控的防抖定时器：只有测试调用 [elapseAll] 时才「到期」。
+class _ManualTimers {
+  final pending = <_ManualTimer>[];
+
+  Timer create(Duration duration, void Function() callback) {
+    final timer = _ManualTimer(this, callback);
+    pending.add(timer);
+    return timer;
+  }
+
+  /// 让所有排队中的防抖窗口立刻到期。
+  void elapseAll() {
+    for (final t in List.of(pending)) {
+      t.fire();
+    }
+  }
+}
+
+class _ManualTimer implements Timer {
+  _ManualTimer(this._owner, this._callback);
+
+  final _ManualTimers _owner;
+  final void Function() _callback;
+  bool _active = true;
+
+  void fire() {
+    if (!_active) return;
+    cancel();
+    _callback();
+  }
+
+  @override
+  void cancel() {
+    _active = false;
+    _owner.pending.remove(this);
+  }
+
+  @override
+  bool get isActive => _active;
+
+  @override
+  int get tick => 0;
+}
 
 class _QuietHaptic extends HapticService {
   _QuietHaptic(super.ref);
@@ -129,24 +177,29 @@ void main() {
   late _Kernel kernel;
   late ProviderContainer container;
   late Directory workDir;
+  late _ManualTimers debounce;
 
   ConnectionController ctl() =>
       container.read(connectionControllerProvider.notifier);
   ConnectionPhase phase() => container.read(connectionControllerProvider).phase;
   List<DesiredRequest> requests() => kernel.port.requests;
 
-  Future<void> until(bool Function() ok, String what) async {
-    final deadline = DateTime.now().add(const Duration(seconds: 5));
-    while (!ok()) {
-      if (DateTime.now().isAfter(deadline)) fail('等待超时：$what');
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-    }
+  /// 让订阅存储的变更广播、provider 重算与控制器监听依次跑完，再等控制器发起的
+  /// 准备 / 发送任务（真实文件 IO）全部结束；循环到不再派生新任务为止。
+  Future<void> settle() async {
+    do {
+      await pumpEventQueue();
+      await container.read(activeProfileProvider.future);
+      await pumpEventQueue();
+    } while (await ctl().debugDrainTasks());
   }
 
-  /// 比防抖窗口更久：证明没有迟到的配置变更请求。
-  Future<void> quiet() => Future<void>.delayed(
-    kConfigChangeReconnectDebounce + const Duration(milliseconds: 250),
-  );
+  /// 证明没有迟到的配置变更请求：让排队中的防抖窗口立刻到期，再等任务结束。
+  Future<void> quiet() async {
+    debounce.elapseAll();
+    await settle();
+    expect(debounce.pending, isEmpty);
+  }
 
   Future<void> setUpWith(List<String> ids, {required String active}) async {
     h = await RestoreHarness.create(
@@ -164,6 +217,7 @@ void main() {
     );
     workDir = Directory('${h.tmp.path}/work')..createSync();
     kernel = _Kernel();
+    debounce = _ManualTimers();
     container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWith((ref) async => h.prefs),
@@ -181,6 +235,7 @@ void main() {
         hapticServiceProvider.overrideWith(_QuietHaptic.new),
         storeReviewServiceProvider.overrideWith(_QuietReview.new),
         fatalFailureReporterProvider.overrideWithValue((_) {}),
+        configChangeDebounceTimerProvider.overrideWithValue(debounce.create),
       ],
     );
     await container.read(sharedPreferencesProvider.future);
@@ -191,9 +246,9 @@ void main() {
   }
 
   Future<void> connected() async {
-    unawaited(ctl().connect());
-    await until(() => phase() == ConnectionPhase.connected, '连上');
-    await pumpEventQueue();
+    expect(await ctl().connect(), const RequestSucceeded());
+    await settle();
+    expect(phase(), ConnectionPhase.connected);
   }
 
   tearDown(() async {
@@ -209,7 +264,7 @@ void main() {
       final base = requests().length;
 
       await repo.delete('a');
-      await until(() => phase() == ConnectionPhase.disconnected, '断开');
+      await settle();
       await quiet();
 
       final sent = requests().sublist(base);
@@ -225,8 +280,8 @@ void main() {
       final base = requests().length;
 
       await repo.delete('a');
-      await until(() => requests().length > base, '重新应用');
-      await until(() => phase() == ConnectionPhase.connected, '新配置连上');
+      await settle();
+      expect(phase(), ConnectionPhase.connected, reason: '新配置连上');
       await quiet();
 
       final sent = requests().sublist(base);
@@ -269,7 +324,8 @@ void main() {
       final plan = h.engine.prepare(_backup());
       final outcome = await refresher().restore(h.engine, plan);
       await outcome.backfill;
-      await until(() => phase() == ConnectionPhase.disconnected, '断开');
+      await settle();
+      expect(phase(), ConnectionPhase.disconnected);
       await quiet();
 
       expect(await container.read(activeProfileProvider.future), isNull);
@@ -292,7 +348,7 @@ void main() {
       final outcome = await refresher().restore(h.engine, plan);
       await outcome.backfill;
       expect(ctl().configChangesPaused, isFalse, reason: '恢复结束必须释放暂停');
-      await until(() => requests().length > base, '重新应用');
+      await settle();
       await quiet();
 
       final sent = requests().sublist(base);
@@ -314,11 +370,13 @@ void main() {
       final base = requests().length;
 
       await container.read(networkSettingsProvider.notifier).setMixedPort(2999);
+      expect(debounce.pending, hasLength(1), reason: '前置条件：防抖重新应用已排队');
       // 防抖窗口还没到就开始恢复。
       final plan = h.engine.prepare(_backup(ids: ['b'], active: 'b'));
       final outcome = await refresher().restore(h.engine, plan);
+      expect(debounce.pending, isEmpty, reason: '恢复开始时取消已排队的那一次');
       await outcome.backfill;
-      await until(() => requests().length > base, '重新应用');
+      await settle();
       await quiet();
 
       final sent = requests().sublist(base);
@@ -370,7 +428,7 @@ void main() {
         activeProfileId: () => 'a',
       );
       await r.backfill(['a']);
-      await until(() => requests().length > base, '重新应用');
+      await settle();
 
       final sent = requests().sublist(base);
       expect(sent.single.desired, Desired.on);

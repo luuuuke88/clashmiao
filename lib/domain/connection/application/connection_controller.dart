@@ -295,12 +295,15 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     }
     if (!_wantsConnection) return;
     _settingsDebounce?.cancel();
-    _settingsDebounce = Timer(kConfigChangeReconnectDebounce, () {
-      _settingsDebounce = null;
-      // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
-      if (!_wantsConnection) return;
-      _applyWithNotice();
-    });
+    _settingsDebounce = _ref.read(configChangeDebounceTimerProvider)(
+      kConfigChangeReconnectDebounce,
+      () {
+        _settingsDebounce = null;
+        // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
+        if (!_wantsConnection) return;
+        _applyWithNotice();
+      },
+    );
   }
 
   /// 暂停「配置变更 → 重新应用」（备份恢复期间用）。
@@ -427,14 +430,14 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     for (final a in actions) {
       switch (a) {
         case PrepareLaunch(:final id):
-          unawaited(_prepare(id));
+          _track(_prepare(id));
         case SendRequest(:final id, :final request):
           if (request.desired == Desired.off) {
             _recordOffSend(id, request);
           }
-          unawaited(_send(id, request));
+          _track(_send(id, request));
         case Resync():
-          unawaited(_resync());
+          _track(_resync());
         case RunEffect(:final effect):
           final f = _runEffect(effect);
           // 只有系统代理脏标记必须在放行之前落盘；触觉、评分、手选重放、上报
@@ -449,6 +452,27 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
           _settle(id, outcome, List.of(pendingEffects));
       }
     }
+  }
+
+  /// 在途的准备 / 发送 / 重同步任务（它们自己捕获所有错误，结果以事件喂回）。
+  final Set<Future<void>> _tasks = {};
+
+  void _track(Future<void> task) {
+    _tasks.add(task);
+    unawaited(task.whenComplete(() => _tasks.remove(task)));
+  }
+
+  /// 只给测试用：等当前在途的准备 / 发送 / 重同步任务全部结束（含它们结束时新派生
+  /// 的任务）。返回是否等到过任务。测试据此在断言请求数之前确定性地等完真实文件
+  /// IO，而不是靠真实时间轮询。
+  @visibleForTesting
+  Future<bool> debugDrainTasks() async {
+    var waited = false;
+    while (_tasks.isNotEmpty) {
+      waited = true;
+      await Future.wait(List.of(_tasks));
+    }
+    return waited;
   }
 
   void _settle(int id, RequestOutcome outcome, List<Future<void>> after) {
@@ -750,6 +774,10 @@ final connectionControllerProvider =
 
 /// 配置变更触发自动应用前的防抖窗口，见 [connectionControllerProvider]。
 const kConfigChangeReconnectDebounce = Duration(milliseconds: 400);
+
+/// 建防抖定时器的工厂。测试替换成可控调度器，不用真实时间等防抖窗口。
+final configChangeDebounceTimerProvider =
+    Provider<Timer Function(Duration, void Function())>((ref) => Timer.new);
 
 /// 配置（网络设置）变更触发重新应用的通知 nonce。
 ///

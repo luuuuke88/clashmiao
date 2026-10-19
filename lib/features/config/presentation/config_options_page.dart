@@ -1,3 +1,5 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -163,7 +165,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                   child: Column(
                     children: [
                       TipCard(message: t.settings.experimentalMsg)
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(duration: 400.ms)
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 16),
@@ -239,7 +241,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 100.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -298,7 +300,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 200.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -380,7 +382,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 300.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -413,7 +415,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 400.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -422,7 +424,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             iconColor: Colors.indigo,
                             children: const [_WarpOptionsTiles()],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 500.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -451,7 +453,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 600.ms)
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 120),
@@ -904,11 +906,7 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
           ),
           enabled: canChangeOptions && !_generating,
           trailing: _generating
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(width: 16, height: 16, child: MotionProgress())
               : const Icon(FluentIcons.chevron_right_16_regular, size: 16),
           contentPadding: const EdgeInsets.symmetric(horizontal: 24),
           onTap: (canChangeOptions && !_generating)

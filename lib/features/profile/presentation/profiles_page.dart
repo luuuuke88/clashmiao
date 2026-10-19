@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
@@ -109,7 +110,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                                 t,
                               ),
                             )
-                            .animate()
+                            .animateWithMotion(context)
                             .fadeIn(
                               duration: 300.ms,
                               delay: (200 + index * 50).ms,
@@ -245,7 +246,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                             t,
                           ),
                         )
-                        .animate()
+                        .animateWithMotion(context)
                         .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
                         .slideX(
                           begin: 0.1,
@@ -541,7 +542,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                           )
                         : null,
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: (200 + sort.index * 50).ms)
                   .slideX(
                     begin: 0.1,
@@ -603,7 +604,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onShare();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 200.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
             // 只有远程订阅才有真正可分享的 URL 可编码——本地导入的
@@ -624,7 +625,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                       onShowQr();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 225.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 225.ms),
             ListTile(
@@ -641,7 +642,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onEdit();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 250.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
             if (canUpdate)
@@ -659,16 +660,20 @@ class _ProfileActionsModal extends ConsumerWidget {
                       onUpdate();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 300.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(
-                height: 1,
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-              ),
-            ).animate().fadeIn(duration: 300.ms, delay: 350.ms),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
+                )
+                .animateWithMotion(context)
+                .fadeIn(duration: 300.ms, delay: 350.ms),
             ListTile(
                   leading: const Icon(
                     FluentIcons.delete_24_regular,
@@ -686,7 +691,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onDelete();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 400.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 400.ms),
             const SizedBox(height: 24),
@@ -796,8 +801,7 @@ class _HeaderButton extends StatelessWidget {
             child: isLoading
                 ? Padding(
                     padding: const EdgeInsets.all(10),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
+                    child: MotionProgress(
                       color: filled
                           ? theme.colorScheme.onPrimary
                           : aiUi.secondaryTextColor,

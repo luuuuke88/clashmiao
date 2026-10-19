@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -112,7 +113,7 @@ class AiUiModalWrapper extends StatelessWidget {
                           ],
                         ),
                       )
-                      .animate()
+                      .animateWithMotion(context)
                       .fadeIn(duration: 300.ms)
                       .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
             ),

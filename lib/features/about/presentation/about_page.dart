@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'dart:async';
 
 import 'package:clashmiao/core/env/build_config.dart';
@@ -116,9 +117,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                                    child: MotionProgress(),
                                   )
                                 : _Chevron(
                                     color: Theme.of(

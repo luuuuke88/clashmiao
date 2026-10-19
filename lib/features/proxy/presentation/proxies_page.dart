@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -453,7 +454,7 @@ class ProxiesSortModal extends HookConsumerWidget {
                     context.pop();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: (200 + e.index * 50).ms)
                 .slideX(
                   begin: 0.1,

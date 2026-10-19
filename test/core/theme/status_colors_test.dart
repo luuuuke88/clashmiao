@@ -1,10 +1,13 @@
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
+import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// WCAG 2.x 对比度：(L1 + 0.05) / (L2 + 0.05)，L 为相对亮度。
 double contrast(Color a, Color b) {
@@ -57,6 +60,17 @@ Map<String, Color> _surfaces(Brightness brightness) {
       cardOnWash,
     ),
     'aiUi.cardColor': aiUi.cardColor,
+    // 凹槽底（分段槽 / 首页节点胶囊）：浅色是不透明的 #E9EEF6，直接压在页底与
+    // 晕染页底上；深色是 8% 白叠在页底上。
+    'soft well on scaffold': Color.alphaBlend(
+      aiUi.softBackgroundColor,
+      scaffold,
+    ),
+    'soft well on wash': Color.alphaBlend(aiUi.softBackgroundColor, washed),
+    'selected row on soft well': Color.alphaBlend(
+      primary.withValues(alpha: 0.08),
+      Color.alphaBlend(aiUi.softBackgroundColor, cardOnWash),
+    ),
   };
 }
 
@@ -76,6 +90,63 @@ void main() {
           }
         });
       }
+    }
+  });
+
+  group('展示出来的每种延迟状态：按真实前景（含 alpha）先合成再算对比度 ≥ 4.5:1', () {
+    // 从真实的 LatencyLabel 里读它实际渲染的颜色（不是基础常量），先把前景按它
+    // 自己的 alpha 合成到各个真实底色上，再算 WCAG。以后谁给历史值 / 测量中旧值
+    // 重新叠 alpha，这里会直接红。
+    Widget host(LatencyDisplayState state, int? ms, Brightness b) =>
+        ProviderScope(
+          overrides: [
+            translationsProvider.overrideWithValue(AppLocale.zhCn.build()),
+          ],
+          child: MaterialApp(
+            theme: b == Brightness.light
+                ? AppTheme(AppThemeMode.light, 'Roboto').lightTheme()
+                : AppTheme(AppThemeMode.dark, 'Roboto').darkTheme(),
+            home: Scaffold(
+              body: LatencyLabel(state: state, ms: ms),
+            ),
+          ),
+        );
+
+    final cases = <(LatencyDisplayState, int?)>[
+      (LatencyDisplayState.untested, null),
+      (LatencyDisplayState.timeout, null),
+      (LatencyDisplayState.testing, null),
+      for (final ms in [50, 299, 300, 799, 800, 5000]) ...[
+        (LatencyDisplayState.success, ms),
+        (LatencyDisplayState.stale, ms),
+        (LatencyDisplayState.testing, ms),
+      ],
+    ];
+
+    for (final brightness in Brightness.values) {
+      testWidgets(brightness.name, (tester) async {
+        final surfaces = _surfaces(brightness);
+        for (final (state, ms) in cases) {
+          await tester.pumpWidget(host(state, ms, brightness));
+          final fg = tester
+              .widget<Text>(
+                find.descendant(
+                  of: find.byType(LatencyLabel),
+                  matching: find.byType(Text),
+                ),
+              )
+              .style!
+              .color!;
+          for (final entry in surfaces.entries) {
+            final composited = Color.alphaBlend(fg, entry.value);
+            expect(
+              contrast(composited, entry.value),
+              greaterThanOrEqualTo(4.5),
+              reason: '$state ${ms ?? '-'}ms 压在 ${entry.key} 上对比度不足',
+            );
+          }
+        }
+      });
     }
   });
 

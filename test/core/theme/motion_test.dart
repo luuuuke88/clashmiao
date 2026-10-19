@@ -47,6 +47,7 @@ void main() {
       const Duration(milliseconds: 80),
     );
     expect(Motion.loops(context), isTrue);
+    expect(Motion.layoutDuration(context, Motion.medium), Motion.medium);
   });
 
   testWidgets('减少动画：时长取 0、延迟清除、循环不启动', (tester) async {
@@ -60,5 +61,10 @@ void main() {
       Duration.zero,
     );
     expect(Motion.loops(context), isFalse);
+    // 布局期驱动的动画（AnimatedSize）不能取 0，否则会在 performLayout 里同步通知。
+    expect(
+      Motion.layoutDuration(context, Motion.medium),
+      const Duration(microseconds: 1),
+    );
   });
 }

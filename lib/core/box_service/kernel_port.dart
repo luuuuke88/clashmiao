@@ -230,7 +230,7 @@ class KernelSnapshot {
   /// 当前 attempt 是全新内核实例，尚未被 Dart 确认重放手选。
   final bool selectionsReplayNeeded;
 
-  /// 解析事件通道载荷。结构非法（缺字段、未知 status/desired）抛
+  /// 解析事件通道载荷。结构非法（缺字段、必填 bool 类型不对、未知 status/desired）抛
   /// [FormatException]；调用方应丢弃该条并记日志，不得合成默认值。
   factory KernelSnapshot.fromJson(Map<Object?, Object?> json) {
     final epoch = json['epoch'];
@@ -245,7 +245,8 @@ class KernelSnapshot {
         attempt is! num ||
         appliedSeq is! num ||
         status == null ||
-        desired == null) {
+        desired == null ||
+        json['selectionsReplayNeeded'] is! bool) {
       throw FormatException('非法的内核快照载荷: $json');
     }
     final rev = json['activeConfigRevision'];
@@ -259,7 +260,7 @@ class KernelSnapshot {
       appliedSeq: appliedSeq.toInt(),
       activeConfigRevision: rev is num ? rev.toInt() : null,
       lastFailure: KernelFailure.tryFromJson(json['lastFailure']),
-      selectionsReplayNeeded: json['selectionsReplayNeeded'] == true,
+      selectionsReplayNeeded: json['selectionsReplayNeeded'] as bool,
     );
   }
 

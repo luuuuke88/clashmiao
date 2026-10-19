@@ -419,6 +419,196 @@ void main() {
     });
   });
 
+  group('订阅轮次与查询代际隔离（spec §10.5 / §10.8）', () {
+    /// 每次 getSnapshot 调用登记一个 gate，由测试决定何时、如何返回。
+    List<Completer<pigeon.KernelSnapshotMsg>> mockGates() {
+      final gates = <Completer<pigeon.KernelSnapshotMsg>>[];
+      _mockHost('getSnapshot', (_) {
+        final c = Completer<pigeon.KernelSnapshotMsg>();
+        gates.add(c);
+        return c.future;
+      });
+      return gates;
+    }
+
+    test('旧一轮的同步迟到成功：不缓存、不推快照、不把断开的链路改回 connected', () {
+      fakeAsync((async) {
+        final gates = mockGates();
+        final events = _Events();
+        final port = PlatformKernelPort(eventStream: events.call);
+        final links = <KernelLink>[];
+        final seen = <int>[];
+        final subL = port.watchLink().listen(links.add);
+        final subS = port.watch().listen((s) => seen.add(s.version));
+        async.flushMicrotasks();
+        expect(gates, hasLength(1));
+
+        events.last.addError(StateError('x')); // 第 1 轮在同步返回前结束
+        async.flushMicrotasks();
+        expect(links.last, KernelLink.lost);
+
+        gates[0].complete(_msg(version: 3)); // 退避窗口内，旧同步迟到成功
+        async.flushMicrotasks();
+        expect(seen, isEmpty);
+        expect(links.last, KernelLink.lost);
+
+        async.elapse(const Duration(milliseconds: 501)); // 第 2 轮
+        expect(events.subscriptions, 2);
+        expect(gates, hasLength(2));
+        gates[1].complete(_msg(version: 5));
+        async.flushMicrotasks();
+        expect(seen, [5]);
+        expect(links.last, KernelLink.connected);
+
+        subL.cancel();
+        subS.cancel();
+        async.flushMicrotasks();
+        port.dispose();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('旧一轮的同步迟到失败：不会把已恢复的新一轮标成失联，也不触发多余重订阅', () {
+      fakeAsync((async) {
+        final gates = mockGates();
+        final events = _Events();
+        final port = PlatformKernelPort(eventStream: events.call);
+        final links = <KernelLink>[];
+        final subL = port.watchLink().listen(links.add);
+        final subS = port.watch().listen((_) {});
+        async.flushMicrotasks();
+
+        events.last.addError(StateError('x'));
+        async.flushMicrotasks();
+        async.elapse(const Duration(milliseconds: 501));
+        expect(events.subscriptions, 2);
+        gates[1].complete(_msg(version: 5)); // 新一轮恢复
+        async.flushMicrotasks();
+        expect(links.last, KernelLink.connected);
+
+        gates[0].completeError(
+          PlatformException(code: 'channel-error', message: 'late'),
+        );
+        async.flushMicrotasks();
+        expect(links.last, KernelLink.connected);
+        async.elapse(const Duration(seconds: 30));
+        expect(events.subscriptions, 2);
+        expect(links.last, KernelLink.connected);
+
+        subL.cancel();
+        subS.cancel();
+        async.flushMicrotasks();
+        port.dispose();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('取消全部订阅后返回的在途查询：不回填已清空的缓存，下一批订阅者不会先收到它', () async {
+      final gates = mockGates();
+      final events = _Events();
+      final port = PlatformKernelPort(eventStream: events.call);
+      final sub = port.watch().listen((_) {});
+      await pumpEventQueue();
+      expect(gates, hasLength(1));
+
+      await sub.cancel();
+      await pumpEventQueue();
+      gates[0].complete(_msg(version: 3)); // 取消之后才返回
+      await pumpEventQueue();
+
+      final seen2 = <int>[];
+      final sub2 = port.watch().listen((s) => seen2.add(s.version));
+      await pumpEventQueue();
+      expect(seen2, isEmpty, reason: '旧查询的 v3 不得被缓存并回放');
+      expect(gates, hasLength(2));
+      gates[1].complete(_msg(version: 9));
+      await pumpEventQueue();
+      expect(seen2, [9]);
+
+      await sub2.cancel();
+      await events.closeAll();
+      await port.dispose();
+    });
+
+    test('取消后无订阅时的查询不缓存，但调用方仍拿到自己的结果', () async {
+      _mockHost('getSnapshot', (_) async => _msg(version: 4));
+      final port = PlatformKernelPort(eventStream: _Events().call);
+      expect((await port.current()).version, 4);
+      final seen = <int>[];
+      final sub = port.watch().listen((s) => seen.add(s.version));
+      await pumpEventQueue();
+      // 订阅触发的重新同步给出 v4，是订阅者看到的第一份，而不是先回放旧缓存。
+      expect(seen, [4]);
+      await sub.cancel();
+      await port.dispose();
+    });
+  });
+
+  group('current() 整体 2 s 截止（spec §2）', () {
+    test('重叠查询：旧查询等待较新结果时只花剩余预算，不被连续查询拖长', () {
+      fakeAsync((async) {
+        final gates = <Completer<pigeon.KernelSnapshotMsg>>[];
+        _mockHost('getSnapshot', (_) {
+          final c = Completer<pigeon.KernelSnapshotMsg>();
+          gates.add(c);
+          return c.future;
+        });
+        final port = PlatformKernelPort(eventStream: _Events().call);
+        final results = <String, Object>{};
+        void track(String name, Future<KernelSnapshot> f) {
+          f.then<void>(
+            (s) => results[name] = s,
+            onError: (Object e) => results[name] = e,
+          );
+        }
+
+        track('A', port.current()); // t = 0
+        async.elapse(const Duration(milliseconds: 1500));
+        track('B', port.current()); // t = 1.5 s
+        async.elapse(const Duration(milliseconds: 400)); // t = 1.9 s
+        gates[0].complete(_msg(version: 1)); // A 的 RPC 返回，但已被 B 取代
+        async.flushMicrotasks();
+        expect(results, isEmpty, reason: 'A 在等 B 的结果');
+
+        async.elapse(const Duration(milliseconds: 99)); // t = 1.999 s
+        expect(results, isEmpty);
+        async.elapse(const Duration(milliseconds: 2)); // t = 2.001 s
+        expect(results['A'], isA<KernelPortException>());
+        expect((results['A']! as KernelPortException).code, 'timeout');
+        expect(results.containsKey('B'), isFalse);
+
+        async.elapse(const Duration(milliseconds: 1500)); // t = 3.501 s
+        expect((results['B']! as KernelPortException).code, 'timeout');
+        port.dispose();
+        async.flushMicrotasks();
+      });
+    });
+
+    test('被取代的旧查询在较新查询先返回时，立刻拿到较新的结果', () {
+      fakeAsync((async) {
+        final gates = <Completer<pigeon.KernelSnapshotMsg>>[];
+        _mockHost('getSnapshot', (_) {
+          final c = Completer<pigeon.KernelSnapshotMsg>();
+          gates.add(c);
+          return c.future;
+        });
+        final port = PlatformKernelPort(eventStream: _Events().call);
+        KernelSnapshot? a;
+        port.current().then<void>((s) => a = s);
+        async.elapse(const Duration(milliseconds: 500));
+        port.current();
+        gates[0].complete(_msg(version: 1));
+        async.flushMicrotasks();
+        expect(a, isNull);
+        gates[1].complete(_msg(version: 7));
+        async.flushMicrotasks();
+        expect(a?.version, 7);
+        port.dispose();
+        async.flushMicrotasks();
+      });
+    });
+  });
+
   group('重订阅与重新同步（spec §10.8）', () {
     test('流报错后按 0.5/1/2/4/4 s 退避重订阅，每次重订阅后重新同步', () {
       fakeAsync((async) {

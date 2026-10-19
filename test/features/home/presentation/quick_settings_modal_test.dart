@@ -16,9 +16,12 @@ Future<(Widget, ProviderContainer)> _host({
   bool viaRoute = false,
   bool disableAnimations = false,
   ThemeData? theme,
+  String locale = 'zhCn',
+  double textScale = 1.0,
+  bool rtl = false,
 }) async {
   SharedPreferences.setMockInitialValues({
-    'locale': 'zhCn',
+    'locale': locale,
     'clashmiao_set_system_proxy': true,
     'clashmiao_enable_tun': false,
     ...initialPrefs,
@@ -41,11 +44,15 @@ Future<(Widget, ProviderContainer)> _host({
               ThemeData.light().copyWith(
                 extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
               ),
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(disableAnimations: disableAnimations),
-            child: child!,
+          builder: (context, child) => Directionality(
+            textDirection: rtl ? TextDirection.rtl : TextDirection.ltr,
+            child: MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                disableAnimations: disableAnimations,
+                textScaler: TextScaler.linear(textScale),
+              ),
+              child: child!,
+            ),
           ),
           home: viaRoute
               ? Scaffold(
@@ -240,6 +247,102 @@ void main() {
       handle.dispose();
     });
 
+    testWidgets('减少动画：切换模式的下一帧就已是终态（选中语义与颜色）', (tester) async {
+      final (widget, _) = await _host(
+        disableAnimations: true,
+        initialPrefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      final other = (Platform.isAndroid || Platform.isIOS) ? 'VPN' : '系统线路';
+      final scheme = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme;
+      Color? fillOf(String label) {
+        final box = tester.widget<AnimatedContainer>(
+          find
+              .ancestor(
+                of: find.text(label),
+                matching: find.byType(AnimatedContainer),
+              )
+              .first,
+        );
+        return (box.decoration! as BoxDecoration).color;
+      }
+
+      expect(fillOf('仅线路'), scheme.primaryContainer);
+      await tester.tap(find.text(other));
+      await tester.pump(); // 只给一帧，不 settle
+      await tester.pump();
+
+      // 实际渲染出来的色块（不是 widget 上的目标值）：没有 200ms 插值。
+      Color renderedFill(String label) {
+        final decorated = tester.widget<DecoratedBox>(
+          find
+              .descendant(
+                of: find
+                    .ancestor(
+                      of: find.text(label),
+                      matching: find.byType(AnimatedContainer),
+                    )
+                    .first,
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        return (decorated.decoration as BoxDecoration).color ??
+            Colors.transparent;
+      }
+
+      expect(renderedFill(other), scheme.primaryContainer);
+      expect(renderedFill('仅线路'), Colors.transparent);
+      expect(
+        tester.getSemantics(find.text(other)),
+        isSemantics(isSelected: true, isButton: true),
+      );
+    });
+
+    testWidgets('开启动画时同一操作的下一帧还在插值（对照，证明上面的断言有区分力）', (tester) async {
+      final (widget, _) = await _host(
+        initialPrefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+      final other = (Platform.isAndroid || Platform.isIOS) ? 'VPN' : '系统线路';
+      final scheme = Theme.of(
+        tester.element(find.byType(Scaffold)),
+      ).colorScheme;
+
+      await tester.tap(find.text(other));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      final decorated = tester.widget<DecoratedBox>(
+        find
+            .descendant(
+              of: find
+                  .ancestor(
+                    of: find.text(other),
+                    matching: find.byType(AnimatedContainer),
+                  )
+                  .first,
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(
+        (decorated.decoration as BoxDecoration).color,
+        isNot(scheme.primaryContainer),
+        reason: '200ms 过渡刚走一帧，不应已到终点',
+      );
+    });
+
     group('作为底部弹层路由', () {
       final darkTheme = ThemeData.dark().copyWith(
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
@@ -355,6 +458,87 @@ void main() {
         await tester.pump();
         await tester.pump();
         expect(find.byType(QuickSettingsModal), findsNothing);
+      });
+    });
+
+    group('WARP 未授权行在窄屏/大字号/RTL 下换行而不溢出', () {
+      const cases = <(String, String, String, bool)>[
+        ('id', 'Siapkan WARP', 'Belum dikonfigurasi', false),
+        ('ru', 'Настроить WARP', 'Не настроено', false),
+        ('zhCn', '设置 WARP', '未配置', false),
+        ('ar', 'إعداد WARP', 'غير مهيأ', true),
+        ('id', 'Siapkan WARP', 'Belum dikonfigurasi', true),
+      ];
+      for (final scale in [1.3, 2.0]) {
+        for (final (locale, title, status, rtl) in cases) {
+          testWidgets('320dp / $scale× / $locale / ${rtl ? "RTL" : "LTR"}', (
+            tester,
+          ) async {
+            tester.view.physicalSize = const Size(320, 900);
+            tester.view.devicePixelRatio = 1;
+            addTearDown(tester.view.resetPhysicalSize);
+            addTearDown(tester.view.resetDevicePixelRatio);
+
+            final (widget, _) = await _host(
+              locale: locale,
+              textScale: scale,
+              rtl: rtl,
+            );
+            await tester.pumpWidget(widget);
+            await tester.pump(const Duration(milliseconds: 50));
+
+            expect(
+              tester.takeException(),
+              isNull,
+              reason: '不能有 RenderFlex overflow',
+            );
+            // 完整文字都在，没有被省略号截断（用 Text 的 overflow 与渲染高度共同判断）。
+            for (final label in [title, status]) {
+              expect(find.text(label), findsOneWidget);
+              final text = tester.widget<Text>(find.text(label));
+              expect(text.overflow, isNot(TextOverflow.ellipsis));
+            }
+            final titleRect = tester.getRect(find.text(title));
+            final statusRect = tester.getRect(find.text(status));
+            // 行没有超出屏幕。
+            for (final r in [titleRect, statusRect]) {
+              expect(r.left, greaterThanOrEqualTo(0));
+              expect(r.right, lessThanOrEqualTo(320));
+            }
+            // 标题与状态不重叠。
+            expect(
+              titleRect.overlaps(statusRect),
+              isFalse,
+              reason: '状态文字不能压在标题上',
+            );
+            // 行高不再固定 56：大字号下随内容增长，且整行包住两段文字。
+            final tile = tester.getRect(
+              find
+                  .ancestor(
+                    of: find.text(title),
+                    matching: find.byType(Container),
+                  )
+                  .first,
+            );
+            expect(tile.height, greaterThanOrEqualTo(56));
+            expect(tile.top, lessThanOrEqualTo(titleRect.top));
+            expect(tile.bottom, greaterThanOrEqualTo(statusRect.bottom));
+          });
+        }
+      }
+
+      testWidgets('宽屏 1.0× 时状态仍与标题同行（不无谓折行）', (tester) async {
+        tester.view.physicalSize = const Size(430, 900);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final (widget, _) = await _host();
+        await tester.pumpWidget(widget);
+        await tester.pump(const Duration(milliseconds: 50));
+        final t = tester.getRect(find.text('设置 WARP'));
+        final s = tester.getRect(find.text('未配置'));
+        expect((t.center.dy - s.center.dy).abs(), lessThan(4));
       });
     });
 

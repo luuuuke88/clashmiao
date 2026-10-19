@@ -114,7 +114,7 @@ List<Violation> checkLayering(
     if (fromUnit.isUnrestricted) continue;
 
     for (final uri in entry.value) {
-      final to = projectPath(uri);
+      final to = projectPath(uri, from: from);
       if (to == null) continue;
       final toUnit = _Unit.of(to);
       if (toUnit == null) {
@@ -233,7 +233,7 @@ List<Violation> checkModelPurity(Map<String, List<String>> uris) {
           }
           continue;
         }
-        final path = projectPath(uri);
+        final path = projectPath(uri, from: node);
         if (path == null || parent.containsKey(path)) continue;
         if (_nonModelFile.hasMatch(path)) {
           // 到此为止：data/application 本身就是越界，其内部再引什么不重复报。
@@ -266,8 +266,28 @@ List<AllowedEdge> staleEntries(
   return [
     for (final e in allowlist)
       if (!(uris[e.from] ?? const <String>[]).any(
-        (u) => projectPath(u) == e.to,
+        (u) => projectPath(u, from: e.from) == e.to,
       ))
         e,
   ];
+}
+
+/// 白名单自身的合法性校验，返回问题描述；空列表表示合法。
+///
+/// 真实仓库测试与合成测试共用这一个入口，上限与「只能豁免 feature 间依赖」
+/// 因此只有一份实现：删掉这里的检查，两边测试同时失败。
+/// [ceiling] 由调用方传入，保证测试可以用写死的数字验证，而不是拿常量自己比自己。
+List<String> checkAllowlist(List<AllowedEdge> entries, {required int ceiling}) {
+  final problems = <String>[];
+  if (entries.length > ceiling) {
+    problems.add('白名单只减不增：当前 ${entries.length} 条，上限 $ceiling');
+  }
+  for (final e in entries) {
+    if (!_isFeatureEdge(e)) {
+      problems.add(
+        '$_illegalAllowRule：${e.from} → ${e.to}（只能是 features/<F> → features/<G>）',
+      );
+    }
+  }
+  return problems;
 }

@@ -151,4 +151,30 @@ part 'a.g.dart';
       expect(projectPath('relative.dart'), isNull);
     });
   });
+
+  group('projectPath：相对 URI 按导入方解析', () {
+    test('同目录与上级目录', () {
+      expect(projectPath('./b.dart', from: 'core/a.dart'), 'core/b.dart');
+      expect(projectPath('b.dart', from: 'core/x/a.dart'), 'core/x/b.dart');
+      expect(
+        projectPath('../../domain/p/m.dart', from: 'core/storage/a.dart'),
+        'domain/p/m.dart',
+      );
+    });
+
+    test('跳出 lib/ 返回 null', () {
+      expect(projectPath('../../x.dart', from: 'core/a.dart'), isNull);
+    });
+
+    test('没有导入方路径的相对 URI、绝对路径、其他 scheme 返回 null', () {
+      expect(projectPath('../a.dart'), isNull);
+      expect(projectPath('/a.dart', from: 'core/a.dart'), isNull);
+      expect(projectPath('dart:io', from: 'core/a.dart'), isNull);
+      expect(
+        projectPath('package:flutter/a.dart', from: 'core/a.dart'),
+        isNull,
+      );
+      expect(projectPath('file:///x/a.dart', from: 'core/a.dart'), isNull);
+    });
+  });
 }

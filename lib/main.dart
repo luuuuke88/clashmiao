@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/app/app.dart';
+import 'package:clashmiao/app/bootstrap/restore_wiring.dart';
+import 'package:clashmiao/app/bootstrap/storage_bootstrap.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
@@ -24,6 +26,9 @@ import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/app/window/desktop_exit_guard.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/domain/profile/application/profiles_update_scheduler.dart';
+import 'package:clashmiao/features/config/application/restore_refresher.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/config/data/restore_recovery.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart'
     show isHttpDownloadUrl;
 import 'package:flutter/foundation.dart';
@@ -49,9 +54,18 @@ void main() async {
   // 关于页的「开源许可」页才查得到。同步、无 IO，放最早处即可。
   registerBundledLicenses();
 
-  final container = ProviderContainer();
+  final container = ProviderContainer(overrides: restoreWiringOverrides());
   // Ensure shared preferences are loaded before app runs
   await container.read(sharedPreferencesProvider.future);
+  // 启动屏障：恢复标记检查（上次备份恢复被杀就用快照回到恢复前）→ 存储迁移，
+  // 必须先于任何业务 provider 读取偏好、推送原生配置。
+  await prepareStorage(
+    container.read(sharedPreferencesProvider).requireValue,
+    checkRestoreMarker: checkRestoreMarkerAtStartup,
+  );
+  // 启动时恢复失败 / 无法回滚的结果交给界面（ShellPage 首帧后提示）。
+  container.read(startupRestoreRecoveryProvider.notifier).state =
+      lastRestoreRecoveryOutcome;
 
   // 初始化 BoxService
   final boxService = container.read(boxServiceProvider);
@@ -178,6 +192,8 @@ void main() async {
       container.invalidate(profileListProvider);
       container.invalidate(activeProfileProvider);
     },
+    // 备份恢复整表替换订阅期间，定时刷新让路。
+    isPaused: () => container.read(restoreInProgressProvider),
   );
   unawaited(profileUpdateScheduler.checkAndRefreshDue());
   profileUpdateScheduler.start();

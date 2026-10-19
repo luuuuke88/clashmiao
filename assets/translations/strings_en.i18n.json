@@ -236,6 +236,33 @@
     "exportAllOptions": "Copy All Options to Clipboard",
     "importOptions": "Import Options From Clipboard",
     "importOptionsMsg": "This will rewrite all config options with provided values. Are you sure?",
+    "backup": {
+      "importConfirmTitle": "Import Backup",
+      "importConfirmMsg": "This replaces your subscriptions with the ones in the backup and applies the backup's settings. A snapshot of the current data is saved first and restored automatically if the import fails.",
+      "importRemovesMsg": "${count} subscription(s) on this device are not in the backup and will be removed.",
+      "reportImported": "Imported ${profiles} subscription(s) and ${settings} setting(s).",
+      "reportDropped": "${count} subscription(s) in the backup were skipped because their data was invalid.",
+      "reportSettingsSkipped": "${count} setting(s) were skipped; your current values are kept.",
+      "reportWarpOff": "WARP was turned off by the import. Re-enable it on this device.",
+      "reportBackfill": "${count} subscription(s) will be downloaded in the background.",
+      "errInvalidFile": "This is not a valid ClashMiao backup file.",
+      "errUnsupportedVersion": "This backup format is not supported.",
+      "errNewerSchema": "This backup was created by a newer version of the app. Please upgrade the app first.",
+      "errNoUsableProfiles": "None of the subscriptions in this backup can be imported.",
+      "errSnapshotFailed": "Could not save a snapshot of the current data, so nothing was changed.",
+      "errUnresolvedPrevious": "A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.",
+      "errRolledBack": "Import failed. Your previous data has been restored.",
+      "errNotRolledBack": "Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.",
+      "errFailed": "Import failed.",
+      "errBusy": "Another import is already running. Please wait for it to finish.",
+      "recoveryFailedTitle": "Automatic restore did not finish",
+      "recoveryFailedMsg": "The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.",
+      "recoveryUnrecoverableTitle": "Interrupted import could not be undone",
+      "recoveryUnrecoverableMsg": "The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.",
+      "recoveryRetry": "Retry",
+      "recoveryClose": "Close",
+      "recoveryRetried": "Your data was restored to before the interrupted import."
+    },
     "general": {
       "sectionTitle": "General",
       "locale": "Language",
@@ -388,7 +415,8 @@
       "notFound": "Profile Not Found",
       "noActive": "No Active Profile",
       "invalidConfig": "Invalid Configs",
-      "invalidUrl": "Invalid URL"
+      "invalidUrl": "Invalid URL",
+      "readOnlyUpgrade": "Please upgrade the app before changing subscriptions"
     },
     "connection": {
       "unexpected": "Unexpected Connection Error",

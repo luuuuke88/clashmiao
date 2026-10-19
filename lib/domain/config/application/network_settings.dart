@@ -317,13 +317,68 @@ const _validDomainStrategies = {
 const _validTunImplementations = {'mixed', 'system', 'gvisor'};
 const _validWarpDetourModes = {'proxyOverWarp', 'warpOverProxy'};
 
+// 值域判据：setter（用户输入）与 [networkPrefValidators]（备份导入）共用同一套，
+// 改一处两边同步。
+bool _isPort(int v) => v >= 1024 && v <= 65535;
+bool _isMtu(int v) => v > 0;
+bool _isUrlTestInterval(int v) => v >= 60 && v <= 3600;
+bool _isNonBlank(String v) => v.trim().isNotEmpty;
+
+bool Function(Object) _int(bool Function(int) check) =>
+    (v) => v is int && check(v);
+bool Function(Object) _choice(Set<String> valid) =>
+    (v) => v is String && valid.contains(v);
+bool Function(Object) _nonBlank() =>
+    (v) => v is String && _isNonBlank(v);
+
+/// 网络设置各偏好键的值域校验（类型检查由偏好注册表负责，这里只看值域）。
+/// 备份导入据此丢弃越界 / 非法的值、保留本机现值；规则与对应 setter 一致。
+final Map<String, bool Function(Object)> networkPrefValidators =
+    Map.unmodifiable({
+      _kMixedPort: _int(_isPort),
+      _kRegion: _choice(_validRegions),
+      _kLogLevel: _choice(_validLogLevels),
+      _kIpv6Mode: _choice(_validIpv6Modes),
+      _kRemoteDnsDomainStrategy: _choice(_validDomainStrategies),
+      _kDirectDnsDomainStrategy: _choice(_validDomainStrategies),
+      _kTunImplementation: _choice(_validTunImplementations),
+      _kMtu: _int(_isMtu),
+      _kClashApiPort: _int(_isPort),
+      _kTproxyPort: _int(_isPort),
+      _kLocalDnsPort: _int(_isPort),
+      _kTlsFragmentSize: _nonBlank(),
+      _kTlsFragmentSleep: _nonBlank(),
+      _kTlsPaddingSize: _nonBlank(),
+      _kWarpDetourMode: _choice(_validWarpDetourModes),
+      _kWarpPort: _int(_isPort),
+      _kUrlTestIntervalSeconds: _int(_isUrlTestInterval),
+    });
+
+// 以下三个读取器对「类型不符」（降级回退、手改、旧版本遗留）一律当作没存过：
+// SharedPreferences 的强类型 getter 在类型不符时会抛 TypeError，而 `_read`
+// 跑在启动路径上，抛出会让整个 App 起不来。
+int? _readInt(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is int ? v : null;
+}
+
+bool? _readBool(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is bool ? v : null;
+}
+
+String? _readString(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is String ? v : null;
+}
+
 String _stringChoice(
   SharedPreferences p,
   String key,
   String fallback,
   Set<String> valid,
 ) {
-  final value = p.getString(key);
+  final value = _readString(p, key);
   if (value == null || !valid.contains(value)) return fallback;
   return value;
 }
@@ -372,28 +427,28 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   static NetworkSettings _read(SharedPreferences p) {
     return NetworkSettings(
-      mixedPort: p.getInt(_kMixedPort) ?? 2080,
+      mixedPort: _readInt(p, _kMixedPort) ?? 2080,
       region: _stringChoice(p, _kRegion, 'other', _validRegions),
-      blockAds: p.getBool(_kBlockAds) ?? false,
+      blockAds: _readBool(p, _kBlockAds) ?? false,
       logLevel: _stringChoice(p, _kLogLevel, 'warn', _validLogLevels),
-      bypassLan: p.getBool(_kBypassLan) ?? false,
-      resolveDestination: p.getBool(_kResolveDestination) ?? false,
+      bypassLan: _readBool(p, _kBypassLan) ?? false,
+      resolveDestination: _readBool(p, _kResolveDestination) ?? false,
       ipv6Mode: _stringChoice(p, _kIpv6Mode, 'ipv4_only', _validIpv6Modes),
-      setSystemProxy: p.getBool(_kSetSystemProxy) ?? true,
-      enableTun: p.getBool(_kEnableTun) ?? false,
-      allowConnectionFromLan: p.getBool(_kAllowLan) ?? false,
-      enableDnsRouting: p.getBool(_kEnableDnsRouting) ?? true,
-      enableFakeDns: p.getBool(_kEnableFakeDns) ?? false,
-      independentDnsCache: p.getBool(_kIndependentDnsCache) ?? true,
+      setSystemProxy: _readBool(p, _kSetSystemProxy) ?? true,
+      enableTun: _readBool(p, _kEnableTun) ?? false,
+      allowConnectionFromLan: _readBool(p, _kAllowLan) ?? false,
+      enableDnsRouting: _readBool(p, _kEnableDnsRouting) ?? true,
+      enableFakeDns: _readBool(p, _kEnableFakeDns) ?? false,
+      independentDnsCache: _readBool(p, _kIndependentDnsCache) ?? true,
       remoteDnsAddress:
-          p.getString(_kRemoteDnsAddress) ?? 'https://1.1.1.1/dns-query',
+          _readString(p, _kRemoteDnsAddress) ?? 'https://1.1.1.1/dns-query',
       remoteDnsDomainStrategy: _stringChoice(
         p,
         _kRemoteDnsDomainStrategy,
         '',
         _validDomainStrategies,
       ),
-      directDnsAddress: p.getString(_kDirectDnsAddress) ?? '1.1.1.1',
+      directDnsAddress: _readString(p, _kDirectDnsAddress) ?? '1.1.1.1',
       directDnsDomainStrategy: _stringChoice(
         p,
         _kDirectDnsDomainStrategy,
@@ -406,48 +461,48 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         'mixed',
         _validTunImplementations,
       ),
-      strictRoute: p.getBool(_kStrictRoute) ?? true,
-      mtu: p.getInt(_kMtu) ?? 9000,
-      clashApiPort: p.getInt(_kClashApiPort) ?? 6756,
-      tproxyPort: p.getInt(_kTproxyPort) ?? 2081,
-      localDnsPort: p.getInt(_kLocalDnsPort) ?? 6450,
-      enableTlsFragment: p.getBool(_kEnableTlsFragment) ?? false,
-      tlsFragmentSize: p.getString(_kTlsFragmentSize) ?? '10-30',
-      tlsFragmentSleep: p.getString(_kTlsFragmentSleep) ?? '50-200',
-      enableTlsPadding: p.getBool(_kEnableTlsPadding) ?? false,
-      enableTlsMixedSniCase: p.getBool(_kEnableTlsMixedSniCase) ?? false,
-      tlsPaddingSize: p.getString(_kTlsPaddingSize) ?? '100-200',
-      muxPadding: p.getBool(_kMuxPadding) ?? false,
-      enableWarp: p.getBool(_kEnableWarp) ?? false,
-      warpConsentGiven: p.getBool(_kWarpConsentGiven) ?? false,
+      strictRoute: _readBool(p, _kStrictRoute) ?? true,
+      mtu: _readInt(p, _kMtu) ?? 9000,
+      clashApiPort: _readInt(p, _kClashApiPort) ?? 6756,
+      tproxyPort: _readInt(p, _kTproxyPort) ?? 2081,
+      localDnsPort: _readInt(p, _kLocalDnsPort) ?? 6450,
+      enableTlsFragment: _readBool(p, _kEnableTlsFragment) ?? false,
+      tlsFragmentSize: _readString(p, _kTlsFragmentSize) ?? '10-30',
+      tlsFragmentSleep: _readString(p, _kTlsFragmentSleep) ?? '50-200',
+      enableTlsPadding: _readBool(p, _kEnableTlsPadding) ?? false,
+      enableTlsMixedSniCase: _readBool(p, _kEnableTlsMixedSniCase) ?? false,
+      tlsPaddingSize: _readString(p, _kTlsPaddingSize) ?? '100-200',
+      muxPadding: _readBool(p, _kMuxPadding) ?? false,
+      enableWarp: _readBool(p, _kEnableWarp) ?? false,
+      warpConsentGiven: _readBool(p, _kWarpConsentGiven) ?? false,
       warpDetourMode: _stringChoice(
         p,
         _kWarpDetourMode,
         'proxyOverWarp',
         _validWarpDetourModes,
       ),
-      warpLicenseKey: p.getString(_kWarpLicenseKey) ?? '',
+      warpLicenseKey: _readString(p, _kWarpLicenseKey) ?? '',
       // fallback 与上面构造函数默认值保持一致：只有从未持久化过（key 不存在，
       // 即用户从没保存过）时才落到这些新默认值；已保存的用户偏好走 p.getX(...) 的
       // 非 null 分支，不受这次改动影响。
-      warpCleanIp: p.getString(_kWarpCleanIp) ?? 'auto',
-      warpPort: p.getInt(_kWarpPort) ?? 0,
-      warpNoise: p.getString(_kWarpNoise) ?? '1-3',
-      warpNoiseSize: p.getString(_kWarpNoiseSize) ?? '10-30',
-      warpNoiseMode: p.getString(_kWarpNoiseMode) ?? 'm6',
-      warpNoiseDelay: p.getString(_kWarpNoiseDelay) ?? '10-30',
-      warpAccountId: p.getString(_kWarpAccountId) ?? '',
-      warpAccessToken: p.getString(_kWarpAccessToken) ?? '',
-      warpWireguardConfig: p.getString(_kWarpWireguardConfig) ?? '',
+      warpCleanIp: _readString(p, _kWarpCleanIp) ?? 'auto',
+      warpPort: _readInt(p, _kWarpPort) ?? 0,
+      warpNoise: _readString(p, _kWarpNoise) ?? '1-3',
+      warpNoiseSize: _readString(p, _kWarpNoiseSize) ?? '10-30',
+      warpNoiseMode: _readString(p, _kWarpNoiseMode) ?? 'm6',
+      warpNoiseDelay: _readString(p, _kWarpNoiseDelay) ?? '10-30',
+      warpAccountId: _readString(p, _kWarpAccountId) ?? '',
+      warpAccessToken: _readString(p, _kWarpAccessToken) ?? '',
+      warpWireguardConfig: _readString(p, _kWarpWireguardConfig) ?? '',
       connectionTestUrl:
-          p.getString(_kConnectionTestUrl) ??
+          _readString(p, _kConnectionTestUrl) ??
           'http://connectivitycheck.gstatic.com/generate_204',
-      urlTestIntervalSeconds: p.getInt(_kUrlTestIntervalSeconds) ?? 600,
+      urlTestIntervalSeconds: _readInt(p, _kUrlTestIntervalSeconds) ?? 600,
     );
   }
 
   Future<void> setMixedPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('port out of range: $port');
     }
     state = state.copyWith(mixedPort: port);
@@ -563,7 +618,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setMtu(int value) async {
-    if (value <= 0) {
+    if (!_isMtu(value)) {
       throw ArgumentError('invalid mtu: $value');
     }
     state = state.copyWith(mtu: value);
@@ -571,7 +626,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setClashApiPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('clash api port out of range: $port');
     }
     state = state.copyWith(clashApiPort: port);
@@ -579,7 +634,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setTproxyPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('tproxy port out of range: $port');
     }
     state = state.copyWith(tproxyPort: port);
@@ -587,7 +642,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setLocalDnsPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('local dns port out of range: $port');
     }
     state = state.copyWith(localDnsPort: port);
@@ -601,7 +656,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsFragmentSize(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS fragment size cannot be empty');
     }
     state = state.copyWith(tlsFragmentSize: range);
@@ -610,7 +665,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsFragmentSleep(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS fragment sleep cannot be empty');
     }
     state = state.copyWith(tlsFragmentSleep: range);
@@ -629,7 +684,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsPaddingSize(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS padding size cannot be empty');
     }
     state = state.copyWith(tlsPaddingSize: range);
@@ -670,7 +725,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setWarpPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('WARP port out of range: $port');
     }
     state = state.copyWith(warpPort: port);
@@ -720,7 +775,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setUrlTestIntervalSeconds(int seconds) async {
-    if (seconds < 60 || seconds > 3600) {
+    if (!_isUrlTestInterval(seconds)) {
       throw ArgumentError('url test interval out of range: $seconds');
     }
     state = state.copyWith(urlTestIntervalSeconds: seconds);

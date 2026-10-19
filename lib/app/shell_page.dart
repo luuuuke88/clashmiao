@@ -30,6 +30,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
+import 'package:clashmiao/app/restore_recovery_notice.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
@@ -42,6 +44,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
   bool _debugAddProfileOpened = false;
   bool _deepLinkResultChecked = false;
   bool _staleProxyNoticeChecked = false;
+  bool _restoreRecoveryNoticeChecked = false;
 
   static const _pages = [
     HomePage(),
@@ -269,6 +272,17 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       if (next.isEmpty) return;
       _showStaleProxyNotice(context, ref);
     });
+
+    // 上次备份恢复被中断、启动时自动回滚没成功（或快照没了）：首帧后明确告诉用户。
+    // 启动屏障早于 ShellPage 挂载，结果只会在启动时写入一次，所以只需要首帧检查。
+    if (!_restoreRecoveryNoticeChecked) {
+      _restoreRecoveryNoticeChecked = true;
+      if (needsStartupRestoreNotice(ref.read(startupRestoreRecoveryProvider))) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) showRestoreRecoveryNotice(context, ref);
+        });
+      }
+    }
 
     // 桌面端预留窗口装饰（macOS 红绿灯/Win+Linux 标题栏间距），移动端交给各页面 SafeArea
     final double topPad;

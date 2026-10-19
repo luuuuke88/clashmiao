@@ -236,6 +236,33 @@
     "exportAllOptions": "将所有选项导出到剪贴板（用于调试）",
     "importOptions": "从剪贴板导入选项",
     "importOptionsMsg": "这将使用提供的值重写所有配置选项。您确定吗？",
+    "backup": {
+      "importConfirmTitle": "导入备份",
+      "importConfirmMsg": "这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。",
+      "importRemovesMsg": "本机有 ${count} 个订阅不在备份中，导入后将被移除。",
+      "reportImported": "已导入 ${profiles} 个订阅、${settings} 项设置。",
+      "reportDropped": "备份中有 ${count} 个订阅因数据无效被跳过。",
+      "reportSettingsSkipped": "有 ${count} 项设置被跳过，保留了当前值。",
+      "reportWarpOff": "导入时已关闭 WARP，请在本机重新启用。",
+      "reportBackfill": "有 ${count} 个订阅将在后台下载。",
+      "errInvalidFile": "这不是有效的 ClashMiao 备份文件。",
+      "errUnsupportedVersion": "不支持这种备份格式。",
+      "errNewerSchema": "此备份由更新版本的应用生成，请先升级应用。",
+      "errNoUsableProfiles": "此备份中没有可以导入的订阅。",
+      "errSnapshotFailed": "无法保存当前数据的快照，所以没有做任何改动。",
+      "errUnresolvedPrevious": "上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。",
+      "errRolledBack": "导入失败，已恢复到导入之前的数据。",
+      "errNotRolledBack": "导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。",
+      "errFailed": "导入失败。",
+      "errBusy": "已有另一个导入正在进行，请等它结束后再试。",
+      "recoveryFailedTitle": "自动恢复没有完成",
+      "recoveryFailedMsg": "上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。",
+      "recoveryUnrecoverableTitle": "无法撤销被中断的导入",
+      "recoveryUnrecoverableMsg": "上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。",
+      "recoveryRetry": "重试",
+      "recoveryClose": "关闭",
+      "recoveryRetried": "已把数据恢复到被中断的导入之前。"
+    },
     "general": {
       "sectionTitle": "一般选项",
       "locale": "语言",
@@ -388,7 +415,8 @@
       "notFound": "未找到配置文件",
       "noActive": "没有激活的订阅",
       "invalidConfig": "无效配置",
-      "invalidUrl": "网址无效"
+      "invalidUrl": "网址无效",
+      "readOnlyUpgrade": "请升级 App 后再修改订阅"
     },
     "connection": {
       "unexpected": "意外连接错误",

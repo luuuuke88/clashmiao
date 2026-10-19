@@ -6,20 +6,28 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/model/cached_delay.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-const _kProxyDelayCachePrefix = 'proxy_delays_';
 
 final proxyDelayCacheProvider =
     StateNotifierProvider<ProxyDelayCacheNotifier, Map<String, CachedDelay>>((
       ref,
     ) {
       final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-      final profileId = ref.watch(activeProfileProvider).valueOrNull?.id;
+      final store = ref.watch(profileStoreProvider).valueOrNull;
+      // 只关心「哪一代的哪个订阅」：订阅元数据变化（刷新、改名）不该重建 notifier。
+      final active = ref.watch(
+        activeProfileProvider.select((value) {
+          final profile = value.valueOrNull;
+          return profile == null ? null : (profile.id, profile.inc);
+        }),
+      );
       return ProxyDelayCacheNotifier(
         prefs: prefs,
-        profileId: profileId,
+        store: store,
+        profileId: active?.$1,
+        profileInc: active?.$2,
         now: ref.read(latencyClockProvider),
       );
     });
@@ -27,18 +35,25 @@ final proxyDelayCacheProvider =
 class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
   ProxyDelayCacheNotifier({
     required SharedPreferences prefs,
+    required ProfileStore? store,
     required String? profileId,
+    required String? profileInc,
     DateTime Function()? now,
-  }) : _prefs = prefs,
+  }) : _store = store,
        _profileId = profileId,
+       _profileInc = profileInc,
        _now = now ?? DateTime.now,
        super(_read(prefs, profileId));
 
-  final SharedPreferences _prefs;
+  final ProfileStore? _store;
   final String? _profileId;
   final DateTime Function() _now;
 
-  static String _key(String profileId) => '$_kProxyDelayCachePrefix$profileId';
+  /// 创建时订阅的代际；写入经 `ProfileStore.writeAux` 校验，订阅已删除或
+  /// 换代后丢弃，避免旧 notifier 复活孤儿键。
+  final String? _profileInc;
+
+  static String _key(String profileId) => ProfileStore.delaysKey(profileId);
 
   // 值格式（旧 int / 新 {ms, measuredAt}）全部在 cached_delay.dart 里。
   static Map<String, CachedDelay> _read(
@@ -51,6 +66,7 @@ class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
 
   /// 把实时分组里出现的、与缓存不同的延迟记成「刚测到」。
   void persistFromGroups(List<OutboundGroup> groups) {
+    if (_profileId == null || _profileId.isEmpty || _store == null) return;
     final at = _now();
     final next = Map<String, CachedDelay>.from(state);
     var changed = false;
@@ -87,6 +103,15 @@ class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
     final profileId = _profileId;
     if (profileId == null || profileId.isEmpty) return;
     state = Map.unmodifiable(next);
-    unawaited(_prefs.setString(_key(profileId), encodeDelayCache(next)));
+    final store = _store;
+    if (store == null) return;
+    unawaited(
+      store.writeAux(
+        profileId,
+        _profileInc ?? '',
+        _key(profileId),
+        encodeDelayCache(next),
+      ),
+    );
   }
 }

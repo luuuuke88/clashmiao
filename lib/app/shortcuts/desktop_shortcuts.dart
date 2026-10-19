@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
@@ -181,7 +183,13 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
       AppToast.success(context, '已导入订阅：${profile.name}');
     }
   } catch (e) {
-    if (context.mounted) AppToast.error(context, '导入失败：$e');
+    if (context.mounted) {
+      AppToast.error(
+        context,
+        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
+            '导入失败：$e',
+      );
+    }
   }
 }
 

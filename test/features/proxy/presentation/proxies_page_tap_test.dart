@@ -12,6 +12,7 @@ import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.
 import 'package:clashmiao/domain/routing/model/cached_delay.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/fake_box_service.dart';
+import '../../../support/profile_store_support.dart';
 
 /// Toastification 的 auto-close 走 Timer（info=3s / error=5s），widget dispose 后
 /// timer 还活着会让 flutter_test 报 "A Timer is still pending"。
@@ -112,10 +114,12 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
+  final store = await seededProfileStore(prefs, [_activeProfile]);
   final spy = _SpyBoxService();
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      profileStoreProvider.overrideWith((_) => Future.value(store)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
       // 离线 group 直接给一个：proxy / ss-node
@@ -125,6 +129,7 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
     ],
   );
   await container.read(sharedPreferencesProvider.future);
+  await container.read(profileStoreProvider.future);
   await container.read(activeProfileProvider.future);
   return (
     UncontrolledProviderScope(
@@ -713,14 +718,17 @@ void _addProxiesPageExtraTests() {
   testWidgets('测速结果缓存只写入当前订阅下的正数延迟', (tester) async {
     SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
     final prefs = await SharedPreferences.getInstance();
+    final store = await seededProfileStore(prefs, [_activeProfile]);
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        profileStoreProvider.overrideWith((_) => Future.value(store)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
       ],
     );
     addTearDown(container.dispose);
     await container.read(sharedPreferencesProvider.future);
+    await container.read(profileStoreProvider.future);
     await container.read(activeProfileProvider.future);
 
     container.read(proxyDelayCacheProvider.notifier).persistFromGroups(const [
@@ -735,6 +743,8 @@ void _addProxiesPageExtraTests() {
       ),
     ]);
 
+    // 写入经 ProfileStore 的锁排队，等它落盘再断言。
+    await store.commit<void>((_) => const Plan<void>.unchanged());
     // 新格式：{ms, measuredAt}；0 延迟的节点不写。
     final stored = decodeDelayCache(prefs.getString('proxy_delays_profile-1'));
     expect(stored.keys, ['good']);

@@ -165,7 +165,7 @@ part 'a.g.dart';
     test('跳出 lib/ 返回 null（规则层会把它报为违规，不是放过）', () {
       expect(projectPath('../../x.dart', from: 'core/a.dart'), isNull);
       expect(
-        nonCanonicalRelativeUriReason('../../x.dart', from: 'core/a.dart'),
+        nonCanonicalUriReason('../../x.dart', from: 'core/a.dart'),
         contains('越出'),
       );
     });
@@ -180,11 +180,26 @@ part 'a.g.dart';
         '/a.dart',
       ]) {
         expect(
-          nonCanonicalRelativeUriReason(uri, from: 'core/x/a.dart'),
+          nonCanonicalUriReason(uri, from: 'core/x/a.dart'),
           isNotNull,
           reason: uri,
         );
         expect(projectPath(uri, from: 'core/x/a.dart'), isNull, reason: uri);
+      }
+    });
+
+    test('package URI 含点段、空段、转义等：有原因，且 projectPath 返回 null', () {
+      for (final uri in [
+        'package:clashmiao/core/../domain/a.dart',
+        'package:clashmiao/core/./a.dart',
+        'package:clashmiao/core//a.dart',
+        'package:clashmiao/core/%2e%2e/a.dart',
+        'package:clashmiao/a.dart?x',
+        'package:clashmiao/a.dart#f',
+        'package:clashmiao/',
+      ]) {
+        expect(nonCanonicalUriReason(uri), isNotNull, reason: uri);
+        expect(projectPath(uri, from: 'core/a.dart'), isNull, reason: uri);
       }
     });
 
@@ -199,7 +214,7 @@ part 'a.g.dart';
         'package:clashmiao/a.dart',
       ]) {
         expect(
-          nonCanonicalRelativeUriReason(uri, from: 'core/x/a.dart'),
+          nonCanonicalUriReason(uri, from: 'core/x/a.dart'),
           isNull,
           reason: uri,
         );

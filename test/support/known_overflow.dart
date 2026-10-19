@@ -87,7 +87,8 @@ class OverflowReport {
 /// 模式分段控件：横向 Row 在窄屏 / 大字号 / 长翻译下越过右缘。
 /// 下面是各自的模板，基线用 [KnownOverflow.at] 按场景给。
 ///
-/// 连接按钮的已知溢出模板：
+/// 连接按钮的已知溢出模板（连接区重写后已不再出现，只留作机制自检的样本，
+/// 见 `known_overflow_test.dart`）：
 const connectionButtonOverflow = KnownOverflow(
   name: 'connectionButton',
   creatorPrefix: [

@@ -6,6 +6,7 @@ import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
@@ -45,6 +46,16 @@ class _ShellPageState extends ConsumerState<ShellPage> {
   bool _deepLinkResultChecked = false;
   bool _staleProxyNoticeChecked = false;
   bool _restoreRecoveryNoticeChecked = false;
+
+  /// 已经提示过的连接失败序号。初值取挂载时的当前序号：挂载之前就已存在的失败
+  /// 不重复弹窗。
+  late int _shownFailureSeq;
+
+  @override
+  void initState() {
+    super.initState();
+    _shownFailureSeq = ref.read(connectionFailureProvider).seq;
+  }
 
   static const _pages = [
     HomePage(),
@@ -208,17 +219,17 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       });
     }
 
-    // sing-box 核心层推过来的 alert：内核压根没起来（isFatal）用阻断式弹窗
-    // ——必须点确认，不能被用户划走错过；其余（权限请求等，用户仍可重试/
-    // 手动处理）维持非阻断 toast。文案统一走 classifyBoxAlertMessage，跟
-    // ConnectionController 写 connectionErrorProvider 用的是同一份分类器，
-    // 不再各自维护一份（此前这里是硬编码中文 _alertLabel，跟分类器脱节）。
-    ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
-      final alert = next.valueOrNull;
-      if (alert == null) return;
+    // 连接失败（spec §10 / 计划 P4 ③）：由连接状态机从内核快照与本地失败派生，
+    // 按 failureSeq 去重。致命类（内核没起来 / 内核无响应）用阻断式弹窗——必须
+    // 点确认，不能被用户划走错过；其余（未授权、超时、无订阅……用户仍可重试）
+    // 维持非阻断 toast。文案统一走 connectionFailureMessage。
+    ref.listen<ConnectionFailureView>(connectionFailureProvider, (_, next) {
+      final failure = next.failure;
+      if (failure == null || next.seq == _shownFailureSeq) return;
+      _shownFailureSeq = next.seq;
       final t = ref.read(translationsProvider);
-      final message = classifyBoxAlertMessage(alert, t);
-      if (alert.type.isFatal) {
+      final message = connectionFailureMessage(failure, t);
+      if (failure.isFatal) {
         showBlockingAlert(
           context,
           title: t.home.connectionFailedTitle,
@@ -228,6 +239,16 @@ class _ShellPageState extends ConsumerState<ShellPage> {
         return;
       }
       AppToast.error(context, message);
+    });
+
+    // alerts 通道只剩与连接生命周期无关的提示（例如通知权限请求）：照旧 toast。
+    // 致命 alert 属于生命周期失败，已经由上面的连接失败监听统一弹窗，这里跳过，
+    // 避免同一个故障提示两次。
+    ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
+      final alert = next.valueOrNull;
+      if (alert == null || alert.type.isFatal) return;
+      final t = ref.read(translationsProvider);
+      AppToast.error(context, classifyBoxAlertMessage(alert, t));
     });
 
     // 深链导入结果（DeepLinkService 解析 URI 并调用 addByUrl/addByContent

@@ -73,8 +73,8 @@ class RestoreRefresher {
   static Future<void> Function() _defaultReconnect(
     ProviderContainer container,
   ) => () async {
-    final controller = container.read(connectionControllerProvider.notifier);
-    if (controller.isStarted) await controller.reconnect();
+    // applyConfig 未连接时无副作用，已连接 / 连接中时以最新配置重新应用一次。
+    await container.read(connectionControllerProvider.notifier).applyConfig();
   };
 
   /// 恢复整个流程：拿到恢复互斥 → 暂停定时刷新 → [BackupEngine.restoreHoldingLock]

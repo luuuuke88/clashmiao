@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';

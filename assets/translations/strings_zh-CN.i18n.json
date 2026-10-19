@@ -45,7 +45,14 @@
     "coreMissingMsg": "应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。",
     "degradedTitle": "已连接，但无法访问网络",
     "degradedMsg": "隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。",
-    "degradedRetry": "重新检测"
+    "degradedRetry": "重新检测",
+    "egressIp": {
+      "label": "出口 IP",
+      "notConnected": "连接后显示出口 IP",
+      "tapToCheck": "点击检测出口 IP",
+      "checking": "正在检测…",
+      "failedRetry": "检测失败，点击重试"
+    }
   },
   "stats": {
     "traffic": "流量",
@@ -57,7 +64,9 @@
     "downlink": "下行",
     "connection": "连接",
     "speed": "速度",
-    "totalTransferred": "总传输量"
+    "totalTransferred": "总传输量",
+    "sessionTraffic": "本次流量",
+    "downloadSpeed": "下载速度"
   },
   "profile": {
     "overviewPageTitle": "配置文件",
@@ -401,14 +410,17 @@
       "invalidConfig": "无效配置",
       "create": "服务创建错误",
       "start": "服务启动错误",
-      "startTimeout": "服务启动超时"
+      "startTimeout": "服务启动超时",
+      "kernelUnresponsive": "内核无响应，请重试或重启应用",
+      "kernelExited": "内核意外退出"
     },
     "connectivity": {
       "unexpected": "意外失败",
       "missingVpnPermission": "缺少 VPN 权限",
       "missingNotificationPermission": "缺少通知权限",
       "networkUnavailable": "网络不可用",
-      "core": "核心错误"
+      "core": "核心错误",
+      "nativeUnresponsive": "与后台服务失去联系，请重试"
     },
     "profiles": {
       "unexpected": "意外错误",

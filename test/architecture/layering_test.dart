@@ -22,6 +22,23 @@ Map<String, List<String>> scanLib() {
   return result;
 }
 
+/// 连接状态的单一真值（子项目 B）：`boxStatusProvider` 只留在 core，给流量统计
+/// / 代理分组两路订阅做门控；界面层（`features/`、`app/`、`main.dart`）一律读
+/// `connectionControllerProvider` / `isConnectedProvider`。
+///
+/// 输入是「lib/ 内相对路径 → 文件源码」，返回引用了它的界面层文件。
+List<String> boxStatusProviderUsagesInUiLayers(Map<String, String> sources) {
+  final ident = RegExp(r'\bboxStatusProvider\b');
+  return [
+    for (final e in sources.entries)
+      if ((e.key.startsWith('features/') ||
+              e.key.startsWith('app/') ||
+              e.key == 'main.dart') &&
+          ident.hasMatch(e.value))
+        e.key,
+  ];
+}
+
 /// 失败时把全部违规一次打印出来，而不是改一条跑一次。
 String render(Iterable<Object> items) => '\n${items.join('\n')}\n';
 
@@ -59,5 +76,39 @@ void main() {
   test('白名单合法：条数不超上限，且只含 features → features', () {
     final problems = checkAllowlist(kAllowlist, ceiling: kAllowlistCeiling);
     expect(problems, isEmpty, reason: render(problems));
+  });
+
+  test('单一真值：features / app / main 不引用 boxStatusProvider', () {
+    final sources = <String, String>{};
+    for (final f in Directory(
+      'lib',
+    ).listSync(recursive: true).whereType<File>()) {
+      if (!f.path.endsWith('.dart')) continue;
+      final rel = f.path.substring('lib/'.length);
+      sources[rel] = f.readAsStringSync();
+    }
+    final offenders = boxStatusProviderUsagesInUiLayers(sources);
+    expect(
+      offenders,
+      isEmpty,
+      reason:
+          '界面层不得再各自订阅内核状态，请改读 connectionControllerProvider / '
+          'isConnectedProvider：${render(offenders)}',
+    );
+  });
+
+  test('「boxStatusProvider 禁令」的检测本身有效（对违规与合规源码各验一遍）', () {
+    expect(
+      boxStatusProviderUsagesInUiLayers({
+        'features/home/a.dart': 'final s = ref.watch(boxStatusProvider);',
+        'app/b.dart': 'ref.read(boxStatusProvider)',
+        'main.dart': 'container.read(boxStatusProvider);',
+        'core/box_service/box_providers.dart': 'final boxStatusProvider = 1;',
+        'domain/connection/c.dart': 'boxStatusProvider',
+        'features/home/ok.dart':
+            'ref.watch(isConnectedProvider); // boxStatsProvider',
+      }),
+      unorderedEquals(['features/home/a.dart', 'app/b.dart', 'main.dart']),
+    );
   });
 }

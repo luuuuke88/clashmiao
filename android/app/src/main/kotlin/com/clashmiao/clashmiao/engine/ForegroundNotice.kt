@@ -21,9 +21,7 @@ import com.clashmiao.clashmiao.core.BroadcastIntents
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.libbox.StatusMessage
 import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.withContext
 
 /**
  * 前台 service 的通知 + 实时上行 / 下行更新。
@@ -31,8 +29,9 @@ import kotlinx.coroutines.withContext
  * 行为概要：
  *   - [show] 上 foreground notification（包含 "stop" action）；Android 14+ 必须
  *     带 [ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE] 并与 manifest 对齐
- *   - [start] 在用户开了 dynamic notification 时连一条 libbox CommandClient
- *     拉取 status 流，按 ~1s tick 刷新通知内容（上行 / 下行 byte 数）
+ *   - [startUpdates] 在用户开了 dynamic notification 时连一条 libbox CommandClient
+ *     拉取 status 流，按 ~1s tick 刷新通知内容（上行 / 下行 byte 数）；按 [beginUpdates]
+ *     的代际归属，[stopUpdates] / [close] 之后迟到的启动任务不会留下资源
  *   - screen on/off 广播控制连通：屏幕关时断开 CommandClient 省电
  *   - [close] 停 foreground + 卸 receiver + 断 CommandClient
  *
@@ -60,8 +59,6 @@ class ForegroundNotice(private val service: Service) :
         LibboxCommandStream.StreamKind.STATS,
         this,
     )
-
-    @Volatile private var screenReceiverArmed = false
 
     private val noticeTemplate: NotificationCompat.Builder by lazy {
         NotificationCompat.Builder(service, NOTIFY_CHANNEL)
@@ -123,23 +120,31 @@ class ForegroundNotice(private val service: Service) :
         )
     }
 
-    /** 用户开了 dynamic-notification 才订阅 stats 流；同时 wire 屏幕开关广播。 */
-    suspend fun start() {
-        if (!Prefs.Notice.dynamic) return
-        statsStream.connect()
-        withContext(Dispatchers.Main) {
-            if (!screenReceiverArmed) {
-                service.registerReceiver(
-                    this@ForegroundNotice,
-                    IntentFilter().apply {
-                        addAction(Intent.ACTION_SCREEN_ON)
-                        addAction(Intent.ACTION_SCREEN_OFF)
-                    },
-                )
-                screenReceiverArmed = true
-            }
+    /** 统计流与屏幕广播按代际归属：停止 / 销毁之后迟到的启动任务不会再连接或注册。 */
+    private val updates = NoticeUpdates(object : NoticeUpdates.Ops {
+        override fun dynamicEnabled(): Boolean = Prefs.Notice.dynamic
+        override fun connectStats() = statsStream.connect()
+        override fun disconnectStats() = statsStream.disconnect()
+        override fun registerScreen() {
+            service.registerReceiver(
+                this@ForegroundNotice,
+                IntentFilter().apply {
+                    addAction(Intent.ACTION_SCREEN_ON)
+                    addAction(Intent.ACTION_SCREEN_OFF)
+                },
+            )
         }
-    }
+
+        override fun unregisterScreen() {
+            service.unregisterReceiver(this@ForegroundNotice)
+        }
+    })
+
+    /** 开启新一代动态更新（主线程）；返回值交给后台的 [startUpdates]。 */
+    fun beginUpdates(): Long = updates.begin()
+
+    /** 后台执行：用户开了 dynamic-notification 且本代仍有效时，订阅 stats 流并 wire 屏幕开关广播。 */
+    fun startUpdates(generation: Long) = updates.runStart(generation)
 
     // 参数名跟 Subscriber.onStats(message: StatusMessage) 对齐，方便 named-arg 调用。
     override fun onStats(message: StatusMessage) {
@@ -153,17 +158,21 @@ class ForegroundNotice(private val service: Service) :
 
     override fun onReceive(context: Context, intent: Intent) {
         when (intent.action) {
-            Intent.ACTION_SCREEN_ON -> statsStream.connect()
-            Intent.ACTION_SCREEN_OFF -> statsStream.disconnect()
+            Intent.ACTION_SCREEN_ON -> updates.onScreen(true)
+            Intent.ACTION_SCREEN_OFF -> updates.onScreen(false)
         }
     }
 
+    /**
+     * 停止动态更新（断开统计流、注销屏幕广播），**保留**前台通知。
+     * 重载 / 内核回收期间用：Android 12+ 后台不允许重新 startForeground，
+     * 所以回收期间绝不能把 Service 降级成非前台。
+     */
+    fun stopUpdates() = updates.stop()
+
+    /** 彻底关闭：停止更新并撤掉前台通知（Service 退休 / 销毁时）。 */
     fun close() {
-        statsStream.disconnect()
+        stopUpdates()
         ServiceCompat.stopForeground(service, ServiceCompat.STOP_FOREGROUND_REMOVE)
-        if (screenReceiverArmed) {
-            runCatching { service.unregisterReceiver(this) }
-            screenReceiverArmed = false
-        }
     }
 }

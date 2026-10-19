@@ -9,13 +9,14 @@ import androidx.core.content.getSystemService
 import androidx.core.content.pm.ShortcutInfoCompat
 import androidx.core.content.pm.ShortcutManagerCompat
 import androidx.core.graphics.drawable.IconCompat
-import com.clashmiao.clashmiao.core.KernelStatus
-import com.clashmiao.clashmiao.engine.KernelConnection
-import com.clashmiao.clashmiao.engine.KernelHost
+import com.clashmiao.clashmiao.engine.KernelCoordinator
+import com.clashmiao.clashmiao.engine.Source
 
-class ShortcutActivity : Activity(), KernelConnection.Sink {
-
-    private val connection = KernelConnection(this, this, registerCallback = false)
+/**
+ * 桌面快捷方式：切换连接。不再绑定 Service 读状态——直接向进程级协调器提交一个
+ * source=shortcut 的外部请求（按当前 desired 翻转），然后立即结束。
+ */
+class ShortcutActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,24 +39,10 @@ class ShortcutActivity : Activity(), KernelConnection.Sink {
             return
         }
 
-        connection.connect()
+        KernelCoordinator.instance.toggleExternal(Source.Shortcut)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             getSystemService<ShortcutManager>()?.reportShortcutUsed("toggle")
         }
-        moveTaskToBack(true)
-    }
-
-    override fun onStatusChange(status: KernelStatus) {
-        when (status) {
-            KernelStatus.Started -> KernelHost.fireStop()
-            KernelStatus.Stopped -> KernelHost.fireStart()
-            else -> Unit
-        }
         finish()
-    }
-
-    override fun onDestroy() {
-        connection.disconnect()
-        super.onDestroy()
     }
 }

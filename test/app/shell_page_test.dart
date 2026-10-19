@@ -26,6 +26,13 @@ import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+
+import '../support/fake_connection_controller.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
@@ -52,6 +59,7 @@ Future<(Widget, ProviderContainer)> _host({
         (_) => Stream<List<OutboundGroup>>.value(const []),
       ),
       boxStatsProvider.overrideWith((_) => Stream.value(BoxStats.empty)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       ...extraOverrides,
     ],
   );
@@ -434,26 +442,32 @@ void main() {
     }
   });
 
-  group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {
-    testWidgets('致命 alert（sing-box 启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认', (tester) async {
-      final alertController = StreamController<BoxAlert>();
-      addTearDown(alertController.close);
-      final (widget, container) = await _host(
-        extraOverrides: [
-          boxAlertsProvider.overrideWith((_) => alertController.stream),
-        ],
-      );
-      addTearDown(container.dispose);
+  group('连接失败提示：致命用阻断式弹窗，非致命用 toast（回归 #29，现按 failureSeq 去重）', () {
+    FakeConnectionController ctl(ProviderContainer c) =>
+        c.read(connectionControllerProvider.notifier)
+            as FakeConnectionController;
 
+    ConnectionSnapshot failed(ConnectionFailure f, int seq) =>
+        ConnectionSnapshot(
+          phase: ConnectionPhase.disconnected,
+          failure: f,
+          failureSeq: seq,
+        );
+
+    testWidgets('致命失败（内核启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认', (tester) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
-      alertController.add(
-        const BoxAlert(
-          type: BoxAlertType.startService,
-          // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的
-          // 本地化文案，不应该把这段原始文本糊给用户看。
-          message: 'native stacktrace: goroutine 7 [running]',
+      ctl(container).set(
+        failed(
+          // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的本地化文案。
+          const KernelStartFailed(
+            KernelFailureCode.startService,
+            'native stacktrace: goroutine 7 [running]',
+          ),
+          1,
         ),
       );
       await tester.pumpAndSettle();
@@ -476,9 +490,108 @@ void main() {
       expect(find.text('连接失败'), findsNothing);
     });
 
-    testWidgets('非致命 alert（VPN 权限被拒绝）→ 仍然是可自动消失的 toast，不弹阻断式对话框', (
+    testWidgets('致命类全集：配置为空 / 建服务 / 起服务 / 起命令服务 / 内核无响应 都是阻断式', (tester) async {
+      final cases = <ConnectionFailure>[
+        const KernelStartFailed(KernelFailureCode.emptyConfiguration, ''),
+        const KernelStartFailed(KernelFailureCode.createService, ''),
+        const KernelStartFailed(KernelFailureCode.startService, ''),
+        const KernelStartFailed(KernelFailureCode.startCommandServer, ''),
+        const KernelUnresponsive(),
+      ];
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      var seq = 0;
+      for (final f in cases) {
+        ctl(container).set(failed(f, ++seq));
+        await tester.pumpAndSettle();
+        expect(find.text('连接失败'), findsOneWidget, reason: '$f');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('非致命失败（缺 VPN 授权、启动超时、无订阅、内核退出）→ 可自动消失的 toast，不弹对话框', (
       tester,
     ) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      ctl(container).set(failed(const PermissionDenied(), 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('缺少 VPN 权限'), findsOneWidget);
+      // 阻断式弹窗的标题不应该出现——非致命场景不能升级成阻断式。
+      expect(find.text('连接失败'), findsNothing);
+      await _drainToasts(tester);
+
+      for (final f in <ConnectionFailure>[
+        const StartTimeout(),
+        const NoActiveProfile(),
+        const NativeUnresponsive(),
+        const KernelStartFailed(KernelFailureCode.kernelExited, ''),
+      ]) {
+        expect(f.isFatal, isFalse, reason: '$f');
+      }
+    });
+
+    testWidgets('同一个 failureSeq 只提示一次；新的失败（seq 递增）再提示', (tester) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      ctl(container).set(failed(const KernelUnresponsive(), 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsNothing);
+
+      // 同一个失败、同一个序号，只是别的字段变了（例如 stale 标记）：不重复弹。
+      ctl(container).set(
+        const ConnectionSnapshot(
+          phase: ConnectionPhase.disconnected,
+          failure: KernelUnresponsive(),
+          failureSeq: 1,
+          stale: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsNothing);
+
+      ctl(container).set(failed(const KernelUnresponsive(), 2));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('挂载之前就已存在的失败不弹窗（冷启动不重复提示旧失败）', (tester) async {
+      final (widget, container) = await _host(
+        extraOverrides: [
+          connectionControllerProvider.overrideWith(
+            (ref) => FakeConnectionController(
+              ref,
+              snapshot: failed(const KernelUnresponsive(), 3),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      expect(find.text('连接失败'), findsNothing);
+    });
+  });
+
+  group('alerts 通道：只剩与连接生命周期无关的提示', () {
+    testWidgets('非致命 alert（通知权限等）→ toast', (tester) async {
       final alertController = StreamController<BoxAlert>();
       addTearDown(alertController.close);
       final (widget, container) = await _host(
@@ -492,15 +605,37 @@ void main() {
       await tester.pumpAndSettle();
 
       alertController.add(
-        const BoxAlert(type: BoxAlertType.requestVpnPermission),
+        // 用与上一个用例不同的文案：AppToast 对 800 ms 内的相同文案会去重。
+        const BoxAlert(type: BoxAlertType.requestNotificationPermission),
       );
       await tester.pumpAndSettle();
+      // toastification 的 overlay entry 创建后还要延迟 ~100 ms 才插入 toast。
+      await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('缺少 VPN 权限'), findsOneWidget);
-      // 阻断式弹窗的标题不应该出现——非致命场景不能升级成阻断式。
+      expect(find.text('缺少通知权限'), findsOneWidget);
       expect(find.text('连接失败'), findsNothing);
 
       await _drainToasts(tester);
+    });
+
+    testWidgets('致命 alert 不再单独弹窗：生命周期失败只经连接状态提示一次，避免同一故障双重提示', (tester) async {
+      final alertController = StreamController<BoxAlert>();
+      addTearDown(alertController.close);
+      final (widget, container) = await _host(
+        extraOverrides: [
+          boxAlertsProvider.overrideWith((_) => alertController.stream),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      alertController.add(const BoxAlert(type: BoxAlertType.startService));
+      await tester.pumpAndSettle();
+
+      expect(find.text('连接失败'), findsNothing);
+      expect(find.text('服务启动错误'), findsNothing);
     });
   });
 

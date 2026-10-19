@@ -217,6 +217,64 @@ void main() {
         );
       });
     });
+
+    test('restore：恢复到旧值或删除记录，并经 writeAux 写回磁盘', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [_profile('profile-r')]);
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          profileStoreProvider.overrideWith((_) => Future.value(store)),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(_profile('profile-r')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(profileStoreProvider.future);
+      await container.read(activeProfileProvider.future);
+      final notifier = container.read(proxySelectionStoreProvider.notifier);
+
+      await notifier.persist('proxy', 'A');
+      await notifier.persist('proxy', 'B');
+      await notifier.restore('proxy', 'A');
+      expect(container.read(proxySelectionStoreProvider), {'proxy': 'A'});
+      expect(prefs.getString('proxy_selection_profile-r'), '{"proxy":"A"}');
+
+      await notifier.restore('proxy', null);
+      expect(container.read(proxySelectionStoreProvider), isEmpty);
+      expect(prefs.getString('proxy_selection_profile-r'), '{}');
+    });
+
+    test('restore：订阅已删除后旧 notifier 的回滚同样被丢弃，不复活孤儿键', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final store = await seededProfileStore(prefs, [
+        _profile('profile-a', inc: 'g1'),
+      ]);
+      final notifier = ProxySelectionStoreNotifier(
+        prefs: prefs,
+        store: store,
+        profileId: 'profile-a',
+        profileInc: 'g1',
+      );
+      await notifier.persist('proxy', 'A');
+      await notifier.persist('proxy', 'B');
+
+      await store.commit<void>(
+        (_) => const Plan<void>(profiles: [], removedProfileIds: ['profile-a']),
+      );
+      expect(prefs.getString('proxy_selection_profile-a'), isNull);
+
+      await notifier.restore('proxy', 'A');
+      expect(
+        prefs.getString('proxy_selection_profile-a'),
+        isNull,
+        reason: '回滚与 persist 走同一条 writeAux 校验',
+      );
+    });
   });
 }
 

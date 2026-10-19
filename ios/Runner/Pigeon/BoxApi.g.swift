@@ -188,25 +188,278 @@ struct ConfigOptions: Hashable {
 struct SelectOutboundRequest: Hashable {
   var groupTag: String
   var outboundTag: String
+  /// 手选重放时传入目标 attempt（连接生命周期 spec §10.7）。非空且与协调器
+  /// 当前 attempt 不一致时，原生**不写入**并以 `FlutterError("stale")` 回调；
+  /// 为空则维持旧行为（不校验）。
+  var expectedAttempt: Int64? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
   static func fromList(_ pigeonVar_list: [Any?]) -> SelectOutboundRequest? {
     let groupTag = pigeonVar_list[0] as! String
     let outboundTag = pigeonVar_list[1] as! String
+    let expectedAttempt: Int64? = nilOrValue(pigeonVar_list[2])
 
     return SelectOutboundRequest(
       groupTag: groupTag,
-      outboundTag: outboundTag
+      outboundTag: outboundTag,
+      expectedAttempt: expectedAttempt
     )
   }
   func toList() -> [Any?] {
     return [
       groupTag,
       outboundTag,
+      expectedAttempt,
     ]
   }
   static func == (lhs: SelectOutboundRequest, rhs: SelectOutboundRequest) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
+/// `KernelSnapshotMsg.lastFailure`：协调器把 desired 置 off 时附带的失败。
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct KernelFailureMsg: Hashable {
+  /// 失败码（字符串，见 Dart `KernelFailureCode`；未知码按 unexpected 处理）。
+  var code: String
+  var message: String
+  var attempt: Int64
+  /// 触发该失败的请求序号；与 Dart 请求无关的失败（内核意外退出等）为空。
+  var seq: Int64? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> KernelFailureMsg? {
+    let code = pigeonVar_list[0] as! String
+    let message = pigeonVar_list[1] as! String
+    let attempt = pigeonVar_list[2] as! Int64
+    let seq: Int64? = nilOrValue(pigeonVar_list[3])
+
+    return KernelFailureMsg(
+      code: code,
+      message: message,
+      attempt: attempt,
+      seq: seq
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      code,
+      message,
+      attempt,
+      seq,
+    ]
+  }
+  static func == (lhs: KernelFailureMsg, rhs: KernelFailureMsg) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
+/// 内核权威快照（连接生命周期 spec §2 + §10.5）。
+///
+/// 枚举字段用小写字符串，与事件通道 `com.clashmiao.app/kernel.snapshot` 的
+/// JSON map 载荷逐字段一致：
+///   - `status`: stopped | starting | started | stopping
+///   - `desired`: on | off
+///   - `source`: app | tile | shortcut | boot | system
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct KernelSnapshotMsg: Hashable {
+  var epoch: String
+  var version: Int64
+  var status: String
+  var attempt: Int64
+  var desired: String
+  var source: String
+  var appliedSeq: Int64
+  var activeConfigRevision: Int64? = nil
+  var lastFailure: KernelFailureMsg? = nil
+  var selectionsReplayNeeded: Bool
+  /// 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+  /// 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+  /// 原生与 Dart 总在同一个二进制里发布，所以 Pigeon 查询响应必然带这个尾字段
+  /// （不存在「旧原生 + 新 Dart」的组合，生成的解码不做缺字段兼容）。
+  var retainedConfigPaths: [String]? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> KernelSnapshotMsg? {
+    let epoch = pigeonVar_list[0] as! String
+    let version = pigeonVar_list[1] as! Int64
+    let status = pigeonVar_list[2] as! String
+    let attempt = pigeonVar_list[3] as! Int64
+    let desired = pigeonVar_list[4] as! String
+    let source = pigeonVar_list[5] as! String
+    let appliedSeq = pigeonVar_list[6] as! Int64
+    let activeConfigRevision: Int64? = nilOrValue(pigeonVar_list[7])
+    let lastFailure: KernelFailureMsg? = nilOrValue(pigeonVar_list[8])
+    let selectionsReplayNeeded = pigeonVar_list[9] as! Bool
+    let retainedConfigPaths: [String]? = nilOrValue(pigeonVar_list[10])
+
+    return KernelSnapshotMsg(
+      epoch: epoch,
+      version: version,
+      status: status,
+      attempt: attempt,
+      desired: desired,
+      source: source,
+      appliedSeq: appliedSeq,
+      activeConfigRevision: activeConfigRevision,
+      lastFailure: lastFailure,
+      selectionsReplayNeeded: selectionsReplayNeeded,
+      retainedConfigPaths: retainedConfigPaths
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      epoch,
+      version,
+      status,
+      attempt,
+      desired,
+      source,
+      appliedSeq,
+      activeConfigRevision,
+      lastFailure,
+      selectionsReplayNeeded,
+      retainedConfigPaths,
+    ]
+  }
+  static func == (lhs: KernelSnapshotMsg, rhs: KernelSnapshotMsg) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
+/// 启动/重载所需的不可变产物（每请求独立）。
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct LaunchSpecMsg: Hashable {
+  var runtimeConfigPath: String
+  var optionsJson: String
+  var profileName: String
+  var configRevision: Int64
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> LaunchSpecMsg? {
+    let runtimeConfigPath = pigeonVar_list[0] as! String
+    let optionsJson = pigeonVar_list[1] as! String
+    let profileName = pigeonVar_list[2] as! String
+    let configRevision = pigeonVar_list[3] as! Int64
+
+    return LaunchSpecMsg(
+      runtimeConfigPath: runtimeConfigPath,
+      optionsJson: optionsJson,
+      profileName: profileName,
+      configRevision: configRevision
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      runtimeConfigPath,
+      optionsJson,
+      profileName,
+      configRevision,
+    ]
+  }
+  static func == (lhs: LaunchSpecMsg, rhs: LaunchSpecMsg) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
+/// Dart → 协调器的带序号期望请求。
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct DesiredRequestMsg: Hashable {
+  /// Dart 据以分配 seq 的纪元；与协调器当前纪元不符时回执 `wrongEpoch`。
+  var epoch: String
+  var seq: Int64
+  /// `on` | `off`
+  var desired: String
+  /// `userConnect` | `userDisconnect` | `applyConfig` | `retry`
+  var reason: String
+  /// `desired == on` 时必填。
+  var launch: LaunchSpecMsg? = nil
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> DesiredRequestMsg? {
+    let epoch = pigeonVar_list[0] as! String
+    let seq = pigeonVar_list[1] as! Int64
+    let desired = pigeonVar_list[2] as! String
+    let reason = pigeonVar_list[3] as! String
+    let launch: LaunchSpecMsg? = nilOrValue(pigeonVar_list[4])
+
+    return DesiredRequestMsg(
+      epoch: epoch,
+      seq: seq,
+      desired: desired,
+      reason: reason,
+      launch: launch
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      epoch,
+      seq,
+      desired,
+      reason,
+      launch,
+    ]
+  }
+  static func == (lhs: DesiredRequestMsg, rhs: DesiredRequestMsg) -> Bool {
+    return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
+  func hash(into hasher: inout Hasher) {
+    deepHashBoxApi(value: toList(), hasher: &hasher)
+  }
+}
+
+/// 请求回执：只表示「已入队/被拒绝」，不表示完成。
+///
+/// Generated class from Pigeon that represents data sent in messages.
+struct ReceiptMsg: Hashable {
+  var accepted: Bool
+  /// 被拒绝时：`stale`（seq ≤ appliedSeq）| `wrongEpoch`；受理时为空。
+  var reason: String? = nil
+  /// 协调器当前纪元。
+  var epoch: String
+  /// 处理本请求之后的 appliedSeq（拒绝时即现值，供 Dart 重设基线）。
+  var appliedSeq: Int64
+
+
+  // swift-format-ignore: AlwaysUseLowerCamelCase
+  static func fromList(_ pigeonVar_list: [Any?]) -> ReceiptMsg? {
+    let accepted = pigeonVar_list[0] as! Bool
+    let reason: String? = nilOrValue(pigeonVar_list[1])
+    let epoch = pigeonVar_list[2] as! String
+    let appliedSeq = pigeonVar_list[3] as! Int64
+
+    return ReceiptMsg(
+      accepted: accepted,
+      reason: reason,
+      epoch: epoch,
+      appliedSeq: appliedSeq
+    )
+  }
+  func toList() -> [Any?] {
+    return [
+      accepted,
+      reason,
+      epoch,
+      appliedSeq,
+    ]
+  }
+  static func == (lhs: ReceiptMsg, rhs: ReceiptMsg) -> Bool {
     return deepEqualsBoxApi(lhs.toList(), rhs.toList())  }
   func hash(into hasher: inout Hasher) {
     deepHashBoxApi(value: toList(), hasher: &hasher)
@@ -315,10 +568,20 @@ private class BoxApiPigeonCodecReader: FlutterStandardReader {
     case 131:
       return SelectOutboundRequest.fromList(self.readValue() as! [Any?])
     case 132:
-      return ValidateConfigRequest.fromList(self.readValue() as! [Any?])
+      return KernelFailureMsg.fromList(self.readValue() as! [Any?])
     case 133:
-      return ValidateConfigResult.fromList(self.readValue() as! [Any?])
+      return KernelSnapshotMsg.fromList(self.readValue() as! [Any?])
     case 134:
+      return LaunchSpecMsg.fromList(self.readValue() as! [Any?])
+    case 135:
+      return DesiredRequestMsg.fromList(self.readValue() as! [Any?])
+    case 136:
+      return ReceiptMsg.fromList(self.readValue() as! [Any?])
+    case 137:
+      return ValidateConfigRequest.fromList(self.readValue() as! [Any?])
+    case 138:
+      return ValidateConfigResult.fromList(self.readValue() as! [Any?])
+    case 139:
       return InstalledApp.fromList(self.readValue() as! [Any?])
     default:
       return super.readValue(ofType: type)
@@ -337,14 +600,29 @@ private class BoxApiPigeonCodecWriter: FlutterStandardWriter {
     } else if let value = value as? SelectOutboundRequest {
       super.writeByte(131)
       super.writeValue(value.toList())
-    } else if let value = value as? ValidateConfigRequest {
+    } else if let value = value as? KernelFailureMsg {
       super.writeByte(132)
       super.writeValue(value.toList())
-    } else if let value = value as? ValidateConfigResult {
+    } else if let value = value as? KernelSnapshotMsg {
       super.writeByte(133)
       super.writeValue(value.toList())
-    } else if let value = value as? InstalledApp {
+    } else if let value = value as? LaunchSpecMsg {
       super.writeByte(134)
+      super.writeValue(value.toList())
+    } else if let value = value as? DesiredRequestMsg {
+      super.writeByte(135)
+      super.writeValue(value.toList())
+    } else if let value = value as? ReceiptMsg {
+      super.writeByte(136)
+      super.writeValue(value.toList())
+    } else if let value = value as? ValidateConfigRequest {
+      super.writeByte(137)
+      super.writeValue(value.toList())
+    } else if let value = value as? ValidateConfigResult {
+      super.writeByte(138)
+      super.writeValue(value.toList())
+    } else if let value = value as? InstalledApp {
+      super.writeByte(139)
       super.writeValue(value.toList())
     } else {
       super.writeValue(value)
@@ -379,6 +657,14 @@ protocol BoxHostApi {
   func stop(completion: @escaping (Result<Void, Error>) -> Void)
   func restart(req: StartRequest, completion: @escaping (Result<Void, Error>) -> Void)
   func selectOutbound(req: SelectOutboundRequest, completion: @escaping (Result<Void, Error>) -> Void)
+  /// 当前权威快照（连接生命周期 spec §2）。Android 由进程级协调器提供；
+  /// iOS 无原生实现，Dart 使用 `EmulatedKernelPort`。
+  func getSnapshot(completion: @escaping (Result<KernelSnapshotMsg, Error>) -> Void)
+  /// 提交带序号的期望请求。回调只表示入队/被拒绝（见 [ReceiptMsg]）；
+  /// 失败一律 `Result.failure(FlutterError)`，不 throw。
+  func request(req: DesiredRequestMsg, completion: @escaping (Result<ReceiptMsg, Error>) -> Void)
+  /// 确认 [attempt] 的手选重放已完成。幂等：attempt 不是当前值时忽略。
+  func acknowledgeReplay(attempt: Int64, completion: @escaping (Result<Void, Error>) -> Void)
   func urlTest(groupTag: String, completion: @escaping (Result<Void, Error>) -> Void)
   func generateFullConfig(path: String, completion: @escaping (Result<String?, Error>) -> Void)
   func clearLogs(completion: @escaping (Result<Void, Error>) -> Void)
@@ -541,6 +827,60 @@ class BoxHostApiSetup {
       }
     } else {
       selectOutboundChannel.setMessageHandler(nil)
+    }
+    /// 当前权威快照（连接生命周期 spec §2）。Android 由进程级协调器提供；
+    /// iOS 无原生实现，Dart 使用 `EmulatedKernelPort`。
+    let getSnapshotChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.getSnapshot\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      getSnapshotChannel.setMessageHandler { _, reply in
+        api.getSnapshot { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      getSnapshotChannel.setMessageHandler(nil)
+    }
+    /// 提交带序号的期望请求。回调只表示入队/被拒绝（见 [ReceiptMsg]）；
+    /// 失败一律 `Result.failure(FlutterError)`，不 throw。
+    let requestChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.request\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      requestChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let reqArg = args[0] as! DesiredRequestMsg
+        api.request(req: reqArg) { result in
+          switch result {
+          case .success(let res):
+            reply(wrapResult(res))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      requestChannel.setMessageHandler(nil)
+    }
+    /// 确认 [attempt] 的手选重放已完成。幂等：attempt 不是当前值时忽略。
+    let acknowledgeReplayChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.acknowledgeReplay\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
+    if let api = api {
+      acknowledgeReplayChannel.setMessageHandler { message, reply in
+        let args = message as! [Any?]
+        let attemptArg = args[0] as! Int64
+        api.acknowledgeReplay(attempt: attemptArg) { result in
+          switch result {
+          case .success:
+            reply(wrapResult(nil))
+          case .failure(let error):
+            reply(wrapError(error))
+          }
+        }
+      }
+    } else {
+      acknowledgeReplayChannel.setMessageHandler(nil)
     }
     let urlTestChannel = FlutterBasicMessageChannel(name: "dev.flutter.pigeon.clashmiao.BoxHostApi.urlTest\(channelSuffix)", binaryMessenger: binaryMessenger, codec: codec)
     if let api = api {

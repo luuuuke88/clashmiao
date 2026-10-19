@@ -110,14 +110,23 @@ class ConfigOptions {
 }
 
 class SelectOutboundRequest {
-  SelectOutboundRequest({required this.groupTag, required this.outboundTag});
+  SelectOutboundRequest({
+    required this.groupTag,
+    required this.outboundTag,
+    this.expectedAttempt,
+  });
 
   String groupTag;
 
   String outboundTag;
 
+  /// 手选重放时传入目标 attempt（连接生命周期 spec §10.7）。非空且与协调器
+  /// 当前 attempt 不一致时，原生**不写入**并以 `FlutterError("stale")` 回调；
+  /// 为空则维持旧行为（不校验）。
+  int? expectedAttempt;
+
   List<Object?> _toList() {
-    return <Object?>[groupTag, outboundTag];
+    return <Object?>[groupTag, outboundTag, expectedAttempt];
   }
 
   Object encode() {
@@ -129,6 +138,7 @@ class SelectOutboundRequest {
     return SelectOutboundRequest(
       groupTag: result[0]! as String,
       outboundTag: result[1]! as String,
+      expectedAttempt: result[2] as int?,
     );
   }
 
@@ -136,6 +146,334 @@ class SelectOutboundRequest {
   // ignore: avoid_equals_and_hash_code_on_mutable_classes
   bool operator ==(Object other) {
     if (other is! SelectOutboundRequest || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
+/// `KernelSnapshotMsg.lastFailure`：协调器把 desired 置 off 时附带的失败。
+class KernelFailureMsg {
+  KernelFailureMsg({
+    required this.code,
+    required this.message,
+    required this.attempt,
+    this.seq,
+  });
+
+  /// 失败码（字符串，见 Dart `KernelFailureCode`；未知码按 unexpected 处理）。
+  String code;
+
+  String message;
+
+  int attempt;
+
+  /// 触发该失败的请求序号；与 Dart 请求无关的失败（内核意外退出等）为空。
+  int? seq;
+
+  List<Object?> _toList() {
+    return <Object?>[code, message, attempt, seq];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static KernelFailureMsg decode(Object result) {
+    result as List<Object?>;
+    return KernelFailureMsg(
+      code: result[0]! as String,
+      message: result[1]! as String,
+      attempt: result[2]! as int,
+      seq: result[3] as int?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! KernelFailureMsg || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
+/// 内核权威快照（连接生命周期 spec §2 + §10.5）。
+///
+/// 枚举字段用小写字符串，与事件通道 `com.clashmiao.app/kernel.snapshot` 的
+/// JSON map 载荷逐字段一致：
+///   - `status`: stopped | starting | started | stopping
+///   - `desired`: on | off
+///   - `source`: app | tile | shortcut | boot | system
+class KernelSnapshotMsg {
+  KernelSnapshotMsg({
+    required this.epoch,
+    required this.version,
+    required this.status,
+    required this.attempt,
+    required this.desired,
+    required this.source,
+    required this.appliedSeq,
+    this.activeConfigRevision,
+    this.lastFailure,
+    required this.selectionsReplayNeeded,
+    this.retainedConfigPaths,
+  });
+
+  String epoch;
+
+  int version;
+
+  String status;
+
+  int attempt;
+
+  String desired;
+
+  String source;
+
+  int appliedSeq;
+
+  int? activeConfigRevision;
+
+  KernelFailureMsg? lastFailure;
+
+  bool selectionsReplayNeeded;
+
+  /// 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+  /// 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+  /// 原生与 Dart 总在同一个二进制里发布，所以 Pigeon 查询响应必然带这个尾字段
+  /// （不存在「旧原生 + 新 Dart」的组合，生成的解码不做缺字段兼容）。
+  List<String>? retainedConfigPaths;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      epoch,
+      version,
+      status,
+      attempt,
+      desired,
+      source,
+      appliedSeq,
+      activeConfigRevision,
+      lastFailure,
+      selectionsReplayNeeded,
+      retainedConfigPaths,
+    ];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static KernelSnapshotMsg decode(Object result) {
+    result as List<Object?>;
+    return KernelSnapshotMsg(
+      epoch: result[0]! as String,
+      version: result[1]! as int,
+      status: result[2]! as String,
+      attempt: result[3]! as int,
+      desired: result[4]! as String,
+      source: result[5]! as String,
+      appliedSeq: result[6]! as int,
+      activeConfigRevision: result[7] as int?,
+      lastFailure: result[8] as KernelFailureMsg?,
+      selectionsReplayNeeded: result[9]! as bool,
+      retainedConfigPaths: (result[10] as List<Object?>?)?.cast<String>(),
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! KernelSnapshotMsg || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
+/// 启动/重载所需的不可变产物（每请求独立）。
+class LaunchSpecMsg {
+  LaunchSpecMsg({
+    required this.runtimeConfigPath,
+    required this.optionsJson,
+    required this.profileName,
+    required this.configRevision,
+  });
+
+  String runtimeConfigPath;
+
+  String optionsJson;
+
+  String profileName;
+
+  int configRevision;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      runtimeConfigPath,
+      optionsJson,
+      profileName,
+      configRevision,
+    ];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static LaunchSpecMsg decode(Object result) {
+    result as List<Object?>;
+    return LaunchSpecMsg(
+      runtimeConfigPath: result[0]! as String,
+      optionsJson: result[1]! as String,
+      profileName: result[2]! as String,
+      configRevision: result[3]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! LaunchSpecMsg || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
+/// Dart → 协调器的带序号期望请求。
+class DesiredRequestMsg {
+  DesiredRequestMsg({
+    required this.epoch,
+    required this.seq,
+    required this.desired,
+    required this.reason,
+    this.launch,
+  });
+
+  /// Dart 据以分配 seq 的纪元；与协调器当前纪元不符时回执 `wrongEpoch`。
+  String epoch;
+
+  int seq;
+
+  /// `on` | `off`
+  String desired;
+
+  /// `userConnect` | `userDisconnect` | `applyConfig` | `retry`
+  String reason;
+
+  /// `desired == on` 时必填。
+  LaunchSpecMsg? launch;
+
+  List<Object?> _toList() {
+    return <Object?>[epoch, seq, desired, reason, launch];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static DesiredRequestMsg decode(Object result) {
+    result as List<Object?>;
+    return DesiredRequestMsg(
+      epoch: result[0]! as String,
+      seq: result[1]! as int,
+      desired: result[2]! as String,
+      reason: result[3]! as String,
+      launch: result[4] as LaunchSpecMsg?,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! DesiredRequestMsg || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(encode(), other.encode());
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => Object.hashAll(_toList());
+}
+
+/// 请求回执：只表示「已入队/被拒绝」，不表示完成。
+class ReceiptMsg {
+  ReceiptMsg({
+    required this.accepted,
+    this.reason,
+    required this.epoch,
+    required this.appliedSeq,
+  });
+
+  bool accepted;
+
+  /// 被拒绝时：`stale`（seq ≤ appliedSeq）| `wrongEpoch`；受理时为空。
+  String? reason;
+
+  /// 协调器当前纪元。
+  String epoch;
+
+  /// 处理本请求之后的 appliedSeq（拒绝时即现值，供 Dart 重设基线）。
+  int appliedSeq;
+
+  List<Object?> _toList() {
+    return <Object?>[accepted, reason, epoch, appliedSeq];
+  }
+
+  Object encode() {
+    return _toList();
+  }
+
+  static ReceiptMsg decode(Object result) {
+    result as List<Object?>;
+    return ReceiptMsg(
+      accepted: result[0]! as bool,
+      reason: result[1] as String?,
+      epoch: result[2]! as String,
+      appliedSeq: result[3]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! ReceiptMsg || other.runtimeType != runtimeType) {
       return false;
     }
     if (identical(this, other)) {
@@ -295,14 +633,29 @@ class _PigeonCodec extends StandardMessageCodec {
     } else if (value is SelectOutboundRequest) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    } else if (value is ValidateConfigRequest) {
+    } else if (value is KernelFailureMsg) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    } else if (value is ValidateConfigResult) {
+    } else if (value is KernelSnapshotMsg) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    } else if (value is InstalledApp) {
+    } else if (value is LaunchSpecMsg) {
       buffer.putUint8(134);
+      writeValue(buffer, value.encode());
+    } else if (value is DesiredRequestMsg) {
+      buffer.putUint8(135);
+      writeValue(buffer, value.encode());
+    } else if (value is ReceiptMsg) {
+      buffer.putUint8(136);
+      writeValue(buffer, value.encode());
+    } else if (value is ValidateConfigRequest) {
+      buffer.putUint8(137);
+      writeValue(buffer, value.encode());
+    } else if (value is ValidateConfigResult) {
+      buffer.putUint8(138);
+      writeValue(buffer, value.encode());
+    } else if (value is InstalledApp) {
+      buffer.putUint8(139);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -319,10 +672,20 @@ class _PigeonCodec extends StandardMessageCodec {
       case 131:
         return SelectOutboundRequest.decode(readValue(buffer)!);
       case 132:
-        return ValidateConfigRequest.decode(readValue(buffer)!);
+        return KernelFailureMsg.decode(readValue(buffer)!);
       case 133:
-        return ValidateConfigResult.decode(readValue(buffer)!);
+        return KernelSnapshotMsg.decode(readValue(buffer)!);
       case 134:
+        return LaunchSpecMsg.decode(readValue(buffer)!);
+      case 135:
+        return DesiredRequestMsg.decode(readValue(buffer)!);
+      case 136:
+        return ReceiptMsg.decode(readValue(buffer)!);
+      case 137:
+        return ValidateConfigRequest.decode(readValue(buffer)!);
+      case 138:
+        return ValidateConfigResult.decode(readValue(buffer)!);
+      case 139:
         return InstalledApp.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -554,6 +917,100 @@ class BoxHostApi {
         );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
       <Object?>[req],
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else {
+      return;
+    }
+  }
+
+  /// 当前权威快照（连接生命周期 spec §2）。Android 由进程级协调器提供；
+  /// iOS 无原生实现，Dart 使用 `EmulatedKernelPort`。
+  Future<KernelSnapshotMsg> getSnapshot() async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.getSnapshot$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as KernelSnapshotMsg?)!;
+    }
+  }
+
+  /// 提交带序号的期望请求。回调只表示入队/被拒绝（见 [ReceiptMsg]）；
+  /// 失败一律 `Result.failure(FlutterError)`，不 throw。
+  Future<ReceiptMsg> request(DesiredRequestMsg req) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.request$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[req],
+    );
+    final List<Object?>? pigeonVar_replyList =
+        await pigeonVar_sendFuture as List<Object?>?;
+    if (pigeonVar_replyList == null) {
+      throw _createConnectionError(pigeonVar_channelName);
+    } else if (pigeonVar_replyList.length > 1) {
+      throw PlatformException(
+        code: pigeonVar_replyList[0]! as String,
+        message: pigeonVar_replyList[1] as String?,
+        details: pigeonVar_replyList[2],
+      );
+    } else if (pigeonVar_replyList[0] == null) {
+      throw PlatformException(
+        code: 'null-error',
+        message: 'Host platform returned null value for non-null return value.',
+      );
+    } else {
+      return (pigeonVar_replyList[0] as ReceiptMsg?)!;
+    }
+  }
+
+  /// 确认 [attempt] 的手选重放已完成。幂等：attempt 不是当前值时忽略。
+  Future<void> acknowledgeReplay(int attempt) async {
+    final String pigeonVar_channelName =
+        'dev.flutter.pigeon.clashmiao.BoxHostApi.acknowledgeReplay$pigeonVar_messageChannelSuffix';
+    final BasicMessageChannel<Object?> pigeonVar_channel =
+        BasicMessageChannel<Object?>(
+          pigeonVar_channelName,
+          pigeonChannelCodec,
+          binaryMessenger: pigeonVar_binaryMessenger,
+        );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[attempt],
     );
     final List<Object?>? pigeonVar_replyList =
         await pigeonVar_sendFuture as List<Object?>?;

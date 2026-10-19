@@ -24,8 +24,8 @@ import '../../../support/known_overflow.dart';
 ///
 /// ## 已知溢出（精确捕获，不是笼统吞掉）
 ///
-/// 2.0x 时连接区另有两处溢出（连接按钮的竖向 Column、模式分段控件的横向 Row），
-/// 属于连接区（正在被重写、本任务不得触碰），见 `test/support/known_overflow.dart`：
+/// 2.0x 时连接区另有一处溢出（模式分段控件的横向 Row；连接按钮的竖向 Column
+/// 已随连接区重写消除），属于连接区，见 `test/support/known_overflow.dart`：
 /// 按创建者链前缀（具体的 RenderFlex 位置）、溢出边（bottom / right）与量级范围
 /// 精确匹配，且每项在一个场景里**恰好一次**。其它任何溢出（包括页头自己的）、
 /// 已知项的第二次出现、位置 / 边 / 量级对不上的溢出一律原样交给框架，让测试失败。
@@ -87,10 +87,8 @@ void main() {
         // 每项在一个场景里恰好一次；页头自己的溢出、任何其它溢出、已知项的
         // 第二次出现，都会原样交给框架让测试失败。
         final expected = <KnownOverflow>[
-          if (scale == 2.0) ...[
-            connectionButtonOverflow.at(28),
-            modeSelectorOverflow.at(22),
-          ],
+          // 连接按钮已随连接区重写（子项目 B）不再溢出，只剩模式分段控件。
+          if (scale == 2.0) modeSelectorOverflow.at(22),
         ];
         final seen = await runAllowingKnownOverflows(expected, () async {
           await tester.pumpWidget(host);

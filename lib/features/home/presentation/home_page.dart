@@ -1,11 +1,12 @@
 import 'dart:async';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
@@ -42,19 +43,9 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
-    final connectionState = ref.watch(connectionControllerProvider);
-    final status = connectionState.valueOrNull ?? const BoxStopped();
+    final phase = ref.watch(connectionPhaseProvider);
     final activeProfile = ref.watch(activeProfileProvider);
     final t = ref.watch(translationsProvider);
-
-    // 连接错误反馈：错误出现 → 弹 toast。只覆盖 connect()/disconnect() 的
-    // 异常路径（SocketException/超时等）——致命 alert（内核没起来）不走这里，
-    // 由 ShellPage 的 boxAlertsProvider 监听器弹阻断式弹窗，两边不重复提示。
-    ref.listen<String?>(connectionErrorProvider, (prev, next) {
-      if (next != null && next.isNotEmpty && context.mounted) {
-        AppToast.error(context, next);
-      }
-    });
 
     // 配置变更触发的自动重连之前是纯静默的，用户可能把它误当成网络抖动。
     // ConnectionController 每次因为网络设置变更而自动重连时都会推进这个
@@ -67,33 +58,6 @@ class HomePage extends ConsumerWidget {
           context,
           ref.read(translationsProvider).connection.reconnectMsg,
         );
-      }
-    });
-
-    // 出口 IP：只在真正进入 BoxStarted 时才有意义地自动查（见
-    // EgressIpService 类文档）。挂在 HomePage 这一级、而不是下沉到
-    // `_FooterStats` 内部 listen，是因为 HomePage 在 `ShellPage` 的
-    // `IndexedStack` 里全程常驻，而 `_FooterStats` 只是它的子组件、会随布局
-    // 重建（窄屏两行 / 宽屏一行走不同分支）——监听点放在常驻的 HomePage 上
-    // 更可靠，不会因为子组件重挂载而错过连接状态切换。
-    ref.listen<AsyncValue<BoxStatus>>(connectionControllerProvider, (
-      prev,
-      next,
-    ) {
-      final wasStarted = prev?.valueOrNull is BoxStarted;
-      final isStarted = next.valueOrNull is BoxStarted;
-      if (wasStarted == isStarted) return;
-      if (isStarted) {
-        // 刚连接成功：先清空上一次的展示（可能是断开态手动查到的真实 IP，
-        // 或者上一段连接的出口 IP），避免残留误导用户；开关开启时才自动查。
-        // （竞态防护见 _resetEgressIpDisplay/_checkEgressIp 的文档。）
-        _resetEgressIpDisplay(ref);
-        if (ref.read(egressIpServiceProvider).autoCheckEnabled) {
-          unawaited(_checkEgressIp(ref));
-        }
-      } else {
-        // 断开（或者重连中途）：清空，不残留旧值。
-        _resetEgressIpDisplay(ref);
       }
     });
 
@@ -156,33 +120,31 @@ class HomePage extends ConsumerWidget {
                               }
                               final isCompact =
                                   MediaQuery.sizeOf(context).width < 840;
-                              final connectionButtonSize = isCompact
-                                  ? 220.0
-                                  : 280.0;
+                              // 猫与圆盘的缩放（设计尺寸 300 → 窄屏 220 / 宽屏 280），
+                              // 状态文字不随之缩小。
+                              final connectionButtonScale = isCompact
+                                  ? 220.0 / 300
+                                  : 280.0 / 300;
                               return Column(
                                 children: [
                                   _ActiveProfileCard(profile: profile),
                                   const Spacer(flex: 2),
-                                  SizedBox(
-                                    width: connectionButtonSize,
-                                    height: connectionButtonSize,
-                                    child: FittedBox(
-                                      fit: BoxFit.contain,
-                                      child: ConnectionButton(
-                                        status: status,
-                                        onTap: () {
-                                          ref
-                                              .read(
-                                                connectionControllerProvider
-                                                    .notifier,
-                                              )
-                                              .toggle();
-                                        },
-                                      ),
-                                    ),
+                                  ConnectionButton(
+                                    phase: phase,
+                                    scale: connectionButtonScale,
+                                    onTap: () {
+                                      unawaited(
+                                        ref
+                                            .read(
+                                              connectionControllerProvider
+                                                  .notifier,
+                                            )
+                                            .toggle(),
+                                      );
+                                    },
                                   ),
                                   const SizedBox(height: 24),
-                                  _ConnectionInfo(status: status),
+                                  _ConnectionInfo(phase: phase),
                                   const _DegradedConnectionNotice(),
                                   const SizedBox(height: 20),
                                   _ModeSelector(aiUi: aiUi),
@@ -489,92 +451,6 @@ class _ProfilesOverviewSheet extends StatelessWidget {
   }
 }
 
-/// 出口 IP 展示状态（首页级别，不下沉到 domain 层的 provider——只有首页需要）。
-///
-/// `result == null` 表示"还没查过/已清空"（对应 UI 上的未知文案）；
-/// `isLoading == true` 时展示加载态，此时 `result` 保留上一次的结果（查询期
-/// 间不清空旧值，等新结果回来再整体替换，减少闪烁）。
-class _EgressIpDisplay {
-  const _EgressIpDisplay({this.isLoading = false, this.result});
-
-  final bool isLoading;
-  final EgressIpResult? result;
-
-  static const idle = _EgressIpDisplay();
-}
-
-final _egressIpDisplayProvider = StateProvider<_EgressIpDisplay>(
-  (ref) => _EgressIpDisplay.idle,
-);
-
-/// 出口 IP 展示状态的单调递增 generation。只用来防竞态——UI 不读也不 watch
-/// 这个 provider。
-///
-/// 背景：一次查询（[EgressIpService.fetch]）要飞行 5~8 秒，这期间"当前该
-/// 显示什么"完全可能已经变了——用户断开了连接、或者又发起了一次更新的查询。
-/// `_EgressIpDisplay.isLoading` 只挡"同时发起第二个并发查询"，挡不住"一个
-/// 更早发起、仍在飞行的旧查询在状态已经变了之后才 resolve，用旧值把新状态
-/// 覆盖回去"这类竞态。两个真实会发生的场景：
-/// 1. 断连竞态：连接成功→自动查询发起→用户在结果回来前断开→展示应该立刻
-///    变回"未知"，但几秒后断连前发起的查询才 resolve，如果无条件写回，会把
-///    tile 重新写成"连接时查到的隧道 IP"——用户已断开，却显示一个看起来仍
-///    受保护的过期 IP。
-/// 2. 反向：断开态手动点一次（慢）→紧接着点连接→触发一个新查询，更快
-///    resolve 显示隧道 IP→但几秒后第一个更旧的查询才 resolve，如果无条件
-///    写回，会覆盖回断连前的真实 ISP IP——用户已连接，却显示未受保护的 IP。
-///
-/// 做法：每次"当前该显示什么"发生改变的事件——连接状态切换（见
-/// [_resetEgressIpDisplay]）、发起新一次查询（见 [_checkEgressIp]）——都
-/// 递增这个计数器；[_checkEgressIp] 在发起查询前记下当时的值，`await`
-/// 结束后跟最新值比对：不相等就说明查询期间发生过重置或者有更新的查询顶替
-/// 了它，这次结果已经过期，必须丢弃，不能写回展示状态。
-final _egressIpGenerationProvider = StateProvider<int>((ref) => 0);
-
-/// 把出口 IP 展示重置为 idle，并让当前 generation 过期。
-///
-/// [HomePage] 里 `ref.listen(connectionControllerProvider, ...)` 的连接状态
-/// 切换两个分支（连上、断开）都要调用——不管是"连上后先清空再自动查"还是
-/// "断开后清空不残留"，两种情况下都必须让此刻仍在飞行的旧查询（不管是上一段
-/// 连接触发的自动查询，还是断开态手动点的查询）在 resolve 时发现自己的
-/// generation 已经过期而丢弃结果，不能让它事后覆盖这次重置。
-void _resetEgressIpDisplay(WidgetRef ref) {
-  final generation = ref.read(_egressIpGenerationProvider.notifier);
-  generation.state = generation.state + 1;
-  ref.read(_egressIpDisplayProvider.notifier).state = _EgressIpDisplay.idle;
-}
-
-/// 触发一次真实的出口 IP 查询并写回 [_egressIpDisplayProvider]。
-///
-/// 不检查 `clashmiao_auto_ip_check` 开关——是否要在调用这个函数之前先检查
-/// 开关，由调用方决定：[HomePage] 的自动触发路径会先检查
-/// `EgressIpService.autoCheckEnabled`；[_EgressIpTile] 的手动点击路径故意
-/// 不检查，用户主动点击 = 明确意图，不受"自动检查"开关限制（合理的产品
-/// 逻辑：开关只管"要不要自动帮你查"，不代表"允许不允许查"）。
-///
-/// 竞态防护：发起查询前先递增并记下 generation（[_egressIpGenerationProvider]
-/// 的文档有完整背景），`fetch()` resolve 之后跟当时最新的 generation
-/// 比对——如果这期间发生过连接状态切换（[_resetEgressIpDisplay]）或者又
-/// 发起了一次更新的查询，generation 会被推进，这次结果就已经过期，直接
-/// 丢弃，不写回展示状态。
-Future<void> _checkEgressIp(WidgetRef ref) async {
-  if (ref.read(_egressIpDisplayProvider).isLoading) return; // 避免重复并发查询
-  final previous = ref.read(_egressIpDisplayProvider).result;
-  final generation = ref.read(_egressIpGenerationProvider.notifier);
-  final myGeneration = generation.state + 1;
-  generation.state = myGeneration;
-  ref.read(_egressIpDisplayProvider.notifier).state = _EgressIpDisplay(
-    isLoading: true,
-    result: previous,
-  );
-  final result = await ref.read(egressIpServiceProvider).fetch();
-  if (ref.read(_egressIpGenerationProvider) != myGeneration) {
-    return; // 期间已经过期（状态切换或者被更新的查询顶替），丢弃这次结果
-  }
-  ref.read(_egressIpDisplayProvider.notifier).state = _EgressIpDisplay(
-    result: result,
-  );
-}
-
 /// ISO 3166-1 alpha-2 两位国家码转区域指示符 emoji（比如 'JP' -> 🇯🇵）。
 /// 不是恰好两位 A-Z 字母就返回 null——只是不展示国旗，不影响 IP 文本本身。
 String? _flagEmoji(String? countryCode) {
@@ -604,23 +480,29 @@ class _FooterStats extends ConsumerWidget {
     final t = ref.watch(translationsProvider);
     final stats = ref.watch(boxStatsProvider).valueOrNull;
     final total = (stats?.downlinkTotal ?? 0) + (stats?.uplinkTotal ?? 0);
-    final egressIp = ref.watch(_egressIpDisplayProvider);
+    final egressIp = ref.watch(egressIpProbeProvider);
 
     final trafficTile = _StatTile(
       icon: FluentIcons.data_usage_24_regular,
-      label: t.stats.trafficUsage,
+      label: t.stats.sessionTraffic,
       value: formatBytes(total),
     );
     final speedTile = _StatTile(
       icon: FluentIcons.top_speed_24_filled,
-      label: t.stats.liveSpeed,
+      label: t.stats.downloadSpeed,
       value: formatSpeed(stats?.downlink ?? 0),
     );
     final ipTile = _EgressIpTile(
-      label: t.proxies.checkIp,
-      unknownLabel: t.proxies.unknownIp,
+      label: t.home.egressIp.label,
+      texts: (
+        notConnected: t.home.egressIp.notConnected,
+        tapToCheck: t.home.egressIp.tapToCheck,
+        checking: t.home.egressIp.checking,
+        failedRetry: t.home.egressIp.failedRetry,
+      ),
       display: egressIp,
-      onTap: () => unawaited(_checkEgressIp(ref)),
+      onTap: () =>
+          unawaited(ref.read(egressIpProbeProvider.notifier).checkNow()),
     );
 
     // 宽屏（≥840，实际只有横屏手机 / 平板会触发——桌面窗口锁死 420 宽、永远
@@ -666,91 +548,117 @@ class _FooterStats extends ConsumerWidget {
   }
 }
 
-/// 出口 IP tile：展示当前查询结果（未知/加载中/IP+国旗），整块可点击触发
-/// 手动重新检测。视觉语言（圆角、阴影、间距、配色）跟随 [_StatTile]，但
-/// 独立成一个 widget——需要额外支持点击、加载态、国旗前缀，直接扩展
-/// [_StatTile] 的话会让那个纯展示组件背上跟它无关的职责。
+/// 出口 IP 卡的四条文案（连同成功时的 IP 本身，共五种内容）。
+typedef _EgressTexts = ({
+  String notConnected,
+  String tapToCheck,
+  String checking,
+  String failedRetry,
+});
+
+/// 出口 IP 卡（UI 设计 §1）。内容由 [EgressIpState] 唯一决定：
+/// - 未连接 → 「连接后显示出口 IP」，整卡不可点、没有刷新图标；
+/// - 已连接但未检测（自动检测关闭）→ 「点击检测出口 IP」；
+/// - 查询中 → 「正在检测…」+ 转圈，不显示「未知的 IP」；
+/// - 全部失败 → 「检测失败，点击重试」；
+/// - 成功 → 完整 IP（带国旗；IPv6 允许换行，不省略）。
+///
+/// 视觉语言（圆角、阴影、间距、配色）跟随 [_StatTile]，但独立成一个 widget——
+/// 需要额外支持点击、加载态、国旗前缀，直接扩展 [_StatTile] 会让那个纯展示
+/// 组件背上跟它无关的职责。
 class _EgressIpTile extends StatelessWidget {
   const _EgressIpTile({
     required this.label,
-    required this.unknownLabel,
+    required this.texts,
     required this.display,
     required this.onTap,
   });
 
   final String label;
-  final String unknownLabel;
-  final _EgressIpDisplay display;
+  final _EgressTexts texts;
+  final EgressIpState display;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
+    final status = display.status;
     final result = display.result;
     final flag = _flagEmoji(result?.countryCode);
 
+    final isSuccess =
+        status == EgressIpStatus.success && result != null && !result.isUnknown;
     final String valueText;
-    if (result == null || result.isUnknown) {
-      valueText = unknownLabel;
-    } else if (flag != null) {
-      valueText = '$flag ${result.ip}';
+    if (isSuccess) {
+      valueText = flag != null ? '$flag ${result.ip}' : result.ip!;
     } else {
-      valueText = result.ip!;
+      valueText = switch (status) {
+        EgressIpStatus.notConnected => texts.notConnected,
+        EgressIpStatus.idle => texts.tapToCheck,
+        EgressIpStatus.checking => texts.checking,
+        EgressIpStatus.failed => texts.failedRetry,
+        // 成功态却没有 IP（不该发生）按「可再点一次」呈现。
+        EgressIpStatus.success => texts.tapToCheck,
+      };
     }
+    final tappable = status != EgressIpStatus.notConnected;
+    final muted = status == EgressIpStatus.notConnected;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: double.infinity,
-        child: GlassCard(
-          borderRadius: 14,
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(
-                  FluentIcons.globe_search_24_regular,
-                  size: 17,
-                  color: theme.colorScheme.primary,
-                ),
+    final card = SizedBox(
+      width: double.infinity,
+      child: GlassCard(
+        borderRadius: 14,
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(9),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: aiUi.secondaryTextColor,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      valueText,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+              child: Icon(
+                FluentIcons.globe_search_24_regular,
+                size: 17,
+                color: theme.colorScheme.primary,
               ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: aiUi.secondaryTextColor,
+                      letterSpacing: 0.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  // 不设 maxLines / ellipsis：完整 IPv6 必须能换行看全。
+                  Text(
+                    valueText,
+                    key: const ValueKey('egress-ip-value'),
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSuccess ? FontWeight.w700 : FontWeight.w600,
+                      color: muted
+                          ? aiUi.secondaryTextColor
+                          : theme.colorScheme.onSurface,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (tappable) ...[
               const SizedBox(width: 12),
-              if (display.isLoading)
+              if (status == EgressIpStatus.checking)
                 SizedBox(
                   width: 14,
                   height: 14,
@@ -766,9 +674,15 @@ class _EgressIpTile extends StatelessWidget {
                   color: aiUi.secondaryTextColor,
                 ),
             ],
-          ),
+          ],
         ),
       ),
+    );
+
+    if (!tappable) return card;
+    return Semantics(
+      button: true,
+      child: GestureDetector(onTap: onTap, child: card),
     );
   }
 }
@@ -818,12 +732,14 @@ class _StatTile extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4),
+                // 等宽数字：数值直接更新（不滚动），位数变化时不抖动。
                 Text(
                   value,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     color: theme.colorScheme.onSurface,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -837,16 +753,22 @@ class _StatTile extends StatelessWidget {
   }
 }
 
+/// 节点区：已连接时显示当前生效节点的胶囊，其余阶段留白。
+///
+/// 高度固定 48 dp（连接状态切换时页面不跳动）；出现 / 消失只做 180 ms 淡入淡出
+/// （UI 设计 §2：不再有 easeOutBack 的弹性高度）。过渡期的加载指示在连接按钮
+/// 上（延迟出现的加载环），这里不重复。
 class _ConnectionInfo extends ConsumerWidget {
-  final BoxStatus status;
-  const _ConnectionInfo({required this.status});
+  final ConnectionPhase phase;
+  const _ConnectionInfo({required this.phase});
+
+  /// 节点区固定高度。
+  static const double height = 48;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final isSwitching = status is BoxStarting || status is BoxStopping;
-    final isConnected = status is BoxStarted;
-    final isDisconnected = status is BoxStopped;
+    final isConnected = phase == ConnectionPhase.connected;
 
     // 当前生效节点。两层修复（真机 VLESS+Reality 订阅实测：连接成功、线路页
     // 正常，唯独首页显示"未知"）：
@@ -868,106 +790,75 @@ class _ConnectionInfo extends ConsumerWidget {
     final String nodeName = activeItem?.tag ?? t.general.unknown;
     final int delay = activeItem?.delay ?? 0;
 
-    return AnimatedSize(
-      duration: 300.ms,
-      curve: Curves.easeOutBack,
-      child: AnimatedSwitcher(
-        duration: 300.ms,
-        child: Builder(
-          key: ValueKey(status.runtimeType),
-          builder: (context) {
-            if (isDisconnected) {
-              return const SizedBox(height: 20);
-            }
-            if (isSwitching) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    status is BoxStarting
-                        ? t.connection.connecting
-                        : t.connection.disconnecting,
+    Widget pill() {
+      final delayColor = delay > 0
+          ? BrandColors.connected
+          : theme.aiUi.secondaryTextColor;
+      // 做成带箭头的胶囊而不是一行字：原来那样看不出能点，左边的服务器图标在
+      // 小尺寸下还像一部手机。点了直接跳线路页换节点。
+      return Semantics(
+        button: true,
+        child: GestureDetector(
+          onTap: () =>
+              ref.read(selectedTabProvider.notifier).state = AppTab.proxies,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+            decoration: BoxDecoration(
+              color: theme.aiUi.softBackgroundColor,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: theme.aiUi.borderColor),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  child: Text(
+                    nodeName,
                     style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: theme.aiUi.secondaryTextColor,
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
                     ),
-                  ),
-                ],
-              );
-            }
-            if (isConnected) {
-              final delayColor = delay > 0
-                  ? BrandColors.connected
-                  : theme.aiUi.secondaryTextColor;
-              // 做成带箭头的胶囊而不是一行字：原来那样看不出能点，左边的服务器
-              // 图标在小尺寸下还像一部手机。点了直接跳线路页换节点。
-              return Semantics(
-                button: true,
-                child: GestureDetector(
-                  onTap: () => ref.read(selectedTabProvider.notifier).state =
-                      AppTab.proxies,
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
-                    decoration: BoxDecoration(
-                      color: theme.aiUi.softBackgroundColor,
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: theme.aiUi.borderColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 200),
-                          child: Text(
-                            nodeName,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(
-                          FluentIcons.wifi_1_24_filled,
-                          size: 16,
-                          color: delayColor,
-                        ),
-                        const SizedBox(width: 4),
-                        // 延迟还没测出来就是不知道，显示破折号——写"检测中"是
-                        // 假的，那时并没有在测。
-                        Text(
-                          delay > 0 ? '${delay}ms' : '—',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: delayColor,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Icon(
-                          FluentIcons.chevron_right_16_regular,
-                          size: 16,
-                          color: theme.aiUi.secondaryTextColor,
-                        ),
-                      ],
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              );
-            }
-            return const SizedBox(height: 20);
-          },
+                const SizedBox(width: 12),
+                Icon(FluentIcons.wifi_1_24_filled, size: 16, color: delayColor),
+                const SizedBox(width: 4),
+                // 延迟还没测出来就是不知道，显示破折号——写"检测中"是假的，那时
+                // 并没有在测。
+                Text(
+                  delay > 0 ? '${delay}ms' : '—',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: delayColor,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  FluentIcons.chevron_right_16_regular,
+                  size: 16,
+                  color: theme.aiUi.secondaryTextColor,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: height,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: KeyedSubtree(
+          // 只按「是否已连接」换 key：connecting ↔ disconnecting 之类的过渡之间
+          // 都是留白，不需要淡入淡出。
+          key: ValueKey(isConnected),
+          child: isConnected ? pill() : const SizedBox.shrink(),
         ),
       ),
     );
@@ -988,7 +879,7 @@ class _ModeSelector extends ConsumerWidget {
     // 所以"点击零延迟高亮"不受影响；异步的只有 `prefs.setInt`。不 await 的话
     // 写失败会变成一条没人接的异步异常——UI 显示新模式、重启后静默回退到旧模式。
     await ref.read(proxyModeProvider.notifier).updateMode(index);
-    await ref.read(connectionControllerProvider.notifier).applyProxyMode();
+    await ref.read(connectionControllerProvider.notifier).applyConfig();
   }
 
   @override
@@ -1395,13 +1286,13 @@ class ModeSelectorForTest extends StatelessWidget {
 ///
 /// 不要在生产代码中使用 —— 此 wrapper 仅为绕开私有可见性。
 class ConnectionInfoForTest extends StatelessWidget {
-  const ConnectionInfoForTest({super.key, required this.status});
+  const ConnectionInfoForTest({super.key, required this.phase});
 
-  final BoxStatus status;
+  final ConnectionPhase phase;
 
   @override
   Widget build(BuildContext context) {
-    return _ConnectionInfo(status: status);
+    return _ConnectionInfo(phase: phase);
   }
 }
 

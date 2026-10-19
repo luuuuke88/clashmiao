@@ -542,7 +542,7 @@ import 'package:clashmiao/core/storage/stub.dart'
       );
       expect(bad, hasLength(1));
       expect(bad.single.from, 'core/storage/x.dart');
-      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.rule, '非规范 URI');
       expect(bad.single.hint, contains('请改用 package:clashmiao/ 导入'));
       expect(bad.single.hint, contains(r'..\..\domain'));
     });
@@ -556,7 +556,7 @@ import 'package:clashmiao/core/storage/stub.dart'
         allowlist: const [],
       );
       expect(bad, hasLength(1));
-      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.rule, '非规范 URI');
       expect(bad.single.to, contains('%2e%2e'));
     });
 
@@ -569,7 +569,7 @@ import 'package:clashmiao/core/storage/stub.dart'
         allowlist: const [],
       );
       expect(bad, hasLength(1));
-      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.rule, '非规范 URI');
       expect(bad.single.hint, contains('../../../domain/profile/model/m.dart'));
     });
 
@@ -581,6 +581,112 @@ import 'package:clashmiao/core/storage/stub.dart'
         );
         expect(bad, hasLength(1), reason: uri);
       }
+    });
+
+    test('package URI 含 .. 点段 core → domain：被报（不再被当作 core）', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/x.dart':
+              "export 'package:clashmiao/core/../domain/profile/application/profile_providers.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'core/storage/x.dart');
+      expect(bad.single.rule, '非规范 URI');
+      expect(bad.single.hint, contains('core/../domain'));
+    });
+
+    test('package URI 的 . 段、空段、转义、query/fragment、反斜杠：都被报', () {
+      for (final uri in [
+        'package:clashmiao/core/./a.dart',
+        'package:clashmiao/core//a.dart',
+        'package:clashmiao/core/%2e%2e/domain/a.dart',
+        'package:clashmiao/core/a.dart?x=1',
+        'package:clashmiao/core/a.dart#f',
+        r'package:clashmiao/core\\a.dart',
+        'package:clashmiao/',
+      ]) {
+        final bad = checkLayering(
+          scan({'core/x.dart': "export '$uri';"}),
+          allowlist: const [],
+        );
+        expect(bad, hasLength(1), reason: uri);
+        expect(bad.single.rule, '非规范 URI', reason: uri);
+      }
+    });
+
+    test('app / main 里的 package 点段 URI 同样被报', () {
+      final bad = checkLayering(
+        scan({
+          'app/x.dart': "export 'package:clashmiao/core/../domain/a.dart';",
+          'main.dart': "import 'package:clashmiao/app/../core/a.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(2));
+      expect(bad.every((v) => v.rule == '非规范 URI'), isTrue);
+    });
+
+    test('package 规范写法照常放行', () {
+      expect(
+        checkLayering(
+          scan({
+            'core/x.dart': "export 'package:clashmiao/core/storage/a.dart';",
+          }),
+          allowlist: const [],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('R1：模型经 package 点段 URI 引用 application：被报，不是跳过', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart':
+              "export 'package:clashmiao/domain/profile/model/../application/profile_providers.dart';",
+        }),
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'domain/profile/model/m.dart');
+      expect(bad.single.hint, contains('model/../application'));
+    });
+
+    test('R1：传递链中途出现 package 点段 URI：被报', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart':
+              "export 'package:clashmiao/core/u.dart';",
+          'core/u.dart': "export 'package:clashmiao/core/../domain/x.dart';",
+        }),
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.hint, contains('core/u.dart'));
+    });
+
+    test('package 点段 URI 不会让 staleEntries 崩溃，也不会让白名单条目显得「在用」', () {
+      final uris = scan({
+        'features/a/x.dart':
+            "import 'package:clashmiao/features/a/../b/y.dart';",
+      });
+      expect(
+        staleEntries(uris, const [
+          AllowedEdge('features/a/x.dart', 'features/b/y.dart', '点段'),
+        ]),
+        hasLength(1),
+      );
+    });
+
+    test('feature 间依赖的失败提示引导解耦，不引导登记白名单', () {
+      final bad = checkLayering(
+        scan({
+          'features/a/x.dart': "import 'package:clashmiao/features/b/y.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.hint, contains('路由入口解耦'));
+      expect(bad.single.hint, isNot(contains('白名单')));
     });
 
     test('R1：模型引用 ../../../../core/u.dart 越出 lib/：被报，不是跳过', () {
@@ -626,7 +732,7 @@ import 'package:clashmiao/core/storage/stub.dart'
       final bad = checkLayering(scan(sources), allowlist: const []);
       expect(bad.map((v) => v.from).toSet(), sources.keys.toSet());
       expect(bad, hasLength(3));
-      expect(bad.every((v) => v.rule == '非规范相对 URI'), isTrue);
+      expect(bad.every((v) => v.rule == '非规范 URI'), isTrue);
     });
 
     test('app / main 的规范 package: 导入依赖任意层仍合规', () {

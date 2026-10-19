@@ -36,7 +36,7 @@ class AllowedEdge {
 const _lintRule = '层间依赖';
 const _illegalAllowRule = '白名单条目非法';
 const _purityRule = 'R1 模型纯净';
-const _relativeUriRule = '非规范相对 URI';
+const _nonCanonicalUriRule = '非规范 URI';
 
 const _knownLayers = {'core', 'shared', 'domain', 'features'};
 
@@ -79,8 +79,8 @@ List<AllowedEdge> _illegalEntries(List<AllowedEdge> entries) => [
     if (!_isFeatureEdge(e)) e,
 ];
 
-String _relativeUriHint(String uri, String reason) =>
-    '非规范的相对 URI，请改用 package:clashmiao/ 导入（$reason）：$uri';
+String _nonCanonicalUriHint(String uri, String reason) =>
+    '非规范的 URI，请改用 package:clashmiao/ 导入（$reason）：$uri';
 
 /// 层间依赖检查。[uris] 的键是 `lib/` 内相对路径，值是该文件的全部 URI。
 ///
@@ -122,11 +122,16 @@ List<Violation> checkLayering(
       continue;
     }
     for (final uri in entry.value) {
-      final reason = nonCanonicalRelativeUriReason(uri, from: from);
+      final reason = nonCanonicalUriReason(uri, from: from);
       if (reason != null) {
         // 失败即关闭：非规范写法无法可靠还原成依赖边，不能当作「没有依赖」。
         violations.add(
-          Violation(from, uri, _relativeUriRule, _relativeUriHint(uri, reason)),
+          Violation(
+            from,
+            uri,
+            _nonCanonicalUriRule,
+            _nonCanonicalUriHint(uri, reason),
+          ),
         );
         continue;
       }
@@ -173,8 +178,8 @@ String? _check(_Unit from, _Unit to) {
       if (to.layer == 'features') {
         return from.name == to.name
             ? null
-            : 'feature 之间不能互相依赖：把共享部分下沉到 domain / shared，'
-                  '或（仅页面跳转）登记白名单';
+            : 'feature 之间不能互相依赖：把共享部分下沉到 domain / shared；'
+                  '页面跳转请通过 app 层的路由入口解耦';
       }
       return 'features 不能依赖 ${to.layer}（app 层只能被入口使用）';
   }
@@ -251,7 +256,7 @@ List<Violation> checkModelPurity(Map<String, List<String>> uris) {
           }
           continue;
         }
-        final reason = nonCanonicalRelativeUriReason(uri, from: node);
+        final reason = nonCanonicalUriReason(uri, from: node);
         if (reason != null) {
           // 无法可靠还原依赖边，传递闭包可能因此漏掉 Flutter / data：按违规处理。
           if (reported.add(uri)) {
@@ -260,7 +265,7 @@ List<Violation> checkModelPurity(Map<String, List<String>> uris) {
                 seed,
                 uri,
                 _purityRule,
-                '${_relativeUriHint(uri, reason)}，出现在 ${chainTo(node, uri)}',
+                '${_nonCanonicalUriHint(uri, reason)}，出现在 ${chainTo(node, uri)}',
               ),
             );
           }

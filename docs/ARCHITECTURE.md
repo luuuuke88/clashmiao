@@ -70,8 +70,8 @@ lib/
 | 文件 | 作用 |
 |---|---|
 | `layering_test.dart` | 对真实的 `lib/` 跑全部规则 |
-| `layering_rules.dart` | 规则判定：层间依赖、domain 顺序（`kDomainOrder`）、模型纯净、非规范相对 URI（`checkLayering` / `checkModelPurity`），以及白名单的过期条目（`staleEntries`）与合法性、上限（`checkAllowlist`） |
-| `import_scanner.dart` | 用官方 `analyzer` 解析器提取 `import` / `export` 指令的 URI（含条件导入的每个分支），不用正则；`part` / `part of` 不产生依赖边，不提取。`projectPath` 把 URI 还原成 `lib/` 内路径，`nonCanonicalRelativeUriReason` 判定相对 URI 是否规范 |
+| `layering_rules.dart` | 规则判定：层间依赖、domain 顺序（`kDomainOrder`）、模型纯净、非规范 URI（`checkLayering` / `checkModelPurity`），以及白名单的过期条目（`staleEntries`）与合法性、上限（`checkAllowlist`） |
+| `import_scanner.dart` | 用官方 `analyzer` 解析器提取 `import` / `export` 指令的 URI（含条件导入的每个分支），不用正则；`part` / `part of` 不产生依赖边，不提取。`projectPath` 把 URI 还原成 `lib/` 内路径，`nonCanonicalUriReason` 判定项目内 URI 是否规范 |
 | `allowlist.dart` | 功能之间依赖的白名单与上限 |
 | `*_test.dart`（扫描器、规则） | 检查器自测：用合成源码覆盖正反用例，保证检查器真的会报错，不是永远绿 |
 
@@ -82,7 +82,7 @@ lib/
 3. **模型纯净违规**：报错里带有最短的传递链，沿链找到把 Flutter / Riverpod / `dart:io` 带进模型的那个文件，把那部分挪出 `model/`。
 4. **「白名单条目对应的依赖已经消除」**：依赖已经没了，把那几条从 `allowlist.dart` 删掉即可（见下面的棘轮）。
 5. **提示不在任何一层里**：文件放错了位置，按下面「新文件归属」归位。
-6. **「非规范相对 URI」**：`import` / `export`（含条件导入分支）里写了含反斜杠、百分号转义、空段或越出 `lib/` 的相对路径，检查器无法可靠还原依赖边，一律按违规处理（失败即关闭）。改成 `package:clashmiao/...` 导入。
+6. **「非规范 URI」**：`import` / `export`（含条件导入分支）里写了含反斜杠、百分号转义、query/fragment、空段的项目内 URI，或含 `.` / `..` 段的 `package:clashmiao/` 路径（如 `package:clashmiao/core/../domain/x.dart`），或越出 `lib/` 的相对路径，检查器无法可靠还原依赖边，一律按违规处理（失败即关闭）。改成 `package:clashmiao/...` 导入。
 
 ### 白名单：只减不增
 

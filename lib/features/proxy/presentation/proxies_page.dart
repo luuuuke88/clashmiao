@@ -15,6 +15,7 @@ import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provid
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/proxy/application/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/domain/routing/model/node_display.dart';
 import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
@@ -64,6 +65,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     final isConnected = ref.watch(isConnectedProvider);
     final sortBy = ref.watch(proxiesSortProvider);
     final optimisticSelections = ref.watch(optimisticProxySelectionsProvider);
+    final storedSelections = ref.watch(proxySelectionStoreProvider);
     final cachedDelays = ref.watch(proxyDelayCacheProvider);
     // watch 它同时让协调器随页面常驻：连接后 2 s 的自动测速不依赖用户看着这页。
     final latencyState = ref.watch(latencyTestCoordinatorProvider);
@@ -126,11 +128,21 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       rawGroups = offlineFallback;
     }
 
+    // 只有实时分组里的 tag 是运行中内核真实存在的分组：选择、测速这类内核操作
+    // 只能对它们发起。离线兜底（未连接，或已连接但实时分组还没到）只用于展示——
+    // 它解析自配置文件，tag 不保证存在于运行时（真机验收 BUG-1：对离线的 `proxy`
+    // 组发起选择 / 测速，内核报 not found）。
+    final canOperateKernel = isConnected && isLiveData;
+
     // 过滤掉内部保留字分组，并把订阅原始 selector 与修复出的 proxy
-    // selector 这类等价分组折叠成一个可操作的主分组。
+    // selector 这类等价分组折叠成一个可操作的主分组。离线展示时叠加存储里的手选
+    // （下次连接时重放的就是它），而不是配置文件里的静态默认值。
     final visibleRawGroups = collapseDuplicateGroups(
       rawGroups.where(isUserVisibleGroup).toList(),
     );
+    final displayGroups = isLiveData
+        ? visibleRawGroups
+        : applyStoredSelections(visibleRawGroups, storedSelections);
 
     // 每个节点的延迟展示状态：测量中（保留旧值）> 超时 > 未确认（历史值）>
     // 实时值 > 缓存值（含历史值），规则见 [resolveNodeLatency]。「测量中」是分组级的：同一个
@@ -154,7 +166,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 分组 tag → 节点 tag → 展示状态。按分组分开存：两个分组共享同一个节点时，
     // 后一个分组不会覆盖前一个分组里这个节点的状态。
     final Map<String, Map<String, NodeLatency>> latenciesByGroup = {};
-    for (final group in visibleRawGroups) {
+    for (final group in displayGroups) {
       final sortedItems = group.items
           .where((item) => !NodeDisplay.isHidden(item.tag))
           .toList();
@@ -241,6 +253,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                             ref,
                             primaryGroup,
                             isConnected,
+                            canOperateKernel,
                           )
                         : () {
                             AppToast.info(context, t.proxies.emptyProxiesMsg);
@@ -288,6 +301,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                                     group.tag,
                                     autoProxy.tag,
                                     isConnected,
+                                    canOperateKernel,
                                   ),
                                 );
                               }
@@ -307,6 +321,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                                   group.tag,
                                   proxy.tag,
                                   isConnected,
+                                  canOperateKernel,
                                 ),
                               );
                             },
@@ -327,43 +342,50 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     String groupTag,
     String outboundTag,
     bool isConnected,
+    bool canOperateKernel,
   ) {
     final t = ref.read(translationsProvider);
-    if (isConnected) {
-      // 参照代理切换的触觉反馈：点击即触发，不等待 selectOutbound 的异步结果
-      // （跟 connect/disconnect 那两处既有触点的 fire-and-forget 风格一致）。
-      unawaited(ref.read(hapticServiceProvider).lightImpact());
-      final optimisticNotifier = ref.read(
-        optimisticProxySelectionsProvider.notifier,
-      );
-      // 记录点击前的乐观值快照，native 切换失败时用它回滚，而不是把错误节点
-      // 永久留在 UI 上。
-      final previousSelection = ref.read(
-        optimisticProxySelectionsProvider,
-      )[groupTag];
-      optimisticNotifier.update(groupTag, outboundTag);
-      // 手选流程（先写存储 → 带 expectedAttempt 调内核 → 非 stale 失败回滚存储）
-      // 在 ProxySelectionService 里，见该文件的说明。
-      final attempt = ref.read(connectionControllerProvider).attempt;
-      unawaited(
-        ref
-            .read(proxySelectionServiceProvider)
-            .select(groupTag, outboundTag, expectedAttempt: attempt)
-            .then((result) {
-              if (result is! SelectionFailed) return;
-              optimisticNotifier.revert(groupTag, previousSelection);
-              if (!context.mounted) return;
-              AppToast.error(
-                context,
-                t.proxies.switchToFailed(
-                  error: result.message.isEmpty ? result.code : result.message,
-                ),
-              );
-            }),
-      );
-    } else {
+    if (!isConnected) {
       AppToast.info(context, t.proxies.connectBeforeSwitch);
+      return;
     }
+    if (!canOperateKernel) {
+      // 已连接但实时分组还没到：眼前的分组来自配置文件，tag 不一定存在于运行
+      // 时，绝不拿它去调内核。
+      AppToast.info(context, t.proxies.groupsLoading);
+      return;
+    }
+    // 参照代理切换的触觉反馈：点击即触发，不等待 selectOutbound 的异步结果
+    // （跟 connect/disconnect 那两处既有触点的 fire-and-forget 风格一致）。
+    unawaited(ref.read(hapticServiceProvider).lightImpact());
+    final optimisticNotifier = ref.read(
+      optimisticProxySelectionsProvider.notifier,
+    );
+    // 记录点击前的乐观值快照，native 切换失败时用它回滚，而不是把错误节点
+    // 永久留在 UI 上。
+    final previousSelection = ref.read(
+      optimisticProxySelectionsProvider,
+    )[groupTag];
+    optimisticNotifier.update(groupTag, outboundTag);
+    // 手选流程（先写存储 → 带 expectedAttempt 调内核 → 非 stale 失败回滚存储）
+    // 在 ProxySelectionService 里，见该文件的说明。
+    final attempt = ref.read(connectionControllerProvider).attempt;
+    unawaited(
+      ref
+          .read(proxySelectionServiceProvider)
+          .select(groupTag, outboundTag, expectedAttempt: attempt)
+          .then((result) {
+            if (result is! SelectionFailed) return;
+            optimisticNotifier.revert(groupTag, previousSelection);
+            // 技术细节只进日志；用户看到的是类型化的本地化文案。
+            debugPrint(
+              '切换线路失败 [$groupTag -> $outboundTag]: '
+              '${result.code} ${result.message}',
+            );
+            if (!context.mounted) return;
+            AppToast.error(context, t.proxies.switchFailed);
+          }),
+    );
   }
 
   Future<void> _testDelay(
@@ -371,11 +393,16 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     WidgetRef ref,
     OutboundGroup group,
     bool isConnected,
+    bool canOperateKernel,
   ) async {
     if (!canDelayTestGroup(group)) return;
     final t = ref.read(translationsProvider);
     if (!isConnected) {
       AppToast.error(context, t.proxies.connectBeforeTest);
+      return;
+    }
+    if (!canOperateKernel) {
+      AppToast.info(context, t.proxies.groupsLoading);
       return;
     }
 
@@ -389,8 +416,10 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           .read(latencyTestCoordinatorProvider.notifier)
           .manualTest(group.tag);
     } catch (error) {
+      // 技术细节（PlatformException 等）只进日志。
+      debugPrint('测速失败 [${group.tag}]: $error');
       if (!context.mounted) return;
-      AppToast.error(context, '${t.failure.unexpected}: $error');
+      AppToast.error(context, t.proxies.testFailed);
     }
   }
 }

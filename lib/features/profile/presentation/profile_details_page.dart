@@ -404,11 +404,11 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (error) {
+      debugPrint('订阅操作失败: $error');
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(error, () => t) ??
-              '${t.failure.unexpected}: $error',
+          profileStoreErrorMessage(error, () => t) ?? t.failure.unexpected,
         );
       }
     } finally {

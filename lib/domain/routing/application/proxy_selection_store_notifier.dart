@@ -111,4 +111,21 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
       jsonEncode(next),
     );
   }
+
+  /// 删除这些分组的记录（运行时不存在的分组，见 `planSelectionMigration`）。
+  Future<void> removeGroups(Set<String> groupTags) async {
+    final profileId = _profileId;
+    final store = _store;
+    if (profileId == null || profileId.isEmpty) return;
+    if (store == null) return;
+    if (!groupTags.any(state.containsKey)) return;
+    final next = {...state}..removeWhere((key, _) => groupTags.contains(key));
+    state = Map.unmodifiable(next);
+    await store.writeAux(
+      profileId,
+      _profileInc ?? '',
+      _key(profileId),
+      jsonEncode(next),
+    );
+  }
 }

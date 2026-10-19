@@ -68,3 +68,71 @@ bool _sameItemTags(Set<String> left, Set<String> right) {
   if (left.length != right.length) return false;
   return left.containsAll(right);
 }
+
+/// 把存储里的手选叠加到（离线展示用的）分组上：某组有记录、且记录的节点在该
+/// 组里，就以它为选中项。
+///
+/// 只用于展示——离线分组解析自配置文件，选中项是静态默认值；下次连接时重放的
+/// 是存储里的手选，界面应当显示它。实时分组不需要：内核报的就是真实选中项。
+List<OutboundGroup> applyStoredSelections(
+  List<OutboundGroup> groups,
+  Map<String, String> stored,
+) {
+  if (stored.isEmpty) return groups;
+  return [
+    for (final group in groups)
+      switch (stored[group.tag]) {
+        final tag?
+            when tag != group.selected &&
+                group.items.any((item) => item.tag == tag) =>
+          OutboundGroup(
+            tag: group.tag,
+            type: group.type,
+            selected: tag,
+            items: group.items,
+          ),
+        _ => group,
+      },
+  ];
+}
+
+/// 存储里的手选与运行时分组对不上时的处理计划，见 [planSelectionMigration]。
+typedef SelectionMigration = ({Map<String, String> adopt, Set<String> drop});
+
+/// 手选存储里有、运行中内核却没有的分组记录怎么处理。
+///
+/// 运行时配置由内核重建分组（订阅自带的 selector 被丢掉），旧版本却按配置文件
+/// 里的分组 tag（例如 `proxy`）记下了手选——这些记录每次重放都只会换来
+/// 「selector not found」，用户在界面上看到的选择从未真正生效。处理方式：
+/// - `drop`：所有不在 [live] 里的记录（运行时没有这个组，留着只会继续失败）；
+/// - `adopt`：若运行时主组是选择器、存储里还没有它的记录、且旧记录的节点就在
+///   主组里，把这个节点迁到主组上（它就是用户当初在主列表里点的那个节点）。
+///
+/// [live] 为空（还没拿到实时分组）时什么都不做——没有运行时的事实就不判断。
+SelectionMigration planSelectionMigration(
+  Map<String, String> stored,
+  List<OutboundGroup> live,
+) {
+  final liveTags = {
+    for (final g in live)
+      if (g.items.isNotEmpty) g.tag,
+  };
+  if (liveTags.isEmpty) return (adopt: const {}, drop: const {});
+  final stale = stored.keys.where((k) => !liveTags.contains(k)).toSet();
+  if (stale.isEmpty) return (adopt: const {}, drop: const {});
+
+  final primary = primaryVisibleGroup(live);
+  final adopt = <String, String>{};
+  final primaryIsSelector =
+      primary != null && normalizeGroupType(primary.type) == 'selector';
+  if (primaryIsSelector && !stored.containsKey(primary.tag)) {
+    for (final key in stale) {
+      final node = stored[key]!;
+      if (primary.items.any((item) => item.tag == node)) {
+        adopt[primary.tag] = node;
+        break;
+      }
+    }
+  }
+  return (adopt: adopt, drop: stale);
+}

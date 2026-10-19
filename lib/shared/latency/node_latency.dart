@@ -46,18 +46,20 @@ class NodeLatency {
 /// 1. 该节点还在等本轮结果（[testing]）→ 测量中，保留旧值：实时值有效用
 ///    实时值，否则用缓存值（**不受** [cacheIsFallback] 限制），都没有就占位；
 /// 2. 本轮测完没结果（[timedOut]）、或内核给了超时哨兵 → 超时；
-/// 3. 实时值有效 → 成功；缓存里是同一个数且测量时间未知或已超过 5 分钟 →
+/// 3. 上一轮到点没确认出结果但有旧值（[unconfirmed]）→ 历史值，带旧值（实时
+///    值有效用实时值，否则用缓存值）：不能当成新结果，也不能判超时；
+/// 4. 实时值有效 → 成功；缓存里是同一个数且测量时间未知或已超过 5 分钟 →
 ///    历史值（旧版本留下的无时间缓存在确认出新结果前一直算历史值）；
-/// 4. 缓存有值且允许兜底 → 成功 / 历史值（按测量时间）；
-/// 5. 否则未测。
+/// 5. 缓存有值且允许兜底 → 成功 / 历史值（按测量时间）；
+/// 6. 否则未测。
 ///
 /// [testing] 要按「分组 + 节点」传：只有这个节点在当前展示的分组里还没出
 /// 本轮结果时才为真；已经出了结果的节点直接展示新值。
 ///
-/// [cacheIsFallback] 为 false 时（已连接且有真实实时分组）缓存只参与第 1 条的
-/// 旧值保留与第 3 条的「是否过期」判断，第 4 条不使用缓存：测完之后实时值
-/// 缺席的节点，不能再拿缓存里冻结的旧数字顶替——那会显示一个永远不变的
-/// 假数字。第 2 条排在第 3、4 条前面也是同一个原因。
+/// [cacheIsFallback] 为 false 时（已连接且有真实实时分组）缓存只参与第 1、3 条
+/// 的旧值保留与第 4 条的「是否过期」判断，第 5 条不使用缓存：测完之后实时值
+/// 缺席的节点，不能再拿缓存里冻结的旧数字当成功顶替——那会显示一个永远不变
+/// 的假数字。第 3 条用到缓存时明确标成历史值，不冒充新结果。
 NodeLatency resolveNodeLatency({
   required int liveMs,
   required int? cachedMs,
@@ -65,6 +67,7 @@ NodeLatency resolveNodeLatency({
   required bool testing,
   required bool timedOut,
   required DateTime now,
+  bool unconfirmed = false,
   bool cacheIsFallback = true,
 }) {
   final liveOk = isMeasurableDelay(liveMs);
@@ -80,6 +83,9 @@ NodeLatency resolveNodeLatency({
   }
   if (timedOut || liveMs > kDelayTimeoutSentinelMs) {
     return const NodeLatency(LatencyDisplayState.timeout);
+  }
+  if (unconfirmed && (liveOk || cachedOk)) {
+    return NodeLatency(LatencyDisplayState.stale, liveOk ? liveMs : cachedMs);
   }
   if (liveOk) {
     // 实时值一般是这次连接里测到的；只有缓存里恰好是同一个数、且那条记录

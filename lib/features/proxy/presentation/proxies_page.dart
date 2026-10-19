@@ -128,8 +128,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       rawGroups.where(isUserVisibleGroup).toList(),
     );
 
-    // 每个节点的延迟展示状态：测量中（保留旧值）> 超时 > 实时值 > 缓存值
-    // （含历史值），规则见 [resolveNodeLatency]。「测量中」是分组级的：同一个
+    // 每个节点的延迟展示状态：测量中（保留旧值）> 超时 > 未确认（历史值）>
+    // 实时值 > 缓存值（含历史值），规则见 [resolveNodeLatency]。「测量中」是分组级的：同一个
     // 节点可能出现在几个分组里，只有它在**这个**分组的在途轮次里还没出结果
     // 才算测量中。
     NodeLatency latencyOf(OutboundGroup group, OutboundProxy proxy) {
@@ -140,6 +140,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         cachedAt: cached?.measuredAt,
         testing: latencyState.isNodePending(group.tag, proxy.tag),
         timedOut: latencyState.timedOutNodes.contains(proxy.tag),
+        unconfirmed: latencyState.unconfirmedNodes.contains(proxy.tag),
         now: now,
         cacheIsFallback: !isLiveData,
       );

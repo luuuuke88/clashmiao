@@ -261,7 +261,7 @@ void main() {
       expect(find.text('88ms'), findsOneWidget);
     });
 
-    testWidgets('真实连接状态下重测：测量中保留缓存旧值，测完没结果显示超时', (tester) async {
+    testWidgets('真实连接状态下重测：测量中保留旧值，到点没确认的显示历史值而非超时', (tester) async {
       final host = await _host(
         connected: true,
         groups: [
@@ -291,11 +291,14 @@ void main() {
       expect(labelOf('b').ms, 100, reason: '测量中保留实时旧值');
       expect(find.text('150ms'), findsOneWidget);
 
-      // 内核一直没推来新值：10 s 到点，两个节点都没有本轮结果。
+      // 内核一直没推来新值：10 s 到点，两个节点都没确认出本轮结果。它们手上
+      // 有旧值，所以显示历史值（旧数字 + 中性色），而不是超时或成功。
       await tester.pump(const Duration(seconds: 10));
-      expect(labelOf('a').state, LatencyDisplayState.timeout);
-      expect(labelOf('b').state, LatencyDisplayState.timeout);
-      expect(find.text('150ms'), findsNothing, reason: '测完后不再拿缓存旧值顶替');
+      expect(labelOf('a').state, LatencyDisplayState.stale);
+      expect(labelOf('a').ms, 150);
+      expect(labelOf('b').state, LatencyDisplayState.stale);
+      expect(labelOf('b').ms, 100);
+      expect(find.text('超时'), findsNothing, reason: '稳定节点不能被标成超时');
       await _drain(tester);
     });
 

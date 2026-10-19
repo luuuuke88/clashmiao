@@ -121,8 +121,6 @@ List<Violation> checkLayering(
       );
       continue;
     }
-    if (fromUnit.isUnrestricted) continue;
-
     for (final uri in entry.value) {
       final reason = nonCanonicalRelativeUriReason(uri, from: from);
       if (reason != null) {
@@ -132,6 +130,8 @@ List<Violation> checkLayering(
         );
         continue;
       }
+      // app / main 只豁免「依赖方向」；URI 规范性对所有文件一视同仁（上面已查）。
+      if (fromUnit.isUnrestricted) continue;
       final to = projectPath(uri, from: from);
       if (to == null) continue;
       final toUnit = _Unit.of(to);

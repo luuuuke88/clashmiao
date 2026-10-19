@@ -617,10 +617,31 @@ import 'package:clashmiao/core/storage/stub.dart'
       );
     });
 
-    test('app / main 里的非规范 URI 不受层规则约束（与 app 可依赖任意层一致）', () {
+    test('app / main 只豁免依赖方向：非规范 URI 同样被报', () {
+      final sources = {
+        'app/x.dart': r"export r'..\core\a.dart';",
+        'app/y.dart': "export '../../core/u.dart';", // 越出 lib/
+        'main.dart': "export '../core/u.dart';", // 越出 lib/
+      };
+      final bad = checkLayering(scan(sources), allowlist: const []);
+      expect(bad.map((v) => v.from).toSet(), sources.keys.toSet());
+      expect(bad, hasLength(3));
+      expect(bad.every((v) => v.rule == '非规范相对 URI'), isTrue);
+    });
+
+    test('app / main 的规范 package: 导入依赖任意层仍合规', () {
       expect(
         checkLayering(
-          scan({'app/x.dart': r"export r'..\core\a.dart';"}),
+          scan({
+            'app/x.dart': """
+import 'package:clashmiao/core/a.dart';
+import 'package:clashmiao/shared/b.dart';
+import 'package:clashmiao/domain/connection/c.dart';
+import 'package:clashmiao/features/home/d.dart';
+import './y.dart';
+""",
+            'main.dart': "import 'package:clashmiao/app/app.dart';",
+          }),
           allowlist: const [],
         ),
         isEmpty,

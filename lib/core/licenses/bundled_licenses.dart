@@ -9,20 +9,23 @@ import 'package:flutter/foundation.dart';
 ///
 /// 必须在 `runApp` 之前调用一次（见 `main.dart`）。重复调用会重复登记。
 ///
-/// ## 来源核实记录（2026-10-20，读取上游文件所得）
+/// ## 来源核实记录（2026-10-20，读取 GitHub 上的固定提交所得）
 ///
-/// - sing-box：随包版本 v1.8.9 的 `LICENSE`：GPL-3.0 或其后版本，外加一条
-///   「衍生作品未经同意不得使用本应用名称或暗示关联」的附加条件。
-/// - geosite-cn.srs：由 SagerNet/sing-geosite 的生成程序读取 v2fly/domain-list-community
-///   的 `dlc.dat` 转换而来；domain-list-community 的 `LICENSE` 为 MIT。
-/// - geoip-cn.srs：由 SagerNet/sing-geoip 的生成程序读取 Dreamacro/maxmind-geoip
-///   发布的 `Country.mmdb` 转换而来；该仓库的发布流程下载 MaxMind
-///   `GeoLite2-Country`，其 README 声明包含 MaxMind 创建的 GeoLite2 数据。
-///   MaxMind GeoLite EULA 要求署名，并把可版权部分纳入 CC BY-SA 4.0。
-/// - 未核实：生成程序是按 `main` 分支当前内容读的，没有逐个检出
-///   `assets/rule-sets/VERSION` 记录的那两个快照提交时的生成程序版本；
-///   所以「该快照确由上述来源生成」是依据生成程序现状与仓库说明的推断，
-///   不是对快照二进制本身的校验。这一点也写进了登记文本里。
+/// 随包的两个规则集快照记录在 `assets/rule-sets/VERSION`：
+/// sing-geoip `7a098b8`、sing-geosite `d7259bb`（都是各自 `rule-set` 分支上由
+/// GitHub Actions 生成的孤立提交）。核对链路：
+///
+/// 1. 快照提交的时间与同一时刻的 Actions 运行记录（`Release`，schedule 触发）
+///    一一对应；运行记录给出所用生成程序的提交（`head_sha`）。
+/// 2. 在那个生成程序提交上读 `main.go`，确认数据源：geoip 读
+///    `Dreamacro/maxmind-geoip`、geosite 读 `v2fly/domain-list-community`。
+/// 3. 随包 `.srs` 的 SHA-256 与快照提交里同名文件逐字节一致（见常量
+///    `geoipCnSha256` / `geositeCnSha256`，测试会拿随包文件重新计算比对）。
+/// 4. 数据源许可：domain-list-community 的 `LICENSE` 自 2019-01-01 未改动，
+///    为 MIT；maxmind-geoip 的发布流程自 2025-05-09 起未改动，下载 MaxMind
+///    GeoLite2-Country。
+///
+/// 仍未核实的内容见各条目文本末尾（原样写入登记文本，不在这里重复）。
 void registerBundledLicenses() {
   LicenseRegistry.addLicense(_bundledLicenses);
 }
@@ -41,6 +44,35 @@ const geoipLicensePackage = 'sing-geoip (geoip-cn.srs)';
 const maxMindAttribution =
     'This product includes GeoLite Data created by MaxMind, available from '
     'https://www.maxmind.com';
+
+// ---- 随包快照与许可记录的对应关系（固定提交，测试会校验） ----
+
+/// sing-geoip `rule-set` 分支快照提交（`assets/rule-sets/VERSION` 记 `7a098b8`）。
+const geoipSnapshotCommit = '7a098b8b8fc97bf47bab4706d5a049fba2a52c91';
+
+/// 生成该快照的 sing-geoip 程序提交（Actions 运行 24302879958 的 head_sha）。
+const geoipGeneratorCommit = 'ecd02c178af5efbac38d427a8d178f940327de1f';
+
+/// geoip 快照所用的上游数据发布（Dreamacro/maxmind-geoip，发布于 2026-04-12）。
+const geoipDataRelease = '20260412';
+
+/// sing-geosite `rule-set` 分支快照提交（`VERSION` 记 `d7259bb`）。
+const geositeSnapshotCommit = 'd7259bba0b1655fdabd84532744ea80ede3c0ac5';
+
+/// 生成该快照的 sing-geosite 程序提交（Actions 运行 25649435000 的 head_sha）。
+const geositeGeneratorCommit = 'dd64ae0ebf2ee69166c0510042b3e96c085f27df';
+
+/// geosite 快照所用的 domain-list-community 提交（2026-05-10 10:33:27 UTC，
+/// 快照生成时它是 master 最新提交）。
+const dlcCommit = '0fc69c67a5a5c784e4f9da1a5e110fdb4e7d666a';
+
+/// 随包 `assets/rule-sets/geoip-cn.srs` 的 SHA-256，与快照提交里的同名文件一致。
+const geoipCnSha256 =
+    '07be358f32017cc4649cd6b69946e3206ce54faa5f50eb88624927e2cb380d00';
+
+/// 随包 `assets/rule-sets/geosite-cn.srs` 的 SHA-256，与快照提交里的同名文件一致。
+const geositeCnSha256 =
+    '1cecd95e88fa29f66e8d82b2129cf52408998a7892e83f7ff3bcc0ec2a4ccdf9';
 
 Stream<LicenseEntry> _bundledLicenses() async* {
   yield const LicenseEntryWithLineBreaks(
@@ -70,13 +102,25 @@ Full text of the GPL-3.0: https://www.gnu.org/licenses/gpl-3.0.html''',
 
   yield const LicenseEntryWithLineBreaks(
     [geositeLicensePackage],
-    '''geosite-cn.srs（assets/rule-sets/）
+    '''geosite-cn.srs（assets/rule-sets/geosite-cn.srs）
 
-来源：由 SagerNet/sing-geosite（https://github.com/SagerNet/sing-geosite ，
-rule-set 分支）的生成程序，读取 v2fly/domain-list-community
-（https://github.com/v2fly/domain-list-community）发布的 dlc.dat 转换而成。
-转换程序本身以 GPL-3.0 授权；规则数据来自 domain-list-community，其许可证为
-MIT License，原文如下：
+随包快照：sing-geosite rule-set 分支提交 $geositeSnapshotCommit
+（2026-05-11 03:55 UTC，assets/rule-sets/VERSION 记为 d7259bb）
+https://github.com/SagerNet/sing-geosite/commit/$geositeSnapshotCommit
+随包文件 SHA-256：$geositeCnSha256（与该提交里的 geosite-cn.srs 逐字节一致）
+
+生成程序：sing-geosite 提交 $geositeGeneratorCommit（生成该快照的 GitHub Actions
+运行 25649435000 所用的提交），其 main.go 读取 v2fly/domain-list-community 发布的
+dlc.dat：
+https://github.com/SagerNet/sing-geosite/blob/$geositeGeneratorCommit/main.go
+转换程序本身以 GPL-3.0 授权。
+
+数据来源：v2fly/domain-list-community 提交 $dlcCommit
+（2026-05-10 10:33:27 UTC，快照生成时的 master 最新提交）：
+https://github.com/v2fly/domain-list-community/tree/$dlcCommit
+数据许可：MIT License（该提交处的 LICENSE，自 2019-01-01 未改动）：
+https://github.com/v2fly/domain-list-community/blob/$dlcCommit/LICENSE
+原文如下：
 
 MIT License
 
@@ -100,32 +144,53 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-未核实事项：上述来源依据的是生成程序当前主分支的内容与上游仓库说明，没有逐个
-检出随包快照（见 assets/rule-sets/VERSION）对应时刻的生成程序，也没有对规则集
-二进制本身做来源校验。
+未能确认的事项：生成程序读取的 dlc.dat 具体是 domain-list-community 的哪一个
+发布（发布名）没能直接读到——该发布与 sing-geosite 当时的发布均已被清理，
+GitHub API 查不到。上面的 dlc 提交是根据「快照生成时 master 最新提交」及
+sing-geosite 的发布命名规则（以来源发布时间戳命名，当时的 20260510103350 与
+该提交的 10:33 UTC 吻合）推断的，不是直接读到的记录。
 
-Source: converted from the dlc.dat release of v2fly/domain-list-community by
-the generator in SagerNet/sing-geosite (rule-set branch). The generator is
-GPL-3.0; the rule data comes from domain-list-community, licensed under the MIT
-License reproduced above.
+Snapshot: sing-geosite rule-set branch commit $geositeSnapshotCommit
+(2026-05-11 03:55 UTC; recorded as d7259bb in assets/rule-sets/VERSION).
+The bundled file's SHA-256 ($geositeCnSha256) is byte-identical to
+geosite-cn.srs in that commit.
+Generator: sing-geosite commit $geositeGeneratorCommit (the commit used by the
+GitHub Actions run that produced the snapshot); its main.go reads dlc.dat from
+v2fly/domain-list-community. The generator is GPL-3.0.
+Data source: v2fly/domain-list-community commit $dlcCommit (2026-05-10 10:33:27
+UTC, master head when the snapshot was built), licensed under the MIT License
+reproduced above (LICENSE unchanged since 2019-01-01).
 
-Unverified: the source above is taken from the generator's current main branch
-and the upstream READMEs. We did not check out the generator as it was at the
-time of each bundled snapshot (see assets/rule-sets/VERSION), nor verify the
-rule-set binary itself against its source.''',
+Not confirmed: which domain-list-community release (its release name) the
+generator consumed. That release and sing-geosite's own release from that day
+have been pruned and are not retrievable through the GitHub API. The dlc commit
+above is inferred from "master head at build time" and sing-geosite's tag
+naming (tags are named after the source release timestamp; 20260510103350 at
+that time matches the commit's 10:33 UTC); it is not a directly read record.''',
   );
 
   yield const LicenseEntryWithLineBreaks(
     [geoipLicensePackage],
-    '''geoip-cn.srs（assets/rule-sets/）
+    '''geoip-cn.srs（assets/rule-sets/geoip-cn.srs）
 
 $maxMindAttribution
 
-来源：由 SagerNet/sing-geoip（https://github.com/SagerNet/sing-geoip ，
-rule-set 分支）的生成程序，读取 Dreamacro/maxmind-geoip
-（https://github.com/Dreamacro/maxmind-geoip）发布的 Country.mmdb 转换而成；
-该仓库的发布流程下载的是 MaxMind 的 GeoLite2-Country 数据库，并在 README 中
-声明包含 MaxMind 创建的 GeoLite2 数据。转换程序本身以 GPL-3.0 授权。
+随包快照：sing-geoip rule-set 分支提交 $geoipSnapshotCommit
+（2026-04-12 08:53 UTC，assets/rule-sets/VERSION 记为 7a098b8）
+https://github.com/SagerNet/sing-geoip/commit/$geoipSnapshotCommit
+随包文件 SHA-256：$geoipCnSha256（与该提交里的 geoip-cn.srs 逐字节一致）
+
+生成程序：sing-geoip 提交 $geoipGeneratorCommit（生成该快照的 GitHub Actions
+运行 24302879958 所用的提交；sing-geoip 的 20260412 发布标签也指向它），其
+main.go 读取 Dreamacro/maxmind-geoip 的最新发布，并生成 geoip-cn：
+https://github.com/SagerNet/sing-geoip/blob/$geoipGeneratorCommit/main.go
+转换程序本身以 GPL-3.0 授权。
+
+数据来源：Dreamacro/maxmind-geoip 发布 $geoipDataRelease（2026-04-12 00:28 UTC，
+资产 Country.mmdb）：
+https://github.com/Dreamacro/maxmind-geoip/releases/tag/$geoipDataRelease
+该发布由其月度工作流下载 MaxMind GeoLite2-Country 构建（工作流自 2025-05-09
+起未改动），仓库 README 声明包含 MaxMind 创建的 GeoLite2 数据。
 
 数据许可：MaxMind GeoLite End User License Agreement
 https://www.maxmind.com/en/geolite2/eula
@@ -134,18 +199,31 @@ Creative Commons Attribution-ShareAlike 4.0 International License（CC BY-SA 4.0
 https://creativecommons.org/licenses/by-sa/4.0/
 再分发或基于本数据派生时须遵守署名与相同方式共享的要求。
 
-未核实事项：上述来源依据的是生成程序当前主分支的内容与上游仓库说明，没有逐个
-检出随包快照（见 assets/rule-sets/VERSION）对应时刻的生成程序，也没有对规则集
-二进制本身做来源校验；快照取自 GeoLite2 的哪一期也未核实。
+未能确认的事项：
+1. 协议文本的版本：上面的条款是 2026-10-20 读取 MaxMind 网站当前页面所得；
+   2026-04-12（快照生成时）生效的版本没能取得——网页存档只保存到页面外壳，
+   不含协议正文。
+2. Country.mmdb 内部的 GeoLite2 数据库期号没有解析确认（发布名 20260412 是
+   Dreamacro 的发布日期，不一定等于 MaxMind 的数据库期号）。
+3. 「生成程序读取的就是 20260412 这个发布」来自两点：该运行是定时触发（没有
+   指定固定发布，程序取最新发布），且当时最新发布就是 20260412，同时 sing-geoip
+   的发布标签按来源发布名命名、20260412 标签指向该生成程序提交；没有读到运行
+   日志本身（日志需要登录才能取）。
 
 $maxMindAttribution
 
-Source: converted from the Country.mmdb release of Dreamacro/maxmind-geoip by
-the generator in SagerNet/sing-geoip (rule-set branch). That repository's
-release workflow downloads MaxMind's GeoLite2-Country database, and its README
-states that it includes GeoLite2 data created by MaxMind. The generator is
-GPL-3.0.
-
+Snapshot: sing-geoip rule-set branch commit $geoipSnapshotCommit
+(2026-04-12 08:53 UTC; recorded as 7a098b8 in assets/rule-sets/VERSION).
+The bundled file's SHA-256 ($geoipCnSha256) is byte-identical to
+geoip-cn.srs in that commit.
+Generator: sing-geoip commit $geoipGeneratorCommit (the commit used by the
+GitHub Actions run that produced the snapshot; the sing-geoip tag 20260412 also
+points to it). Its main.go consumes the latest release of
+Dreamacro/maxmind-geoip and produces geoip-cn. The generator is GPL-3.0.
+Data source: Dreamacro/maxmind-geoip release $geoipDataRelease (2026-04-12
+00:28 UTC, asset Country.mmdb), built by that repository's monthly workflow
+from MaxMind GeoLite2-Country (workflow unchanged since 2025-05-09); its README
+states that it includes GeoLite2 data created by MaxMind.
 Data license: the MaxMind GeoLite End User License Agreement
 (https://www.maxmind.com/en/geolite2/eula). It requires attribution to MaxMind
 (see the sentence above) and applies the Creative Commons Attribution-ShareAlike
@@ -154,10 +232,17 @@ https://creativecommons.org/licenses/by-sa/4.0/) to the copyrightable elements
 of the data. Redistribution or derivatives must comply with the attribution and
 share-alike terms.
 
-Unverified: the source above is taken from the generator's current main branch
-and the upstream READMEs. We did not check out the generator as it was at the
-time of each bundled snapshot (see assets/rule-sets/VERSION), nor verify the
-rule-set binary itself against its source, nor determine which GeoLite2 release
-the snapshot was built from.''',
+Not confirmed:
+1. The EULA version: the terms above were read from MaxMind's current web page
+   on 2026-10-20. The version in force on 2026-04-12 could not be retrieved; the
+   web archive only kept the page shell, not the agreement body.
+2. The GeoLite2 database edition date inside Country.mmdb was not parsed
+   (the release name 20260412 is Dreamacro's release date, not necessarily
+   MaxMind's database date).
+3. That the generator consumed release 20260412 is inferred: the run was
+   scheduled (no pinned release, so the program takes the latest release), the
+   latest release then was 20260412, and the sing-geoip tag 20260412 (named
+   after the source release) points to the generator commit. The run log itself
+   was not read (logs require sign-in).''',
   );
 }

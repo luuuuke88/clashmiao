@@ -44,7 +44,14 @@
     "coreMissingMsg": "The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.",
     "degradedTitle": "Connected, but no internet access",
     "degradedMsg": "The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.",
-    "degradedRetry": "Check again"
+    "degradedRetry": "Check again",
+    "egressIp": {
+      "label": "Egress IP",
+      "notConnected": "Connect to show egress IP",
+      "tapToCheck": "Tap to check egress IP",
+      "checking": "Checking…",
+      "failedRetry": "Check failed, tap to retry"
+    }
   },
   "stats": {
     "traffic": "Traffic",
@@ -56,7 +63,9 @@
     "downlink": "Downlink",
     "connection": "Connection",
     "speed": "Speed",
-    "totalTransferred": "Total Transferred"
+    "totalTransferred": "Total Transferred",
+    "sessionTraffic": "Session traffic",
+    "downloadSpeed": "Download speed"
   },
   "profile": {
     "overviewPageTitle": "Profiles",

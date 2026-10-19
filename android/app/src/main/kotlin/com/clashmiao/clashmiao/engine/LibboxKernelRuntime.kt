@@ -23,7 +23,8 @@ import java.io.File
  *
  * 与旧实现相比只有这几处边界调整（都是为了让协调器能保证「完整回收、不遗漏」）：
  *   1. 输入来自 [LaunchSpec]，不再读 Prefs 的 activeConfigPath/options；
- *   2. 阻塞步骤之间检查 [ExecContext.cancelled]，被取消就停手返回；
+ *   2. 每个阻塞调用一返回就检查 [ExecContext.cancelled]，被取消就不再进入下一个原生步骤
+ *      （顺序与检查点见 [runStartSequence]）；
  *   3. 创建出来的 CommandServer / libbox BoxService 一出现就记在字段上（旧代码要等 start() 成功
  *      才赋值，start 中途失败或被取消会遗弃局部实例）；
  *   4. 不再自己管状态、通知、stopSelf——这些归协调器与 [KernelHost]；
@@ -81,77 +82,54 @@ class LibboxKernelRuntime(
 
     // === KernelRuntime ======================================================
 
-    override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext): JobResult {
-        try {
-            ctx.step("bootstrap")
-            bootstrapOnce()
-            if (ctx.cancelled) return JobResult.Cancelled
+    override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext): JobResult =
+        runStartSequence(startOps, spec, reload, ctx)
 
-            if (commandServer == null) {
-                ctx.step("commandServer")
-                try {
-                    spawnCommandServer()
-                } catch (e: Exception) {
-                    return JobResult.Failed(FailureCode.StartCommandServer, e.message.orEmpty())
-                }
-                if (ctx.cancelled) return JobResult.Cancelled
+    /** 启动链的原生步骤；顺序与取消检查点由 [runStartSequence] 统一掌握。 */
+    private val startOps = object : KernelStartOps {
+        override fun bootstrap() = bootstrapOnce()
+
+        override fun hasCommandServer(): Boolean = commandServer != null
+
+        override fun spawnCommandServer() = this@LibboxKernelRuntime.spawnCommandServer()
+
+        override fun buildConfig(spec: LaunchSpec): String {
+            val content = try {
+                Mobile.buildConfig(spec.runtimeConfigPath, spec.optionsJson)
+            } catch (e: Exception) {
+                Log.w(TAG, "buildConfig failed", e)
+                throw e
             }
-            return launchKernel(spec, reload, ctx)
-        } catch (e: Exception) {
-            return JobResult.Failed(FailureCode.StartService, e.message.orEmpty())
-        }
-    }
-
-    private fun launchKernel(spec: LaunchSpec, reload: Boolean, ctx: ExecContext): JobResult {
-        val configPath = spec.runtimeConfigPath
-        if (configPath.isBlank()) {
-            return JobResult.Failed(FailureCode.EmptyConfiguration, "empty runtime config path")
-        }
-        val options = spec.optionsJson
-        if (options.isBlank()) {
-            return JobResult.Failed(FailureCode.EmptyConfiguration, "empty config options")
+            if (Prefs.Engine.debugMode) {
+                File(workingDir, "current-config.json").writeText(content)
+            }
+            return content
         }
 
-        ctx.step("buildConfig")
-        val content = try {
-            Mobile.buildConfig(configPath, options)
-        } catch (e: Exception) {
-            Log.w(TAG, "buildConfig failed", e)
-            return JobResult.Failed(FailureCode.EmptyConfiguration, e.message.orEmpty())
+        override fun prepareRuntime() {
+            // logs 在 reload / start 的时候清一次，让 UI 从干净状态开始。
+            logs.reset(emptyList())
+            runBlocking { NetworkWatcher.arm() }
+            Libbox.registerLocalDNSTransport(SystemDnsBridge)
+            Libbox.setMemoryLimit(!Prefs.Engine.disableMemoryLimit)
         }
 
-        if (Prefs.Engine.debugMode) {
-            File(workingDir, "current-config.json").writeText(content)
+        override fun newService(content: String) {
+            // 所有权立刻归 runtime：之后无论取消还是失败，teardown 都能关掉它。
+            libboxService = Libbox.newService(content, platform)
         }
-        if (ctx.cancelled) return JobResult.Cancelled
-
-        // logs 在 reload / start 的时候清一次，让 UI 从干净状态开始。
-        logs.reset(emptyList())
-
-        ctx.step("networkWatcher")
-        runBlocking { NetworkWatcher.arm() }
-        Libbox.registerLocalDNSTransport(SystemDnsBridge)
-        Libbox.setMemoryLimit(!Prefs.Engine.disableMemoryLimit)
-        if (ctx.cancelled) return JobResult.Cancelled
-
-        ctx.step("newService")
-        val freshService = try {
-            Libbox.newService(content, platform)
-        } catch (e: Exception) {
-            return JobResult.Failed(FailureCode.CreateService, e.message.orEmpty())
-        }
-        // 所有权立刻归 runtime：之后无论取消还是失败，teardown 都能关掉它。
-        libboxService = freshService
-        if (ctx.cancelled) return JobResult.Cancelled
 
         // 重载：等旧资源释放（旧实现里 serviceReload → launchKernel(retryAfter = 1000)）。
-        if (reload && !settleAfterReload(ctx)) return JobResult.Cancelled
+        override fun settleAfterReload(ctx: ExecContext): Boolean =
+            this@LibboxKernelRuntime.settleAfterReload(ctx)
 
-        ctx.step("start")
-        freshService.start()
-        commandServer?.setService(freshService)
-        if (ctx.cancelled) return JobResult.Cancelled
-        return JobResult.Started
+        override fun startService() {
+            checkNotNull(libboxService) { "libbox service missing" }.start()
+        }
+
+        override fun bindCommandServer() {
+            commandServer?.setService(libboxService)
+        }
     }
 
     private fun settleAfterReload(ctx: ExecContext): Boolean {

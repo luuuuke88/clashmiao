@@ -115,10 +115,37 @@ class KernelExecutorTest {
         val rt = RecordingRuntime()
         var n = 0
         executor.submitStart(1, rt, spec, false, { _, _ -> }, { _, _ -> n++ })
-        pumpUntil { n == 1 }
-        Thread.sleep(50)
-        while (main.isNotEmpty()) main.poll()?.run()
+        // 执行层完成屏障：排在任务之后的串行任务运行时，任务本身及其全部投递都已完成。
+        val barrier = CountDownLatch(1)
+        executor.runSerialized { barrier.countDown() }
+        assertTrue(barrier.await(5, TimeUnit.SECONDS))
+        // 显式推进主线程队列：此时队列里就是该任务投递的全部回调
+        while (true) (main.poll() ?: break).run()
         assertEquals(1, n)
+        // 再过一道屏障：之后不会有迟到的重复投递
+        val second = CountDownLatch(1)
+        executor.runSerialized { second.countDown() }
+        assertTrue(second.await(5, TimeUnit.SECONDS))
         assertFalse(main.isNotEmpty())
+        assertEquals(1, n)
+    }
+
+    @Test
+    fun `串行任务与生命周期任务按提交顺序执行 从不并发`() {
+        val order = java.util.Collections.synchronizedList(ArrayList<String>())
+        val rt = object : RecordingRuntime() {
+            override fun teardown(soft: Boolean, ctx: ExecContext) {
+                order += "teardown"
+            }
+        }
+        val done = CountDownLatch(1)
+        executor.runSerialized { order += "select-1" }
+        executor.submitTeardown(1, rt, false, { _, _ -> }, { _, _ -> })
+        executor.runSerialized {
+            order += "select-2"
+            done.countDown()
+        }
+        assertTrue(done.await(5, TimeUnit.SECONDS))
+        assertEquals(listOf("select-1", "teardown", "select-2"), order.toList())
     }
 }

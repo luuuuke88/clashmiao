@@ -143,13 +143,21 @@ class CoordinatorCoreTest {
     }
 
     @Test
-    fun `授权等待中又来了新的 on 沿用同一次授权 不重复弹窗`() {
+    fun `授权等待中又来了新的 on 新请求自己重新检查授权 旧 token 的结果不再作数`() {
+        // 平台层保证不重复弹窗（见 VpnConsentBrokerTest）；核心只认当前请求的 token。
         val h = CoreHarness(autoAuth = false)
         h.on(1, rev = 1)
         val t1 = h.last<Effect.RequestAuth>().token
         h.on(2, rev = 2)
-        assertEquals(1, h.count<Effect.RequestAuth>())
-        h.authResult(t1, true)
+        assertEquals(listOf(t1), h.all<Effect.CancelAuth>().map { it.token })
+        val t2 = h.last<Effect.RequestAuth>().token
+        assertTrue(t2 != t1)
+        // 旧弹窗的结果只属于 t1：被丢弃，既不启动也不让 seq=2 失败
+        h.authResult(t1, false)
+        assertNull(h.snap.lastFailure)
+        assertEquals(0, h.count<Effect.StartService>())
+        h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
+        h.authResult(t2, true)
         // 启动使用最新的 spec
         assertEquals(2L, h.last<Effect.RunStart>().spec.configRevision)
     }
@@ -472,17 +480,151 @@ class CoordinatorCoreTest {
     }
 
     @Test
-    fun `同一意图的幂等重发 不让进行中的启动变成过时 失败仍然生效`() {
+    fun `同 revision 的新 seq 是新请求 旧执行的失败不归它 由它自己的一次启动终结`() {
         val h = CoreHarness()
         h.on(1, rev = 1)
-        h.on(2, rev = 1) // 同 revision 重发
+        val m = h.mark()
+        h.on(2, rev = 1) // 同 revision：配置去重，在途启动继续跑（不取消）
+        assertEquals(0, h.since<Effect.CancelJob>(m).size)
+        h.finishJob(JobResult.Failed(FailureCode.StartService, "old failure"))
+        // seq=1 的失败不写给 seq=2，也不关 desired
+        assertNull(h.snap.lastFailure)
+        h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
+        // seq=2 自己的序列：先软回收旧任务留下的局部资源，再启动一次
+        assertTrue(h.last<Effect.RunTeardown>().soft)
+        h.finishTeardown()
+        assertEquals(2, h.count<Effect.RunStart>())
+        h.assertSnap(attempt = 2)
         h.finishJob(JobResult.Failed(FailureCode.StartService, "real failure"))
-        assertEquals(FailureCode.StartService, h.snap.lastFailure!!.code)
-        assertEquals("归属最新的重发序号", 2L, h.snap.lastFailure!!.seq)
+        val f = h.snap.lastFailure!!
+        assertEquals(FailureCode.StartService, f.code)
+        assertEquals("失败归属它自己的 seq", 2L, f.seq)
+        assertEquals(2L, f.attempt)
         h.assertSnap(desired = Desired.Off)
         h.finishTeardown()
         h.assertSnap(status = KernelStatus.Stopped)
-        assertEquals("不会无限重试", 1, h.count<Effect.RunStart>())
+        assertEquals("有限的请求只换来有限的尝试", 2, h.count<Effect.RunStart>())
+    }
+
+    @Test
+    fun `同 revision 的新 seq 沿用在途启动的成功 内核无操作 attempt 不变 以 started 终结`() {
+        val h = CoreHarness()
+        h.on(1, rev = 1)
+        h.on(2, rev = 1)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, desired = Desired.On, attempt = 1, rev = 1, replay = true)
+        assertEquals(2L, h.snap.appliedSeq)
+        assertNull(h.snap.lastFailure)
+        assertEquals(1, h.count<Effect.RunStart>())
+        assertFalse("seq=2 的启动超时随之撤销", h.timers.containsKey(TimerKind.StartTimeout to 0L))
+    }
+
+    @Test
+    fun `同 revision 的新 seq 旧序列的启动超时不作数 新 seq 的超时只写给它自己`() {
+        val h = CoreHarness()
+        h.on(1, rev = 1)
+        val oldTimeout = h.timers[TimerKind.StartTimeout to 0L]!!
+        h.on(2, rev = 1)
+        val newTimeout = h.timers[TimerKind.StartTimeout to 0L]!!
+        assertTrue(oldTimeout != newTimeout)
+        h.fireStale(oldTimeout)
+        assertNull(h.snap.lastFailure)
+        h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
+        h.fire(TimerKind.StartTimeout)
+        assertEquals(FailureCode.StartTimeout, h.snap.lastFailure!!.code)
+        assertEquals(2L, h.snap.lastFailure!!.seq)
+        h.assertSnap(desired = Desired.Off, status = KernelStatus.Stopping)
+    }
+
+    @Test
+    fun `同 revision 的新 seq 旧授权被拒也不会让新请求失败 新请求只按自己的授权结果终结`() {
+        val h = CoreHarness(autoAuth = false)
+        h.on(1, rev = 1)
+        val t1 = h.last<Effect.RequestAuth>().token
+        h.on(2, rev = 1)
+        val t2 = h.last<Effect.RequestAuth>().token
+        h.authResult(t1, false)
+        assertNull(h.snap.lastFailure)
+        h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
+        h.authResult(t2, false)
+        assertEquals(FailureCode.PermissionDenied, h.snap.lastFailure!!.code)
+        assertEquals(2L, h.snap.lastFailure!!.seq)
+        h.assertSnap(desired = Desired.Off, status = KernelStatus.Stopped)
+    }
+
+    // ------------------------------------------------------------------------
+    //  过时执行的看门狗 / 回收超时（审核问题 1）
+    // ------------------------------------------------------------------------
+
+    @Test
+    fun `旧执行的看门狗不会关掉最新的 on 序列 on1 阻塞 off2 on3`() {
+        val h = CoreHarness()
+        h.on(1, rev = 1)
+        h.jobStep("start")
+        h.off(2)
+        h.on(3, rev = 1)
+        h.assertSnap(status = KernelStatus.Starting, desired = Desired.On)
+        h.fire(TimerKind.Watchdog) // seq=1 的任务卡住超过 20 s
+        h.assertSnap(status = KernelStatus.Starting, desired = Desired.On)
+        assertNull("不写 seq=3 的失败", h.snap.lastFailure)
+        // 阻塞调用终于返回：seq=3 按自己的序列继续
+        h.finishJob(JobResult.Cancelled)
+        h.finishTeardown()
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, desired = Desired.On, attempt = 2)
+        assertNull(h.snap.lastFailure)
+    }
+
+    @Test
+    fun `旧执行一直卡死 最新的 on 由它自己的 30s 启动超时终结`() {
+        val h = CoreHarness()
+        h.on(1, rev = 1)
+        h.jobStep("start")
+        h.off(2)
+        h.on(3, rev = 1)
+        h.fire(TimerKind.Watchdog)
+        h.assertSnap(desired = Desired.On)
+        h.fire(TimerKind.StartTimeout)
+        val f = h.snap.lastFailure!!
+        assertEquals(FailureCode.StartTimeout, f.code)
+        assertEquals(3L, f.seq)
+        // 内核仍卡着：如实 stopping，调用返回后照常回收
+        h.assertSnap(desired = Desired.Off, status = KernelStatus.Stopping)
+        h.finishJob(JobResult.Cancelled)
+        h.finishTeardown()
+        h.assertSnap(status = KernelStatus.Stopped)
+        assertEquals(3L, h.snap.lastFailure!!.seq)
+    }
+
+    @Test
+    fun `旧回收任务卡住超时 不关掉之后的 on`() {
+        val h = CoreHarness()
+        h.connected(seq = 1)
+        h.off(2)
+        assertFalse(h.inFlight!!.isStart)
+        h.jobStep("closeService")
+        h.on(3)
+        h.fire(TimerKind.Watchdog) // seq=2 的回收卡住
+        h.assertSnap(desired = Desired.On, status = KernelStatus.Starting)
+        assertNull(h.snap.lastFailure)
+        h.finishTeardown()
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, attempt = 2)
+        assertNull(h.snap.lastFailure)
+    }
+
+    @Test
+    fun `当前请求自己的重载回收卡住 当前请求失败`() {
+        val h = CoreHarness()
+        h.connected(rev = 1)
+        h.on(2, rev = 2)
+        assertTrue(h.inFlight!!.soft)
+        h.jobStep("closeService")
+        h.fire(TimerKind.Watchdog)
+        val f = h.snap.lastFailure!!
+        assertEquals(FailureCode.KernelUnresponsive, f.code)
+        assertEquals(2L, f.seq)
+        h.assertSnap(desired = Desired.Off, status = KernelStatus.Stopping)
     }
 
     @Test
@@ -609,7 +751,7 @@ class CoordinatorCoreTest {
     }
 
     @Test
-    fun `退休超时兜底 onDestroy 一直不来也不会卡死新连接`() {
+    fun `退休超时 只报告失败 继续跟踪旧实例 绝不越过它起另一类 Service`() {
         val h = CoreHarness(ServiceType.Vpn, autoDestroy = false)
         h.connected()
         h.mode = ServiceType.Proxy
@@ -617,7 +759,149 @@ class CoordinatorCoreTest {
         h.finishTeardown()
         assertEquals(1, h.count<Effect.StartService>())
         h.fire(TimerKind.Retire)
-        assertEquals(2, h.count<Effect.StartService>())
+        assertEquals("没有真实的 onDestroy 就不起 Proxy", 1, h.count<Effect.StartService>())
+        val f = h.snap.lastFailure!!
+        assertEquals(FailureCode.StartService, f.code)
+        assertEquals(2L, f.seq)
+        h.assertSnap(desired = Desired.Off, status = KernelStatus.Stopped)
+        assertTrue("仍在跟踪旧实例", h.core.knows(1))
+
+        // 新请求：再催一次旧实例，依然以它真实的 onDestroy 为准
+        val retires = h.count<Effect.RetireService>()
+        h.on(3, rev = 2)
+        assertEquals(retires + 1, h.count<Effect.RetireService>())
+        assertEquals(1, h.count<Effect.StartService>())
+        h.serviceDestroyed(1)
+        assertFalse(h.core.knows(1))
+        assertEquals(listOf(ServiceType.Vpn, ServiceType.Proxy), h.all<Effect.StartService>().map { it.type })
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 2, desired = Desired.On)
+    }
+
+    @Test
+    fun `全局 off 后退休超时 不算失败 实例仍被跟踪`() {
+        val h = CoreHarness(autoDestroy = false)
+        h.connected()
+        h.off(2)
+        h.finishTeardown()
+        h.fire(TimerKind.Retire)
+        assertNull(h.snap.lastFailure)
+        h.assertSnap(status = KernelStatus.Stopped, desired = Desired.Off)
+        assertTrue(h.core.knows(1))
+        h.serviceDestroyed(1)
+        assertFalse(h.core.knows(1))
+    }
+
+    // ------------------------------------------------------------------------
+    //  Service 形态是意图的一部分（审核问题 4）
+    // ------------------------------------------------------------------------
+
+    @Test
+    fun `授权等待期间切到 Proxy 同 revision 也重建序列 最终运行在 Proxy Service 上`() {
+        val h = CoreHarness(ServiceType.Vpn, autoAuth = false)
+        h.on(1, rev = 1)
+        val t1 = h.last<Effect.RequestAuth>().token
+        h.mode = ServiceType.Proxy
+        h.on(2, rev = 1)
+        assertEquals(listOf(ServiceType.Proxy), h.all<Effect.StartService>().map { it.type })
+        h.authResult(t1, true) // 迟到的旧授权：丢弃
+        assertEquals(1, h.count<Effect.StartService>())
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, desired = Desired.On)
+        assertEquals(listOf(1 to ServiceType.Proxy), h.startedServices)
+    }
+
+    @Test
+    fun `Service 未到达时从 Vpn 切到 Proxy 先等它到达并退休 销毁后才起 Proxy`() {
+        val h = CoreHarness(ServiceType.Vpn, autoService = false, autoDestroy = false)
+        h.on(1)
+        assertEquals(listOf(ServiceType.Vpn), h.all<Effect.StartService>().map { it.type })
+        h.mode = ServiceType.Proxy
+        h.on(2, rev = 2)
+        assertEquals("Vpn 还没到达：不能同时起 Proxy", 1, h.count<Effect.StartService>())
+        h.serviceStarted(1, ServiceType.Vpn, 1)
+        assertEquals(1, h.last<Effect.RetireService>().inst)
+        assertEquals(1, h.count<Effect.StartService>())
+        h.serviceDestroyed(1)
+        assertEquals(ServiceType.Proxy, h.last<Effect.StartService>().type)
+        h.serviceStarted(2, ServiceType.Proxy, 1)
+        assertEquals(2, h.last<Effect.RunStart>().inst)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 2)
+    }
+
+    @Test
+    fun `Service 未到达时从 Proxy 切到 Vpn 旧 Proxy 销毁之前不请求授权也不起 Vpn`() {
+        val h = CoreHarness(ServiceType.Proxy, autoService = false, autoDestroy = false)
+        h.on(1)
+        h.mode = ServiceType.Vpn
+        h.on(2, rev = 1)
+        assertEquals(0, h.count<Effect.RequestAuth>())
+        assertEquals(1, h.count<Effect.StartService>())
+        h.serviceStarted(1, ServiceType.Proxy, 1)
+        assertEquals(0, h.count<Effect.RequestAuth>())
+        h.serviceDestroyed(1)
+        assertEquals(1, h.count<Effect.RequestAuth>())
+        assertEquals(listOf(ServiceType.Proxy, ServiceType.Vpn), h.all<Effect.StartService>().map { it.type })
+        h.serviceStarted(2, ServiceType.Vpn, 1)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 1)
+    }
+
+    @Test
+    fun `重载回收期间切模式 回收完成后换类 不在旧类上发布 started`() {
+        val h = CoreHarness(ServiceType.Vpn)
+        h.connected(rev = 1)
+        h.on(2, rev = 2)
+        assertTrue(h.inFlight!!.soft)
+        h.mode = ServiceType.Proxy
+        h.on(3, rev = 2)
+        h.finishTeardown() // 软回收完成：Vpn 实例上仍有 command server
+        assertFalse("换类：完整回收", h.last<Effect.RunTeardown>().soft)
+        h.finishTeardown() // → 退休 Vpn → onDestroy → 起 Proxy
+        assertEquals(2, h.last<Effect.RunStart>().inst)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 2, desired = Desired.On)
+        assertEquals(listOf(1 to ServiceType.Vpn, 2 to ServiceType.Proxy), h.startedServices)
+        assertEquals(
+            "Vpn 实例上从未发布过 rev=2 的 started",
+            1,
+            h.snapshots.count { it.status == KernelStatus.Started && it.activeConfigRevision == 2L },
+        )
+    }
+
+    @Test
+    fun `启动任务进行中切模式 旧类上的成功不被当作收敛`() {
+        val h = CoreHarness(ServiceType.Vpn)
+        h.on(1, rev = 1)
+        h.mode = ServiceType.Proxy
+        val m = h.mark()
+        h.on(2, rev = 1)
+        assertEquals("旧形态的启动已无用：打取消标", 1, h.since<Effect.CancelJob>(m).size)
+        h.finishJob(JobResult.Started) // 取消标没赶上
+        h.assertSnap(status = KernelStatus.Starting)
+        assertTrue(h.snapshots.none { it.status == KernelStatus.Started })
+        h.finishTeardown()
+        assertEquals(2, h.last<Effect.RunStart>().inst)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 1)
+        assertEquals(ServiceType.Proxy, h.startedServices.last().second)
+    }
+
+    @Test
+    fun `已就绪时只改模式不改 revision 也换类 收敛看实际运行的 Service 类型`() {
+        val h = CoreHarness(ServiceType.Vpn, autoDestroy = false)
+        h.connected(rev = 1)
+        h.mode = ServiceType.Proxy
+        h.on(2, rev = 1)
+        h.assertSnap(status = KernelStatus.Starting, attempt = 2)
+        assertFalse(h.last<Effect.RunTeardown>().soft)
+        h.finishTeardown()
+        assertEquals(1, h.count<Effect.StartService>())
+        h.serviceDestroyed(1)
+        h.finishJob(JobResult.Started)
+        h.assertSnap(status = KernelStatus.Started, rev = 1, attempt = 2)
+        assertEquals(ServiceType.Proxy, h.startedServices.last().second)
     }
 
     @Test

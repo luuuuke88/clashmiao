@@ -11,6 +11,7 @@ import androidx.lifecycle.MutableLiveData
 import com.clashmiao.clashmiao.Application
 import com.clashmiao.clashmiao.core.EngineMode
 import com.clashmiao.clashmiao.core.Prefs
+import io.nekohasekai.libbox.Libbox
 import java.util.UUID
 
 /** 能弹出 VPN 授权对话框的界面（MainActivity）。 */
@@ -22,8 +23,8 @@ interface ActivityHost {
  * [CoordinatorPlatform] 的 Android 实现：主线程 Handler 做定时器、`VpnService.prepare` 做授权、
  * `startForegroundService` 拉起 Service。
  *
- * VPN 授权对话框全局只会有一个：授权期间新的请求只更新「等待的 token」，不重复弹窗；
- * 对话框结果交给**当前**等待的 token，协调器核心再校验它是否仍属于最新意图（丢弃过期回调）。
+ * VPN 授权对话框全局只会有一个，归属规则见 [VpnConsentBroker]：结果只报告给弹出它的 token，
+ * 对话框开着时到达的新请求在它关闭后各自重新检查授权。
  */
 class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform {
 
@@ -33,9 +34,11 @@ class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform
     /** 由 [KernelCoordinator] 装配后设置：把授权结果交回协调器。 */
     var authSink: (token: Long, granted: Boolean, message: String) -> Unit = { _, _, _ -> }
 
-    private var activityHost: ActivityHost? = null
-    private var dialogOutstanding = false
-    private var waitingToken: Long? = null
+    private val consent = VpnConsentBroker<Intent, ActivityHost>(
+        prepare = { VpnService.prepare(app) },
+        launch = { host, intent -> host.launchVpnConsent(intent) },
+        sink = { token, granted, message -> authSink(token, granted, message) },
+    )
 
     override fun isMainThread(): Boolean = Looper.myLooper() == Looper.getMainLooper()
 
@@ -57,57 +60,16 @@ class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform
         timers.remove(slot)?.let(main::removeCallbacks)
     }
 
-    override fun requestVpnAuth(token: Long) {
-        val intent = try {
-            VpnService.prepare(app)
-        } catch (e: Exception) {
-            authSink(token, false, e.message ?: "VpnService.prepare failed")
-            return
-        }
-        if (intent == null) {
-            authSink(token, true, "")
-            return
-        }
-        val host = activityHost
-        if (host == null) {
-            // 没有界面（磁贴 / 开机）：无法弹授权窗口，如实失败。
-            authSink(token, false, "vpn consent requires the app UI")
-            return
-        }
-        waitingToken = token
-        if (dialogOutstanding) return
-        dialogOutstanding = true
-        try {
-            host.launchVpnConsent(intent)
-        } catch (e: Exception) {
-            dialogOutstanding = false
-            waitingToken = null
-            authSink(token, false, e.message ?: "cannot show vpn consent")
-        }
-    }
+    override fun requestVpnAuth(token: Long) = consent.request(token)
 
-    override fun cancelVpnAuth(token: Long) {
-        if (waitingToken == token) waitingToken = null
-    }
+    override fun cancelVpnAuth(token: Long) = consent.cancel(token)
 
     /** 授权对话框的结果（Activity.onActivityResult → PermissionGate）。 */
-    fun onConsentResult(granted: Boolean) {
-        dialogOutstanding = false
-        val token = waitingToken ?: return
-        waitingToken = null
-        authSink(token, granted, if (granted) "" else "user denied vpn consent")
-    }
+    fun onConsentResult(granted: Boolean) = consent.onResult(granted)
 
-    fun attachActivity(host: ActivityHost) {
-        activityHost = host
-    }
+    fun attachActivity(host: ActivityHost) = consent.attach(host)
 
-    fun detachActivity(host: ActivityHost) {
-        if (activityHost === host) {
-            activityHost = null
-            dialogOutstanding = false
-        }
-    }
+    fun detachActivity(host: ActivityHost) = consent.detach(host)
 
     override fun startService(type: ServiceType) {
         val cls = when (type) {
@@ -146,6 +108,9 @@ internal class AndroidKernelWiring {
             store = KernelStore(PrefsKeyValueStore()),
             logs = LogBuffer(capacity = 300),
             epoch = UUID.randomUUID().toString(),
+            selector = OutboundSelector { group, outbound ->
+                Libbox.newStandaloneCommandClient().selectOutbound(group, outbound)
+            },
         )
         platform.authSink = { token, granted, message -> coordinator.onAuthResult(token, granted, message) }
         coordinator.observeSnapshot { live.value = it }

@@ -12,6 +12,7 @@ import com.clashmiao.clashmiao.engine.KernelCoordinator
 import com.clashmiao.clashmiao.engine.KernelSnapshot
 import com.clashmiao.clashmiao.engine.LaunchSpec
 import com.clashmiao.clashmiao.engine.LibboxKernelRuntime
+import com.clashmiao.clashmiao.engine.SelectResult
 import com.clashmiao.clashmiao.pigeon.BoxHostApi
 import com.clashmiao.clashmiao.pigeon.ConfigOptions
 import com.clashmiao.clashmiao.pigeon.DesiredRequestMsg
@@ -175,30 +176,35 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         req: SelectOutboundRequest,
         callback: (Result<Unit>) -> Unit,
     ) {
-        // attempt 校验放在主线程、与快照同一视角：重放属于哪次内核实例，由原生说了算（spec §10.7）。
-        val expected = req.expectedAttempt
-        if (expected != null && coordinator.snapshot.attempt != expected) {
+        // 校验与写入都交给协调器：写入在执行层线程上与生命周期任务串行，并绑定到期望 attempt 的
+        // 内核实例——旧 attempt 的重放返回 stale，绝不会写进新实例（spec §10.7）。
+        val groupTag = req.groupTag.trim()
+        val outboundTag = req.outboundTag.trim()
+        if (groupTag.isBlank() || outboundTag.isBlank()) {
             safeCallback(
                 callback,
                 Result.failure(
                     FlutterError(
-                        "stale",
-                        "attempt ${coordinator.snapshot.attempt} != expected $expected",
+                        "selectOutbound",
+                        "selectOutbound requires non-blank groupTag and outboundTag",
                         null,
                     ),
                 ),
             )
             return
         }
-        launchResponding(Dispatchers.IO, callback, "selectOutbound") {
-            val groupTag = req.groupTag.trim()
-            val outboundTag = req.outboundTag.trim()
-            if (groupTag.isBlank() || outboundTag.isBlank()) {
-                throw IllegalArgumentException(
-                    "selectOutbound requires non-blank groupTag and outboundTag",
-                )
+        try {
+            coordinator.selectOutbound(groupTag, outboundTag, req.expectedAttempt) { result ->
+                val reply: Result<Unit> = when (result) {
+                    SelectResult.Ok -> Result.success(Unit)
+                    is SelectResult.Stale -> Result.failure(FlutterError("stale", result.message, null))
+                    is SelectResult.Failed -> Result.failure(FlutterError("selectOutbound", result.message, null))
+                }
+                safeCallback(callback, reply)
             }
-            Libbox.newStandaloneCommandClient().selectOutbound(groupTag, outboundTag)
+        } catch (e: Exception) {
+            Log.w(TAG, "selectOutbound failed", e)
+            safeCallback(callback, Result.failure(FlutterError("selectOutbound", e.message ?: e.toString(), null)))
         }
     }
 

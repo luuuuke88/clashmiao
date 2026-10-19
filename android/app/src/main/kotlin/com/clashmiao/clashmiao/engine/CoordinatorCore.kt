@@ -16,10 +16,16 @@ import com.clashmiao.clashmiao.core.KernelStatus
 //     只发一次（幂等），避免靠「事件序列」推理而漏掉竞态。
 //   · 执行层同一时刻至多一个任务（[Job]）；启动链期间收到 off → 立即 stopping，给任务打取消标，
 //     任务返回后（无论成败）一律补一次完整回收，含尚未移交的局部实例（§3「停止与阻塞」）。
-//   · 执行归属（§10.2）：启动序列 [Exec] 持有 token 与意图代数 gen。只有 token 属于当前序列、
-//     且 gen 仍是当前意图时，失败/超时才会把 desired 置 off 并写 lastFailure；否则只回收资源。
+//   · 请求归属（§10.1/§10.2/§10.6）：每个被受理的请求（Dart 的 seq，或一次外部入口）都是一个新的
+//     [Owner]，取代上一个。启动序列 [Exec] 与它派发的任务、启动超时都带着**不可变**的归属；
+//     只有仍属于当前请求的序列才能把 desired 置 off、写 lastFailure（seq = 该序列服务的 seq）。
+//     过时的执行只回收自己留下的资源。配置去重（已就绪且 revision、Service 形态都相同 → 内核无操作）
+//     与请求终结分开：新 seq 依然是新请求，按它自己的结果终结。
+//   · Service 形态是意图的一部分：请求受理时读取，换形态 = 新请求 = 新序列；收敛判断看
+//     **实际运行实例**的类型。
 //   · Service 按实例管理（§10.4）：[Inst] 各自记录最大 startId；退休 = 先回收运行时，再对该实例
-//     stopSelfResult(其 startId)，onDestroy 事件到达才算退休完成；换 Service 类时旧实例 onDestroy 后再起新的。
+//     stopSelfResult(其 startId)，**只有**该实例真实的 onDestroy 才算退休完成；换类时旧实例
+//     onDestroy 后再起新的。退休超时只报告失败、继续跟踪该实例，绝不越过它去起另一类 Service。
 // ============================================================================
 
 enum class TimerKind { StartTimeout, Watchdog, NetDebounce, Retire }
@@ -35,7 +41,7 @@ data class TimerKey(val kind: TimerKind, val subject: Long, val serial: Long = 0
 
 /** 核心输出的动作，由 [KernelCoordinator] 在主线程按序执行。 */
 sealed interface Effect {
-    /** 请求 VPN 授权；结果以 [CoordinatorCore.onAuthResult] 回报。 */
+    /** 请求 VPN 授权；结果以 [CoordinatorCore.onAuthResult] 回报（token = 启动序列）。 */
     data class RequestAuth(val token: Long) : Effect
     data class CancelAuth(val token: Long) : Effect
 
@@ -45,6 +51,7 @@ sealed interface Effect {
     /** 对该实例调用 stopSelfResult(maxStartId)；销毁以 [CoordinatorCore.onServiceDestroyed] 回报。 */
     data class RetireService(val inst: Int, val maxStartId: Int) : Effect
 
+    /** 执行层启动任务（token = 任务 token，与启动序列 token 不同）。 */
     data class RunStart(
         val token: Long,
         val inst: Int,
@@ -54,7 +61,7 @@ sealed interface Effect {
 
     data class RunTeardown(val token: Long, val inst: Int, val soft: Boolean) : Effect
 
-    /** 置位执行层任务的取消标（任务在下一个检查点才会看到）。 */
+    /** 置位执行层任务的取消标（任务在当前阻塞调用返回后的检查点看到）。 */
     data class CancelJob(val token: Long) : Effect
 
     data class SetTimer(val key: TimerKey, val delayMs: Long) : Effect
@@ -75,7 +82,7 @@ class CoreStep(val effects: List<Effect>, val receipt: Receipt? = null)
 
 class CoordinatorCore(
     val epoch: String,
-    /** 当前设置的 Service 形态；只在开始新启动序列或收到请求时读取。 */
+    /** 当前设置的 Service 形态；只在受理开启请求时读取（形态是意图的一部分）。 */
     private val modeProvider: () -> ServiceType,
     private val config: Config = Config(),
 ) {
@@ -86,7 +93,7 @@ class CoordinatorCore(
         val stepWatchdogMs: Long = 20_000L,
         /** 网络切换去抖：同一句柄的抖动合并成一次重载。 */
         val networkDebounceMs: Long = 1_000L,
-        /** stopSelfResult 之后等待 onDestroy 的兜底。 */
+        /** stopSelfResult 之后等待 onDestroy 的时限；超时只报告，不当作已销毁。 */
         val retireTimeoutMs: Long = 10_000L,
     )
 
@@ -103,27 +110,31 @@ class CoordinatorCore(
         Soft,
     }
 
+    /** 请求归属：内部单调 id（外部入口也各有一个）+ Dart 序号（外部入口、旧版转发为空）。 */
+    private data class Owner(val id: Long, val seq: Long?)
+
     private class Inst(val id: Int, val type: ServiceType) {
         var maxStartId = 0
         var rt = Rt.Clean
         var retiring = false
         var retiredAt = 0
+        var retireTimedOut = false
         var destroyed = false
     }
 
-    /** 一次启动序列：授权 → 拉起 Service → 执行层启动；重载还包含前置回收。 */
-    private class Exec(
-        val token: Long,
-        var gen: Long,
-        val attempt: Long,
-        val wantType: ServiceType,
-        val isReload: Boolean,
-    ) {
+    /**
+     * 一次启动序列：授权 → 拉起 Service → 执行层启动；重载还包含前置回收。
+     * [owner] 与 [wantType] 不可变：意图一变就是新请求、新序列。
+     */
+    private class Exec(val token: Long, val owner: Owner, val wantType: ServiceType) {
+        /** 序列第一次真正动手（授权、拉起 Service、派发任务）时才分配 attempt。 */
+        var attempt: Long? = null
+        var isReload = false
         var authRequested = false
         var authGranted = false
-        var bootRequested = false
-        var jobDispatched = false
-        var dead = false
+
+        /** 已对其重新发过 stopSelfResult 的超时退休实例（每个序列只催一次）。 */
+        val nudged = HashSet<Int>()
     }
 
     private enum class JobKind { Start, Teardown }
@@ -131,6 +142,10 @@ class CoordinatorCore(
     private class Job(
         val kind: JobKind,
         val token: Long,
+        /** 派发时的当前请求（不可变）。 */
+        val owner: Owner,
+        /** 派发它的启动序列；与请求无关的回收为空。 */
+        val execToken: Long?,
         val inst: Int,
         val soft: Boolean,
         val specRev: Long,
@@ -168,12 +183,12 @@ class CoordinatorCore(
 
     // 意图
     private var spec: LaunchSpec? = null
+    private var wantType = ServiceType.Vpn
+    private var owner = Owner(0L, null)
+    private var ownerIds = 0L
 
-    /** 意图代数：desired 翻转、开启时 revision 变化、失败置 off 时 +1。 */
-    private var gen = 0L
-
-    /** 当前 desired 对应的 Dart 请求序号；外部入口设定时为空。 */
-    private var desiredSeq: Long? = null
+    /** 已为该请求写过 failure（之后不再用别的失败覆盖它）。 */
+    private var failedOwner: Long? = null
     private var reloadRequested = false
 
     // 事实
@@ -182,6 +197,10 @@ class CoordinatorCore(
     private var exec: Exec? = null
     private var kernelUp: Int? = null
     private var tokens = 0L
+
+    /** 已 startForegroundService、尚未到达的 Service 类型（同一时刻至多一个）。 */
+    private var pendingBoot: ServiceType? = null
+    private var pendingBootToken: Long? = null
 
     // 网络
     private var netBaseline: Long? = null
@@ -220,10 +239,8 @@ class CoordinatorCore(
         val effectiveLaunch = launch ?: spec
         if (desired == Desired.On && effectiveLaunch == null) {
             // 协议约定 on 必带 LaunchSpec（桥层已校验）；万一缺失且没有可沿用的 spec，按空配置失败。
-            source = Source.App
-            desiredSeq = seq
-            lastFailure = KernelFailure(FailureCode.EmptyConfiguration, "missing launch spec", attempt, seq)
-            setDesiredOff()
+            claim(Source.App, seq)
+            fail(FailureCode.EmptyConfiguration, "missing launch spec", attempt)
         } else {
             applyIntent(desired, effectiveLaunch, Source.App, seq)
         }
@@ -239,9 +256,8 @@ class CoordinatorCore(
         if (desired == Desired.On) {
             val s = spec ?: fallbackSpec
             if (s == null) {
-                source = src
-                desiredSeq = null
-                lastFailure = KernelFailure(FailureCode.EmptyConfiguration, "no launch spec", attempt, null)
+                claim(src, null)
+                fail(FailureCode.EmptyConfiguration, "no launch spec", attempt)
                 return@step null
             }
             applyIntent(Desired.On, s, src, null)
@@ -291,8 +307,11 @@ class CoordinatorCore(
 
     /** Service.onStartCommand（已先 startForeground）。 */
     fun onServiceStarted(inst: Int, type: ServiceType, startId: Int): CoreStep = step {
-        val existing = insts[inst]
-        val i = existing ?: Inst(inst, type).also { insts[inst] = it }
+        if (pendingBoot == type) {
+            pendingBoot = null
+            pendingBootToken = null
+        }
+        val i = insts[inst] ?: Inst(inst, type).also { insts[inst] = it }
         if (i.destroyed) {
             log("ignore start of destroyed instance $inst")
             return@step null
@@ -301,30 +320,25 @@ class CoordinatorCore(
         if (i.retiring && startId > i.retiredAt) {
             // stopSelfResult 因有更新的 startId 而没有真正停下：实例仍活着，回到普通状态。
             i.retiring = false
+            i.retireTimedOut = false
             out += Effect.CancelTimer(TimerKey(TimerKind.Retire, i.id.toLong()))
             log("instance $inst resurrected by startId=$startId")
         }
-        exec?.let { if (!it.dead) it.bootRequested = false }
         null
     }
 
-    /** Service.onDestroy。 */
+    /** Service.onDestroy —— 实例退休的唯一事件。 */
     fun onServiceDestroyed(inst: Int): CoreStep = step {
         val i = insts[inst] ?: return@step null
         out += Effect.CancelTimer(TimerKey(TimerKind.Retire, i.id.toLong()))
-        if (i.retiring) {
-            i.destroyed = true
-        } else {
-            // 非预期销毁（系统回收等）：运行时仍可能持有资源，补回收；内核在跑则视为退出。
-            i.destroyed = true
-            if (kernelUp == inst) {
-                kernelUp = null
-                activeRev = null
-                replayNeeded = false
-                if (desired == Desired.On) {
-                    lastFailure = KernelFailure(FailureCode.KernelExited, "service destroyed", attempt, desiredSeq)
-                    setDesiredOff()
-                }
+        val unexpected = !i.retiring
+        i.destroyed = true
+        if (kernelUp == inst) {
+            kernelGone()
+            // 已收敛的运行中内核意外退出：属于当前请求。若有启动序列在途，它服务的是新意图，
+            // 旧实例的死亡不是它的失败——它照常继续。
+            if (unexpected && desired == Desired.On && exec == null) {
+                fail(FailureCode.KernelExited, "service destroyed", attempt)
             }
         }
         if (i.rt == Rt.Clean && job?.inst != inst) insts.remove(inst)
@@ -344,7 +358,7 @@ class CoordinatorCore(
     /** VPN 授权结果。token 不属于当前启动序列则丢弃（spec §3、§10.2）。 */
     fun onAuthResult(token: Long, granted: Boolean, message: String = ""): CoreStep = step {
         val e = exec
-        if (e == null || e.dead || e.token != token || !e.authRequested || e.authGranted) {
+        if (e == null || e.token != token || !e.authRequested || e.authGranted) {
             log("auth result dropped (token=$token granted=$granted)")
             return@step null
         }
@@ -358,12 +372,15 @@ class CoordinatorCore(
 
     /** startForegroundService 本身抛了异常。 */
     fun onServiceStartFailed(token: Long, message: String): CoreStep = step {
+        if (pendingBootToken == token) {
+            pendingBoot = null
+            pendingBootToken = null
+        }
         val e = exec
-        if (e == null || e.dead || e.token != token) {
+        if (e == null || e.token != token) {
             log("service start failure dropped (token=$token)")
             return@step null
         }
-        e.bootRequested = false
         failExec(e, FailureCode.StartService, message)
         null
     }
@@ -396,26 +413,27 @@ class CoordinatorCore(
                 }
             }
             JobKind.Start -> {
-                val e = exec?.takeIf { it.token == token }
-                if (e != null) out += Effect.CancelTimer(TimerKey(TimerKind.StartTimeout, token))
+                // 仍属于当前请求的启动序列；为空 = 过时的执行，只剩回收自身资源的资格。
+                val e = exec?.takeIf { it.token == j.execToken }
                 when (result) {
-                    JobResult.Started -> {
-                        if (e != null && !e.dead && inst != null && !inst.destroyed) {
-                            kernelUp = j.inst
-                            activeRev = j.specRev
-                            replayNeeded = true
+                    JobResult.Started -> if (inst != null && !inst.destroyed) {
+                        // 内核起来了是事实，不论归属；是否保留由 reconcile 按当前意图决定。
+                        kernelUp = j.inst
+                        activeRev = j.specRev
+                        replayNeeded = true
+                        if (kernelMatchesIntent()) {
                             out += Effect.NoticeStarted(j.inst, spec?.profileName.orEmpty())
-                        } else if (e != null && !e.dead) {
-                            failExec(e, FailureCode.KernelExited, "service destroyed during start")
                         }
-                        // 序列已被放弃：内核其实起来了，rt 仍是 Up，下面的 reconcile 会补完整回收。
+                    } else if (e != null) {
+                        failExec(e, FailureCode.KernelExited, "service destroyed during start")
                     }
-                    is JobResult.Failed -> if (e != null && !e.dead) failExec(e, result.code, result.message)
+                    is JobResult.Failed ->
+                        if (e != null) failExec(e, result.code, result.message)
+                        else log("stale start failure dropped: ${result.code.wire} (owner seq=${j.owner.seq})")
                     JobResult.Cancelled ->
-                        if (e != null && !e.dead) failExec(e, FailureCode.Unknown, "start cancelled unexpectedly")
+                        if (e != null) failExec(e, FailureCode.Unknown, "start cancelled unexpectedly")
                     JobResult.TornDown -> log("start job reported TornDown?")
                 }
-                if (e != null) exec = null
             }
         }
         null
@@ -425,13 +443,11 @@ class CoordinatorCore(
         when (key.kind) {
             TimerKind.StartTimeout -> {
                 val e = exec
-                if (e == null || e.dead || e.token != key.subject) return@step null
-                if (e.gen == gen && desired == Desired.On) {
-                    failExec(e, FailureCode.StartTimeout, "start timed out")
-                } else {
-                    // 意图已变、该序列早已过时：放弃它，新意图会开新序列。
-                    killExec()
-                }
+                if (e == null || e.token != key.subject) return@step null
+                // 30 s 都没到达的 Service 不会再来：别让它挡住后续请求。
+                pendingBoot = null
+                pendingBootToken = null
+                failExec(e, FailureCode.StartTimeout, "start timed out")
             }
             TimerKind.Watchdog -> {
                 val j = job
@@ -439,14 +455,25 @@ class CoordinatorCore(
                     return@step null
                 }
                 j.unresponsive = true
-                log("watchdog: step '${j.stepName}' blocked > ${config.stepWatchdogMs}ms")
-                if (desired == Desired.On) setDesiredOff()
-                lastFailure = KernelFailure(
-                    FailureCode.KernelUnresponsive,
-                    "blocked in ${j.stepName}",
-                    attempt,
-                    desiredSeq,
-                )
+                log("watchdog: step '${j.stepName}' blocked > ${config.stepWatchdogMs}ms (owner seq=${j.owner.seq})")
+                val e = exec
+                when {
+                    // 当前请求是停止：它的完成被卡死的执行层挡住，这是它自己的结果（§3「状态如实保持 stopping」）。
+                    desired == Desired.Off -> if (failedOwner != owner.id) {
+                        lastFailure = KernelFailure(
+                            FailureCode.KernelUnresponsive,
+                            "blocked in ${j.stepName}",
+                            attempt,
+                            owner.seq,
+                        )
+                        failedOwner = owner.id
+                    }
+                    // 当前请求自己的序列卡住：它失败。
+                    e != null && j.execToken == e.token ->
+                        failExec(e, FailureCode.KernelUnresponsive, "blocked in ${j.stepName}")
+                    // 过时的执行卡住：不改 desired、不写 failure；当前请求由它自己的 30 s 启动超时兜底。
+                    else -> log("stale job unresponsive; request seq=${owner.seq} keeps its own start timeout")
+                }
             }
             TimerKind.NetDebounce -> {
                 if (key.serial != netSerial) return@step null
@@ -462,10 +489,13 @@ class CoordinatorCore(
             }
             TimerKind.Retire -> {
                 val i = insts[key.subject.toInt()] ?: return@step null
-                if (i.retiring && !i.destroyed) {
-                    log("retire timeout: instance ${i.id} treated as destroyed")
-                    i.destroyed = true
-                    if (i.rt == Rt.Clean && job?.inst != i.id) insts.remove(i.id)
+                if (!i.retiring || i.destroyed) return@step null
+                // 只有真实的 onDestroy 才算退休：继续跟踪该实例，绝不越过它去起另一类 Service。
+                i.retireTimedOut = true
+                log("retire timeout: instance ${i.id} still alive, keep waiting for onDestroy")
+                val e = exec
+                if (desired == Desired.On && e != null) {
+                    failExec(e, FailureCode.StartService, "previous service instance ${i.id} did not stop")
                 }
             }
         }
@@ -474,35 +504,31 @@ class CoordinatorCore(
 
     // === 意图 ===============================================================
 
+    /** 受理一个新请求：它取代之前的请求。 */
+    private fun claim(src: Source, seq: Long?) {
+        source = src
+        owner = Owner(++ownerIds, seq)
+    }
+
     private fun applyIntent(newDesired: Desired, newSpec: LaunchSpec?, newSource: Source, seq: Long?) {
-        source = newSource
-        desiredSeq = seq
+        claim(newSource, seq)
+        // 旧序列不再属于任何当前请求：撤掉它的超时与授权等待；它的在途任务只剩回收自身资源的资格。
+        killExec()
         when (newDesired) {
             Desired.Off -> {
-                if (desired == Desired.On) setDesiredOff()
-                // 重发 off 且内核仍卡在阻塞调用里：失败归属改到这条新请求，Dart 的重发才有结果可等。
-                val f = lastFailure
-                if (f != null && f.code == FailureCode.KernelUnresponsive && job?.unresponsive == true) {
-                    lastFailure = f.copy(seq = seq)
+                setDesiredOff()
+                // 重发 off 且内核仍卡在阻塞调用里：这条新请求同样被挡住，结果如实给它。
+                job?.takeIf { it.unresponsive }?.let {
+                    lastFailure = KernelFailure(FailureCode.KernelUnresponsive, "blocked in ${it.stepName}", attempt, seq)
+                    failedOwner = owner.id
                 }
             }
             Desired.On -> {
                 val s = requireNotNull(newSpec)
-                val revChanged = spec?.configRevision != s.configRevision
-                val specChanged = spec != s
+                val changed = desired == Desired.Off || spec != s
                 spec = s
-                var changed = specChanged
-                if (desired == Desired.Off) {
-                    desired = Desired.On
-                    gen++
-                    changed = true
-                } else if (revChanged) {
-                    gen++
-                }
-                // 尚未交给执行层的序列直接跟随新意图；已在阻塞调用里的序列保持原 gen（变成过时）。
-                exec?.let { if (!it.dead && !it.jobDispatched) it.gen = gen }
-                val up = kernelUp?.let { insts[it] }
-                if (up != null && modeProvider() != up.type) reloadRequested = true
+                wantType = modeProvider()
+                desired = Desired.On
                 if (changed) persist()
             }
         }
@@ -511,7 +537,6 @@ class CoordinatorCore(
     private fun setDesiredOff() {
         if (desired == Desired.Off) return
         desired = Desired.Off
-        gen++
         persist()
     }
 
@@ -519,27 +544,56 @@ class CoordinatorCore(
         out += Effect.Persist(desired, spec)
     }
 
+    /** 当前请求失败：写 failure（seq = 当前请求）并把 desired 置 off。 */
+    private fun fail(code: FailureCode, message: String, failedAttempt: Long) {
+        log("request seq=${owner.seq} failed: ${code.wire} ($message)")
+        lastFailure = KernelFailure(code, message, failedAttempt, owner.seq)
+        failedOwner = owner.id
+        setDesiredOff()
+    }
+
     private fun failExec(e: Exec, code: FailureCode, message: String) {
-        if (e.gen == gen && desired == Desired.On) {
-            log("start failed: ${code.wire} ($message)")
-            lastFailure = KernelFailure(code, message, e.attempt, desiredSeq)
-            setDesiredOff()
-        } else {
+        if (e !== exec || e.owner != owner || desired != Desired.On) {
             log("stale start failure dropped: ${code.wire} ($message)")
+            return
         }
+        fail(code, message, e.attempt ?: attempt)
+    }
+
+    private fun kernelMatchesIntent(): Boolean {
+        val s = spec ?: return false
+        val up = kernelUp?.let { insts[it] } ?: return false
+        return desired == Desired.On && up.type == wantType && activeRev == s.configRevision
     }
 
     // === 推导 ===============================================================
 
     private fun reconcile() {
+        cancelUselessStartJob()
         if (desired == Desired.Off) reconcileOff() else reconcileOn()
+    }
+
+    /**
+     * 在途启动任务若已不能满足当前意图（off、revision 或 Service 形态变了）就打取消标，
+     * 让它在当前阻塞调用返回后停手；仍能满足的（同 revision、同形态）继续跑，结果可被新请求沿用。
+     */
+    private fun cancelUselessStartJob() {
+        val j = job ?: return
+        if (j.kind != JobKind.Start || j.cancelRequested) return
+        val useful = desired == Desired.On &&
+            spec?.configRevision == j.specRev &&
+            insts[j.inst]?.type == wantType
+        if (!useful) {
+            j.cancelRequested = true
+            out += Effect.CancelJob(j.token)
+        }
     }
 
     private fun reconcileOff() {
         killExec()
         if (job != null) return
         insts.values.firstOrNull { it.rt != Rt.Clean }?.let {
-            dispatchTeardown(it, soft = false)
+            dispatchTeardown(it, soft = false, e = null)
             return
         }
         retireStrays(keep = null)
@@ -547,37 +601,39 @@ class CoordinatorCore(
 
     private fun reconcileOn() {
         val s = spec ?: return
+        val up = kernelUp?.let { insts[it] }
+        if (up != null && kernelMatchesIntent() && !reloadRequested) {
+            // 已收敛（含沿用过时执行的成功结果）：当前请求的序列到此完成。
+            exec?.let(::completeExec)
+            if (job == null) retireStrays(keep = up.id)
+            return
+        }
+        // 没收敛：当前请求必须有自己的序列（及其 30 s 超时），哪怕执行层还被过时任务占着。
+        val e = exec ?: newExec().also { exec = it }
         if (job != null) return
-        exec?.let { if (it.dead) exec = null }
 
         insts.values.firstOrNull { it.destroyed && it.rt != Rt.Clean }?.let {
-            dispatchTeardown(it, soft = false)
+            dispatchTeardown(it, soft = false, e = e)
             return
         }
 
-        val up = kernelUp?.let { insts[it] }
-        val needReload = up != null && (reloadRequested || activeRev != s.configRevision)
-        if (exec == null) {
-            if (up != null && !needReload) {
-                retireStrays(keep = up.id)
-                return
-            }
-            exec = newExec(isReload = up != null)
-        }
-        val e = requireNotNull(exec)
-
         if (up != null) {
-            dispatchTeardown(up, soft = up.type == e.wantType)
+            e.isReload = true
+            dispatchTeardown(up, soft = up.type == e.wantType, e = e)
             return
         }
 
         for (inst in insts.values.toList()) {
             if (usable(inst, e)) continue
             if (inst.rt != Rt.Clean) {
-                dispatchTeardown(inst, soft = false)
+                dispatchTeardown(inst, soft = false, e = e)
                 return
             }
-            if (!inst.retiring && !inst.destroyed) retire(inst)
+            if (!inst.retiring && !inst.destroyed) {
+                retire(inst)
+            } else if (inst.retiring && inst.retireTimedOut && e.nudged.add(inst.id)) {
+                retire(inst) // 上一个序列等超时了：新序列再催一次，仍以 onDestroy 为准
+            }
         }
         if (insts.values.any { !usable(it, e) }) return // 等旧实例 onDestroy
 
@@ -588,7 +644,7 @@ class CoordinatorCore(
         }
         if (inst.rt == Rt.Up) {
             // 上一次启动半途而废留下的资源：先软回收再启动。
-            dispatchTeardown(inst, soft = true)
+            dispatchTeardown(inst, soft = true, e = e)
             return
         }
         dispatchStart(e, inst, s)
@@ -597,64 +653,80 @@ class CoordinatorCore(
     private fun usable(inst: Inst, e: Exec) =
         inst.type == e.wantType && !inst.retiring && !inst.destroyed
 
-    private fun newExec(isReload: Boolean): Exec {
-        attempt++
-        replayNeeded = false
-        reloadRequested = false
-        val e = Exec(
-            token = ++tokens,
-            gen = gen,
-            attempt = attempt,
-            wantType = modeProvider(),
-            isReload = isReload,
-        )
+    private fun newExec(): Exec {
+        val e = Exec(token = ++tokens, owner = owner, wantType = wantType)
         out += Effect.SetTimer(TimerKey(TimerKind.StartTimeout, e.token), config.startTimeoutMs)
-        log("exec token=${e.token} attempt=$attempt type=${e.wantType} reload=$isReload")
+        log("exec token=${e.token} seq=${owner.seq} type=${e.wantType}")
         return e
     }
 
+    private fun ensureAttempt(e: Exec) {
+        if (e.attempt != null) return
+        attempt++
+        e.attempt = attempt
+        replayNeeded = false
+        log("exec token=${e.token} attempt=$attempt reload=${e.isReload}")
+    }
+
+    private fun completeExec(e: Exec) {
+        out += Effect.CancelTimer(TimerKey(TimerKind.StartTimeout, e.token))
+        exec = null
+    }
+
     private fun requestInstance(e: Exec) {
-        if (e.bootRequested) return
+        // 已请求过的 Service 还没到达：先等它（到达后若类型不对会被退休，再起需要的类型）。
+        if (pendingBoot != null) return
         if (e.wantType == ServiceType.Vpn && !e.authGranted) {
             if (!e.authRequested) {
+                ensureAttempt(e)
                 e.authRequested = true
                 out += Effect.RequestAuth(e.token)
             }
             return
         }
-        e.bootRequested = true
+        ensureAttempt(e)
+        pendingBoot = e.wantType
+        pendingBootToken = e.token
         out += Effect.StartService(e.wantType, e.token)
     }
 
     private fun dispatchStart(e: Exec, inst: Inst, s: LaunchSpec) {
+        ensureAttempt(e)
         inst.rt = Rt.Up
-        e.jobDispatched = true
-        job = Job(JobKind.Start, e.token, inst.id, soft = false, specRev = s.configRevision)
+        val j = Job(JobKind.Start, ++tokens, e.owner, e.token, inst.id, soft = false, specRev = s.configRevision)
+        job = j
         out += Effect.NoticeStarting(inst.id, s.profileName)
-        out += Effect.RunStart(e.token, inst.id, s, e.isReload)
-        out += Effect.SetTimer(TimerKey(TimerKind.Watchdog, e.token, 0L), config.stepWatchdogMs)
+        out += Effect.RunStart(j.token, inst.id, s, e.isReload)
+        out += Effect.SetTimer(TimerKey(TimerKind.Watchdog, j.token, 0L), config.stepWatchdogMs)
     }
 
-    private fun dispatchTeardown(inst: Inst, soft: Boolean) {
+    private fun dispatchTeardown(inst: Inst, soft: Boolean, e: Exec?) {
         if (kernelUp == inst.id) {
-            kernelUp = null
-            activeRev = null
-            replayNeeded = false
+            kernelGone()
             if (desired == Desired.Off) {
                 netBaseline = null
                 netPending = null
             }
         }
-        val token = ++tokens
-        job = Job(JobKind.Teardown, token, inst.id, soft, specRev = 0L)
+        e?.let(::ensureAttempt)
+        val j = Job(JobKind.Teardown, ++tokens, owner, e?.token, inst.id, soft, specRev = 0L)
+        job = j
         out += Effect.NoticeStopUpdates(inst.id)
-        out += Effect.RunTeardown(token, inst.id, soft)
-        out += Effect.SetTimer(TimerKey(TimerKind.Watchdog, token, 0L), config.stepWatchdogMs)
+        out += Effect.RunTeardown(j.token, inst.id, soft)
+        out += Effect.SetTimer(TimerKey(TimerKind.Watchdog, j.token, 0L), config.stepWatchdogMs)
+    }
+
+    private fun kernelGone() {
+        kernelUp = null
+        activeRev = null
+        replayNeeded = false
+        reloadRequested = false
     }
 
     private fun retire(inst: Inst) {
         inst.retiring = true
         inst.retiredAt = inst.maxStartId
+        inst.retireTimedOut = false
         out += Effect.RetireService(inst.id, inst.maxStartId)
         out += Effect.SetTimer(TimerKey(TimerKind.Retire, inst.id.toLong()), config.retireTimeoutMs)
     }
@@ -664,35 +736,27 @@ class CoordinatorCore(
         for (inst in insts.values.toList()) {
             if (inst.id == keep) continue
             if (inst.rt != Rt.Clean) {
-                if (job == null) dispatchTeardown(inst, soft = false)
+                if (job == null) dispatchTeardown(inst, soft = false, e = null)
                 return
             }
             if (!inst.retiring && !inst.destroyed) retire(inst)
         }
     }
 
-    /** 放弃当前启动序列：打取消标；若执行层空闲则序列立即结束。 */
+    /** 放弃当前启动序列：撤掉它的超时与授权等待（在途任务由 [cancelUselessStartJob] 按意图决定）。 */
     private fun killExec() {
         val e = exec ?: return
-        if (!e.dead) {
-            e.dead = true
-            out += Effect.CancelTimer(TimerKey(TimerKind.StartTimeout, e.token))
-            if (e.authRequested && !e.authGranted) out += Effect.CancelAuth(e.token)
-            val j = job
-            if (j != null && j.kind == JobKind.Start && j.token == e.token && !j.cancelRequested) {
-                j.cancelRequested = true
-                out += Effect.CancelJob(j.token)
-            }
-        }
-        if (job == null) exec = null
+        exec = null
+        out += Effect.CancelTimer(TimerKey(TimerKind.StartTimeout, e.token))
+        if (e.authRequested && !e.authGranted) out += Effect.CancelAuth(e.token)
+        log("exec token=${e.token} (seq=${e.owner.seq}) superseded")
     }
 
     // === 快照 ===============================================================
 
     private fun computeStatus(): KernelStatus =
         if (desired == Desired.On) {
-            val settled = kernelUp != null && exec == null && job == null &&
-                !reloadRequested && activeRev == spec?.configRevision
+            val settled = kernelMatchesIntent() && !reloadRequested && exec == null && job == null
             if (settled) KernelStatus.Started else KernelStatus.Starting
         } else {
             val quiet = kernelUp == null && exec == null && job == null &&

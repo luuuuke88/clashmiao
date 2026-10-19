@@ -43,19 +43,80 @@ class VpnConsentBrokerTest {
     }
 
     @Test
-    fun `每个对话框的 requestCode 唯一且落在保留区间`() {
+    fun `分配单调递增从不重复 不论结果是否返回`() {
         broker.attach(host)
-        val codes = HashSet<Int>()
-        repeat(40) { i ->
+        val n = 600 // 远超旧实现的 32 项淘汰与 256 槽回绕
+        repeat(n) { i ->
             broker.request(i.toLong())
-            codes += code(i)
-            assertTrue(VpnConsentBroker.owns(code(i)))
-            broker.onResult(code(i), false)
+            if (i % 2 == 0) broker.onResult(code(i), false) // 一半返回、一半永远不返回
+            else broker.detach(host).also { broker.attach(host) }
         }
-        assertEquals("40 个对话框 40 个不同标识", 40, codes.size)
+        val codes = dialogs.map { it.second }
+        assertEquals("$n 个对话框 $n 个不同标识", n, codes.toSet().size)
+        assertEquals("严格单调", codes.sorted(), codes)
+        assertTrue(codes.all { VpnConsentBroker.owns(it) && it <= 0xFFFF })
+        assertEquals(VpnConsentBroker.REQUEST_CODE_BASE, codes.first())
         assertFalse(VpnConsentBroker.owns(PermissionGate.REQ_VPN))
         assertFalse(VpnConsentBroker.owns(PermissionGate.REQ_NOTIFICATION))
-        assertTrue(code(0) <= 0xFFFF)
+    }
+
+    @Test
+    fun `大量未返回的弹窗加宿主重建 旧拒绝与旧同意迟到都只报给各自的旧 token`() {
+        var h: Any = host
+        broker.attach(h)
+        val n = 300
+        repeat(n) { i ->
+            broker.request(i.toLong()) // 弹窗后宿主被销毁重建，结果始终没回来
+            broker.detach(h)
+            h = Any()
+            broker.attach(h)
+        }
+        broker.request(9_999L) // 最新请求
+        val newest = code(n)
+        assertEquals(n + 1, dialogs.size)
+        // 最早的旧拒绝、中间的旧同意迟到
+        assertTrue(broker.onResult(code(0), false))
+        assertTrue(broker.onResult(code(255), true))
+        assertTrue(broker.onResult(code(256), false))
+        assertEquals(
+            listOf(
+                Triple(0L, false, "user denied vpn consent"),
+                Triple(255L, true, ""),
+                Triple(256L, false, "user denied vpn consent"),
+            ),
+            results,
+        )
+        assertTrue("最新请求没有被任何旧结果终结", results.none { it.first == 9_999L })
+        broker.onResult(newest, true)
+        assertEquals(Triple(9_999L, true, ""), results.last())
+    }
+
+    @Test
+    fun `标识用尽 需要弹窗的请求以独立消息 permissionDenied 已授权仍直接通过`() {
+        val limited = VpnConsentBroker<String, Any>(
+            prepare = { if (consented) null else "intent" },
+            launch = { h, _, code -> dialogs += h to code },
+            sink = { t, g, m -> results += Triple(t, g, m) },
+            codeLimit = VpnConsentBroker.REQUEST_CODE_BASE + 3,
+        )
+        limited.attach(host)
+        repeat(3) { i ->
+            limited.request(i.toLong())
+            limited.detach(host)
+            limited.attach(host) // 结果永远不回
+        }
+        assertEquals(3, dialogs.size)
+        limited.request(10)
+        assertEquals("不再弹窗、不复用旧标识", 3, dialogs.size)
+        assertEquals(Triple(10L, false, VpnConsentBroker.EXHAUSTED_MESSAGE), results.last())
+        // 已授权：无需对话框，照常通过
+        consented = true
+        limited.request(11)
+        assertEquals(Triple(11L, true, ""), results.last())
+        // 迟到的旧结果仍只归旧 token
+        consented = false
+        limited.onResult(dialogs[0].second, false)
+        assertEquals(Triple(0L, false, "user denied vpn consent"), results.last())
     }
 
     @Test

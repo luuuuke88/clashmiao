@@ -769,4 +769,39 @@ class KernelCoordinatorTest {
         assertNull("旧失败不归新请求", snap.lastFailure)
         assertEquals(2L, snap.appliedSeq)
     }
+
+    @Test
+    fun `大量未返回的弹窗加反复重建之后 最早弹窗的旧拒绝与旧同意都不能终结最新的 on`() {
+        platform.mode = ServiceType.Vpn
+        val scene = ConsentScene(platform, coordinator)
+        var host: Any = scene.host
+        var seq = 0L
+        repeat(300) {
+            coordinator.request(epoch, ++seq, Desired.On, spec(1))
+            scene.broker.detach(host) // 弹窗后 Activity 被销毁重建，结果没回来
+            host = Any()
+            scene.broker.attach(host)
+            coordinator.request(epoch, ++seq, Desired.Off, null)
+        }
+        coordinator.request(epoch, ++seq, Desired.On, spec(1))
+        val newestSeq = seq
+        assertEquals(301, scene.dialogs.size)
+        assertEquals("标识从不重复", 301, scene.dialogs.map { it.second }.toSet().size)
+        val newestCode = scene.dialogs.last().second
+
+        scene.broker.onResult(scene.dialogs[0].second, false) // 最早的旧拒绝
+        scene.broker.onResult(scene.dialogs[256].second, false) // 旧实现回绕后会撞上的位置
+        scene.broker.onResult(scene.dialogs[1].second, true) // 旧同意
+        platform.drain()
+        assertNull("旧结果不能让最新请求失败", snap.lastFailure)
+        assertEquals(Desired.On, snap.desired)
+        assertEquals(KernelStatus.Starting, snap.status)
+        assertTrue("旧同意不能启动最新请求", platform.handles.isEmpty())
+
+        scene.consented = true
+        scene.broker.onResult(newestCode, true)
+        platform.pump { snap.status == KernelStatus.Started }
+        assertEquals(newestSeq, snap.appliedSeq)
+        assertNull(snap.lastFailure)
+    }
 }

@@ -205,6 +205,22 @@ void main() {
       expect(d.containsKey(kRuntimeMainSelectorTag), isFalse);
     });
 
+    test('订阅自带同名主选择组但重建后的默认值未知：不残留旧 selector 的默认值', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {
+            'type': 'selector',
+            'tag': kRuntimeMainSelectorTag,
+            'outbounds': ['hk §default§', 'sg'],
+            'default': 'sg',
+          },
+          {'type': 'vless', 'tag': 'hk §default§'},
+          {'type': 'vless', 'tag': 'sg'},
+        ],
+      });
+      expect(d.containsKey(kRuntimeMainSelectorTag), isFalse);
+    });
+
     test('没有任何节点：主选择组只有 auto，默认 auto', () {
       expect(runtimeSelectorDefaults({'outbounds': <Object>[]}), {
         kRuntimeMainSelectorTag: kRuntimeAutoGroupTag,

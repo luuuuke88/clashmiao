@@ -13,6 +13,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 class ProfileDetailsPage extends ConsumerStatefulWidget {
   const ProfileDetailsPage(
@@ -95,8 +96,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                         padding: const EdgeInsets.only(right: 16),
                         child: FilledButton(
                           onPressed: _busy ? null : () => _save(profile, t),
+                          // 前景用 FilledButton 默认的 onPrimary，与 primary 底配对。
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -262,14 +263,14 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
               if (_busy)
                 Container(
                   color: Colors.black.withValues(alpha: 0.3),
-                  child: const Center(child: CircularProgressIndicator()),
+                  child: const Center(child: MotionProgress(strokeWidth: 4)),
                 ),
             ],
           );
         },
         error: (error, _) =>
             Center(child: Text('${t.failure.unexpected}: $error')),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: MotionProgress(strokeWidth: 4)),
       ),
     );
   }
@@ -614,10 +615,9 @@ class _StyledTextField extends StatelessWidget {
             maxLines: maxLines,
             decoration: InputDecoration(
               hintText: hint,
+              // 占位提示同样是小字：用不透明的 onSurfaceVariant，不叠 alpha。
               hintStyle: TextStyle(
-                color: Theme.of(
-                  context,
-                ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),

@@ -24,7 +24,8 @@
     "clipboardExportSuccessMsg": "Panoya kopyalandı",
     "openAppSettings": "Uygulama Ayarlarını Aç",
     "underDevelopment": "Geliştirme Aşamasında",
-    "confirm": "Onayla"
+    "confirm": "Onayla",
+    "close": "Kapat"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "devam ederek ${tap(@:about.termsAndConditions)} kabul etmiş olursunuz",
@@ -192,7 +193,9 @@
     "delaySemantics": {
       "result": "Gecikme: ${delay} ms",
       "timeout": "Gecikme Testi Zaman Aşımı",
-      "testing": "Gecikme: Test ediliyor..."
+      "testing": "Gecikme: Test ediliyor...",
+      "untested": "Gecikme: Test edilmedi",
+      "stale": "Gecikme: ${delay} ms (önceki sonuç)"
     },
     "ipInfoSemantics": {
       "address": "IP Adresi",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "Hat değiştirmeden önce bağlanın",
     "startDelayTestForGroups": "${count} hat için gecikme testi başlatıldı",
     "delayTestBtn": "Gecikme",
+    "delayTimeout": "Zaman aşımı",
+    "connectBeforeTest": "Gecikmeyi test etmek için önce bağlanın",
     "lineCount": "${count} hat",
     "manualSelect": "Elle Seçim",
     "autoTest": "Otomatik Test"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "Sistem proxy’si etkin",
     "systemProxyDisabled": "Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)",
     "adminPrivilegesRequired": "macOS'ta yönetici ayrıcalıkları gerekir",
-    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir"
+    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir",
+    "groups": {
+      "general": "Genel",
+      "connection": "Bağlantı",
+      "privacy": "Gizlilik"
+    }
   },
   "about": {
     "pageTitle": "Hakkında",
@@ -320,7 +330,8 @@
     "checkForUpdate": "Güncellemeleri kontrol et",
     "privacyPolicy": "Gizlilik Politikası",
     "termsAndConditions": "Şartlar ve koşullar",
-    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi"
+    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi",
+    "openSourceLicenses": "Açık kaynak lisansları"
   },
   "appUpdate": {
     "notAvailableMsg": " En son sürümü kullanıyorsunuz",
@@ -330,7 +341,8 @@
     "newVersionLbl": "Yeni versiyon",
     "updateNowBtnTxt": "Şimdi güncelle",
     "laterBtnTxt": "Daha sonra",
-    "ignoreBtnTxt": "Görmezden gel"
+    "ignoreBtnTxt": "Görmezden gel",
+    "checkFailedMsg": "Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin."
   },
   "tray": {
     "dashboard": "Gösterge Paneli",
@@ -466,6 +478,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "WARP'ı ayarla",
+    "warpNotConfigured": "Yapılandırılmadı",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",

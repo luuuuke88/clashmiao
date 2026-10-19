@@ -24,7 +24,8 @@
     "openAppSettings": "開啟應用程式設定",
     "grantPermission": "授予權限",
     "underDevelopment": "功能開發中",
-    "confirm": "確認"
+    "confirm": "確認",
+    "close": "關閉"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "繼續即表示您同意合約 ${tap(@:about.termsAndConditions)}",
@@ -189,7 +190,9 @@
     "delaySemantics": {
       "result": "延遲： ${delay}ms",
       "timeout": "延遲測試超時",
-      "testing": "正在測試延遲"
+      "testing": "正在測試延遲",
+      "untested": "延遲： 未測試",
+      "stale": "延遲： ${delay}ms（歷史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "請先連線再切換線路",
     "startDelayTestForGroups": "已開始檢測 ${count} 條線路的延遲",
     "delayTestBtn": "延遲",
+    "delayTimeout": "逾時",
+    "connectBeforeTest": "請連線後再測速",
     "lineCount": "${count} 條線路",
     "manualSelect": "手動選擇",
     "autoTest": "自動測速"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "系統代理已啟用",
     "systemProxyDisabled": "系統代理已停用（重新連線後生效）",
     "adminPrivilegesRequired": "macOS 上需要管理員權限",
-    "portChangeNotice": "連接埠變更需要重新連線才會生效"
+    "portChangeNotice": "連接埠變更需要重新連線才會生效",
+    "groups": {
+      "general": "一般",
+      "connection": "連線",
+      "privacy": "隱私"
+    }
   },
   "about": {
     "pageTitle": "關於",
@@ -320,7 +330,8 @@
     "checkForUpdate": "檢查更新",
     "privacyPolicy": "隱私政策",
     "termsAndConditions": "條款與條件",
-    "appDescription": "基於 sing-box 核心的跨平台代理用戶端"
+    "appDescription": "基於 sing-box 核心的跨平台代理用戶端",
+    "openSourceLicenses": "開放原始碼授權"
   },
   "appUpdate": {
     "notAvailableMsg": "已經是最新版本",
@@ -330,7 +341,8 @@
     "newVersionLbl": "新版本",
     "updateNowBtnTxt": "立即更新",
     "laterBtnTxt": "稍後再說",
-    "ignoreBtnTxt": "忽略"
+    "ignoreBtnTxt": "忽略",
+    "checkFailedMsg": "檢查更新失敗，請檢查網路後再試"
   },
   "tray": {
     "dashboard": "儀表板",
@@ -479,6 +491,8 @@
     "muxProtocol": "復用器控制",
     "muxMaxStreams": "最大並發數",
     "enableWarp": "啟用 WARP",
+    "setUpWarp": "設定 WARP",
+    "warpNotConfigured": "未設定",
     "warpDetourMode": "鏈式線路",
     "warpDetourModes": {
       "proxyOverWarp": "透過 WARP 連線線路",

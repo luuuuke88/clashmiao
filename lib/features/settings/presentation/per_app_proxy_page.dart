@@ -9,6 +9,7 @@ import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 class PerAppProxyPage extends ConsumerStatefulWidget {
   const PerAppProxyPage({
@@ -220,7 +221,7 @@ class _State extends ConsumerState<PerAppProxyPage> {
           ),
           if (_apps == null && !_loadFailed)
             const SliverFillRemaining(
-              child: Center(child: CircularProgressIndicator()),
+              child: Center(child: MotionProgress(strokeWidth: 4)),
             )
           else if (_loadFailed)
             SliverFillRemaining(

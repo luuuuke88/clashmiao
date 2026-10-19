@@ -61,7 +61,9 @@ OutboundGroup _proxyGroup() => const OutboundGroup(
 );
 
 Future<void> _drainToasts(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 6));
+  // 已连接时协调器有 2 s 预热定时器与 10 s 测速超时定时器，容器要到 tearDown
+  // 才销毁，这里把假时钟推过去让它们自然跑完。
+  await tester.pump(const Duration(seconds: 13));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }

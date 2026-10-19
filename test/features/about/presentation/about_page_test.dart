@@ -2,9 +2,11 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/features/about/application/update_available_provider.dart';
+import 'package:clashmiao/core/update/update_checker.dart';
+import 'package:clashmiao/features/about/application/update_check_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
+import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +48,10 @@ Future<Widget> _host({List<Override> extraOverrides = const []}) async {
 }
 
 void main() {
+  // AppToast 对同文案做 800 ms（真实时钟）去重，状态是进程级静态的；每个用例前
+  // 清掉，避免上一例弹过的提示让下一例的提示被吞——否则用例顺序一换就红。
+  setUp(AppToast.resetForTest);
+
   testWidgets('AboutPage renders app overview', (tester) async {
     tester.view.physicalSize = const Size(430, 932);
     tester.view.devicePixelRatio = 1;
@@ -74,10 +80,16 @@ void main() {
       ),
       findsOneWidget,
     );
+    // 版权行：不写年份与 All Rights Reserved（许可证未定），12 sp、字距 0、可换行。
     expect(
       find.text('© 2024 ClashMiao Studio. All Rights Reserved.'),
-      findsOneWidget,
+      findsNothing,
     );
+    final copyright = tester.widget<Text>(find.text('© ClashMiao'));
+    expect(copyright.style?.fontSize, 12);
+    expect(copyright.style?.letterSpacing, 0);
+    expect(copyright.softWrap, isNot(false));
+    expect(copyright.maxLines, isNull);
     expect(find.byType(SliverFillRemaining), findsOneWidget);
     expect(find.byType(BrandMark), findsOneWidget);
     expect(find.byIcon(FluentIcons.animal_paw_print_20_filled), findsNothing);
@@ -127,7 +139,9 @@ void main() {
       await tester.pumpWidget(
         await _host(
           extraOverrides: [
-            updateAvailableProvider.overrideWith((_) async => null),
+            updateCheckProvider.overrideWith(
+              (_) async => const UpdateCheckResult.upToDate(),
+            ),
           ],
         ),
       );
@@ -153,7 +167,9 @@ void main() {
       await tester.pumpWidget(
         await _host(
           extraOverrides: [
-            updateAvailableProvider.overrideWith((_) async => 'v9.9.9'),
+            updateCheckProvider.overrideWith(
+              (_) async => const UpdateCheckResult.available('v9.9.9'),
+            ),
           ],
         ),
       );
@@ -169,6 +185,125 @@ void main() {
       // 关掉对话框，别把它留给后面的用例
       await tester.tap(find.text('以后再说'));
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('检查失败时提示失败，不能说成"已是最新"，也不弹对话框', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        await _host(
+          extraOverrides: [
+            updateCheckProvider.overrideWith(
+              (_) async => const UpdateCheckResult.failed(),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('检查更新'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('检查更新失败，请检查网络后重试'), findsOneWidget);
+      expect(find.text('已是最新版本'), findsNothing);
+      expect(find.text('现在更新'), findsNothing);
+
+      await tester.pump(const Duration(seconds: 6));
+      toastification.dismissAll(delayForAnimation: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
+    testWidgets('provider 自己抛异常也按失败处理，加载态会恢复', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        await _host(
+          extraOverrides: [
+            updateCheckProvider.overrideWith(
+              (_) => Future<UpdateCheckResult>.error(
+                StateError('prefs unavailable'),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('检查更新'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('检查更新失败，请检查网络后重试'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      await tester.pump(const Duration(seconds: 6));
+      toastification.dismissAll(delayForAnimation: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+  });
+
+  testWidgets('关于页可滚动：小屏上能把底部内容滚进视野', (tester) async {
+    tester.view.physicalSize = const Size(360, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(await _host());
+    await tester.pumpAndSettle();
+
+    final scrollView = tester.widget<CustomScrollView>(
+      find.byType(CustomScrollView),
+    );
+    expect(scrollView.physics, isNot(isA<NeverScrollableScrollPhysics>()));
+
+    final position = tester
+        .state<ScrollableState>(find.byType(Scrollable))
+        .position;
+    expect(position.maxScrollExtent, greaterThan(0), reason: '小屏内容应超出一屏');
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    await tester.pumpAndSettle();
+    expect(position.pixels, greaterThan(0), reason: '手势应当真的滚动页面');
+    await tester.scrollUntilVisible(find.text('© ClashMiao'), 100);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('文字放大 2.0 倍时关于页不溢出', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(await _host());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+  });
+
+  group('开源许可', () {
+    testWidgets('有「开源许可」入口，点击打开 LicensePage', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(await _host());
+      await tester.pumpAndSettle();
+
+      expect(find.text('开源许可'), findsOneWidget);
+      await tester.tap(find.text('开源许可'));
+      await tester.pumpAndSettle();
+
+      final page = tester.widget<LicensePage>(find.byType(LicensePage));
+      expect(page.applicationName, 'ClashMiao');
+      expect(page.applicationVersion, '1.2.3');
+      expect(page.applicationIcon, isNotNull);
     });
   });
 }

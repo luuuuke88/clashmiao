@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
@@ -117,10 +116,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal<void>(
-          context: context,
-          builder: (_) => const QuickSettingsModal(),
-        );
+        QuickSettingsModal.show(context);
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_LOGS') &&
@@ -308,7 +304,20 @@ class _ShellPageState extends ConsumerState<ShellPage> {
               children: [
                 if (topPad > 0) SizedBox(height: topPad),
                 Expanded(
-                  child: IndexedStack(index: selectedIndex, children: _pages),
+                  // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
+                  // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
+                  // 把它们静音；切回来时自动恢复。
+                  child: IndexedStack(
+                    index: selectedIndex,
+                    children: [
+                      for (var i = 0; i < _pages.length; i++)
+                        TickerMode(
+                          key: ValueKey('tab_ticker_$i'),
+                          enabled: i == selectedIndex,
+                          child: _pages[i],
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -416,69 +425,66 @@ class _GlassBottomNav extends ConsumerWidget {
         ),
         child: ClipRRect(
           borderRadius: radius,
-          child: BackdropFilter(
-            // 真磨砂：模糊半径要压过底色的透明度，否则底下的内容只是"透过去"
-            // 而不是"被磨掉"。
-            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-            child: Container(
-              key: const ValueKey('bottom_nav_bar'),
-              height: barHeight,
-              decoration: BoxDecoration(
-                // 用接近卡片的实色底把页面内容压住，避免亮色背景从导航后面
-                // 透出来吃掉图标；边缘高光仍保留一点轻盈感。
+          // 不再套 BackdropFilter：底色是不透明实色，模糊压根看不见，却要
+          // 每帧对导航条背后的整块内容做一次离屏模糊。
+          child: Container(
+            key: const ValueKey('bottom_nav_bar'),
+            height: barHeight,
+            decoration: BoxDecoration(
+              // 用接近卡片的实色底把页面内容压住，避免亮色背景从导航后面
+              // 透出来吃掉图标；边缘高光仍保留一点轻盈感。
+              color: isLight
+                  ? const Color(0xFFEEF1F7)
+                  : const Color(0xFF1B1D24),
+              borderRadius: radius,
+              // 玻璃边：亮面用高光白描边，暗面用极淡的白，让边缘从背景里"起片"。
+              border: Border.all(
                 color: isLight
-                    ? const Color(0xFFEEF1F7)
-                    : const Color(0xFF1B1D24),
-                borderRadius: radius,
-                // 玻璃边：亮面用高光白描边，暗面用极淡的白，让边缘从背景里"起片"。
-                border: Border.all(
-                  color: isLight
-                      ? Colors.white.withValues(alpha: 0.6)
-                      : const Color(0x1FFFFFFF),
-                ),
+                    ? Colors.white.withValues(alpha: 0.6)
+                    : const Color(0x1FFFFFFF),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: items.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final (icon, selectedIcon, label) = entry.value;
-                  final isSelected = i == selectedIndex;
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: items.asMap().entries.map((entry) {
+                final i = entry.key;
+                final (icon, selectedIcon, label) = entry.value;
+                final isSelected = i == selectedIndex;
 
-                  final color = isSelected
-                      ? theme.colorScheme.primary
-                      // 未选中在半透明玻璃上要比原来实一点，否则底下的内容
-                      // 一流过去就把图标"吃"掉了。
-                      : (isLight
-                            ? aiUi.secondaryTextColor.withValues(alpha: 0.75)
-                            : Colors.white.withValues(alpha: 0.55));
+                final color = isSelected
+                    ? theme.colorScheme.primary
+                    // 未选中在半透明玻璃上要比原来实一点，否则底下的内容
+                    // 一流过去就把图标"吃"掉了。
+                    : (isLight
+                          ? aiUi.secondaryTextColor.withValues(alpha: 0.75)
+                          : Colors.white.withValues(alpha: 0.55));
 
-                  return Expanded(
-                    child: GestureDetector(
-                      key: ValueKey('bottom_nav_$i'),
-                      onTap: () => onTap(i),
-                      behavior: HitTestBehavior.opaque,
-                      // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
-                      // tab，图标本身对读屏是空的。
-                      child: Semantics(
-                        label: label,
-                        button: true,
-                        selected: isSelected,
-                        child: Center(
-                          // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
-                          // 一块色块——整条已经是个胶囊，里面再套一个小方块是
-                          // 两层容器打架。
-                          child: Icon(
-                            isSelected ? selectedIcon : icon,
-                            color: color,
-                            size: 28,
-                          ),
+                return Expanded(
+                  child: GestureDetector(
+                    key: ValueKey('bottom_nav_$i'),
+                    onTap: () => onTap(i),
+                    behavior: HitTestBehavior.opaque,
+                    // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
+                    // tab，图标本身对读屏是空的。
+                    child: Semantics(
+                      label: label,
+                      button: true,
+                      selected: isSelected,
+                      child: Center(
+                        // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
+                        // 一块色块——整条已经是个胶囊，里面再套一个小方块是
+                        // 两层容器打架。
+                        child: Icon(
+                          isSelected ? selectedIcon : icon,
+                          color: color,
+                          size: 28,
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ),

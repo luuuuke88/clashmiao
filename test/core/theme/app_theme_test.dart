@@ -7,8 +7,17 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final theme = AppTheme(AppThemeMode.system, 'Shabnam');
 
-  test('浅色主题的主色就是 logo 那个蓝，不跟随系统强调色', () {
-    expect(theme.lightTheme().colorScheme.primary, BrandColors.indigo);
+  test('浅色主题的主色是品牌靛蓝（略深一档以满足 onPrimary 4.5:1），不跟随系统强调色', () {
+    final scheme = theme.lightTheme().colorScheme;
+    expect(scheme.primary, BrandColors.indigoOnLight);
+    expect(scheme.onPrimary, Colors.white);
+    // 色相仍与 logo 的靛蓝一致。
+    expect(
+      (HSLColor.fromColor(scheme.primary).hue -
+              HSLColor.fromColor(BrandColors.indigo).hue)
+          .abs(),
+      lessThan(5),
+    );
   });
 
   test('深色主题从同一颗品牌种子派生（同色系，不是系统强调色）', () {

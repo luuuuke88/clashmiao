@@ -24,7 +24,8 @@
     "openAppSettings": "打开应用设置",
     "grantPermission": "授予权限",
     "underDevelopment": "功能开发中",
-    "confirm": "确认"
+    "confirm": "确认",
+    "close": "关闭"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "继续即表示您同意 ${tap(@:about.termsAndConditions)}",
@@ -192,7 +193,9 @@
     "delaySemantics": {
       "result": "延迟: ${delay}ms",
       "timeout": "延迟测试超时",
-      "testing": "正在测试延迟"
+      "testing": "正在测试延迟",
+      "untested": "延迟: 未测试",
+      "stale": "延迟: ${delay}ms（历史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "请先连接后再切换节点",
     "startDelayTestForGroups": "已开始测试当前订阅的 ${count} 个节点",
     "delayTestBtn": "测速",
+    "delayTimeout": "超时",
+    "connectBeforeTest": "请连接后测速",
     "lineCount": "${count} 个节点",
     "manualSelect": "手动选择",
     "autoTest": "自动测速"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "已开启系统代理",
     "systemProxyDisabled": "已关闭系统代理（需重连生效）",
     "adminPrivilegesRequired": "macOS 需要管理员权限",
-    "portChangeNotice": "端口修改需要重启连接生效"
+    "portChangeNotice": "端口修改需要重启连接生效",
+    "groups": {
+      "general": "通用",
+      "connection": "连接",
+      "privacy": "隐私"
+    }
   },
   "about": {
     "pageTitle": "关于",
@@ -320,7 +330,8 @@
     "checkForUpdate": "检查更新",
     "privacyPolicy": "隐私政策",
     "termsAndConditions": "条款和条件",
-    "appDescription": "基于 sing-box 核心的跨平台代理客户端"
+    "appDescription": "基于 sing-box 核心的跨平台代理客户端",
+    "openSourceLicenses": "开源许可"
   },
   "appUpdate": {
     "notAvailableMsg": "已是最新版本",
@@ -330,7 +341,8 @@
     "newVersionLbl": "新版本",
     "updateNowBtnTxt": "现在更新",
     "laterBtnTxt": "以后再说",
-    "ignoreBtnTxt": "忽略"
+    "ignoreBtnTxt": "忽略",
+    "checkFailedMsg": "检查更新失败，请检查网络后重试"
   },
   "tray": {
     "dashboard": "仪表板",
@@ -482,6 +494,8 @@
     "muxProtocol": "Mux 协议",
     "muxMaxStreams": "Mux 最大并发数",
     "enableWarp": "启用 WARP",
+    "setUpWarp": "设置 WARP",
+    "warpNotConfigured": "未配置",
     "warpDetourMode": "链式线路",
     "warpDetourModes": {
       "proxyOverWarp": "通过 WARP 连接线路",

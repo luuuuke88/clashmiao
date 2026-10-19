@@ -17,7 +17,10 @@ class AppTheme {
     final ColorScheme scheme = ColorScheme.fromSeed(
       seedColor: BrandColors.indigo,
       brightness: Brightness.light,
-      primary: BrandColors.indigo,
+      // primary 用略深的品牌靛蓝，保证 onPrimary（白）压上去 ≥ 4.5:1；
+      // primaryContainer / onPrimaryContainer 仍由种子色生成并成对使用。
+      primary: BrandColors.indigoOnLight,
+      onPrimary: Colors.white,
       surface: Colors.white,
       onSurface: const Color(0xFF1E293B), // Slate 800
     );
@@ -35,7 +38,7 @@ class AppTheme {
         ),
       ),
       fontFamily: fontFamily,
-      switchTheme: _switchTheme(isLight: true),
+      switchTheme: _switchTheme(scheme, isLight: true),
       extensions: <ThemeExtension<dynamic>>{
         ConnectionButtonTheme.light,
         AiUiTheme.light,
@@ -54,7 +57,7 @@ class AppTheme {
       colorScheme: scheme,
       scaffoldBackgroundColor: Colors.black, // Pure Black
       fontFamily: fontFamily,
-      switchTheme: _switchTheme(isLight: false),
+      switchTheme: _switchTheme(scheme, isLight: false),
       extensions: <ThemeExtension<dynamic>>{
         ConnectionButtonTheme.light,
         AiUiTheme.dark,
@@ -66,8 +69,12 @@ class AppTheme {
   ///
   /// Material 3 默认的关闭态是"深色小圆点 + 一圈粗描边"，在设置列表里几个开关
   /// 排在一起时那圈描边格外扎眼，像没做完的占位控件。这里改成 iOS 那套读法：
-  /// 轨道承担全部语义（灰＝关、品牌靛蓝＝开），滑块恒为白色，描边去掉。
-  static SwitchThemeData _switchTheme({required bool isLight}) {
+  /// 轨道承担全部语义（灰＝关、`primary`＝开），描边去掉。开启态的滑块用与
+  /// `primary` 配对的 `onPrimary`（浅色里是白，深色里是深靛），关闭态滑块恒白。
+  static SwitchThemeData _switchTheme(
+    ColorScheme scheme, {
+    required bool isLight,
+  }) {
     final offTrack = isLight
         ? const Color(0xFFCBD5E1) // Slate 300：白滑块压上去要能看清
         : const Color(0x33FFFFFF);
@@ -77,11 +84,12 @@ class AppTheme {
         if (states.contains(WidgetState.disabled)) {
           return isLight ? const Color(0xFFF8FAFC) : const Color(0x61FFFFFF);
         }
+        if (states.contains(WidgetState.selected)) return scheme.onPrimary;
         return Colors.white;
       }),
       trackColor: WidgetStateProperty.resolveWith((states) {
         final on = states.contains(WidgetState.selected);
-        final track = on ? BrandColors.indigo : offTrack;
+        final track = on ? scheme.primary : offTrack;
         if (states.contains(WidgetState.disabled)) {
           return track.withValues(alpha: 0.38);
         }

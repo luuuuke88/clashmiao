@@ -24,7 +24,8 @@
     "openAppSettings": "Open App Settings",
     "grantPermission": "Grant Permission",
     "underDevelopment": "Under Development",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "close": "Close"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "By Continuing You Agree With ${tap(@:about.termsAndConditions)}",
@@ -192,7 +193,9 @@
     "delaySemantics": {
       "result": "Delay: ${delay}ms",
       "timeout": "Delay Test Timeout",
-      "testing": "Delay: Testing..."
+      "testing": "Delay: Testing...",
+      "untested": "Delay: Not tested",
+      "stale": "Delay: ${delay}ms (earlier result)"
     },
     "ipInfoSemantics": {
       "address": "IP Address",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "Please connect before switching lines",
     "startDelayTestForGroups": "Started delay test for ${count} lines",
     "delayTestBtn": "Delay",
+    "delayTimeout": "Timeout",
+    "connectBeforeTest": "Connect first to test delay",
     "lineCount": "${count} lines",
     "manualSelect": "Manual Select",
     "autoTest": "Auto Test"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "System proxy enabled",
     "systemProxyDisabled": "System proxy disabled (Reconnect to apply)",
     "adminPrivilegesRequired": "Administrator privileges required on macOS",
-    "portChangeNotice": "Port changes require reconnect to apply"
+    "portChangeNotice": "Port changes require reconnect to apply",
+    "groups": {
+      "general": "General",
+      "connection": "Connection",
+      "privacy": "Privacy"
+    }
   },
   "about": {
     "pageTitle": "About",
@@ -320,7 +330,8 @@
     "checkForUpdate": "Check For Update",
     "privacyPolicy": "Privacy Policy",
     "termsAndConditions": "Terms and Conditions",
-    "appDescription": "A cross-platform proxy client based on sing-box core"
+    "appDescription": "A cross-platform proxy client based on sing-box core",
+    "openSourceLicenses": "Open-source licenses"
   },
   "appUpdate": {
     "notAvailableMsg": "Already Using The Latest Version",
@@ -330,7 +341,8 @@
     "newVersionLbl": "New Version",
     "updateNowBtnTxt": "Update Now",
     "laterBtnTxt": "Later",
-    "ignoreBtnTxt": "Ignore"
+    "ignoreBtnTxt": "Ignore",
+    "checkFailedMsg": "Couldn't check for updates. Check your network and try again."
   },
   "tray": {
     "dashboard": "Dashboard",
@@ -482,6 +494,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Set up WARP",
+    "warpNotConfigured": "Not configured",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "proxyOverWarp": "Detour Lines Through WARP",

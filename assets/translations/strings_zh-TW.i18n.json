@@ -376,7 +376,8 @@
       "notFound": "未找到設定檔",
       "invalidConfig": "無效配置",
       "invalidUrl": "無效網址",
-      "noActive": "沒有啟用的訂閱"
+      "noActive": "沒有啟用的訂閱",
+      "readOnlyUpgrade": "請升級 App 後再修改訂閱"
     },
     "connection": {
       "unexpected": "意外連線錯誤",

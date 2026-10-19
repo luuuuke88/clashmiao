@@ -376,7 +376,8 @@
       "notFound": "Profil tidak ditemukan",
       "invalidConfig": "Konfigurasi tidak valid",
       "invalidUrl": "URL tidak valid",
-      "noActive": "Tidak Ada Profil Aktif"
+      "noActive": "Tidak Ada Profil Aktif",
+      "readOnlyUpgrade": "Perbarui aplikasi sebelum mengubah langganan"
     },
     "connection": {
       "unexpected": "Sambungan error tidak terduga",

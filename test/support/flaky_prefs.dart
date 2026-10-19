@@ -16,6 +16,12 @@ class FlakyPrefs implements SharedPreferences {
   /// 接下来还要失败几次；-1 表示一直失败。
   int failuresLeft = 0;
 
+  /// 每次 `setString` 在「内存缓存已更新」之后、返回结果之前调用并等待。
+  ///
+  /// 真实平台就是这个顺序：先改缓存，磁盘结果稍后才回来。测试用它卡住写入、
+  /// 在这段窗口里做同步读取，再决定放行为成功还是失败。
+  Future<void> Function(String key)? afterWrite;
+
   /// 已记录的 setString 调用（键）。
   final List<String> setStringCalls = [];
 
@@ -30,6 +36,8 @@ class FlakyPrefs implements SharedPreferences {
   Future<bool> setString(String key, String value) async {
     setStringCalls.add(key);
     final ok = await inner.setString(key, value);
+    final hook = afterWrite;
+    if (hook != null) await hook(key);
     return _shouldFail(key) ? false : ok;
   }
 

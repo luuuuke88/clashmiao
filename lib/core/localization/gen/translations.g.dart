@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 3920 (392 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-19 at 16:24 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -961,6 +961,8 @@ class TranslationsFailureProfilesEn {
   String get noActive => 'No Active Profile';
   String get invalidConfig => 'Invalid Configs';
   String get invalidUrl => 'Invalid URL';
+  String get readOnlyUpgrade =>
+      'Please upgrade the app before changing subscriptions';
 }
 
 // Path: failure.connection
@@ -2543,6 +2545,8 @@ class TranslationsFailureProfilesAr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'عنوان URL غير صالح';
   @override
   String get noActive => 'لا يوجد اشتراك مفعّل';
+  @override
+  String get readOnlyUpgrade => 'يرجى ترقية التطبيق قبل تعديل الاشتراكات';
 }
 
 // Path: failure.connection
@@ -4245,6 +4249,9 @@ class TranslationsFailureProfilesEs extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL Invalido';
   @override
   String get noActive => 'Sin perfil activo';
+  @override
+  String get readOnlyUpgrade =>
+      'Actualiza la app antes de modificar las suscripciones';
 }
 
 // Path: failure.connection
@@ -5940,6 +5947,9 @@ class TranslationsFailureProfilesFa extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'لینک نامعتبر است';
   @override
   String get noActive => 'هیچ پروفایل فعالی وجود ندارد';
+  @override
+  String get readOnlyUpgrade =>
+      'لطفاً پیش از تغییر اشتراک‌ها برنامه را به‌روزرسانی کنید';
 }
 
 // Path: failure.connection
@@ -7629,6 +7639,8 @@ class TranslationsFailureProfilesId extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL tidak valid';
   @override
   String get noActive => 'Tidak Ada Profil Aktif';
+  @override
+  String get readOnlyUpgrade => 'Perbarui aplikasi sebelum mengubah langganan';
 }
 
 // Path: failure.connection
@@ -9344,6 +9356,9 @@ class TranslationsFailureProfilesPtBr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL inválida';
   @override
   String get noActive => 'Nenhum perfil ativo';
+  @override
+  String get readOnlyUpgrade =>
+      'Atualize o app antes de alterar as assinaturas';
 }
 
 // Path: failure.connection
@@ -11045,6 +11060,9 @@ class TranslationsFailureProfilesRu extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'Неправильный URL';
   @override
   String get noActive => 'Нет активного профиля';
+  @override
+  String get readOnlyUpgrade =>
+      'Обновите приложение, прежде чем изменять подписки';
 }
 
 // Path: failure.connection
@@ -12741,6 +12759,9 @@ class TranslationsFailureProfilesTr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'Geçersiz URL';
   @override
   String get noActive => 'Etkin Profil Yok';
+  @override
+  String get readOnlyUpgrade =>
+      'Abonelikleri değiştirmeden önce uygulamayı güncelleyin';
 }
 
 // Path: failure.connection
@@ -14415,6 +14436,8 @@ class TranslationsFailureProfilesZhCn extends TranslationsFailureProfilesEn {
   String get invalidConfig => '无效配置';
   @override
   String get invalidUrl => '网址无效';
+  @override
+  String get readOnlyUpgrade => '请升级 App 后再修改订阅';
 }
 
 // Path: failure.connection
@@ -16093,6 +16116,8 @@ class TranslationsFailureProfilesZhTw extends TranslationsFailureProfilesEn {
   String get invalidUrl => '無效網址';
   @override
   String get noActive => '沒有啟用的訂閱';
+  @override
+  String get readOnlyUpgrade => '請升級 App 後再修改訂閱';
 }
 
 // Path: failure.connection
@@ -16988,6 +17013,8 @@ extension on Translations {
         return 'Invalid Configs';
       case 'failure.profiles.invalidUrl':
         return 'Invalid URL';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Please upgrade the app before changing subscriptions';
       case 'failure.connection.unexpected':
         return 'Unexpected Connection Error';
       case 'failure.connection.timeout':
@@ -17799,6 +17826,8 @@ extension on TranslationsAr {
         return 'عنوان URL غير صالح';
       case 'failure.profiles.noActive':
         return 'لا يوجد اشتراك مفعّل';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'يرجى ترقية التطبيق قبل تعديل الاشتراكات';
       case 'failure.connection.unexpected':
         return 'خطأ في الاتصال غير متوقع';
       case 'failure.connection.timeout':
@@ -18594,6 +18623,8 @@ extension on TranslationsEs {
         return 'URL Invalido';
       case 'failure.profiles.noActive':
         return 'Sin perfil activo';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Actualiza la app antes de modificar las suscripciones';
       case 'failure.connection.unexpected':
         return 'Error de conexión inesperado';
       case 'failure.connection.timeout':
@@ -19428,6 +19459,8 @@ extension on TranslationsFa {
         return 'لینک نامعتبر است';
       case 'failure.profiles.noActive':
         return 'هیچ پروفایل فعالی وجود ندارد';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'لطفاً پیش از تغییر اشتراک‌ها برنامه را به‌روزرسانی کنید';
       case 'failure.connection.unexpected':
         return ' خطای غیرمنتظره در اتصال';
       case 'failure.connection.timeout':
@@ -20241,6 +20274,8 @@ extension on TranslationsId {
         return 'URL tidak valid';
       case 'failure.profiles.noActive':
         return 'Tidak Ada Profil Aktif';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Perbarui aplikasi sebelum mengubah langganan';
       case 'failure.connection.unexpected':
         return 'Sambungan error tidak terduga';
       case 'failure.connection.timeout':
@@ -21055,6 +21090,8 @@ extension on TranslationsPtBr {
         return 'URL inválida';
       case 'failure.profiles.noActive':
         return 'Nenhum perfil ativo';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Atualize o app antes de alterar as assinaturas';
       case 'failure.connection.unexpected':
         return 'Erro de conexão inesperado';
       case 'failure.connection.timeout':
@@ -21869,6 +21906,8 @@ extension on TranslationsRu {
         return 'Неправильный URL';
       case 'failure.profiles.noActive':
         return 'Нет активного профиля';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Обновите приложение, прежде чем изменять подписки';
       case 'failure.connection.unexpected':
         return 'Неожиданная ошибка подключения';
       case 'failure.connection.timeout':
@@ -22683,6 +22722,8 @@ extension on TranslationsTr {
         return 'Geçersiz URL';
       case 'failure.profiles.noActive':
         return 'Etkin Profil Yok';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Abonelikleri değiştirmeden önce uygulamayı güncelleyin';
       case 'failure.connection.unexpected':
         return 'Beklenmeyen bağlantı hatası';
       case 'failure.connection.timeout':
@@ -23494,6 +23535,8 @@ extension on TranslationsZhCn {
         return '无效配置';
       case 'failure.profiles.invalidUrl':
         return '网址无效';
+      case 'failure.profiles.readOnlyUpgrade':
+        return '请升级 App 后再修改订阅';
       case 'failure.connection.unexpected':
         return '意外连接错误';
       case 'failure.connection.timeout':
@@ -24304,6 +24347,8 @@ extension on TranslationsZhTw {
         return '無效網址';
       case 'failure.profiles.noActive':
         return '沒有啟用的訂閱';
+      case 'failure.profiles.readOnlyUpgrade':
+        return '請升級 App 後再修改訂閱';
       case 'failure.connection.unexpected':
         return '意外連線錯誤';
       case 'failure.connection.timeout':

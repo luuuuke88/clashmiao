@@ -25,7 +25,7 @@ void main() {
         return 3;
       });
 
-      await Future<void>.delayed(const Duration(milliseconds: 10));
+      await pumpEventQueue();
       expect(log, ['a:start'], reason: '第一个没放行前，后面的都不能开始');
 
       gate.complete();

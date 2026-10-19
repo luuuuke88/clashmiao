@@ -376,7 +376,8 @@
       "notFound": "Profil bulunamadı",
       "invalidConfig": "Geçersiz Yapılandırmalar",
       "invalidUrl": "Geçersiz URL",
-      "noActive": "Etkin Profil Yok"
+      "noActive": "Etkin Profil Yok",
+      "readOnlyUpgrade": "Abonelikleri değiştirmeden önce uygulamayı güncelleyin"
     },
     "connection": {
       "unexpected": "Beklenmeyen bağlantı hatası",

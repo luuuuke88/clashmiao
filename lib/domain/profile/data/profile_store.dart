@@ -208,6 +208,15 @@ class ProfileStore {
   final StreamController<void> _changes = StreamController<void>.broadcast();
   final Map<String, Future<Object?>> _inFlight = {};
 
+  /// 提交进行期间对外暴露的「最后一次成功提交」的快照。
+  ///
+  /// `SharedPreferences.setString` 会先改内存缓存、再异步返回写入结果；如果同步
+  /// 读取直接看偏好，提交失败回滚前的这段窗口里读到的就是**未提交**的数据，
+  /// 而失败的提交不广播，依赖它的 provider 会永久缓存一份已被回滚的列表。
+  /// 所以提交开始时冻结当前视图，成功后才解冻（此时偏好里就是已提交的数据），
+  /// 失败则在偏好与文件都还原之后才解冻。
+  ProfileListView? _frozen;
+
   String? _parsedRaw;
   _ParsedList _parsed = const _ParsedList.empty();
   bool _parsedValid = false;
@@ -238,6 +247,8 @@ class ProfileStore {
 
   /// 当前一致视图。
   ProfileListView view() {
+    final frozen = _frozen;
+    if (frozen != null) return frozen;
     try {
       final parsed = _parse();
       final stored = _readString(activeProfileKey);
@@ -389,6 +400,15 @@ class ProfileStore {
   }
 
   Future<CommitResult<T>> _apply<T>(Plan<T> plan) async {
+    _frozen = view();
+    try {
+      return await _applyFrozen(plan);
+    } finally {
+      _frozen = null;
+    }
+  }
+
+  Future<CommitResult<T>> _applyFrozen<T>(Plan<T> plan) async {
     final profiles = plan.profiles;
     // 输入校验：id 会拼进路径、也是唯一键，错了宁可整次拒绝。
     try {
@@ -475,6 +495,9 @@ class ProfileStore {
       );
       return CommitResult<T>.failed(e);
     }
+
+    // 提交已成功：从这一刻起同步读取看到新数据；广播在收尾之后。
+    _frozen = null;
 
     // 成功后的收尾：失败只留下无害的孤儿，不再回滚已写入的列表。
     for (final entry in undo) {

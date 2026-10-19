@@ -376,7 +376,8 @@
       "notFound": "Perfil Não Encontrado",
       "invalidConfig": "Configurações inválidas",
       "invalidUrl": "URL inválida",
-      "noActive": "Nenhum perfil ativo"
+      "noActive": "Nenhum perfil ativo",
+      "readOnlyUpgrade": "Atualize o app antes de alterar as assinaturas"
     },
     "connection": {
       "unexpected": "Erro de conexão inesperado",

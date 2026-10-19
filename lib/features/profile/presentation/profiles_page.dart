@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
@@ -389,7 +390,13 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (e) {
-      if (mounted) AppToast.error(context, '切换失败: $e');
+      if (mounted) {
+        final t = ref.read(translationsProvider);
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(e, () => t) ?? '切换失败: $e',
+        );
+      }
     }
   }
 
@@ -404,8 +411,16 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
-      if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+      if (isStaleRefresh(e)) {
+        // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
+        ref.invalidate(profileListProvider);
+        ref.invalidate(activeProfileProvider);
+      } else if (mounted) {
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(e, () => t) ??
+              '${t.profile.update.failureMsg}: $e',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -436,7 +451,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.info(context, t.profile.delete.successMsg);
     } catch (e) {
-      if (mounted) AppToast.error(context, '${t.failure.unexpected}: $e');
+      if (mounted) {
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(e, () => t) ?? '${t.failure.unexpected}: $e',
+        );
+      }
     }
   }
 
@@ -451,7 +471,11 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (e) {
       if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(e, () => t) ??
+              '${t.profile.update.failureMsg}: $e',
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);

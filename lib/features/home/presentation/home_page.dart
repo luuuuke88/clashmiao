@@ -7,6 +7,7 @@ import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -302,8 +303,17 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (_) {
-      if (mounted) AppToast.error(context, t.profile.update.failureMsg);
+    } catch (e) {
+      if (isStaleRefresh(e)) {
+        // 刷新途中订阅被改动，结果已作废：这是预期内的取消，不提示失败。
+        ref.invalidate(profileListProvider);
+        ref.invalidate(activeProfileProvider);
+      } else if (mounted) {
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(e, () => t) ?? t.profile.update.failureMsg,
+        );
+      }
     } finally {
       if (mounted) setState(() => _isUpdating = false);
     }

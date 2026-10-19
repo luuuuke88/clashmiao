@@ -59,19 +59,33 @@ class AdvancedConfigPatch {
   final Patch<bool> fragmentEnabled;
   final Patch<String> fragmentRange;
 
-  /// 合并到 [base] 上（base 为空时从默认值起算）。非空字段上的 `clear` 回落默认值。
+  /// 合并到 [base] 上（base 为空时从默认值起算）。
+  ///
+  /// unset 保留原值；set 覆盖；clear：可空字段置空，非空字段（布尔 / 字符串 /
+  /// 整数）回落到 [AdvancedConfig] 的默认值。
   AdvancedConfig applyTo(AdvancedConfig? base) {
     final current = base ?? const AdvancedConfig();
+    const defaults = AdvancedConfig();
+    T pick<T>(Patch<T> patch, T currentValue, T defaultValue) {
+      if (patch.isSet) return patch.value;
+      if (patch.isClear) return defaultValue;
+      return currentValue;
+    }
+
     return AdvancedConfig(
       remoteDnsOverride: remoteDnsOverride.resolve(current.remoteDnsOverride),
-      muxEnabled: muxEnabled.isSet ? muxEnabled.value : current.muxEnabled,
-      muxProtocol: muxProtocol.isSet ? muxProtocol.value : current.muxProtocol,
-      muxConcurrency: muxConcurrency.isSet
-          ? muxConcurrency.value
-          : current.muxConcurrency,
-      fragmentEnabled: fragmentEnabled.isSet
-          ? fragmentEnabled.value
-          : current.fragmentEnabled,
+      muxEnabled: pick(muxEnabled, current.muxEnabled, defaults.muxEnabled),
+      muxProtocol: pick(muxProtocol, current.muxProtocol, defaults.muxProtocol),
+      muxConcurrency: pick(
+        muxConcurrency,
+        current.muxConcurrency,
+        defaults.muxConcurrency,
+      ),
+      fragmentEnabled: pick(
+        fragmentEnabled,
+        current.fragmentEnabled,
+        defaults.fragmentEnabled,
+      ),
       fragmentRange: fragmentRange.resolve(current.fragmentRange),
       extra: current.extra,
     );

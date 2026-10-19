@@ -376,7 +376,8 @@
       "notFound": "未找到配置文件",
       "noActive": "没有激活的订阅",
       "invalidConfig": "无效配置",
-      "invalidUrl": "网址无效"
+      "invalidUrl": "网址无效",
+      "readOnlyUpgrade": "请升级 App 后再修改订阅"
     },
     "connection": {
       "unexpected": "意外连接错误",

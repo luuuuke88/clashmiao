@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:clashmiao/domain/profile/data/deep_link_parser.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
@@ -135,7 +137,9 @@ Future<void> _importAndReport(
     ref.invalidate(offlineProxyGroupsProvider);
     resultNotifier.state = DeepLinkImportSuccess(profile.name);
   } catch (e) {
-    resultNotifier.state = DeepLinkImportFailure('$e');
+    resultNotifier.state = DeepLinkImportFailure(
+      profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ?? '$e',
+    );
   }
 }
 

@@ -262,6 +262,7 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
             )
         },
         selectionsReplayNeeded = selectionsReplayNeeded,
+        retainedConfigPaths = retainedConfigPaths,
     )
 
     override fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit) {

@@ -145,6 +145,7 @@ class FakeKernelPort implements KernelPort {
     int? activeConfigRevision,
     KernelFailure? lastFailure,
     bool selectionsReplayNeeded = false,
+    List<String>? retainedConfigPaths,
   }) => KernelSnapshot(
     epoch: epoch,
     version: version,
@@ -156,5 +157,6 @@ class FakeKernelPort implements KernelPort {
     activeConfigRevision: activeConfigRevision,
     lastFailure: lastFailure,
     selectionsReplayNeeded: selectionsReplayNeeded,
+    retainedConfigPaths: retainedConfigPaths,
   );
 }

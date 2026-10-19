@@ -8,11 +8,16 @@
 //   的请求复用同一份文件——先写 `runtime-prep-<token>.json`，仅当目标不存在或
 //   内容不同时才用改名（原子）覆盖，内容相同则丢弃临时文件，所以读取方永远看
 //   不到半份文件，也不会出现「相同 revision 删掉自己的文件」；
-// - 删除只依据**权威快照与本进程已知的引用**，绝不依据修改时间或文件年龄：
-//   受保护 = 快照 `activeConfigRevision` 的文件（原生运行 / 持久化引用的就是它）
-//   ∪ 尚未终结（准备中 / 发送中 / 回执未处理）的请求的文件 ∪ 本进程最近准备
-//   的 3 个不同 revision。受保护集合之外的才删；本进程收到首个权威快照之前
-//   什么都不删（冷启动时原生的持久化引用只能从快照得知）。
+// - 引用由拥有者声明：Dart 无从得知原生持久化了哪份 spec（磁贴、开机等外部
+//   入口在没有 Dart 的冷进程里读它），所以内核快照的 `retainedConfigPaths`
+//   列出原生之后可能还会读取的全部路径。删除一个运行时配置文件（含旧版
+//   `runtime-config-<seq>.json` 与临时文件）必须**同时**满足：
+//     1. 本进程已收到首个权威快照；
+//     2. 它不在最新快照的 `retainedConfigPaths` 里（按规范化的绝对路径比较）；
+//        快照没有这个字段（更早的原生）或报「未知」→ 一个都不删；
+//     3. 不被尚未终结（准备中 / 发送中 / 回执未处理）的请求引用；
+//     4. 不是本进程最近准备的 3 个不同 revision 之一。
+//   绝不依据修改时间、文件年龄或「新文件已存在」之类的推断。
 
 import 'dart:async';
 import 'dart:convert';
@@ -31,6 +36,7 @@ import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:path/path.dart' as paths;
 
 /// 准备启动产物失败；[failure] 是界面应展示的原因。
 class LaunchPreparationException implements Exception {
@@ -315,13 +321,16 @@ class ConnectionLauncher {
     if (_kernel != null) unawaited(_scheduleCleanup());
   }
 
-  /// 控制器每收到一份权威内核快照就调用。首个快照到达前不删任何文件；运行中的
-  /// revision 变化时（旧 revision 的文件可能不再受保护）触发清理。
+  /// 控制器每收到一份权威内核快照就调用。首个快照到达前不删任何文件；原生声明
+  /// 的引用集合变化时（旧文件可能不再被引用）触发清理。
   Future<void> observe(KernelSnapshot snapshot) async {
     final previous = _kernel;
     _kernel = snapshot;
     if (previous != null &&
-        previous.activeConfigRevision == snapshot.activeConfigRevision) {
+        listEquals(
+          previous.retainedConfigPaths,
+          snapshot.retainedConfigPaths,
+        )) {
       return;
     }
     await _scheduleCleanup();
@@ -331,24 +340,33 @@ class ConnectionLauncher {
 
   static final RegExp _revisionFile = RegExp(r'^runtime-(\d+)\.json$');
   static final RegExp _prepFile = RegExp(r'^runtime-prep-.+\.json$');
-  // 早期（每请求按 seq 命名）版本留下的文件，来历不明，按同一规则处理。
+  // 早期（每请求按 seq 命名）版本留下的文件：与新文件完全同一规则，没有例外。
   static final RegExp _legacySeqFile = RegExp(r'^runtime-config-\d+\.json$');
   static final RegExp _legacyPrepFile = RegExp(
     r'^runtime-config-prep-.+\.json$',
   );
 
-  /// 受保护的 revision：快照里运行 / 持久化引用的、尚未终结的请求的、本进程最近
-  /// 准备的。
-  Set<int> _protectedRevisions() => {
-    ?_kernel?.activeConfigRevision,
+  /// 本进程自己需要保留的 revision：尚未终结的请求的、最近准备的。
+  Set<int> _ownRevisions() => {
     for (final h in _holds.values) h.revision,
     ..._recent,
   };
 
-  /// 删除受保护集合之外的运行时配置文件。没有首个快照时什么都不做。
+  /// 路径比较键：规范化的绝对路径，文件存在时再加上解析符号链接后的真实路径
+  /// （同一文件经不同前缀——例如 `/data/user/0` 与 `/data/data`——也能对上）。
+  static Set<String> _pathKeys(String raw) {
+    final keys = <String>{paths.normalize(paths.absolute(raw))};
+    try {
+      keys.add(paths.normalize(File(raw).resolveSymbolicLinksSync()));
+    } catch (_) {}
+    return keys;
+  }
+
+  /// 删除不被任何一方引用的运行时配置文件。没有首个快照、或快照没有声明
+  /// 引用集合（更早的原生 / 未知）时什么都不做。
   Future<void> _cleanup() async {
-    final kernel = _kernel;
-    if (kernel == null) return;
+    final retained = _kernel?.retainedConfigPaths;
+    if (retained == null) return;
     final Directory dir;
     try {
       dir = await _workingDirectory();
@@ -357,34 +375,25 @@ class ConnectionLauncher {
       debugPrint('清理运行时配置：无法定位目录（忽略）: $e');
       return;
     }
-    final keep = _protectedRevisions();
-    final activeRevision = kernel.activeConfigRevision;
-    // 旧版按 seq 命名的文件无法与 revision 对应：只要内核还在运行、而新命名的
-    // 运行中文件并不存在，说明运行中的可能正是某个旧文件，保守保留。
-    final legacyMayBeRunning =
-        activeRevision != null &&
-        !await File(
-          '${dir.path}/${runtimeConfigFileName(activeRevision)}',
-        ).exists();
+    final retainedKeys = <String>{for (final r in retained) ..._pathKeys(r)};
+    final own = _ownRevisions();
 
     try {
       await for (final entity in dir.list(followLinks: false)) {
         if (entity is! File) continue;
         final name = entity.uri.pathSegments.last;
+        final m = _revisionFile.firstMatch(name);
+        final isPrep =
+            _prepFile.hasMatch(name) || _legacyPrepFile.hasMatch(name);
+        if (m == null && !isPrep && !_legacySeqFile.hasMatch(name)) continue;
         try {
-          final m = _revisionFile.firstMatch(name);
+          if (_pathKeys(entity.path).any(retainedKeys.contains)) continue;
           if (m != null) {
             final revision = int.tryParse(m.group(1)!);
-            if (revision != null && keep.contains(revision)) continue;
-            await entity.delete();
-          } else if (_prepFile.hasMatch(name) ||
-              _legacyPrepFile.hasMatch(name)) {
-            if (_prepInProgress.contains(entity.path)) continue;
-            await entity.delete();
-          } else if (_legacySeqFile.hasMatch(name)) {
-            if (legacyMayBeRunning) continue;
-            await entity.delete();
+            if (revision != null && own.contains(revision)) continue;
           }
+          if (isPrep && _prepInProgress.contains(entity.path)) continue;
+          await entity.delete();
         } catch (e) {
           debugPrint('删除运行时配置失败（忽略）: $name $e');
         }

@@ -232,6 +232,7 @@ class KernelSnapshotMsg {
     this.activeConfigRevision,
     this.lastFailure,
     required this.selectionsReplayNeeded,
+    this.retainedConfigPaths,
   });
 
   String epoch;
@@ -254,6 +255,10 @@ class KernelSnapshotMsg {
 
   bool selectionsReplayNeeded;
 
+  /// 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+  /// 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+  List<String>? retainedConfigPaths;
+
   List<Object?> _toList() {
     return <Object?>[
       epoch,
@@ -266,6 +271,7 @@ class KernelSnapshotMsg {
       activeConfigRevision,
       lastFailure,
       selectionsReplayNeeded,
+      retainedConfigPaths,
     ];
   }
 
@@ -286,6 +292,7 @@ class KernelSnapshotMsg {
       activeConfigRevision: result[7] as int?,
       lastFailure: result[8] as KernelFailureMsg?,
       selectionsReplayNeeded: result[9]! as bool,
+      retainedConfigPaths: (result[10] as List<Object?>?)?.cast<String>(),
     );
   }
 

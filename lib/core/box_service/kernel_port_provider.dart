@@ -16,7 +16,12 @@ final kernelPortProvider = Provider<KernelPort>((ref) {
     ref.onDispose(port.dispose);
     return port;
   }
-  final port = EmulatedKernelPort(ref.watch(boxServiceProvider));
+  // iOS 会持久化最近一次 start/restart 的配置路径（系统侧重连时读取）；桌面 FFI
+  // 内核与进程同生命周期，没有跨进程的配置引用。
+  final port = EmulatedKernelPort(
+    ref.watch(boxServiceProvider),
+    platformPersistsConfigPath: Platform.isIOS,
+  );
   ref.onDispose(port.dispose);
   return port;
 });

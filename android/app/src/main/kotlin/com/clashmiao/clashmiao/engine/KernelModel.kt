@@ -83,6 +83,13 @@ data class KernelSnapshot(
     val activeConfigRevision: Long?,
     val lastFailure: KernelFailure?,
     val selectionsReplayNeeded: Boolean,
+    /**
+     * 原生之后**可能还会读取**的运行时配置文件路径（去重、排序）：当前意图的 spec、
+     * 持久化的 spec（磁贴 / 快捷方式 / 开机等外部入口在冷进程里用它）、运行中内核的
+     * spec、在途启动任务的 spec。每份快照都带（含 stopped 与 attach 后的首份）。
+     * 为空 = 无法确定（例如读取持久化失败）：Dart 必须一个都不删。
+     */
+    val retainedConfigPaths: List<String>?,
 ) {
     /** 事件通道 `com.clashmiao.app/kernel.snapshot` 的 JSON map 载荷（计划 P1①）。 */
     fun toWireMap(): Map<String, Any?> = mapOf(
@@ -95,6 +102,7 @@ data class KernelSnapshot(
         "appliedSeq" to appliedSeq,
         "activeConfigRevision" to activeConfigRevision,
         "selectionsReplayNeeded" to selectionsReplayNeeded,
+        "retainedConfigPaths" to retainedConfigPaths,
         "lastFailure" to lastFailure?.let {
             mapOf(
                 "code" to it.code.wire,
@@ -109,6 +117,7 @@ data class KernelSnapshot(
     fun logLine(): String =
         "epoch=${epoch.take(8)} version=$version status=${status.name.lowercase()} " +
             "attempt=$attempt desired=${desired.wire} source=${source.wire} " +
-            "appliedSeq=$appliedSeq rev=$activeConfigRevision replay=$selectionsReplayNeeded" +
+            "appliedSeq=$appliedSeq rev=$activeConfigRevision replay=$selectionsReplayNeeded " +
+            "retained=${retainedConfigPaths?.map { it.substringAfterLast('/') } ?: "unknown"}" +
             (lastFailure?.let { " failure=${it.code.wire}(attempt=${it.attempt},seq=${it.seq})" } ?: "")
 }

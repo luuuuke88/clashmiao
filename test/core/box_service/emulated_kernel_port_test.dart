@@ -107,11 +107,13 @@ EmulatedKernelPort _port(
   _ScriptedBox box, {
   Duration startTimeout = const Duration(seconds: 30),
   Duration stopTimeout = const Duration(seconds: 20),
+  bool persists = true,
 }) => EmulatedKernelPort(
   box,
   epochGenerator: () => 'ep',
   startTimeout: startTimeout,
   stopTimeout: stopTimeout,
+  platformPersistsConfigPath: persists,
 );
 
 void main() {
@@ -127,10 +129,16 @@ void main() {
     BoxStatus initial = const BoxStopped(),
     Duration startTimeout = const Duration(seconds: 30),
     Duration stopTimeout = const Duration(seconds: 20),
+    bool persists = true,
   }) async {
     initialized = true;
     box = _ScriptedBox(initial: initial);
-    port = _port(box, startTimeout: startTimeout, stopTimeout: stopTimeout);
+    port = _port(
+      box,
+      startTimeout: startTimeout,
+      stopTimeout: stopTimeout,
+      persists: persists,
+    );
     seen = [];
     sub = port.watch().listen(seen.add);
     await pumpEventQueue();
@@ -196,13 +204,20 @@ void main() {
         expect(box.options, ['{"rev":7}']);
         expect(box.calls, ['start:/rc/runtime-config-1.json']);
         final steps = seen
-            .map((s) => '${s.status.name}/${s.desired.name}/${s.attempt}')
+            .map(
+              (s) =>
+                  '${s.status.name}/${s.desired.name}/${s.attempt}'
+                  '/${s.retainedConfigPaths}',
+            )
             .toList();
         expect(steps, [
-          'stopped/off/0',
-          'stopped/on/0', // 请求已受理，尚未开始执行
-          'starting/on/1',
-          'started/on/1',
+          // 平台（iOS）会持久化配置路径：交给它第一个路径之前引用集合未知。
+          'stopped/off/0/null',
+          'stopped/on/0/null', // 请求已受理，尚未开始执行
+          'starting/on/1/null',
+          // 路径交给平台 start 的那一刻起，平台持久化的就是它。
+          'starting/on/1/[/rc/runtime-config-1.json]',
+          'started/on/1/[/rc/runtime-config-1.json]',
         ]);
         final s = last();
         expect(s.source, DesiredSource.app);
@@ -814,6 +829,56 @@ void main() {
       expect(box.calls, ['restart:/rc/runtime-config-1.json']);
       expect(last().activeConfigRevision, 4);
       expect(last().attempt, 1);
+    });
+  });
+
+  group('配置文件引用（retainedConfigPaths）', () {
+    test('平台会持久化路径（iOS）：交出第一个路径前报未知；停止后平台持久化的仍被声明', () async {
+      await setUp0();
+      expect(seen.single.retainedConfigPaths, isNull, reason: '可能是上一个进程留下的');
+
+      await port.request(_on(1, rev: 1));
+      await pumpEventQueue();
+      expect(last().status, KernelStatus.started);
+      expect(last().retainedConfigPaths, ['/rc/runtime-config-1.json']);
+
+      await port.request(_off(2));
+      await pumpEventQueue();
+      expect(last().status, KernelStatus.stopped);
+      expect(last().retainedConfigPaths, [
+        '/rc/runtime-config-1.json',
+      ], reason: '平台持久化着它，系统侧重连会再读');
+
+      // 新配置：changeConfigOptions 悬停期间路径尚未交给平台，旧的仍被平台持久化。
+      final gate = Completer<void>();
+      box.optionsBehavior = () => gate.future;
+      await port.request(_on(3, rev: 2));
+      await pumpEventQueue();
+      expect(last().status, KernelStatus.starting);
+      expect(last().retainedConfigPaths, [
+        '/rc/runtime-config-1.json',
+        '/rc/runtime-config-3.json',
+      ]);
+      gate.complete();
+      box.optionsBehavior = null;
+      await pumpEventQueue();
+      expect(last().status, KernelStatus.started);
+      expect(last().retainedConfigPaths, ['/rc/runtime-config-3.json']);
+      expect(
+        seen
+            .skipWhile((s) => s.retainedConfigPaths == null)
+            .every((s) => s.retainedConfigPaths != null),
+        isTrue,
+        reason: '交出路径之后每份快照都带引用集合',
+      );
+    });
+
+    test('平台不跨进程持久化（桌面 FFI）：一开始就是已知的空集合', () async {
+      await setUp0(persists: false);
+      expect(seen.single.retainedConfigPaths, isEmpty);
+      await port.request(_on(1, rev: 1));
+      await pumpEventQueue();
+      expect(last().retainedConfigPaths, ['/rc/runtime-config-1.json']);
     });
   });
 

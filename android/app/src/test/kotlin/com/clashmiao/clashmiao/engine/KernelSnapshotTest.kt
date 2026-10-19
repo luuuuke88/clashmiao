@@ -21,6 +21,7 @@ class KernelSnapshotTest {
             activeConfigRevision = 5,
             lastFailure = KernelFailure(FailureCode.StartTimeout, "", 2, 6),
             selectionsReplayNeeded = false,
+            retainedConfigPaths = listOf("/w/runtime-4.json", "/w/runtime-5.json"),
         )
         val m = s.toWireMap()
         assertEquals("11111111-2222-3333-4444-555555555555", m["epoch"])
@@ -32,13 +33,14 @@ class KernelSnapshotTest {
         assertEquals(7L, m["appliedSeq"])
         assertEquals(5L, m["activeConfigRevision"])
         assertEquals(false, m["selectionsReplayNeeded"])
+        assertEquals(listOf("/w/runtime-4.json", "/w/runtime-5.json"), m["retainedConfigPaths"])
         @Suppress("UNCHECKED_CAST")
         val f = m["lastFailure"] as Map<String, Any?>
         assertEquals(mapOf("code" to "startTimeout", "message" to "", "attempt" to 2L, "seq" to 6L), f)
         assertEquals(
             setOf(
                 "epoch", "version", "status", "attempt", "desired", "source", "appliedSeq",
-                "activeConfigRevision", "selectionsReplayNeeded", "lastFailure",
+                "activeConfigRevision", "selectionsReplayNeeded", "lastFailure", "retainedConfigPaths",
             ),
             m.keys,
         )
@@ -53,6 +55,12 @@ class KernelSnapshotTest {
         assertNull(m["activeConfigRevision"])
         assertNull(m["lastFailure"])
         assertEquals(false, m["selectionsReplayNeeded"])
+        // 引用集合每份快照都带：没有任何引用是空列表，不是缺省 / null（null = 未知）。
+        assertEquals(emptyList<String>(), m["retainedConfigPaths"])
+        assertNull(
+            CoordinatorCore("e", { ServiceType.Vpn }, storedSpecKnown = false)
+                .snapshot.toWireMap()["retainedConfigPaths"],
+        )
     }
 
     @Test

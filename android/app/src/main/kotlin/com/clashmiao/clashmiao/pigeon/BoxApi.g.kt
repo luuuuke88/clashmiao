@@ -244,7 +244,12 @@ data class KernelSnapshotMsg (
   val appliedSeq: Long,
   val activeConfigRevision: Long? = null,
   val lastFailure: KernelFailureMsg? = null,
-  val selectionsReplayNeeded: Boolean
+  val selectionsReplayNeeded: Boolean,
+  /**
+   * 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+   * 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+   */
+  val retainedConfigPaths: List<String>? = null
 )
  {
   companion object {
@@ -259,7 +264,8 @@ data class KernelSnapshotMsg (
       val activeConfigRevision = pigeonVar_list[7] as Long?
       val lastFailure = pigeonVar_list[8] as KernelFailureMsg?
       val selectionsReplayNeeded = pigeonVar_list[9] as Boolean
-      return KernelSnapshotMsg(epoch, version, status, attempt, desired, source, appliedSeq, activeConfigRevision, lastFailure, selectionsReplayNeeded)
+      val retainedConfigPaths = pigeonVar_list[10] as List<String>?
+      return KernelSnapshotMsg(epoch, version, status, attempt, desired, source, appliedSeq, activeConfigRevision, lastFailure, selectionsReplayNeeded, retainedConfigPaths)
     }
   }
   fun toList(): List<Any?> {
@@ -274,6 +280,7 @@ data class KernelSnapshotMsg (
       activeConfigRevision,
       lastFailure,
       selectionsReplayNeeded,
+      retainedConfigPaths,
     )
   }
   override fun equals(other: Any?): Boolean {

@@ -26,6 +26,9 @@ import com.clashmiao.clashmiao.core.KernelStatus
 //   · Service 按实例管理（§10.4）：[Inst] 各自记录最大 startId；退休 = 先回收运行时，再对该实例
 //     stopSelfResult(其 startId)，**只有**该实例真实的 onDestroy 才算退休完成；换类时旧实例
 //     onDestroy 后再起新的。退休超时只报告失败、继续跟踪该实例，绝不越过它去起另一类 Service。
+//   · 配置文件引用由原生声明（快照 retainedConfigPaths）：Dart 无从得知原生持久化了哪份 spec，
+//     所以每份快照都列出原生之后可能还会读取的全部路径——当前意图的 spec、持久化的 spec
+//     （以协调器回读的存储为准，见 [onSpecStored]）、运行中内核的 spec、在途启动任务的 spec。
 // ============================================================================
 
 enum class TimerKind { StartTimeout, Watchdog, NetDebounce, Retire }
@@ -85,6 +88,10 @@ class CoordinatorCore(
     /** 当前设置的 Service 形态；只在受理开启请求时读取（形态是意图的一部分）。 */
     private val modeProvider: () -> ServiceType,
     private val config: Config = Config(),
+    /** 构造时存储里的持久化 spec 路径（外部入口在冷进程里读它）；无持久化 spec 为空。 */
+    storedSpecPath: String? = null,
+    /** 读取持久化 spec 是否成功；false = 不知道存储里引用了什么，快照的引用集合报「未知」。 */
+    storedSpecKnown: Boolean = true,
 ) {
     data class Config(
         /** 启动超时（含 VPN 授权等待与 Service 拉起），spec §2：30 s。 */
@@ -155,6 +162,8 @@ class CoordinatorCore(
         val inst: Int,
         val soft: Boolean,
         val specRev: Long,
+        /** 启动任务读取的运行时配置文件；回收任务为空。 */
+        val specPath: String? = null,
     ) {
         var cancelRequested = false
         var stepSerial = 0L
@@ -173,6 +182,13 @@ class CoordinatorCore(
     private var lastFailure: KernelFailure? = null
     private var replayNeeded = false
 
+    /** 存储里持久化的 spec 路径（只由 [onSpecStored] 按回读结果更新）。 */
+    private var storedPath: String? = storedSpecPath
+    private var storedKnown: Boolean = storedSpecKnown
+
+    /** 运行中内核启动时读取的配置文件路径。 */
+    private var activePath: String? = null
+
     var snapshot: KernelSnapshot = KernelSnapshot(
         epoch = epoch,
         version = 1L,
@@ -184,6 +200,7 @@ class CoordinatorCore(
         activeConfigRevision = null,
         lastFailure = null,
         selectionsReplayNeeded = false,
+        retainedConfigPaths = retainedOf(storedSpecKnown, listOf(storedSpecPath)),
     )
         private set
 
@@ -302,6 +319,16 @@ class CoordinatorCore(
                 out += Effect.SetTimer(TimerKey(TimerKind.NetDebounce, 0L, netSerial), config.networkDebounceMs)
             }
         }
+        null
+    }
+
+    /**
+     * 持久化写入之后，协调器回读存储得到的 spec 路径（[known]=false 表示回读失败）。
+     * 以存储的真实内容为准：写入失败时旧路径仍在存储里，引用集合照旧保留它。
+     */
+    fun onSpecStored(path: String?, known: Boolean = true): CoreStep = step {
+        storedPath = path
+        storedKnown = known
         null
     }
 
@@ -427,6 +454,7 @@ class CoordinatorCore(
                         // 内核起来了是事实，不论归属；是否保留由 reconcile 按当前意图决定。
                         kernelUp = j.inst
                         activeRev = j.specRev
+                        activePath = j.specPath
                         replayNeeded = true
                         if (kernelMatchesIntent()) {
                             out += Effect.NoticeStarted(j.inst, spec?.profileName.orEmpty())
@@ -707,7 +735,10 @@ class CoordinatorCore(
     private fun dispatchStart(e: Exec, inst: Inst, s: LaunchSpec) {
         ensureAttempt(e)
         inst.rt = Rt.Up
-        val j = Job(JobKind.Start, ++tokens, e.owner, e.token, inst.id, soft = false, specRev = s.configRevision)
+        val j = Job(
+            JobKind.Start, ++tokens, e.owner, e.token, inst.id,
+            soft = false, specRev = s.configRevision, specPath = s.runtimeConfigPath,
+        )
         job = j
         out += Effect.NoticeStarting(inst.id, s.profileName)
         out += Effect.RunStart(j.token, inst.id, s, e.isReload)
@@ -733,6 +764,7 @@ class CoordinatorCore(
     private fun kernelGone() {
         kernelUp = null
         activeRev = null
+        activePath = null
         replayNeeded = false
         reloadRequested = false
     }
@@ -790,12 +822,27 @@ class CoordinatorCore(
             activeConfigRevision = activeRev,
             lastFailure = lastFailure,
             selectionsReplayNeeded = replayNeeded,
+            retainedConfigPaths = retainedOf(
+                storedKnown,
+                listOf(
+                    spec?.runtimeConfigPath,
+                    storedPath,
+                    activePath,
+                    job?.takeIf { it.kind == JobKind.Start }?.specPath,
+                ),
+            ),
         )
         if (candidate != snapshot) snapshot = candidate.copy(version = snapshot.version + 1)
     }
 
     private fun log(line: String) {
         out += Effect.Log(line)
+    }
+
+    private companion object {
+        /** 引用集合：去空、去重、排序（顺序稳定，快照相等性不受推导顺序影响）；未知为空。 */
+        fun retainedOf(known: Boolean, paths: List<String?>): List<String>? =
+            if (!known) null else paths.filterNotNull().filter { it.isNotEmpty() }.distinct().sorted()
     }
 
     private inline fun step(body: () -> Receipt?): CoreStep {

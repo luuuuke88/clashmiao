@@ -366,6 +366,7 @@ class PlatformKernelPort implements KernelPort {
       'appliedSeq': m.appliedSeq,
       'activeConfigRevision': m.activeConfigRevision,
       'selectionsReplayNeeded': m.selectionsReplayNeeded,
+      'retainedConfigPaths': m.retainedConfigPaths,
       'lastFailure': f == null
           ? null
           : {

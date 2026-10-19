@@ -62,6 +62,45 @@ void main() {
       expect(s.desired, Desired.off);
     });
 
+    test('retainedConfigPaths：列表解析、参与相等性、toJson 往返', () {
+      final s = KernelSnapshot.fromJson(
+        _json(
+          override: {
+            'retainedConfigPaths': ['/w/runtime-1.json', '/w/runtime-2.json'],
+          },
+        ),
+      );
+      expect(s.retainedConfigPaths, ['/w/runtime-1.json', '/w/runtime-2.json']);
+      expect(KernelSnapshot.fromJson(s.toJson()), s);
+      expect(
+        s.copyWith(retainedConfigPaths: ['/w/runtime-1.json']) == s,
+        isFalse,
+      );
+      expect(
+        s.copyWith(clearRetainedConfigPaths: true).retainedConfigPaths,
+        isNull,
+      );
+      final empty = KernelSnapshot.fromJson(
+        _json(override: {'retainedConfigPaths': <Object?>[]}),
+      );
+      expect(empty.retainedConfigPaths, isEmpty, reason: '空列表 = 已知没有引用');
+    });
+
+    test('retainedConfigPaths 缺省 / null / 含非字符串：一律为未知（null），快照不丢', () {
+      expect(KernelSnapshot.fromJson(_json()).retainedConfigPaths, isNull);
+      for (final raw in [
+        null,
+        'not-a-list',
+        ['/w/a.json', 3],
+      ]) {
+        final s = KernelSnapshot.fromJson(
+          _json(override: {'retainedConfigPaths': raw}),
+        );
+        expect(s.retainedConfigPaths, isNull, reason: '$raw');
+        expect(s.version, 12);
+      }
+    });
+
     test('未知来源按 system，未知失败码按 unknown，快照不丢', () {
       final s = KernelSnapshot.fromJson(
         _json(

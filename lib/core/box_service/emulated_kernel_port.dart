@@ -32,12 +32,19 @@ import 'package:uuid/uuid.dart';
 ///
 /// [StubBoxService]（核心库不可用）：任何 `on` 请求立即以
 /// [KernelFailureCode.coreUnavailable] 失败，不调用内核。
+///
+/// 配置文件引用（快照 `retainedConfigPaths`）：本端口实际持有的路径——当前意图、
+/// 在途启动、运行中、以及最近一次交给平台 `start/restart` 的路径（iOS 会把它
+/// 持久化，系统侧重连时再读）。[platformPersistsConfigPath] 为真时，本实例在
+/// 交给平台第一个路径之前不知道平台持久化了什么（可能是上一个进程留下的），
+/// 此时报「未知」（null），调用方不得删除任何运行时配置文件。
 class EmulatedKernelPort implements KernelPort {
   EmulatedKernelPort(
     this._service, {
     this.startTimeout = const Duration(seconds: 30),
     this.stopTimeout = const Duration(seconds: 20),
     this.initTimeout = const Duration(seconds: 2),
+    this.platformPersistsConfigPath = true,
     String Function()? epochGenerator,
   }) : epoch = (epochGenerator ?? () => const Uuid().v4())() {
     _hub = KernelPortHub<KernelSnapshot>(onFirstListener: _onFirstWatcher);
@@ -47,6 +54,10 @@ class EmulatedKernelPort implements KernelPort {
   final Duration startTimeout;
   final Duration stopTimeout;
   final Duration initTimeout;
+
+  /// 平台会跨进程持久化最近一次 start/restart 的配置路径（iOS）。桌面 FFI 内核
+  /// 与进程同生命周期，没有跨进程引用，可传 false。
+  final bool platformPersistsConfigPath;
 
   /// 本实例的纪元（构造时生成）。
   final String epoch;
@@ -64,6 +75,14 @@ class EmulatedKernelPort implements KernelPort {
   KernelFailure? _failure;
   bool _replay = false;
   KernelSnapshot? _last;
+
+  // ── 配置文件引用 ────────────────────────────────────────────
+  /// 最近一次交给平台 start/restart 的路径（平台可能已持久化）。
+  String? _issuedPath;
+
+  /// 在途启动 / 运行中实例读取的路径。
+  String? _startingPath;
+  String? _runningPath;
 
   // ── 驱动状态 ────────────────────────────────────────────────
   LaunchSpec? _launch;
@@ -260,7 +279,19 @@ class EmulatedKernelPort implements KernelPort {
     activeConfigRevision: _activeRev,
     lastFailure: _failure,
     selectionsReplayNeeded: _replay,
+    retainedConfigPaths: _retainedPaths(),
   );
+
+  List<String>? _retainedPaths() {
+    if (platformPersistsConfigPath && _issuedPath == null) return null;
+    final paths = <String>{
+      ?_launch?.runtimeConfigPath,
+      ?_issuedPath,
+      ?_startingPath,
+      ?_runningPath,
+    }.where((p) => p.isNotEmpty).toList()..sort();
+    return List.unmodifiable(paths);
+  }
 
   /// 字段有变化才 version+1 并推送。
   void _commit() {
@@ -330,6 +361,7 @@ class EmulatedKernelPort implements KernelPort {
     }
     _attempt++;
     final exec = _startExec = _StartExec(seq: seq, attempt: _attempt);
+    _startingPath = spec.runtimeConfigPath;
     _status = KernelStatus.starting;
     _replay = false;
     _commit();
@@ -351,10 +383,12 @@ class EmulatedKernelPort implements KernelPort {
     }
     timer.cancel();
     _startExec = null;
+    _startingPath = null;
 
     if (!exec.failed) {
       _status = KernelStatus.started;
       _activeRev = spec.configRevision;
+      _runningPath = spec.runtimeConfigPath;
       _replay = true;
       _commit();
       return;
@@ -374,6 +408,9 @@ class EmulatedKernelPort implements KernelPort {
   }) async {
     await _service.changeConfigOptions(spec.optionsJson);
     if (exec.failed) return;
+    // 平台在调用入口就会记下路径：调用之前登记，失败也照样保留。
+    _issuedPath = spec.runtimeConfigPath;
+    _commit();
     if (reload) {
       await _service.restart(spec.runtimeConfigPath, name: spec.profileName);
     } else {
@@ -506,6 +543,7 @@ class EmulatedKernelPort implements KernelPort {
   void _markStopped() {
     _status = KernelStatus.stopped;
     _activeRev = null;
+    _runningPath = null;
     _replay = false;
     _commit();
   }
@@ -578,6 +616,7 @@ class EmulatedKernelPort implements KernelPort {
         if (_status != KernelStatus.stopped) {
           _status = KernelStatus.stopped;
           _activeRev = null;
+          _runningPath = null;
           _replay = false;
           if (_desired == Desired.on) {
             _desired = Desired.off;

@@ -87,6 +87,7 @@ class KernelSnapshotMsg {
     required this.selectionsReplayNeeded,
     this.activeConfigRevision,
     this.lastFailure,
+    this.retainedConfigPaths,
   });
   final String epoch;
   final int version;
@@ -98,6 +99,10 @@ class KernelSnapshotMsg {
   final int? activeConfigRevision;
   final KernelFailureMsg? lastFailure;
   final bool selectionsReplayNeeded;
+
+  /// 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+  /// 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+  final List<String>? retainedConfigPaths;
 }
 
 /// 启动/重载所需的不可变产物（每请求独立）。

@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3980 (398 per locale)
+/// Strings: 4020 (402 per locale)
 ///
-/// Built on 2026-10-19 at 16:08 UTC
+/// Built on 2026-10-19 at 16:20 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -301,6 +301,8 @@ class TranslationsProxiesEn {
   String startDelayTestForGroups({required Object count}) =>
       'Started delay test for ${count} lines';
   String get delayTestBtn => 'Delay';
+  String get delayTimeout => 'Timeout';
+  String get connectBeforeTest => 'Connect first to test delay';
   String lineCount({required Object count}) => '${count} lines';
   String get manualSelect => 'Manual Select';
   String get autoTest => 'Auto Test';
@@ -790,6 +792,8 @@ class TranslationsProxiesDelaySemanticsEn {
   String result({required Object delay}) => 'Delay: ${delay}ms';
   String get timeout => 'Delay Test Timeout';
   String get testing => 'Delay: Testing...';
+  String get untested => 'Delay: Not tested';
+  String stale({required Object delay}) => 'Delay: ${delay}ms (earlier result)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -1507,6 +1511,10 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
       'بدأ اختبار التأخير لـ ${count} خط';
   @override
   String get delayTestBtn => 'التأخير';
+  @override
+  String get delayTimeout => 'انتهت المهلة';
+  @override
+  String get connectBeforeTest => 'اتصل أولاً لاختبار التأخير';
   @override
   String lineCount({required Object count}) => '${count} خط';
   @override
@@ -2289,6 +2297,11 @@ class TranslationsProxiesDelaySemanticsAr
   String get timeout => 'انتهاء الوقت في اختبار التأخير';
   @override
   String get testing => 'التأخير: قيد الاختبار...';
+  @override
+  String get untested => 'التأخير: لم يُختبر بعد';
+  @override
+  String stale({required Object delay}) =>
+      'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -3197,6 +3210,10 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Latencia';
   @override
+  String get delayTimeout => 'Agotado';
+  @override
+  String get connectBeforeTest => 'Conéctate primero para probar la latencia';
+  @override
   String lineCount({required Object count}) => '${count} líneas';
   @override
   String get manualSelect => 'Selección manual';
@@ -4018,6 +4035,11 @@ class TranslationsProxiesDelaySemanticsEs
   String get timeout => 'Tiempo de prueba de latencia agotado';
   @override
   String get testing => 'Latencia: probando...';
+  @override
+  String get untested => 'Latencia: sin probar';
+  @override
+  String stale({required Object delay}) =>
+      'Latencia: ${delay} ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -4960,6 +4982,10 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'تأخیر';
   @override
+  String get delayTimeout => 'مهلت تمام';
+  @override
+  String get connectBeforeTest => 'برای تست تأخیر ابتدا متصل شوید';
+  @override
   String lineCount({required Object count}) => '${count} خط';
   @override
   String get manualSelect => 'انتخاب دستی';
@@ -5745,6 +5771,10 @@ class TranslationsProxiesDelaySemanticsFa
   String get timeout => 'مهلت تست تأخیر به اتمام رسید';
   @override
   String get testing => 'تأخیر: در حال آزمایش...';
+  @override
+  String get untested => 'تأخیر: آزمایش نشده';
+  @override
+  String stale({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -6683,6 +6713,10 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Jeda';
   @override
+  String get delayTimeout => 'Habis waktu';
+  @override
+  String get connectBeforeTest => 'Sambungkan dulu untuk menguji jeda';
+  @override
   String lineCount({required Object count}) => '${count} jalur';
   @override
   String get manualSelect => 'Pilih Manual';
@@ -7465,6 +7499,11 @@ class TranslationsProxiesDelaySemanticsId
   String get timeout => 'Waktu Uji Jeda Habis';
   @override
   String get testing => 'Jeda: Menguji...';
+  @override
+  String get untested => 'Jeda: Belum diuji';
+  @override
+  String stale({required Object delay}) =>
+      'Jeda: ${delay}ms (hasil sebelumnya)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -8406,6 +8445,10 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Latência';
   @override
+  String get delayTimeout => 'Esgotado';
+  @override
+  String get connectBeforeTest => 'Conecte primeiro para testar o atraso';
+  @override
   String lineCount({required Object count}) => '${count} linhas';
   @override
   String get manualSelect => 'Seleção manual';
@@ -9206,6 +9249,11 @@ class TranslationsProxiesDelaySemanticsPtBr
   String get timeout => 'atrasar o tempo limite do teste';
   @override
   String get testing => 'atraso: testando...';
+  @override
+  String get untested => 'atraso: não testado';
+  @override
+  String stale({required Object delay}) =>
+      'atraso: ${delay}ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -10151,6 +10199,11 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Задержка';
   @override
+  String get delayTimeout => 'Тайм-аут';
+  @override
+  String get connectBeforeTest =>
+      'Сначала подключитесь, чтобы проверить задержку';
+  @override
   String lineCount({required Object count}) => 'Линий: ${count}';
   @override
   String get manualSelect => 'Ручной выбор';
@@ -10938,6 +10991,11 @@ class TranslationsProxiesDelaySemanticsRu
   String get timeout => 'Тайм-аут при тестировании задержки';
   @override
   String get testing => 'Задержка: Тестирование...';
+  @override
+  String get untested => 'Задержка: не проверялась';
+  @override
+  String stale({required Object delay}) =>
+      'Задержка: ${delay}мс (прежний результат)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -11879,6 +11937,10 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Gecikme';
   @override
+  String get delayTimeout => 'Zaman aşımı';
+  @override
+  String get connectBeforeTest => 'Gecikmeyi test etmek için önce bağlanın';
+  @override
   String lineCount({required Object count}) => '${count} hat';
   @override
   String get manualSelect => 'Elle Seçim';
@@ -12665,6 +12727,11 @@ class TranslationsProxiesDelaySemanticsTr
   String get timeout => 'Gecikme Testi Zaman Aşımı';
   @override
   String get testing => 'Gecikme: Test ediliyor...';
+  @override
+  String get untested => 'Gecikme: Test edilmedi';
+  @override
+  String stale({required Object delay}) =>
+      'Gecikme: ${delay} ms (önceki sonuç)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -13602,6 +13669,10 @@ class TranslationsProxiesZhCn extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => '测速';
   @override
+  String get delayTimeout => '超时';
+  @override
+  String get connectBeforeTest => '请连接后测速';
+  @override
   String lineCount({required Object count}) => '${count} 个节点';
   @override
   String get manualSelect => '手动选择';
@@ -14377,6 +14448,10 @@ class TranslationsProxiesDelaySemanticsZhCn
   String get timeout => '延迟测试超时';
   @override
   String get testing => '正在测试延迟';
+  @override
+  String get untested => '延迟: 未测试';
+  @override
+  String stale({required Object delay}) => '延迟: ${delay}ms（历史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -15308,6 +15383,10 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => '延遲';
   @override
+  String get delayTimeout => '逾時';
+  @override
+  String get connectBeforeTest => '請連線後再測速';
+  @override
   String lineCount({required Object count}) => '${count} 條線路';
   @override
   String get manualSelect => '手動選擇';
@@ -16084,6 +16163,10 @@ class TranslationsProxiesDelaySemanticsZhTw
   String get timeout => '延遲測試超時';
   @override
   String get testing => '正在測試延遲';
+  @override
+  String get untested => '延遲： 未測試';
+  @override
+  String stale({required Object delay}) => '延遲： ${delay}ms（歷史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -16986,6 +17069,11 @@ extension on Translations {
         return 'Delay Test Timeout';
       case 'proxies.delaySemantics.testing':
         return 'Delay: Testing...';
+      case 'proxies.delaySemantics.untested':
+        return 'Delay: Not tested';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Delay: ${delay}ms (earlier result)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Address';
       case 'proxies.ipInfoSemantics.country':
@@ -17003,6 +17091,10 @@ extension on Translations {
             'Started delay test for ${count} lines';
       case 'proxies.delayTestBtn':
         return 'Delay';
+      case 'proxies.delayTimeout':
+        return 'Timeout';
+      case 'proxies.connectBeforeTest':
+        return 'Connect first to test delay';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} lines';
       case 'proxies.manualSelect':
@@ -17806,6 +17898,11 @@ extension on TranslationsAr {
         return 'انتهاء الوقت في اختبار التأخير';
       case 'proxies.delaySemantics.testing':
         return 'التأخير: قيد الاختبار...';
+      case 'proxies.delaySemantics.untested':
+        return 'التأخير: لم يُختبر بعد';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
       case 'proxies.ipInfoSemantics.address':
         return 'عنوان IP';
       case 'proxies.ipInfoSemantics.country':
@@ -17828,6 +17925,10 @@ extension on TranslationsAr {
         return ({required Object count}) => 'بدأ اختبار التأخير لـ ${count} خط';
       case 'proxies.delayTestBtn':
         return 'التأخير';
+      case 'proxies.delayTimeout':
+        return 'انتهت المهلة';
+      case 'proxies.connectBeforeTest':
+        return 'اتصل أولاً لاختبار التأخير';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -18620,6 +18721,11 @@ extension on TranslationsEs {
         return 'Tiempo de prueba de latencia agotado';
       case 'proxies.delaySemantics.testing':
         return 'Latencia: probando...';
+      case 'proxies.delaySemantics.untested':
+        return 'Latencia: sin probar';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Latencia: ${delay} ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Dirección IP';
       case 'proxies.ipInfoSemantics.country':
@@ -18637,6 +18743,10 @@ extension on TranslationsEs {
             'Prueba de latencia iniciada para ${count} líneas';
       case 'proxies.delayTestBtn':
         return 'Latencia';
+      case 'proxies.delayTimeout':
+        return 'Agotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conéctate primero para probar la latencia';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} líneas';
       case 'proxies.manualSelect':
@@ -19462,6 +19572,10 @@ extension on TranslationsFa {
         return 'مهلت تست تأخیر به اتمام رسید';
       case 'proxies.delaySemantics.testing':
         return 'تأخیر: در حال آزمایش...';
+      case 'proxies.delaySemantics.untested':
+        return 'تأخیر: آزمایش نشده';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
       case 'proxies.ipInfoSemantics.address':
         return 'آدرس آی‌پی';
       case 'proxies.ipInfoSemantics.country':
@@ -19485,6 +19599,10 @@ extension on TranslationsFa {
             'آزمایش تأخیر برای ${count} خط آغاز شد';
       case 'proxies.delayTestBtn':
         return 'تأخیر';
+      case 'proxies.delayTimeout':
+        return 'مهلت تمام';
+      case 'proxies.connectBeforeTest':
+        return 'برای تست تأخیر ابتدا متصل شوید';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -20295,6 +20413,11 @@ extension on TranslationsId {
         return 'Waktu Uji Jeda Habis';
       case 'proxies.delaySemantics.testing':
         return 'Jeda: Menguji...';
+      case 'proxies.delaySemantics.untested':
+        return 'Jeda: Belum diuji';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Jeda: ${delay}ms (hasil sebelumnya)';
       case 'proxies.ipInfoSemantics.address':
         return 'Alamat IP';
       case 'proxies.ipInfoSemantics.country':
@@ -20312,6 +20435,10 @@ extension on TranslationsId {
             'Uji jeda dimulai untuk ${count} jalur';
       case 'proxies.delayTestBtn':
         return 'Jeda';
+      case 'proxies.delayTimeout':
+        return 'Habis waktu';
+      case 'proxies.connectBeforeTest':
+        return 'Sambungkan dulu untuk menguji jeda';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} jalur';
       case 'proxies.manualSelect':
@@ -21117,6 +21244,11 @@ extension on TranslationsPtBr {
         return 'atrasar o tempo limite do teste';
       case 'proxies.delaySemantics.testing':
         return 'atraso: testando...';
+      case 'proxies.delaySemantics.untested':
+        return 'atraso: não testado';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'atraso: ${delay}ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Endereço de IP';
       case 'proxies.ipInfoSemantics.country':
@@ -21140,6 +21272,10 @@ extension on TranslationsPtBr {
             'Teste de latência iniciado para ${count} linhas';
       case 'proxies.delayTestBtn':
         return 'Latência';
+      case 'proxies.delayTimeout':
+        return 'Esgotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conecte primeiro para testar o atraso';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} linhas';
       case 'proxies.manualSelect':
@@ -21945,6 +22081,11 @@ extension on TranslationsRu {
         return 'Тайм-аут при тестировании задержки';
       case 'proxies.delaySemantics.testing':
         return 'Задержка: Тестирование...';
+      case 'proxies.delaySemantics.untested':
+        return 'Задержка: не проверялась';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Задержка: ${delay}мс (прежний результат)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP адрес';
       case 'proxies.ipInfoSemantics.country':
@@ -21968,6 +22109,10 @@ extension on TranslationsRu {
             'Запущена проверка задержки для ${count} линий';
       case 'proxies.delayTestBtn':
         return 'Задержка';
+      case 'proxies.delayTimeout':
+        return 'Тайм-аут';
+      case 'proxies.connectBeforeTest':
+        return 'Сначала подключитесь, чтобы проверить задержку';
       case 'proxies.lineCount':
         return ({required Object count}) => 'Линий: ${count}';
       case 'proxies.manualSelect':
@@ -22779,6 +22924,11 @@ extension on TranslationsTr {
         return 'Gecikme Testi Zaman Aşımı';
       case 'proxies.delaySemantics.testing':
         return 'Gecikme: Test ediliyor...';
+      case 'proxies.delaySemantics.untested':
+        return 'Gecikme: Test edilmedi';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Gecikme: ${delay} ms (önceki sonuç)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Adresi';
       case 'proxies.ipInfoSemantics.country':
@@ -22796,6 +22946,10 @@ extension on TranslationsTr {
             '${count} hat için gecikme testi başlatıldı';
       case 'proxies.delayTestBtn':
         return 'Gecikme';
+      case 'proxies.delayTimeout':
+        return 'Zaman aşımı';
+      case 'proxies.connectBeforeTest':
+        return 'Gecikmeyi test etmek için önce bağlanın';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} hat';
       case 'proxies.manualSelect':
@@ -23605,6 +23759,10 @@ extension on TranslationsZhCn {
         return '延迟测试超时';
       case 'proxies.delaySemantics.testing':
         return '正在测试延迟';
+      case 'proxies.delaySemantics.untested':
+        return '延迟: 未测试';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延迟: ${delay}ms（历史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -23621,6 +23779,10 @@ extension on TranslationsZhCn {
         return ({required Object count}) => '已开始测试当前订阅的 ${count} 个节点';
       case 'proxies.delayTestBtn':
         return '测速';
+      case 'proxies.delayTimeout':
+        return '超时';
+      case 'proxies.connectBeforeTest':
+        return '请连接后测速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 个节点';
       case 'proxies.manualSelect':
@@ -24423,6 +24585,10 @@ extension on TranslationsZhTw {
         return '延遲測試超時';
       case 'proxies.delaySemantics.testing':
         return '正在測試延遲';
+      case 'proxies.delaySemantics.untested':
+        return '延遲： 未測試';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延遲： ${delay}ms（歷史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -24445,6 +24611,10 @@ extension on TranslationsZhTw {
         return ({required Object count}) => '已開始檢測 ${count} 條線路的延遲';
       case 'proxies.delayTestBtn':
         return '延遲';
+      case 'proxies.delayTimeout':
+        return '逾時';
+      case 'proxies.connectBeforeTest':
+        return '請連線後再測速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 條線路';
       case 'proxies.manualSelect':

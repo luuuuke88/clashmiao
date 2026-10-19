@@ -192,7 +192,9 @@
     "delaySemantics": {
       "result": "Jeda: ${delay}ms",
       "timeout": "Waktu Uji Jeda Habis",
-      "testing": "Jeda: Menguji..."
+      "testing": "Jeda: Menguji...",
+      "untested": "Jeda: Belum diuji",
+      "stale": "Jeda: ${delay}ms (hasil sebelumnya)"
     },
     "ipInfoSemantics": {
       "address": "Alamat IP",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "Sambungkan terlebih dahulu sebelum mengganti jalur",
     "startDelayTestForGroups": "Uji jeda dimulai untuk ${count} jalur",
     "delayTestBtn": "Jeda",
+    "delayTimeout": "Habis waktu",
+    "connectBeforeTest": "Sambungkan dulu untuk menguji jeda",
     "lineCount": "${count} jalur",
     "manualSelect": "Pilih Manual",
     "autoTest": "Tes Otomatis"

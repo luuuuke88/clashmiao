@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "تأخیر: ${delay}ms",
       "timeout": "مهلت تست تأخیر به اتمام رسید",
-      "testing": "تأخیر: در حال آزمایش..."
+      "testing": "تأخیر: در حال آزمایش...",
+      "untested": "تأخیر: آزمایش نشده",
+      "stale": "تأخیر: ${delay}ms (نتیجه قبلی)"
     },
     "ipInfoSemantics": {
       "address": "آدرس آی‌پی",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "پیش از تعویض خط، متصل شوید",
     "startDelayTestForGroups": "آزمایش تأخیر برای ${count} خط آغاز شد",
     "delayTestBtn": "تأخیر",
+    "delayTimeout": "مهلت تمام",
+    "connectBeforeTest": "برای تست تأخیر ابتدا متصل شوید",
     "lineCount": "${count} خط",
     "manualSelect": "انتخاب دستی",
     "autoTest": "تست خودکار"

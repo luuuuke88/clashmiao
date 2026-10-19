@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "延遲： ${delay}ms",
       "timeout": "延遲測試超時",
-      "testing": "正在測試延遲"
+      "testing": "正在測試延遲",
+      "untested": "延遲： 未測試",
+      "stale": "延遲： ${delay}ms（歷史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "請先連線再切換線路",
     "startDelayTestForGroups": "已開始檢測 ${count} 條線路的延遲",
     "delayTestBtn": "延遲",
+    "delayTimeout": "逾時",
+    "connectBeforeTest": "請連線後再測速",
     "lineCount": "${count} 條線路",
     "manualSelect": "手動選擇",
     "autoTest": "自動測速"

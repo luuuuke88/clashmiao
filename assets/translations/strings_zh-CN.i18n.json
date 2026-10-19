@@ -192,7 +192,9 @@
     "delaySemantics": {
       "result": "延迟: ${delay}ms",
       "timeout": "延迟测试超时",
-      "testing": "正在测试延迟"
+      "testing": "正在测试延迟",
+      "untested": "延迟: 未测试",
+      "stale": "延迟: ${delay}ms（历史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "请先连接后再切换节点",
     "startDelayTestForGroups": "已开始测试当前订阅的 ${count} 个节点",
     "delayTestBtn": "测速",
+    "delayTimeout": "超时",
+    "connectBeforeTest": "请连接后测速",
     "lineCount": "${count} 个节点",
     "manualSelect": "手动选择",
     "autoTest": "自动测速"

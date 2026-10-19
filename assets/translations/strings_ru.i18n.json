@@ -189,7 +189,9 @@
     "delaySemantics": {
       "result": "Задержка: ${delay}мс",
       "timeout": "Тайм-аут при тестировании задержки",
-      "testing": "Задержка: Тестирование..."
+      "testing": "Задержка: Тестирование...",
+      "untested": "Задержка: не проверялась",
+      "stale": "Задержка: ${delay}мс (прежний результат)"
     },
     "ipInfoSemantics": {
       "address": "IP адрес",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "Подключитесь перед сменой линии",
     "startDelayTestForGroups": "Запущена проверка задержки для ${count} линий",
     "delayTestBtn": "Задержка",
+    "delayTimeout": "Тайм-аут",
+    "connectBeforeTest": "Сначала подключитесь, чтобы проверить задержку",
     "lineCount": "Линий: ${count}",
     "manualSelect": "Ручной выбор",
     "autoTest": "Автотест"

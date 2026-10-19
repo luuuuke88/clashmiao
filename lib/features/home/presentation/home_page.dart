@@ -7,7 +7,10 @@ import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/routing/application/latency_clock.dart';
+import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
@@ -22,6 +25,7 @@ import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -866,13 +870,28 @@ class _ConnectionInfo extends ConsumerWidget {
     final liveGroups = ref.watch(outboundGroupsProvider).valueOrNull ?? [];
     final offlineGroups =
         ref.watch(offlineProxyGroupsProvider).valueOrNull ?? [];
-    final groups = liveGroups.any((g) => g.items.isNotEmpty)
-        ? liveGroups
-        : offlineGroups;
+    final isLiveData = liveGroups.any((g) => g.items.isNotEmpty);
+    final groups = isLiveData ? liveGroups : offlineGroups;
     final t = ref.watch(translationsProvider);
     final activeItem = resolveActiveProxy(groups);
     final String nodeName = activeItem?.tag ?? t.general.unknown;
-    final int delay = activeItem?.delay ?? 0;
+    // 延迟展示与代理页同一套：同一个缓存、同一个协调器状态、同一个解析函数，
+    // 两处不会出现一个有数字一个是破折号的分歧。
+    final latencyState = ref.watch(latencyTestCoordinatorProvider);
+    final cachedDelay = activeItem == null
+        ? null
+        : ref.watch(proxyDelayCacheProvider)[activeItem.tag];
+    final latency = resolveNodeLatency(
+      liveMs: activeItem?.delay ?? 0,
+      cachedMs: cachedDelay?.ms,
+      cachedAt: cachedDelay?.measuredAt,
+      testing: latencyState.isTesting,
+      timedOut:
+          activeItem != null &&
+          latencyState.timedOutNodes.contains(activeItem.tag),
+      now: ref.watch(latencyClockProvider)(),
+      cacheIsFallback: !isLiveData,
+    );
 
     return AnimatedSize(
       duration: 300.ms,
@@ -911,9 +930,6 @@ class _ConnectionInfo extends ConsumerWidget {
               );
             }
             if (isConnected) {
-              final delayColor = delay > 0
-                  ? BrandColors.connected
-                  : theme.aiUi.secondaryTextColor;
               // 做成带箭头的胶囊而不是一行字：原来那样看不出能点，左边的服务器
               // 图标在小尺寸下还像一部手机。点了直接跳线路页换节点。
               return Semantics(
@@ -945,20 +961,11 @@ class _ConnectionInfo extends ConsumerWidget {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Icon(
-                          FluentIcons.wifi_1_24_filled,
-                          size: 16,
-                          color: delayColor,
-                        ),
-                        const SizedBox(width: 4),
-                        // 延迟还没测出来就是不知道，显示破折号——写"检测中"是
-                        // 假的，那时并没有在测。
-                        Text(
-                          delay > 0 ? '${delay}ms' : '—',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: delayColor,
-                          ),
+                        // 延迟只是一行文字：不再配 Wi-Fi 图标，状态靠数字与颜色表达。
+                        LatencyLabel(
+                          state: latency.state,
+                          ms: latency.ms,
+                          fontSize: 14,
                         ),
                         const SizedBox(width: 6),
                         Icon(

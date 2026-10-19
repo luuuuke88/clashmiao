@@ -180,7 +180,9 @@
     "delaySemantics": {
       "result": "Latencia: ${delay} ms",
       "timeout": "Tiempo de prueba de latencia agotado",
-      "testing": "Latencia: probando..."
+      "testing": "Latencia: probando...",
+      "untested": "Latencia: sin probar",
+      "stale": "Latencia: ${delay} ms (resultado anterior)"
     },
     "ipInfoSemantics": {
       "address": "Dirección IP",
@@ -192,6 +194,8 @@
     "connectBeforeSwitch": "Conéctate antes de cambiar de línea",
     "startDelayTestForGroups": "Prueba de latencia iniciada para ${count} líneas",
     "delayTestBtn": "Latencia",
+    "delayTimeout": "Agotado",
+    "connectBeforeTest": "Conéctate primero para probar la latencia",
     "lineCount": "${count} líneas",
     "manualSelect": "Selección manual",
     "autoTest": "Prueba automática"

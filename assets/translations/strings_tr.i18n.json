@@ -192,7 +192,9 @@
     "delaySemantics": {
       "result": "Gecikme: ${delay} ms",
       "timeout": "Gecikme Testi Zaman Aşımı",
-      "testing": "Gecikme: Test ediliyor..."
+      "testing": "Gecikme: Test ediliyor...",
+      "untested": "Gecikme: Test edilmedi",
+      "stale": "Gecikme: ${delay} ms (önceki sonuç)"
     },
     "ipInfoSemantics": {
       "address": "IP Adresi",
@@ -204,6 +206,8 @@
     "connectBeforeSwitch": "Hat değiştirmeden önce bağlanın",
     "startDelayTestForGroups": "${count} hat için gecikme testi başlatıldı",
     "delayTestBtn": "Gecikme",
+    "delayTimeout": "Zaman aşımı",
+    "connectBeforeTest": "Gecikmeyi test etmek için önce bağlanın",
     "lineCount": "${count} hat",
     "manualSelect": "Elle Seçim",
     "autoTest": "Otomatik Test"

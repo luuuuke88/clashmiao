@@ -9,6 +9,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/application/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/domain/routing/model/cached_delay.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
@@ -25,7 +26,9 @@ import '../../../support/fake_box_service.dart';
 /// timer 还活着会让 flutter_test 报 "A Timer is still pending"。
 /// pump 一段足够长的假时钟把 timer 烧完，再 dismiss + 再 pump 一帧让动画收尾。
 Future<void> _drainToasts(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 6));
+  // 已连接时协调器有 2 s 预热定时器与 10 s 测速超时定时器；容器由测试自己持有、
+  // 要到 tearDown 才销毁，所以这里把假时钟推过去，让它们自然跑完。
+  await tester.pump(const Duration(seconds: 13));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -450,9 +453,10 @@ void _addProxiesPageExtraTests() {
 
     expect(find.text('proxy'), findsNothing);
     expect(find.text('ss-node'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
-  testWidgets('delay 为 0 的节点显示 -- 而不是未测速/超时', (tester) async {
+  testWidgets('delay 为 0 的节点显示 — 占位而不是超时', (tester) async {
     final (widget, _, _) = await _hostWithGroups(
       connected: false,
       groups: [_proxyGroup()],
@@ -462,7 +466,7 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ss-node'), findsOneWidget);
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
     expect(find.text('未测速'), findsNothing);
     expect(find.text('超时'), findsNothing);
   });
@@ -481,8 +485,9 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ss-node'), findsOneWidget);
+    // 旧格式（裸 int）的缓存读出来是「历史值」：数字照常显示，不透明度降低。
     expect(find.text('123ms'), findsOneWidget);
-    expect(find.text('--'), findsNothing);
+    expect(find.text('—'), findsNothing);
   });
 
   testWidgets('已连接且拿到真实实时分组时（延迟未测出=0），不该用缓存的旧延迟顶替显示', (tester) async {
@@ -534,7 +539,8 @@ void _addProxiesPageExtraTests() {
       findsNothing,
       reason: '已连接且实时分组数据非空时应该信任实时数据本身，不该拿离线缓存覆盖',
     );
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
   testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (tester) async {
@@ -606,7 +612,7 @@ void _addProxiesPageExtraTests() {
     await _drainToasts(tester);
   });
 
-  testWidgets('测速进行中节点卡片显示加载动画区域', (tester) async {
+  testWidgets('测速进行中：顶部按钮变 18 dp 指示器，没有旧值的行保持占位；一轮结束后恢复', (tester) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: true,
       groups: [_proxyGroup()],
@@ -618,22 +624,30 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
 
     await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(spy.urlTestCalls, equals(['proxy']));
-    expect(find.text('--'), findsNothing);
+    final indicator = find.byType(CircularProgressIndicator);
+    expect(indicator, findsOneWidget);
+    expect(
+      tester.getSize(
+        find.ancestor(of: indicator, matching: find.byType(SizedBox)).first,
+      ),
+      const Size(18, 18),
+    );
+    expect(find.byIcon(FluentIcons.flash_24_regular), findsNothing);
+    expect(find.text('—'), findsOneWidget, reason: '没有旧值的行保持占位，不闪烁');
 
     completer.complete();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(seconds: 10));
 
-    expect(find.text('--'), findsNothing);
-
-    await tester.pump(const Duration(milliseconds: 1300));
-
-    expect(find.text('--'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byIcon(FluentIcons.flash_24_regular), findsOneWidget);
+    await _drainToasts(tester);
   });
 
   testWidgets('长按节点卡片弹出节点名称确认面板', (tester) async {
@@ -693,6 +707,7 @@ void _addProxiesPageExtraTests() {
 
     expect(find.text('香港 01'), findsNWidgets(2));
     expect(find.text(taggedNode), findsNothing);
+    await _drainToasts(tester);
   });
 
   testWidgets('测速结果缓存只写入当前订阅下的正数延迟', (tester) async {
@@ -720,7 +735,11 @@ void _addProxiesPageExtraTests() {
       ),
     ]);
 
-    expect(prefs.getString('proxy_delays_profile-1'), '{"good":88}');
+    // 新格式：{ms, measuredAt}；0 延迟的节点不写。
+    final stored = decodeDelayCache(prefs.getString('proxy_delays_profile-1'));
+    expect(stored.keys, ['good']);
+    expect(stored['good']!.ms, 88);
+    expect(stored['good']!.measuredAt, isNotNull);
   });
 
   testWidgets('name 排序时嵌套代理组排在普通节点前面（不管字母序）', (tester) async {

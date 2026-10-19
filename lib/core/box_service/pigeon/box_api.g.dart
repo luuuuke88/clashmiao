@@ -741,7 +741,7 @@ class BoxHostApi {
   /// Runner 私有沙盒，extension 看不到）。
   ///
   /// Dart 侧只有 iOS 分支会调用这个方法（见
-  /// `lib/core/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
+  /// `lib/core/box_service/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
   /// Android 走 `path_provider` 就够（单进程模型，没有这个问题），这里的
   /// Android 实现只是为了满足接口契约，返回值不会被 Dart 消费。
   Future<String> getAppGroupWorkingDirectory() async {

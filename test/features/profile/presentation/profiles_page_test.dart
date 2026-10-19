@@ -44,7 +44,7 @@ class _FakeWarpBoxService extends StubBoxService {
 }
 
 /// toastification 的 toast 自带一个真实 Timer 做自动关闭——跟
-/// test/app/app_toast_test.dart 的 `_drainToasts` 用法一致，测试结束前把
+/// test/shared/components/app_toast_test.dart 的 `_drainToasts` 用法一致，测试结束前把
 /// 它排干，否则框架会断言"还有 pending timer"。
 Future<void> _drainToasts(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 6));

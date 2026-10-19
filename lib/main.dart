@@ -32,7 +32,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+/// 见 `core/env/build_config.dart`：所有编译期参数集中声明在那里。
 const _sentryDsn = sentryDsn;
 
 void main() async {

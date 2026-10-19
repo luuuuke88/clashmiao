@@ -498,7 +498,7 @@ class _ProfilesOverviewSheet extends StatelessWidget {
   }
 }
 
-/// 出口 IP 展示状态（首页级别，不下沉到 app_providers.dart——只有首页需要）。
+/// 出口 IP 展示状态（首页级别，不下沉到 domain 层的 provider——只有首页需要）。
 ///
 /// `result == null` 表示"还没查过/已清空"（对应 UI 上的未知文案）；
 /// `isLoading == true` 时展示加载态，此时 `result` 保留上一次的结果（查询期

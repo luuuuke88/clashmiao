@@ -4,7 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+/// 见 `core/env/build_config.dart`：所有编译期参数集中声明在那里。
 const _repoSlug = githubRepoSlug;
 const _disabled = bool.fromEnvironment('CLASHMIAO_DISABLE_UPDATE_CHECK');
 const _checkIntervalMs = 24 * 60 * 60 * 1000;

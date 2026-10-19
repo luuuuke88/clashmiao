@@ -1,7 +1,7 @@
 # srsdump
 
 把 `assets/rule-sets/` 下的 `.srs` rule-set 反编译成明文 JSON，用来生成
-`lib/core/config/cn_direct_rules.dart`。
+`lib/domain/config/data/cn_direct_rules.dart`。
 
 **为什么需要它**：实际发布用的 libcore 在 `region:"other"` 前提下物理上不支持
 任何形式的 rule-set，分流数据只能以明文列表经 `configOptions.rules` 注入。
@@ -35,7 +35,7 @@ docker run --rm -v "$PWD/core/sing-box:/src" \
 {"domain": ["265.com", ...], "domain_suffix": [".baidu", ...], "ip_cidr": ["1.0.1.0/24", ...]}
 ```
 
-再据此重新生成 `lib/core/config/cn_direct_rules.dart`：`ip_cidr` 进
+再据此重新生成 `lib/domain/config/data/cn_direct_rules.dart`：`ip_cidr` 进
 `cnDirectCidrRanges`，`domain` 进 `cnDirectDomains`（注入时加 `full:` 前缀），
 `domain_suffix` 进 `cnDirectDomainSuffixes`（加 `domain:` 前缀）。两个前缀
 语义不同不能混用。

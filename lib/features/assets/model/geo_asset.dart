@@ -17,7 +17,7 @@ class GeoAsset {
   final DateTime? lastUpdated;
   final int? sizeBytes;
 
-  /// 见 `core/config/build_config.dart`：所有编译期参数集中声明在那里。
+  /// 见 `core/env/build_config.dart`：所有编译期参数集中声明在那里。
   static const defaultGeoipUrl = geoipCdnUrl;
   static const defaultGeositeUrl = geositeCdnUrl;
 

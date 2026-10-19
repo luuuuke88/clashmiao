@@ -356,7 +356,7 @@ void main() {
       // 种一个激活订阅 + 可被 RuntimeConfigBuilder 成功解析的最小配置文件，
       // 否则 reconnect() 会在 repo.getActive()==null 或配置文件不存在时提前
       // return，永远走不到 _boxService.restart，测试就测不出真实的修复效果
-      // （见 test/core/config/runtime_config_builder_test.dart 里同款最小 fixture）。
+      // （见 test/domain/config/data/runtime_config_builder_test.dart 里同款最小 fixture）。
       const profileId = 'net-change-profile';
       await repo.upsert({
         'id': profileId,

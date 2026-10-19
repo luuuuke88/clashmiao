@@ -96,7 +96,7 @@ tag 推导不出合法的 `x.y.z` 时，`quality` job 直接失败——它是�
 
 ## 构建期参数（`--dart-define`）
 
-所有编译期参数集中声明在 `lib/core/config/build_config.dart`，由
+所有编译期参数集中声明在 `lib/core/env/build_config.dart`，由
 `release.yml` 从仓库的 Secrets / Variables 注入。**没有配置的项不会让构建
 失败，但对应功能在正式包里就是不可用的**，并且 UI 会隐藏该入口而不是显示
 一个点了没反应的死链。

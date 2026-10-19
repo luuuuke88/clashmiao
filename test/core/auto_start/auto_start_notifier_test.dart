@@ -36,7 +36,7 @@ class _FakeAutoStartBackend implements AutoStartBackend {
 /// 假 launch_at_startup API，验证 [WindowsAutoStartBackend] 真的把
 /// enable/disable/isEnabled 转发给 launch_at_startup（此前 Windows 分支
 /// 完全没实现，`_init`/`toggle` 对非 macOS 直接 return，开关在 UI 上能点但
-/// 点了毫无效果——见 lib/features/settings/widget/settings_page.dart:195
+/// 点了毫无效果——见 lib/features/settings/presentation/settings_page.dart:199
 /// 门禁条件包含 Windows，但通知器只服务 macOS 的历史 bug）。
 class _FakeWindowsLaunchAtStartupApi implements WindowsLaunchAtStartupApi {
   bool enabled = false;

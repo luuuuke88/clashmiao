@@ -2,7 +2,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// 桌面端"静默启动"偏好 key，与
-/// `lib/features/settings/widget/settings_page.dart` 里
+/// `lib/features/settings/presentation/settings_page.dart` 里
 /// `_BoolPreferenceTile(prefKey: 'clashmiao_silent_start')` 共用同一个 key。
 const silentStartPrefKey = 'clashmiao_silent_start';
 

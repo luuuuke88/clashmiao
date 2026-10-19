@@ -72,24 +72,54 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
     }
   }
 
+  /// 每个分组的写入版本：本 notifier 每次改动该组的内存记录（[persist] /
+  /// [restore] / [removeGroups]）都递增。用作「这条记录还是不是我写的」的
+  /// 意图 token——回滚只撤销仍属于自己的那次写入，不覆盖之后更新的选择。
+  final Map<String, int> _versions = {};
+  int _clock = 0;
+
+  /// [groupTag] 当前的写入版本（从未改动过为 0）。
+  int versionOf(String groupTag) => _versions[groupTag] ?? 0;
+
+  void _bump(Iterable<String> groupTags) {
+    for (final tag in groupTags) {
+      _versions[tag] = ++_clock;
+    }
+  }
+
   /// 记住 [groupTag] 这个代理组最近一次被手动选中的 [outboundTag]，
   /// 覆盖同一 group 之前的选择。
   ///
   /// 返回是否确认落盘（值本来就相同也算）；订阅已删除 / 换代、写入失败为 false。
-  Future<bool> persist(String groupTag, String outboundTag) async {
+  Future<bool> persist(String groupTag, String outboundTag) =>
+      persistTracked(groupTag, outboundTag).persisted;
+
+  /// 同 [persist]，另外同步返回这次写入后该组的版本（[versionOf]），供调用方
+  /// 之后按版本条件回滚（[restore] 的 `ifVersion`）。内存在返回前就已更新。
+  ({int version, Future<bool> persisted}) persistTracked(
+    String groupTag,
+    String outboundTag,
+  ) {
     final profileId = _profileId;
     final store = _store;
-    if (profileId == null || profileId.isEmpty) return false;
-    if (store == null) return false;
-    if (state[groupTag] == outboundTag) return true;
+    if (profileId == null || profileId.isEmpty || store == null) {
+      return (version: versionOf(groupTag), persisted: Future.value(false));
+    }
+    if (state[groupTag] == outboundTag) {
+      return (version: versionOf(groupTag), persisted: Future.value(true));
+    }
 
     final next = {...state, groupTag: outboundTag};
     state = Map.unmodifiable(next);
-    return store.writeAux(
-      profileId,
-      _profileInc ?? '',
-      _key(profileId),
-      jsonEncode(next),
+    _bump([groupTag]);
+    return (
+      version: versionOf(groupTag),
+      persisted: store.writeAux(
+        profileId,
+        _profileInc ?? '',
+        _key(profileId),
+        jsonEncode(next),
+      ),
     );
   }
 
@@ -97,12 +127,18 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   ///
   /// 手选流程先写入新值再调用内核；内核拒绝时用它回滚，保持「失败不持久化」。
   /// 与 [persist] 同走 `ProfileStore.writeAux`：订阅已删除或换代时回滚同样被丢弃。
-  Future<bool> restore(String groupTag, String? previous) async {
+  ///
+  /// [ifVersion]：只有该组当前版本仍等于它（即记录仍是那次写入的结果）时才
+  /// 回滚；之后有更新的写入则什么都不做（内存、磁盘都不动），返回 false。
+  Future<bool> restore(String groupTag, String? previous, {int? ifVersion}) {
     final profileId = _profileId;
     final store = _store;
-    if (profileId == null || profileId.isEmpty) return false;
-    if (store == null) return false;
-    if (state[groupTag] == previous) return true;
+    if (profileId == null || profileId.isEmpty) return Future.value(false);
+    if (store == null) return Future.value(false);
+    if (ifVersion != null && versionOf(groupTag) != ifVersion) {
+      return Future.value(false);
+    }
+    if (state[groupTag] == previous) return Future.value(true);
     final next = {...state};
     if (previous == null) {
       next.remove(groupTag);
@@ -110,6 +146,7 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
       next[groupTag] = previous;
     }
     state = Map.unmodifiable(next);
+    _bump([groupTag]);
     return store.writeAux(
       profileId,
       _profileInc ?? '',
@@ -128,6 +165,7 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
     if (!groupTags.any(state.containsKey)) return true;
     final next = {...state}..removeWhere((key, _) => groupTags.contains(key));
     state = Map.unmodifiable(next);
+    _bump(groupTags);
     return store.writeAux(
       profileId,
       _profileInc ?? '',

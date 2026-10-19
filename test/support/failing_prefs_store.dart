@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 // 测试专用：直接替换平台层存储，才能让「真实的 SharedPreferences」（先改内存缓存、
 // 再写底层）在底层写入失败时露出真实行为；该包是 shared_preferences 的传递依赖。
@@ -32,11 +34,34 @@ class FailingPrefsStore extends InMemorySharedPreferencesStore {
 
   final List<String> attempts = [];
 
+  /// 非空时，下一次写入 [holdKey] 在缓存已改之后、落盘之前悬停在它上面（只
+  /// 作用一次）；放行后若 [failHeld] 为 true，这次写入失败（与 [failKeys] 无关）。
+  /// 用来制造「内存已更新、写入挂起、最后失败」的真实时序。
+  Completer<void>? holdNext;
+
+  /// [holdNext] 只拦这个键（不含前缀）；null = 任何键。
+  String? holdKey;
+
+  /// 见 [holdNext]。
+  bool failHeld = false;
+
   bool _fails(String key) => failKeys.contains(key.substring(_prefix.length));
 
   Future<bool> _persist(String key, bool Function() apply) async {
     final bare = key.substring(_prefix.length);
     attempts.add(bare);
+    final hold = holdKey == null || holdKey == bare ? holdNext : null;
+    if (hold != null) holdNext = null;
+    if (hold != null) {
+      final fail = failHeld;
+      await hold.future;
+      if (fail) {
+        if (failByThrowing) {
+          throw PlatformException(code: 'disk', message: 'full');
+        }
+        return false;
+      }
+    }
     if (_fails(key)) {
       if (failByThrowing) {
         throw PlatformException(code: 'disk', message: 'full');

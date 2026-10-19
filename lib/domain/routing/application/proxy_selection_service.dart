@@ -78,7 +78,8 @@ class ProxySelectionService {
 
     final store = _ref.read(proxySelectionStoreProvider.notifier);
     final previous = _ref.read(proxySelectionStoreProvider)[groupTag];
-    await store.persist(groupTag, outboundTag);
+    final write = store.persistTracked(groupTag, outboundTag);
+    await write.persisted;
 
     final port = _ref.read(kernelPortProvider);
     var outcome = await _select(port, groupTag, outboundTag, expectedAttempt);
@@ -108,11 +109,11 @@ class ProxySelectionService {
       case SelectStale():
         return const SelectionDeferred();
       case SelectFailed(:final code, :final message):
-        // 只在仍是最新意图、且存储里仍是我们刚写的值时才回滚：期间用户又选了
-        // 别的，那是更新的意图，不能被这次失败覆盖。
-        final now = _ref.read(proxySelectionStoreProvider)[groupTag];
-        if (isLatest() && now == outboundTag) {
-          await store.restore(groupTag, previous);
+        // 只在仍是最新意图、且该组记录仍是我们这次写入的（版本没变）时才回
+        // 滚：期间用户又选了别的、或启动编排改写了该组，那是更新的状态，不能
+        // 被这次失败覆盖。
+        if (isLatest()) {
+          await store.restore(groupTag, previous, ifVersion: write.version);
         }
         return SelectionFailed(code, message);
     }

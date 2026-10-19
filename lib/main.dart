@@ -178,7 +178,7 @@ void main() async {
   profileUpdateScheduler.start();
 
   // 启动静默自动检查更新：检查到新版本才弹「发现新版本」对话框（见
-  // core/update/startup_update_check.dart），没有新版本 / 网络失败 /
+  // app/update/startup_update_check.dart），没有新版本 / 网络失败 /
   // GITHUB_REPO_SLUG 为空时什么都不做，不产生任何视觉噪音。跟上面订阅的
   // 自动更新调度器、跟关于页手动点「检查更新」都相互独立，谁都不依赖谁。
   unawaited(runStartupUpdateCheck(container));
@@ -218,7 +218,7 @@ void main() async {
     }, appRunner: appRunner),
     // 桌面端全局键盘快捷键（Cmd/Ctrl+V 快速粘贴导入订阅是最高优先级的一个，
     // 另外还有 macOS 的 Cmd+W/Cmd+,、Linux 的 Ctrl+Q，见
-    // core/shortcuts/desktop_shortcuts.dart 的文档）。必须包在
+    // app/shortcuts/desktop_shortcuts.dart 的文档）。必须包在
     // `ClashMiaoApp`（内含 `MaterialApp.router`）外面——Flutter 处理键盘事件
     // 时从聚焦节点往上找最近的 Shortcuts 祖先，文本框自身的复制/粘贴快捷键
     // 由框架内置的 DefaultTextEditingShortcuts 提供（嵌在 MaterialApp 内部，

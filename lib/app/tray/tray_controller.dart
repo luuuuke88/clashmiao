@@ -202,7 +202,7 @@ Future<void> setTrayIconWithLogging(
 /// `destroyWindow`，不能让用户点了“退出”卡住退不出去。
 ///
 /// 特意保持 public（曾经是 `@visibleForTesting`）：桌面端全局快捷键 Ctrl+Q
-/// （`lib/core/shortcuts/desktop_shortcuts.dart` 的 `defaultQuitApp`）需要
+/// （`lib/app/shortcuts/desktop_shortcuts.dart` 的 `defaultQuitApp`）需要
 /// 复用同一条退出序列，不应该另外维护一份重复逻辑。
 Future<void> performQuitSequence({
   required Future<void> Function() disconnect,

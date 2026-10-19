@@ -29,7 +29,7 @@ import 'package:window_manager/window_manager.dart';
 /// `DefaultTextEditingShortcuts` 会先一步命中并完成正常的文本粘贴，事件根本
 /// 不会冒泡到这里的全局"粘贴导入"处理——不需要手动判断"当前是否聚焦在输入
 /// 框"，Flutter 自带的最近祖先优先规则已经保证了这一点。见
-/// `test/core/shortcuts/desktop_shortcuts_test.dart` 里聚焦文本框时的回归测试。
+/// `test/app/shortcuts/desktop_shortcuts_test.dart` 里聚焦文本框时的回归测试。
 class DesktopShortcutsWrapper extends ConsumerWidget {
   const DesktopShortcutsWrapper({
     super.key,

@@ -25,7 +25,7 @@ const _profile = ProfileEntity(
   active: true,
 );
 
-Future<Widget> _host() async {
+Future<Widget> _host(TextDirection direction) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
@@ -56,6 +56,8 @@ Future<Widget> _host() async {
         theme: ThemeData.light().copyWith(
           extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
         ),
+        builder: (context, child) =>
+            Directionality(textDirection: direction, child: child!),
         home: const ProxiesPage(),
       ),
     ),
@@ -63,43 +65,60 @@ Future<Widget> _host() async {
 }
 
 void main() {
-  for (final scale in [1.0, 2.0]) {
-    testWidgets('320 dp、文字 $scale 倍：页头两颗按钮与标题垂直居中且不溢出', (tester) async {
-      tester.view.physicalSize = const Size(320, 640);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  for (final direction in TextDirection.values) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('320 dp、文字 $scale 倍、${direction.name.toUpperCase()}：'
+          '页头两颗按钮与标题垂直居中、在屏内、互不重叠且不溢出', (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      await tester.pumpWidget(await _host());
-      await tester.pump(const Duration(milliseconds: 200));
-      await tester.pump(const Duration(milliseconds: 200));
+        await tester.pumpWidget(await _host(direction));
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.pump(const Duration(milliseconds: 200));
 
-      final title = find.text('线路');
-      expect(title, findsOneWidget);
-      final buttons = find.byType(GlassIconButton);
-      expect(buttons, findsNWidgets(2));
+        final title = find.text('线路');
+        expect(title, findsOneWidget);
+        final buttons = find.byType(GlassIconButton);
+        expect(buttons, findsNWidgets(2));
 
-      final titleCenter = tester.getCenter(title).dy;
-      for (var i = 0; i < 2; i++) {
-        final rect = tester.getRect(buttons.at(i));
-        expect(rect.height, greaterThanOrEqualTo(48));
-        expect(
-          (rect.center.dy - titleCenter).abs(),
-          lessThanOrEqualTo(0.5),
-          reason: '第 ${i + 1} 颗按钮应与标题垂直居中',
-        );
-        // 两颗按钮都完整落在屏内。
-        expect(rect.right, lessThanOrEqualTo(320));
-        expect(rect.left, greaterThanOrEqualTo(0));
-      }
-      // 两颗按钮并排、互不重叠，也不压到标题。
-      final first = tester.getRect(buttons.at(0));
-      final second = tester.getRect(buttons.at(1));
-      expect(first.right, lessThanOrEqualTo(second.left));
-      expect(tester.getRect(title).right, lessThanOrEqualTo(first.left));
-      expect(tester.takeException(), isNull);
-    });
+        final titleRect = tester.getRect(title);
+        final rects = [
+          for (var i = 0; i < 2; i++) tester.getRect(buttons.at(i)),
+        ];
+        for (var i = 0; i < 2; i++) {
+          expect(rects[i].height, greaterThanOrEqualTo(48));
+          expect(
+            (rects[i].center.dy - titleRect.center.dy).abs(),
+            lessThanOrEqualTo(0.5),
+            reason: '第 ${i + 1} 颗按钮应与标题垂直居中',
+          );
+        }
+
+        // 屏内：标题与两颗按钮都完整落在 [0, 320] 里（方向无关）。
+        for (final r in [titleRect, ...rects]) {
+          expect(r.left, greaterThanOrEqualTo(0));
+          expect(r.right, lessThanOrEqualTo(320));
+        }
+
+        // 方向感知的先后：沿「起点 → 末端」依次是 标题、按钮 1、按钮 2，
+        // LTR 自左向右，RTL 自右向左，彼此不重叠。
+        final ltr = direction == TextDirection.ltr;
+        bool before(Rect a, Rect b) =>
+            ltr ? a.right <= b.left + 0.5 : a.left >= b.right - 0.5;
+        expect(before(titleRect, rects[0]), isTrue, reason: '标题不应压到第 1 颗按钮');
+        expect(before(rects[0], rects[1]), isTrue, reason: '两颗按钮不应重叠');
+        // 标题贴起点一侧，按钮组贴末端一侧。
+        if (ltr) {
+          expect(titleRect.left, lessThan(rects[0].left));
+        } else {
+          expect(titleRect.right, greaterThan(rects[0].right));
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 }

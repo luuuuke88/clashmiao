@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:clashmiao/core/licenses/bundled_licenses.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -74,14 +77,90 @@ void main() {
     },
   );
 
-  test('无法核实的部分如实写在登记文本里（中英文）', () async {
-    final byPackage = await _registered();
-    for (final pkg in [geositeLicensePackage, geoipLicensePackage]) {
-      final text = byPackage[pkg]!;
-      expect(text, contains('未核实'), reason: pkg);
-      expect(text, contains('Unverified'), reason: pkg);
-      expect(text, contains('assets/rule-sets/VERSION'), reason: pkg);
+  group('随包快照与许可记录一一对应', () {
+    final version = File('assets/rule-sets/VERSION').readAsStringSync();
+
+    String shortShaIn(String repo) {
+      final m = RegExp('$repo:.*\\(([0-9a-f]{7})\\)').firstMatch(version);
+      expect(m, isNotNull, reason: 'VERSION 里找不到 $repo 的快照提交');
+      return m!.group(1)!;
     }
+
+    String sha256Of(String path) =>
+        sha256.convert(File(path).readAsBytesSync()).toString();
+
+    test('geoip：VERSION 里的快照提交就是登记引用的提交，随包文件与之逐字节一致', () async {
+      final text = (await _registered())[geoipLicensePackage]!;
+
+      expect(geoipSnapshotCommit, startsWith(shortShaIn('sing-geoip')));
+      expect(
+        text,
+        contains(
+          'https://github.com/SagerNet/sing-geoip/commit/$geoipSnapshotCommit',
+        ),
+      );
+      // 生成程序固定到提交，数据来源固定到具体发布。
+      expect(
+        text,
+        contains(
+          'https://github.com/SagerNet/sing-geoip/blob/'
+          '$geoipGeneratorCommit/main.go',
+        ),
+      );
+      expect(
+        text,
+        contains(
+          'https://github.com/Dreamacro/maxmind-geoip/releases/tag/'
+          '$geoipDataRelease',
+        ),
+      );
+      // 随包二进制确实就是这个快照里的那一份。
+      expect(sha256Of('assets/rule-sets/geoip-cn.srs'), geoipCnSha256);
+      expect(text, contains(geoipCnSha256));
+    });
+
+    test('geosite：VERSION 里的快照提交就是登记引用的提交，随包文件与之逐字节一致', () async {
+      final text = (await _registered())[geositeLicensePackage]!;
+
+      expect(geositeSnapshotCommit, startsWith(shortShaIn('sing-geosite')));
+      expect(
+        text,
+        contains(
+          'https://github.com/SagerNet/sing-geosite/commit/'
+          '$geositeSnapshotCommit',
+        ),
+      );
+      expect(
+        text,
+        contains(
+          'https://github.com/SagerNet/sing-geosite/blob/'
+          '$geositeGeneratorCommit/main.go',
+        ),
+      );
+      // 许可原文固定在数据来源提交上。
+      expect(
+        text,
+        contains(
+          'https://github.com/v2fly/domain-list-community/blob/'
+          '$dlcCommit/LICENSE',
+        ),
+      );
+      expect(sha256Of('assets/rule-sets/geosite-cn.srs'), geositeCnSha256);
+      expect(text, contains(geositeCnSha256));
+    });
+
+    test('登记文本不再用笼统的「未核实」搪塞：已核实的写成固定引用', () async {
+      final byPackage = await _registered();
+      for (final pkg in [geositeLicensePackage, geoipLicensePackage]) {
+        final text = byPackage[pkg]!;
+        expect(text, isNot(contains('未核实')), reason: pkg);
+        expect(text, isNot(contains('Unverified')), reason: pkg);
+        expect(text, isNot(contains('当前主分支')), reason: pkg);
+        // 仍未确认的内容单列并写明具体事项，而不是一句话带过。
+        expect(text, contains('未能确认的事项'), reason: pkg);
+        expect(text, contains('Not confirmed'), reason: pkg);
+      }
+    });
   });
 
   test('登记的文案不出现被禁止点名的项目', () async {

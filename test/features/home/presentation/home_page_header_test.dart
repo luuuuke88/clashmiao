@@ -15,16 +15,21 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// 说明：flutter_test 默认用 Ahem 字体，每个字符宽度等于字号，英文标题
-/// 「ClashMiao」在测试里比真机宽得多；320 dp 下首页页头 Row 在测试环境里会横向
-/// 溢出（1.0x 就会，2.0x 真机上也会，因为 28 sp 标题放大一倍已经超过按钮
-/// 之外的剩余宽度——这是页头自己的问题，属于首页页头与文字缩放的后续任务，
-/// 不在这里修）。所以本测试**只断言垂直对齐**，把横向溢出的报告收集起来、
-/// 不让它掩盖对齐断言，也不假装横向没问题。
+/// 首页页头（标题块 + 两颗圆按钮）在 320 dp、文字 1.0x / 2.0x、LTR / RTL 下的
+/// 布局断言。只读页头，不碰连接区。
 ///
-/// 只验证首页页头（标题块 + 两颗圆按钮）的布局，不碰连接区。
-/// 两颗按钮的交互区放大到 48x48 后，要求它们仍与左侧标题块垂直居中。
-/// 标题块 = 标题所在的那一列（现在含版本号一行，之后版本号删除也同样成立）。
+/// ## 已知溢出（精确捕获，不是笼统吞掉）
+///
+/// - 首页页头那一行（创建者链含 `DragToMoveArea`）在 320 dp 下横向溢出：flutter_test
+///   默认的 Ahem 字体比真机宽，1.0x 就会溢出；2.0x 真机上也必然出现（28 sp 标题
+///   放大一倍已超过按钮之外的剩余宽度）。属于首页页头与文字缩放的后续任务，
+///   这里不修，只**精确断言它存在**，并且按溢出量校验几何位置。
+/// - 2.0x 时连接区另有两处溢出（创建者链含 `ConnectionButton`、`_ModeSelector`），
+///   属于连接区（正在被重写、本任务不得触碰），同样列为已知项逐一断言。
+/// - 其它任何溢出一律让测试失败：未知溢出会原样转交给框架的错误处理。
+///
+/// 已知项被修掉之后，对应的期望会失败——到时候删掉那一项即可，不要放宽过滤。
+
 const _profile = ProfileEntity(
   id: 'p1',
   name: '测试订阅',
@@ -32,7 +37,7 @@ const _profile = ProfileEntity(
   active: true,
 );
 
-Future<Widget> _host() async {
+Future<Widget> _host(TextDirection direction) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
     appName: 'ClashMiao',
@@ -62,64 +67,136 @@ Future<Widget> _host() async {
         theme: ThemeData.light().copyWith(
           extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
         ),
+        builder: (context, child) =>
+            Directionality(textDirection: direction, child: child!),
         home: const HomePage(),
       ),
     ),
   );
 }
 
+/// 一次溢出报告：归类（按创建者链）、溢出量、框架报告的溢出边。
+class _Overflow {
+  _Overflow(this.kind, this.amount, this.side);
+
+  final String kind;
+  final double amount;
+  final String side;
+}
+
+/// 按 RenderFlex 的创建者链识别溢出属于哪一块；不认识的返回 null。
+String? _classify(String creatorChain) {
+  if (creatorChain.contains('DragToMoveArea')) return 'header';
+  if (creatorChain.contains('ConnectionButton')) return 'connectionButton';
+  if (creatorChain.contains('_ModeSelector')) return 'modeSelector';
+  return null;
+}
+
 void main() {
-  for (final scale in [1.0, 2.0]) {
-    testWidgets('320 dp、文字 $scale 倍：首页页头按钮与标题块垂直居中', (tester) async {
-      tester.view.physicalSize = const Size(320, 700);
-      tester.view.devicePixelRatio = 1;
-      addTearDown(tester.view.resetPhysicalSize);
-      addTearDown(tester.view.resetDevicePixelRatio);
-      tester.platformDispatcher.textScaleFactorTestValue = scale;
-      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  for (final direction in TextDirection.values) {
+    for (final scale in [1.0, 2.0]) {
+      testWidgets('320 dp、文字 $scale 倍、${direction.name.toUpperCase()}：'
+          '首页页头按钮与标题块垂直居中，已知溢出被精确捕获', (tester) async {
+        tester.view.physicalSize = const Size(320, 700);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
-      final host = await _host();
-      final previousHandler = FlutterError.onError;
-      FlutterError.onError = (details) {
-        if (details.exceptionAsString().contains('overflowed')) {
-          return;
-        }
-        previousHandler?.call(details);
-      };
-      addTearDown(() => FlutterError.onError = previousHandler);
+        final host = await _host(direction);
+        final previousHandler = FlutterError.onError;
+        final overflows = <_Overflow>[];
+        FlutterError.onError = (details) {
+          final message = details.exceptionAsString();
+          final match = RegExp(
+            r'overflowed by ([\d.]+) pixels on the (\w+)',
+          ).firstMatch(message);
+          if (match != null) {
+            final chain = (details.informationCollector?.call() ?? const [])
+                .map((n) => n.toStringDeep())
+                .join('\n');
+            final kind = _classify(chain);
+            if (kind != null) {
+              overflows.add(
+                _Overflow(kind, double.parse(match.group(1)!), match.group(2)!),
+              );
+              return;
+            }
+          }
+          // 不认识的溢出（或任何其它错误）原样交给框架，让测试失败。
+          previousHandler?.call(details);
+        };
+        addTearDown(() => FlutterError.onError = previousHandler);
 
-      await tester.pumpWidget(host);
-      await tester.pump(const Duration(milliseconds: 250));
-      FlutterError.onError = previousHandler;
+        await tester.pumpWidget(host);
+        await tester.pump(const Duration(milliseconds: 250));
+        FlutterError.onError = previousHandler;
 
-      final header = find.byType(DragToMoveArea);
-      expect(header, findsOneWidget);
-      final title = find.descendant(
-        of: header,
-        matching: find.text('ClashMiao'),
-      );
-      expect(title, findsOneWidget);
-      // 标题块：标题 Text 最近的那个 Column（标题 + 其下的小字）。
-      final titleBlock = find
-          .ancestor(of: title, matching: find.byType(Column))
-          .first;
-      final blockCenter = tester.getCenter(titleBlock).dy;
-
-      final buttons = find.descendant(
-        of: header,
-        matching: find.byType(GlassIconButton),
-      );
-      expect(buttons, findsNWidgets(2));
-      for (var i = 0; i < 2; i++) {
-        final rect = tester.getRect(buttons.at(i));
-        expect(rect.height, greaterThanOrEqualTo(48));
+        // 已知溢出：恰好这几类，一类不多、一类不少。
+        final expectedKinds = <String>{
+          'header',
+          if (scale == 2.0) ...['connectionButton', 'modeSelector'],
+        };
         expect(
-          (rect.center.dy - blockCenter).abs(),
-          lessThanOrEqualTo(0.5),
-          reason: '第 ${i + 1} 颗按钮应与标题块垂直居中',
+          overflows.map((o) => o.kind).toSet(),
+          expectedKinds,
+          reason: '出现了与预期不同的溢出集合',
         );
-      }
-      expect(tester.takeException(), isNull);
-    });
+        final headerOverflow = overflows.firstWhere((o) => o.kind == 'header');
+        expect(headerOverflow.amount, greaterThan(0));
+        final header = find.byType(DragToMoveArea);
+        expect(header, findsOneWidget);
+        final title = find.descendant(
+          of: header,
+          matching: find.text('ClashMiao'),
+        );
+        expect(title, findsOneWidget);
+        // 标题块：标题 Text 最近的那个 Column（标题 + 其下的小字）。
+        final titleBlock = find
+            .ancestor(of: title, matching: find.byType(Column))
+            .first;
+        final blockCenter = tester.getCenter(titleBlock).dy;
+
+        final buttons = find.descendant(
+          of: header,
+          matching: find.byType(GlassIconButton),
+        );
+        expect(buttons, findsNWidgets(2));
+        final rects = [
+          for (var i = 0; i < 2; i++) tester.getRect(buttons.at(i)),
+        ];
+        for (var i = 0; i < 2; i++) {
+          expect(rects[i].height, greaterThanOrEqualTo(48));
+          expect(
+            (rects[i].center.dy - blockCenter).abs(),
+            lessThanOrEqualTo(0.5),
+            reason: '第 ${i + 1} 颗按钮应与标题块垂直居中',
+          );
+        }
+
+        // 方向感知的几何：沿「起点 → 末端」依次是 标题块、按钮 1、按钮 2。
+        final block = tester.getRect(titleBlock);
+        final ltr = direction == TextDirection.ltr;
+        bool before(Rect a, Rect b) =>
+            ltr ? a.right <= b.left + 0.5 : a.left >= b.right - 0.5;
+        expect(before(block, rects[0]), isTrue, reason: '标题块不应压到第 1 颗按钮');
+        expect(before(rects[0], rects[1]), isTrue, reason: '两颗按钮不应重叠');
+
+        // 屏内：所有元素的左缘不得出屏。右缘可以超出页头内容区（屏宽减去
+        // 24 dp 页边距）的量不得大于上面捕获的已知溢出量。框架在两种方向下
+        // 都把溢出报在物理右侧——LTR 时是末端的按钮越界，RTL 时是起点的标题块
+        // 越界（Row 的子项整体从左边缘 24 dp 处排起），所以这里按物理边界比较，
+        // 先后顺序则用上面方向感知的 before() 断言。
+        const screenWidth = 320.0;
+        const pagePadding = 24.0;
+        final rightLimit = screenWidth - pagePadding + headerOverflow.amount;
+        for (final r in [block, ...rects]) {
+          expect(r.left, greaterThanOrEqualTo(0));
+          expect(r.right, lessThanOrEqualTo(rightLimit + 0.5));
+        }
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 }

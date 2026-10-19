@@ -78,13 +78,24 @@ class LibboxCommandStreamTest {
     @Test
     fun `退避等待期间断开 连接尝试被取消 候选被丢弃`() {
         val client = FakeClient()
-        val stream = LibboxCommandStream(scope, { client }, Dispatchers.IO, backoff = { delay(10_000) })
+        val inBackoff = CountDownLatch(1)
+        val stream = LibboxCommandStream(
+            scope,
+            { client },
+            Dispatchers.IO,
+            backoff = {
+                inBackoff.countDown()
+                delay(10_000)
+            },
+        )
         stream.connect()
+        assertTrue("任务已创建候选并进入退避", inBackoff.await(5, TimeUnit.SECONDS))
         stream.disconnect()
-        // 候选可能尚未创建（直接作废）或已创建（在 finally 里丢弃）；两种情况都不会连上。
-        Thread.sleep(50)
+        // 屏障：被取消的任务在 finally 里丢弃候选
+        assertTrue(client.abandoned.await(5, TimeUnit.SECONDS))
         assertFalse(stream.isConnected)
         assertEquals(0, client.connected)
+        assertEquals(0, client.closed)
     }
 
     @Test

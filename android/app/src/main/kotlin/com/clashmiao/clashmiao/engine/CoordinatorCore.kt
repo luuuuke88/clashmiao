@@ -120,6 +120,12 @@ class CoordinatorCore(
         var retiredAt = 0
         var retireTimedOut = false
         var destroyed = false
+
+        /**
+         * 上一次启动以失败告终：runtime 里可能留着半初始化的资源（例如 start() 抛异常的
+         * command server）。这样的实例只能完整回收，不能软回收后复用。
+         */
+        var tainted = false
     }
 
     /**
@@ -409,6 +415,7 @@ class CoordinatorCore(
             JobKind.Teardown -> {
                 if (inst != null) {
                     inst.rt = if (j.soft) Rt.Soft else Rt.Clean
+                    if (!j.soft) inst.tainted = false
                     if (inst.rt == Rt.Clean && inst.destroyed) insts.remove(inst.id)
                 }
             }
@@ -427,9 +434,11 @@ class CoordinatorCore(
                     } else if (e != null) {
                         failExec(e, FailureCode.KernelExited, "service destroyed during start")
                     }
-                    is JobResult.Failed ->
+                    is JobResult.Failed -> {
+                        inst?.tainted = true
                         if (e != null) failExec(e, result.code, result.message)
                         else log("stale start failure dropped: ${result.code.wire} (owner seq=${j.owner.seq})")
+                    }
                     JobResult.Cancelled ->
                         if (e != null) failExec(e, FailureCode.Unknown, "start cancelled unexpectedly")
                     JobResult.TornDown -> log("start job reported TornDown?")
@@ -643,8 +652,13 @@ class CoordinatorCore(
             return
         }
         if (inst.rt == Rt.Up) {
-            // 上一次启动半途而废留下的资源：先软回收再启动。
-            dispatchTeardown(inst, soft = true, e = e)
+            // 上一次启动半途而废留下的资源：被取消的（已完成的步骤都成功）软回收即可复用 command server；
+            // 失败的可能留下半初始化资源，必须完整回收，下一次启动重新创建。
+            dispatchTeardown(inst, soft = !inst.tainted, e = e)
+            return
+        }
+        if (inst.rt == Rt.Soft && inst.tainted) {
+            dispatchTeardown(inst, soft = false, e = e)
             return
         }
         dispatchStart(e, inst, s)

@@ -143,10 +143,20 @@ class LibboxKernelRuntime(
         return !ctx.cancelled
     }
 
+    /**
+     * 创建并启动 command server。只有 start() 成功的 server 才留在名下供复用；
+     * start() 失败的半初始化对象当场关闭并释放，绝不留给下一次启动（它只检查「是否已有 server」）。
+     */
     private fun spawnCommandServer() {
         val server = CommandServer(this, 300)
-        commandServer = server // 先记名下，start() 失败也能被回收
-        server.start()
+        try {
+            server.start()
+        } catch (e: Exception) {
+            runCatching { server.close() }
+            runCatching { Seq.destroyRef(server.refnum) }
+            throw e
+        }
+        commandServer = server
     }
 
     /**

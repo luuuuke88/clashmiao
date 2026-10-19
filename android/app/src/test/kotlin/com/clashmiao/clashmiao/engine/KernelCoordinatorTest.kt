@@ -469,16 +469,20 @@ class KernelCoordinatorTest {
 
     private class ConsentScene(val platform: FakePlatform, val coordinator: KernelCoordinator) {
         @Volatile var consented = false
-        val dialogs = ArrayList<String>()
+
+        /** 弹出的对话框（宿主, requestCode）。 */
+        val dialogs = ArrayList<Pair<Any, Int>>()
         val host = Any()
         val broker = VpnConsentBroker<String, Any>(
             prepare = { if (consented) null else "consent-intent" },
-            launch = { _, intent -> dialogs += intent },
+            launch = { h, _, code -> dialogs += h to code },
             sink = { t, g, m -> coordinator.onAuthResult(t, g, m) },
         ).also {
             it.attach(host)
             platform.consent = it
         }
+
+        fun answerLast(granted: Boolean) = broker.onResult(dialogs.last().second, granted)
     }
 
     @Test
@@ -495,7 +499,7 @@ class KernelCoordinatorTest {
 
         // 用户在第一个对话框里同意：结果报给 seq=1 的 token（被核心丢弃），seq=3 重新检查后直接通过
         scene.consented = true
-        scene.broker.onResult(true)
+        scene.answerLast(true)
         platform.pump { snap.status == KernelStatus.Started }
         assertEquals(3L, snap.appliedSeq)
         assertNull(snap.lastFailure)
@@ -510,14 +514,14 @@ class KernelCoordinatorTest {
         coordinator.request(epoch, 1, Desired.On, spec(1))
         coordinator.request(epoch, 2, Desired.Off, null)
         coordinator.request(epoch, 3, Desired.On, spec(1))
-        scene.broker.onResult(false) // 拒绝的是 seq=1 弹出的对话框
+        scene.answerLast(false) // 拒绝的是 seq=1 弹出的对话框
         platform.drain()
         assertNull("旧拒绝不终结 seq=3", snap.lastFailure)
         assertEquals(Desired.On, snap.desired)
         assertEquals("seq=3 仍需授权：为它重新弹窗", 2, scene.dialogs.size)
         assertTrue(platform.handles.isEmpty())
 
-        scene.broker.onResult(false) // seq=3 自己的对话框被拒
+        scene.answerLast(false) // seq=3 自己的对话框被拒
         platform.drain()
         assertEquals(FailureCode.PermissionDenied, snap.lastFailure!!.code)
         assertEquals(3L, snap.lastFailure!!.seq)
@@ -636,5 +640,133 @@ class KernelCoordinatorTest {
         assertFalse("start 返回后不得再调用 setService：$calls", calls.contains("setService"))
         assertEquals("teardown(soft=false)", calls.last())
         assertEquals("start", calls[calls.indexOf("teardown(soft=false)") - 1])
+    }
+
+    // --- Activity 重建后迟到的授权结果（复审问题 2）-----------------------------
+
+    private fun recreateThenNewerRequest(scene: ConsentScene): Pair<Int, Int> {
+        platform.mode = ServiceType.Vpn
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        val oldCode = scene.dialogs.single().second
+        // Activity 被销毁并重建（旧对话框的结果之后会被投递给新 Activity）
+        scene.broker.detach(scene.host)
+        val recreated = Any()
+        scene.broker.attach(recreated)
+        coordinator.request(epoch, 2, Desired.Off, null)
+        coordinator.request(epoch, 3, Desired.On, spec(1))
+        assertEquals("新请求在新宿主上自己检查授权、弹新对话框", 2, scene.dialogs.size)
+        val (newHost, newCode) = scene.dialogs.last()
+        assertTrue(newHost === recreated)
+        assertTrue("每个对话框标识唯一", oldCode != newCode)
+        return oldCode to newCode
+    }
+
+    @Test
+    fun `Activity 重建后旧对话框的同意迟到 只报给旧 token 不会终结新请求`() {
+        val scene = ConsentScene(platform, coordinator)
+        val (oldCode, newCode) = recreateThenNewerRequest(scene)
+        assertTrue(scene.broker.onResult(oldCode, true))
+        platform.drain()
+        assertTrue("旧同意不能启动新请求", platform.handles.isEmpty())
+        assertEquals(Desired.On, snap.desired)
+        assertEquals(KernelStatus.Starting, snap.status)
+        assertNull(snap.lastFailure)
+        // 新请求只按自己对话框的结果终结
+        scene.consented = true
+        assertTrue(scene.broker.onResult(newCode, true))
+        platform.pump { snap.status == KernelStatus.Started }
+        assertEquals(3L, snap.appliedSeq)
+        assertNull(snap.lastFailure)
+    }
+
+    @Test
+    fun `Activity 重建后旧对话框的拒绝迟到 只报给旧 token 不会让新请求失败`() {
+        val scene = ConsentScene(platform, coordinator)
+        val (oldCode, newCode) = recreateThenNewerRequest(scene)
+        assertTrue(scene.broker.onResult(oldCode, false))
+        platform.drain()
+        assertNull("旧拒绝不能终结新请求", snap.lastFailure)
+        assertEquals(Desired.On, snap.desired)
+        assertEquals(KernelStatus.Starting, snap.status)
+        scene.consented = true
+        assertTrue(scene.broker.onResult(newCode, true))
+        platform.pump { snap.status == KernelStatus.Started }
+        assertNull(snap.lastFailure)
+        // 同一结果重复投递 / 不属于授权区间的 requestCode：忽略
+        assertTrue(scene.broker.onResult(oldCode, false))
+        assertFalse(scene.broker.onResult(44, false))
+        platform.drain()
+        assertEquals(KernelStatus.Started, snap.status)
+    }
+
+    // --- 失败启动不复用半初始化的 command server（复审问题 1）--------------------
+
+    @Test
+    fun `旧启动在 StartCommandServer 失败 被同 revision 新请求接替 旧 server 关闭 新 server 重新启动 started 时 server 确实在跑`() {
+        class FakeServer(val id: Int) {
+            @Volatile var running = false
+            @Volatile var closed = false
+        }
+        val servers = java.util.Collections.synchronizedList(ArrayList<FakeServer>())
+        var current: FakeServer? = null
+        val lock = Any()
+        val spawnEntered = CountDownLatch(1)
+        val spawnGate = CountDownLatch(1)
+        val ops = object : KernelStartOps {
+            override fun bootstrap() = Unit
+            override fun hasCommandServer() = synchronized(lock) { current != null }
+            override fun spawnCommandServer() {
+                // 按最坏情况建模：对象先记名下再 start()（start 失败时仍留在名下）
+                val s = synchronized(lock) { FakeServer(servers.size + 1).also { servers += it; current = it } }
+                if (s.id == 1) {
+                    spawnEntered.countDown()
+                    spawnGate.await(5, TimeUnit.SECONDS)
+                    throw IllegalStateException("listen failed")
+                }
+                s.running = true
+            }
+            override fun buildConfig(spec: LaunchSpec) = "cfg"
+            override fun prepareRuntime() = Unit
+            override fun newService(content: String) = Unit
+            override fun settleAfterReload(ctx: ExecContext) = true
+            override fun startService() = Unit
+            override fun bindCommandServer() = Unit
+        }
+        platform.runtimeOverride = object : KernelRuntime {
+            override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext) =
+                runStartSequence(ops, spec, reload, ctx)
+
+            override fun teardown(soft: Boolean, ctx: ExecContext) {
+                if (soft) return // 软回收保留 command server
+                synchronized(lock) {
+                    current?.let {
+                        it.running = false
+                        it.closed = true
+                    }
+                    current = null
+                }
+            }
+        }
+        val serverRunningWhenStarted = ArrayList<Boolean>()
+        coordinator.observeSnapshot {
+            if (it.status == KernelStatus.Started) {
+                serverRunningWhenStarted += synchronized(lock) { current?.running == true }
+            }
+        }
+
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        platform.pump { spawnEntered.count == 0L }
+        coordinator.request(epoch, 2, Desired.On, spec(1)) // 同 revision 的新请求接替
+        spawnGate.countDown() // 旧启动的 command server start() 失败
+        platform.pump { snap.status == KernelStatus.Started }
+
+        assertEquals(2, servers.size)
+        assertTrue("旧 server 已关闭", servers[0].closed)
+        assertFalse(servers[0].running)
+        assertTrue("新 server 重新启动", servers[1].running)
+        assertFalse(servers[1].closed)
+        assertEquals(listOf(true), serverRunningWhenStarted)
+        assertNull("旧失败不归新请求", snap.lastFailure)
+        assertEquals(2L, snap.appliedSeq)
     }
 }

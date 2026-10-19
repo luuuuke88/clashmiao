@@ -16,7 +16,8 @@ import java.util.UUID
 
 /** 能弹出 VPN 授权对话框的界面（MainActivity）。 */
 interface ActivityHost {
-    fun launchVpnConsent(intent: Intent)
+    /** 以 [requestCode] 弹出授权对话框；结果须以同一 requestCode 交回 [KernelCoordinator.onVpnConsentResult]。 */
+    fun launchVpnConsent(intent: Intent, requestCode: Int)
 }
 
 /**
@@ -36,7 +37,7 @@ class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform
 
     private val consent = VpnConsentBroker<Intent, ActivityHost>(
         prepare = { VpnService.prepare(app) },
-        launch = { host, intent -> host.launchVpnConsent(intent) },
+        launch = { host, intent, requestCode -> host.launchVpnConsent(intent, requestCode) },
         sink = { token, granted, message -> authSink(token, granted, message) },
     )
 
@@ -64,8 +65,8 @@ class AndroidCoordinatorPlatform(private val app: Context) : CoordinatorPlatform
 
     override fun cancelVpnAuth(token: Long) = consent.cancel(token)
 
-    /** 授权对话框的结果（Activity.onActivityResult → PermissionGate）。 */
-    fun onConsentResult(granted: Boolean) = consent.onResult(granted)
+    /** 授权对话框的结果（Activity.onActivityResult）；false = 不是授权对话框的 requestCode。 */
+    fun onConsentResult(requestCode: Int, granted: Boolean): Boolean = consent.onResult(requestCode, granted)
 
     fun attachActivity(host: ActivityHost) = consent.attach(host)
 

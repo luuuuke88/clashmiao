@@ -31,6 +31,12 @@ linter:
     - avoid_type_to_string
     - always_declare_return_types
 
+    # ── 依赖方向 ────────────────────────────────────────────────────
+    # 分层靠"谁 import 谁"来守，相对路径 import 会让一条依赖在 grep 和
+    # 依赖检查脚本里隐形（`../../data/x.dart` 看不出落在哪一层）。统一 package
+    # 绝对路径，每条依赖的层归属一眼可见、可机检。
+    - always_use_package_imports
+
     # ── 真实错误 ────────────────────────────────────────────────────
     - throw_in_finally
     - no_duplicate_case_values

@@ -5,6 +5,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -53,6 +54,11 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
     prefs: prefs,
     boxService: boxService,
     store: store,
+    // 惰性读取：按创建订阅那一刻的语言取默认名。
+    defaultNames: ProfileDefaultNames(
+      local: () => ref.read(translationsProvider).profile.defaultLocalName,
+      remote: () => ref.read(translationsProvider).profile.remoteProfile,
+    ),
   );
 });
 

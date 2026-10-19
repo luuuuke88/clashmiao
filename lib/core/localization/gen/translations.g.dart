@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4420 (442 per locale)
+/// Strings: 4810 (481 per locale)
 ///
-/// Built on 2026-10-19 at 20:33 UTC
+/// Built on 2026-10-19 at 20:42 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -163,6 +163,10 @@ class TranslationsGeneralEn {
   String get underDevelopment => 'Under Development';
   String get confirm => 'Confirm';
   String get close => 'Close';
+  String get cancel => 'Cancel';
+  String get clipboardEmpty => 'Clipboard is empty';
+  String get clipboardReadFailed => 'Couldn\'t read the clipboard';
+  String get moreOptions => 'More options';
 }
 
 // Path: intro
@@ -206,6 +210,8 @@ class TranslationsHomeEn {
   late final TranslationsHomeEgressIpEn egressIp = TranslationsHomeEgressIpEn._(
     _root,
   );
+  String get emptyProfilesHint => 'Tap the button below to get started';
+  String get noActiveProfileTitle => 'No profile selected';
 }
 
 // Path: stats
@@ -273,6 +279,9 @@ class TranslationsProfileEn {
   late final TranslationsProfileDetailsFormEn detailsForm =
       TranslationsProfileDetailsFormEn._(_root);
   String get remoteProfile => 'Remote Profile';
+  String get defaultLocalName => 'Local import';
+  String get defaultDeepLinkName => 'Link import';
+  String get switchFailedMsg => 'Couldn\'t switch profile';
 }
 
 // Path: proxies
@@ -335,6 +344,9 @@ class TranslationsLogsEn {
   String get logsCopied => 'Logs copied';
   String get logsUnderDevelopment => 'Log feature is under development';
   String get noLogsWhenDisconnected => 'Not connected, no logs';
+  String get loadFailed => 'Couldn\'t load logs';
+  String get empty => 'No logs yet';
+  String get clearFailed => 'Couldn\'t clear logs';
 }
 
 // Path: settings
@@ -372,6 +384,16 @@ class TranslationsSettingsEn {
   String get portChangeNotice => 'Port changes require reconnect to apply';
   late final TranslationsSettingsGroupsEn groups =
       TranslationsSettingsGroupsEn._(_root);
+  String get importOptionsInvalid =>
+      'The clipboard doesn\'t contain valid settings JSON';
+  String get importOptionsNothing => 'No importable settings found';
+  String importOptionsDone({required Object count}) =>
+      'Imported ${count} settings';
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'Imported ${applied} settings; ${skipped} were skipped because they were invalid';
 }
 
 // Path: about
@@ -427,6 +449,7 @@ class TranslationsTrayEn {
   late final TranslationsTrayStatusEn status = TranslationsTrayStatusEn._(
     _root,
   );
+  String get proxyModeMenu => 'Proxy Mode';
 }
 
 // Path: failure
@@ -450,6 +473,8 @@ class TranslationsFailureEn {
       TranslationsFailureConnectionEn._(_root);
   late final TranslationsFailureGeoAssetsEn geoAssets =
       TranslationsFailureGeoAssetsEn._(_root);
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -464,7 +489,7 @@ class TranslationsConnectionEn {
   String get disconnecting => 'Disconnecting';
   String get connected => 'Connected';
   String get reconnect => 'Reconnect';
-  String get connectAnyWay => 'Connect';
+  String get connectAnyWay => 'Connect Anyway';
   String get experimentalNotice => 'Experimental Features In Use';
   String get experimentalNoticeMsg =>
       'You\'ve enabled some experimental features which might affect connection quality and cause unexpected errors. You can always change or reset these options from Config options page.';
@@ -552,6 +577,14 @@ class TranslationsConfigEn {
   String get desktopProxyScopeNotice =>
       'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
   String get serviceModeIosVpnOnly => 'iOS supports VPN mode only';
+  String get warpGenerating => 'Generating WARP configuration…';
+  String get warpConfigFailed =>
+      'Couldn\'t generate the WARP configuration. Please try again later.';
+  String get portRangeError => 'Port must be between 1024 and 65535';
+  String get dnsEmptyError => 'DNS address can\'t be empty';
+  String get rangeFormatError => 'Enter a number or a range, e.g. 10-30';
+  String get urlSchemeError => 'URL must start with http:// or https://';
+  String get manageRuleAssets => 'Manage rule sets';
 }
 
 // Path: general.toggle
@@ -669,6 +702,12 @@ class TranslationsProfileAddEn {
   String get addingWarpMsg => 'Please wait while we register WARP.';
   String get addingProfileMsg => 'Adding Profile';
   String get failureMsg => 'Failed to Add Profile';
+  String importedNamed({required Object name}) =>
+      'Imported subscription: ${name}';
+  String get clipboardEmpty => 'The clipboard is empty, nothing to import';
+  String get deepLinkMissingUrl => 'The link has no subscription address';
+  String get successMsg => 'Profile added';
+  String get nameAutoHint => 'Detected automatically (optional)';
 }
 
 // Path: profile.details
@@ -758,6 +797,9 @@ class TranslationsProfileDeleteEn {
   String get buttonTxt => 'Delete';
   String get confirmationMsg => 'Delete Profile Permanently?';
   String get successMsg => 'Profile Deleted Successfully';
+  String get confirmTitle => 'Delete profile';
+  String namedConfirmMsg({required Object name}) =>
+      'Delete "${name}"? This can\'t be undone.';
 }
 
 // Path: profile.save
@@ -793,6 +835,9 @@ class TranslationsProfileDetailsFormEn {
   String get mux => 'Mux';
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  String get updateIntervalOff => 'Off';
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: proxies.sortOptions
@@ -882,6 +927,10 @@ class TranslationsSettingsBackupEn {
   String get recoveryClose => 'Close';
   String get recoveryRetried =>
       'Your data was restored to before the interrupted import.';
+  String get exportAction => 'Export backup';
+  String get importAction => 'Import backup';
+  String get exportFailed => 'Couldn\'t export the backup';
+  String get shareText => 'ClashMiao backup';
 }
 
 // Path: settings.general
@@ -1390,6 +1439,14 @@ class TranslationsGeneralAr extends TranslationsGeneralEn {
   String get confirm => 'تأكيد';
   @override
   String get close => 'إغلاق';
+  @override
+  String get cancel => 'إلغاء';
+  @override
+  String get clipboardEmpty => 'الحافظة فارغة';
+  @override
+  String get clipboardReadFailed => 'تعذّرت قراءة الحافظة';
+  @override
+  String get moreOptions => 'خيارات إضافية';
 }
 
 // Path: intro
@@ -1449,6 +1506,10 @@ class TranslationsHomeAr extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpAr egressIp = TranslationsHomeEgressIpAr._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'اضغط على الزر أدناه للبدء';
+  @override
+  String get noActiveProfileTitle => 'لم يتم اختيار ملف تعريف';
 }
 
 // Path: stats
@@ -1550,6 +1611,12 @@ class TranslationsProfileAr extends TranslationsProfileEn {
       TranslationsProfileOverviewAr._(_root);
   @override
   String get remoteProfile => 'اشتراك بعيد';
+  @override
+  String get defaultLocalName => 'استيراد محلي';
+  @override
+  String get defaultDeepLinkName => 'استيراد من رابط';
+  @override
+  String get switchFailedMsg => 'تعذّر تبديل ملف التعريف';
 }
 
 // Path: proxies
@@ -1654,6 +1721,12 @@ class TranslationsLogsAr extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'ميزة السجلات قيد التطوير';
   @override
   String get noLogsWhenDisconnected => 'غير متصل، لا توجد سجلات';
+  @override
+  String get loadFailed => 'تعذّر تحميل السجلات';
+  @override
+  String get empty => 'لا توجد سجلات بعد';
+  @override
+  String get clearFailed => 'تعذّر مسح السجلات';
 }
 
 // Path: settings
@@ -1712,6 +1785,20 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsAr groups =
       TranslationsSettingsGroupsAr._(_root);
+  @override
+  String get importOptionsInvalid => 'لا تحتوي الحافظة على JSON إعدادات صالح';
+  @override
+  String get importOptionsNothing =>
+      'لم يتم العثور على إعدادات قابلة للاستيراد';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'تم استيراد ${count} من الإعدادات';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة';
 }
 
 // Path: about
@@ -1795,6 +1882,8 @@ class TranslationsTrayAr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'إخفاء';
+  @override
+  String get proxyModeMenu => 'وضع الوكيل';
 }
 
 // Path: failure
@@ -1828,6 +1917,9 @@ class TranslationsFailureAr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsAr geoAssets =
       TranslationsFailureGeoAssetsAr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -1851,7 +1943,7 @@ class TranslationsConnectionAr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'أعد الاتصال';
   @override
-  String get connectAnyWay => 'اتصل';
+  String get connectAnyWay => 'اتصل على أي حال';
   @override
   String get experimentalNotice => 'ميزات تجريبية قيد الاستخدام';
   @override
@@ -2009,6 +2101,21 @@ class TranslationsConfigAr extends TranslationsConfigEn {
       'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
   @override
   String get serviceModeIosVpnOnly => 'يدعم iOS وضع VPN فقط';
+  @override
+  String get warpGenerating => 'جارٍ إنشاء إعدادات WARP…';
+  @override
+  String get warpConfigFailed =>
+      'تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.';
+  @override
+  String get portRangeError => 'يجب أن يكون المنفذ بين 1024 و65535';
+  @override
+  String get dnsEmptyError => 'لا يمكن أن يكون عنوان DNS فارغًا';
+  @override
+  String get rangeFormatError => 'أدخل رقمًا أو نطاقًا، مثل 10-30';
+  @override
+  String get urlSchemeError => 'يجب أن يبدأ الرابط بـ http:// أو https://';
+  @override
+  String get manageRuleAssets => 'إدارة مجموعات القواعد';
 }
 
 // Path: general.toggle
@@ -2170,6 +2277,17 @@ class TranslationsProfileAddAr extends TranslationsProfileAddEn {
   String get warpDescription => 'تسريع مجاني عبر Cloudflare WARP';
   @override
   String get addingWarpMsg => 'يرجى الانتظار أثناء تسجيل WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'تم استيراد الاشتراك: ${name}';
+  @override
+  String get clipboardEmpty => 'الحافظة فارغة، لا يوجد ما يمكن استيراده';
+  @override
+  String get deepLinkMissingUrl => 'لا يحتوي الرابط على عنوان اشتراك';
+  @override
+  String get successMsg => 'تمت إضافة ملف التعريف';
+  @override
+  String get nameAutoHint => 'يُكتشف تلقائيًا (اختياري)';
 }
 
 // Path: profile.update
@@ -2262,6 +2380,11 @@ class TranslationsProfileDeleteAr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'حذف ملف التعريف نهائياً؟';
   @override
   String get successMsg => 'تم حذف ملف التعريف بنجاح';
+  @override
+  String get confirmTitle => 'حذف ملف التعريف';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'هل تريد حذف "${name}"؟ لا يمكن التراجع عن ذلك.';
 }
 
 // Path: profile.save
@@ -2320,6 +2443,12 @@ class TranslationsProfileDetailsFormAr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'إيقاف';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ساعة';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} يوم';
 }
 
 // Path: profile.actionButtons
@@ -2523,6 +2652,14 @@ class TranslationsSettingsBackupAr extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
+  @override
+  String get exportAction => 'تصدير نسخة احتياطية';
+  @override
+  String get importAction => 'استيراد نسخة احتياطية';
+  @override
+  String get exportFailed => 'تعذّر تصدير النسخة الاحتياطية';
+  @override
+  String get shareText => 'نسخة ClashMiao الاحتياطية';
 }
 
 // Path: settings.general
@@ -3246,6 +3383,14 @@ class TranslationsGeneralEs extends TranslationsGeneralEn {
   String get confirm => 'Confirmar';
   @override
   String get close => 'Cerrar';
+  @override
+  String get cancel => 'Cancelar';
+  @override
+  String get clipboardEmpty => 'El portapapeles está vacío';
+  @override
+  String get clipboardReadFailed => 'No se pudo leer el portapapeles';
+  @override
+  String get moreOptions => 'Más opciones';
 }
 
 // Path: intro
@@ -3305,6 +3450,10 @@ class TranslationsHomeEs extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpEs egressIp = TranslationsHomeEgressIpEs._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'Toca el botón de abajo para empezar';
+  @override
+  String get noActiveProfileTitle => 'No hay ningún perfil seleccionado';
 }
 
 // Path: profile
@@ -3372,6 +3521,12 @@ class TranslationsProfileEs extends TranslationsProfileEn {
       TranslationsProfileOverviewEs._(_root);
   @override
   String get remoteProfile => 'Perfil remoto';
+  @override
+  String get defaultLocalName => 'Importación local';
+  @override
+  String get defaultDeepLinkName => 'Importado desde enlace';
+  @override
+  String get switchFailedMsg => 'No se pudo cambiar de perfil';
 }
 
 // Path: proxies
@@ -3479,6 +3634,12 @@ class TranslationsLogsEs extends TranslationsLogsEn {
       'La función de registros está en desarrollo';
   @override
   String get noLogsWhenDisconnected => 'Sin conexión, no hay registros';
+  @override
+  String get loadFailed => 'No se pudieron cargar los registros';
+  @override
+  String get empty => 'Aún no hay registros';
+  @override
+  String get clearFailed => 'No se pudieron borrar los registros';
 }
 
 // Path: settings
@@ -3539,6 +3700,20 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsEs groups =
       TranslationsSettingsGroupsEs._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'El portapapeles no contiene un JSON de ajustes válido';
+  @override
+  String get importOptionsNothing => 'No se encontraron ajustes importables';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'Se importaron ${count} ajustes';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'Se importaron ${applied} ajustes; se omitieron ${skipped} por no ser válidos';
 }
 
 // Path: about
@@ -3622,6 +3797,8 @@ class TranslationsTrayEs extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Ocultar';
+  @override
+  String get proxyModeMenu => 'Modo de proxy';
 }
 
 // Path: failure
@@ -3655,6 +3832,9 @@ class TranslationsFailureEs extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsEs geoAssets =
       TranslationsFailureGeoAssetsEs._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -3685,7 +3865,7 @@ class TranslationsConnectionEs extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Reconectar';
   @override
-  String get connectAnyWay => 'Conectar';
+  String get connectAnyWay => 'Conectar de todos modos';
   @override
   String get reconnectMsg => 'Reconectando para aplicar los cambios...';
   @override
@@ -3836,6 +4016,21 @@ class TranslationsConfigEs extends TranslationsConfigEn {
       'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
   @override
   String get serviceModeIosVpnOnly => 'iOS solo admite el modo VPN';
+  @override
+  String get warpGenerating => 'Generando la configuración de WARP…';
+  @override
+  String get warpConfigFailed =>
+      'No se pudo generar la configuración de WARP. Inténtalo más tarde.';
+  @override
+  String get portRangeError => 'El puerto debe estar entre 1024 y 65535';
+  @override
+  String get dnsEmptyError => 'La dirección DNS no puede estar vacía';
+  @override
+  String get rangeFormatError => 'Introduce un número o un rango, p. ej. 10-30';
+  @override
+  String get urlSchemeError => 'La URL debe empezar por http:// o https://';
+  @override
+  String get manageRuleAssets => 'Gestionar conjuntos de reglas';
 }
 
 // Path: stats
@@ -4031,6 +4226,19 @@ class TranslationsProfileAddEs extends TranslationsProfileAddEn {
   String get warpDescription => 'Aceleración gratuita con Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Espera mientras registramos WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Suscripción importada: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'El portapapeles está vacío; no hay nada que importar';
+  @override
+  String get deepLinkMissingUrl =>
+      'El enlace no contiene una dirección de suscripción';
+  @override
+  String get successMsg => 'Perfil agregado';
+  @override
+  String get nameAutoHint => 'Se detecta automáticamente (opcional)';
 }
 
 // Path: profile.update
@@ -4128,6 +4336,11 @@ class TranslationsProfileDeleteEs extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '¿Eliminar perfil permanentemente?';
   @override
   String get successMsg => 'Perfil eliminado exitosamente';
+  @override
+  String get confirmTitle => 'Eliminar perfil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '¿Eliminar "${name}"? Esta acción no se puede deshacer.';
 }
 
 // Path: profile.save
@@ -4187,6 +4400,12 @@ class TranslationsProfileDetailsFormEs
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Desactivado';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: profile.actionButtons
@@ -4546,6 +4765,14 @@ class TranslationsSettingsBackupEs extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'Tus datos se restauraron al estado anterior a la importación interrumpida.';
+  @override
+  String get exportAction => 'Exportar copia de seguridad';
+  @override
+  String get importAction => 'Importar copia de seguridad';
+  @override
+  String get exportFailed => 'No se pudo exportar la copia de seguridad';
+  @override
+  String get shareText => 'Copia de seguridad de ClashMiao';
 }
 
 // Path: settings.groups
@@ -5123,6 +5350,14 @@ class TranslationsGeneralFa extends TranslationsGeneralEn {
   String get confirm => 'تأیید';
   @override
   String get close => 'بستن';
+  @override
+  String get cancel => 'لغو';
+  @override
+  String get clipboardEmpty => 'کلیپ‌بورد خالی است';
+  @override
+  String get clipboardReadFailed => 'خواندن کلیپ‌بورد ناموفق بود';
+  @override
+  String get moreOptions => 'گزینه‌های بیشتر';
 }
 
 // Path: intro
@@ -5183,6 +5418,10 @@ class TranslationsHomeFa extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpFa egressIp = TranslationsHomeEgressIpFa._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'برای شروع، دکمهٔ زیر را بزنید';
+  @override
+  String get noActiveProfileTitle => 'هیچ پروفایلی انتخاب نشده است';
 }
 
 // Path: stats
@@ -5284,6 +5523,12 @@ class TranslationsProfileFa extends TranslationsProfileEn {
       TranslationsProfileOverviewFa._(_root);
   @override
   String get remoteProfile => 'پروفایل راه دور';
+  @override
+  String get defaultLocalName => 'درون‌ریزی محلی';
+  @override
+  String get defaultDeepLinkName => 'درون‌ریزی از پیوند';
+  @override
+  String get switchFailedMsg => 'تغییر پروفایل ناموفق بود';
 }
 
 // Path: proxies
@@ -5388,6 +5633,12 @@ class TranslationsLogsFa extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'قابلیت گزارش‌گیری در حال توسعه است';
   @override
   String get noLogsWhenDisconnected => 'متصل نیست، گزارشی وجود ندارد';
+  @override
+  String get loadFailed => 'بارگیری گزارش‌ها ناموفق بود';
+  @override
+  String get empty => 'هنوز گزارشی وجود ندارد';
+  @override
+  String get clearFailed => 'پاک کردن گزارش‌ها ناموفق بود';
 }
 
 // Path: settings
@@ -5447,6 +5698,20 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsFa groups =
       TranslationsSettingsGroupsFa._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست';
+  @override
+  String get importOptionsNothing => 'هیچ تنظیم قابل درون‌ریزی پیدا نشد';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} تنظیم درون‌ریزی شد';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد';
 }
 
 // Path: about
@@ -5530,6 +5795,8 @@ class TranslationsTrayFa extends TranslationsTrayEn {
   );
   @override
   String get hide => 'پنهان کردن';
+  @override
+  String get proxyModeMenu => 'حالت پروکسی';
 }
 
 // Path: failure
@@ -5563,6 +5830,9 @@ class TranslationsFailureFa extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsFa geoAssets =
       TranslationsFailureGeoAssetsFa._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -5586,7 +5856,7 @@ class TranslationsConnectionFa extends TranslationsConnectionEn {
   @override
   String get reconnect => 'اتصال دوباره';
   @override
-  String get connectAnyWay => 'متصل کردن';
+  String get connectAnyWay => 'در هر صورت متصل شو';
   @override
   String get experimentalNotice => 'ویژگی‌های آزمایشی در حال استفاده';
   @override
@@ -5744,6 +6014,21 @@ class TranslationsConfigFa extends TranslationsConfigEn {
       'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
   @override
   String get serviceModeIosVpnOnly => 'iOS فقط از حالت VPN پشتیبانی می‌کند';
+  @override
+  String get warpGenerating => 'در حال ساخت پیکربندی WARP…';
+  @override
+  String get warpConfigFailed =>
+      'ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.';
+  @override
+  String get portRangeError => 'پورت باید بین 1024 و 65535 باشد';
+  @override
+  String get dnsEmptyError => 'نشانی DNS نمی‌تواند خالی باشد';
+  @override
+  String get rangeFormatError => 'یک عدد یا بازه وارد کنید، مثلاً 10-30';
+  @override
+  String get urlSchemeError => 'نشانی باید با http:// یا https:// شروع شود';
+  @override
+  String get manageRuleAssets => 'مدیریت مجموعه‌قواعد';
 }
 
 // Path: general.toggle
@@ -5905,6 +6190,18 @@ class TranslationsProfileAddFa extends TranslationsProfileAddEn {
   String get manuallyDescription => 'پیکربندی سرور را دستی وارد کنید';
   @override
   String get warpDescription => 'شتاب‌دهی رایگان با Cloudflare WARP';
+  @override
+  String importedNamed({required Object name}) =>
+      'اشتراک درون‌ریزی شد: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد';
+  @override
+  String get deepLinkMissingUrl => 'پیوند نشانی اشتراک ندارد';
+  @override
+  String get successMsg => 'پروفایل افزوده شد';
+  @override
+  String get nameAutoHint => 'به‌طور خودکار تشخیص داده می‌شود (اختیاری)';
 }
 
 // Path: profile.update
@@ -5999,6 +6296,11 @@ class TranslationsProfileDeleteFa extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'پروفایل برای همیشه حذف شود؟';
   @override
   String get successMsg => 'پروفایل با موفقیت حذف شد';
+  @override
+  String get confirmTitle => 'حذف پروفایل';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '«${name}» حذف شود؟ این کار برگشت‌پذیر نیست.';
 }
 
 // Path: profile.save
@@ -6058,6 +6360,12 @@ class TranslationsProfileDetailsFormFa
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'خاموش';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ساعت';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} روز';
 }
 
 // Path: profile.actionButtons
@@ -6262,6 +6570,14 @@ class TranslationsSettingsBackupFa extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
+  @override
+  String get exportAction => 'برون‌بری پشتیبان';
+  @override
+  String get importAction => 'درون‌ریزی پشتیبان';
+  @override
+  String get exportFailed => 'برون‌بری پشتیبان ناموفق بود';
+  @override
+  String get shareText => 'پشتیبان ClashMiao';
 }
 
 // Path: settings.general
@@ -6987,6 +7303,14 @@ class TranslationsGeneralId extends TranslationsGeneralEn {
   String get confirm => 'Konfirmasi';
   @override
   String get close => 'Tutup';
+  @override
+  String get cancel => 'Batal';
+  @override
+  String get clipboardEmpty => 'Papan klip kosong';
+  @override
+  String get clipboardReadFailed => 'Gagal membaca papan klip';
+  @override
+  String get moreOptions => 'Opsi lainnya';
 }
 
 // Path: intro
@@ -7046,6 +7370,10 @@ class TranslationsHomeId extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpId egressIp = TranslationsHomeEgressIpId._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'Ketuk tombol di bawah untuk memulai';
+  @override
+  String get noActiveProfileTitle => 'Belum ada profil yang dipilih';
 }
 
 // Path: stats
@@ -7147,6 +7475,12 @@ class TranslationsProfileId extends TranslationsProfileEn {
       TranslationsProfileOverviewId._(_root);
   @override
   String get remoteProfile => 'Profil Jarak Jauh';
+  @override
+  String get defaultLocalName => 'Impor lokal';
+  @override
+  String get defaultDeepLinkName => 'Impor dari tautan';
+  @override
+  String get switchFailedMsg => 'Gagal mengganti profil';
 }
 
 // Path: proxies
@@ -7252,6 +7586,12 @@ class TranslationsLogsId extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Fitur log sedang dikembangkan';
   @override
   String get noLogsWhenDisconnected => 'Tidak tersambung, tidak ada log';
+  @override
+  String get loadFailed => 'Gagal memuat log';
+  @override
+  String get empty => 'Belum ada log';
+  @override
+  String get clearFailed => 'Gagal menghapus log';
 }
 
 // Path: settings
@@ -7310,6 +7650,19 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsId groups =
       TranslationsSettingsGroupsId._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'Papan klip tidak berisi JSON pengaturan yang valid';
+  @override
+  String get importOptionsNothing => 'Tidak ada pengaturan yang dapat diimpor';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} pengaturan diimpor';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '${applied} pengaturan diimpor; ${skipped} dilewati karena tidak valid';
 }
 
 // Path: about
@@ -7393,6 +7746,8 @@ class TranslationsTrayId extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Sembunyikan';
+  @override
+  String get proxyModeMenu => 'Mode Proksi';
 }
 
 // Path: failure
@@ -7426,6 +7781,9 @@ class TranslationsFailureId extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsId geoAssets =
       TranslationsFailureGeoAssetsId._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -7456,7 +7814,7 @@ class TranslationsConnectionId extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Sambungkan Ulang';
   @override
-  String get connectAnyWay => 'Sambungkan';
+  String get connectAnyWay => 'Tetap sambungkan';
   @override
   String get reconnectMsg =>
       'Menyambungkan ulang untuk menerapkan perubahan...';
@@ -7608,6 +7966,21 @@ class TranslationsConfigId extends TranslationsConfigEn {
       'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
   @override
   String get serviceModeIosVpnOnly => 'iOS hanya mendukung mode VPN';
+  @override
+  String get warpGenerating => 'Membuat konfigurasi WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Gagal membuat konfigurasi WARP. Coba lagi nanti.';
+  @override
+  String get portRangeError => 'Port harus antara 1024 dan 65535';
+  @override
+  String get dnsEmptyError => 'Alamat DNS tidak boleh kosong';
+  @override
+  String get rangeFormatError => 'Masukkan angka atau rentang, mis. 10-30';
+  @override
+  String get urlSchemeError => 'URL harus diawali http:// atau https://';
+  @override
+  String get manageRuleAssets => 'Kelola set aturan';
 }
 
 // Path: general.toggle
@@ -7768,6 +8141,16 @@ class TranslationsProfileAddId extends TranslationsProfileAddEn {
   String get warpDescription => 'Akselerasi gratis dengan Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Mohon tunggu, kami sedang mendaftarkan WARP.';
+  @override
+  String importedNamed({required Object name}) => 'Langganan diimpor: ${name}';
+  @override
+  String get clipboardEmpty => 'Papan klip kosong, tidak ada yang bisa diimpor';
+  @override
+  String get deepLinkMissingUrl => 'Tautan tidak berisi alamat langganan';
+  @override
+  String get successMsg => 'Profil ditambahkan';
+  @override
+  String get nameAutoHint => 'Terdeteksi otomatis (opsional)';
 }
 
 // Path: profile.update
@@ -7860,6 +8243,11 @@ class TranslationsProfileDeleteId extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Hapus profil permanen?';
   @override
   String get successMsg => 'Sukses hapus profil';
+  @override
+  String get confirmTitle => 'Hapus profil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Hapus "${name}"? Tindakan ini tidak dapat dibatalkan.';
 }
 
 // Path: profile.save
@@ -7919,6 +8307,12 @@ class TranslationsProfileDetailsFormId
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Mati';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} jam';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} hari';
 }
 
 // Path: profile.actionButtons
@@ -8272,6 +8666,14 @@ class TranslationsSettingsBackupId extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
+  @override
+  String get exportAction => 'Ekspor cadangan';
+  @override
+  String get importAction => 'Impor cadangan';
+  @override
+  String get exportFailed => 'Gagal mengekspor cadangan';
+  @override
+  String get shareText => 'Cadangan ClashMiao';
 }
 
 // Path: settings.groups
@@ -8846,6 +9248,15 @@ class TranslationsGeneralPtBr extends TranslationsGeneralEn {
   String get confirm => 'Confirmar';
   @override
   String get close => 'Fechar';
+  @override
+  String get cancel => 'Cancelar';
+  @override
+  String get clipboardEmpty => 'A área de transferência está vazia';
+  @override
+  String get clipboardReadFailed =>
+      'Não foi possível ler a área de transferência';
+  @override
+  String get moreOptions => 'Mais opções';
 }
 
 // Path: intro
@@ -8908,6 +9319,10 @@ class TranslationsHomePtBr extends TranslationsHomeEn {
   @override
   late final TranslationsHomeEgressIpPtBr egressIp =
       TranslationsHomeEgressIpPtBr._(_root);
+  @override
+  String get emptyProfilesHint => 'Toque no botão abaixo para começar';
+  @override
+  String get noActiveProfileTitle => 'Nenhum perfil selecionado';
 }
 
 // Path: stats
@@ -9009,6 +9424,12 @@ class TranslationsProfilePtBr extends TranslationsProfileEn {
       TranslationsProfileOverviewPtBr._(_root);
   @override
   String get remoteProfile => 'Perfil remoto';
+  @override
+  String get defaultLocalName => 'Importação local';
+  @override
+  String get defaultDeepLinkName => 'Importado por link';
+  @override
+  String get switchFailedMsg => 'Não foi possível trocar de perfil';
 }
 
 // Path: proxies
@@ -9118,6 +9539,12 @@ class TranslationsLogsPtBr extends TranslationsLogsEn {
       'O recurso de registros está em desenvolvimento';
   @override
   String get noLogsWhenDisconnected => 'Desconectado, sem registros';
+  @override
+  String get loadFailed => 'Não foi possível carregar os logs';
+  @override
+  String get empty => 'Ainda não há logs';
+  @override
+  String get clearFailed => 'Não foi possível limpar os logs';
 }
 
 // Path: settings
@@ -9180,6 +9607,21 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsPtBr groups =
       TranslationsSettingsGroupsPtBr._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'A área de transferência não contém um JSON de configurações válido';
+  @override
+  String get importOptionsNothing =>
+      'Nenhuma configuração importável encontrada';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} configurações importadas';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} configurações importadas; ${skipped} ignoradas por serem inválidas';
 }
 
 // Path: about
@@ -9267,6 +9709,8 @@ class TranslationsTrayPtBr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Ocultar';
+  @override
+  String get proxyModeMenu => 'Modo de proxy';
 }
 
 // Path: failure
@@ -9299,6 +9743,9 @@ class TranslationsFailurePtBr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsPtBr geoAssets =
       TranslationsFailureGeoAssetsPtBr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -9329,7 +9776,7 @@ class TranslationsConnectionPtBr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Reconectar';
   @override
-  String get connectAnyWay => 'Conectar';
+  String get connectAnyWay => 'Conectar mesmo assim';
   @override
   String get reconnectMsg => 'Reconectando para aplicar as alterações...';
   @override
@@ -9480,6 +9927,22 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
       'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
   @override
   String get serviceModeIosVpnOnly => 'O iOS só oferece suporte ao modo VPN';
+  @override
+  String get warpGenerating => 'Gerando a configuração do WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.';
+  @override
+  String get portRangeError => 'A porta deve estar entre 1024 e 65535';
+  @override
+  String get dnsEmptyError => 'O endereço DNS não pode ficar vazio';
+  @override
+  String get rangeFormatError =>
+      'Digite um número ou um intervalo, por exemplo 10-30';
+  @override
+  String get urlSchemeError => 'A URL deve começar com http:// ou https://';
+  @override
+  String get manageRuleAssets => 'Gerenciar conjuntos de regras';
 }
 
 // Path: general.toggle
@@ -9642,6 +10105,19 @@ class TranslationsProfileAddPtBr extends TranslationsProfileAddEn {
   String get warpDescription => 'Aceleração gratuita com Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Aguarde enquanto registramos o WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Assinatura importada: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'A área de transferência está vazia; não há nada para importar';
+  @override
+  String get deepLinkMissingUrl =>
+      'O link não contém um endereço de assinatura';
+  @override
+  String get successMsg => 'Perfil adicionado';
+  @override
+  String get nameAutoHint => 'Detectado automaticamente (opcional)';
 }
 
 // Path: profile.update
@@ -9740,6 +10216,11 @@ class TranslationsProfileDeletePtBr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Deletar perfil permanentemente?';
   @override
   String get successMsg => 'Perfil deletado com sucesso';
+  @override
+  String get confirmTitle => 'Excluir perfil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Excluir "${name}"? Essa ação não pode ser desfeita.';
 }
 
 // Path: profile.save
@@ -9799,6 +10280,12 @@ class TranslationsProfileDetailsFormPtBr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Desativado';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: profile.actionButtons
@@ -10159,6 +10646,14 @@ class TranslationsSettingsBackupPtBr extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'Seus dados foram restaurados ao estado anterior à importação interrompida.';
+  @override
+  String get exportAction => 'Exportar backup';
+  @override
+  String get importAction => 'Importar backup';
+  @override
+  String get exportFailed => 'Não foi possível exportar o backup';
+  @override
+  String get shareText => 'Backup do ClashMiao';
 }
 
 // Path: settings.groups
@@ -10738,6 +11233,14 @@ class TranslationsGeneralRu extends TranslationsGeneralEn {
   String get confirm => 'Подтвердить';
   @override
   String get close => 'Закрыть';
+  @override
+  String get cancel => 'Отмена';
+  @override
+  String get clipboardEmpty => 'Буфер обмена пуст';
+  @override
+  String get clipboardReadFailed => 'Не удалось прочитать буфер обмена';
+  @override
+  String get moreOptions => 'Дополнительно';
 }
 
 // Path: intro
@@ -10797,6 +11300,10 @@ class TranslationsHomeRu extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpRu egressIp = TranslationsHomeEgressIpRu._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'Нажмите кнопку ниже, чтобы начать';
+  @override
+  String get noActiveProfileTitle => 'Профиль не выбран';
 }
 
 // Path: stats
@@ -10898,6 +11405,12 @@ class TranslationsProfileRu extends TranslationsProfileEn {
       TranslationsProfileOverviewRu._(_root);
   @override
   String get remoteProfile => 'Удалённый профиль';
+  @override
+  String get defaultLocalName => 'Локальный импорт';
+  @override
+  String get defaultDeepLinkName => 'Импорт по ссылке';
+  @override
+  String get switchFailedMsg => 'Не удалось переключить профиль';
 }
 
 // Path: proxies
@@ -11005,6 +11518,12 @@ class TranslationsLogsRu extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Функция журналов в разработке';
   @override
   String get noLogsWhenDisconnected => 'Нет подключения, журналы отсутствуют';
+  @override
+  String get loadFailed => 'Не удалось загрузить журнал';
+  @override
+  String get empty => 'Журнал пока пуст';
+  @override
+  String get clearFailed => 'Не удалось очистить журнал';
 }
 
 // Path: settings
@@ -11065,6 +11584,19 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsRu groups =
       TranslationsSettingsGroupsRu._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'В буфере обмена нет корректного JSON настроек';
+  @override
+  String get importOptionsNothing => 'Не найдено настроек для импорта';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'Импортировано настроек: ${count}';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => 'Импортировано: ${applied}; пропущено как некорректные: ${skipped}';
 }
 
 // Path: about
@@ -11148,6 +11680,8 @@ class TranslationsTrayRu extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Скрыть';
+  @override
+  String get proxyModeMenu => 'Режим прокси';
 }
 
 // Path: failure
@@ -11181,6 +11715,9 @@ class TranslationsFailureRu extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsRu geoAssets =
       TranslationsFailureGeoAssetsRu._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -11204,7 +11741,7 @@ class TranslationsConnectionRu extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Восстановить соединение';
   @override
-  String get connectAnyWay => 'Подключиться';
+  String get connectAnyWay => 'Всё равно подключиться';
   @override
   String get experimentalNotice => 'Экспериментальные функции в использовании';
   @override
@@ -11362,6 +11899,21 @@ class TranslationsConfigRu extends TranslationsConfigEn {
       'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
   @override
   String get serviceModeIosVpnOnly => 'iOS поддерживает только режим VPN';
+  @override
+  String get warpGenerating => 'Создание конфигурации WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Не удалось создать конфигурацию WARP. Повторите попытку позже.';
+  @override
+  String get portRangeError => 'Порт должен быть от 1024 до 65535';
+  @override
+  String get dnsEmptyError => 'Адрес DNS не может быть пустым';
+  @override
+  String get rangeFormatError => 'Введите число или диапазон, например 10-30';
+  @override
+  String get urlSchemeError => 'URL должен начинаться с http:// или https://';
+  @override
+  String get manageRuleAssets => 'Наборы правил';
 }
 
 // Path: general.toggle
@@ -11521,6 +12073,17 @@ class TranslationsProfileAddRu extends TranslationsProfileAddEn {
   String get warpDescription => 'Бесплатное ускорение через Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Подождите, идёт регистрация WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Подписка импортирована: ${name}';
+  @override
+  String get clipboardEmpty => 'Буфер обмена пуст, импортировать нечего';
+  @override
+  String get deepLinkMissingUrl => 'В ссылке нет адреса подписки';
+  @override
+  String get successMsg => 'Профиль добавлен';
+  @override
+  String get nameAutoHint => 'Определяется автоматически (необязательно)';
 }
 
 // Path: profile.update
@@ -11618,6 +12181,11 @@ class TranslationsProfileDeleteRu extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Безвозвратно удалить профиль?';
   @override
   String get successMsg => 'Профиль успешно удалён';
+  @override
+  String get confirmTitle => 'Удалить профиль';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Удалить «${name}»? Это действие нельзя отменить.';
 }
 
 // Path: profile.save
@@ -11676,6 +12244,12 @@ class TranslationsProfileDetailsFormRu
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Выкл.';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ч';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} дн.';
 }
 
 // Path: profile.actionButtons
@@ -11884,6 +12458,14 @@ class TranslationsSettingsBackupRu extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'Данные возвращены в состояние до прерванного импорта.';
+  @override
+  String get exportAction => 'Экспорт резервной копии';
+  @override
+  String get importAction => 'Импорт резервной копии';
+  @override
+  String get exportFailed => 'Не удалось экспортировать резервную копию';
+  @override
+  String get shareText => 'Резервная копия ClashMiao';
 }
 
 // Path: settings.general
@@ -12612,6 +13194,14 @@ class TranslationsGeneralTr extends TranslationsGeneralEn {
   String get confirm => 'Onayla';
   @override
   String get close => 'Kapat';
+  @override
+  String get cancel => 'İptal';
+  @override
+  String get clipboardEmpty => 'Pano boş';
+  @override
+  String get clipboardReadFailed => 'Pano okunamadı';
+  @override
+  String get moreOptions => 'Diğer seçenekler';
 }
 
 // Path: intro
@@ -12672,6 +13262,10 @@ class TranslationsHomeTr extends TranslationsHomeEn {
   late final TranslationsHomeEgressIpTr egressIp = TranslationsHomeEgressIpTr._(
     _root,
   );
+  @override
+  String get emptyProfilesHint => 'Başlamak için aşağıdaki düğmeye dokunun';
+  @override
+  String get noActiveProfileTitle => 'Profil seçilmedi';
 }
 
 // Path: stats
@@ -12773,6 +13367,12 @@ class TranslationsProfileTr extends TranslationsProfileEn {
       TranslationsProfileOverviewTr._(_root);
   @override
   String get remoteProfile => 'Uzak Profil';
+  @override
+  String get defaultLocalName => 'Yerel içe aktarma';
+  @override
+  String get defaultDeepLinkName => 'Bağlantıdan içe aktarma';
+  @override
+  String get switchFailedMsg => 'Profil değiştirilemedi';
 }
 
 // Path: proxies
@@ -12878,6 +13478,12 @@ class TranslationsLogsTr extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Günlük özelliği geliştirme aşamasında';
   @override
   String get noLogsWhenDisconnected => 'Bağlı değil, günlük yok';
+  @override
+  String get loadFailed => 'Günlükler yüklenemedi';
+  @override
+  String get empty => 'Henüz günlük yok';
+  @override
+  String get clearFailed => 'Günlükler temizlenemedi';
 }
 
 // Path: settings
@@ -12938,6 +13544,19 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsTr groups =
       TranslationsSettingsGroupsTr._(_root);
+  @override
+  String get importOptionsInvalid => 'Pano geçerli bir ayar JSON\'u içermiyor';
+  @override
+  String get importOptionsNothing => 'İçe aktarılabilir ayar bulunamadı';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} ayar içe aktarıldı';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} ayar içe aktarıldı; ${skipped} ayar geçersiz olduğu için atlandı';
 }
 
 // Path: about
@@ -13021,6 +13640,8 @@ class TranslationsTrayTr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Gizle';
+  @override
+  String get proxyModeMenu => 'Proxy Modu';
 }
 
 // Path: failure
@@ -13054,6 +13675,9 @@ class TranslationsFailureTr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsTr geoAssets =
       TranslationsFailureGeoAssetsTr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -13084,7 +13708,7 @@ class TranslationsConnectionTr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Yeniden Bağlan';
   @override
-  String get connectAnyWay => 'Bağlan';
+  String get connectAnyWay => 'Yine de bağlan';
   @override
   String get reconnectMsg =>
       'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
@@ -13236,6 +13860,21 @@ class TranslationsConfigTr extends TranslationsConfigEn {
       'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
   @override
   String get serviceModeIosVpnOnly => 'iOS yalnızca VPN modunu destekler';
+  @override
+  String get warpGenerating => 'WARP yapılandırması oluşturuluyor…';
+  @override
+  String get warpConfigFailed =>
+      'WARP yapılandırması oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
+  @override
+  String get portRangeError => 'Port 1024 ile 65535 arasında olmalıdır';
+  @override
+  String get dnsEmptyError => 'DNS adresi boş olamaz';
+  @override
+  String get rangeFormatError => 'Bir sayı veya aralık girin, örn. 10-30';
+  @override
+  String get urlSchemeError => 'URL http:// veya https:// ile başlamalıdır';
+  @override
+  String get manageRuleAssets => 'Kural setlerini yönet';
 }
 
 // Path: general.toggle
@@ -13397,6 +14036,17 @@ class TranslationsProfileAddTr extends TranslationsProfileAddEn {
   String get warpDescription => 'Cloudflare WARP ile ücretsiz hızlandırma';
   @override
   String get addingWarpMsg => 'WARP kaydedilirken lütfen bekleyin.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Abonelik içe aktarıldı: ${name}';
+  @override
+  String get clipboardEmpty => 'Pano boş, içe aktarılacak bir şey yok';
+  @override
+  String get deepLinkMissingUrl => 'Bağlantıda abonelik adresi yok';
+  @override
+  String get successMsg => 'Profil eklendi';
+  @override
+  String get nameAutoHint => 'Otomatik algılanır (isteğe bağlı)';
 }
 
 // Path: profile.update
@@ -13490,6 +14140,11 @@ class TranslationsProfileDeleteTr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Profil kalıcı olarak silinsin mi?';
   @override
   String get successMsg => 'Profil başarıyla silindi';
+  @override
+  String get confirmTitle => 'Profili sil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '"${name}" silinsin mi? Bu işlem geri alınamaz.';
 }
 
 // Path: profile.save
@@ -13549,6 +14204,12 @@ class TranslationsProfileDetailsFormTr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Kapalı';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} sa';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} gün';
 }
 
 // Path: profile.actionButtons
@@ -13905,6 +14566,14 @@ class TranslationsSettingsBackupTr extends TranslationsSettingsBackupEn {
   @override
   String get recoveryRetried =>
       'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
+  @override
+  String get exportAction => 'Yedeği dışa aktar';
+  @override
+  String get importAction => 'Yedeği içe aktar';
+  @override
+  String get exportFailed => 'Yedek dışa aktarılamadı';
+  @override
+  String get shareText => 'ClashMiao yedeği';
 }
 
 // Path: settings.groups
@@ -14479,6 +15148,14 @@ class TranslationsGeneralZhCn extends TranslationsGeneralEn {
   String get confirm => '确认';
   @override
   String get close => '关闭';
+  @override
+  String get cancel => '取消';
+  @override
+  String get clipboardEmpty => '剪贴板为空';
+  @override
+  String get clipboardReadFailed => '读取剪贴板失败';
+  @override
+  String get moreOptions => '更多选项';
 }
 
 // Path: intro
@@ -14538,6 +15215,10 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
   @override
   late final TranslationsHomeEgressIpZhCn egressIp =
       TranslationsHomeEgressIpZhCn._(_root);
+  @override
+  String get emptyProfilesHint => '点击下方按钮开始探索';
+  @override
+  String get noActiveProfileTitle => '未选择配置文件';
 }
 
 // Path: stats
@@ -14639,6 +15320,12 @@ class TranslationsProfileZhCn extends TranslationsProfileEn {
       TranslationsProfileDetailsFormZhCn._(_root);
   @override
   String get remoteProfile => '远程订阅';
+  @override
+  String get defaultLocalName => '本地导入';
+  @override
+  String get defaultDeepLinkName => '深链导入';
+  @override
+  String get switchFailedMsg => '切换配置文件失败';
 }
 
 // Path: proxies
@@ -14743,6 +15430,12 @@ class TranslationsLogsZhCn extends TranslationsLogsEn {
   String get logsUnderDevelopment => '日志功能开发中';
   @override
   String get noLogsWhenDisconnected => '未连接，无日志';
+  @override
+  String get loadFailed => '日志读取失败';
+  @override
+  String get empty => '暂无日志';
+  @override
+  String get clearFailed => '清除日志失败';
 }
 
 // Path: settings
@@ -14797,6 +15490,17 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsZhCn groups =
       TranslationsSettingsGroupsZhCn._(_root);
+  @override
+  String get importOptionsInvalid => '剪贴板内容不是有效的配置 JSON';
+  @override
+  String get importOptionsNothing => '未识别到可导入的配置项';
+  @override
+  String importOptionsDone({required Object count}) => '已导入 ${count} 项配置';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过';
 }
 
 // Path: about
@@ -14881,6 +15585,8 @@ class TranslationsTrayZhCn extends TranslationsTrayEn {
   late final TranslationsTrayStatusZhCn status = TranslationsTrayStatusZhCn._(
     _root,
   );
+  @override
+  String get proxyModeMenu => '代理模式';
 }
 
 // Path: failure
@@ -14913,6 +15619,9 @@ class TranslationsFailureZhCn extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhCn geoAssets =
       TranslationsFailureGeoAssetsZhCn._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}：${reason}';
 }
 
 // Path: connection
@@ -14936,14 +15645,14 @@ class TranslationsConnectionZhCn extends TranslationsConnectionEn {
   @override
   String get reconnect => '重新连接';
   @override
-  String get connectAnyWay => '连接';
+  String get connectAnyWay => '仍然连接';
   @override
-  String get experimentalNotice => '使用中的实验功能';
+  String get experimentalNotice => '实验性功能提醒';
   @override
   String get experimentalNoticeMsg =>
-      '您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。';
+      '当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。';
   @override
-  String get disableExperimentalNotice => '不再显示';
+  String get disableExperimentalNotice => '不再提示';
   @override
   String get reconnectMsg => '重新连接以使更改生效';
   @override
@@ -15093,6 +15802,20 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   String get warpNoiseMode => '噪音模式';
   @override
   String get serviceModeIosVpnOnly => 'iOS 仅支持 VPN 模式';
+  @override
+  String get warpGenerating => '正在生成 WARP 配置…';
+  @override
+  String get warpConfigFailed => 'WARP 配置生成失败，请稍后重试';
+  @override
+  String get portRangeError => '端口范围 1024-65535';
+  @override
+  String get dnsEmptyError => 'DNS 地址不能为空';
+  @override
+  String get rangeFormatError => '请输入数字或范围，例如 10-30';
+  @override
+  String get urlSchemeError => 'URL 必须以 http:// 或 https:// 开头';
+  @override
+  String get manageRuleAssets => '规则库管理';
 }
 
 // Path: general.toggle
@@ -15275,6 +15998,16 @@ class TranslationsProfileAddZhCn extends TranslationsProfileAddEn {
   String get addingProfileMsg => '添加配置文件';
   @override
   String get failureMsg => '添加配置文件失败';
+  @override
+  String importedNamed({required Object name}) => '已导入订阅：${name}';
+  @override
+  String get clipboardEmpty => '剪贴板为空，无法导入订阅';
+  @override
+  String get deepLinkMissingUrl => '链接中缺少订阅地址';
+  @override
+  String get successMsg => '添加成功';
+  @override
+  String get nameAutoHint => '自动识别（可选）';
 }
 
 // Path: profile.details
@@ -15409,6 +16142,10 @@ class TranslationsProfileDeleteZhCn extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '要永久删除配置文件吗？';
   @override
   String get successMsg => '配置文件删除成功';
+  @override
+  String get confirmTitle => '删除配置文件';
+  @override
+  String namedConfirmMsg({required Object name}) => '确定要删除"${name}"吗？此操作不可撤销。';
 }
 
 // Path: profile.save
@@ -15466,6 +16203,12 @@ class TranslationsProfileDetailsFormZhCn
   String get mux => 'Mux 多路复用';
   @override
   String get muxDescription => '复用出站连接以减少握手开销';
+  @override
+  String get updateIntervalOff => '关闭';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} 小时';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} 天';
 }
 
 // Path: proxies.sortOptions
@@ -15594,6 +16337,14 @@ class TranslationsSettingsBackupZhCn extends TranslationsSettingsBackupEn {
   String get recoveryClose => '关闭';
   @override
   String get recoveryRetried => '已把数据恢复到被中断的导入之前。';
+  @override
+  String get exportAction => '导出备份';
+  @override
+  String get importAction => '导入备份';
+  @override
+  String get exportFailed => '导出失败';
+  @override
+  String get shareText => 'ClashMiao 备份';
 }
 
 // Path: settings.general
@@ -16309,6 +17060,14 @@ class TranslationsGeneralZhTw extends TranslationsGeneralEn {
   String get confirm => '確認';
   @override
   String get close => '關閉';
+  @override
+  String get cancel => '取消';
+  @override
+  String get clipboardEmpty => '剪貼簿為空';
+  @override
+  String get clipboardReadFailed => '讀取剪貼簿失敗';
+  @override
+  String get moreOptions => '更多選項';
 }
 
 // Path: intro
@@ -16369,6 +17128,10 @@ class TranslationsHomeZhTw extends TranslationsHomeEn {
   @override
   late final TranslationsHomeEgressIpZhTw egressIp =
       TranslationsHomeEgressIpZhTw._(_root);
+  @override
+  String get emptyProfilesHint => '點擊下方按鈕開始探索';
+  @override
+  String get noActiveProfileTitle => '未選擇設定檔';
 }
 
 // Path: stats
@@ -16470,6 +17233,12 @@ class TranslationsProfileZhTw extends TranslationsProfileEn {
       TranslationsProfileOverviewZhTw._(_root);
   @override
   String get remoteProfile => '遠端訂閱';
+  @override
+  String get defaultLocalName => '本機匯入';
+  @override
+  String get defaultDeepLinkName => '連結匯入';
+  @override
+  String get switchFailedMsg => '切換設定檔失敗';
 }
 
 // Path: proxies
@@ -16574,6 +17343,12 @@ class TranslationsLogsZhTw extends TranslationsLogsEn {
   String get logsUnderDevelopment => '日誌功能開發中';
   @override
   String get noLogsWhenDisconnected => '未連線，無日誌';
+  @override
+  String get loadFailed => '日誌讀取失敗';
+  @override
+  String get empty => '暫無日誌';
+  @override
+  String get clearFailed => '清除日誌失敗';
 }
 
 // Path: settings
@@ -16628,6 +17403,17 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   @override
   late final TranslationsSettingsGroupsZhTw groups =
       TranslationsSettingsGroupsZhTw._(_root);
+  @override
+  String get importOptionsInvalid => '剪貼簿內容不是有效的設定 JSON';
+  @override
+  String get importOptionsNothing => '未識別到可匯入的設定項';
+  @override
+  String importOptionsDone({required Object count}) => '已匯入 ${count} 項設定';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過';
 }
 
 // Path: about
@@ -16712,6 +17498,8 @@ class TranslationsTrayZhTw extends TranslationsTrayEn {
   );
   @override
   String get hide => '隱藏';
+  @override
+  String get proxyModeMenu => '代理模式';
 }
 
 // Path: failure
@@ -16744,6 +17532,9 @@ class TranslationsFailureZhTw extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhTw geoAssets =
       TranslationsFailureGeoAssetsZhTw._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}：${reason}';
 }
 
 // Path: connection
@@ -16767,12 +17558,12 @@ class TranslationsConnectionZhTw extends TranslationsConnectionEn {
   @override
   String get reconnect => '重新連線';
   @override
-  String get connectAnyWay => '連線';
+  String get connectAnyWay => '仍然連線';
   @override
-  String get experimentalNotice => '使用中的實驗性功能';
+  String get experimentalNotice => '實驗性功能提醒';
   @override
   String get experimentalNoticeMsg =>
-      '您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。';
+      '目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。';
   @override
   String get disableExperimentalNotice => '不再提示';
   @override
@@ -16924,6 +17715,20 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
       '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
   @override
   String get serviceModeIosVpnOnly => 'iOS 僅支援 VPN 模式';
+  @override
+  String get warpGenerating => '正在產生 WARP 設定…';
+  @override
+  String get warpConfigFailed => 'WARP 設定產生失敗，請稍後再試';
+  @override
+  String get portRangeError => '連接埠範圍 1024-65535';
+  @override
+  String get dnsEmptyError => 'DNS 位址不能為空';
+  @override
+  String get rangeFormatError => '請輸入數字或範圍，例如 10-30';
+  @override
+  String get urlSchemeError => 'URL 必須以 http:// 或 https:// 開頭';
+  @override
+  String get manageRuleAssets => '規則庫管理';
 }
 
 // Path: general.toggle
@@ -17083,6 +17888,16 @@ class TranslationsProfileAddZhTw extends TranslationsProfileAddEn {
   String get manuallyDescription => '手動輸入伺服器設定';
   @override
   String get warpDescription => '使用 Cloudflare WARP 免費加速';
+  @override
+  String importedNamed({required Object name}) => '已匯入訂閱：${name}';
+  @override
+  String get clipboardEmpty => '剪貼簿為空，無法匯入訂閱';
+  @override
+  String get deepLinkMissingUrl => '連結中缺少訂閱位址';
+  @override
+  String get successMsg => '新增成功';
+  @override
+  String get nameAutoHint => '自動識別（選填）';
 }
 
 // Path: profile.update
@@ -17175,6 +17990,10 @@ class TranslationsProfileDeleteZhTw extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '要永久刪除設定檔嗎？';
   @override
   String get successMsg => '設定檔刪除成功';
+  @override
+  String get confirmTitle => '刪除設定檔';
+  @override
+  String namedConfirmMsg({required Object name}) => '確定要刪除「${name}」嗎？此操作無法復原。';
 }
 
 // Path: profile.save
@@ -17233,6 +18052,12 @@ class TranslationsProfileDetailsFormZhTw
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => '關閉';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} 小時';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} 天';
 }
 
 // Path: profile.actionButtons
@@ -17427,6 +18252,14 @@ class TranslationsSettingsBackupZhTw extends TranslationsSettingsBackupEn {
   String get recoveryClose => '關閉';
   @override
   String get recoveryRetried => '已把資料還原到被中斷的匯入之前。';
+  @override
+  String get exportAction => '匯出備份';
+  @override
+  String get importAction => '匯入備份';
+  @override
+  String get exportFailed => '匯出失敗';
+  @override
+  String get shareText => 'ClashMiao 備份';
 }
 
 // Path: settings.general
@@ -18062,6 +18895,14 @@ extension on Translations {
         return 'Confirm';
       case 'general.close':
         return 'Close';
+      case 'general.cancel':
+        return 'Cancel';
+      case 'general.clipboardEmpty':
+        return 'Clipboard is empty';
+      case 'general.clipboardReadFailed':
+        return 'Couldn\'t read the clipboard';
+      case 'general.moreOptions':
+        return 'More options';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18105,6 +18946,10 @@ extension on Translations {
         return 'Checking…';
       case 'home.egressIp.failedRetry':
         return 'Check failed, tap to retry';
+      case 'home.emptyProfilesHint':
+        return 'Tap the button below to get started';
+      case 'home.noActiveProfileTitle':
+        return 'No profile selected';
       case 'stats.traffic':
         return 'Traffic';
       case 'stats.trafficLive':
@@ -18208,6 +19053,16 @@ extension on Translations {
         return 'Adding Profile';
       case 'profile.add.failureMsg':
         return 'Failed to Add Profile';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Imported subscription: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'The clipboard is empty, nothing to import';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'The link has no subscription address';
+      case 'profile.add.successMsg':
+        return 'Profile added';
+      case 'profile.add.nameAutoHint':
+        return 'Detected automatically (optional)';
       case 'profile.details.basicInfo':
         return 'Basic Information';
       case 'profile.details.subscriptionStatus':
@@ -18270,6 +19125,11 @@ extension on Translations {
         return 'Delete Profile Permanently?';
       case 'profile.delete.successMsg':
         return 'Profile Deleted Successfully';
+      case 'profile.delete.confirmTitle':
+        return 'Delete profile';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Delete "${name}"? This can\'t be undone.';
       case 'profile.save.buttonText':
         return 'Save';
       case 'profile.save.successMsg':
@@ -18302,8 +19162,20 @@ extension on Translations {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Off';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.remoteProfile':
         return 'Remote Profile';
+      case 'profile.defaultLocalName':
+        return 'Local import';
+      case 'profile.defaultDeepLinkName':
+        return 'Link import';
+      case 'profile.switchFailedMsg':
+        return 'Couldn\'t switch profile';
       case 'proxies.pageTitle':
         return 'Lines';
       case 'proxies.emptyProxiesMsg':
@@ -18396,6 +19268,12 @@ extension on Translations {
         return 'Log feature is under development';
       case 'logs.noLogsWhenDisconnected':
         return 'Not connected, no logs';
+      case 'logs.loadFailed':
+        return 'Couldn\'t load logs';
+      case 'logs.empty':
+        return 'No logs yet';
+      case 'logs.clearFailed':
+        return 'Couldn\'t clear logs';
       case 'settings.pageTitle':
         return 'Settings';
       case 'settings.requiresRestartMsg':
@@ -18468,6 +19346,14 @@ extension on Translations {
         return 'Close';
       case 'settings.backup.recoveryRetried':
         return 'Your data was restored to before the interrupted import.';
+      case 'settings.backup.exportAction':
+        return 'Export backup';
+      case 'settings.backup.importAction':
+        return 'Import backup';
+      case 'settings.backup.exportFailed':
+        return 'Couldn\'t export the backup';
+      case 'settings.backup.shareText':
+        return 'ClashMiao backup';
       case 'settings.general.sectionTitle':
         return 'General';
       case 'settings.general.locale':
@@ -18602,6 +19488,15 @@ extension on Translations {
         return 'Connection';
       case 'settings.groups.privacy':
         return 'Privacy';
+      case 'settings.importOptionsInvalid':
+        return 'The clipboard doesn\'t contain valid settings JSON';
+      case 'settings.importOptionsNothing':
+        return 'No importable settings found';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Imported ${count} settings';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Imported ${applied} settings; ${skipped} were skipped because they were invalid';
       case 'about.pageTitle':
         return 'About';
       case 'about.version':
@@ -18654,6 +19549,8 @@ extension on Translations {
         return 'Disconnect';
       case 'tray.status.disconnecting':
         return 'Disconnecting';
+      case 'tray.proxyModeMenu':
+        return 'Proxy Mode';
       case 'failure.unexpected':
         return 'Unexpected Error';
       case 'failure.clash.unexpected':
@@ -18728,6 +19625,9 @@ extension on Translations {
         return 'No Update Available';
       case 'failure.geoAssets.activeNotFound':
         return 'Active Geo Asset Not Found';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Tap To Connect';
       case 'connection.connecting':
@@ -18739,7 +19639,7 @@ extension on Translations {
       case 'connection.reconnect':
         return 'Reconnect';
       case 'connection.connectAnyWay':
-        return 'Connect';
+        return 'Connect Anyway';
       case 'connection.experimentalNotice':
         return 'Experimental Features In Use';
       case 'connection.experimentalNoticeMsg':
@@ -18930,6 +19830,20 @@ extension on Translations {
         return 'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS supports VPN mode only';
+      case 'config.warpGenerating':
+        return 'Generating WARP configuration…';
+      case 'config.warpConfigFailed':
+        return 'Couldn\'t generate the WARP configuration. Please try again later.';
+      case 'config.portRangeError':
+        return 'Port must be between 1024 and 65535';
+      case 'config.dnsEmptyError':
+        return 'DNS address can\'t be empty';
+      case 'config.rangeFormatError':
+        return 'Enter a number or a range, e.g. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL must start with http:// or https://';
+      case 'config.manageRuleAssets':
+        return 'Manage rule sets';
       default:
         return null;
     }
@@ -18983,6 +19897,14 @@ extension on TranslationsAr {
         return 'تأكيد';
       case 'general.close':
         return 'إغلاق';
+      case 'general.cancel':
+        return 'إلغاء';
+      case 'general.clipboardEmpty':
+        return 'الحافظة فارغة';
+      case 'general.clipboardReadFailed':
+        return 'تعذّرت قراءة الحافظة';
+      case 'general.moreOptions':
+        return 'خيارات إضافية';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19026,6 +19948,10 @@ extension on TranslationsAr {
         return 'جارٍ التحقق…';
       case 'home.egressIp.failedRetry':
         return 'فشل التحقق، اضغط لإعادة المحاولة';
+      case 'home.emptyProfilesHint':
+        return 'اضغط على الزر أدناه للبدء';
+      case 'home.noActiveProfileTitle':
+        return 'لم يتم اختيار ملف تعريف';
       case 'stats.traffic':
         return 'حركة المرور';
       case 'stats.trafficLive':
@@ -19119,6 +20045,16 @@ extension on TranslationsAr {
         return 'تسريع مجاني عبر Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'يرجى الانتظار أثناء تسجيل WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'تم استيراد الاشتراك: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'الحافظة فارغة، لا يوجد ما يمكن استيراده';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'لا يحتوي الرابط على عنوان اشتراك';
+      case 'profile.add.successMsg':
+        return 'تمت إضافة ملف التعريف';
+      case 'profile.add.nameAutoHint':
+        return 'يُكتشف تلقائيًا (اختياري)';
       case 'profile.update.buttonTxt':
         return 'تحديث';
       case 'profile.update.tooltip':
@@ -19163,6 +20099,11 @@ extension on TranslationsAr {
         return 'حذف ملف التعريف نهائياً؟';
       case 'profile.delete.successMsg':
         return 'تم حذف ملف التعريف بنجاح';
+      case 'profile.delete.confirmTitle':
+        return 'حذف ملف التعريف';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'هل تريد حذف "${name}"؟ لا يمكن التراجع عن ذلك.';
       case 'profile.save.buttonText':
         return 'حفظ';
       case 'profile.save.successMsg':
@@ -19195,6 +20136,12 @@ extension on TranslationsAr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'إيقاف';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ساعة';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} يوم';
       case 'profile.actionButtons.add':
         return 'إضافة';
       case 'profile.actionButtons.updateAll':
@@ -19225,6 +20172,12 @@ extension on TranslationsAr {
         return ({required Object days}) => 'متبقٍ ${days} يوماً';
       case 'profile.remoteProfile':
         return 'اشتراك بعيد';
+      case 'profile.defaultLocalName':
+        return 'استيراد محلي';
+      case 'profile.defaultDeepLinkName':
+        return 'استيراد من رابط';
+      case 'profile.switchFailedMsg':
+        return 'تعذّر تبديل ملف التعريف';
       case 'proxies.pageTitle':
         return 'الخوادم الوكيلية';
       case 'proxies.emptyProxiesMsg':
@@ -19316,6 +20269,12 @@ extension on TranslationsAr {
         return 'ميزة السجلات قيد التطوير';
       case 'logs.noLogsWhenDisconnected':
         return 'غير متصل، لا توجد سجلات';
+      case 'logs.loadFailed':
+        return 'تعذّر تحميل السجلات';
+      case 'logs.empty':
+        return 'لا توجد سجلات بعد';
+      case 'logs.clearFailed':
+        return 'تعذّر مسح السجلات';
       case 'settings.pageTitle':
         return 'الإعدادات';
       case 'settings.requiresRestartMsg':
@@ -19388,6 +20347,14 @@ extension on TranslationsAr {
         return 'إغلاق';
       case 'settings.backup.recoveryRetried':
         return 'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
+      case 'settings.backup.exportAction':
+        return 'تصدير نسخة احتياطية';
+      case 'settings.backup.importAction':
+        return 'استيراد نسخة احتياطية';
+      case 'settings.backup.exportFailed':
+        return 'تعذّر تصدير النسخة الاحتياطية';
+      case 'settings.backup.shareText':
+        return 'نسخة ClashMiao الاحتياطية';
       case 'settings.general.sectionTitle':
         return 'عام';
       case 'settings.general.locale':
@@ -19522,6 +20489,15 @@ extension on TranslationsAr {
         return 'الاتصال';
       case 'settings.groups.privacy':
         return 'الخصوصية';
+      case 'settings.importOptionsInvalid':
+        return 'لا تحتوي الحافظة على JSON إعدادات صالح';
+      case 'settings.importOptionsNothing':
+        return 'لم يتم العثور على إعدادات قابلة للاستيراد';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'تم استيراد ${count} من الإعدادات';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة';
       case 'about.pageTitle':
         return 'حول\nتعريب:م. ابراهيم قاسم';
       case 'about.version':
@@ -19574,6 +20550,8 @@ extension on TranslationsAr {
         return 'جار فصم الاتصال';
       case 'tray.hide':
         return 'إخفاء';
+      case 'tray.proxyModeMenu':
+        return 'وضع الوكيل';
       case 'failure.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.clash.unexpected':
@@ -19648,6 +20626,9 @@ extension on TranslationsAr {
         return 'لا يوجد تحديث متاح';
       case 'failure.geoAssets.activeNotFound':
         return 'لم يتم العثور على أصل Geo النشط';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'انقر للاتصال';
       case 'connection.connecting':
@@ -19659,7 +20640,7 @@ extension on TranslationsAr {
       case 'connection.reconnect':
         return 'أعد الاتصال';
       case 'connection.connectAnyWay':
-        return 'اتصل';
+        return 'اتصل على أي حال';
       case 'connection.experimentalNotice':
         return 'ميزات تجريبية قيد الاستخدام';
       case 'connection.experimentalNoticeMsg':
@@ -19850,6 +20831,20 @@ extension on TranslationsAr {
         return 'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
       case 'config.serviceModeIosVpnOnly':
         return 'يدعم iOS وضع VPN فقط';
+      case 'config.warpGenerating':
+        return 'جارٍ إنشاء إعدادات WARP…';
+      case 'config.warpConfigFailed':
+        return 'تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.';
+      case 'config.portRangeError':
+        return 'يجب أن يكون المنفذ بين 1024 و65535';
+      case 'config.dnsEmptyError':
+        return 'لا يمكن أن يكون عنوان DNS فارغًا';
+      case 'config.rangeFormatError':
+        return 'أدخل رقمًا أو نطاقًا، مثل 10-30';
+      case 'config.urlSchemeError':
+        return 'يجب أن يبدأ الرابط بـ http:// أو https://';
+      case 'config.manageRuleAssets':
+        return 'إدارة مجموعات القواعد';
       default:
         return null;
     }
@@ -19903,6 +20898,14 @@ extension on TranslationsEs {
         return 'Confirmar';
       case 'general.close':
         return 'Cerrar';
+      case 'general.cancel':
+        return 'Cancelar';
+      case 'general.clipboardEmpty':
+        return 'El portapapeles está vacío';
+      case 'general.clipboardReadFailed':
+        return 'No se pudo leer el portapapeles';
+      case 'general.moreOptions':
+        return 'Más opciones';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19947,6 +20950,10 @@ extension on TranslationsEs {
         return 'Comprobando…';
       case 'home.egressIp.failedRetry':
         return 'Error al comprobar, toca para reintentar';
+      case 'home.emptyProfilesHint':
+        return 'Toca el botón de abajo para empezar';
+      case 'home.noActiveProfileTitle':
+        return 'No hay ningún perfil seleccionado';
       case 'profile.overviewPageTitle':
         return 'Perfiles';
       case 'profile.detailsPageTitle':
@@ -20018,6 +21025,16 @@ extension on TranslationsEs {
         return 'Aceleración gratuita con Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Espera mientras registramos WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Suscripción importada: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'El portapapeles está vacío; no hay nada que importar';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'El enlace no contiene una dirección de suscripción';
+      case 'profile.add.successMsg':
+        return 'Perfil agregado';
+      case 'profile.add.nameAutoHint':
+        return 'Se detecta automáticamente (opcional)';
       case 'profile.update.buttonTxt':
         return 'Actualizar';
       case 'profile.update.tooltip':
@@ -20062,6 +21079,11 @@ extension on TranslationsEs {
         return '¿Eliminar perfil permanentemente?';
       case 'profile.delete.successMsg':
         return 'Perfil eliminado exitosamente';
+      case 'profile.delete.confirmTitle':
+        return 'Eliminar perfil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '¿Eliminar "${name}"? Esta acción no se puede deshacer.';
       case 'profile.save.buttonText':
         return 'Ahorrar';
       case 'profile.save.successMsg':
@@ -20094,6 +21116,12 @@ extension on TranslationsEs {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Desactivado';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.actionButtons.add':
         return 'Añadir';
       case 'profile.actionButtons.updateAll':
@@ -20124,6 +21152,12 @@ extension on TranslationsEs {
         return ({required Object days}) => 'Quedan ${days} días';
       case 'profile.remoteProfile':
         return 'Perfil remoto';
+      case 'profile.defaultLocalName':
+        return 'Importación local';
+      case 'profile.defaultDeepLinkName':
+        return 'Importado desde enlace';
+      case 'profile.switchFailedMsg':
+        return 'No se pudo cambiar de perfil';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -20216,6 +21250,12 @@ extension on TranslationsEs {
         return 'La función de registros está en desarrollo';
       case 'logs.noLogsWhenDisconnected':
         return 'Sin conexión, no hay registros';
+      case 'logs.loadFailed':
+        return 'No se pudieron cargar los registros';
+      case 'logs.empty':
+        return 'Aún no hay registros';
+      case 'logs.clearFailed':
+        return 'No se pudieron borrar los registros';
       case 'settings.pageTitle':
         return 'Ajustes';
       case 'settings.requiresRestartMsg':
@@ -20408,6 +21448,14 @@ extension on TranslationsEs {
         return 'Cerrar';
       case 'settings.backup.recoveryRetried':
         return 'Tus datos se restauraron al estado anterior a la importación interrumpida.';
+      case 'settings.backup.exportAction':
+        return 'Exportar copia de seguridad';
+      case 'settings.backup.importAction':
+        return 'Importar copia de seguridad';
+      case 'settings.backup.exportFailed':
+        return 'No se pudo exportar la copia de seguridad';
+      case 'settings.backup.shareText':
+        return 'Copia de seguridad de ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy del sistema activado';
       case 'settings.systemProxyDisabled':
@@ -20422,6 +21470,15 @@ extension on TranslationsEs {
         return 'Conexión';
       case 'settings.groups.privacy':
         return 'Privacidad';
+      case 'settings.importOptionsInvalid':
+        return 'El portapapeles no contiene un JSON de ajustes válido';
+      case 'settings.importOptionsNothing':
+        return 'No se encontraron ajustes importables';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Se importaron ${count} ajustes';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Se importaron ${applied} ajustes; se omitieron ${skipped} por no ser válidos';
       case 'about.pageTitle':
         return 'Acerca de';
       case 'about.version':
@@ -20474,6 +21531,8 @@ extension on TranslationsEs {
         return 'Desconectando';
       case 'tray.hide':
         return 'Ocultar';
+      case 'tray.proxyModeMenu':
+        return 'Modo de proxy';
       case 'failure.unexpected':
         return 'Error inesperado';
       case 'failure.clash.unexpected':
@@ -20548,6 +21607,9 @@ extension on TranslationsEs {
         return 'Actualización no disponible';
       case 'failure.geoAssets.activeNotFound':
         return 'Activo geográfico activo no encontrado';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Toque para conectarse';
       case 'connection.connecting':
@@ -20565,7 +21627,7 @@ extension on TranslationsEs {
       case 'connection.reconnect':
         return 'Reconectar';
       case 'connection.connectAnyWay':
-        return 'Conectar';
+        return 'Conectar de todos modos';
       case 'connection.reconnectMsg':
         return 'Reconectando para aplicar los cambios...';
       case 'connection.staleSystemProxyCleaned':
@@ -20750,6 +21812,20 @@ extension on TranslationsEs {
         return 'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS solo admite el modo VPN';
+      case 'config.warpGenerating':
+        return 'Generando la configuración de WARP…';
+      case 'config.warpConfigFailed':
+        return 'No se pudo generar la configuración de WARP. Inténtalo más tarde.';
+      case 'config.portRangeError':
+        return 'El puerto debe estar entre 1024 y 65535';
+      case 'config.dnsEmptyError':
+        return 'La dirección DNS no puede estar vacía';
+      case 'config.rangeFormatError':
+        return 'Introduce un número o un rango, p. ej. 10-30';
+      case 'config.urlSchemeError':
+        return 'La URL debe empezar por http:// o https://';
+      case 'config.manageRuleAssets':
+        return 'Gestionar conjuntos de reglas';
       case 'stats.traffic':
         return 'Tráfico';
       case 'stats.trafficLive':
@@ -20827,6 +21903,14 @@ extension on TranslationsFa {
         return 'تأیید';
       case 'general.close':
         return 'بستن';
+      case 'general.cancel':
+        return 'لغو';
+      case 'general.clipboardEmpty':
+        return 'کلیپ‌بورد خالی است';
+      case 'general.clipboardReadFailed':
+        return 'خواندن کلیپ‌بورد ناموفق بود';
+      case 'general.moreOptions':
+        return 'گزینه‌های بیشتر';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20871,6 +21955,10 @@ extension on TranslationsFa {
         return 'در حال بررسی…';
       case 'home.egressIp.failedRetry':
         return 'بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید';
+      case 'home.emptyProfilesHint':
+        return 'برای شروع، دکمهٔ زیر را بزنید';
+      case 'home.noActiveProfileTitle':
+        return 'هیچ پروفایلی انتخاب نشده است';
       case 'stats.traffic':
         return 'مصرف';
       case 'stats.trafficLive':
@@ -20965,6 +22053,16 @@ extension on TranslationsFa {
         return 'پیکربندی سرور را دستی وارد کنید';
       case 'profile.add.warpDescription':
         return 'شتاب‌دهی رایگان با Cloudflare WARP';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'اشتراک درون‌ریزی شد: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'پیوند نشانی اشتراک ندارد';
+      case 'profile.add.successMsg':
+        return 'پروفایل افزوده شد';
+      case 'profile.add.nameAutoHint':
+        return 'به‌طور خودکار تشخیص داده می‌شود (اختیاری)';
       case 'profile.update.buttonTxt':
         return 'به‌روزرسانی';
       case 'profile.update.tooltip':
@@ -21009,6 +22107,11 @@ extension on TranslationsFa {
         return 'پروفایل برای همیشه حذف شود؟';
       case 'profile.delete.successMsg':
         return 'پروفایل با موفقیت حذف شد';
+      case 'profile.delete.confirmTitle':
+        return 'حذف پروفایل';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '«${name}» حذف شود؟ این کار برگشت‌پذیر نیست.';
       case 'profile.save.buttonText':
         return 'ذخیره';
       case 'profile.save.successMsg':
@@ -21041,6 +22144,12 @@ extension on TranslationsFa {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'خاموش';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ساعت';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} روز';
       case 'profile.actionButtons.add':
         return 'افزودن';
       case 'profile.actionButtons.updateAll':
@@ -21071,6 +22180,12 @@ extension on TranslationsFa {
         return ({required Object days}) => '${days} روز باقی مانده';
       case 'profile.remoteProfile':
         return 'پروفایل راه دور';
+      case 'profile.defaultLocalName':
+        return 'درون‌ریزی محلی';
+      case 'profile.defaultDeepLinkName':
+        return 'درون‌ریزی از پیوند';
+      case 'profile.switchFailedMsg':
+        return 'تغییر پروفایل ناموفق بود';
       case 'proxies.pageTitle':
         return 'پروکسی‌ها';
       case 'proxies.emptyProxiesMsg':
@@ -21162,6 +22277,12 @@ extension on TranslationsFa {
         return 'قابلیت گزارش‌گیری در حال توسعه است';
       case 'logs.noLogsWhenDisconnected':
         return 'متصل نیست، گزارشی وجود ندارد';
+      case 'logs.loadFailed':
+        return 'بارگیری گزارش‌ها ناموفق بود';
+      case 'logs.empty':
+        return 'هنوز گزارشی وجود ندارد';
+      case 'logs.clearFailed':
+        return 'پاک کردن گزارش‌ها ناموفق بود';
       case 'settings.pageTitle':
         return 'تنظیمات';
       case 'settings.requiresRestartMsg':
@@ -21234,6 +22355,14 @@ extension on TranslationsFa {
         return 'بستن';
       case 'settings.backup.recoveryRetried':
         return 'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
+      case 'settings.backup.exportAction':
+        return 'برون‌بری پشتیبان';
+      case 'settings.backup.importAction':
+        return 'درون‌ریزی پشتیبان';
+      case 'settings.backup.exportFailed':
+        return 'برون‌بری پشتیبان ناموفق بود';
+      case 'settings.backup.shareText':
+        return 'پشتیبان ClashMiao';
       case 'settings.general.sectionTitle':
         return 'عمومی';
       case 'settings.general.locale':
@@ -21368,6 +22497,15 @@ extension on TranslationsFa {
         return 'اتصال';
       case 'settings.groups.privacy':
         return 'حریم خصوصی';
+      case 'settings.importOptionsInvalid':
+        return 'محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست';
+      case 'settings.importOptionsNothing':
+        return 'هیچ تنظیم قابل درون‌ریزی پیدا نشد';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} تنظیم درون‌ریزی شد';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد';
       case 'about.pageTitle':
         return 'درباره';
       case 'about.version':
@@ -21420,6 +22558,8 @@ extension on TranslationsFa {
         return 'در حال قطع اتصال';
       case 'tray.hide':
         return 'پنهان کردن';
+      case 'tray.proxyModeMenu':
+        return 'حالت پروکسی';
       case 'failure.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.clash.unexpected':
@@ -21494,6 +22634,9 @@ extension on TranslationsFa {
         return 'هیچ به‌روزرسانی موجود نیست';
       case 'failure.geoAssets.activeNotFound':
         return 'فایل جغرافیایی فعال یافت نشد';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'برای اتصال ضربه بزنید';
       case 'connection.connecting':
@@ -21505,7 +22648,7 @@ extension on TranslationsFa {
       case 'connection.reconnect':
         return 'اتصال دوباره';
       case 'connection.connectAnyWay':
-        return 'متصل کردن';
+        return 'در هر صورت متصل شو';
       case 'connection.experimentalNotice':
         return 'ویژگی‌های آزمایشی در حال استفاده';
       case 'connection.experimentalNoticeMsg':
@@ -21696,6 +22839,20 @@ extension on TranslationsFa {
         return 'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS فقط از حالت VPN پشتیبانی می‌کند';
+      case 'config.warpGenerating':
+        return 'در حال ساخت پیکربندی WARP…';
+      case 'config.warpConfigFailed':
+        return 'ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.';
+      case 'config.portRangeError':
+        return 'پورت باید بین 1024 و 65535 باشد';
+      case 'config.dnsEmptyError':
+        return 'نشانی DNS نمی‌تواند خالی باشد';
+      case 'config.rangeFormatError':
+        return 'یک عدد یا بازه وارد کنید، مثلاً 10-30';
+      case 'config.urlSchemeError':
+        return 'نشانی باید با http:// یا https:// شروع شود';
+      case 'config.manageRuleAssets':
+        return 'مدیریت مجموعه‌قواعد';
       default:
         return null;
     }
@@ -21749,6 +22906,14 @@ extension on TranslationsId {
         return 'Konfirmasi';
       case 'general.close':
         return 'Tutup';
+      case 'general.cancel':
+        return 'Batal';
+      case 'general.clipboardEmpty':
+        return 'Papan klip kosong';
+      case 'general.clipboardReadFailed':
+        return 'Gagal membaca papan klip';
+      case 'general.moreOptions':
+        return 'Opsi lainnya';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -21792,6 +22957,10 @@ extension on TranslationsId {
         return 'Memeriksa…';
       case 'home.egressIp.failedRetry':
         return 'Pemeriksaan gagal, ketuk untuk mencoba lagi';
+      case 'home.emptyProfilesHint':
+        return 'Ketuk tombol di bawah untuk memulai';
+      case 'home.noActiveProfileTitle':
+        return 'Belum ada profil yang dipilih';
       case 'stats.traffic':
         return 'Trafik Langsung';
       case 'stats.trafficTotal':
@@ -21886,6 +23055,16 @@ extension on TranslationsId {
         return 'Akselerasi gratis dengan Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Mohon tunggu, kami sedang mendaftarkan WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Langganan diimpor: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Papan klip kosong, tidak ada yang bisa diimpor';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'Tautan tidak berisi alamat langganan';
+      case 'profile.add.successMsg':
+        return 'Profil ditambahkan';
+      case 'profile.add.nameAutoHint':
+        return 'Terdeteksi otomatis (opsional)';
       case 'profile.update.buttonTxt':
         return 'Perbarui';
       case 'profile.update.tooltip':
@@ -21930,6 +23109,11 @@ extension on TranslationsId {
         return 'Hapus profil permanen?';
       case 'profile.delete.successMsg':
         return 'Sukses hapus profil';
+      case 'profile.delete.confirmTitle':
+        return 'Hapus profil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Hapus "${name}"? Tindakan ini tidak dapat dibatalkan.';
       case 'profile.save.buttonText':
         return 'Simpan';
       case 'profile.save.successMsg':
@@ -21962,6 +23146,12 @@ extension on TranslationsId {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Mati';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} jam';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} hari';
       case 'profile.actionButtons.add':
         return 'Tambah';
       case 'profile.actionButtons.updateAll':
@@ -21992,6 +23182,12 @@ extension on TranslationsId {
         return ({required Object days}) => 'Sisa ${days} hari';
       case 'profile.remoteProfile':
         return 'Profil Jarak Jauh';
+      case 'profile.defaultLocalName':
+        return 'Impor lokal';
+      case 'profile.defaultDeepLinkName':
+        return 'Impor dari tautan';
+      case 'profile.switchFailedMsg':
+        return 'Gagal mengganti profil';
       case 'proxies.pageTitle':
         return 'Proxy';
       case 'proxies.emptyProxiesMsg':
@@ -22084,6 +23280,12 @@ extension on TranslationsId {
         return 'Fitur log sedang dikembangkan';
       case 'logs.noLogsWhenDisconnected':
         return 'Tidak tersambung, tidak ada log';
+      case 'logs.loadFailed':
+        return 'Gagal memuat log';
+      case 'logs.empty':
+        return 'Belum ada log';
+      case 'logs.clearFailed':
+        return 'Gagal menghapus log';
       case 'settings.pageTitle':
         return 'Setting';
       case 'settings.requiresRestartMsg':
@@ -22276,6 +23478,14 @@ extension on TranslationsId {
         return 'Tutup';
       case 'settings.backup.recoveryRetried':
         return 'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
+      case 'settings.backup.exportAction':
+        return 'Ekspor cadangan';
+      case 'settings.backup.importAction':
+        return 'Impor cadangan';
+      case 'settings.backup.exportFailed':
+        return 'Gagal mengekspor cadangan';
+      case 'settings.backup.shareText':
+        return 'Cadangan ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy sistem diaktifkan';
       case 'settings.systemProxyDisabled':
@@ -22290,6 +23500,15 @@ extension on TranslationsId {
         return 'Koneksi';
       case 'settings.groups.privacy':
         return 'Privasi';
+      case 'settings.importOptionsInvalid':
+        return 'Papan klip tidak berisi JSON pengaturan yang valid';
+      case 'settings.importOptionsNothing':
+        return 'Tidak ada pengaturan yang dapat diimpor';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} pengaturan diimpor';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} pengaturan diimpor; ${skipped} dilewati karena tidak valid';
       case 'about.pageTitle':
         return 'Tentang';
       case 'about.version':
@@ -22342,6 +23561,8 @@ extension on TranslationsId {
         return 'Memutuskan';
       case 'tray.hide':
         return 'Sembunyikan';
+      case 'tray.proxyModeMenu':
+        return 'Mode Proksi';
       case 'failure.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.clash.unexpected':
@@ -22416,6 +23637,9 @@ extension on TranslationsId {
         return 'Perbaruan tidak tersedia';
       case 'failure.geoAssets.activeNotFound':
         return 'Geo Aset Aktif tidak ditemukan';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Ketuk untuk Sambung';
       case 'connection.connecting':
@@ -22433,7 +23657,7 @@ extension on TranslationsId {
       case 'connection.reconnect':
         return 'Sambungkan Ulang';
       case 'connection.connectAnyWay':
-        return 'Sambungkan';
+        return 'Tetap sambungkan';
       case 'connection.reconnectMsg':
         return 'Menyambungkan ulang untuk menerapkan perubahan...';
       case 'connection.staleSystemProxyCleaned':
@@ -22618,6 +23842,20 @@ extension on TranslationsId {
         return 'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS hanya mendukung mode VPN';
+      case 'config.warpGenerating':
+        return 'Membuat konfigurasi WARP…';
+      case 'config.warpConfigFailed':
+        return 'Gagal membuat konfigurasi WARP. Coba lagi nanti.';
+      case 'config.portRangeError':
+        return 'Port harus antara 1024 dan 65535';
+      case 'config.dnsEmptyError':
+        return 'Alamat DNS tidak boleh kosong';
+      case 'config.rangeFormatError':
+        return 'Masukkan angka atau rentang, mis. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL harus diawali http:// atau https://';
+      case 'config.manageRuleAssets':
+        return 'Kelola set aturan';
       default:
         return null;
     }
@@ -22671,6 +23909,14 @@ extension on TranslationsPtBr {
         return 'Confirmar';
       case 'general.close':
         return 'Fechar';
+      case 'general.cancel':
+        return 'Cancelar';
+      case 'general.clipboardEmpty':
+        return 'A área de transferência está vazia';
+      case 'general.clipboardReadFailed':
+        return 'Não foi possível ler a área de transferência';
+      case 'general.moreOptions':
+        return 'Mais opções';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -22715,6 +23961,10 @@ extension on TranslationsPtBr {
         return 'Verificando…';
       case 'home.egressIp.failedRetry':
         return 'Falha na verificação, toque para tentar novamente';
+      case 'home.emptyProfilesHint':
+        return 'Toque no botão abaixo para começar';
+      case 'home.noActiveProfileTitle':
+        return 'Nenhum perfil selecionado';
       case 'stats.trafficLive':
         return 'Tráfego ao vivo';
       case 'stats.trafficTotal':
@@ -22809,6 +24059,16 @@ extension on TranslationsPtBr {
         return 'Aceleração gratuita com Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Aguarde enquanto registramos o WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Assinatura importada: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'A área de transferência está vazia; não há nada para importar';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'O link não contém um endereço de assinatura';
+      case 'profile.add.successMsg':
+        return 'Perfil adicionado';
+      case 'profile.add.nameAutoHint':
+        return 'Detectado automaticamente (opcional)';
       case 'profile.update.buttonTxt':
         return 'Atualizar';
       case 'profile.update.tooltip':
@@ -22853,6 +24113,11 @@ extension on TranslationsPtBr {
         return 'Deletar perfil permanentemente?';
       case 'profile.delete.successMsg':
         return 'Perfil deletado com sucesso';
+      case 'profile.delete.confirmTitle':
+        return 'Excluir perfil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Excluir "${name}"? Essa ação não pode ser desfeita.';
       case 'profile.save.buttonText':
         return 'Salvar';
       case 'profile.save.successMsg':
@@ -22885,6 +24150,12 @@ extension on TranslationsPtBr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Desativado';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.actionButtons.add':
         return 'Adicionar';
       case 'profile.actionButtons.updateAll':
@@ -22915,6 +24186,12 @@ extension on TranslationsPtBr {
         return ({required Object days}) => 'Restam ${days} dias';
       case 'profile.remoteProfile':
         return 'Perfil remoto';
+      case 'profile.defaultLocalName':
+        return 'Importação local';
+      case 'profile.defaultDeepLinkName':
+        return 'Importado por link';
+      case 'profile.switchFailedMsg':
+        return 'Não foi possível trocar de perfil';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -23007,6 +24284,12 @@ extension on TranslationsPtBr {
         return 'O recurso de registros está em desenvolvimento';
       case 'logs.noLogsWhenDisconnected':
         return 'Desconectado, sem registros';
+      case 'logs.loadFailed':
+        return 'Não foi possível carregar os logs';
+      case 'logs.empty':
+        return 'Ainda não há logs';
+      case 'logs.clearFailed':
+        return 'Não foi possível limpar os logs';
       case 'settings.pageTitle':
         return 'Configurações';
       case 'settings.requiresRestartMsg':
@@ -23199,6 +24482,14 @@ extension on TranslationsPtBr {
         return 'Fechar';
       case 'settings.backup.recoveryRetried':
         return 'Seus dados foram restaurados ao estado anterior à importação interrompida.';
+      case 'settings.backup.exportAction':
+        return 'Exportar backup';
+      case 'settings.backup.importAction':
+        return 'Importar backup';
+      case 'settings.backup.exportFailed':
+        return 'Não foi possível exportar o backup';
+      case 'settings.backup.shareText':
+        return 'Backup do ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy do sistema ativado';
       case 'settings.systemProxyDisabled':
@@ -23213,6 +24504,15 @@ extension on TranslationsPtBr {
         return 'Conexão';
       case 'settings.groups.privacy':
         return 'Privacidade';
+      case 'settings.importOptionsInvalid':
+        return 'A área de transferência não contém um JSON de configurações válido';
+      case 'settings.importOptionsNothing':
+        return 'Nenhuma configuração importável encontrada';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} configurações importadas';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} configurações importadas; ${skipped} ignoradas por serem inválidas';
       case 'about.pageTitle':
         return 'Sobre';
       case 'about.version':
@@ -23265,6 +24565,8 @@ extension on TranslationsPtBr {
         return 'Desconectando';
       case 'tray.hide':
         return 'Ocultar';
+      case 'tray.proxyModeMenu':
+        return 'Modo de proxy';
       case 'failure.unexpected':
         return 'Erro inesperado';
       case 'failure.clash.unexpected':
@@ -23339,6 +24641,9 @@ extension on TranslationsPtBr {
         return 'Nenhuma atualização disponível';
       case 'failure.geoAssets.activeNotFound':
         return 'Recurso geográfico ativo não encontrado';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Toque para conectar';
       case 'connection.connecting':
@@ -23356,7 +24661,7 @@ extension on TranslationsPtBr {
       case 'connection.reconnect':
         return 'Reconectar';
       case 'connection.connectAnyWay':
-        return 'Conectar';
+        return 'Conectar mesmo assim';
       case 'connection.reconnectMsg':
         return 'Reconectando para aplicar as alterações...';
       case 'connection.staleSystemProxyCleaned':
@@ -23541,6 +24846,20 @@ extension on TranslationsPtBr {
         return 'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
       case 'config.serviceModeIosVpnOnly':
         return 'O iOS só oferece suporte ao modo VPN';
+      case 'config.warpGenerating':
+        return 'Gerando a configuração do WARP…';
+      case 'config.warpConfigFailed':
+        return 'Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.';
+      case 'config.portRangeError':
+        return 'A porta deve estar entre 1024 e 65535';
+      case 'config.dnsEmptyError':
+        return 'O endereço DNS não pode ficar vazio';
+      case 'config.rangeFormatError':
+        return 'Digite um número ou um intervalo, por exemplo 10-30';
+      case 'config.urlSchemeError':
+        return 'A URL deve começar com http:// ou https://';
+      case 'config.manageRuleAssets':
+        return 'Gerenciar conjuntos de regras';
       default:
         return null;
     }
@@ -23594,6 +24913,14 @@ extension on TranslationsRu {
         return 'Подтвердить';
       case 'general.close':
         return 'Закрыть';
+      case 'general.cancel':
+        return 'Отмена';
+      case 'general.clipboardEmpty':
+        return 'Буфер обмена пуст';
+      case 'general.clipboardReadFailed':
+        return 'Не удалось прочитать буфер обмена';
+      case 'general.moreOptions':
+        return 'Дополнительно';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -23638,6 +24965,10 @@ extension on TranslationsRu {
         return 'Проверка…';
       case 'home.egressIp.failedRetry':
         return 'Не удалось проверить, нажмите для повтора';
+      case 'home.emptyProfilesHint':
+        return 'Нажмите кнопку ниже, чтобы начать';
+      case 'home.noActiveProfileTitle':
+        return 'Профиль не выбран';
       case 'stats.traffic':
         return 'Трафик';
       case 'stats.trafficLive':
@@ -23732,6 +25063,16 @@ extension on TranslationsRu {
         return 'Бесплатное ускорение через Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Подождите, идёт регистрация WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Подписка импортирована: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Буфер обмена пуст, импортировать нечего';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'В ссылке нет адреса подписки';
+      case 'profile.add.successMsg':
+        return 'Профиль добавлен';
+      case 'profile.add.nameAutoHint':
+        return 'Определяется автоматически (необязательно)';
       case 'profile.update.buttonTxt':
         return 'Обновить';
       case 'profile.update.tooltip':
@@ -23776,6 +25117,11 @@ extension on TranslationsRu {
         return 'Безвозвратно удалить профиль?';
       case 'profile.delete.successMsg':
         return 'Профиль успешно удалён';
+      case 'profile.delete.confirmTitle':
+        return 'Удалить профиль';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Удалить «${name}»? Это действие нельзя отменить.';
       case 'profile.save.buttonText':
         return 'Сохранить';
       case 'profile.save.successMsg':
@@ -23808,6 +25154,12 @@ extension on TranslationsRu {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Выкл.';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ч';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} дн.';
       case 'profile.actionButtons.add':
         return 'Добавить';
       case 'profile.actionButtons.updateAll':
@@ -23838,6 +25190,12 @@ extension on TranslationsRu {
         return ({required Object days}) => 'Осталось ${days} дн.';
       case 'profile.remoteProfile':
         return 'Удалённый профиль';
+      case 'profile.defaultLocalName':
+        return 'Локальный импорт';
+      case 'profile.defaultDeepLinkName':
+        return 'Импорт по ссылке';
+      case 'profile.switchFailedMsg':
+        return 'Не удалось переключить профиль';
       case 'proxies.pageTitle':
         return 'Прокси';
       case 'proxies.emptyProxiesMsg':
@@ -23930,6 +25288,12 @@ extension on TranslationsRu {
         return 'Функция журналов в разработке';
       case 'logs.noLogsWhenDisconnected':
         return 'Нет подключения, журналы отсутствуют';
+      case 'logs.loadFailed':
+        return 'Не удалось загрузить журнал';
+      case 'logs.empty':
+        return 'Журнал пока пуст';
+      case 'logs.clearFailed':
+        return 'Не удалось очистить журнал';
       case 'settings.pageTitle':
         return 'Настройки';
       case 'settings.requiresRestartMsg':
@@ -23998,6 +25362,14 @@ extension on TranslationsRu {
         return 'Закрыть';
       case 'settings.backup.recoveryRetried':
         return 'Данные возвращены в состояние до прерванного импорта.';
+      case 'settings.backup.exportAction':
+        return 'Экспорт резервной копии';
+      case 'settings.backup.importAction':
+        return 'Импорт резервной копии';
+      case 'settings.backup.exportFailed':
+        return 'Не удалось экспортировать резервную копию';
+      case 'settings.backup.shareText':
+        return 'Резервная копия ClashMiao';
       case 'settings.general.sectionTitle':
         return 'Основные';
       case 'settings.general.locale':
@@ -24136,6 +25508,15 @@ extension on TranslationsRu {
         return 'Подключение';
       case 'settings.groups.privacy':
         return 'Конфиденциальность';
+      case 'settings.importOptionsInvalid':
+        return 'В буфере обмена нет корректного JSON настроек';
+      case 'settings.importOptionsNothing':
+        return 'Не найдено настроек для импорта';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Импортировано настроек: ${count}';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Импортировано: ${applied}; пропущено как некорректные: ${skipped}';
       case 'about.pageTitle':
         return 'О программе';
       case 'about.version':
@@ -24188,6 +25569,8 @@ extension on TranslationsRu {
         return 'Отключение';
       case 'tray.hide':
         return 'Скрыть';
+      case 'tray.proxyModeMenu':
+        return 'Режим прокси';
       case 'failure.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.clash.unexpected':
@@ -24262,6 +25645,9 @@ extension on TranslationsRu {
         return 'Нет доступных обновлений';
       case 'failure.geoAssets.activeNotFound':
         return 'Активный географический актив не найден';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Нажмите для подключения';
       case 'connection.connecting':
@@ -24273,7 +25659,7 @@ extension on TranslationsRu {
       case 'connection.reconnect':
         return 'Восстановить соединение';
       case 'connection.connectAnyWay':
-        return 'Подключиться';
+        return 'Всё равно подключиться';
       case 'connection.experimentalNotice':
         return 'Экспериментальные функции в использовании';
       case 'connection.experimentalNoticeMsg':
@@ -24464,6 +25850,20 @@ extension on TranslationsRu {
         return 'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS поддерживает только режим VPN';
+      case 'config.warpGenerating':
+        return 'Создание конфигурации WARP…';
+      case 'config.warpConfigFailed':
+        return 'Не удалось создать конфигурацию WARP. Повторите попытку позже.';
+      case 'config.portRangeError':
+        return 'Порт должен быть от 1024 до 65535';
+      case 'config.dnsEmptyError':
+        return 'Адрес DNS не может быть пустым';
+      case 'config.rangeFormatError':
+        return 'Введите число или диапазон, например 10-30';
+      case 'config.urlSchemeError':
+        return 'URL должен начинаться с http:// или https://';
+      case 'config.manageRuleAssets':
+        return 'Наборы правил';
       default:
         return null;
     }
@@ -24517,6 +25917,14 @@ extension on TranslationsTr {
         return 'Onayla';
       case 'general.close':
         return 'Kapat';
+      case 'general.cancel':
+        return 'İptal';
+      case 'general.clipboardEmpty':
+        return 'Pano boş';
+      case 'general.clipboardReadFailed':
+        return 'Pano okunamadı';
+      case 'general.moreOptions':
+        return 'Diğer seçenekler';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -24561,6 +25969,10 @@ extension on TranslationsTr {
         return 'Denetleniyor…';
       case 'home.egressIp.failedRetry':
         return 'Denetim başarısız, yeniden denemek için dokunun';
+      case 'home.emptyProfilesHint':
+        return 'Başlamak için aşağıdaki düğmeye dokunun';
+      case 'home.noActiveProfileTitle':
+        return 'Profil seçilmedi';
       case 'stats.trafficLive':
         return 'Canlı Trafik';
       case 'stats.trafficTotal':
@@ -24655,6 +26067,16 @@ extension on TranslationsTr {
         return 'Cloudflare WARP ile ücretsiz hızlandırma';
       case 'profile.add.addingWarpMsg':
         return 'WARP kaydedilirken lütfen bekleyin.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Abonelik içe aktarıldı: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Pano boş, içe aktarılacak bir şey yok';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'Bağlantıda abonelik adresi yok';
+      case 'profile.add.successMsg':
+        return 'Profil eklendi';
+      case 'profile.add.nameAutoHint':
+        return 'Otomatik algılanır (isteğe bağlı)';
       case 'profile.update.buttonTxt':
         return 'Güncelle';
       case 'profile.update.tooltip':
@@ -24699,6 +26121,11 @@ extension on TranslationsTr {
         return 'Profil kalıcı olarak silinsin mi?';
       case 'profile.delete.successMsg':
         return 'Profil başarıyla silindi';
+      case 'profile.delete.confirmTitle':
+        return 'Profili sil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '"${name}" silinsin mi? Bu işlem geri alınamaz.';
       case 'profile.save.buttonText':
         return 'Kaydet';
       case 'profile.save.successMsg':
@@ -24731,6 +26158,12 @@ extension on TranslationsTr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Kapalı';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} sa';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} gün';
       case 'profile.actionButtons.add':
         return 'Ekle';
       case 'profile.actionButtons.updateAll':
@@ -24761,6 +26194,12 @@ extension on TranslationsTr {
         return ({required Object days}) => '${days} gün kaldı';
       case 'profile.remoteProfile':
         return 'Uzak Profil';
+      case 'profile.defaultLocalName':
+        return 'Yerel içe aktarma';
+      case 'profile.defaultDeepLinkName':
+        return 'Bağlantıdan içe aktarma';
+      case 'profile.switchFailedMsg':
+        return 'Profil değiştirilemedi';
       case 'proxies.pageTitle':
         return 'Proxyler';
       case 'proxies.emptyProxiesMsg':
@@ -24853,6 +26292,12 @@ extension on TranslationsTr {
         return 'Günlük özelliği geliştirme aşamasında';
       case 'logs.noLogsWhenDisconnected':
         return 'Bağlı değil, günlük yok';
+      case 'logs.loadFailed':
+        return 'Günlükler yüklenemedi';
+      case 'logs.empty':
+        return 'Henüz günlük yok';
+      case 'logs.clearFailed':
+        return 'Günlükler temizlenemedi';
       case 'settings.pageTitle':
         return 'Ayarlar';
       case 'settings.requiresRestartMsg':
@@ -25045,6 +26490,14 @@ extension on TranslationsTr {
         return 'Kapat';
       case 'settings.backup.recoveryRetried':
         return 'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
+      case 'settings.backup.exportAction':
+        return 'Yedeği dışa aktar';
+      case 'settings.backup.importAction':
+        return 'Yedeği içe aktar';
+      case 'settings.backup.exportFailed':
+        return 'Yedek dışa aktarılamadı';
+      case 'settings.backup.shareText':
+        return 'ClashMiao yedeği';
       case 'settings.systemProxyEnabled':
         return 'Sistem proxy’si etkin';
       case 'settings.systemProxyDisabled':
@@ -25059,6 +26512,15 @@ extension on TranslationsTr {
         return 'Bağlantı';
       case 'settings.groups.privacy':
         return 'Gizlilik';
+      case 'settings.importOptionsInvalid':
+        return 'Pano geçerli bir ayar JSON\'u içermiyor';
+      case 'settings.importOptionsNothing':
+        return 'İçe aktarılabilir ayar bulunamadı';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} ayar içe aktarıldı';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} ayar içe aktarıldı; ${skipped} ayar geçersiz olduğu için atlandı';
       case 'about.pageTitle':
         return 'Hakkında';
       case 'about.version':
@@ -25111,6 +26573,8 @@ extension on TranslationsTr {
         return 'Bağlantı kesiliyor';
       case 'tray.hide':
         return 'Gizle';
+      case 'tray.proxyModeMenu':
+        return 'Proxy Modu';
       case 'failure.unexpected':
         return 'Beklenmeyen hata';
       case 'failure.clash.unexpected':
@@ -25185,6 +26649,9 @@ extension on TranslationsTr {
         return 'Güncelleme mevcut değil';
       case 'failure.geoAssets.activeNotFound':
         return 'Etkin Coğrafi Varlık Bulunamadı';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Bağlanmak için dokunun';
       case 'connection.connecting':
@@ -25202,7 +26669,7 @@ extension on TranslationsTr {
       case 'connection.reconnect':
         return 'Yeniden Bağlan';
       case 'connection.connectAnyWay':
-        return 'Bağlan';
+        return 'Yine de bağlan';
       case 'connection.reconnectMsg':
         return 'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
       case 'connection.staleSystemProxyCleaned':
@@ -25387,6 +26854,20 @@ extension on TranslationsTr {
         return 'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS yalnızca VPN modunu destekler';
+      case 'config.warpGenerating':
+        return 'WARP yapılandırması oluşturuluyor…';
+      case 'config.warpConfigFailed':
+        return 'WARP yapılandırması oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
+      case 'config.portRangeError':
+        return 'Port 1024 ile 65535 arasında olmalıdır';
+      case 'config.dnsEmptyError':
+        return 'DNS adresi boş olamaz';
+      case 'config.rangeFormatError':
+        return 'Bir sayı veya aralık girin, örn. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL http:// veya https:// ile başlamalıdır';
+      case 'config.manageRuleAssets':
+        return 'Kural setlerini yönet';
       default:
         return null;
     }
@@ -25440,6 +26921,14 @@ extension on TranslationsZhCn {
         return '确认';
       case 'general.close':
         return '关闭';
+      case 'general.cancel':
+        return '取消';
+      case 'general.clipboardEmpty':
+        return '剪贴板为空';
+      case 'general.clipboardReadFailed':
+        return '读取剪贴板失败';
+      case 'general.moreOptions':
+        return '更多选项';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -25483,6 +26972,10 @@ extension on TranslationsZhCn {
         return '正在检测…';
       case 'home.egressIp.failedRetry':
         return '检测失败，点击重试';
+      case 'home.emptyProfilesHint':
+        return '点击下方按钮开始探索';
+      case 'home.noActiveProfileTitle':
+        return '未选择配置文件';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -25586,6 +27079,16 @@ extension on TranslationsZhCn {
         return '添加配置文件';
       case 'profile.add.failureMsg':
         return '添加配置文件失败';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => '已导入订阅：${name}';
+      case 'profile.add.clipboardEmpty':
+        return '剪贴板为空，无法导入订阅';
+      case 'profile.add.deepLinkMissingUrl':
+        return '链接中缺少订阅地址';
+      case 'profile.add.successMsg':
+        return '添加成功';
+      case 'profile.add.nameAutoHint':
+        return '自动识别（可选）';
       case 'profile.details.basicInfo':
         return '基础信息';
       case 'profile.details.subscriptionStatus':
@@ -25648,6 +27151,10 @@ extension on TranslationsZhCn {
         return '要永久删除配置文件吗？';
       case 'profile.delete.successMsg':
         return '配置文件删除成功';
+      case 'profile.delete.confirmTitle':
+        return '删除配置文件';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) => '确定要删除"${name}"吗？此操作不可撤销。';
       case 'profile.save.buttonText':
         return '保存';
       case 'profile.save.successMsg':
@@ -25680,8 +27187,20 @@ extension on TranslationsZhCn {
         return 'Mux 多路复用';
       case 'profile.detailsForm.muxDescription':
         return '复用出站连接以减少握手开销';
+      case 'profile.detailsForm.updateIntervalOff':
+        return '关闭';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} 小时';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} 天';
       case 'profile.remoteProfile':
         return '远程订阅';
+      case 'profile.defaultLocalName':
+        return '本地导入';
+      case 'profile.defaultDeepLinkName':
+        return '深链导入';
+      case 'profile.switchFailedMsg':
+        return '切换配置文件失败';
       case 'proxies.pageTitle':
         return '线路';
       case 'proxies.emptyProxiesMsg':
@@ -25772,6 +27291,12 @@ extension on TranslationsZhCn {
         return '日志功能开发中';
       case 'logs.noLogsWhenDisconnected':
         return '未连接，无日志';
+      case 'logs.loadFailed':
+        return '日志读取失败';
+      case 'logs.empty':
+        return '暂无日志';
+      case 'logs.clearFailed':
+        return '清除日志失败';
       case 'settings.pageTitle':
         return '设置';
       case 'settings.requiresRestartMsg':
@@ -25840,6 +27365,14 @@ extension on TranslationsZhCn {
         return '关闭';
       case 'settings.backup.recoveryRetried':
         return '已把数据恢复到被中断的导入之前。';
+      case 'settings.backup.exportAction':
+        return '导出备份';
+      case 'settings.backup.importAction':
+        return '导入备份';
+      case 'settings.backup.exportFailed':
+        return '导出失败';
+      case 'settings.backup.shareText':
+        return 'ClashMiao 备份';
       case 'settings.general.sectionTitle':
         return '一般选项';
       case 'settings.general.locale':
@@ -25974,6 +27507,15 @@ extension on TranslationsZhCn {
         return '连接';
       case 'settings.groups.privacy':
         return '隐私';
+      case 'settings.importOptionsInvalid':
+        return '剪贴板内容不是有效的配置 JSON';
+      case 'settings.importOptionsNothing':
+        return '未识别到可导入的配置项';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '已导入 ${count} 项配置';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过';
       case 'about.pageTitle':
         return '关于';
       case 'about.version':
@@ -26026,6 +27568,8 @@ extension on TranslationsZhCn {
         return '断开连接';
       case 'tray.status.disconnecting':
         return '正在断开连接';
+      case 'tray.proxyModeMenu':
+        return '代理模式';
       case 'failure.unexpected':
         return '意外错误';
       case 'failure.clash.unexpected':
@@ -26100,6 +27644,9 @@ extension on TranslationsZhCn {
         return '无可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到激活的 GEO 资源文件';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}：${reason}';
       case 'connection.tapToConnect':
         return '点击连接';
       case 'connection.connecting':
@@ -26111,13 +27658,13 @@ extension on TranslationsZhCn {
       case 'connection.reconnect':
         return '重新连接';
       case 'connection.connectAnyWay':
-        return '连接';
+        return '仍然连接';
       case 'connection.experimentalNotice':
-        return '使用中的实验功能';
+        return '实验性功能提醒';
       case 'connection.experimentalNoticeMsg':
-        return '您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。';
+        return '当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。';
       case 'connection.disableExperimentalNotice':
-        return '不再显示';
+        return '不再提示';
       case 'connection.reconnectMsg':
         return '重新连接以使更改生效';
       case 'connection.staleSystemProxyCleaned':
@@ -26301,6 +27848,20 @@ extension on TranslationsZhCn {
         return '噪音模式';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS 仅支持 VPN 模式';
+      case 'config.warpGenerating':
+        return '正在生成 WARP 配置…';
+      case 'config.warpConfigFailed':
+        return 'WARP 配置生成失败，请稍后重试';
+      case 'config.portRangeError':
+        return '端口范围 1024-65535';
+      case 'config.dnsEmptyError':
+        return 'DNS 地址不能为空';
+      case 'config.rangeFormatError':
+        return '请输入数字或范围，例如 10-30';
+      case 'config.urlSchemeError':
+        return 'URL 必须以 http:// 或 https:// 开头';
+      case 'config.manageRuleAssets':
+        return '规则库管理';
       default:
         return null;
     }
@@ -26354,6 +27915,14 @@ extension on TranslationsZhTw {
         return '確認';
       case 'general.close':
         return '關閉';
+      case 'general.cancel':
+        return '取消';
+      case 'general.clipboardEmpty':
+        return '剪貼簿為空';
+      case 'general.clipboardReadFailed':
+        return '讀取剪貼簿失敗';
+      case 'general.moreOptions':
+        return '更多選項';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -26397,6 +27966,10 @@ extension on TranslationsZhTw {
         return '正在檢測…';
       case 'home.egressIp.failedRetry':
         return '檢測失敗，點擊重試';
+      case 'home.emptyProfilesHint':
+        return '點擊下方按鈕開始探索';
+      case 'home.noActiveProfileTitle':
+        return '未選擇設定檔';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -26490,6 +28063,16 @@ extension on TranslationsZhTw {
         return '手動輸入伺服器設定';
       case 'profile.add.warpDescription':
         return '使用 Cloudflare WARP 免費加速';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => '已匯入訂閱：${name}';
+      case 'profile.add.clipboardEmpty':
+        return '剪貼簿為空，無法匯入訂閱';
+      case 'profile.add.deepLinkMissingUrl':
+        return '連結中缺少訂閱位址';
+      case 'profile.add.successMsg':
+        return '新增成功';
+      case 'profile.add.nameAutoHint':
+        return '自動識別（選填）';
       case 'profile.update.buttonTxt':
         return '更新';
       case 'profile.update.tooltip':
@@ -26534,6 +28117,10 @@ extension on TranslationsZhTw {
         return '要永久刪除設定檔嗎？';
       case 'profile.delete.successMsg':
         return '設定檔刪除成功';
+      case 'profile.delete.confirmTitle':
+        return '刪除設定檔';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) => '確定要刪除「${name}」嗎？此操作無法復原。';
       case 'profile.save.buttonText':
         return '儲存';
       case 'profile.save.successMsg':
@@ -26566,6 +28153,12 @@ extension on TranslationsZhTw {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return '關閉';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} 小時';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} 天';
       case 'profile.actionButtons.add':
         return '新增';
       case 'profile.actionButtons.updateAll':
@@ -26596,6 +28189,12 @@ extension on TranslationsZhTw {
         return ({required Object days}) => '剩餘 ${days} 天';
       case 'profile.remoteProfile':
         return '遠端訂閱';
+      case 'profile.defaultLocalName':
+        return '本機匯入';
+      case 'profile.defaultDeepLinkName':
+        return '連結匯入';
+      case 'profile.switchFailedMsg':
+        return '切換設定檔失敗';
       case 'proxies.pageTitle':
         return '線路';
       case 'proxies.emptyProxiesMsg':
@@ -26686,6 +28285,12 @@ extension on TranslationsZhTw {
         return '日誌功能開發中';
       case 'logs.noLogsWhenDisconnected':
         return '未連線，無日誌';
+      case 'logs.loadFailed':
+        return '日誌讀取失敗';
+      case 'logs.empty':
+        return '暫無日誌';
+      case 'logs.clearFailed':
+        return '清除日誌失敗';
       case 'settings.pageTitle':
         return '設定';
       case 'settings.requiresRestartMsg':
@@ -26754,6 +28359,14 @@ extension on TranslationsZhTw {
         return '關閉';
       case 'settings.backup.recoveryRetried':
         return '已把資料還原到被中斷的匯入之前。';
+      case 'settings.backup.exportAction':
+        return '匯出備份';
+      case 'settings.backup.importAction':
+        return '匯入備份';
+      case 'settings.backup.exportFailed':
+        return '匯出失敗';
+      case 'settings.backup.shareText':
+        return 'ClashMiao 備份';
       case 'settings.general.sectionTitle':
         return '一般';
       case 'settings.general.locale':
@@ -26888,6 +28501,15 @@ extension on TranslationsZhTw {
         return '連線';
       case 'settings.groups.privacy':
         return '隱私';
+      case 'settings.importOptionsInvalid':
+        return '剪貼簿內容不是有效的設定 JSON';
+      case 'settings.importOptionsNothing':
+        return '未識別到可匯入的設定項';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '已匯入 ${count} 項設定';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過';
       case 'about.pageTitle':
         return '關於';
       case 'about.version':
@@ -26940,6 +28562,8 @@ extension on TranslationsZhTw {
         return '中斷連線中';
       case 'tray.hide':
         return '隱藏';
+      case 'tray.proxyModeMenu':
+        return '代理模式';
       case 'failure.unexpected':
         return '意外錯誤';
       case 'failure.clash.unexpected':
@@ -27014,6 +28638,9 @@ extension on TranslationsZhTw {
         return '暫無可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到活動 GEO 資源文件';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}：${reason}';
       case 'connection.tapToConnect':
         return '點擊以連線';
       case 'connection.connecting':
@@ -27025,11 +28652,11 @@ extension on TranslationsZhTw {
       case 'connection.reconnect':
         return '重新連線';
       case 'connection.connectAnyWay':
-        return '連線';
+        return '仍然連線';
       case 'connection.experimentalNotice':
-        return '使用中的實驗性功能';
+        return '實驗性功能提醒';
       case 'connection.experimentalNoticeMsg':
-        return '您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。';
+        return '目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。';
       case 'connection.disableExperimentalNotice':
         return '不再提示';
       case 'connection.reconnectMsg':
@@ -27215,6 +28842,20 @@ extension on TranslationsZhTw {
         return '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
       case 'config.serviceModeIosVpnOnly':
         return 'iOS 僅支援 VPN 模式';
+      case 'config.warpGenerating':
+        return '正在產生 WARP 設定…';
+      case 'config.warpConfigFailed':
+        return 'WARP 設定產生失敗，請稍後再試';
+      case 'config.portRangeError':
+        return '連接埠範圍 1024-65535';
+      case 'config.dnsEmptyError':
+        return 'DNS 位址不能為空';
+      case 'config.rangeFormatError':
+        return '請輸入數字或範圍，例如 10-30';
+      case 'config.urlSchemeError':
+        return 'URL 必須以 http:// 或 https:// 開頭';
+      case 'config.manageRuleAssets':
+        return '規則庫管理';
       default:
         return null;
     }

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -16,13 +17,15 @@ class GeoUpdateState {
   });
   final bool isUpdating;
   final double progress;
-  final String? error;
+
+  /// 最近一次更新失败的异常（只给日志 / 判断用，不直接展示给用户）。
+  final Object? error;
   final DateTime? lastUpdated;
 
   GeoUpdateState copyWith({
     bool? isUpdating,
     double? progress,
-    String? error,
+    Object? error,
     DateTime? lastUpdated,
   }) => GeoUpdateState(
     isUpdating: isUpdating ?? this.isUpdating,
@@ -100,7 +103,9 @@ class GeoUpdateNotifier
         ),
       };
     } catch (e) {
-      state = {...state, asset.type: GeoUpdateState(error: e.toString())};
+      // 技术细节只进日志；界面按「失败」显示本地化文案。
+      debugPrint('更新路由资源 ${asset.type.name} 失败: $e');
+      state = {...state, asset.type: GeoUpdateState(error: e)};
     } finally {
       await progressSub?.cancel();
       service?.dispose();

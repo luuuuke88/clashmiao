@@ -105,8 +105,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                           try {
                             await notifier.clear();
                           } catch (error) {
+                            debugPrint('清除日志失败: $error');
                             if (!context.mounted) return;
-                            AppToast.error(context, error.toString());
+                            AppToast.error(context, t.logs.clearFailed);
                           }
                         },
                         icon: const Icon(FluentIcons.delete_lines_20_regular),
@@ -163,7 +164,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         body: Builder(
           builder: (context) {
             if (logsAsync.hasError) {
-              return Center(child: Text('日志读取失败: ${logsAsync.error}'));
+              debugPrint('日志读取失败: ${logsAsync.error}');
+              return Center(child: Text(t.logs.loadFailed));
             }
             if (logsAsync.isLoading && state.lines.isEmpty) {
               return const Center(child: MotionProgress(strokeWidth: 4));
@@ -182,7 +184,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                     hasScrollBody: false,
                     child: Center(
                       child: Text(
-                        '暂无日志',
+                        t.logs.empty,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

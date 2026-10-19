@@ -126,7 +126,7 @@ class _GeoAssetTile extends ConsumerWidget {
                 children: [
                   if (state.error != null)
                     TextSpan(
-                      text: state.error!,
+                      text: t.settings.geoAssets.failureMsg,
                       style: TextStyle(
                         color: Theme.of(context).colorScheme.error,
                       ),

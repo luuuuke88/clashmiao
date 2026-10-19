@@ -12,10 +12,15 @@ class ProfileParser {
   static const _infiniteTraffic = 9223372036854775807;
   static const _infiniteTime = 92233720368;
 
-  /// 解析订阅响应
-  static ProfileEntity parse(String url, Map<String, List<String>> headers) {
+  /// 解析订阅响应。URL 与响应头都没给出名称时用 [fallbackName]（调用方传入本地化
+  /// 的默认名；不传则为英文默认值）。
+  static ProfileEntity parse(
+    String url,
+    Map<String, List<String>> headers, {
+    String fallbackName = 'Remote subscription',
+  }) {
     var name = _parseName(url, headers);
-    if (name.trim().isEmpty) name = '远程订阅';
+    if (name.trim().isEmpty) name = fallbackName;
 
     Duration? updateInterval;
     if (headers['profile-update-interval'] case [final intervalStr]) {

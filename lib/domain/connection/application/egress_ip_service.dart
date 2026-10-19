@@ -169,7 +169,7 @@ class EgressIpService {
           .timeout(
             _timeout,
             onTimeout: () {
-              cancelToken.cancel('EgressIpService: 应用层超时');
+              cancelToken.cancel('EgressIpService: application-level timeout');
               throw TimeoutException(
                 'EgressIpService: 查询超过 $_timeout',
                 _timeout,

@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
@@ -112,6 +113,7 @@ class _ExperimentalFeatureNoticeDialogState
   @override
   Widget build(BuildContext context) {
     final aiUi = Theme.of(context).aiUi;
+    final t = ref.watch(translationsProvider);
 
     return AiUiModalWrapper(
       child: Padding(
@@ -120,10 +122,10 @@ class _ExperimentalFeatureNoticeDialogState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              '实验性功能提醒',
+            Text(
+              t.connection.experimentalNotice,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -131,9 +133,7 @@ class _ExperimentalFeatureNoticeDialogState
             ),
             const SizedBox(height: 12),
             Text(
-              '当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、'
-              '多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接'
-              '质量或成功率会受影响。',
+              t.connection.experimentalNoticeMsg,
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: aiUi.secondaryTextColor),
             ),
@@ -157,7 +157,7 @@ class _ExperimentalFeatureNoticeDialogState
                         onChanged: (value) => _setDontShowAgain(value ?? false),
                       ),
                       const SizedBox(width: 4),
-                      const Text('不再提示'),
+                      Text(t.connection.disableExperimentalNotice),
                     ],
                   ),
                 ),
@@ -175,7 +175,7 @@ class _ExperimentalFeatureNoticeDialogState
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: const Text('取消'),
+                    child: Text(t.general.cancel),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -189,7 +189,7 @@ class _ExperimentalFeatureNoticeDialogState
                       ),
                       elevation: 0,
                     ),
-                    child: const Text('仍然连接'),
+                    child: Text(t.connection.connectAnyWay),
                   ),
                 ),
               ],

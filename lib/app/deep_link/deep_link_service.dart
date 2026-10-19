@@ -29,7 +29,8 @@ final class DeepLinkImportSuccess extends DeepLinkImportResult {
   String toString() => 'DeepLinkImportSuccess($profileName)';
 }
 
-/// 导入失败（缺参数 / 网络失败 / 解析失败等），[message] 是给用户看的原因。
+/// 导入失败（缺参数 / 网络失败 / 解析失败等），[message] 是给用户看的完整本地化
+/// 文案（含「添加配置文件失败」与可识别的原因）；异常原文只进日志。
 final class DeepLinkImportFailure extends DeepLinkImportResult {
   const DeepLinkImportFailure(this.message);
   final String message;
@@ -109,11 +110,23 @@ Future<void> handleDeepLink(Uri uri, Ref ref) async {
     case DeepLinkImportContent(:final content, :final customName):
       await _importAndReport(
         ref,
-        (repo) => repo.addByContent(content, name: customName ?? '深链导入'),
+        (repo) => repo.addByContent(
+          content,
+          name:
+              customName ??
+              ref.read(translationsProvider).profile.defaultDeepLinkName,
+        ),
       );
     case DeepLinkMissingPayload():
-      ref.read(deepLinkImportResultProvider.notifier).state =
-          const DeepLinkImportFailure('深链缺少订阅地址参数');
+      final t = ref.read(translationsProvider);
+      ref
+          .read(deepLinkImportResultProvider.notifier)
+          .state = DeepLinkImportFailure(
+        t.failure.withReason(
+          message: t.profile.add.failureMsg,
+          reason: t.profile.add.deepLinkMissingUrl,
+        ),
+      );
     case DeepLinkUnrecognized():
       // 正常情况下 Android 不会把不认识的 scheme/host 路由到本 App；
       // 防御性兜底，静默忽略即可。
@@ -137,8 +150,14 @@ Future<void> _importAndReport(
     ref.invalidate(offlineProxyGroupsProvider);
     resultNotifier.state = DeepLinkImportSuccess(profile.name);
   } catch (e) {
+    final t = ref.read(translationsProvider);
     resultNotifier.state = DeepLinkImportFailure(
-      profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ?? '$e',
+      profileFailureMessage(
+        e,
+        t,
+        failed: t.profile.add.failureMsg,
+        operation: 'deepLinkImport',
+      ),
     );
   }
 }

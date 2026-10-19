@@ -25,7 +25,11 @@
     "grantPermission": "授予权限",
     "underDevelopment": "功能开发中",
     "confirm": "确认",
-    "close": "关闭"
+    "close": "关闭",
+    "cancel": "取消",
+    "clipboardEmpty": "剪贴板为空",
+    "clipboardReadFailed": "读取剪贴板失败",
+    "moreOptions": "更多选项"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "继续即表示您同意 ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "点击检测出口 IP",
       "checking": "正在检测…",
       "failedRetry": "检测失败，点击重试"
-    }
+    },
+    "emptyProfilesHint": "点击下方按钮开始探索",
+    "noActiveProfileTitle": "未选择配置文件"
   },
   "stats": {
     "traffic": "流量",
@@ -116,7 +122,12 @@
       "warpDescription": "使用 Cloudflare WARP 免费加速",
       "addingWarpMsg": "我们正在注册 WARP，请稍候。",
       "addingProfileMsg": "添加配置文件",
-      "failureMsg": "添加配置文件失败"
+      "failureMsg": "添加配置文件失败",
+      "importedNamed": "已导入订阅：${name}",
+      "clipboardEmpty": "剪贴板为空，无法导入订阅",
+      "deepLinkMissingUrl": "链接中缺少订阅地址",
+      "successMsg": "添加成功",
+      "nameAutoHint": "自动识别（可选）"
     },
     "details": {
       "basicInfo": "基础信息",
@@ -159,7 +170,9 @@
     "delete": {
       "buttonTxt": "删除",
       "confirmationMsg": "要永久删除配置文件吗？",
-      "successMsg": "配置文件删除成功"
+      "successMsg": "配置文件删除成功",
+      "confirmTitle": "删除配置文件",
+      "namedConfirmMsg": "确定要删除\"${name}\"吗？此操作不可撤销。"
     },
     "save": {
       "buttonText": "保存",
@@ -179,9 +192,15 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "未设置",
       "mux": "Mux 多路复用",
-      "muxDescription": "复用出站连接以减少握手开销"
+      "muxDescription": "复用出站连接以减少握手开销",
+      "updateIntervalOff": "关闭",
+      "updateIntervalHours": "${hours} 小时",
+      "updateIntervalDays": "${days} 天"
     },
-    "remoteProfile": "远程订阅"
+    "remoteProfile": "远程订阅",
+    "defaultLocalName": "本地导入",
+    "defaultDeepLinkName": "深链导入",
+    "switchFailedMsg": "切换配置文件失败"
   },
   "proxies": {
     "pageTitle": "线路",
@@ -236,7 +255,10 @@
     "logsCleared": "日志已清空",
     "logsCopied": "日志已复制",
     "logsUnderDevelopment": "日志功能开发中",
-    "noLogsWhenDisconnected": "未连接，无日志"
+    "noLogsWhenDisconnected": "未连接，无日志",
+    "loadFailed": "日志读取失败",
+    "empty": "暂无日志",
+    "clearFailed": "清除日志失败"
   },
   "settings": {
     "pageTitle": "设置",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。",
       "recoveryRetry": "重试",
       "recoveryClose": "关闭",
-      "recoveryRetried": "已把数据恢复到被中断的导入之前。"
+      "recoveryRetried": "已把数据恢复到被中断的导入之前。",
+      "exportAction": "导出备份",
+      "importAction": "导入备份",
+      "exportFailed": "导出失败",
+      "shareText": "ClashMiao 备份"
     },
     "general": {
       "sectionTitle": "一般选项",
@@ -358,7 +384,11 @@
       "general": "通用",
       "connection": "连接",
       "privacy": "隐私"
-    }
+    },
+    "importOptionsInvalid": "剪贴板内容不是有效的配置 JSON",
+    "importOptionsNothing": "未识别到可导入的配置项",
+    "importOptionsDone": "已导入 ${count} 项配置",
+    "importOptionsPartial": "已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过"
   },
   "about": {
     "pageTitle": "关于",
@@ -392,7 +422,8 @@
       "connecting": "正在连接",
       "disconnect": "断开连接",
       "disconnecting": "正在断开连接"
-    }
+    },
+    "proxyModeMenu": "代理模式"
   },
   "failure": {
     "unexpected": "意外错误",
@@ -443,7 +474,8 @@
       "unexpected": "意外错误",
       "notUpdate": "无可用更新",
       "activeNotFound": "未找到激活的 GEO 资源文件"
-    }
+    },
+    "withReason": "${message}：${reason}"
   },
   "connection": {
     "tapToConnect": "点击连接",
@@ -451,10 +483,10 @@
     "disconnecting": "正在断开连接",
     "connected": "已连接",
     "reconnect": "重新连接",
-    "connectAnyWay": "连接",
-    "experimentalNotice": "使用中的实验功能",
-    "experimentalNoticeMsg": "您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。",
-    "disableExperimentalNotice": "不再显示",
+    "connectAnyWay": "仍然连接",
+    "experimentalNotice": "实验性功能提醒",
+    "experimentalNoticeMsg": "当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。",
+    "disableExperimentalNotice": "不再提示",
     "reconnectMsg": "重新连接以使更改生效",
     "staleSystemProxyCleaned": "已清理上次异常退出残留的系统代理设置"
   },
@@ -553,6 +585,13 @@
     "desktopProxyScopeNotice": "桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。",
     "warpNoiseSize": "噪音大小",
     "warpNoiseMode": "噪音模式",
-    "serviceModeIosVpnOnly": "iOS 仅支持 VPN 模式"
+    "serviceModeIosVpnOnly": "iOS 仅支持 VPN 模式",
+    "warpGenerating": "正在生成 WARP 配置…",
+    "warpConfigFailed": "WARP 配置生成失败，请稍后重试",
+    "portRangeError": "端口范围 1024-65535",
+    "dnsEmptyError": "DNS 地址不能为空",
+    "rangeFormatError": "请输入数字或范围，例如 10-30",
+    "urlSchemeError": "URL 必须以 http:// 或 https:// 开头",
+    "manageRuleAssets": "规则库管理"
   }
 }

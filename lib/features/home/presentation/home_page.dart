@@ -169,10 +169,9 @@ class HomePage extends ConsumerWidget {
                               child: MotionProgress(strokeWidth: 4),
                             ),
                             error: (e, _) {
+                              debugPrint('首页读取订阅失败: $e');
                               final t = ref.watch(translationsProvider);
-                              return Center(
-                                child: Text('${t.failure.unexpected}: $e'),
-                              );
+                              return Center(child: Text(t.failure.unexpected));
                             },
                           ),
                         ),
@@ -1172,7 +1171,7 @@ class _EmptyProfileBody extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              '点击下方按钮开始探索',
+              t.home.emptyProfilesHint,
               style: TextStyle(fontSize: 14, color: aiUi.secondaryTextColor),
             ),
             const SizedBox(height: 40),
@@ -1253,9 +1252,9 @@ class _EmptyActiveProfileBody extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              '未选择配置文件',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            Text(
+              t.home.noActiveProfileTitle,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             Text(

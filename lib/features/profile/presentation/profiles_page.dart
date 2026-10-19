@@ -131,12 +131,15 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                       child: MotionProgress(strokeWidth: 4),
                     ),
                   ),
-                  error: (e, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text('${t.failure.unexpected}: $e'),
-                    ),
-                  ),
+                  error: (e, _) {
+                    debugPrint('订阅列表读取失败: $e');
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(t.failure.unexpected),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -260,8 +263,10 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
               },
               loading: () =>
                   const Center(child: MotionProgress(strokeWidth: 4)),
-              error: (e, _) =>
-                  Center(child: Text('${t.failure.unexpected}: $e')),
+              error: (e, _) {
+                debugPrint('订阅列表读取失败: $e');
+                return Center(child: Text(t.failure.unexpected));
+              },
             ),
           ),
         ],
@@ -319,6 +324,11 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       builder: (context) => ProfileQrDialog(
         data: profileShareUrl(profile),
         profileName: profile.name,
+        qrSemanticsLabel: ref
+            .read(translationsProvider)
+            .profile
+            .share
+            .subLinkQrCode,
       ),
     );
   }
@@ -338,7 +348,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (context.mounted) {
         final message = _isRemoteProfile(profile)
             ? t.profile.share.subscriptionLinkCopied
-            : '配置内容已复制';
+            : t.profile.share.configCopied;
         AppToast.success(context, message);
       }
     } catch (e) {
@@ -399,7 +409,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
         final t = ref.read(translationsProvider);
         AppToast.error(
           context,
-          profileStoreErrorMessage(e, () => t) ?? '切换失败: $e',
+          profileFailureMessage(
+            e,
+            t,
+            failed: t.profile.switchFailedMsg,
+            operation: 'switchProfile',
+          ),
         );
       }
     }
@@ -423,8 +438,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       } else if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(e, () => t) ??
-              '${t.profile.update.failureMsg}: $e',
+          profileFailureMessage(
+            e,
+            t,
+            failed: t.profile.update.failureMsg,
+            operation: 'updateProfile',
+          ),
         );
       }
     } finally {
@@ -439,8 +458,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   ) async {
     final ok = await showConfirmationDialog(
       context,
-      title: '删除配置文件',
-      message: '确定要删除"$name"吗？此操作不可撤销。',
+      title: t.profile.delete.confirmTitle,
+      message: t.profile.delete.namedConfirmMsg(name: name),
       icon: FluentIcons.delete_24_regular,
     );
     if (!ok || !mounted) return;
@@ -456,11 +475,15 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.info(context, t.profile.delete.successMsg);
     } catch (e) {
-      debugPrint('删除订阅失败: $e');
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(e, () => t) ?? t.failure.unexpected,
+          profileFailureMessage(
+            e,
+            t,
+            failed: t.failure.unexpected,
+            operation: 'deleteProfile',
+          ),
         );
       }
     }
@@ -479,8 +502,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(e, () => t) ??
-              '${t.profile.update.failureMsg}: $e',
+          profileFailureMessage(
+            e,
+            t,
+            failed: t.profile.update.failureMsg,
+            operation: 'updateAllProfiles',
+          ),
         );
       }
     } finally {
@@ -623,9 +650,9 @@ class _ProfileActionsModal extends ConsumerWidget {
                     FluentIcons.share_24_regular,
                     color: aiUi.secondaryTextColor,
                   ),
-                  title: const Text(
-                    '分享链接',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    t.profile.share.shareLink,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.of(context).maybePop();
@@ -661,9 +688,9 @@ class _ProfileActionsModal extends ConsumerWidget {
                     FluentIcons.edit_24_regular,
                     color: aiUi.secondaryTextColor,
                   ),
-                  title: const Text(
-                    '编辑配置',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    t.profile.actionButtons.editConfig,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.of(context).maybePop();
@@ -679,9 +706,9 @@ class _ProfileActionsModal extends ConsumerWidget {
                       FluentIcons.arrow_sync_24_regular,
                       color: aiUi.secondaryTextColor,
                     ),
-                    title: const Text(
-                      '更新订阅',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    title: Text(
+                      t.profile.update.updateSubscriptions,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     onTap: () {
                       Navigator.of(context).maybePop();
@@ -707,9 +734,9 @@ class _ProfileActionsModal extends ConsumerWidget {
                     FluentIcons.delete_24_regular,
                     color: Colors.redAccent,
                   ),
-                  title: const Text(
-                    '删除',
-                    style: TextStyle(
+                  title: Text(
+                    t.profile.delete.buttonTxt,
+                    style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.w600,
                     ),

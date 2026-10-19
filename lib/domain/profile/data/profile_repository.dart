@@ -26,8 +26,12 @@ class ProfileRepository {
     required this.boxService,
     ProfileStore? store,
     DateTime Function()? clock,
+    this.defaultNames = const ProfileDefaultNames(),
   }) : store = store ?? ProfileStore(prefs: prefs, configDir: configDir),
        _now = clock ?? DateTime.now;
+
+  /// 订阅缺名称时用的默认名（provider 注入本地化文案）。
+  final ProfileDefaultNames defaultNames;
 
   /// 取当前时间；测试注入固定时钟，避免靠真实等待制造「更晚的时间」。
   final DateTime Function() _now;
@@ -100,7 +104,7 @@ class ProfileRepository {
       final entity = ProfileEntity(
         id: id,
         // 不存完整 URI 到 url（可能含敏感凭据 / 密码）
-        name: name.trim().isEmpty ? '本地导入' : name.trim(),
+        name: name.trim().isEmpty ? defaultNames.local() : name.trim(),
         url: 'content://${_truncate(content, 24)}',
         lastUpdate: _now(),
         inc: store.newInc(),
@@ -512,7 +516,11 @@ class ProfileRepository {
       },
     );
 
-    var profile = ProfileParser.parse(normalizedUrl, fetched.response.headers);
+    var profile = ProfileParser.parse(
+      normalizedUrl,
+      fetched.response.headers,
+      fallbackName: defaultNames.remote(),
+    );
 
     // 优先使用用户自定义名称
     if (customName != null && customName.trim().isNotEmpty) {
@@ -622,7 +630,11 @@ class ProfileRepository {
     });
 
     // 更新订阅信息
-    final parsed = ProfileParser.parse(request.url, headers);
+    final parsed = ProfileParser.parse(
+      request.url,
+      headers,
+      fallbackName: defaultNames.remote(),
+    );
 
     // 重新归一化（参见 addByUrl 注释）：写到暂存文件，落地前不碰正式文件。
     final staging = await store.createStagingFile(request.id);
@@ -950,6 +962,24 @@ class ProfileRepository {
 
   /// 配置文件路径。id 不合法（可能逃出 profiles 目录）抛 [ArgumentError]。
   String configFilePath(String profileId) => store.configFilePath(profileId);
+}
+
+/// 订阅缺名称时的默认名。名称会持久化成用户数据（可改名），所以在创建时就用
+/// 当前语言的文案；这里的英文只是未注入时（测试、无界面场景）的兜底。
+class ProfileDefaultNames {
+  const ProfileDefaultNames({
+    this.local = _defaultLocal,
+    this.remote = _defaultRemote,
+  });
+
+  static String _defaultLocal() => 'Local import';
+  static String _defaultRemote() => 'Remote subscription';
+
+  /// 本地导入（剪贴板 / 手动粘贴内容）的默认名。
+  final String Function() local;
+
+  /// 远程订阅（URL 与响应头都没给名称）的默认名。
+  final String Function() remote;
 }
 
 /// 刷新期间订阅被删除 / 编辑 / 换代，本次结果已丢弃。

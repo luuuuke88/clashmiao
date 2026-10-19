@@ -25,7 +25,11 @@
     "grantPermission": "مۆڵەتدان",
     "underDevelopment": "لە ژێر گەشەپێداندایە",
     "confirm": "دڵنیاکردنەوە",
-    "close": "داخستن"
+    "close": "داخستن",
+    "cancel": "هەڵوەشاندنەوە",
+    "clipboardEmpty": "کلیپبۆرد بەتاڵە",
+    "clipboardReadFailed": "نەتوانرا کلیپبۆرد بخوێندرێتەوە",
+    "moreOptions": "هەڵبژاردنی زیاتر"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بە بەردەوام بوون تۆ ڕازیت لەگەڵ ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "دەست لێبدە بۆ پشکنینی IPی دەرچوون",
       "checking": "پشکنین دەکرێت…",
       "failedRetry": "پشکنین سەرکەوتوو نەبوو، دەست لێبدە بۆ هەوڵدانەوە"
-    }
+    },
+    "emptyProfilesHint": "دوگمەی خوارەوە دابگرە بۆ دەستپێکردن",
+    "noActiveProfileTitle": "هیچ پڕۆفایلێک هەڵنەبژێردراوە"
   },
   "stats": {
     "traffic": "هاتوچۆی داتا",
@@ -109,7 +115,12 @@
       "failureMsg": "زیادکردنی پڕۆفایل شکستی هێنا",
       "modalSubtitle": "شێوازی زیادکردنی فایلی ڕێکخستن هەڵبژێرە",
       "manuallyDescription": "بە دەست ڕێکخستنی ڕاژە بنووسە",
-      "warpDescription": "خێراکردنی بێبەرامبەر بە Cloudflare WARP"
+      "warpDescription": "خێراکردنی بێبەرامبەر بە Cloudflare WARP",
+      "importedNamed": "بەشداربوون هاوردە کرا: ${name}",
+      "clipboardEmpty": "کلیپبۆرد بەتاڵە، هیچ شتێک بۆ هاوردەکردن نییە",
+      "deepLinkMissingUrl": "بەستەرەکە ناونیشانی بەشداربوونی تێدا نییە",
+      "successMsg": "پڕۆفایل زیاد کرا",
+      "nameAutoHint": "خۆکارانە دەناسرێتەوە (ئارەزوومەندانە)"
     },
     "update": {
       "buttonTxt": "بەڕۆژکردنەوە",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "سڕینەوە",
       "confirmationMsg": "سڕینەوەی پڕۆفایل بۆ هەمیشە؟",
-      "successMsg": "پڕۆفایلی بە سەرکەوتوویی سڕاوەتەوە"
+      "successMsg": "پڕۆفایلی بە سەرکەوتوویی سڕاوەتەوە",
+      "confirmTitle": "سڕینەوەی پڕۆفایل",
+      "namedConfirmMsg": "\"${name}\" بسڕدرێتەوە؟ ئەم کارە ناگەڕێتەوە."
     },
     "save": {
       "buttonText": "پاشەکەوت",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "کوژاوە",
+      "updateIntervalHours": "${hours} کاتژمێر",
+      "updateIntervalDays": "${days} ڕۆژ"
     },
     "actionButtons": {
       "add": "زیادکردن",
@@ -181,7 +197,10 @@
       "currentlyUsing": "ئێستا بەکاردێت",
       "remainingDays": "${days} ڕۆژ ماوە"
     },
-    "remoteProfile": "پرۆفایلی دوور"
+    "remoteProfile": "پرۆفایلی دوور",
+    "defaultLocalName": "هاوردەی ناوخۆیی",
+    "defaultDeepLinkName": "هاوردە لە بەستەرەوە",
+    "switchFailedMsg": "گۆڕینی پڕۆفایل شکستی هێنا"
   },
   "proxies": {
     "pageTitle": "پرۆکسیەکان",
@@ -236,7 +255,10 @@
     "logsCleared": "لۆگەکان سڕانەوە",
     "logsCopied": "لۆگەکان کۆپی کران",
     "logsUnderDevelopment": "تایبەتمەندی لۆگ لە ژێر گەشەپێداندایە",
-    "noLogsWhenDisconnected": "پەیوەست نییە، هیچ لۆگێک نییە"
+    "noLogsWhenDisconnected": "پەیوەست نییە، هیچ لۆگێک نییە",
+    "loadFailed": "بارکردنی تۆمارەکان شکستی هێنا",
+    "empty": "هێشتا هیچ تۆمارێک نییە",
+    "clearFailed": "سڕینەوەی تۆمارەکان شکستی هێنا"
   },
   "settings": {
     "pageTitle": "ڕێکخستنه‌کان",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "دوایین هاوردەکردنی پاشەکەوت وەستا، بەڵام وێنەکەی ون بووە یان ناخوێنرێتەوە، بۆیە ناتوانرێت بگەڕێنرێتەوە. تکایە بەشداریکردنەکان و ڕێکخستنەکانت بپشکنە.",
       "recoveryRetry": "دووبارە هەوڵبدەرەوە",
       "recoveryClose": "داخستن",
-      "recoveryRetried": "داتاکانت گەڕێنرانەوە بۆ پێش هاوردەکردنی وەستاو."
+      "recoveryRetried": "داتاکانت گەڕێنرانەوە بۆ پێش هاوردەکردنی وەستاو.",
+      "exportAction": "هەناردەکردنی پاشەکەوت",
+      "importAction": "هاوردەکردنی پاشەکەوت",
+      "exportFailed": "هەناردەکردنی پاشەکەوت شکستی هێنا",
+      "shareText": "پاشەکەوتی ClashMiao"
     },
     "general": {
       "sectionTitle": "گشتی",
@@ -358,7 +384,11 @@
       "general": "گشتی",
       "connection": "پەیوەندی",
       "privacy": "تایبەتمەندی"
-    }
+    },
+    "importOptionsInvalid": "ناوەڕۆکی کلیپبۆرد JSONـی ڕێکخستنی دروست نییە",
+    "importOptionsNothing": "هیچ ڕێکخستنێکی هاوردەکراو نەدۆزرایەوە",
+    "importOptionsDone": "${count} ڕێکخستن هاوردە کرا",
+    "importOptionsPartial": "${applied} ڕێکخستن هاوردە کرا؛ ${skipped} بەهۆی نادروستی تێپەڕێنران"
   },
   "about": {
     "pageTitle": "سەبارەت",
@@ -392,7 +422,8 @@
       "disconnect": "پچڕانی پەیوەندی",
       "disconnecting": "پچڕانی پەیوەندی..."
     },
-    "hide": "شاردنەوە"
+    "hide": "شاردنەوە",
+    "proxyModeMenu": "شێوازی پرۆکسی"
   },
   "failure": {
     "unexpected": "هەڵەیەکی چاوەڕواننەکراو",
@@ -443,7 +474,8 @@
       "unexpected": "هەڵەی چاوەڕواننەکراو",
       "notUpdate": "هیچ نوێکارییەک بەردەست نییە",
       "activeNotFound": "پەڕگەی جوگرافی چالاک نەدۆزرایەوە"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "بۆ پەیوەندیکردن بکوتە",
@@ -451,7 +483,7 @@
     "disconnecting": "پچڕانی پەیوەندی...",
     "connected": "بەستراوەتەوە",
     "reconnect": "پەیوەندی کردنەوەی دووبارە",
-    "connectAnyWay": "گرێدان",
+    "connectAnyWay": "هەر گرێبدە",
     "experimentalNotice": "تایبەتمەندییە تاقیکارییەکانی بەکارهێنراو",
     "experimentalNoticeMsg": "تۆ هەندێک تایبەتمەندی تاقیکاریت چالاک کردووە کە لەوانەیە کاریگەری لەسەر کوالیتی پەیوەندی هەبێت و ببێتە هۆی هەڵەی چاوەڕواننەکراو. هەمیشە دەتوانیت ئەم هەڵبژاردنانە لە لاپەڕەی هەڵبژاردنەکانی ڕێکخستنەوە بگۆڕیت یان ڕێست بکەیتەوە.",
     "disableExperimentalNotice": "جارێکی تر نیشان مەدە، وەڕەز بووووووم",
@@ -553,6 +585,13 @@
     "warpNoiseSize": "قەبارەی ژاوەژاو",
     "warpNoiseMode": "دۆخی ژاوەژاو",
     "desktopProxyScopeNotice": "لەسەر دێسکتۆپ، تەنها ئەو ئەپانە بە تونێلدا دەڕۆن کە ڕێزی پڕۆکسی سیستەم دەگرن. ئەو نەرمەکالایانەی پشتگوێی دەخەن (هەندێک یاری، ئامرازەکانی هێڵی فەرمان، ئەپەکانی خاوەن ڕێکخستنی پڕۆکسی تایبەت) ڕاستەوخۆ دەبەسترێن و IP ڕاستەقینەت ئاشکرا دەکەن.",
-    "serviceModeIosVpnOnly": "iOS تەنها شێوازی VPN پشتگیری دەکات"
+    "serviceModeIosVpnOnly": "iOS تەنها شێوازی VPN پشتگیری دەکات",
+    "warpGenerating": "ڕێکخستنی WARP دروست دەکرێت…",
+    "warpConfigFailed": "دروستکردنی ڕێکخستنی WARP شکستی هێنا. تکایە دواتر هەوڵ بدەرەوە.",
+    "portRangeError": "دەبێت پۆرت لە نێوان 1024 و 65535 بێت",
+    "dnsEmptyError": "ناونیشانی DNS نابێت بەتاڵ بێت",
+    "rangeFormatError": "ژمارەیەک یان مەودایەک بنووسە، بۆ نموونە 10-30",
+    "urlSchemeError": "دەبێت URL بە http:// یان https:// دەست پێبکات",
+    "manageRuleAssets": "بەڕێوەبردنی کۆمەڵە یاساکان"
   }
 }

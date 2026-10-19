@@ -242,11 +242,12 @@ void main() {
     await tester.pumpWidget(widget);
     await tester.pumpAndSettle();
 
+    // DeepLinkImportFailure 携带的已是本地化的完整文案，ShellPage 原样展示。
     container.read(deepLinkImportResultProvider.notifier).state =
-        const DeepLinkImportFailure('深链缺少订阅地址参数');
+        const DeepLinkImportFailure('添加配置文件失败：链接中缺少订阅地址');
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
-    expect(find.text('导入订阅失败：深链缺少订阅地址参数'), findsOneWidget);
+    expect(find.text('添加配置文件失败：链接中缺少订阅地址'), findsOneWidget);
 
     await _drainToasts(tester);
   });

@@ -159,6 +159,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                                   _SwitchTile(
                                     title: t.profile.detailsForm.updateInterval,
                                     subtitle: _formatInterval(
+                                      t,
                                       _updateInterval ?? profile.updateInterval,
                                     ),
                                     icon: FluentIcons.arrow_sync_24_regular,
@@ -269,8 +270,10 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
             ],
           );
         },
-        error: (error, _) =>
-            Center(child: Text('${t.failure.unexpected}: $error')),
+        error: (error, _) {
+          debugPrint('订阅详情读取失败: $error');
+          return Center(child: Text(t.failure.unexpected));
+        },
         loading: () => const Center(child: MotionProgress(strokeWidth: 4)),
       ),
     );
@@ -349,8 +352,12 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(error, () => t) ??
-              '${t.profile.save.failureMsg}: $error',
+          profileFailureMessage(
+            error,
+            t,
+            failed: t.profile.save.failureMsg,
+            operation: 'saveProfile',
+          ),
         );
       }
     } finally {
@@ -374,8 +381,12 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       } else if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(error, () => t) ??
-              '${t.profile.update.failureMsg}: $error',
+          profileFailureMessage(
+            error,
+            t,
+            failed: t.profile.update.failureMsg,
+            operation: 'updateProfile',
+          ),
         );
       }
     } finally {
@@ -404,11 +415,15 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (error) {
-      debugPrint('订阅操作失败: $error');
       if (mounted) {
         AppToast.error(
           context,
-          profileStoreErrorMessage(error, () => t) ?? t.failure.unexpected,
+          profileFailureMessage(
+            error,
+            t,
+            failed: t.failure.unexpected,
+            operation: 'deleteProfile',
+          ),
         );
       }
     } finally {
@@ -494,7 +509,7 @@ class _SubscriptionStatusCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '流量使用',
+                t.stats.trafficUsage,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -819,11 +834,12 @@ bool _isValidHttpUrl(String input) {
       (uri.scheme == 'http' || uri.scheme == 'https');
 }
 
-String _formatInterval(Duration duration) {
+String _formatInterval(TranslationsEn t, Duration duration) {
+  final form = t.profile.detailsForm;
   final hours = duration.inHours;
-  if (hours <= 0) return '关闭';
-  if (hours < 24) return '$hours 小时';
-  final days = hours / 24;
-  if (hours % 24 == 0) return '${days.toStringAsFixed(0)} 天';
-  return '$hours 小时';
+  if (hours <= 0) return form.updateIntervalOff;
+  if (hours >= 24 && hours % 24 == 0) {
+    return form.updateIntervalDays(days: hours ~/ 24);
+  }
+  return form.updateIntervalHours(hours: hours);
 }

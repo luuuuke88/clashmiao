@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -394,6 +395,15 @@ String _stringChoice(
 /// per-field try/catch 设计）。只有当整个输入连 JSON 都解析不了，或者顶层
 /// 不是一个对象时才会整体失败，此时反映在 [parseError]，[appliedKeys] /
 /// [skippedKeys] 均为空，NetworkSettings 状态完全不受影响。
+/// 配置选项 JSON 整体不可用的原因。
+enum NetworkSettingsParseError {
+  /// 不是合法 JSON。
+  invalidJson,
+
+  /// 是 JSON，但顶层不是对象。
+  notAnObject,
+}
+
 class NetworkSettingsImportResult {
   const NetworkSettingsImportResult({
     required this.appliedKeys,
@@ -407,9 +417,9 @@ class NetworkSettingsImportResult {
   /// JSON 里存在但类型不对 / 未通过校验，因而被跳过（旧值保留）的字段。
   final List<String> skippedKeys;
 
-  /// 顶层 JSON 解析失败（非法 JSON 或不是对象）时的错误描述；成功解析则为
-  /// null，即便 [appliedKeys] 为空。
-  final String? parseError;
+  /// 顶层 JSON 解析失败（非法 JSON 或不是对象）时的类型；成功解析则为
+  /// null，即便 [appliedKeys] 为空。界面按类型给本地化文案，解析细节只进日志。
+  final NetworkSettingsParseError? parseError;
 
   bool get hasParseError => parseError != null;
 }
@@ -794,15 +804,16 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         return const NetworkSettingsImportResult(
           appliedKeys: [],
           skippedKeys: [],
-          parseError: 'JSON 顶层必须是一个对象',
+          parseError: NetworkSettingsParseError.notAnObject,
         );
       }
       map = Map<String, dynamic>.from(decoded);
     } on FormatException catch (e) {
-      return NetworkSettingsImportResult(
-        appliedKeys: const [],
-        skippedKeys: const [],
-        parseError: 'JSON 解析失败: ${e.message}',
+      debugPrint('配置选项 JSON 解析失败: ${e.message}');
+      return const NetworkSettingsImportResult(
+        appliedKeys: [],
+        skippedKeys: [],
+        parseError: NetworkSettingsParseError.invalidJson,
       );
     }
 

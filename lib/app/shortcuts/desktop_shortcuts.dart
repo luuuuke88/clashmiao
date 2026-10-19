@@ -157,13 +157,22 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     clipboardText = data?.text?.trim() ?? '';
   } catch (e) {
-    if (context.mounted) AppToast.error(context, '读取剪贴板失败：$e');
+    debugPrint('读取剪贴板失败: $e');
+    if (context.mounted) {
+      AppToast.error(
+        context,
+        ref.read(translationsProvider).general.clipboardReadFailed,
+      );
+    }
     return;
   }
 
   if (clipboardText.isEmpty) {
     if (context.mounted) {
-      AppToast.warning(context, '剪贴板为空，无法导入订阅');
+      AppToast.warning(
+        context,
+        ref.read(translationsProvider).profile.add.clipboardEmpty,
+      );
     }
     return;
   }
@@ -174,20 +183,35 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
     if (isHttpDownloadUrl(clipboardText)) {
       profile = await repo.addByUrl(clipboardText);
     } else {
-      profile = await repo.addByContent(clipboardText, name: '');
+      profile = await repo.addByContent(
+        clipboardText,
+        name: ref.read(translationsProvider).profile.defaultLocalName,
+      );
     }
     ref.invalidate(profileListProvider);
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);
     if (context.mounted) {
-      AppToast.success(context, '已导入订阅：${profile.name}');
+      AppToast.success(
+        context,
+        ref
+            .read(translationsProvider)
+            .profile
+            .add
+            .importedNamed(name: profile.name),
+      );
     }
   } catch (e) {
     if (context.mounted) {
+      final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
-            '导入失败：$e',
+        profileFailureMessage(
+          e,
+          t,
+          failed: t.profile.add.failureMsg,
+          operation: 'pasteImport',
+        ),
       );
     }
   }

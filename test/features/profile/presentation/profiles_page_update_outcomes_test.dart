@@ -120,7 +120,8 @@ void main() {
     repo.updateError = Exception('network down');
     await tester.tap(updateIcons.at(1));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('更新配置文件失败'), findsOneWidget);
+    expect(find.text('更新配置文件失败'), findsOneWidget);
+    expect(find.textContaining('network down'), findsNothing, reason: '原文只进日志');
     expect(find.text(upgrade), findsNothing);
     await _drainToasts(tester);
 
@@ -135,7 +136,8 @@ void main() {
     repo.setActiveError = Exception('disk full');
     await tester.tap(find.text('订阅 B'));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('切换失败'), findsOneWidget);
+    expect(find.text('切换配置文件失败'), findsOneWidget);
+    expect(find.textContaining('disk full'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);
 
     // 5. 更新全部：只读 → 升级提示（updateAll 会把只读异常抛出来）。

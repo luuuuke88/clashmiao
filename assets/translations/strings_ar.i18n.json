@@ -25,7 +25,11 @@
     "grantPermission": "منح الإذن",
     "underDevelopment": "قيد التطوير",
     "confirm": "تأكيد",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "clipboardEmpty": "الحافظة فارغة",
+    "clipboardReadFailed": "تعذّرت قراءة الحافظة",
+    "moreOptions": "خيارات إضافية"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بمواصلة استخدامك، فإنك توافق على ${tap(@:about.termsAndConditions)}",
@@ -52,7 +56,9 @@
       "tapToCheck": "اضغط للتحقق من عنوان IP الخارجي",
       "checking": "جارٍ التحقق…",
       "failedRetry": "فشل التحقق، اضغط لإعادة المحاولة"
-    }
+    },
+    "emptyProfilesHint": "اضغط على الزر أدناه للبدء",
+    "noActiveProfileTitle": "لم يتم اختيار ملف تعريف"
   },
   "stats": {
     "traffic": "حركة المرور",
@@ -109,7 +115,12 @@
       "manuallyDescription": "أدخل إعداد الخادم يدوياً",
       "addWarp": "إضافة WARP",
       "warpDescription": "تسريع مجاني عبر Cloudflare WARP",
-      "addingWarpMsg": "يرجى الانتظار أثناء تسجيل WARP."
+      "addingWarpMsg": "يرجى الانتظار أثناء تسجيل WARP.",
+      "importedNamed": "تم استيراد الاشتراك: ${name}",
+      "clipboardEmpty": "الحافظة فارغة، لا يوجد ما يمكن استيراده",
+      "deepLinkMissingUrl": "لا يحتوي الرابط على عنوان اشتراك",
+      "successMsg": "تمت إضافة ملف التعريف",
+      "nameAutoHint": "يُكتشف تلقائيًا (اختياري)"
     },
     "update": {
       "buttonTxt": "تحديث",
@@ -139,7 +150,9 @@
     "delete": {
       "buttonTxt": "حذف",
       "confirmationMsg": "حذف ملف التعريف نهائياً؟",
-      "successMsg": "تم حذف ملف التعريف بنجاح"
+      "successMsg": "تم حذف ملف التعريف بنجاح",
+      "confirmTitle": "حذف ملف التعريف",
+      "namedConfirmMsg": "هل تريد حذف \"${name}\"؟ لا يمكن التراجع عن ذلك."
     },
     "save": {
       "buttonText": "حفظ",
@@ -159,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "إيقاف",
+      "updateIntervalHours": "${hours} ساعة",
+      "updateIntervalDays": "${days} يوم"
     },
     "actionButtons": {
       "add": "إضافة",
@@ -181,7 +197,10 @@
       "currentlyUsing": "قيد الاستخدام حالياً",
       "remainingDays": "متبقٍ ${days} يوماً"
     },
-    "remoteProfile": "اشتراك بعيد"
+    "remoteProfile": "اشتراك بعيد",
+    "defaultLocalName": "استيراد محلي",
+    "defaultDeepLinkName": "استيراد من رابط",
+    "switchFailedMsg": "تعذّر تبديل ملف التعريف"
   },
   "proxies": {
     "pageTitle": "الخوادم الوكيلية",
@@ -236,7 +255,10 @@
     "logsCleared": "تم مسح السجلات",
     "logsCopied": "تم نسخ السجلات",
     "logsUnderDevelopment": "ميزة السجلات قيد التطوير",
-    "noLogsWhenDisconnected": "غير متصل، لا توجد سجلات"
+    "noLogsWhenDisconnected": "غير متصل، لا توجد سجلات",
+    "loadFailed": "تعذّر تحميل السجلات",
+    "empty": "لا توجد سجلات بعد",
+    "clearFailed": "تعذّر مسح السجلات"
   },
   "settings": {
     "pageTitle": "الإعدادات",
@@ -272,7 +294,11 @@
       "recoveryUnrecoverableMsg": "توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.",
       "recoveryRetry": "إعادة المحاولة",
       "recoveryClose": "إغلاق",
-      "recoveryRetried": "تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف."
+      "recoveryRetried": "تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.",
+      "exportAction": "تصدير نسخة احتياطية",
+      "importAction": "استيراد نسخة احتياطية",
+      "exportFailed": "تعذّر تصدير النسخة الاحتياطية",
+      "shareText": "نسخة ClashMiao الاحتياطية"
     },
     "general": {
       "sectionTitle": "عام",
@@ -358,7 +384,11 @@
       "general": "عام",
       "connection": "الاتصال",
       "privacy": "الخصوصية"
-    }
+    },
+    "importOptionsInvalid": "لا تحتوي الحافظة على JSON إعدادات صالح",
+    "importOptionsNothing": "لم يتم العثور على إعدادات قابلة للاستيراد",
+    "importOptionsDone": "تم استيراد ${count} من الإعدادات",
+    "importOptionsPartial": "تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة"
   },
   "about": {
     "pageTitle": "حول\nتعريب:م. ابراهيم قاسم",
@@ -392,7 +422,8 @@
       "disconnect": "فصم الاتصال",
       "disconnecting": "جار فصم الاتصال"
     },
-    "hide": "إخفاء"
+    "hide": "إخفاء",
+    "proxyModeMenu": "وضع الوكيل"
   },
   "failure": {
     "unexpected": "خطأ غير متوقع",
@@ -443,7 +474,8 @@
       "unexpected": "خطأ غير متوقع",
       "notUpdate": "لا يوجد تحديث متاح",
       "activeNotFound": "لم يتم العثور على أصل Geo النشط"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "انقر للاتصال",
@@ -451,7 +483,7 @@
     "disconnecting": "جار فصم الاتصال",
     "connected": "متصل",
     "reconnect": "أعد الاتصال",
-    "connectAnyWay": "اتصل",
+    "connectAnyWay": "اتصل على أي حال",
     "experimentalNotice": "ميزات تجريبية قيد الاستخدام",
     "experimentalNoticeMsg": "لقد قمت بتمكين بعض الميزات التجريبية التي قد تؤثر على جودة الاتصال وتسبب أخطاء غير متوقعة. يمكنك دائمًا تغيير هذه الخيارات أو إعادة تعيينها من صفحة خيارات التكوين.",
     "disableExperimentalNotice": "لا تعرض مرة أخرى",
@@ -553,6 +585,13 @@
     "warpNoiseSize": "حجم الضجيج",
     "warpNoiseMode": "وضع الضجيج",
     "desktopProxyScopeNotice": "على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.",
-    "serviceModeIosVpnOnly": "يدعم iOS وضع VPN فقط"
+    "serviceModeIosVpnOnly": "يدعم iOS وضع VPN فقط",
+    "warpGenerating": "جارٍ إنشاء إعدادات WARP…",
+    "warpConfigFailed": "تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.",
+    "portRangeError": "يجب أن يكون المنفذ بين 1024 و65535",
+    "dnsEmptyError": "لا يمكن أن يكون عنوان DNS فارغًا",
+    "rangeFormatError": "أدخل رقمًا أو نطاقًا، مثل 10-30",
+    "urlSchemeError": "يجب أن يبدأ الرابط بـ http:// أو https://",
+    "manageRuleAssets": "إدارة مجموعات القواعد"
   }
 }

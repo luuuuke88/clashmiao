@@ -13,6 +13,7 @@ class ProfileQrDialog extends StatelessWidget {
     super.key,
     required this.data,
     required this.profileName,
+    required this.qrSemanticsLabel,
   });
 
   /// 二维码编码的完整内容（订阅 URL）。
@@ -20,6 +21,9 @@ class ProfileQrDialog extends StatelessWidget {
 
   /// 弹窗标题展示用的订阅名（跟二维码内容分开传，方便测试各自断言）。
   final String profileName;
+
+  /// 二维码图像的读屏标签（本地化文案，由调用方传入）。
+  final String qrSemanticsLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +57,7 @@ class ProfileQrDialog extends StatelessWidget {
                 key: ValueKey('profile-qr-image-$data'),
                 data: data,
                 size: 220,
-                semanticsLabel: '订阅二维码',
+                semanticsLabel: qrSemanticsLabel,
               ),
             ),
             const SizedBox(height: 16),

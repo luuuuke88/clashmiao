@@ -65,13 +65,14 @@ void main() {
     await add();
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.text(upgrade), findsOneWidget);
-    expect(find.textContaining('添加失败'), findsNothing);
+    expect(find.textContaining('添加配置文件失败'), findsNothing);
     await _drainToasts(tester);
 
     repo.editError = Exception('disk full');
     await edit();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('保存失败'), findsOneWidget);
+    expect(find.text('配置文件保存失败'), findsOneWidget);
+    expect(find.textContaining('disk full'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);
 
     repo.editError = const StoreReadOnlyException(9);
@@ -83,7 +84,8 @@ void main() {
     repo.addError = Exception('boom');
     await add();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('添加失败'), findsOneWidget);
+    expect(find.text('添加配置文件失败'), findsOneWidget);
+    expect(find.textContaining('boom'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);
   });
 }

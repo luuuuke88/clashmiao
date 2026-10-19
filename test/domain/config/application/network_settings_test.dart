@@ -491,7 +491,7 @@ void main() {
       final result = await notifier.importJson('not even json {{{');
 
       expect(result.hasParseError, isTrue);
-      expect(result.parseError, isNotNull);
+      expect(result.parseError, NetworkSettingsParseError.invalidJson);
       expect(result.appliedKeys, isEmpty);
       expect(notifier.state.mtu, 9000);
     });

@@ -114,6 +114,43 @@ void main() {
       expect(response.data, 'via-direct');
     });
 
+    test(
+      'allowDirectFallback:false 且 mixed 端口拒绝连接：直接失败，绝不悄悄直连（出口 IP 探测用）',
+      () async {
+        final probe = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+        final deadPort = probe.port;
+        await probe.close(force: true);
+
+        final dio = createAppHttpClient(
+          preferTunnel: true,
+          allowDirectFallback: false,
+          mixedPort: deadPort,
+          maxRetries: 0,
+        );
+
+        await expectLater(
+          dio.get<String>('http://127.0.0.1:${directServer.port}/'),
+          throwsA(isA<DioException>()),
+          reason: '直连成功会给出一个没经过隧道、看上去却正常的结果',
+        );
+      },
+    );
+
+    test('allowDirectFallback:false 且 mixed 端口可用：照常经过本地代理', () async {
+      final dio = createAppHttpClient(
+        preferTunnel: true,
+        allowDirectFallback: false,
+        mixedPort: proxyServer.port,
+        maxRetries: 0,
+      );
+
+      final response = await dio.get<String>(
+        'http://127.0.0.1:${directServer.port}/',
+      );
+
+      expect(response.data, 'via-proxy');
+    });
+
     test('preferTunnel:false 时始终直连，即使 mixed 端口本身是可用的', () async {
       final dio = createAppHttpClient(
         preferTunnel: false,

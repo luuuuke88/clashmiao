@@ -353,7 +353,7 @@ class LaunchSpec {
     required this.configRevision,
   });
 
-  /// 每请求独立的运行时配置文件（`runtime-config-<seq>.json`）。
+  /// 按配置 revision 命名的运行时配置文件（`runtime-<revision>.json`）。
   final String runtimeConfigPath;
 
   /// 内联、不可变的内核选项 JSON。

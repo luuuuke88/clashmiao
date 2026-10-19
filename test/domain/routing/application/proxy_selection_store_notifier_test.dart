@@ -117,6 +117,32 @@ void main() {
         reason: '用户后选的节点应该覆盖同一 group 之前的选择',
       );
     });
+
+    test('restore：恢复到旧值或删除记录，并写回磁盘', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          activeProfileProvider.overrideWith(
+            (_) => Future.value(_profile('profile-r')),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(sharedPreferencesProvider.future);
+      await container.read(activeProfileProvider.future);
+      final notifier = container.read(proxySelectionStoreProvider.notifier);
+
+      await notifier.persist('proxy', 'A');
+      await notifier.persist('proxy', 'B');
+      await notifier.restore('proxy', 'A');
+      expect(container.read(proxySelectionStoreProvider), {'proxy': 'A'});
+
+      await notifier.restore('proxy', null);
+      expect(container.read(proxySelectionStoreProvider), isEmpty);
+      expect(prefs.getString('proxy_selection_profile-r'), '{}');
+    });
   });
 }
 

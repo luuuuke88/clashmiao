@@ -1,0 +1,640 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/data/profile_repository.dart';
+import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../../_fakes/fake_kernel_port.dart';
+import '../../../support/temp_dirs.dart';
+
+/// 自愈刷新行为可编程的仓库：`onUpdate` 在 `update()` 里执行，
+/// 用来模拟「刷新成功写出配置 / 抛 stale / 刷新期间激活订阅被改掉」。
+class _HealRepo extends ProfileRepository {
+  _HealRepo({
+    required super.dio,
+    required super.configDir,
+    required super.prefs,
+    required super.boxService,
+  });
+
+  Future<void> Function(String id)? onUpdate;
+  final List<String> updated = [];
+
+  @override
+  Future<ProfileEntity> update(String profileId) async {
+    updated.add(profileId);
+    await onUpdate?.call(profileId);
+    return getAll().firstWhere((p) => p.id == profileId);
+  }
+}
+
+const _config = {
+  'outbounds': [
+    {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+  ],
+};
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tmp;
+  late Directory workDir;
+  late SharedPreferences prefs;
+  late _HealRepo repo;
+  late ProviderContainer container;
+  var tokenN = 0;
+
+  Future<void> writeConfig(String id, [Object? json]) async {
+    final f = File(repo.configFilePath(id));
+    await f.parent.create(recursive: true);
+    await f.writeAsString(jsonEncode(json ?? _config));
+  }
+
+  Future<void> addProfile(String id, {String? name, bool config = true}) async {
+    await repo.upsert({
+      'id': id,
+      'name': name ?? 'profile-$id',
+      'url': 'https://example.invalid/$id',
+    });
+    if (config) await writeConfig(id);
+  }
+
+  ConnectionLauncher launcher() => ConnectionLauncher(
+    container.read(_refProvider),
+    workingDirectory: () async => workDir,
+    tokenGenerator: () => 't${tokenN++}',
+  );
+
+  setUp(() async {
+    tokenN = 0;
+    tmp = await Directory.systemTemp.createTemp('launcher_test_');
+    workDir = Directory('${tmp.path}/work')..createSync();
+    SharedPreferences.setMockInitialValues({});
+    prefs = await SharedPreferences.getInstance();
+    repo = _HealRepo(
+      dio: Dio(),
+      configDir: Directory('${tmp.path}/profiles'),
+      prefs: prefs,
+      boxService: const StubBoxService(),
+    );
+    container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        boxServiceProvider.overrideWithValue(
+          const StubBoxService(reason: StubReason.unsupported),
+        ),
+        profileRepositoryProvider.overrideWith((_) async => repo),
+      ],
+    );
+    await container.read(sharedPreferencesProvider.future);
+  });
+
+  tearDown(() async {
+    container.dispose();
+    await deleteTempDirBestEffort(tmp);
+  });
+
+  group('FNV-1a 64', () {
+    test('标准测试向量', () {
+      expect(fnv1a64(const []), 0xcbf29ce484222325);
+      expect(fnv1a64(utf8.encode('a')), 0xaf63dc4c8601ec8c);
+      expect(fnv1a64(utf8.encode('foobar')), 0x85944171f73967e8);
+    });
+
+    test('computeConfigRevision：稳定、非负、对 options 与内容都敏感', () {
+      final a = computeConfigRevision('{"a":1}', utf8.encode('cfg'));
+      expect(computeConfigRevision('{"a":1}', utf8.encode('cfg')), a);
+      expect(a, isNonNegative);
+      expect(computeConfigRevision('{"a":2}', utf8.encode('cfg')), isNot(a));
+      expect(computeConfigRevision('{"a":1}', utf8.encode('cfg2')), isNot(a));
+      // 分隔符：把边界从 options 挪到内容里必须得到不同 revision。
+      expect(computeConfigRevision('{"a":1}c', utf8.encode('fg')), isNot(a));
+    });
+  });
+
+  group('prepare：按 revision 命名的启动产物', () {
+    test(
+      '写 runtime-<revision>.json + 内联 options + profileName + revision',
+      () async {
+        await addProfile('p1', name: '香港节点');
+        await repo.setActive('p1');
+
+        final spec = await launcher().prepare(1);
+
+        expect(spec.profileName, '香港节点');
+        expect(
+          spec.runtimeConfigPath,
+          '${workDir.path}/runtime-${spec.configRevision}.json',
+          reason: '文件名里的 revision 就是随请求发出的 revision',
+        );
+        expect(File(spec.runtimeConfigPath).existsSync(), isTrue);
+        expect(workDir.listSync().map((e) => e.uri.pathSegments.last), [
+          'runtime-${spec.configRevision}.json',
+        ], reason: '临时文件不残留');
+        final options = jsonDecode(spec.optionsJson) as Map<String, dynamic>;
+        expect(options, isNotEmpty);
+        expect(spec.configRevision, isNonNegative);
+        // 老的单一文件名不再被写出。
+        expect(
+          File('${workDir.path}/runtime-config.json').existsSync(),
+          isFalse,
+        );
+      },
+    );
+
+    test('相同输入 → 相同 revision（不触发重载）、同一份文件，且不被重写', () async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      final l = launcher();
+
+      final a = await l.prepare(1);
+      // 把修改时间调到很久以前：复用时文件不能被重写（重写会刷新修改时间）。
+      final past = DateTime(2020, 1, 1);
+      File(a.runtimeConfigPath).setLastModifiedSync(past);
+      final b = await l.prepare(2);
+
+      expect(b.configRevision, a.configRevision);
+      expect(b.runtimeConfigPath, a.runtimeConfigPath);
+      expect(File(b.runtimeConfigPath).lastModifiedSync(), past);
+      expect(workDir.listSync(), hasLength(1), reason: '没有临时文件残留');
+    });
+
+    test('并发的相同 revision 请求：同一路径、文件完整', () async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      final l = launcher();
+
+      final specs = await Future.wait([
+        l.prepare(1),
+        l.prepare(2),
+        l.prepare(3),
+      ]);
+
+      expect({for (final s in specs) s.runtimeConfigPath}, hasLength(1));
+      final decoded = jsonDecode(
+        File(specs.first.runtimeConfigPath).readAsStringSync(),
+      );
+      expect(decoded, isA<Map<String, dynamic>>());
+      expect(workDir.listSync(), hasLength(1));
+    });
+
+    test('目标已存在但内容不同：原子改名覆盖——旧读取方读到完整旧文件，新读取方读到完整新文件，没有半份文件', () async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      final l = launcher();
+      final probe = await l.prepare(1);
+      final target = File(probe.runtimeConfigPath);
+      final expected = target.readAsStringSync();
+      final stale = '{"stale":${'0' * 4096}}'; // 内容不同的旧文件
+      target.writeAsStringSync(stale);
+
+      // 读取方先打开旧文件（持有句柄），然后另一个请求要求重写。
+      final handle = target.openSync();
+      final observed = <String>[];
+      var rewriting = true;
+      Future<void> reader() async {
+        while (rewriting) {
+          observed.add(target.readAsStringSync());
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      final readerDone = reader();
+      final rewritten = await l.prepare(2);
+      rewriting = false;
+      await readerDone;
+      observed.add(target.readAsStringSync());
+
+      expect(rewritten.runtimeConfigPath, target.path);
+      expect(
+        observed.toSet().difference({stale, expected}),
+        isEmpty,
+        reason: '读取方只可能看到完整的旧内容或完整的新内容，不会看到半份',
+      );
+      expect(target.readAsStringSync(), expected);
+      // 先前打开的句柄仍能读到完整旧内容（改名替换而不是原地截断重写）。
+      final old = handle.readSync(handle.lengthSync());
+      handle.closeSync();
+      expect(utf8.decode(old), stale);
+      expect(workDir.listSync(), hasLength(1), reason: '没有临时文件残留');
+    });
+
+    test('模式 / 网络设置 / 订阅内容变化 → revision 变化', () async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      final l = launcher();
+      final base = (await l.prepare(1)).configRevision;
+
+      await container.read(proxyModeProvider.notifier).updateMode(0);
+      final global = (await l.prepare(2)).configRevision;
+      expect(global, isNot(base), reason: '智能 → 全局：options 的 rules 变了');
+
+      await container.read(proxyModeProvider.notifier).updateMode(1);
+      expect(
+        (await l.prepare(3)).configRevision,
+        base,
+        reason: '改回去 → 同一个 revision',
+      );
+
+      final notifier = container.read(networkSettingsProvider.notifier);
+      final oldPort = container.read(networkSettingsProvider).mixedPort;
+      await notifier.setMixedPort(oldPort + 1);
+      final port = (await l.prepare(4)).configRevision;
+      expect(port, isNot(base));
+      await notifier.setMixedPort(oldPort);
+
+      await writeConfig('p1', {
+        'outbounds': [
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+      });
+      expect((await l.prepare(5)).configRevision, isNot(base));
+    });
+
+    test('无激活订阅 → NoActiveProfile', () async {
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const NoActiveProfile(),
+          ),
+        ),
+      );
+    });
+
+    test('桌面核心库缺失 → CoreUnavailable，且不写任何文件', () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(
+            const StubBoxService(reason: StubReason.coreLoadFailed),
+          ),
+          profileRepositoryProvider.overrideWith((_) async => repo),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      await addProfile('p1');
+      await repo.setActive('p1');
+
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const CoreUnavailable(),
+          ),
+        ),
+      );
+      expect(workDir.listSync(), isEmpty);
+    });
+
+    test('仓库读取抛异常 → UnexpectedFailure（不是未捕获异常）', () async {
+      container.dispose();
+      container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(
+            const StubBoxService(reason: StubReason.unsupported),
+          ),
+          profileRepositoryProvider.overrideWith(
+            (_) async => _ThrowingRepo(
+              dio: Dio(),
+              configDir: Directory('${tmp.path}/profiles'),
+              prefs: prefs,
+              boxService: const StubBoxService(),
+            ),
+          ),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            isA<UnexpectedFailure>(),
+          ),
+        ),
+      );
+    });
+  });
+
+  group('配置缺失 → 自愈刷新 → 重读当前激活订阅', () {
+    setUp(() async {
+      await addProfile('p1', config: false);
+      await repo.setActive('p1');
+    });
+
+    test('刷新成功写出配置 → 继续', () async {
+      repo.onUpdate = (id) => writeConfig(id);
+
+      final spec = await launcher().prepare(1);
+
+      expect(repo.updated, ['p1']);
+      expect(spec.profileName, 'profile-p1');
+    });
+
+    test('刷新抛出（stale / 取消 / 失败一视同仁），但配置已被别处写好 → 继续', () async {
+      repo.onUpdate = (id) async {
+        await writeConfig(id);
+        throw StateError('stale');
+      };
+
+      final spec = await launcher().prepare(1);
+
+      expect(spec.profileName, 'profile-p1');
+    });
+
+    test('刷新抛出且配置仍缺失 → ConfigMissing', () async {
+      repo.onUpdate = (_) async => throw StateError('network down');
+
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const ConfigMissing(),
+          ),
+        ),
+      );
+    });
+
+    test('刷新期间激活订阅被切换（旧订阅仍缺失、新订阅有配置）→ 用新订阅，不报缺失', () async {
+      await addProfile('p2', name: '新订阅');
+      repo.onUpdate = (_) async {
+        await repo.setActive('p2'); // 并发编辑：旧 id 作废
+        throw StateError('stale');
+      };
+
+      final spec = await launcher().prepare(1);
+
+      expect(spec.profileName, '新订阅', reason: '必须重读当前激活订阅，不能复用刷新前的 id 与路径');
+    });
+
+    test('刷新期间激活订阅被删除 → NoActiveProfile（不是「配置不存在」）', () async {
+      repo.onUpdate = (_) async {
+        await prefs.remove('clashmiao_active_profile');
+      };
+
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const NoActiveProfile(),
+          ),
+        ),
+      );
+    });
+
+    test('空配置文件按缺失处理（同样先自愈）', () async {
+      await File(repo.configFilePath('p1')).parent.create(recursive: true);
+      await File(repo.configFilePath('p1')).writeAsString('');
+      repo.onUpdate = (id) => writeConfig(id);
+
+      await launcher().prepare(1);
+
+      expect(repo.updated, ['p1']);
+    });
+
+    test('配置本来就在 → 不刷新', () async {
+      await writeConfig('p1');
+
+      await launcher().prepare(1);
+
+      expect(repo.updated, isEmpty);
+    });
+  });
+
+  group('bindSeq / discard / sendFinished：引用生命周期', () {
+    late ConnectionLauncher l;
+    setUp(() async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      l = launcher();
+    });
+
+    test('bindSeq 不再改名：文件名与 seq 无关，原样返回', () async {
+      final spec = await l.prepare(1);
+      final bound = await l.bindSeq(1, spec, 7);
+      expect(bound.runtimeConfigPath, spec.runtimeConfigPath);
+      expect(bound.configRevision, spec.configRevision);
+      expect(File(bound.runtimeConfigPath).existsSync(), isTrue);
+    });
+
+    test('discard 不删文件：它可能仍被协调器读取，或被相同 revision 的请求复用', () async {
+      final spec = await l.prepare(1);
+      await l.bindSeq(1, spec, 3);
+      await l.discard(1);
+      l.sendFinished(1);
+      expect(File(spec.runtimeConfigPath).existsSync(), isTrue);
+    });
+  });
+
+  // 删除只依据权威快照与本进程已知的引用，绝不看修改时间。
+  group('清理：受保护集合 = 快照运行的 ∪ 未终结请求的 ∪ 最近 3 个 revision', () {
+    late ConnectionLauncher l;
+    setUp(() async {
+      await addProfile('p1');
+      await repo.setActive('p1');
+      l = launcher();
+    });
+
+    KernelSnapshot kernel({
+      int? active,
+      KernelStatus status = KernelStatus.started,
+      int appliedSeq = 0,
+      int attempt = 1,
+    }) => FakeKernelPort.snap(
+      status: status,
+      attempt: attempt,
+      desired: status == KernelStatus.stopped ? Desired.off : Desired.on,
+      source: DesiredSource.app,
+      appliedSeq: appliedSeq,
+      activeConfigRevision: active,
+    );
+
+    File leftover(String name, {Duration age = Duration.zero}) =>
+        File('${workDir.path}/$name')
+          ..writeAsStringSync('{}')
+          ..setLastModifiedSync(DateTime.now().subtract(age));
+
+    Future<LaunchSpec> prepareRevision(int id, int variant) async {
+      await writeConfig('p1', {
+        'outbounds': [
+          {'type': 'selector', 'tag': 'proxy$variant', 'outbounds': <String>[]},
+        ],
+      });
+      return l.prepare(id);
+    }
+
+    Future<void> finish(int id) async {
+      await l.bindSeq(id, await _noopSpec(), id);
+      await l.discard(id);
+      l.sendFinished(id);
+      await l.idle;
+    }
+
+    test('冷启动：首个快照之前什么都不删；之后只留运行中的（原生持久化引用）', () async {
+      final f111 = leftover('runtime-111.json');
+      final f222 = leftover('runtime-222.json', age: const Duration(days: 30));
+      final legacy = leftover('runtime-config-5.json');
+      final legacyPrep = leftover('runtime-config-prep-x.json');
+      final prep = leftover('runtime-prep-old.json');
+
+      // 本进程准备过一次并释放：触发清理的时机，但还没有快照。
+      final spec = await l.prepare(1);
+      await l.discard(1);
+      l.sendFinished(1);
+      await l.idle;
+      for (final f in [f111, f222, legacy, legacyPrep, prep]) {
+        expect(f.existsSync(), isTrue, reason: '${f.path} 首个快照之前不能删');
+      }
+
+      // 首个权威快照：原生运行的是 222。
+      await l.observe(kernel(active: 222));
+
+      expect(f222.existsSync(), isTrue, reason: '快照里运行 / 持久化引用的文件');
+      expect(
+        File(spec.runtimeConfigPath).existsSync(),
+        isTrue,
+        reason: '本进程最近准备的',
+      );
+      expect(f111.existsSync(), isFalse, reason: '受保护集合之外');
+      expect(prep.existsSync(), isFalse);
+      expect(legacyPrep.existsSync(), isFalse);
+      expect(
+        legacy.existsSync(),
+        isFalse,
+        reason: '运行中的 222 对应的新命名文件存在，说明旧版 seq 文件不是运行中的',
+      );
+    });
+
+    test('冷启动挂上的运行实例引用的是旧版 seq 命名的文件：保守保留，不因新命名规则误删', () async {
+      final legacy = leftover('runtime-config-5.json');
+      final stray = leftover('runtime-111.json');
+
+      await l.observe(kernel(active: 999)); // runtime-999.json 并不存在
+
+      expect(legacy.existsSync(), isTrue);
+      expect(stray.existsSync(), isFalse);
+    });
+
+    test('不看文件年龄：很旧但受保护的保留，刚写的但不受保护的照删', () async {
+      final ancientActive = leftover(
+        'runtime-7.json',
+        age: const Duration(days: 400),
+      );
+      final freshStray = leftover('runtime-8.json');
+
+      await l.observe(kernel(active: 7));
+
+      expect(ancientActive.existsSync(), isTrue);
+      expect(freshStray.existsSync(), isFalse);
+    });
+
+    test('revision 变更循环：只留运行中的与最近 3 个，其余回收', () async {
+      await l.observe(kernel(status: KernelStatus.stopped));
+      final specs = <LaunchSpec>[];
+      for (var i = 1; i <= 6; i++) {
+        final spec = await prepareRevision(i, i);
+        specs.add(spec);
+        if (i == 1) {
+          // 第 1 份启动并运行着。
+          await l.observe(kernel(active: spec.configRevision, appliedSeq: 1));
+        }
+        await finish(i);
+      }
+      bool ex(int i) => File(specs[i].runtimeConfigPath).existsSync();
+
+      expect(ex(0), isTrue, reason: '运行中的，即使早已不在最近 3 个里');
+      expect(ex(1), isFalse);
+      expect(ex(2), isFalse);
+      expect(ex(3) && ex(4) && ex(5), isTrue, reason: '最近 3 个');
+
+      // 运行中的换成第 6 份：第 1 份释放。
+      await l.observe(
+        kernel(active: specs[5].configRevision, appliedSeq: 6, attempt: 2),
+      );
+      expect(ex(0), isFalse);
+      expect(ex(3) && ex(4) && ex(5), isTrue);
+    });
+
+    test('首次启动在读文件前悬停，同 revision 的请求被受理：文件不被动、不被删', () async {
+      await l.observe(kernel(status: KernelStatus.stopped));
+      final first = await l.prepare(1);
+      await l.bindSeq(1, first, 1);
+      final file = File(first.runtimeConfigPath);
+      final past = DateTime(2020, 1, 1);
+      file.setLastModifiedSync(past);
+      final before = file.readAsStringSync();
+
+      // 执行层还没来得及读文件：快照 starting（尚无运行中的 revision）。
+      await l.observe(kernel(status: KernelStatus.starting, appliedSeq: 1));
+      // 同 revision 的请求 2 被受理（沿用在途的启动），随后终结。
+      final second = await l.prepare(2);
+      expect(second.runtimeConfigPath, first.runtimeConfigPath);
+      await l.bindSeq(2, second, 2);
+      await l.observe(kernel(status: KernelStatus.starting, appliedSeq: 2));
+      await l.discard(2);
+      l.sendFinished(2);
+      await l.idle;
+
+      expect(file.existsSync(), isTrue, reason: '请求 1 尚未终结，文件受保护');
+      expect(file.lastModifiedSync(), past, reason: '没有被重写');
+      expect(file.readAsStringSync(), before);
+
+      // 请求 1 终结后，只要它还是本进程最近准备的 revision，仍然保留。
+      await l.discard(1);
+      l.sendFinished(1);
+      await l.idle;
+      await l.observe(
+        kernel(status: KernelStatus.starting, appliedSeq: 2, attempt: 2),
+      );
+      expect(file.existsSync(), isTrue);
+    });
+  });
+}
+
+Future<LaunchSpec> _noopSpec() async => const LaunchSpec(
+  runtimeConfigPath: '',
+  optionsJson: '{}',
+  profileName: '',
+  configRevision: 0,
+);
+
+class _ThrowingRepo extends ProfileRepository {
+  _ThrowingRepo({
+    required super.dio,
+    required super.configDir,
+    required super.prefs,
+    required super.boxService,
+  });
+
+  @override
+  ProfileEntity? getActive() => throw StateError('模拟仓库读取失败');
+}
+
+/// 让测试里能拿到一个 `Ref`：Provider 体内把 ref 暴露出来。
+final _refProvider = Provider<Ref>((ref) => ref);

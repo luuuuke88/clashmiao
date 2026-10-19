@@ -13,7 +13,8 @@ import 'package:clashmiao/core/box_service/kernel_port_hub.dart';
 /// - [selectCalls] 记录 [selectOutbound]；[selectResult] 决定结果。
 /// - [acknowledged] 记录 [acknowledgeReplay] 的 attempt。
 /// - [currentError] 非空时 [current] 抛它；[currentGate] 非空时 [current]
-///   等它完成后再返回（用来制造「在途查询」）。
+///   等它完成后再返回（用来制造「在途查询」）；[currentResult] 非空时 [current]
+///   返回它而不是最近推送的快照。
 class FakeKernelPort implements KernelPort {
   FakeKernelPort({KernelSnapshot? initial}) {
     if (initial != null) _snapshots.add(initial);
@@ -34,7 +35,13 @@ class FakeKernelPort implements KernelPort {
 
   Object? currentError;
   Completer<void>? currentGate;
+
+  /// 非空时 [current] 返回它（不经事件流）——模拟「重新同步取回的是另一个基线」。
+  KernelSnapshot? currentResult;
   Object? requestError;
+
+  /// 按请求决定是否抛错（非空返回值即抛它）；优先于 [requestError]。
+  Object? Function(DesiredRequest r)? requestErrorFor;
 
   /// 自定义回执；默认受理。
   RequestReceipt Function(DesiredRequest r)? receiptFor;
@@ -42,6 +49,9 @@ class FakeKernelPort implements KernelPort {
   /// 自定义 select 结果；默认 [SelectOk]。
   SelectOutcome Function(String group, String tag, int? expectedAttempt)?
   selectResult;
+
+  /// 非空时 [selectOutbound] 先等它完成再返回（制造「在途的手选 / 重放」）。
+  Completer<void>? onSelectGate;
 
   /// 自定义 request 回调（在记录之后、返回回执之前执行），用于让替身像真内核
   /// 一样随请求推进快照。
@@ -64,7 +74,7 @@ class FakeKernelPort implements KernelPort {
     if (gate != null) await gate.future;
     final err = currentError;
     if (err != null) throw err;
-    final s = snapshot;
+    final s = currentResult ?? snapshot;
     if (s == null) {
       throw const KernelPortException('unavailable', 'FakeKernelPort 无快照');
     }
@@ -80,7 +90,7 @@ class FakeKernelPort implements KernelPort {
   @override
   Future<RequestReceipt> request(DesiredRequest request) async {
     requests.add(request);
-    final err = requestError;
+    final err = requestErrorFor?.call(request) ?? requestError;
     if (err != null) throw err;
     await onRequest?.call(request);
     final custom = receiptFor;
@@ -108,8 +118,14 @@ class FakeKernelPort implements KernelPort {
       tag: outboundTag,
       expectedAttempt: expectedAttempt,
     ));
-    return selectResult?.call(groupTag, outboundTag, expectedAttempt) ??
+    // 结果在调用进入时就固定：悬停（gate）的调用恢复后返回的仍是它进入时的结果，
+    // 与调用顺序无关。
+    final SelectOutcome result =
+        selectResult?.call(groupTag, outboundTag, expectedAttempt) ??
         const SelectOk();
+    final gate = onSelectGate;
+    if (gate != null) await gate.future;
+    return result;
   }
 
   Future<void> dispose() async {

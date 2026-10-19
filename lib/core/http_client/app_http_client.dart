@@ -33,6 +33,11 @@ import 'package:dio/io.dart';
 ///   "设备真实网络路径"结果的场景（比如识别用户真实地理位置），走隧道会
 ///   拿到隧道出口节点的结果，语义就错了。
 ///
+/// [allowDirectFallback] 为 `false` 时去掉 `; DIRECT` 候选：代理端口不可用就
+/// 直接失败，绝不悄悄走直连（出口 IP 探测需要「只经本地代理」的语义，直连
+/// 成功会给出一个看上去正常、实则没经过隧道的结果）。仅在 [preferTunnel] 为
+/// `true` 时有意义。
+///
 /// ## 重试拦截器
 ///
 /// 只重试网络类错误（连接超时/连接失败等 [DioExceptionType]，不包括
@@ -41,6 +46,7 @@ import 'package:dio/io.dart';
 /// 没有引入 `dio_retry` 之类的新依赖，就是一个 [Interceptor.onError] 钩子。
 Dio createAppHttpClient({
   bool preferTunnel = true,
+  bool allowDirectFallback = true,
   int mixedPort = kDefaultMixedPort,
   Duration connectTimeout = kDefaultConnectTimeout,
   Duration receiveTimeout = kDefaultReceiveTimeout,
@@ -59,8 +65,11 @@ Dio createAppHttpClient({
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
       final client = HttpClient();
-      client.findProxy = (_) =>
-          preferTunnel ? 'PROXY 127.0.0.1:$mixedPort; DIRECT' : 'DIRECT';
+      client.findProxy = (_) => preferTunnel
+          ? (allowDirectFallback
+                ? 'PROXY 127.0.0.1:$mixedPort; DIRECT'
+                : 'PROXY 127.0.0.1:$mixedPort')
+          : 'DIRECT';
       return client;
     },
   );

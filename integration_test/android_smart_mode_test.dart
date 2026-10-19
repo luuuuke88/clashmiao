@@ -4,10 +4,9 @@ import 'package:flutter/foundation.dart';
 import 'package:clashmiao/app/app.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
@@ -138,19 +137,19 @@ void main() {
       await tester.tap(connectFinder);
       await tester.pump();
 
-      // 等 BoxStarted（120s 超时，含 VPN consent dialog 等待 + sing-box bootstrap）
-      await waitForStatus<BoxStarted>(
+      // 等已连接（120s 超时，含 VPN consent dialog 等待 + sing-box bootstrap）
+      await waitForPhase(
         tester,
         container,
+        ConnectionPhase.connected,
         timeout: const Duration(seconds: 120),
-        onTimeout: () {
-          final err = container.read(connectionErrorProvider);
-          if (err != null) debugPrint('[e2e] connection error: $err');
+        onTimeout: (failure) {
+          if (failure != null) debugPrint('[e2e] connection failure: $failure');
         },
       );
-      debugPrint('[e2e] BoxStarted');
+      debugPrint('[e2e] connected');
 
-      // BoxStarted 后 sing-box 还在 VPN CONNECTING 阶段（节点 URLTest 没完），
+      // 已连接后 sing-box 还在 VPN CONNECTING 阶段（节点 URLTest 没完），
       // 出口 IP 可能还是直连。最多 retry 8 次（每次 4s），任何一次拿到 ≠ baseline
       // 的合法 IPv4 就过。
       String proxiedIp = baselineIp;

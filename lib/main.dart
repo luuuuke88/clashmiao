@@ -13,6 +13,7 @@ import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
@@ -162,6 +163,12 @@ void main() async {
   // 不会因为首页 watch 了这个 provider 就自动开始——探测该活多久取决于 App，
   // 不取决于某个页面在不在（详见 ConnectionHealthMonitor 类文档）。
   container.read(connectionHealthProvider.notifier).start();
+
+  // 连接控制器与出口 IP 探测随 App 创建（而不是等首页第一次 build）：它们订阅
+  // 内核快照，冷启动挂上运行中隧道、或磁贴 / 开机自启抢先把隧道拉起来时，状态
+  // 与出口 IP 都不依赖某个页面在不在。
+  container.read(connectionControllerProvider);
+  container.read(egressIpProbeProvider);
 
   // 订阅自动更新调度器：读每条订阅的 updateInterval，到期的用跟"立即更新"
   // 按钮同一条刷新逻辑静默更新一次。触发时机三条：这里的启动时查一次

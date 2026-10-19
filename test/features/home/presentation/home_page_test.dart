@@ -414,6 +414,28 @@ void main() {
     expect(find.text('还没有线路喵'), findsNothing);
   });
 
+  testWidgets('节点胶囊与代理页同一套展示名：去掉 § 后缀，推断出的旗帜放在名称前（真机 BUG-6）', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: 'ThrowawayQA § 0',
+            items: [OutboundProxy(tag: 'ThrowawayQA § 0', type: 'shadowsocks')],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('ThrowawayQA'), findsOneWidget);
+    expect(find.textContaining('§'), findsNothing);
+
+    await _drainLatency(tester);
+  });
+
   testWidgets('连接态中间信息保持单行节点和延迟，不显示连接时长', (tester) async {
     await tester.pumpWidget(
       await _hostConnectionInfo(
@@ -432,7 +454,7 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('香港 01 | SS'), findsOneWidget);
+    expect(find.text('🇭🇰 香港 01 | SS'), findsOneWidget);
     expect(find.text('128ms'), findsOneWidget);
     expect(find.textContaining('已连接 '), findsNothing);
 
@@ -566,7 +588,7 @@ void main() {
     expect(find.byIcon(FluentIcons.chevron_right_16_regular), findsOneWidget);
     expect(container.read(selectedTabProvider), AppTab.home);
 
-    await tester.tap(find.text('香港 01 | SS'));
+    await tester.tap(find.text('🇭🇰 香港 01 | SS'));
     await tester.pump();
 
     expect(container.read(selectedTabProvider), AppTab.proxies);

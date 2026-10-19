@@ -68,6 +68,14 @@ class NodeDisplay {
         .trimRight();
   }
 
+  /// 单行展示名（首页节点胶囊）：旗帜（若有）+ 名称，两者都没有时为 `null`。
+  ///
+  /// 与代理页同一套解析：`§` 后缀不会出现，开头旗帜不会与名称里的重复。
+  String? get capsuleName {
+    final parts = [?flag, if (label.isNotEmpty) label];
+    return parts.isEmpty ? null : parts.join(' ');
+  }
+
   /// 订阅用 `§hide§` 标记不想让用户看到的节点。
   static bool isHidden(String tag) => tag.contains('§hide§');
 

@@ -317,6 +317,43 @@ const _validDomainStrategies = {
 const _validTunImplementations = {'mixed', 'system', 'gvisor'};
 const _validWarpDetourModes = {'proxyOverWarp', 'warpOverProxy'};
 
+// 值域判据：setter（用户输入）与 [networkPrefValidators]（备份导入）共用同一套，
+// 改一处两边同步。
+bool _isPort(int v) => v >= 1024 && v <= 65535;
+bool _isMtu(int v) => v > 0;
+bool _isUrlTestInterval(int v) => v >= 60 && v <= 3600;
+bool _isNonBlank(String v) => v.trim().isNotEmpty;
+
+bool Function(Object) _int(bool Function(int) check) =>
+    (v) => v is int && check(v);
+bool Function(Object) _choice(Set<String> valid) =>
+    (v) => v is String && valid.contains(v);
+bool Function(Object) _nonBlank() =>
+    (v) => v is String && _isNonBlank(v);
+
+/// 网络设置各偏好键的值域校验（类型检查由偏好注册表负责，这里只看值域）。
+/// 备份导入据此丢弃越界 / 非法的值、保留本机现值；规则与对应 setter 一致。
+final Map<String, bool Function(Object)> networkPrefValidators =
+    Map.unmodifiable({
+      _kMixedPort: _int(_isPort),
+      _kRegion: _choice(_validRegions),
+      _kLogLevel: _choice(_validLogLevels),
+      _kIpv6Mode: _choice(_validIpv6Modes),
+      _kRemoteDnsDomainStrategy: _choice(_validDomainStrategies),
+      _kDirectDnsDomainStrategy: _choice(_validDomainStrategies),
+      _kTunImplementation: _choice(_validTunImplementations),
+      _kMtu: _int(_isMtu),
+      _kClashApiPort: _int(_isPort),
+      _kTproxyPort: _int(_isPort),
+      _kLocalDnsPort: _int(_isPort),
+      _kTlsFragmentSize: _nonBlank(),
+      _kTlsFragmentSleep: _nonBlank(),
+      _kTlsPaddingSize: _nonBlank(),
+      _kWarpDetourMode: _choice(_validWarpDetourModes),
+      _kWarpPort: _int(_isPort),
+      _kUrlTestIntervalSeconds: _int(_isUrlTestInterval),
+    });
+
 // 以下三个读取器对「类型不符」（降级回退、手改、旧版本遗留）一律当作没存过：
 // SharedPreferences 的强类型 getter 在类型不符时会抛 TypeError，而 `_read`
 // 跑在启动路径上，抛出会让整个 App 起不来。
@@ -465,7 +502,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setMixedPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('port out of range: $port');
     }
     state = state.copyWith(mixedPort: port);
@@ -581,7 +618,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setMtu(int value) async {
-    if (value <= 0) {
+    if (!_isMtu(value)) {
       throw ArgumentError('invalid mtu: $value');
     }
     state = state.copyWith(mtu: value);
@@ -589,7 +626,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setClashApiPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('clash api port out of range: $port');
     }
     state = state.copyWith(clashApiPort: port);
@@ -597,7 +634,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setTproxyPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('tproxy port out of range: $port');
     }
     state = state.copyWith(tproxyPort: port);
@@ -605,7 +642,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setLocalDnsPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('local dns port out of range: $port');
     }
     state = state.copyWith(localDnsPort: port);
@@ -619,7 +656,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsFragmentSize(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS fragment size cannot be empty');
     }
     state = state.copyWith(tlsFragmentSize: range);
@@ -628,7 +665,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsFragmentSleep(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS fragment sleep cannot be empty');
     }
     state = state.copyWith(tlsFragmentSleep: range);
@@ -647,7 +684,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   Future<void> setTlsPaddingSize(String value) async {
     final range = value.trim();
-    if (range.isEmpty) {
+    if (!_isNonBlank(range)) {
       throw ArgumentError('TLS padding size cannot be empty');
     }
     state = state.copyWith(tlsPaddingSize: range);
@@ -688,7 +725,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setWarpPort(int port) async {
-    if (port < 1024 || port > 65535) {
+    if (!_isPort(port)) {
       throw ArgumentError('WARP port out of range: $port');
     }
     state = state.copyWith(warpPort: port);
@@ -738,7 +775,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setUrlTestIntervalSeconds(int seconds) async {
-    if (seconds < 60 || seconds > 3600) {
+    if (!_isUrlTestInterval(seconds)) {
       throw ArgumentError('url test interval out of range: $seconds');
     }
     state = state.copyWith(urlTestIntervalSeconds: seconds);

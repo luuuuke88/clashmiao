@@ -237,8 +237,14 @@ Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
   final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
       ? _kDefaultMarker
       : kRuntimeAutoGroupTag;
+  // 主选择组由内核重建，订阅里同名的旧 selector 已被丢弃：它的默认值不能代表
+  // 重建后的主组，推导不出时必须是「未知」，不能留着旧条目。
   final main = _defaultOrFirst(mainDefault, mainMembers);
-  if (main != null) result[kRuntimeMainSelectorTag] = main;
+  if (main != null) {
+    result[kRuntimeMainSelectorTag] = main;
+  } else {
+    result.remove(kRuntimeMainSelectorTag);
+  }
   return result;
 }
 

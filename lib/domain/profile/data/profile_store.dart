@@ -416,6 +416,14 @@ class ProfileStore {
     });
   }
 
+  /// 在锁内做一次**一致的异步读取**：[body] 运行期间没有任何提交 / 附属写入能
+  /// 插进来，所以它看到的列表、激活 id、配置文件、偏好是同一个时刻的。
+  /// 备份导出用它取快照。[body] 不得再调用本 Store 的 [commit] / [writeAux]
+  /// （锁不可重入，会死锁）。
+  Future<T> readConsistent<T>(Future<T> Function(ProfileListView view) body) {
+    return _lock.synchronized<T>(() => body(view()));
+  }
+
   Future<CommitResult<T>> _apply<T>(Plan<T> plan) async {
     _frozen = view();
     try {

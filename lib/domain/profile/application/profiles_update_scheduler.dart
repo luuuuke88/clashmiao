@@ -44,9 +44,11 @@ class ProfileUpdateScheduler with WidgetsBindingObserver {
     this.checkInterval = const Duration(minutes: 20),
     DateTime Function()? now,
     void Function(List<ProfileEntity> updated)? onChecked,
+    bool Function()? isPaused,
   }) : _repositoryProvider = repositoryProvider,
        _now = now ?? DateTime.now,
-       _onChecked = onChecked;
+       _onChecked = onChecked,
+       _isPaused = isPaused;
 
   final Future<ProfileRepository> Function() _repositoryProvider;
 
@@ -57,6 +59,12 @@ class ProfileUpdateScheduler with WidgetsBindingObserver {
   final Duration checkInterval;
   final DateTime Function() _now;
   final void Function(List<ProfileEntity> updated)? _onChecked;
+
+  /// 返回 true 期间整个调度暂停（不扫描、不发起新的刷新）。备份恢复正在整表
+  /// 替换订阅时用它让定时刷新让路；恢复结束后下一次触发（定时或回到前台）照常工作。
+  final bool Function()? _isPaused;
+
+  bool get _paused => _isPaused?.call() ?? false;
 
   Timer? _timer;
   bool _checking = false;
@@ -94,7 +102,7 @@ class ProfileUpdateScheduler with WidgetsBindingObserver {
   /// 并发调用会被 [_checking] 闸门去重——避免 Timer 触发时上一次检查还没
   /// 跑完（网络慢）又叠加一次。
   Future<List<ProfileEntity>> checkAndRefreshDue() async {
-    if (_checking) return const [];
+    if (_checking || _paused) return const [];
     _checking = true;
     try {
       final repo = await _repositoryProvider();
@@ -102,6 +110,7 @@ class ProfileUpdateScheduler with WidgetsBindingObserver {
       final due = repo.getAll().where((p) => isProfileDue(p, now)).toList();
       final refreshed = <ProfileEntity>[];
       for (final profile in due) {
+        if (_paused) break; // 扫描途中恢复开始了：剩下的不再发起。
         try {
           refreshed.add(await repo.update(profile.id));
         } catch (_) {

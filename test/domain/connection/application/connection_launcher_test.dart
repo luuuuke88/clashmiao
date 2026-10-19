@@ -389,15 +389,17 @@ void main() {
       expect(same.runtimeConfigPath, again.runtimeConfigPath);
     });
 
-    test('discard 删除未使用的 prep 文件与已绑定文件', () async {
+    test('discard 删除未使用的 prep 文件', () async {
       final a = await l.prepare(1);
       await l.discard(1);
       expect(File(a.runtimeConfigPath).existsSync(), isFalse);
+    });
 
+    test('discard 不删已绑定 seq 的文件：请求可能已交给协调器，它随时会读', () async {
       final b = await l.prepare(2);
       final bound = await l.bindSeq(2, b, 3);
       await l.discard(2);
-      expect(File(bound.runtimeConfigPath).existsSync(), isFalse);
+      expect(File(bound.runtimeConfigPath).existsSync(), isTrue);
     });
 
     test('清理：保留最新两份与最近受理的请求引用的文件，其余删除', () async {

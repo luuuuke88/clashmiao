@@ -4,6 +4,7 @@ import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:flutter/material.dart';
@@ -12,17 +13,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../support/fake_box_service.dart';
+import '../../../support/fake_connection_controller.dart';
 
 class _SpyBoxService extends FakeBoxService {
-  int changeConfigOptionsCalls = 0;
-  String? lastJsonOptions;
-
-  @override
-  Future<void> changeConfigOptions(String jsonOptions) async {
-    changeConfigOptionsCalls++;
-    lastJsonOptions = jsonOptions;
-  }
-
   // 其余方法在本测试里不会被触发，给最小实现避免编译错。
   @override
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
@@ -31,9 +24,11 @@ class _SpyBoxService extends FakeBoxService {
 }
 
 void main() {
-  testWidgets('点击切换到「全局」 → proxyMode 更新 + changeConfigOptions 触发', (
-    tester,
-  ) async {
+  // 迁移说明：原来这条还断言 `changeConfigOptions` 被调用——那是「先把 options
+  // 推给内核全局状态」的旧做法。现在 options 内联在每个启动请求里（见
+  // connection_launcher_test：模式变化 → options 与 revision 都变化），切换模式
+  // 只需要让控制器重新应用配置；未连接时它是无副作用的空操作。
+  testWidgets('点击切换到「全局」 → proxyMode 更新 + 通知控制器重新应用配置', (tester) async {
     SharedPreferences.setMockInitialValues({
       'locale': 'zhCn',
       'clashmiao_proxy_mode': 1, // 默认智能
@@ -44,6 +39,7 @@ void main() {
       overrides: [
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         boxServiceProvider.overrideWithValue(spy),
+        connectionControllerProvider.overrideWith(FakeConnectionController.new),
       ],
     );
     await container.read(sharedPreferencesProvider.future);
@@ -70,14 +66,18 @@ void main() {
     expect(globalLabel, findsOneWidget);
 
     await tester.tap(globalLabel);
-    // 等动画 + async changeConfigOptions
+    // 等动画 + async updateMode
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    // 状态 + spy 双重断言
+    // 状态 + 控制器调用双重断言
     expect(container.read(proxyModeProvider), 0);
-    expect(spy.changeConfigOptionsCalls, 1);
-    expect(spy.lastJsonOptions, contains('"execute-config-as-is":true'));
+    expect(
+      (container.read(connectionControllerProvider.notifier)
+              as FakeConnectionController)
+          .applyConfigCalls,
+      1,
+    );
   });
 
   for (final brightness in Brightness.values) {
@@ -93,6 +93,9 @@ void main() {
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           boxServiceProvider.overrideWithValue(_SpyBoxService()),
+          connectionControllerProvider.overrideWith(
+            FakeConnectionController.new,
+          ),
         ],
       );
       await container.read(sharedPreferencesProvider.future);

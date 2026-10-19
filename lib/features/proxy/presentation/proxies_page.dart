@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/routing/application/proxy_selection_service.dart';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
@@ -8,7 +11,6 @@ import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provid
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/proxy/application/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
-import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -311,29 +313,25 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         optimisticProxySelectionsProvider,
       )[groupTag];
       optimisticNotifier.update(groupTag, outboundTag);
-      ref
-          .read(boxServiceProvider)
-          .selectOutbound(groupTag, outboundTag)
-          .then((_) {
-            // 只有 native 真正切换成功才记为"用户手选的节点"，供下次重连重放
-            // （见 ProxySelectionStoreNotifier 注释：selector 的选中状态只活在
-            // 运行中的实例内存里，重连会用 config 的静态 default 重新起）。
-            unawaited(
-              ref
-                  .read(proxySelectionStoreProvider.notifier)
-                  .persist(groupTag, outboundTag),
-            );
-            // Toast can be annoying on fast switches, removed or keep brief
-            // AppToast.success(context, t.proxies.switchedTo(name: outboundTag));
-          })
-          .catchError((Object e) {
-            optimisticNotifier.revert(groupTag, previousSelection);
-            if (!context.mounted) return;
-            AppToast.error(
-              context,
-              t.proxies.switchToFailed(error: e.toString()),
-            );
-          });
+      // 手选流程（先写存储 → 带 expectedAttempt 调内核 → 非 stale 失败回滚存储）
+      // 在 ProxySelectionService 里，见该文件的说明。
+      final attempt = ref.read(connectionControllerProvider).attempt;
+      unawaited(
+        ref
+            .read(proxySelectionServiceProvider)
+            .select(groupTag, outboundTag, expectedAttempt: attempt)
+            .then((result) {
+              if (result is! SelectionFailed) return;
+              optimisticNotifier.revert(groupTag, previousSelection);
+              if (!context.mounted) return;
+              AppToast.error(
+                context,
+                t.proxies.switchToFailed(
+                  error: result.message.isEmpty ? result.code : result.message,
+                ),
+              );
+            }),
+      );
     } else {
       AppToast.info(context, t.proxies.connectBeforeSwitch);
     }

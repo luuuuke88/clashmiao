@@ -229,11 +229,16 @@ class ConnectionLauncher {
     }
   }
 
-  /// 意图终结且没有被受理：删除还留在磁盘上的 prep / 已绑定文件。
+  /// 意图终结：删除还没绑定 seq 的 prep 文件（没有任何人引用）。
+  ///
+  /// **已经绑定 seq 的文件不在这里删**：请求可能已经交给协调器（回执在路上，或
+  /// 协调器已受理但随后被更新的请求取代），协调器此刻可能正要读取它——删了会让
+  /// 一次本来成功的启动在读取配置时失败。它们由 [accepted] 触发的清理按「最新
+  /// 两份 + 最近受理」规则回收。
   Future<void> discard(int id) async {
     final path = _files.remove(id);
     if (path == null) return;
-    if (_accepted.contains(path)) return;
+    if (!_prepFile.hasMatch(File(path).uri.pathSegments.last)) return;
     try {
       final f = File(path);
       if (await f.exists()) await f.delete();

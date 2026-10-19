@@ -29,15 +29,29 @@ Future<void> showProfileFormDialog(
 }) {
   final isEdit = profile != null;
 
-  if (!isEdit) {
-    return showAiUiModal(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _AddProfileModal(ref: ref),
-    );
-  }
+  if (!isEdit) return _showAddProfileSheet(context, ref);
 
   return showProfileManualFormDialog(context, ref, profile: profile);
+}
+
+/// 「添加订阅」弹窗关闭时带回来的后续动作。
+enum _AddSheetResult { manualInput }
+
+/// 打开「添加订阅」弹窗；用户选「手动输入」时，弹窗**先正常退出**，再由仍然
+/// 活着的调用方页面（它自己的、稳定的 context 与 ref）打开手动表单。
+///
+/// 不能在弹窗内部「`maybePop()` 之后立刻再 push 手动表单」：`maybePop` 要等
+/// `willPop`，等它返回时路由栈已经被新 push 的表单改了，pop 就放弃了，结果两层
+/// 弹窗叠在一起，而且手动表单还拿着已销毁弹窗的 context。
+Future<void> _showAddProfileSheet(BuildContext context, WidgetRef ref) async {
+  final result = await showAiUiModal<_AddSheetResult>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => _AddProfileModal(ref: ref),
+  );
+  if (result == _AddSheetResult.manualInput && context.mounted) {
+    await showProfileManualFormDialog(context, ref);
+  }
 }
 
 class _AddProfileModal extends ConsumerStatefulWidget {
@@ -280,10 +294,10 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
     unawaited(Navigator.of(context).maybePop());
   }
 
-  void _showManualForm() {
-    unawaited(Navigator.of(context).maybePop());
-    showProfileManualFormDialog(context, widget.ref);
-  }
+  /// 选「手动输入」：只负责带着结果关闭本弹窗，手动表单由调用方在弹窗退出后
+  /// 打开（见 [_showAddProfileSheet]）。
+  void _showManualForm() =>
+      Navigator.of(context).pop(_AddSheetResult.manualInput);
 
   Future<void> _showWarpConsent() async {
     final settings = ref.read(networkSettingsProvider);

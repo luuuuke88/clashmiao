@@ -14,7 +14,8 @@ enum LatencyDisplayState {
   /// 本轮测了没结果（超时 / 失败）：「超时」。
   timeout,
 
-  /// 历史值：超过 5 分钟（或旧版本留下、不知何时测的）的数字，降低不透明度显示。
+  /// 历史值：超过 5 分钟（或旧版本留下、不知何时测的）的数字，用中性色
+  /// 弱化显示（不靠压低透明度，免得小字对比度不达标）。
   stale,
 }
 
@@ -38,21 +39,25 @@ class NodeLatency {
   String toString() => 'NodeLatency($state, $ms)';
 }
 
-/// 把「实时值 / 缓存值 / 是否在测 / 本轮是否超时」归结成一个展示状态。
+/// 把「实时值 / 缓存值 / 是否在等本轮结果 / 本轮是否超时」归结成一个展示状态。
 ///
 /// 纯函数，代理页的每一行和首页节点胶囊共用它，保证两处口径一致。
 /// 优先级自上而下：
-/// 1. 实时值有效 → 成功（缓存里同值且测量时间太久则为历史值）；
-/// 2. 正在测 → 测量中（带上缓存里的旧值）；
-/// 3. 内核给了超时哨兵、或本轮测完没结果 → 超时；
-/// 4. 缓存有值 → 成功 / 历史值（按测量时间）；
+/// 1. 该节点还在等本轮结果（[testing]）→ 测量中，保留旧值：实时值有效用
+///    实时值，否则用缓存值（**不受** [cacheIsFallback] 限制），都没有就占位；
+/// 2. 本轮测完没结果（[timedOut]）、或内核给了超时哨兵 → 超时；
+/// 3. 实时值有效 → 成功；缓存里是同一个数且测量时间未知或已超过 5 分钟 →
+///    历史值（旧版本留下的无时间缓存在确认出新结果前一直算历史值）；
+/// 4. 缓存有值且允许兜底 → 成功 / 历史值（按测量时间）；
 /// 5. 否则未测。
 ///
-/// [cacheIsFallback] 为 false 时（已连接且有真实实时分组）缓存只参与第 1 条
-/// 的「是否过期」判断，第 2、4 条不使用缓存。
+/// [testing] 要按「分组 + 节点」传：只有这个节点在当前展示的分组里还没出
+/// 本轮结果时才为真；已经出了结果的节点直接展示新值。
 ///
-/// 第 3 条排在第 4 条前面：测过一轮没结果的节点，不能再拿缓存里冻结的旧数字
-/// 顶替——那会显示一个永远不变的假数字。
+/// [cacheIsFallback] 为 false 时（已连接且有真实实时分组）缓存只参与第 1 条的
+/// 旧值保留与第 3 条的「是否过期」判断，第 4 条不使用缓存：测完之后实时值
+/// 缺席的节点，不能再拿缓存里冻结的旧数字顶替——那会显示一个永远不变的
+/// 假数字。第 2 条排在第 3、4 条前面也是同一个原因。
 NodeLatency resolveNodeLatency({
   required int liveMs,
   required int? cachedMs,
@@ -62,34 +67,30 @@ NodeLatency resolveNodeLatency({
   required DateTime now,
   bool cacheIsFallback = true,
 }) {
+  final liveOk = isMeasurableDelay(liveMs);
   final cachedOk = isMeasurableDelay(cachedMs);
-  // 缓存能不能在实时值缺席时顶上：已连接且拿到了真实的实时分组时不能——
-  // 那样某个测失败的节点会一直显示缓存里冻结的旧数字。此时缓存只用来判断
-  // 「实时值是不是很久以前测的」。
-  final fallbackOk = cachedOk && cacheIsFallback;
   bool isStale() =>
       cachedAt == null || now.difference(cachedAt) > kLatencyStaleAfter;
 
-  if (isMeasurableDelay(liveMs)) {
-    // 实时值本身就是这次连接里测到的；只有缓存里恰好是同一个数、且那条记录
-    // 已经很旧时，才说明这个数是很久以前测的。
-    final stale =
-        cachedOk && cachedMs == liveMs && cachedAt != null && isStale();
+  if (testing) {
+    return NodeLatency(
+      LatencyDisplayState.testing,
+      liveOk ? liveMs : (cachedOk ? cachedMs : null),
+    );
+  }
+  if (timedOut || liveMs > kDelayTimeoutSentinelMs) {
+    return const NodeLatency(LatencyDisplayState.timeout);
+  }
+  if (liveOk) {
+    // 实时值一般是这次连接里测到的；只有缓存里恰好是同一个数、且那条记录
+    // 很旧或根本不知道是什么时候测的，才说明这个数是很久以前的。
+    final stale = cachedOk && cachedMs == liveMs && isStale();
     return NodeLatency(
       stale ? LatencyDisplayState.stale : LatencyDisplayState.success,
       liveMs,
     );
   }
-  if (testing) {
-    return NodeLatency(
-      LatencyDisplayState.testing,
-      fallbackOk && !timedOut ? cachedMs : null,
-    );
-  }
-  if (liveMs > kDelayTimeoutSentinelMs || timedOut) {
-    return const NodeLatency(LatencyDisplayState.timeout);
-  }
-  if (fallbackOk) {
+  if (cachedOk && cacheIsFallback) {
     return NodeLatency(
       isStale() ? LatencyDisplayState.stale : LatencyDisplayState.success,
       cachedMs,

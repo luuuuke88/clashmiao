@@ -235,6 +235,48 @@ void main() {
       expect(rig.coordinator.state.timedOutNodes, isEmpty);
     });
 
+    _fake('自动开测后手动加入、随后内核报错：手动调用方同样拿到异常', (rig, async) {
+      final failure = Completer<void>();
+      rig.urlTestResult = () => failure.future;
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2)); // 自动轮次开测
+      expect(rig.urlTests, ['proxy']);
+
+      final errors = <Object>[];
+      for (var i = 0; i < 2; i++) {
+        unawaited(
+          rig.coordinator
+              .manualTest('proxy')
+              .then<void>((_) {}, onError: errors.add),
+        );
+      }
+      async.flushMicrotasks();
+      expect(rig.urlTests, ['proxy'], reason: '手动复用在途的自动轮次');
+      expect(errors, isEmpty);
+
+      failure.completeError(StateError('boom'));
+      async.flushMicrotasks();
+      expect(errors, hasLength(2), reason: '每个手动等待者都收到这一轮的异常');
+      expect(errors, everyElement(isA<StateError>()));
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
+    _fake('纯自动轮次内核报错：没有手动等待者，异常不外溢', (rig, async) {
+      rig.urlTestResult = () async => throw StateError('boom');
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      async.flushMicrotasks();
+      expect(rig.urlTests, ['proxy']);
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+    });
+
     _fake('未连接时手动测速什么都不做', (rig, async) {
       rig.groups = [
         _group({'a': 0}),
@@ -366,18 +408,113 @@ void main() {
       expect(rig.coordinator.state.timedOutNodes, {'b'});
     });
 
-    _fake('毫秒数与旧值相同的节点：到点按有效结果处理，并刷新测量时间', (rig, async) {
+    _fake('毫秒数与旧值相同的节点：无从确认出了新结果，不刷新测量时间，到点标超时', (rig, async) {
+      final measuredAt = _t0.subtract(const Duration(minutes: 1));
+      rig.cache['a'] = CachedDelay(100, measuredAt);
       rig.groups = [
         _group({'a': 100}),
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
 
+      // 分组流推来的值与开测基线相同。
+      rig.push([
+        _group({'a': 100}),
+      ]);
       rig.elapse(const Duration(seconds: 10));
-      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.recorded, isEmpty, reason: '没确认的旧值不能记成本轮结果');
+      expect(rig.cache['a'], CachedDelay(100, measuredAt));
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+    });
+
+    _fake('内核悬挂且没有任何分组事件：10 s 到点不刷新任何测量时间，全部标超时', (rig, async) {
+      final hung = Completer<void>();
+      rig.urlTestResult = () => hung.future;
+      final aAt = _t0.subtract(const Duration(minutes: 2));
+      rig.cache['a'] = CachedDelay(100, aAt);
+      rig.cache['b'] = const CachedDelay(250, null); // 旧格式历史值
+      rig.groups = [
+        _group({'a': 100, 'b': 250, 'c': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      var done = false;
+      unawaited(rig.coordinator.manualTest('proxy').then((_) => done = true));
+      expect(rig.urlTests, ['proxy']);
+
+      rig.elapse(const Duration(milliseconds: 9999));
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'a', 'b', 'c'});
+      rig.elapse(const Duration(milliseconds: 1));
+
+      expect(done, isTrue, reason: '超时收尾放行等待者，不跟着内核一起挂住');
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      expect(rig.coordinator.state.pendingNodes, isEmpty);
+      expect(rig.recorded, isEmpty);
+      expect(rig.cache['a'], CachedDelay(100, aAt), reason: '保留原测量时间');
+      expect(rig.cache['b'], const CachedDelay(250, null), reason: '历史值仍是历史值');
+      expect(rig.coordinator.state.timedOutNodes, {'a', 'b', 'c'});
+      expect(async.nonPeriodicTimerCount, 0);
+      hung.complete();
+    });
+
+    _fake('部分节点确认出结果：只刷新它们的测量时间，其余保留原时间并标超时', (rig, async) {
+      final oldAt = _t0.subtract(const Duration(minutes: 3));
+      rig.cache['a'] = CachedDelay(100, oldAt);
+      rig.cache['b'] = CachedDelay(200, oldAt);
+      rig.groups = [
+        _group({'a': 100, 'b': 200}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 140, 'b': 200}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'b'});
+
+      rig.elapse(const Duration(seconds: 10));
       final (ms, at) = rig.recorded.single;
-      expect(ms, {'a': 100});
+      expect(ms, {'a': 140});
       expect(at, _t0.add(const Duration(seconds: 12)));
+      expect(rig.cache['b'], CachedDelay(200, oldAt));
+      expect(rig.coordinator.state.timedOutNodes, {'b'});
+    });
+
+    _fake('确认是累积的：先出结果的节点不会因为后续事件变回没结果', (rig, async) {
+      rig.groups = [
+        _group({'a': 0, 'b': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 120, 'b': 0}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'b'});
+      rig.push([
+        _group({'a': 0, 'b': 300}),
+      ]);
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      // a 确认过但现在没有有效值：标超时；b 有效：写缓存。
+      expect(rig.recorded.single.$1, {'b': 300});
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+    });
+
+    _fake('超时标记之后实时值变了（出了新结果）：撤掉超时标记', (rig, async) {
+      rig.groups = [
+        _group({'a': 100}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 12));
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+
+      rig.push([
+        _group({'a': 100}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'}, reason: '值没变，标记保留');
+
+      rig.push([
+        _group({'a': 95}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
     });
 
     _fake('新一轮开始时清掉上一轮的超时标记', (rig, async) {

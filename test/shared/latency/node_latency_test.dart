@@ -90,10 +90,49 @@ void main() {
     expect(noOld.ms, isNull);
   });
 
-  test('测量中途某个节点先出结果：直接显示成功', () {
-    final r = resolve(testing: true, liveMs: 77, cachedMs: 150);
-    expect(r.state, LatencyDisplayState.success);
+  test('测量中、实时值是开测前的旧值：保留旧值，状态是测量中而不是成功', () {
+    final r = resolve(
+      testing: true,
+      liveMs: 77,
+      cachedMs: 77,
+      cachedAt: ago(const Duration(minutes: 1)),
+    );
+    expect(r.state, LatencyDisplayState.testing);
     expect(r.ms, 77);
+  });
+
+  test('同一轮里已经出了结果的节点（不再等结果）：直接显示新值', () {
+    final r = resolve(
+      liveMs: 88,
+      cachedMs: 88,
+      cachedAt: ago(const Duration(seconds: 1)),
+    );
+    expect(r.state, LatencyDisplayState.success);
+    expect(r.ms, 88);
+  });
+
+  test('旧格式无时间的缓存与实时值相同：仍是历史值，直到确认出新结果', () {
+    for (final fallback in [true, false]) {
+      final r = resolve(liveMs: 120, cachedMs: 120, cacheIsFallback: fallback);
+      expect(r.state, LatencyDisplayState.stale, reason: 'fallback=$fallback');
+      expect(r.ms, 120);
+    }
+    // 确认出新结果后缓存带上了测量时间：成功。
+    expect(
+      resolve(liveMs: 120, cachedMs: 120, cachedAt: now).state,
+      LatencyDisplayState.success,
+    );
+  });
+
+  test('本轮没确认出结果的节点：即使实时值还是旧数字也显示超时', () {
+    final r = resolve(
+      liveMs: 100,
+      cachedMs: 100,
+      cachedAt: ago(const Duration(minutes: 1)),
+      timedOut: true,
+    );
+    expect(r.state, LatencyDisplayState.timeout);
+    expect(r.ms, isNull);
   });
 
   test('本轮超时：显示超时，且不再用缓存里的旧数字顶替', () {
@@ -132,7 +171,7 @@ void main() {
       expect(r.ms, isNull);
     });
 
-    test('测量中也不带缓存旧值', () {
+    test('测量中保留缓存旧值（实时值缺席）', () {
       final r = resolve(
         testing: true,
         cachedMs: 999,
@@ -140,6 +179,17 @@ void main() {
         cacheIsFallback: false,
       );
       expect(r.state, LatencyDisplayState.testing);
+      expect(r.ms, 999);
+    });
+
+    test('测完（不再测量中）且本轮超时：不再带缓存旧值', () {
+      final r = resolve(
+        timedOut: true,
+        cachedMs: 999,
+        cachedAt: ago(const Duration(minutes: 1)),
+        cacheIsFallback: false,
+      );
+      expect(r.state, LatencyDisplayState.timeout);
       expect(r.ms, isNull);
     });
 

@@ -193,11 +193,15 @@ void main() {
         colorOf('120ms'),
         StatusColors.latency(Brightness.light, LatencyBand.fast),
       );
-      expect(colorOf('450ms').a, lessThan(1.0), reason: '历史值降低不透明度，且仍按分档上色');
+      final scheme = Theme.of(
+        tester.element(find.byType(ProxiesPage)),
+      ).colorScheme;
       expect(
-        colorOf('450ms').withValues(alpha: 1),
-        StatusColors.latency(Brightness.light, LatencyBand.medium),
+        colorOf('450ms'),
+        scheme.onSurfaceVariant,
+        reason: '历史值用不透明的中性色弱化，不压低透明度',
       );
+      expect(colorOf('450ms').a, 1.0);
       await _drain(tester);
     });
 
@@ -211,7 +215,12 @@ void main() {
           'proxy_delays_profile-1':
               '{"has-old":{"ms":210,"measuredAt":${_now.subtract(const Duration(minutes: 20)).millisecondsSinceEpoch}}}',
         },
-        preset: const LatencyTestState(testingGroups: {'proxy'}),
+        preset: const LatencyTestState(
+          testingGroups: {'proxy'},
+          pendingNodes: {
+            'proxy': {'has-old', 'no-old'},
+          },
+        ),
       );
       await tester.pumpWidget(host.widget);
       await _settle(tester);
@@ -229,13 +238,18 @@ void main() {
       expect(find.byIcon(FluentIcons.flash_24_regular), findsNothing);
     });
 
-    testWidgets('已连接测量中：已出结果的行直接显示数字，其余占位', (tester) async {
+    testWidgets('已连接测量中：已出本轮结果的行直接显示数字，其余占位', (tester) async {
       final host = await _host(
         connected: true,
         groups: [
           _group([_node('done', delay: 88), _node('pending')]),
         ],
-        preset: const LatencyTestState(testingGroups: {'proxy'}),
+        preset: const LatencyTestState(
+          testingGroups: {'proxy'},
+          pendingNodes: {
+            'proxy': {'pending'},
+          },
+        ),
       );
       await tester.pumpWidget(host.widget);
       await _settle(tester);
@@ -245,6 +259,89 @@ void main() {
         LatencyDisplayState.testing,
       ]);
       expect(find.text('88ms'), findsOneWidget);
+    });
+
+    testWidgets('真实连接状态下重测：测量中保留缓存旧值，测完没结果显示超时', (tester) async {
+      final host = await _host(
+        connected: true,
+        groups: [
+          _group([_node('a'), _node('b', delay: 100)]),
+        ],
+        prefsValues: {
+          'proxy_delays_profile-1':
+              '{"a":{"ms":150,"measuredAt":${_now.subtract(const Duration(minutes: 1)).millisecondsSinceEpoch}},'
+              '"b":{"ms":100,"measuredAt":${_now.subtract(const Duration(minutes: 1)).millisecondsSinceEpoch}}}',
+        },
+      );
+      await tester.pumpWidget(host.widget);
+      await _settle(tester);
+      // 连接后、测速前：实时值缺席的 a 不拿缓存顶替（防冻结假数字）。
+      LatencyLabel labelOf(String node) => tester.widget<LatencyLabel>(
+        find.descendant(of: _tileOf(node), matching: find.byType(LatencyLabel)),
+      );
+      expect(labelOf('a').state, LatencyDisplayState.untested);
+      expect(labelOf('b').state, LatencyDisplayState.success);
+
+      // 2 s 预热后自动开测（真实协调器，不是预设状态）。
+      await tester.pump(const Duration(seconds: 2));
+      expect(host.box.urlTests, ['proxy']);
+      expect(labelOf('a').state, LatencyDisplayState.testing);
+      expect(labelOf('a').ms, 150, reason: '测量中保留缓存里的旧值');
+      expect(labelOf('b').state, LatencyDisplayState.testing);
+      expect(labelOf('b').ms, 100, reason: '测量中保留实时旧值');
+      expect(find.text('150ms'), findsOneWidget);
+
+      // 内核一直没推来新值：10 s 到点，两个节点都没有本轮结果。
+      await tester.pump(const Duration(seconds: 10));
+      expect(labelOf('a').state, LatencyDisplayState.timeout);
+      expect(labelOf('b').state, LatencyDisplayState.timeout);
+      expect(find.text('150ms'), findsNothing, reason: '测完后不再拿缓存旧值顶替');
+      await _drain(tester);
+    });
+
+    testWidgets('分组重叠：同一节点在别的分组里的状态不覆盖主组', (tester) async {
+      Future<List<LatencyDisplayState>> statesWith(
+        LatencyTestState preset,
+      ) async {
+        final host = await _host(
+          connected: true,
+          groups: [
+            _group([_node('shared'), _node('own')]),
+            _group([_node('shared'), _node('x')], tag: 'other'),
+          ],
+          preset: preset,
+        );
+        await tester.pumpWidget(host.widget);
+        await _settle(tester);
+        return _labels(tester).map((l) => l.state).toList();
+      }
+
+      // 主组在测、另一组不在测：主组里的 shared 仍是测量中（旧实现会被
+      // 后遍历的 other 组覆盖成未测）。
+      expect(
+        await statesWith(
+          const LatencyTestState(
+            testingGroups: {'proxy'},
+            pendingNodes: {
+              'proxy': {'shared', 'own'},
+            },
+          ),
+        ),
+        [LatencyDisplayState.testing, LatencyDisplayState.testing],
+      );
+
+      // 反过来：只有 other 组在测，主组里的 shared 不是测量中。
+      expect(
+        await statesWith(
+          const LatencyTestState(
+            testingGroups: {'other'},
+            pendingNodes: {
+              'other': {'shared', 'x'},
+            },
+          ),
+        ),
+        [LatencyDisplayState.untested, LatencyDisplayState.untested],
+      );
     });
 
     testWidgets('深色主题：分档色取深色色值', (tester) async {
@@ -458,6 +555,20 @@ void main() {
       expect(find.text('🇭🇰'), findsOneWidget);
       expect(find.text('香港 01'), findsOneWidget);
       expect(find.textContaining('§'), findsNothing);
+    });
+
+    testWidgets('名字只有一面旗帜：旗帜只出现一次，名称位是中性占位', (tester) async {
+      final host = await _host(
+        connected: false,
+        groups: [
+          _group([_node('🇭🇰')]),
+        ],
+      );
+      await tester.pumpWidget(host.widget);
+      await _settle(tester);
+
+      expect(find.text('🇭🇰'), findsOneWidget);
+      expect(find.text('未知'), findsOneWidget);
     });
 
     testWidgets('台湾节点推断为 🇹🇼 而不是 🇨🇳', (tester) async {

@@ -128,15 +128,17 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       rawGroups.where(isUserVisibleGroup).toList(),
     );
 
-    // 每个节点的延迟展示状态：实时值 > 测量中 > 超时 > 缓存值（含历史值），
-    // 规则见 [resolveNodeLatency]。
+    // 每个节点的延迟展示状态：测量中（保留旧值）> 超时 > 实时值 > 缓存值
+    // （含历史值），规则见 [resolveNodeLatency]。「测量中」是分组级的：同一个
+    // 节点可能出现在几个分组里，只有它在**这个**分组的在途轮次里还没出结果
+    // 才算测量中。
     NodeLatency latencyOf(OutboundGroup group, OutboundProxy proxy) {
       final cached = cachedDelays[proxy.tag];
       return resolveNodeLatency(
         liveMs: proxy.delay,
         cachedMs: cached?.ms,
         cachedAt: cached?.measuredAt,
-        testing: latencyState.isGroupTesting(group.tag),
+        testing: latencyState.isNodePending(group.tag, proxy.tag),
         timedOut: latencyState.timedOutNodes.contains(proxy.tag),
         now: now,
         cacheIsFallback: !isLiveData,
@@ -144,14 +146,16 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     }
 
     final List<OutboundGroup> groups = [];
-    final Map<String, NodeLatency> latencies = {};
+    // 分组 tag → 节点 tag → 展示状态。按分组分开存：两个分组共享同一个节点时，
+    // 后一个分组不会覆盖前一个分组里这个节点的状态。
+    final Map<String, Map<String, NodeLatency>> latenciesByGroup = {};
     for (final group in visibleRawGroups) {
       final sortedItems = group.items
           .where((item) => !NodeDisplay.isHidden(item.tag))
           .toList();
-      for (final item in sortedItems) {
-        latencies[item.tag] = latencyOf(group, item);
-      }
+      final latencies = latenciesByGroup[group.tag] = {
+        for (final item in sortedItems) item.tag: latencyOf(group, item),
+      };
       // 分组类型优先：嵌套代理组（selector/urltest）排在普通代理节点前面，
       // 组内再按各自排序规则（名称/延迟）细排——不这样做的话，嵌套代理组
       // 和普通节点会按名称/延迟随意混排在一起。`unsorted` 保持原始顺序，
@@ -288,7 +292,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                                 proxy: proxy,
                                 isSelected: isSelected,
                                 latency:
-                                    latencies[proxy.tag] ??
+                                    latenciesByGroup[group.tag]?[proxy.tag] ??
                                     const NodeLatency(
                                       LatencyDisplayState.untested,
                                     ),
@@ -605,7 +609,7 @@ class _EmptyProxy extends ConsumerWidget {
 ///
 /// 旗帜只在左侧旗帜区出现一次：名称里开头的旗帜已被搬走（见 [NodeDisplay]），
 /// 推断不出国家时用中性地球图标，而不是随便挂一面旗。
-class _ProxyTile extends StatelessWidget {
+class _ProxyTile extends ConsumerWidget {
   final OutboundProxy proxy;
   final bool isSelected;
   final NodeLatency latency;
@@ -619,12 +623,18 @@ class _ProxyTile extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
     final primary = theme.colorScheme.primary;
     // 展示名只用于显示；选择、缓存一律用 proxy.tag。
     final display = NodeDisplay.parse(proxy.tag);
+    // 名字只有一面旗帜（或干脆为空）：旗帜已在左侧旗帜区出现一次，名称位
+    // 放一个中性占位，而不是把旗帜再写一遍。
+    final hasLabel = display.label.isNotEmpty;
+    final label = hasLabel
+        ? display.label
+        : ref.watch(translationsProvider).general.unknown;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -667,11 +677,13 @@ class _ProxyTile extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                display.label,
+                                label,
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: theme.colorScheme.onSurface,
+                                  color: hasLabel
+                                      ? theme.colorScheme.onSurface
+                                      : aiUi.secondaryTextColor,
                                   fontFamily: 'Emoji',
                                 ),
                                 maxLines: 2,

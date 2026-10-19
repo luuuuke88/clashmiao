@@ -1,6 +1,9 @@
 import 'dart:math' as math;
 
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/core/theme/app_theme.dart';
+import 'package:clashmiao/core/theme/app_theme_mode.dart';
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/latency_label.dart';
@@ -16,12 +19,7 @@ Widget _host(
   return ProviderScope(
     overrides: [translationsProvider.overrideWithValue(AppLocale.zhCn.build())],
     child: MaterialApp(
-      theme: ThemeData(
-        brightness: brightness,
-        extensions: <ThemeExtension<dynamic>>[
-          brightness == Brightness.light ? AiUiTheme.light : AiUiTheme.dark,
-        ],
-      ),
+      theme: _appTheme(brightness),
       home: Scaffold(
         body: Center(
           child: LatencyLabel(state: state, ms: ms),
@@ -30,6 +28,11 @@ Widget _host(
     ),
   );
 }
+
+/// App 实际使用的主题（不是测试里随手拼的 ThemeData），对比度要按它算。
+ThemeData _appTheme(Brightness brightness) => brightness == Brightness.light
+    ? AppTheme(AppThemeMode.light, 'Roboto').lightTheme()
+    : AppTheme(AppThemeMode.dark, 'Roboto').darkTheme();
 
 Text _text(WidgetTester tester) => tester.widget<Text>(
   find.descendant(of: find.byType(LatencyLabel), matching: find.byType(Text)),
@@ -54,16 +57,25 @@ Color _over(Color fg, Color bg) => Color.alphaBlend(fg, bg);
 
 void main() {
   group('五种延迟状态', () {
-    testWidgets('未测：占位 —，次要文字色', (tester) async {
+    testWidgets('未测：占位 —，不透明中性色', (tester) async {
       await tester.pumpWidget(_host(LatencyDisplayState.untested));
       final text = _text(tester);
       expect(text.data, '—');
-      expect(text.style!.color, AiUiTheme.light.secondaryTextColor);
+      expect(
+        text.style!.color,
+        _appTheme(Brightness.light).colorScheme.onSurfaceVariant,
+      );
+      expect(text.style!.color!.a, 1.0);
     });
 
-    testWidgets('测量中：有旧值保留旧值，无旧值是占位', (tester) async {
+    testWidgets('测量中：有旧值保留旧值（中性色，不叠 alpha），无旧值是占位', (tester) async {
       await tester.pumpWidget(_host(LatencyDisplayState.testing, ms: 150));
       expect(_text(tester).data, '150ms');
+      expect(
+        _text(tester).style!.color,
+        _appTheme(Brightness.light).colorScheme.onSurfaceVariant,
+      );
+      expect(_text(tester).style!.color!.a, 1.0);
       await tester.pumpWidget(_host(LatencyDisplayState.testing));
       expect(_text(tester).data, '—');
     });
@@ -95,12 +107,24 @@ void main() {
       expect(_text(tester).data, '超时');
     });
 
-    testWidgets('历史值：数字相同，但不透明度低于成功状态', (tester) async {
-      await tester.pumpWidget(_host(LatencyDisplayState.stale, ms: 120));
-      final text = _text(tester);
-      expect(text.data, '120ms');
-      expect(text.style!.color!.a, lessThan(1.0));
-      expect(text.style!.color!.a, kStaleLatencyOpacity);
+    testWidgets('历史值：数字相同，用中性色弱化（与成功的分档色区分），不叠 alpha', (tester) async {
+      for (final brightness in Brightness.values) {
+        await tester.pumpWidget(
+          _host(LatencyDisplayState.stale, ms: 120, brightness: brightness),
+        );
+        await tester.pumpAndSettle(); // 等 MaterialApp 的主题切换动画走完
+        final text = _text(tester);
+        expect(text.data, '120ms');
+        expect(
+          text.style!.color,
+          _appTheme(brightness).colorScheme.onSurfaceVariant,
+        );
+        expect(text.style!.color!.a, 1.0);
+        expect(
+          text.style!.color,
+          isNot(StatusColors.latency(brightness, LatencyBand.fast)),
+        );
+      }
     });
 
     testWidgets('等宽数字，且不会换行', (tester) async {
@@ -140,79 +164,90 @@ void main() {
     });
   });
 
-  group('小字对比度 ≥ 4.5:1（WCAG）', () {
-    // 浅色：纯白、页面底色、带 12% 品牌色晕染的页面底、选中行 8% 品牌底。
-    const primary = Color(0xFF6A64F8);
-    final lightSurfaces = <String, Color>{
-      '白卡片': Colors.white,
-      '页面底': const Color(0xFFF8FAFC),
-      '带晕染的页面底': _over(
-        primary.withValues(alpha: 0.12),
-        const Color(0xFFF8FAFC),
-      ),
-      '选中行（白底）': _over(primary.withValues(alpha: 0.08), Colors.white),
-      '选中行（晕染底）': _over(
-        primary.withValues(alpha: 0.08),
-        _over(primary.withValues(alpha: 0.12), const Color(0xFFF8FAFC)),
-      ),
-    };
-    final darkSurfaces = <String, Color>{
-      '纯黑页底': Colors.black,
-      '卡片': const Color(0xFF1C1C22),
-      '选中行': _over(
-        const Color(0xFF8E8AFF).withValues(alpha: 0.08),
-        const Color(0xFF1C1C22),
-      ),
-    };
+  group('小字对比度 ≥ 4.5:1（WCAG，按实际合成底色）', () {
+    // 每种状态、每个数值档位，取标签实际渲染出来的颜色（从组件里读，而不是
+    // 在测试里另算一份），压到它真实所在的底色上：
+    //   页面底 = scaffold 色 + BrandBackdrop 的品牌晕染（靛蓝、金色两团径向
+    //            渐变，按峰值透明度计；两团叠在一起是保守上界）；
+    //   代理页普通行 = 页面底 + GlassCard 的半透明卡片色；
+    //   代理页选中行 = 普通行 + 8% 品牌色 Ink；
+    //   首页节点胶囊 = 页面底 + softBackgroundColor。
+    Map<String, Color> surfaces(ThemeData theme) {
+      final light = theme.brightness == Brightness.light;
+      final ai = theme.extension<AiUiTheme>()!;
+      final base = theme.scaffoldBackgroundColor;
+      final indigo = BrandColors.indigo.withValues(alpha: light ? 0.16 : 0.22);
+      final gold = BrandColors.gold.withValues(alpha: light ? 0.14 : 0.07);
+      final pages = <String, Color>{
+        '无晕染': base,
+        '靛蓝晕染': _over(indigo, base),
+        '金色晕染': _over(gold, base),
+        '靛蓝+金色': _over(gold, _over(indigo, base)),
+        '金色+靛蓝': _over(indigo, _over(gold, base)),
+      };
+      final card = light
+          ? Colors.white.withValues(alpha: 0.72)
+          : const Color(0xFF1C1C22).withValues(alpha: 0.62);
+      final selectedTint = theme.colorScheme.primary.withValues(alpha: 0.08);
+      return {
+        for (final page in pages.entries) ...{
+          '普通行/${page.key}': _over(card, page.value),
+          '选中行/${page.key}': _over(selectedTint, _over(card, page.value)),
+          '首页胶囊/${page.key}': _over(ai.softBackgroundColor, page.value),
+        },
+      };
+    }
 
-    test('浅色主题：三档色与超时色在各种卡片底上都 ≥ 4.5', () {
-      for (final band in LatencyBand.values) {
-        final color = StatusColors.latency(Brightness.light, band);
-        for (final entry in lightSurfaces.entries) {
-          expect(
-            _contrast(color, entry.value),
-            greaterThanOrEqualTo(4.5),
-            reason: '$band on ${entry.key}',
+    final cases = <(LatencyDisplayState, int?)>[
+      (LatencyDisplayState.untested, null),
+      (LatencyDisplayState.timeout, null),
+      (LatencyDisplayState.testing, null),
+      for (final ms in [120, 500, 900]) ...[
+        (LatencyDisplayState.success, ms),
+        (LatencyDisplayState.stale, ms),
+        (LatencyDisplayState.testing, ms),
+      ],
+    ];
+
+    for (final brightness in Brightness.values) {
+      testWidgets('${brightness.name}：五种状态（含历史值、测量中旧值）在所有底色上都 ≥ 4.5', (
+        tester,
+      ) async {
+        final bgs = surfaces(_appTheme(brightness));
+        final report = <String>[];
+        for (final (state, ms) in cases) {
+          await tester.pumpWidget(_host(state, ms: ms, brightness: brightness));
+          final fg = _text(tester).style!.color!;
+          var worst = double.infinity;
+          var worstOn = '';
+          for (final bg in bgs.entries) {
+            final ratio = _contrast(_over(fg, bg.value), bg.value);
+            if (ratio < worst) {
+              worst = ratio;
+              worstOn = bg.key;
+            }
+            expect(
+              ratio,
+              greaterThanOrEqualTo(4.5),
+              reason: '$state ${ms ?? '-'}ms on ${bg.key}: $ratio',
+            );
+          }
+          report.add(
+            '$state ${ms ?? '-'}: ${worst.toStringAsFixed(2)} ($worstOn)',
           );
         }
-      }
-    });
+        // 方便在报告里引用最差值。
+        debugPrint('[contrast ${brightness.name}] ${report.join(' | ')}');
+      });
+    }
 
-    test('深色主题：三档色在卡片底上都 ≥ 4.5', () {
-      for (final band in LatencyBand.values) {
-        final color = StatusColors.latency(Brightness.dark, band);
-        for (final entry in darkSurfaces.entries) {
-          expect(
-            _contrast(color, entry.value),
-            greaterThanOrEqualTo(4.5),
-            reason: '$band on ${entry.key}',
-          );
+    test('所有状态都不叠 alpha（弱化靠中性色，不靠透明度）', () {
+      for (final brightness in Brightness.values) {
+        final theme = _appTheme(brightness);
+        expect(latencyNeutralColor(theme).a, 1.0);
+        for (final band in LatencyBand.values) {
+          expect(StatusColors.latency(brightness, band).a, 1.0);
         }
-      }
-    });
-
-    test('未测占位（次要文字色）在两套主题的卡片上也 ≥ 4.5', () {
-      final lightText = AiUiTheme.light.secondaryTextColor;
-      for (final bg in lightSurfaces.values) {
-        expect(_contrast(_over(lightText, bg), bg), greaterThanOrEqualTo(4.5));
-      }
-      final darkText = AiUiTheme.dark.secondaryTextColor;
-      for (final bg in darkSurfaces.values) {
-        expect(_contrast(_over(darkText, bg), bg), greaterThanOrEqualTo(4.5));
-      }
-    });
-
-    test('历史值（压低不透明度）仍 ≥ 3:1，保证看得清', () {
-      for (final band in LatencyBand.values) {
-        final color = StatusColors.latency(
-          Brightness.light,
-          band,
-        ).withValues(alpha: kStaleLatencyOpacity);
-        expect(
-          _contrast(_over(color, Colors.white), Colors.white),
-          greaterThanOrEqualTo(3.0),
-          reason: '$band',
-        );
       }
     });
   });

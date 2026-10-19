@@ -25,24 +25,27 @@ class NodeDisplay {
   final String? flag;
   final FlagSource flagSource;
 
-  /// 去掉 `§` 后缀、并（若有开头旗帜）去掉开头旗帜后的名称。
+  /// 去掉 `§` 后缀、首尾空白，并（若有开头旗帜）去掉开头旗帜后的名称。
+  ///
+  /// 名字只有一面旗帜时为空串：旗帜已经在 [flag] 里，由展示层在名称位放
+  /// 中性占位，而不是把同一面旗帜左右各显示一次。
   final String label;
 
   /// 解析一个原始 tag。
   ///
-  /// - 先去掉 `§` 之后的后缀（订阅里用 `§` 给节点挂内部标记，用户不该看到）；
+  /// - 先去掉 `§` 之后的后缀（订阅里用 `§` 给节点挂内部标记，用户不该看到），
+  ///   再裁掉首尾空白——检测开头旗帜和截取剩余名称用的是**同一个**规范化后的
+  ///   字符串，前导空格、制表符不会让截取位置错位、切断旗帜的代理对；
   /// - 名称**开头**的旗帜搬到 [flag]，名称里其余位置的旗帜原样保留；
   /// - 没有开头旗帜时按关键词推断；推断不出则 [flag] 为空。
   factory NodeDisplay.parse(String tag) {
-    final name = stripSuffix(tag);
+    final name = stripSuffix(tag).trim();
     final leading = _leadingFlag(name);
     if (leading != null) {
-      final rest = name.substring(leading.length).trimLeft();
-      // 整个名字就是一面旗帜：搬走后 label 会变成空行，保持原样更可读。
       return NodeDisplay(
         flag: leading,
         flagSource: FlagSource.leading,
-        label: rest.isEmpty ? name : rest,
+        label: name.substring(leading.length).trimLeft(),
       );
     }
     final inferred = _inferFlag(name);
@@ -83,8 +86,11 @@ class NodeDisplay {
 }
 
 /// 名称开头的旗帜（一对区域指示符）；没有则 `null`。
+///
+/// [name] 必须是已经规范化（裁过首尾空白）的字符串，调用方用同一个字符串按
+/// 返回值的长度截取。
 String? _leadingFlag(String name) {
-  final runes = name.trimLeft().runes.take(2).toList();
+  final runes = name.runes.take(2).toList();
   if (runes.length < 2 || !runes.every(_isRegionalIndicator)) return null;
   return String.fromCharCodes(runes);
 }

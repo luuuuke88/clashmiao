@@ -866,7 +866,9 @@ class _ConnectionInfo extends ConsumerWidget {
       liveMs: activeItem?.delay ?? 0,
       cachedMs: cachedDelay?.ms,
       cachedAt: cachedDelay?.measuredAt,
-      testing: latencyState.isTesting,
+      testing:
+          activeItem != null &&
+          latencyState.isNodePendingInAnyGroup(activeItem.tag),
       timedOut:
           activeItem != null &&
           latencyState.timedOutNodes.contains(activeItem.tag),

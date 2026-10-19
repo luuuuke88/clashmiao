@@ -114,19 +114,28 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       (_, next) => _onConnection(next),
       fireImmediately: true,
     );
-    _groupsSub = _ref.listen<AsyncValue<List<OutboundGroup>>>(
-      outboundGroupsProvider,
-      (_, next) => _onGroups(next.valueOrNull ?? const []),
+    _groupsSub = _ref.listen<AsyncValue<LiveGroups?>>(
+      liveGroupsProvider,
+      (_, next) => _onGroups(next.valueOrNull),
       fireImmediately: true,
     );
   }
 
   final Ref _ref;
   ProviderSubscription<_ConnView>? _sub;
-  ProviderSubscription<AsyncValue<List<OutboundGroup>>>? _groupsSub;
+  ProviderSubscription<AsyncValue<LiveGroups?>>? _groupsSub;
 
-  /// 本段连接里实时分组最近解析出的生效节点（null = 还没见过实时分组）。
+  /// 本段连接里（只认这个内核实例的）实时分组最近解析出的生效节点；null =
+  /// 还没见过这个实例的实时分组。
   String? _activeNode;
+
+  /// 本段连接里是否发起过探测（含已出结果的）。
+  bool _probed = false;
+
+  /// 最近一次探测发起时假定的生效节点；null = 发起时基线未知。实时分组报出的
+  /// 生效节点与它不同（含基线未知、首份分组才到），这次探测的结果就不可信：
+  /// 作废并重查（自动检测关闭时退回「点击检测」）。
+  String? _probedFor;
 
   /// 作废令牌：每次状态切换 / 新查询 +1；在途探测完成时比对，不符即丢弃。
   int _generation = 0;
@@ -160,8 +169,12 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       _session = key;
       _autoStarted = false;
       _activeNode = null;
+      _probed = false;
+      _probedFor = null;
       _dropQueuedManual();
       state = const EgressIpState(EgressIpStatus.idle);
+      // 这个实例的实时分组可能先于 connected 到达：作为基线带进来。
+      _onGroups(_ref.read(liveGroupsProvider).valueOrNull);
     }
     if (c.replayPending) return; // 统一门槛：重放确认前，自动 / 手动都不查
 
@@ -176,26 +189,31 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
     }
   }
 
-  /// 实时分组变化：生效节点变了就重新探测。第一次看到实时分组只记基线——
-  /// 连接后的那次探测已经（或即将）在重放确认之后发起。
-  void _onGroups(List<OutboundGroup> groups) {
-    if (_session == null) return;
-    if (!groups.any((g) => g.items.isNotEmpty)) return;
-    final node = resolveActiveProxy(groups)?.tag;
+  /// 实时分组变化：只认本段连接这个内核实例的分组。已发起的探测若是按另一个
+  /// 节点（或基线未知时）发起的，作废并重查——包括首份分组迟到、而探测已经在
+  /// 它之前查到了旧节点出口的情形。
+  void _onGroups(LiveGroups? live) {
+    final session = _session;
+    if (live == null || session == null) return;
+    if (live.instance.epoch != session.$1 ||
+        live.instance.attempt != session.$2) {
+      return;
+    }
+    final node = resolveActiveProxy(live.groups)?.tag;
     if (node == null) return;
-    final previous = _activeNode;
     _activeNode = node;
-    if (previous == null || previous == node) return;
     if (_replayPending) return; // 重放确认后的那次探测会看到最终节点
     if (_queuedManual != null) return;
+    if (!_probed || _probedFor == node) return;
     if (_autoCheckEnabled) {
       _autoStarted = true;
       unawaited(_run());
     } else if (state.status == EgressIpStatus.success ||
         state.status == EgressIpStatus.checking ||
         state.status == EgressIpStatus.failed) {
-      // 不自动查：旧节点的结果已经不对了，退回「点击检测」，在途的作废。
+      // 不自动查：这个结果对应的不是当前生效节点，退回「点击检测」，在途的作废。
       _generation++;
+      _probed = false;
       state = const EgressIpState(EgressIpStatus.idle);
     }
   }
@@ -223,6 +241,8 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
 
   Future<void> _run() async {
     final gen = ++_generation;
+    _probed = true;
+    _probedFor = _activeNode;
     state = const EgressIpState(EgressIpStatus.checking);
     final fetch = _ref.read(egressProbeFetchProvider);
     for (var i = 0; i < EgressProbeTiming.maxAttempts; i++) {

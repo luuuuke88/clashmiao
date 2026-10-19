@@ -21,13 +21,13 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
 import 'package:clashmiao/domain/connection/application/connection_machine.dart';
+import 'package:clashmiao/domain/connection/application/selection_replay_pipeline.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -625,50 +625,19 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     }
   }
 
-  /// 重放用户手选的节点（spec §10.7）。
-  ///
-  /// 先等激活订阅与选择存储就绪——内核快照可能先于订阅加载到达，此时存储还是
-  /// 空的，直接重放会确认一次「空重放」，出口探测随即用默认节点。就绪后再核对
-  /// 目标 `(epoch, attempt)` 仍是内核当前的，才开始重放。
-  ///
-  /// 每一项发送前都读存储里的最新值；发送后若存储里的值又变了（用户在重放期
-  /// 间改了选择），继续发最新值，直到收敛。stale（内核已换新 attempt）立即放弃
-  /// 且不确认——新 attempt 会触发自己的重放。单项失败只记日志；最后（含有失败
-  /// 项）确认重放，保证出口探测能触发。
+  /// 重放用户手选的节点（spec §10.7），经 [SelectionReplayPipeline] 统一编排：
+  /// 有界等待这个实例的实时分组 → 用运行时分组校验 → 迁移运行时不存在的分组
+  /// 记录（先写后删）→ 只重放运行时存在的分组 → 确认。每一步都核对归属，过期
+  /// 即丢弃。出口探测在确认之后才开始。
   Future<void> _replaySelections(String epoch, int attempt) async {
-    try {
-      await _ref.read(sharedPreferencesProvider.future);
-      await _ref.read(activeProfileProvider.future);
-    } catch (e) {
-      // 订阅读不出来：没有可重放的选择，照常确认，免得出口探测永远等下去。
-      debugPrint('重放手选前等待订阅就绪失败: $e');
-    }
-    if (!mounted || !_isCurrentTarget(epoch, attempt)) return;
-
-    final sent = <String, String>{};
-    for (var pass = 0; pass < 4; pass++) {
-      var sentAny = false;
-      final groups = _ref.read(proxySelectionStoreProvider).keys.toList();
-      for (final group in groups) {
-        final tag = _ref.read(proxySelectionStoreProvider)[group];
-        if (tag == null || sent[group] == tag) continue;
-        sentAny = true;
-        sent[group] = tag;
-        final outcome = await _port.selectOutbound(
-          group,
-          tag,
-          expectedAttempt: attempt,
-        );
-        if (!mounted) return;
-        if (outcome is SelectStale) return;
-        if (outcome is SelectFailed) {
-          debugPrint('重放手选代理失败 [$group -> $tag]: ${outcome.code}');
-        }
-      }
-      if (!sentAny) break;
-    }
-    if (!mounted || !_isCurrentTarget(epoch, attempt)) return;
-    await _port.acknowledgeReplay(attempt);
+    if (!mounted) return;
+    final outcome = await SelectionReplayPipeline(
+      ref: _ref,
+      port: _port,
+      isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
+      groupsWait: _ref.read(replayGroupsWaitProvider),
+    ).run(epoch, attempt);
+    debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
   }
 
   /// 状态机当前接受的内核快照是否仍是 [epoch] / [attempt] 且已启动。

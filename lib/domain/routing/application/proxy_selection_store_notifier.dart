@@ -46,6 +46,10 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   final ProfileStore? _store;
   final String? _profileId;
 
+  /// 这个 notifier 所属的订阅 id 与代际（写入只会落到它们名下）。
+  String? get profileId => _profileId;
+  String? get profileInc => _profileInc;
+
   /// 创建时订阅的代际。写入经 `ProfileStore.writeAux` 校验：订阅已删除或
   /// 同 id 换代（删除后恢复）后，旧 notifier 的写入会被丢弃，不会复活孤儿键。
   final String? _profileInc;
@@ -70,16 +74,18 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
 
   /// 记住 [groupTag] 这个代理组最近一次被手动选中的 [outboundTag]，
   /// 覆盖同一 group 之前的选择。
-  Future<void> persist(String groupTag, String outboundTag) async {
+  ///
+  /// 返回是否确认落盘（值本来就相同也算）；订阅已删除 / 换代、写入失败为 false。
+  Future<bool> persist(String groupTag, String outboundTag) async {
     final profileId = _profileId;
     final store = _store;
-    if (profileId == null || profileId.isEmpty) return;
-    if (store == null) return;
-    if (state[groupTag] == outboundTag) return;
+    if (profileId == null || profileId.isEmpty) return false;
+    if (store == null) return false;
+    if (state[groupTag] == outboundTag) return true;
 
     final next = {...state, groupTag: outboundTag};
     state = Map.unmodifiable(next);
-    await store.writeAux(
+    return store.writeAux(
       profileId,
       _profileInc ?? '',
       _key(profileId),
@@ -91,12 +97,12 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   ///
   /// 手选流程先写入新值再调用内核；内核拒绝时用它回滚，保持「失败不持久化」。
   /// 与 [persist] 同走 `ProfileStore.writeAux`：订阅已删除或换代时回滚同样被丢弃。
-  Future<void> restore(String groupTag, String? previous) async {
+  Future<bool> restore(String groupTag, String? previous) async {
     final profileId = _profileId;
     final store = _store;
-    if (profileId == null || profileId.isEmpty) return;
-    if (store == null) return;
-    if (state[groupTag] == previous) return;
+    if (profileId == null || profileId.isEmpty) return false;
+    if (store == null) return false;
+    if (state[groupTag] == previous) return true;
     final next = {...state};
     if (previous == null) {
       next.remove(groupTag);
@@ -104,7 +110,7 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
       next[groupTag] = previous;
     }
     state = Map.unmodifiable(next);
-    await store.writeAux(
+    return store.writeAux(
       profileId,
       _profileInc ?? '',
       _key(profileId),
@@ -112,16 +118,17 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
     );
   }
 
-  /// 删除这些分组的记录（运行时不存在的分组，见 `planSelectionMigration`）。
-  Future<void> removeGroups(Set<String> groupTags) async {
+  /// 删除这些分组的记录（迁移完成的来源，见 `planSelectionMigration`）。返回是否
+  /// 确认落盘（本来就没有也算）。
+  Future<bool> removeGroups(Set<String> groupTags) async {
     final profileId = _profileId;
     final store = _store;
-    if (profileId == null || profileId.isEmpty) return;
-    if (store == null) return;
-    if (!groupTags.any(state.containsKey)) return;
+    if (profileId == null || profileId.isEmpty) return false;
+    if (store == null) return false;
+    if (!groupTags.any(state.containsKey)) return true;
     final next = {...state}..removeWhere((key, _) => groupTags.contains(key));
     state = Map.unmodifiable(next);
-    await store.writeAux(
+    return store.writeAux(
       profileId,
       _profileInc ?? '',
       _key(profileId),

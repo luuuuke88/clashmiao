@@ -47,21 +47,31 @@ ConnectionSnapshot _conn({
 );
 
 /// 实时分组流的替身（测试里手动推送）。
-final _groupsBus = <StreamController<List<OutboundGroup>>>[];
+final _groupsBus = <StreamController<LiveGroups?>>[];
 
 /// 推一份实时分组：主选择器选中 [node]。
-void _pushActive(FakeAsync fa, String node) {
-  _groupsBus.last.add([
-    OutboundGroup(
-      tag: 'select',
-      type: 'selector',
-      selected: node,
-      items: const [
-        OutboundProxy(tag: 'hk', type: 'vless'),
-        OutboundProxy(tag: 'sg', type: 'vless'),
+void _pushActive(
+  FakeAsync fa,
+  String node, {
+  String epoch = 'e1',
+  int attempt = 1,
+}) {
+  _groupsBus.last.add(
+    LiveGroups(
+      (epoch: epoch, attempt: attempt),
+      [
+        OutboundGroup(
+          tag: 'select',
+          type: 'selector',
+          selected: node,
+          items: const [
+            OutboundProxy(tag: 'hk', type: 'vless'),
+            OutboundProxy(tag: 'sg', type: 'vless'),
+          ],
+        ),
       ],
     ),
-  ]);
+  );
   fa.flushMicrotasks();
 }
 
@@ -85,13 +95,13 @@ void _sim(
     final prefs = await SharedPreferences.getInstance();
     fakeAsync((fa) {
       final script = _Script(fa, results);
-      final groups = StreamController<List<OutboundGroup>>.broadcast();
+      final groups = StreamController<LiveGroups?>.broadcast();
       _groupsBus.add(groups);
       final c = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           egressProbeFetchProvider.overrideWithValue(script.call),
-          outboundGroupsProvider.overrideWith((_) => groups.stream),
+          liveGroupsProvider.overrideWith((_) => groups.stream),
           connectionControllerProvider.overrideWith(
             (ref) => FakeConnectionController(
               ref,
@@ -425,36 +435,62 @@ void main() {
   // 探测之后内核的生效节点还会变（自动选择组按测速结果换节点、手选、旧手选迁
   // 移到运行时分组），卡片必须跟着重新探测。
   group('生效节点变化重新探测', () {
+    const sg = EgressIpResult(ip: '198.51.100.9', countryCode: 'SG');
+
+    _sim('基线已知：节点没变不重查；同一实例内节点变了 → 重新探测，卡片显示新出口', (fa, c, ctl, s) {
+      _pushActive(fa, 'hk'); // 实例的分组先于 connected 到达：作为基线
+      ctl.set(_conn());
+      fa.flushMicrotasks();
+      expect(s.callTimes, hasLength(1));
+      expect(_state(c).result, _ok);
+
+      _pushActive(fa, 'hk');
+      expect(s.callTimes, hasLength(1), reason: '与探测时假定的节点一致');
+
+      _pushActive(fa, 'sg');
+      expect(s.callTimes, hasLength(2));
+      expect(_state(c).result, sg);
+    }, results: [() => _ok, () => sg]);
+
+    // 评审 Important 3：重放确认后查询先得到 HK，自动选择随后切到 SG，首份分组
+    // 此时才送达——旧实现把首份分组只当基线，HK 永远不会作废。
     _sim(
-      '同一 attempt 内生效节点变化 → 重新探测，卡片显示新出口',
+      '首份分组迟到（探测发起时基线未知）：与假定不符 → 作废重查；旧查询迟到的结果被丢弃',
       (fa, c, ctl, s) {
         ctl.set(_conn());
         fa.flushMicrotasks();
-        expect(s.callTimes, hasLength(1));
-        expect(_state(c).result, _ok);
+        expect(s.callTimes, hasLength(1), reason: '基线未知时照常发起探测');
+        expect(_state(c).status, EgressIpStatus.checking);
 
-        _pushActive(fa, 'hk'); // 第一次看到实时分组：只记基线
-        expect(s.callTimes, hasLength(1));
+        _pushActive(fa, 'sg'); // 首份分组迟到
+        expect(s.callTimes, hasLength(2), reason: '基线未知时发起的探测要重新确认');
+        expect(_state(c).result, sg);
 
-        _pushActive(fa, 'hk'); // 没变：不查
-        expect(s.callTimes, hasLength(1));
+        _oldQuery.complete(_ok); // 旧查询（HK）这时才回来
+        fa.flushMicrotasks();
+        expect(_state(c).result, sg, reason: '迟到的旧结果必须丢弃');
 
-        _pushActive(fa, 'sg'); // 变了：重新查
-        expect(s.callTimes, hasLength(2));
-        expect(_state(c).status, EgressIpStatus.success);
-        expect(
-          _state(c).result,
-          const EgressIpResult(ip: '198.51.100.9', countryCode: 'SG'),
-        );
+        _pushActive(fa, 'sg');
+        expect(s.callTimes, hasLength(2), reason: '已按 SG 确认过，不再重查');
       },
       results: [
-        () => _ok,
-        () => const EgressIpResult(ip: '198.51.100.9', countryCode: 'SG'),
+        () => (_oldQuery = Completer<EgressIpResult>()).future,
+        () => sg,
       ],
     );
 
+    _sim('首份分组在旧结果出来之后才到：同样作废重查', (fa, c, ctl, s) {
+      ctl.set(_conn());
+      fa.flushMicrotasks();
+      expect(_state(c).result, _ok);
+
+      _pushActive(fa, 'sg');
+      expect(s.callTimes, hasLength(2));
+      expect(_state(c).result, sg);
+    }, results: [() => _ok, () => sg]);
+
     _sim(
-      '自动检测关闭：生效节点变化后旧结果作废，卡片回到「点击检测」',
+      '自动检测关闭：基线未知时的手动结果在首份分组到达后作废，卡片回到「点击检测」，不自己查',
       (fa, c, ctl, s) {
         ctl.set(_conn());
         fa.flushMicrotasks();
@@ -462,12 +498,31 @@ void main() {
         fa.flushMicrotasks();
         expect(_state(c).status, EgressIpStatus.success);
 
-        _pushActive(fa, 'hk');
         _pushActive(fa, 'sg');
         expect(s.callTimes, hasLength(1), reason: '自动检测关闭时不自己查');
-        expect(_state(c).status, EgressIpStatus.idle, reason: '旧节点的出口不能继续挂着');
+        expect(_state(c).status, EgressIpStatus.idle);
       },
       results: [() => _ok],
+      autoCheck: false,
+    );
+
+    _sim(
+      '自动检测关闭 + 在途手动查询：首份分组迟到 → 在途的作废，迟到结果不落到卡片上',
+      (fa, c, ctl, s) {
+        ctl.set(_conn());
+        fa.flushMicrotasks();
+        unawaited(c.read(egressIpProbeProvider.notifier).checkNow());
+        fa.flushMicrotasks();
+        expect(_state(c).status, EgressIpStatus.checking);
+
+        _pushActive(fa, 'sg');
+        expect(_state(c).status, EgressIpStatus.idle);
+        _oldQuery.complete(_ok);
+        fa.flushMicrotasks();
+        expect(_state(c).status, EgressIpStatus.idle);
+        expect(s.callTimes, hasLength(1));
+      },
+      results: [() => (_oldQuery = Completer<EgressIpResult>()).future],
       autoCheck: false,
     );
 
@@ -481,20 +536,27 @@ void main() {
       ctl.set(_conn(replayPending: false));
       fa.flushMicrotasks();
       expect(s.callTimes, hasLength(1));
+      _pushActive(fa, 'sg');
+      expect(s.callTimes, hasLength(1), reason: '探测时基线已是 SG');
     }, results: [() => _ok]);
 
-    _sim('新的 attempt：基线重置，第一次看到的分组不触发探测', (fa, c, ctl, s) {
+    _sim('只认本段连接这个实例的分组：上一个实例的分组不影响新 attempt', (fa, c, ctl, s) {
+      _pushActive(fa, 'hk');
       ctl.set(_conn());
       fa.flushMicrotasks();
-      _pushActive(fa, 'hk');
       ctl.set(_conn(attempt: 2));
       fa.flushMicrotasks();
       expect(s.callTimes, hasLength(2), reason: '新 attempt 本身探测一次');
-      _pushActive(fa, 'sg');
-      expect(s.callTimes, hasLength(2), reason: '新 attempt 的第一份分组只是基线');
+      _pushActive(fa, 'sg', attempt: 1); // 旧实例迟到的分组
+      expect(s.callTimes, hasLength(2));
+      _pushActive(fa, 'sg', attempt: 2); // 新实例的首份分组：基线未知时的探测要重新确认
+      expect(s.callTimes, hasLength(3));
     }, results: [() => _ok]);
   });
 }
+
+/// 用 Completer 控制的「旧查询」：测试决定它什么时候、带什么结果回来。
+late Completer<EgressIpResult> _oldQuery;
 
 const _stale = EgressIpResult(ip: '192.0.2.1', countryCode: 'CN');
 const _fresh = EgressIpResult(ip: '198.51.100.2', countryCode: 'US');

@@ -96,43 +96,77 @@ List<OutboundGroup> applyStoredSelections(
   ];
 }
 
-/// 存储里的手选与运行时分组对不上时的处理计划，见 [planSelectionMigration]。
-typedef SelectionMigration = ({Map<String, String> adopt, Set<String> drop});
+/// 手选存储与运行时分组对不上时的迁移计划，见 [planSelectionMigration]。
+class SelectionMigration {
+  const SelectionMigration({
+    this.adopt = const {},
+    this.superseded = const {},
+    this.orphaned = const {},
+  });
 
-/// 手选存储里有、运行中内核却没有的分组记录怎么处理。
+  static const none = SelectionMigration();
+
+  /// 来源记录（运行时不存在的组）→ 迁往的运行时组与节点。先写目标、确认落盘
+  /// 后才删来源。
+  final Map<String, ({String target, String node})> adopt;
+
+  /// 来源记录 → 它的目标组。目标组已经（或将要由 [adopt]）有记录：目标确认
+  /// 落盘后删掉来源。
+  final Map<String, String> superseded;
+
+  /// 迁不过去（节点不在运行时主组里 / 运行时没有可迁的选择器）的来源：保留，
+  /// 不删、不重放——留给之后的订阅刷新或下一次启动。
+  final Set<String> orphaned;
+
+  bool get isEmpty => adopt.isEmpty && superseded.isEmpty && orphaned.isEmpty;
+}
+
+/// 手选存储里有、运行中内核却没有的分组记录怎么迁移。
 ///
 /// 运行时配置由内核重建分组（订阅自带的 selector 被丢掉），旧版本却按配置文件
-/// 里的分组 tag（例如 `proxy`）记下了手选——这些记录每次重放都只会换来
-/// 「selector not found」，用户在界面上看到的选择从未真正生效。处理方式：
-/// - `drop`：所有不在 [live] 里的记录（运行时没有这个组，留着只会继续失败）；
-/// - `adopt`：若运行时主组是选择器、存储里还没有它的记录、且旧记录的节点就在
-///   主组里，把这个节点迁到主组上（它就是用户当初在主列表里点的那个节点）。
-///
-/// [live] 为空（还没拿到实时分组）时什么都不做——没有运行时的事实就不判断。
+/// 里的分组 tag（例如 `proxy`）记下了手选——这些记录对运行时毫无意义，重放
+/// 它们只会换来「selector not found」。[runtimeTags] 是运行时真实存在的分组
+/// tag，[primary] 是运行时主组（用户在主列表里点的就是它）：
+/// - 主组是选择器、存储里还没有它的记录、且来源记录的节点在主组里 → `adopt`
+///   （每个目标只采纳一个来源）；
+/// - 主组已有记录（或已被采纳） → `superseded`；
+/// - 其余 → `orphaned`（保留）。
 SelectionMigration planSelectionMigration(
   Map<String, String> stored,
-  List<OutboundGroup> live,
+  Set<String> runtimeTags,
+  OutboundGroup? primary,
 ) {
-  final liveTags = {
-    for (final g in live)
-      if (g.items.isNotEmpty) g.tag,
-  };
-  if (liveTags.isEmpty) return (adopt: const {}, drop: const {});
-  final stale = stored.keys.where((k) => !liveTags.contains(k)).toSet();
-  if (stale.isEmpty) return (adopt: const {}, drop: const {});
+  if (runtimeTags.isEmpty) return SelectionMigration.none;
+  final stale = stored.keys.where((k) => !runtimeTags.contains(k)).toList()
+    ..sort();
+  if (stale.isEmpty) return SelectionMigration.none;
 
-  final primary = primaryVisibleGroup(live);
-  final adopt = <String, String>{};
   final primaryIsSelector =
-      primary != null && normalizeGroupType(primary.type) == 'selector';
-  if (primaryIsSelector && !stored.containsKey(primary.tag)) {
-    for (final key in stale) {
-      final node = stored[key]!;
-      if (primary.items.any((item) => item.tag == node)) {
-        adopt[primary.tag] = node;
-        break;
-      }
+      primary != null &&
+      runtimeTags.contains(primary.tag) &&
+      normalizeGroupType(primary.type) == 'selector';
+  final adopt = <String, ({String target, String node})>{};
+  final superseded = <String, String>{};
+  final orphaned = <String>{};
+  for (final source in stale) {
+    if (!primaryIsSelector) {
+      orphaned.add(source);
+      continue;
+    }
+    final target = primary.tag;
+    final node = stored[source]!;
+    if (stored.containsKey(target) ||
+        adopt.values.any((a) => a.target == target)) {
+      superseded[source] = target;
+    } else if (primary.items.any((item) => item.tag == node)) {
+      adopt[source] = (target: target, node: node);
+    } else {
+      orphaned.add(source);
     }
   }
-  return (adopt: adopt, drop: stale);
+  return SelectionMigration(
+    adopt: adopt,
+    superseded: superseded,
+    orphaned: orphaned,
+  );
 }

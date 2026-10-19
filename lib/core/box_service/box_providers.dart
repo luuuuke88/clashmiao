@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/core/box_service/model/box_stats.dart';
@@ -69,14 +71,58 @@ final boxStatsProvider = StreamProvider<BoxStats>((ref) {
   return service.watchStats();
 });
 
-/// 代理分组 — 仅在已连接时才订阅 command client
+/// 正在运行的内核实例：`(epoch, attempt)`，仅内核快照为 started 时非空。
+///
+/// 取自权威内核快照（不是兼容的 status 流）：分组订阅按它重建，于是每份实时
+/// 分组都能归属到产生它的那个内核实例。
+typedef KernelInstance = ({String epoch, int attempt});
+
+final runningKernelInstanceProvider = StreamProvider<KernelInstance?>((ref) {
+  final port = ref.watch(kernelPortProvider);
+  return port
+      .watch()
+      .map<KernelInstance?>(
+        (s) => s.status == KernelStatus.started
+            ? (epoch: s.epoch, attempt: s.attempt)
+            : null,
+      )
+      .distinct();
+});
+
+/// 代理分组 — 仅在内核实例运行时订阅 command client；每个新实例重新订阅
+/// （重新连接 command server，拿到的第一份就是新实例的分组）。
 final outboundGroupsProvider = StreamProvider<List<OutboundGroup>>((ref) {
-  final status = ref.watch(boxStatusProvider);
-  if (status.valueOrNull is! BoxStarted) {
-    return Stream.value([]);
-  }
+  final instance = ref.watch(runningKernelInstanceProvider).valueOrNull;
+  if (instance == null) return Stream.value([]);
   final service = ref.read(boxServiceProvider);
   return service.watchGroups();
+});
+
+/// 归属到某个内核实例的一份实时分组（只含至少有一个节点的分组列表）。
+@immutable
+class LiveGroups {
+  const LiveGroups(this.instance, this.groups);
+
+  final KernelInstance instance;
+  final List<OutboundGroup> groups;
+
+  /// 运行时真实存在的分组 tag。
+  Set<String> get tags => {
+    for (final g in groups)
+      if (g.items.isNotEmpty) g.tag,
+  };
+}
+
+/// 当前内核实例的实时分组（带实例归属）；实例没在运行、或还没收到非空分组时为
+/// `null`。手选校验 / 重放与出口探测按实例归属判断「这份分组是不是这次启动的」。
+final liveGroupsProvider = StreamProvider<LiveGroups?>((ref) {
+  final instance = ref.watch(runningKernelInstanceProvider).valueOrNull;
+  if (instance == null) return Stream.value(null);
+  final service = ref.read(boxServiceProvider);
+  return service
+      .watchGroups()
+      .where((groups) => groups.any((g) => g.items.isNotEmpty))
+      .map((groups) => LiveGroups(instance, groups));
 });
 
 /// 桌面端 libcore 加载失败、整个 App 实际是个空壳时为 true。

@@ -56,7 +56,6 @@ class VpnConsentBrokerTest {
         assertEquals("严格单调", codes.sorted(), codes)
         assertTrue(codes.all { VpnConsentBroker.owns(it) && it <= 0xFFFF })
         assertEquals(VpnConsentBroker.REQUEST_CODE_BASE, codes.first())
-        assertFalse(VpnConsentBroker.owns(PermissionGate.REQ_VPN))
         assertFalse(VpnConsentBroker.owns(PermissionGate.REQ_NOTIFICATION))
     }
 

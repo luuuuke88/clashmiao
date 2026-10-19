@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/latency/latency_rules.dart';
+import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -757,11 +759,12 @@ void main() {
     const node = '香港 01 | 一个相当长的节点名称用来换行';
     const next = 'Singapore 02';
 
-    for (final (width, scale) in [(320.0, 2.0), (390.0, 1.0)]) {
+    for (final (width, scale) in [(320.0, 2.0), (360.0, 1.0)]) {
       for (final direction in TextDirection.values) {
         testWidgets(
           '${width.toInt()} dp、$scale×、${direction.name.toUpperCase()}：'
-          '占位 → 长数字 → 超时 → 再次测速保留旧值 → 成功，行高 / 名称 / 下一行位置不变',
+          '占位 → 四位 / 五位实时值 → 五位历史缓存 → 超时 → 再次测速保留旧值 → 成功，'
+          '行高 / 名称 / 下一行位置不变',
           (tester) async {
             tester.view.physicalSize = Size(width, 900);
             tester.view.devicePixelRatio = 1;
@@ -792,32 +795,89 @@ void main() {
                 host.container.read(latencyTestCoordinatorProvider.notifier)
                     as _PresetCoordinator;
 
-            Future<void> step(int delay, LatencyTestState state) async {
+            final cache = host.container.read(proxyDelayCacheProvider.notifier);
+            final longAgo = _now.subtract(const Duration(hours: 1));
+
+            /// [staleCachedMs] 不为空时，先把它写成一条很久以前测的缓存，再让
+            /// 实时值缺席、本轮未确认：显示的就是这条历史缓存。
+            Future<void> step(
+              int delay,
+              LatencyTestState state, {
+              int? staleCachedMs,
+            }) async {
+              if (staleCachedMs != null) {
+                cache.recordMeasured({node: staleCachedMs}, at: longAgo);
+              }
               coordinator.set(state);
               live.add(groupsWith(delay));
               await _settle(tester);
             }
 
+            const unconfirmed = LatencyTestState(unconfirmedNodes: {node});
             final steps =
-                <(String, int, LatencyTestState, LatencyDisplayState, String)>[
+                <
+                  (
+                    String,
+                    int,
+                    LatencyTestState,
+                    int?,
+                    LatencyDisplayState,
+                    String,
+                  )
+                >[
                   (
                     '占位',
                     0,
                     const LatencyTestState(),
+                    null,
                     LatencyDisplayState.untested,
                     '—',
                   ),
                   (
-                    '长数字',
+                    '四位实时值',
                     9999,
                     const LatencyTestState(),
+                    null,
                     LatencyDisplayState.success,
                     '9999ms',
+                  ),
+                  (
+                    '五位实时值 10000',
+                    10000,
+                    const LatencyTestState(),
+                    null,
+                    LatencyDisplayState.success,
+                    '10000ms',
+                  ),
+                  (
+                    '五位实时值 65000（有效上限）',
+                    kDelayTimeoutSentinelMs,
+                    const LatencyTestState(),
+                    null,
+                    LatencyDisplayState.success,
+                    '65000ms',
+                  ),
+                  (
+                    '五位历史缓存 10000',
+                    0,
+                    unconfirmed,
+                    10000,
+                    LatencyDisplayState.stale,
+                    '10000ms',
+                  ),
+                  (
+                    '五位历史缓存 65000',
+                    0,
+                    unconfirmed,
+                    kDelayTimeoutSentinelMs,
+                    LatencyDisplayState.stale,
+                    '65000ms',
                   ),
                   (
                     '超时',
                     0,
                     const LatencyTestState(timedOutNodes: {node}),
+                    null,
                     LatencyDisplayState.timeout,
                     '超时',
                   ),
@@ -830,6 +890,7 @@ void main() {
                         'proxy': {node},
                       },
                     ),
+                    null,
                     LatencyDisplayState.testing,
                     '9999ms',
                   ),
@@ -837,6 +898,7 @@ void main() {
                     '成功',
                     120,
                     const LatencyTestState(),
+                    null,
                     LatencyDisplayState.success,
                     '120ms',
                   ),
@@ -845,8 +907,8 @@ void main() {
             Rect? tile0;
             Rect? name0;
             double? next0;
-            for (final (label, delay, state, expected, text) in steps) {
-              await step(delay, state);
+            for (final (label, delay, state, stale, expected, text) in steps) {
+              await step(delay, state, staleCachedMs: stale);
               expect(tester.takeException(), isNull, reason: '$label：不应溢出');
               final shown = _labels(tester).first;
               expect(shown.state, expected, reason: '$label：状态要真的切到');

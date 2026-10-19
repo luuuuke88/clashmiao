@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:clashmiao/core/latency/latency_rules.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
@@ -146,13 +147,25 @@ void main() {
       handle.dispose();
     });
 
+    test('布局预算的数值取有效延迟上限，跟着 latency_rules 走', () {
+      expect(LatencyLabel.budgetMs, kDelayTimeoutSentinelMs);
+      expect(isMeasurableDelay(LatencyLabel.budgetMs), isTrue);
+    });
+
     testWidgets('布局预算：不小于任一状态的实际宽度，并按样式 / 缩放 / 语言缓存', (tester) async {
       await tester.pumpWidget(_host(LatencyDisplayState.untested));
       final context = tester.element(find.byType(LatencyLabel));
       for (final locale in AppLocale.values) {
         final t = locale.build();
         final budget = LatencyLabel.budget(context, t);
-        for (final text in ['—', '9999ms', '120ms', t.proxies.delayTimeout]) {
+        for (final text in [
+          '—',
+          '120ms',
+          '9999ms',
+          '10000ms',
+          '${kDelayTimeoutSentinelMs}ms',
+          t.proxies.delayTimeout,
+        ]) {
           final painter = TextPainter(
             text: TextSpan(
               text: text,

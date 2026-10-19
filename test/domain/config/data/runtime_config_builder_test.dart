@@ -93,6 +93,34 @@ void main() {
       expect(inbounds.any((i) => i['type'] == 'socks'), isTrue);
     });
 
+    // 真机验收 BUG-3：切到「仅线路」后协调器换成纯代理 Service，但运行时配置里
+    // 仍带着 tun inbound，内核启动失败（openTun called on a non-VPN service）。
+    test('按服务模式：不保留 tun 时剥掉 tun，保留时留下（mixed 始终剥）', () async {
+      final base = await _writeProfile(tmp, {
+        'outbounds': [
+          {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+        ],
+        'inbounds': [
+          {'type': 'tun', 'tag': 'tun-in'},
+          {'type': 'mixed', 'tag': 'mixed-in', 'listen_port': 2080},
+        ],
+      });
+
+      Future<List<Map<dynamic, dynamic>>> inbounds(bool keepTun) async {
+        final out = await RuntimeConfigBuilder().build(
+          baseProfile: base,
+          workingDir: tmp,
+          keepTunInbound: keepTun,
+        );
+        final cfg =
+            jsonDecode(await out.readAsString()) as Map<String, dynamic>;
+        return (cfg['inbounds'] as List<dynamic>).cast<Map<dynamic, dynamic>>();
+      }
+
+      expect((await inbounds(false)).map((i) => i['type']), isEmpty);
+      expect((await inbounds(true)).map((i) => i['type']), ['tun']);
+    });
+
     test('输出文件名固定 runtime-config.json', () async {
       final base = await _writeProfile(tmp, {
         'outbounds': [

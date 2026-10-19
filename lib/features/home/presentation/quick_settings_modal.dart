@@ -1,8 +1,8 @@
 import 'package:clashmiao/core/theme/motion.dart';
-import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/config/presentation/config_options_page.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -10,29 +10,12 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-enum _QuickServiceMode { proxy, systemProxy, tun }
-
-/// 桌面端不给 TUN 档，理由见 `config_options_page.dart` 里同名函数
-/// `_serviceModeChoices` 的文档（没有 wintun 驱动、没有网络扩展权限，
-/// 选了必定失败）。两处必须保持一致，否则用户能从快捷设置绕过这条限制。
-List<_QuickServiceMode> get _quickServiceModeChoices {
-  if (Platform.isAndroid || Platform.isIOS) {
-    return const [_QuickServiceMode.proxy, _QuickServiceMode.tun];
-  }
-  return const [_QuickServiceMode.proxy, _QuickServiceMode.systemProxy];
-}
-
-_QuickServiceMode _quickServiceModeOf(NetworkSettings settings) {
-  if (settings.enableTun) return _QuickServiceMode.tun;
-  if (settings.setSystemProxy) return _QuickServiceMode.systemProxy;
-  return _QuickServiceMode.proxy;
-}
-
-String _quickServiceModeLabel(TranslationsEn t, _QuickServiceMode mode) {
+// 档位、选中态与写入都走 service_mode.dart 的唯一口径（与配置选项页一致）。
+String _quickServiceModeLabel(TranslationsEn t, ServiceMode mode) {
   return switch (mode) {
-    _QuickServiceMode.proxy => t.config.shortServiceModes.proxy,
-    _QuickServiceMode.systemProxy => t.config.shortServiceModes.systemProxy,
-    _QuickServiceMode.tun => t.config.shortServiceModes.tun,
+    ServiceMode.proxyOnly => t.config.shortServiceModes.proxy,
+    ServiceMode.systemProxy => t.config.shortServiceModes.systemProxy,
+    ServiceMode.vpn => t.config.shortServiceModes.tun,
   };
 }
 
@@ -71,20 +54,8 @@ class QuickSettingsModal extends ConsumerWidget {
     );
   }
 
-  Future<void> _changeServiceMode(WidgetRef ref, _QuickServiceMode mode) async {
-    final notifier = ref.read(networkSettingsProvider.notifier);
-    switch (mode) {
-      case _QuickServiceMode.proxy:
-        await notifier.setEnableTun(false);
-        await notifier.setSystemProxy(false);
-      case _QuickServiceMode.systemProxy:
-        await notifier.setEnableTun(false);
-        await notifier.setSystemProxy(true);
-      case _QuickServiceMode.tun:
-        await notifier.setSystemProxy(false);
-        await notifier.setEnableTun(true);
-    }
-  }
+  Future<void> _changeServiceMode(WidgetRef ref, ServiceMode mode) =>
+      applyServiceMode(ref.read(networkSettingsProvider.notifier), mode);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -93,7 +64,7 @@ class QuickSettingsModal extends ConsumerWidget {
     final scheme = theme.colorScheme;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final settings = ref.watch(networkSettingsProvider);
-    final selectedMode = _quickServiceModeOf(settings);
+    final selectedMode = serviceModeOf(settings);
 
     return AiUiModalWrapper(
       routeProvidesSurface: true,
@@ -134,7 +105,7 @@ class QuickSettingsModal extends ConsumerWidget {
                 border: Border.all(color: theme.aiUi.borderColor),
               ),
               child: Row(
-                children: _quickServiceModeChoices.map((mode) {
+                children: serviceModeChoices().map((mode) {
                   final isSelected = selectedMode == mode;
                   return Expanded(
                     child: Semantics(

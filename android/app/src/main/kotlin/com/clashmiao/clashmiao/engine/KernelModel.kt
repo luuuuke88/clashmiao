@@ -48,7 +48,28 @@ data class LaunchSpec(
     val optionsJson: String,
     val profileName: String,
     val configRevision: Long,
-)
+) {
+    /**
+     * 这份请求要求的 Service 形态：由请求自带的 options 里的 `enable-tun` 决定。
+     *
+     * 形态是意图的一部分，必须跟着请求走（进 revision、随 spec 一起持久化给磁贴 / 开机
+     * 冷启动用），而不是另读一个旁路偏好：旧实现读 `service-mode` 偏好，而 Dart 从不写它，
+     * 连接中切「仅线路 ↔ VPN」时协调器看到的形态与 revision 都没变，原样无操作。
+     * 两者也必须一致：PlainService 拿到 `enable-tun=true` 的配置会去要一个它给不了的 tun。
+     *
+     * 字段缺失或解析失败按 VPN（旧版本的 options 移动端一律 `enable-tun=true`）。
+     */
+    fun serviceType(): ServiceType {
+        val enableTun = try {
+            val o = com.google.gson.JsonParser.parseString(optionsJson)
+            val v = if (o.isJsonObject) o.asJsonObject.get("enable-tun") else null
+            if (v != null && v.isJsonPrimitive && v.asJsonPrimitive.isBoolean) v.asBoolean else true
+        } catch (_: Exception) {
+            true
+        }
+        return if (enableTun) ServiceType.Vpn else ServiceType.Proxy
+    }
+}
 
 data class KernelFailure(
     val code: FailureCode,

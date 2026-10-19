@@ -34,12 +34,16 @@ class RuntimeConfigBuilder {
   /// [remoteDnsAddress] 会覆盖 profile 里 `dns.servers[tag=remote]` 的 address。
   /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）
   /// 无法跟随 NetworkSettings 变更，所以每次 connect 都在这里现拼。
+  ///
+  /// [keepTunInbound] 为 null 时按平台默认（桌面剥、移动端留）；调用方按服务模式
+  /// 传入（见 `runtimeKeepsTunInbound`）。
   Future<File> build({
     required File baseProfile,
     required Directory workingDir,
     String? remoteDnsAddress,
     AdvancedConfig? advancedConfig,
     String outputFileName = _runtimeFileName,
+    bool? keepTunInbound,
   }) async {
     final raw = await baseProfile.readAsString();
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
@@ -51,9 +55,10 @@ class RuntimeConfigBuilder {
     //
     // tun inbound：
     //   - 桌面端剥 —— 用户进程没 root 建不了 tun，service 会 "operation not permitted"。
-    //   - Android 不能剥 —— Settings.needVPNService() 靠扫 profile 里的 tun inbound 决定
-    //     要不要起 VpnService。剥了直接走 NORMAL mode（无 TUN，无系统级路由）。
-    _stripConflictingInbounds(cfg, stripTun: _isDesktop);
+    //   - 移动端 VPN 模式留（tun 就是流量入口）；
+    //   - Android「仅线路」剥 —— 纯代理 Service 不是 VpnService，配置里留着 tun 内核
+    //     启动就失败（openTun called on a non-VPN service）。
+    _stripConflictingInbounds(cfg, stripTun: !(keepTunInbound ?? !_isDesktop));
 
     final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
         ? advancedConfig!.remoteDnsOverride!

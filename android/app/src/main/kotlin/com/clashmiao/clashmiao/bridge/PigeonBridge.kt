@@ -12,7 +12,11 @@ import com.clashmiao.clashmiao.core.Prefs
 import com.clashmiao.clashmiao.engine.KernelHost
 import com.clashmiao.clashmiao.pigeon.BoxHostApi
 import com.clashmiao.clashmiao.pigeon.ConfigOptions
+import com.clashmiao.clashmiao.pigeon.DesiredRequestMsg
+import com.clashmiao.clashmiao.pigeon.FlutterError
 import com.clashmiao.clashmiao.pigeon.InstalledApp
+import com.clashmiao.clashmiao.pigeon.KernelSnapshotMsg
+import com.clashmiao.clashmiao.pigeon.ReceiptMsg
 import com.clashmiao.clashmiao.pigeon.SelectOutboundRequest
 import com.clashmiao.clashmiao.pigeon.StartRequest
 import com.clashmiao.clashmiao.pigeon.ValidateConfigRequest
@@ -171,6 +175,22 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
                 },
             )
         }
+    }
+
+    // === 连接生命周期协议：B1 最小桩，B2 由 KernelCoordinator 真正实现 ==========
+
+    override fun getSnapshot(callback: (Result<KernelSnapshotMsg>) -> Unit) = unimplemented(callback)
+
+    override fun request(
+        req: DesiredRequestMsg,
+        callback: (Result<ReceiptMsg>) -> Unit,
+    ) = unimplemented(callback)
+
+    override fun acknowledgeReplay(attempt: Long, callback: (Result<Unit>) -> Unit) =
+        unimplemented(callback)
+
+    private fun <T> unimplemented(callback: (Result<T>) -> Unit) {
+        callback(Result.failure(FlutterError("unimplemented", "kernel coordinator not implemented yet", null)))
     }
 
     override fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit) {

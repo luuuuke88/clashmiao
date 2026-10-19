@@ -212,34 +212,39 @@ void main() {
     },
   );
 
-  test(
-    'StringList 编码格式：Kotlin 解码器能解开插件当前实际写入的格式（JSON 列表）',
-    () {
-      // shared_preferences_android 2.3+ 写入 `<前缀>!<JSON 数组>`（见插件的
-      // JSON_LIST_PREFIX），而不是旧的 `<前缀><base64(Java 序列化)>`。Kotlin 解码器
-      // 必须认得带 `!` 的 JSON 格式，否则分应用代理名单永远读成空。
-      final handlesJson =
-          prefs.contains('JSON_LIST') ||
-          RegExp(
-            r'startsWith\("\$\{?FLUTTER_LIST_MAGIC\}?!"\)',
-          ).hasMatch(prefs) ||
-          prefs.contains('"!"');
-      expect(
-        handlesJson,
-        isTrue,
-        reason: 'Prefs.AppFilter.decodeFlutterList 只解 Java 序列化格式',
-      );
-    },
-    skip:
-        '已知缺口（android/** 归子项目 B）：Kotlin 的 Prefs.AppFilter 只解 Java 序列化格式，'
-        '而当前锁定的 shared_preferences_android 写入 JSON 格式（前缀后带 "!"），'
-        '分应用代理名单在 Android 上会被读成空。B 修复后取消 skip。',
-  );
+  test('StringList 编码格式：Kotlin 解码器认得插件当前实际写入的格式（前缀 + "!" + JSON 列表）', () {
+    // shared_preferences_android 2.3+ 写入 `<前缀>!<JSON 数组>`（插件的
+    // JSON_LIST_PREFIX），而不是旧的 `<前缀><base64(Java 序列化)>`。Kotlin 解码器
+    // 必须认得带 `!` 的 JSON 格式，否则分应用代理名单永远读成空。两种格式的实际
+    // 解码由 Kotlin 侧 PrefsListDecoderTest 在 JVM 上覆盖。
+    final kotlinMarker = RegExp(
+      r'private const val JSON_LIST_MARKER = "([^"]+)"',
+    ).firstMatch(prefs)?.group(1);
+    expect(
+      kotlinMarker,
+      '!',
+      reason: 'Prefs.AppFilter 里找不到 JSON 格式标记，或标记不是 "!"',
+    );
+    expect(
+      prefs,
+      contains('if (payload.startsWith(JSON_LIST_MARKER))'),
+      reason: 'decodeFlutterList 必须按标记分流到 JSON 解码',
+    );
+
+    // 插件那边：JSON_LIST_PREFIX 就是 LIST_PREFIX 加同一个标记。
+    final pluginJsonPrefix = _installedPluginLine('const val JSON_LIST_PREFIX');
+    expect(pluginJsonPrefix, contains('"\$LIST_PREFIX$kotlinMarker"'));
+  });
 }
 
 /// 当前依赖解析到的 shared_preferences_android 的 Kotlin 插件源码里，
 /// 声明 `LIST_PREFIX` 的那一行。
-String _installedPluginListPrefixSource() {
+String _installedPluginListPrefixSource() =>
+    _installedPluginLine('const val LIST_PREFIX');
+
+/// 当前依赖解析到的 shared_preferences_android 的 Kotlin 插件源码里，第一行
+/// 包含 [needle] 的那一行。
+String _installedPluginLine(String needle) {
   final config =
       jsonDecode(File('.dart_tool/package_config.json').readAsStringSync())
           as Map<String, dynamic>;
@@ -251,7 +256,5 @@ String _installedPluginListPrefixSource() {
     '${root.path}/android/src/main/kotlin/io/flutter/plugins/sharedpreferences/SharedPreferencesPlugin.kt',
   );
   expect(plugin.existsSync(), isTrue, reason: '找不到插件源码 ${plugin.path}');
-  return plugin.readAsLinesSync().firstWhere(
-    (l) => l.contains('const val LIST_PREFIX'),
-  );
+  return plugin.readAsLinesSync().firstWhere((l) => l.contains(needle));
 }

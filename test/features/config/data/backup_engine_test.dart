@@ -806,6 +806,79 @@ void main() {
       expect(await h.state(via: h.restartedStore()), before);
     });
 
+    test('回退留下 .undo，启动清理还原它时也一直失败：恢复 failed、标记与线索保留；'
+        '故障消失后重试成功；再重启仍精确一致', () async {
+      final before = await prepare();
+      // ── 回滚：「只删配置」的 `.undo → .del` 改名与删除都失败，b 的 .undo 留在磁盘上 ──
+      final rollbackEngine = hookedEngine(
+        deleteFile: (_) async => throw const FileSystemException('busy'),
+        renameFile: (f, to) async => to.endsWith('.del')
+            ? throw const FileSystemException('busy')
+            : f.rename(to),
+      );
+      failImportOnce();
+      await expectLater(
+        rollbackEngine.restore(rollbackEngine.prepare(_backup())),
+        notRolledBack(),
+      );
+      h.prefs.failWhen = null;
+      bool resurrectingUndo() => h.allProfileFiles().keys.any(
+        (n) => n.startsWith('b.json.') && n.endsWith('.undo'),
+      );
+      expect(
+        resurrectingUndo(),
+        isTrue,
+        reason: '前提：b 在列表里、b.json 缺失、留着 b 的 .undo',
+      );
+      expect(File(h.store.configFilePath('b')).existsSync(), isFalse);
+
+      // ── ① 每次重启，启动清理自己的 `.undo` 还原都失败：绝不能宣布恢复完成 ──
+      var restoreRenameFails = true;
+      final store = ProfileStore(
+        prefs: h.real,
+        configDir: h.tmp,
+        renameFile: (f, to) async =>
+            restoreRenameFails &&
+                f.path.endsWith('.undo') &&
+                to.endsWith('.json')
+            ? throw const FileSystemException('busy')
+            : f.rename(to),
+      );
+      final engine = BackupEngine(
+        store: store,
+        prefs: h.real,
+        backupsDir: h.backupsDir,
+      );
+      for (var attempt = 0; attempt < 2; attempt++) {
+        expect(await engine.recoverInterrupted(), RecoveryOutcome.failed);
+        expect(h.real.containsKey(_markerKey), isTrue, reason: '标记保留');
+        expect(engine.hasRecoveryClue, isTrue, reason: '恢复线索保留');
+        expect(resurrectingUndo(), isTrue);
+      }
+
+      // ── ② 故障消失，同一进程里重试：清理把 .undo 还原，精确还原再把它删掉 ──
+      restoreRenameFails = false;
+      expect(await engine.recoverInterrupted(), RecoveryOutcome.recovered);
+      expect(h.real.containsKey(_markerKey), isFalse);
+      expect(engine.hasRecoveryClue, isFalse);
+      expect(h.strayFiles(), isEmpty);
+      expect(await h.state(via: h.restartedStore()), before);
+
+      // ── ③ 再重启：启动清理什么都不剩、不复活任何文件，状态仍与导入前一致 ──
+      final again = h.restartedStore();
+      expect((await again.cleanupResidue()).isComplete, isTrue);
+      expect(File(h.store.configFilePath('b')).existsSync(), isFalse);
+      expect(await h.state(via: h.restartedStore()), before);
+      expect(
+        await BackupEngine(
+          store: again,
+          prefs: h.real,
+          backupsDir: h.backupsDir,
+        ).recoverInterrupted(),
+        RecoveryOutcome.none,
+      );
+    });
+
     test('对照：收尾全部成功时照常报告 rolledBack、清标记', () async {
       final before = await prepare();
       final engine = hookedEngine();

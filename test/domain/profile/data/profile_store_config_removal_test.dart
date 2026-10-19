@@ -83,15 +83,15 @@ void main() {
     expect(r.incompleteCleanup.single, endsWith('.del'));
     expect(formal(store).existsSync(), isFalse);
     expect(residue().single, endsWith('.del'));
-    expect(await store.pendingConfigDeletions(), hasLength(1));
+    expect(await store.unsettledResidue(), hasLength(1));
 
     // 重启：全新 Store（没有故障）。订阅仍在列表里，但残留是 .del——只能删完。
     final restarted = makeStore();
     expect(restarted.exists('b'), isTrue);
-    await restarted.cleanupResidue();
+    expect((await restarted.cleanupResidue()).isComplete, isTrue);
     expect(formal(restarted).existsSync(), isFalse, reason: '不能被还原');
     expect(residue(), isEmpty);
-    expect(await restarted.pendingConfigDeletions(), isEmpty);
+    expect(await restarted.unsettledResidue(), isEmpty);
   });
 
   test('重启清理时删除仍然失败：残留保留且被报告为待处理，之后恢复正常再删完', () async {
@@ -104,13 +104,14 @@ void main() {
     final stillFailing = makeStore(
       deleteFile: (_) async => throw const FileSystemException('busy'),
     );
-    await stillFailing.cleanupResidue();
-    expect(await stillFailing.pendingConfigDeletions(), hasLength(1));
+    final report = await stillFailing.cleanupResidue();
+    expect(report.unprocessed.single, endsWith('.del'), reason: '失败必须报告，不能吞掉');
+    expect(await stillFailing.unsettledResidue(), hasLength(1));
     expect(formal(stillFailing).existsSync(), isFalse);
 
     final healthy = makeStore();
-    await healthy.cleanupResidue();
-    expect(await healthy.pendingConfigDeletions(), isEmpty);
+    expect((await healthy.cleanupResidue()).isComplete, isTrue);
+    expect(await healthy.unsettledResidue(), isEmpty);
     expect(formal(healthy).existsSync(), isFalse);
   });
 
@@ -156,5 +157,92 @@ void main() {
     await makeStore().cleanupResidue();
     expect(formal(store).readAsStringSync(), '{"outbounds":[]}');
     expect(residue(), isEmpty);
+  });
+
+  group('启动清理不吞失败：报告里恰好是处理后仍在磁盘上的残留', () {
+    /// 残留种类 → 在 b（在列表里、带配置）的基础上种下它。
+    final kinds = <String, void Function(String dir)>{
+      '.staging（含衍生物）': (dir) {
+        File(p.join(dir, 'b.cafe.staging')).writeAsStringSync('x');
+        File(p.join(dir, 'b.cafe.staging.next')).writeAsStringSync('x');
+      },
+      '.undo（替换残留，正式文件在 → 删）': (dir) {
+        File(p.join(dir, 'b.json.cafe.undo')).writeAsStringSync('old');
+      },
+      '.undo（正式文件缺失、订阅在列表 → 还原）': (dir) {
+        File(p.join(dir, 'b.json')).renameSync(p.join(dir, 'b.json.cafe.undo'));
+      },
+      '.del': (dir) {
+        File(p.join(dir, 'b.json.cafe.del')).writeAsStringSync('gone');
+      },
+    };
+
+    /// 故障点：改名成 `.del`、删除、`.undo` 还原成正式文件、删除「成功」但文件还在。
+    ProfileStore storeWith(String fault) => makeStore(
+      deleteFile: (f) async {
+        if (fault == 'delete') throw FileSystemException('注入', f.path);
+        if (fault == 'silent-delete') return;
+        await f.delete();
+      },
+      renameFile: (f, to) async {
+        final restore = f.path.endsWith('.undo') && to.endsWith('.json');
+        if ((fault == 'rename' && to.endsWith('.del')) ||
+            (fault == 'restore-rename' && restore)) {
+          throw FileSystemException('注入', f.path);
+        }
+        return f.rename(to);
+      },
+    );
+
+    for (final kind in kinds.entries) {
+      for (final fault in const [
+        'none',
+        'rename',
+        'delete',
+        'restore-rename',
+        'silent-delete',
+      ]) {
+        test('${kind.key} × $fault', () async {
+          await seedB(makeStore());
+          final dir = p.join(tmp.path, 'profiles');
+          kind.value(dir);
+
+          final report = await storeWith(fault).cleanupResidue();
+          final left = residue()..sort();
+          expect(
+            [for (final u in report.unprocessed) p.basename(u)]..sort(),
+            left,
+            reason: '没处理掉的残留必须一个不落地报告出来',
+          );
+          expect(report.isComplete, left.isEmpty);
+          expect(
+            [
+              for (final u in await makeStore().unsettledResidue())
+                p.basename(u),
+            ]..sort(),
+            [
+              for (final n in left)
+                if (n.endsWith('.undo') || n.endsWith('.del')) n,
+            ],
+          );
+          if (fault == 'none') expect(left, isEmpty);
+
+          // 故障消失后再清一次：收敛，且 b 的配置仍是原样（不被删、不被复活成别的）。
+          expect((await makeStore().cleanupResidue()).isComplete, isTrue);
+          expect(residue(), isEmpty);
+          expect(formal(makeStore()).readAsStringSync(), '{"outbounds":[]}');
+        });
+      }
+    }
+
+    test('运行中清理（includeStaging: false）不碰暂存文件，也不把它们算作未处理', () async {
+      await seedB(makeStore());
+      final dir = p.join(tmp.path, 'profiles');
+      File(p.join(dir, 'b.cafe.staging')).writeAsStringSync('in-flight');
+      File(p.join(dir, 'b.json.cafe.del')).writeAsStringSync('gone');
+      final report = await makeStore().cleanupResidue(includeStaging: false);
+      expect(report.isComplete, isTrue);
+      expect(residue(), ['b.cafe.staging']);
+    });
   });
 }

@@ -1,5 +1,4 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:in_app_review/in_app_review.dart';
@@ -12,7 +11,7 @@ const _storeReviewRequestedPrefKey = 'clashmiao_store_review_requested';
 /// 背景：`in_app_review` 包的 [InAppReview] 是私有构造的单例
 /// (`InAppReview._()`)，没法在测试里用假实现替换/子类化——这层封装把
 /// "判断是否已经弹过 + 调用平台评分弹窗"包成可以被 Riverpod 覆盖的服务，
-/// [ConnectionController] 每次真正"进入" [BoxStarted]（跟触觉反馈同一个
+/// `ConnectionController` 每次真正"进入" `BoxStarted`（跟触觉反馈同一个
 /// 触发点）都调用一次 [maybeRequestReview]，具体"只弹一次"的持久化保护
 /// 完全在这个类内部完成——调用方不需要、也不应该自己去重复判断。
 class StoreReviewService {

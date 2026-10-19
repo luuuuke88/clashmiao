@@ -559,21 +559,31 @@ class _SettingsTile extends StatelessWidget {
   final Widget trailing;
   final VoidCallback? onTap;
 
+  /// trailing 自己就是可操作控件（开关）时为 true：行上的 InkWell 不再生成
+  /// 自己的点击语义，整行合并后只剩开关那一个操作，不会出现两个可点节点。
+  final bool trailingOwnsAction;
+
   const _SettingsTile({
     required this.icon,
     required this.label,
     this.subtitle,
     required this.trailing,
     this.onTap,
+    this.trailingOwnsAction = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final secondary = Theme.of(context).aiUi.secondaryTextColor;
     final labelColumn = subtitle == null
-        ? Text(
-            label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        // 上下各 4 dp：开关行的行高由 48 dp 的开关撑起（4+48+4=56），文字
+        // 换行时仍有留白。
+        ? Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
           )
         : Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -591,24 +601,29 @@ class _SettingsTile extends StatelessWidget {
             ],
           );
 
-    return InkWell(
-      onTap: onTap,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: kSettingsRowMinHeight),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: subtitle == null ? 8 : 12,
-          ),
-          child: Row(
-            children: [
-              // 图标不染色：设置页不再是彩虹，绿/橙/红留给状态。
-              Icon(icon, size: 20, color: secondary),
-              const SizedBox(width: 16),
-              Expanded(child: labelColumn),
-              const SizedBox(width: 8),
-              trailing,
-            ],
+    // MergeSemantics：整行是一个语义节点（标题 + 状态/当前值 + 单一操作），
+    // 读屏不会把图标、标题、开关拆成几个各自可点的节点。
+    return MergeSemantics(
+      child: InkWell(
+        onTap: onTap,
+        excludeFromSemantics: trailingOwnsAction,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kSettingsRowMinHeight),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: subtitle == null ? 4 : 12,
+            ),
+            child: Row(
+              children: [
+                // 图标不染色：设置页不再是彩虹，绿/橙/红留给状态。
+                ExcludeSemantics(child: Icon(icon, size: 20, color: secondary)),
+                const SizedBox(width: 16),
+                Expanded(child: labelColumn),
+                const SizedBox(width: 8),
+                trailing,
+              ],
+            ),
           ),
         ),
       ),
@@ -634,12 +649,9 @@ class _SwitchSettingsTile extends StatelessWidget {
     return _SettingsTile(
       icon: icon,
       label: label,
-      // shrinkWrap：开关自身不撑到 48 dp 高——整行本来就是点击区且至少 56 dp。
-      trailing: Switch(
-        value: value,
-        onChanged: onChanged,
-        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      ),
+      // 开关保持 Material 默认的 48 dp 点击目标，不 shrinkWrap。
+      trailing: Switch(value: value, onChanged: onChanged),
+      trailingOwnsAction: true,
       onTap: () => onChanged(!value),
     );
   }

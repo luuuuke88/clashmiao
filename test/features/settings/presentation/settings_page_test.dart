@@ -10,6 +10,7 @@ import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -232,6 +233,76 @@ void main() {
           .map((i) => i.color)
           .toSet();
       expect(colors, hasLength(1), reason: '设置页图标颜色应收敛为一个中性色');
+    });
+
+    // 开关行：整行一个语义节点（标题 + 开关状态 + 单一操作），开关自身仍
+    // 保持 48 dp 点击目标。曾经 shrinkWrap 把开关缩到 40 dp，且 InkWell 与
+    // Switch 各自带一个可点节点。
+    testWidgets('开关行合并成单一语义节点，开关点击目标不小于 48 dp', (tester) async {
+      final handle = tester.ensureSemantics();
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      // 数「带点击操作的语义节点」。被合并进父节点的子节点只是父节点数据的
+      // 一部分（mergedIntoParent），不另计——读屏看到的是合并后的那一个。
+      int tapNodes(SemanticsNode node) {
+        if (node.isMergedIntoParent) return 0;
+        var count = node.getSemanticsData().hasAction(SemanticsAction.tap)
+            ? 1
+            : 0;
+        node.visitChildren((child) {
+          count += tapNodes(child);
+          return true;
+        });
+        return count;
+      }
+
+      // 标题 + 开关状态 + 点击操作在同一个节点上
+      final analytics = tester.getSemantics(find.byType(AnalyticsToggleTile));
+      expect(
+        analytics,
+        isSemantics(
+          label: '启用分析',
+          hasToggledState: true,
+          isToggled: false,
+          hasTapAction: true,
+        ),
+      );
+      expect(tapNodes(analytics), 1, reason: '整行只应有一个可点节点');
+
+      // 设置页自己的开关行（触觉反馈）同理。
+      final haptic = tester.getSemantics(
+        find.ancestor(
+          of: find.text('触觉反馈'),
+          matching: find.byType(MergeSemantics),
+        ),
+      );
+      expect(
+        haptic,
+        isSemantics(label: '触觉反馈', hasToggledState: true, hasTapAction: true),
+      );
+      expect(tapNodes(haptic), 1);
+
+      // 开关控件本身没被缩小。
+      for (final size
+          in tester
+              .widgetList(find.byType(Switch))
+              .map((w) => tester.getSize(find.byWidget(w)))) {
+        expect(size.height, greaterThanOrEqualTo(kMinInteractiveDimension));
+      }
+      handle.dispose();
+    });
+
+    testWidgets('整页通过 Android 点按目标与标签无障碍规范', (tester) async {
+      final handle = tester.ensureSemantics();
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      handle.dispose();
     });
 
     for (final scale in [1.3, 2.0]) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 /// 动效 token：只用于**普通反馈、开关切换、容器过渡**。
 ///
@@ -35,10 +36,29 @@ abstract final class Motion {
   static Duration duration(BuildContext context, Duration token) =>
       reduced(context) ? Duration.zero : token;
 
+  /// 给 [AnimatedSize] 这类**在布局期间驱动控制器**的动画用：减少动画时取 1 µs 而
+  /// 不是 0。时长为 0 时控制器会在 `performLayout` 里同步通知监听者，触发
+  /// 「RenderObject 在布局中被自己标脏」的断言；1 µs 在下一个 tick 就走完，
+  /// 视觉上等同于立即完成。
+  static Duration layoutDuration(BuildContext context, Duration token) =>
+      reduced(context) ? const Duration(microseconds: 1) : token;
+
   /// 取延迟：减少动画时清除。
   static Duration delay(BuildContext context, Duration delay) =>
       reduced(context) ? Duration.zero : delay;
 
   /// 循环动画（无限旋转之类）是否应当启动：减少动画时应显示静态状态。
   static bool loops(BuildContext context) => !reduced(context);
+}
+
+/// flutter_animate 的统一入口：用它代替 `.animate()`。
+///
+/// 系统开了「减少动画」时直接把时间轴放在终点（`value: 1`、不自动播放）：
+/// 所有 `fadeIn` / `slide` 的 duration 与 delay 都被跳过，内容立刻呈现终态；
+/// 运行中途打开「减少动画」，`value` 变化会让控制器立刻跳到终点并停止。
+extension MotionAnimate on Widget {
+  Animate animateWithMotion(BuildContext context) {
+    final reduced = Motion.reduced(context);
+    return animate(autoPlay: !reduced, value: reduced ? 1 : null);
+  }
 }

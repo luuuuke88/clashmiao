@@ -87,7 +87,10 @@ void main() {
         // 每项在一个场景里恰好一次；页头自己的溢出、任何其它溢出、已知项的
         // 第二次出现，都会原样交给框架让测试失败。
         final expected = <KnownOverflow>[
-          if (scale == 2.0) ...[connectionButtonOverflow, modeSelectorOverflow],
+          if (scale == 2.0) ...[
+            connectionButtonOverflow.at(28),
+            modeSelectorOverflow.at(22),
+          ],
         ];
         final seen = await runAllowingKnownOverflows(expected, () async {
           await tester.pumpWidget(host);

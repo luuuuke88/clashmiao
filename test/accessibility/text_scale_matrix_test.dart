@@ -49,13 +49,17 @@ const _profile = ProfileEntity(
 
 const _scales = [1.3, 2.0];
 
-/// 首页「有订阅」场景下连接区的已知溢出，按 (缩放, 方向) 逐场景列出。
+/// 首页「有订阅」场景下连接区的已知溢出，按 (缩放, 方向/语言) 逐场景列出，
+/// 每项带该场景在 320 dp 宽下**实测的溢出量基线**（容差见 [KnownOverflow]）。
 /// 来自对连接区现状的实测；连接区重写后整张表应当清空。
 final _homeKnownOverflows = <(double, TextDirection), List<KnownOverflow>>{
-  (1.3, TextDirection.ltr): [connectionButtonOverflow],
-  (1.3, TextDirection.rtl): [modeSelectorOverflow],
-  (2.0, TextDirection.ltr): [connectionButtonOverflow, modeSelectorOverflow],
-  (2.0, TextDirection.rtl): [modeSelectorOverflow],
+  (1.3, TextDirection.ltr): [connectionButtonOverflow.at(5.5)],
+  (1.3, TextDirection.rtl): [modeSelectorOverflow.at(135)],
+  (2.0, TextDirection.ltr): [
+    connectionButtonOverflow.at(28),
+    modeSelectorOverflow.at(22),
+  ],
+  (2.0, TextDirection.rtl): [modeSelectorOverflow.at(308)],
 };
 
 /// (名称, 语言, 方向)：LTR 用简中，RTL 用阿拉伯语（真实的 RTL 文案与长度）。

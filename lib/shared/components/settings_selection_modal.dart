@@ -68,7 +68,7 @@ class SettingsSelectionModal<T> extends StatelessWidget {
                         Navigator.of(context).pop(item);
                       },
                     )
-                    .animate()
+                    .animateWithMotion(context)
                     .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
                     .slideX(
                       begin: 0.1,

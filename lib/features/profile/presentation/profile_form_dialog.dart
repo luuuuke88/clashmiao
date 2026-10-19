@@ -64,7 +64,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: AnimatedSize(
-          duration: Motion.duration(context, Motion.medium),
+          duration: Motion.layoutDuration(context, Motion.medium),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final buttonWidth =
@@ -99,7 +99,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                           ],
                         ),
                       )
-                      .animate()
+                      .animateWithMotion(context)
                       .fadeIn(duration: 300.ms, delay: 200.ms)
                       .slideX(
                         begin: 0.1,
@@ -203,7 +203,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 250.ms)
                               .slideX(
                                 begin: 0.1,
@@ -245,7 +245,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 300.ms)
                               .slideX(
                                 begin: 0.1,
@@ -402,7 +402,7 @@ Future<void> showProfileManualFormDialog(
                       ],
                     ),
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 150.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 150.ms),
               _SectionHeader(title: t.profile.details.basicInfo),

@@ -8,7 +8,8 @@ class KnownOverflow {
     required this.name,
     required this.creatorPrefix,
     required this.side,
-    required this.maxAmount,
+    required this.baseline,
+    this.tolerance,
   });
 
   final String name;
@@ -19,12 +20,29 @@ class KnownOverflow {
   /// 框架报告的溢出边：`right` / `bottom` ……
   final String side;
 
-  /// 合理溢出量的上限（逻辑像素）；超过说明布局变了、不再是同一个已知问题。
-  final double maxAmount;
+  /// 本场景（缩放 × 语言 × 视口）下实测的溢出量基线（逻辑像素）。
+  final double baseline;
+
+  /// 允许偏离基线的容差；默认取 1 px 与基线 2% 中较大者。溢出量**变大或变小**
+  /// 超出范围都不再是同一个已知问题（变大是回归，变小说明有人动了布局，应当
+  /// 回来更新基线）。
+  final double? tolerance;
+
+  double get _tolerance =>
+      tolerance ?? (baseline * 0.02 < 1 ? 1 : baseline * 0.02);
+
+  /// 同一个已知位置、换成另一场景的基线。
+  KnownOverflow at(double baseline, {double? tolerance}) => KnownOverflow(
+    name: name,
+    creatorPrefix: creatorPrefix,
+    side: side,
+    baseline: baseline,
+    tolerance: tolerance,
+  );
 
   bool matches(OverflowReport report) {
     if (report.side != side) return false;
-    if (report.amount <= 0 || report.amount > maxAmount) return false;
+    if ((report.amount - baseline).abs() > _tolerance) return false;
     if (report.chain.length < creatorPrefix.length) return false;
     for (var i = 0; i < creatorPrefix.length; i++) {
       if (report.chain[i] != creatorPrefix[i]) return false;
@@ -65,8 +83,11 @@ class OverflowReport {
 
 /// 首页连接区里两处已知溢出（连接区正在被重写，本期不得触碰；重写之后删掉）。
 ///
-/// - 连接按钮：猫 + 圆盘缩放盒里的竖向 Column 在文字放大时越过底边；
-/// - 模式分段控件：横向 Row 在窄屏 / 大字号 / 长翻译下越过右缘。
+/// 连接按钮：猫 + 圆盘缩放盒里的竖向 Column 在文字放大时越过底边；
+/// 模式分段控件：横向 Row 在窄屏 / 大字号 / 长翻译下越过右缘。
+/// 下面是各自的模板，基线用 [KnownOverflow.at] 按场景给。
+///
+/// 连接按钮的已知溢出模板：
 const connectionButtonOverflow = KnownOverflow(
   name: 'connectionButton',
   creatorPrefix: [
@@ -80,9 +101,10 @@ const connectionButtonOverflow = KnownOverflow(
     'ConnectionButton',
   ],
   side: 'bottom',
-  maxAmount: 60,
+  baseline: 0,
 );
 
+/// 模式分段控件的已知溢出模板。
 const modeSelectorOverflow = KnownOverflow(
   name: 'modeSelector',
   creatorPrefix: [
@@ -94,7 +116,7 @@ const modeSelectorOverflow = KnownOverflow(
     '_ModeSelector',
   ],
   side: 'right',
-  maxAmount: 400,
+  baseline: 0,
 );
 
 /// 在 [body] 期间安装 `FlutterError.onError`：只放行 [expected] 里列出的已知

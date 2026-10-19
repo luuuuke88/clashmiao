@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
 
@@ -45,7 +46,7 @@ class GlassIconButton extends StatelessWidget {
             child: SizedBox(
               width: 18,
               height: 18,
-              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              child: MotionProgress(color: color),
             ),
           )
         : Icon(icon, size: iconSize, color: color);

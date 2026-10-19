@@ -11,7 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'desktop_shortcuts_test_support.dart';
 
-/// 全局桌面快捷键（`lib/core/shortcuts/desktop_shortcuts.dart`）的 TDD 覆盖：
+/// 全局桌面快捷键（`lib/app/shortcuts/desktop_shortcuts.dart`）的 TDD 覆盖：
 /// - 焦点在文本输入框时按 Cmd/Ctrl+V 必须走正常文本粘贴，不能被全局快捷键
 ///   吞掉（这是回归测试的重点，见下面 group('文本输入框焦点区分')）。
 /// - Cmd+W / Cmd+, / Ctrl+Q 的按键 → Intent → Action 映射，以及三者的平台

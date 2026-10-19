@@ -13,7 +13,7 @@ import 'package:toastification/toastification.dart';
 
 import '../../support/fake_box_service.dart';
 
-/// `test/core/shortcuts/desktop_shortcuts_test.dart` 及其拆分出去的几个
+/// `test/app/shortcuts/desktop_shortcuts_test.dart` 及其拆分出去的几个
 /// `desktop_shortcuts_paste_*_test.dart` 共用的测试基础设施。
 ///
 /// 涉及真实 toast 渲染断言（`find.textContaining(...)`）的几个用例被拆成了

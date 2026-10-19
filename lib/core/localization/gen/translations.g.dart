@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 3960 (396 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-19 at 15:56 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -358,6 +358,8 @@ class TranslationsSettingsEn {
   String get adminPrivilegesRequired =>
       'Administrator privileges required on macOS';
   String get portChangeNotice => 'Port changes require reconnect to apply';
+  late final TranslationsSettingsGroupsEn groups =
+      TranslationsSettingsGroupsEn._(_root);
 }
 
 // Path: about
@@ -376,6 +378,7 @@ class TranslationsAboutEn {
   String get termsAndConditions => 'Terms and Conditions';
   String get appDescription =>
       'A cross-platform proxy client based on sing-box core';
+  String get openSourceLicenses => 'Open-source licenses';
 }
 
 // Path: appUpdate
@@ -394,6 +397,8 @@ class TranslationsAppUpdateEn {
   String get updateNowBtnTxt => 'Update Now';
   String get laterBtnTxt => 'Later';
   String get ignoreBtnTxt => 'Ignore';
+  String get checkFailedMsg =>
+      'Couldn\'t check for updates. Check your network and try again.';
 }
 
 // Path: tray
@@ -886,6 +891,18 @@ class TranslationsSettingsGeoAssetsEn {
   String get addRecommended => 'Add Recommended Assets';
   String get missingGeoAssetsMsg =>
       'Selected Routing Assets\' files are missing. Either download them or choose existing ones';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get general => 'General';
+  String get connection => 'Connection';
+  String get privacy => 'Privacy';
 }
 
 // Path: tray.status
@@ -1580,6 +1597,9 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'يتطلب صلاحيات المسؤول على macOS';
   @override
   String get portChangeNotice => 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+  @override
+  late final TranslationsSettingsGroupsAr groups =
+      TranslationsSettingsGroupsAr._(_root);
 }
 
 // Path: about
@@ -1607,6 +1627,8 @@ class TranslationsAboutAr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+  @override
+  String get openSourceLicenses => 'تراخيص المصدر المفتوح';
 }
 
 // Path: appUpdate
@@ -1636,6 +1658,9 @@ class TranslationsAppUpdateAr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'لاحقًا';
   @override
   String get ignoreBtnTxt => 'تجاهل';
+  @override
+  String get checkFailedMsg =>
+      'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
 }
 
 // Path: tray
@@ -2424,6 +2449,24 @@ class TranslationsSettingsGeoAssetsAr extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'ملفات أصول التوجيه المحددة مفقودة. قم بتنزيلها أو اختر ملفات موجودة';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsAr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عام';
+  @override
+  String get connection => 'الاتصال';
+  @override
+  String get privacy => 'الخصوصية';
 }
 
 // Path: tray.status
@@ -3242,6 +3285,9 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Los cambios de puerto requieren reconectar para aplicarse';
+  @override
+  late final TranslationsSettingsGroupsEs groups =
+      TranslationsSettingsGroupsEs._(_root);
 }
 
 // Path: about
@@ -3269,6 +3315,8 @@ class TranslationsAboutEs extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licencias de código abierto';
 }
 
 // Path: appUpdate
@@ -3298,6 +3346,9 @@ class TranslationsAppUpdateEs extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Más tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
 }
 
 // Path: tray
@@ -4125,6 +4176,24 @@ class TranslationsSettingsGeoAssetsEs extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsEs extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'General';
+  @override
+  String get connection => 'Conexión';
+  @override
+  String get privacy => 'Privacidad';
 }
 
 // Path: tray.status
@@ -4973,6 +5042,9 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+  @override
+  late final TranslationsSettingsGroupsFa groups =
+      TranslationsSettingsGroupsFa._(_root);
 }
 
 // Path: about
@@ -5000,6 +5072,8 @@ class TranslationsAboutFa extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+  @override
+  String get openSourceLicenses => 'مجوزهای متن‌باز';
 }
 
 // Path: appUpdate
@@ -5029,6 +5103,9 @@ class TranslationsAppUpdateFa extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'بعداً';
   @override
   String get ignoreBtnTxt => 'نادیده‌گرفتن';
+  @override
+  String get checkFailedMsg =>
+      'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
 }
 
 // Path: tray
@@ -5821,6 +5898,24 @@ class TranslationsSettingsGeoAssetsFa extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'فایل‌های مسیریابی انتخاب شده وجود ندارند. یا آن‌ها را دانلود کنید و یا یکی از موارد موجود را انتخاب کنید';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsFa extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عمومی';
+  @override
+  String get connection => 'اتصال';
+  @override
+  String get privacy => 'حریم خصوصی';
 }
 
 // Path: tray.status
@@ -6665,6 +6760,9 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Perubahan port memerlukan sambung ulang agar berlaku';
+  @override
+  late final TranslationsSettingsGroupsId groups =
+      TranslationsSettingsGroupsId._(_root);
 }
 
 // Path: about
@@ -6692,6 +6790,8 @@ class TranslationsAboutId extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Klien proxy lintas platform berbasis inti sing-box';
+  @override
+  String get openSourceLicenses => 'Lisensi sumber terbuka';
 }
 
 // Path: appUpdate
@@ -6721,6 +6821,9 @@ class TranslationsAppUpdateId extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Nanti';
   @override
   String get ignoreBtnTxt => 'Lewati';
+  @override
+  String get checkFailedMsg =>
+      'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
 }
 
 // Path: tray
@@ -7510,6 +7613,24 @@ class TranslationsSettingsGeoAssetsId extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsId extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Umum';
+  @override
+  String get connection => 'Koneksi';
+  @override
+  String get privacy => 'Privasi';
 }
 
 // Path: tray.status
@@ -8365,6 +8486,9 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Alterações de porta exigem reconexão para serem aplicadas';
+  @override
+  late final TranslationsSettingsGroupsPtBr groups =
+      TranslationsSettingsGroupsPtBr._(_root);
 }
 
 // Path: about
@@ -8394,6 +8518,8 @@ class TranslationsAboutPtBr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licenças de código aberto';
 }
 
 // Path: appUpdate
@@ -8423,6 +8549,9 @@ class TranslationsAppUpdatePtBr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Mais tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
 }
 
 // Path: tray
@@ -9224,6 +9353,24 @@ class TranslationsSettingsGeoAssetsPtBr
   @override
   String get missingGeoAssetsMsg =>
       'Os arquivos dos ativos de roteamento selecionados estão ausentes. Baixe-os ou escolha os existentes.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsPtBr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Geral';
+  @override
+  String get connection => 'Conexão';
+  @override
+  String get privacy => 'Privacidade';
 }
 
 // Path: tray.status
@@ -10075,6 +10222,9 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Изменения порта применяются после переподключения';
+  @override
+  late final TranslationsSettingsGroupsRu groups =
+      TranslationsSettingsGroupsRu._(_root);
 }
 
 // Path: about
@@ -10102,6 +10252,8 @@ class TranslationsAboutRu extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+  @override
+  String get openSourceLicenses => 'Лицензии открытого ПО';
 }
 
 // Path: appUpdate
@@ -10131,6 +10283,9 @@ class TranslationsAppUpdateRu extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Позже';
   @override
   String get ignoreBtnTxt => 'Пропустить';
+  @override
+  String get checkFailedMsg =>
+      'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
 }
 
 // Path: tray
@@ -10925,6 +11080,24 @@ class TranslationsSettingsGeoAssetsRu extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Файлы выбранных ресурсов маршрутизации отсутствуют. Либо скачайте их, либо выберите существующие.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsRu extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Общие';
+  @override
+  String get connection => 'Подключение';
+  @override
+  String get privacy => 'Конфиденциальность';
 }
 
 // Path: tray.status
@@ -11773,6 +11946,9 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+  @override
+  late final TranslationsSettingsGroupsTr groups =
+      TranslationsSettingsGroupsTr._(_root);
 }
 
 // Path: about
@@ -11800,6 +11976,8 @@ class TranslationsAboutTr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+  @override
+  String get openSourceLicenses => 'Açık kaynak lisansları';
 }
 
 // Path: appUpdate
@@ -11829,6 +12007,9 @@ class TranslationsAppUpdateTr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Daha sonra';
   @override
   String get ignoreBtnTxt => 'Görmezden gel';
+  @override
+  String get checkFailedMsg =>
+      'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
 }
 
 // Path: tray
@@ -12622,6 +12803,24 @@ class TranslationsSettingsGeoAssetsTr extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsTr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Genel';
+  @override
+  String get connection => 'Bağlantı';
+  @override
+  String get privacy => 'Gizlilik';
 }
 
 // Path: tray.status
@@ -13462,6 +13661,9 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 需要管理员权限';
   @override
   String get portChangeNotice => '端口修改需要重启连接生效';
+  @override
+  late final TranslationsSettingsGroupsZhCn groups =
+      TranslationsSettingsGroupsZhCn._(_root);
 }
 
 // Path: about
@@ -13490,6 +13692,8 @@ class TranslationsAboutZhCn extends TranslationsAboutEn {
   String get termsAndConditions => '条款和条件';
   @override
   String get appDescription => '基于 sing-box 核心的跨平台代理客户端';
+  @override
+  String get openSourceLicenses => '开源许可';
 }
 
 // Path: appUpdate
@@ -13518,6 +13722,8 @@ class TranslationsAppUpdateZhCn extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '以后再说';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '检查更新失败，请检查网络后重试';
 }
 
 // Path: tray
@@ -14298,6 +14504,24 @@ class TranslationsSettingsGeoAssetsZhCn
   String get addRecommended => '添加建议的资源文件';
   @override
   String get missingGeoAssetsMsg => '所选路由资源的文件丢失。下载它们或选择现有的。';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsZhCn extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '通用';
+  @override
+  String get connection => '连接';
+  @override
+  String get privacy => '隐私';
 }
 
 // Path: tray.status
@@ -15139,6 +15363,9 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 上需要管理員權限';
   @override
   String get portChangeNotice => '連接埠變更需要重新連線才會生效';
+  @override
+  late final TranslationsSettingsGroupsZhTw groups =
+      TranslationsSettingsGroupsZhTw._(_root);
 }
 
 // Path: about
@@ -15167,6 +15394,8 @@ class TranslationsAboutZhTw extends TranslationsAboutEn {
   String get termsAndConditions => '條款與條件';
   @override
   String get appDescription => '基於 sing-box 核心的跨平台代理用戶端';
+  @override
+  String get openSourceLicenses => '開放原始碼授權';
 }
 
 // Path: appUpdate
@@ -15195,6 +15424,8 @@ class TranslationsAppUpdateZhTw extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '稍後再說';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '檢查更新失敗，請檢查網路後再試';
 }
 
 // Path: tray
@@ -15976,6 +16207,24 @@ class TranslationsSettingsGeoAssetsZhTw
   String get addRecommended => '新增推薦的資源文件';
   @override
   String get missingGeoAssetsMsg => '所選路由資源的檔案遺失。下載它們或選擇現有的。';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsZhTw extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '一般';
+  @override
+  String get connection => '連線';
+  @override
+  String get privacy => '隱私';
 }
 
 // Path: tray.status
@@ -16890,6 +17139,12 @@ extension on Translations {
         return 'Administrator privileges required on macOS';
       case 'settings.portChangeNotice':
         return 'Port changes require reconnect to apply';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Connection';
+      case 'settings.groups.privacy':
+        return 'Privacy';
       case 'about.pageTitle':
         return 'About';
       case 'about.version':
@@ -16906,6 +17161,8 @@ extension on Translations {
         return 'Terms and Conditions';
       case 'about.appDescription':
         return 'A cross-platform proxy client based on sing-box core';
+      case 'about.openSourceLicenses':
+        return 'Open-source licenses';
       case 'appUpdate.notAvailableMsg':
         return 'Already Using The Latest Version';
       case 'appUpdate.dialogTitle':
@@ -16922,6 +17179,8 @@ extension on Translations {
         return 'Later';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignore';
+      case 'appUpdate.checkFailedMsg':
+        return 'Couldn\'t check for updates. Check your network and try again.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -17701,6 +17960,12 @@ extension on TranslationsAr {
         return 'يتطلب صلاحيات المسؤول على macOS';
       case 'settings.portChangeNotice':
         return 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+      case 'settings.groups.general':
+        return 'عام';
+      case 'settings.groups.connection':
+        return 'الاتصال';
+      case 'settings.groups.privacy':
+        return 'الخصوصية';
       case 'about.pageTitle':
         return 'حول\nتعريب:م. ابراهيم قاسم';
       case 'about.version':
@@ -17717,6 +17982,8 @@ extension on TranslationsAr {
         return 'الشروط والأحكام';
       case 'about.appDescription':
         return 'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+      case 'about.openSourceLicenses':
+        return 'تراخيص المصدر المفتوح';
       case 'appUpdate.notAvailableMsg':
         return 'أنت تستخدم أحدث إصدار بالفعل';
       case 'appUpdate.dialogTitle':
@@ -17733,6 +18000,8 @@ extension on TranslationsAr {
         return 'لاحقًا';
       case 'appUpdate.ignoreBtnTxt':
         return 'تجاهل';
+      case 'appUpdate.checkFailedMsg':
+        return 'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
       case 'tray.dashboard':
         return 'لوحة التحكم';
       case 'tray.quit':
@@ -18496,6 +18765,12 @@ extension on TranslationsEs {
         return 'Se requieren privilegios de administrador en macOS';
       case 'settings.portChangeNotice':
         return 'Los cambios de puerto requieren reconectar para aplicarse';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Conexión';
+      case 'settings.groups.privacy':
+        return 'Privacidad';
       case 'about.pageTitle':
         return 'Acerca de';
       case 'about.version':
@@ -18512,6 +18787,8 @@ extension on TranslationsEs {
         return 'Términos y condiciones';
       case 'about.appDescription':
         return 'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licencias de código abierto';
       case 'appUpdate.notAvailableMsg':
         return 'Ya estas usando la última versión.';
       case 'appUpdate.dialogTitle':
@@ -18528,6 +18805,8 @@ extension on TranslationsEs {
         return 'Más tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
       case 'tray.dashboard':
         return 'Panel';
       case 'tray.quit':
@@ -19330,6 +19609,12 @@ extension on TranslationsFa {
         return 'در macOS به دسترسی مدیر نیاز است';
       case 'settings.portChangeNotice':
         return 'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+      case 'settings.groups.general':
+        return 'عمومی';
+      case 'settings.groups.connection':
+        return 'اتصال';
+      case 'settings.groups.privacy':
+        return 'حریم خصوصی';
       case 'about.pageTitle':
         return 'درباره';
       case 'about.version':
@@ -19346,6 +19631,8 @@ extension on TranslationsFa {
         return 'شرایط و ضوابط استفاده';
       case 'about.appDescription':
         return 'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+      case 'about.openSourceLicenses':
+        return 'مجوزهای متن‌باز';
       case 'appUpdate.notAvailableMsg':
         return 'در حال استفاده از آخرین نسخه هستید';
       case 'appUpdate.dialogTitle':
@@ -19362,6 +19649,8 @@ extension on TranslationsFa {
         return 'بعداً';
       case 'appUpdate.ignoreBtnTxt':
         return 'نادیده‌گرفتن';
+      case 'appUpdate.checkFailedMsg':
+        return 'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
       case 'tray.dashboard':
         return 'داشبورد';
       case 'tray.quit':
@@ -20143,6 +20432,12 @@ extension on TranslationsId {
         return 'Memerlukan hak administrator di macOS';
       case 'settings.portChangeNotice':
         return 'Perubahan port memerlukan sambung ulang agar berlaku';
+      case 'settings.groups.general':
+        return 'Umum';
+      case 'settings.groups.connection':
+        return 'Koneksi';
+      case 'settings.groups.privacy':
+        return 'Privasi';
       case 'about.pageTitle':
         return 'Tentang';
       case 'about.version':
@@ -20159,6 +20454,8 @@ extension on TranslationsId {
         return 'Syarat dan Ketentuan Umum';
       case 'about.appDescription':
         return 'Klien proxy lintas platform berbasis inti sing-box';
+      case 'about.openSourceLicenses':
+        return 'Lisensi sumber terbuka';
       case 'appUpdate.notAvailableMsg':
         return 'Sudah menggunakan versi terakhir';
       case 'appUpdate.dialogTitle':
@@ -20175,6 +20472,8 @@ extension on TranslationsId {
         return 'Nanti';
       case 'appUpdate.ignoreBtnTxt':
         return 'Lewati';
+      case 'appUpdate.checkFailedMsg':
+        return 'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -20957,6 +21256,12 @@ extension on TranslationsPtBr {
         return 'Requer privilégios de administrador no macOS';
       case 'settings.portChangeNotice':
         return 'Alterações de porta exigem reconexão para serem aplicadas';
+      case 'settings.groups.general':
+        return 'Geral';
+      case 'settings.groups.connection':
+        return 'Conexão';
+      case 'settings.groups.privacy':
+        return 'Privacidade';
       case 'about.pageTitle':
         return 'Sobre';
       case 'about.version':
@@ -20973,6 +21278,8 @@ extension on TranslationsPtBr {
         return 'Termos e Condições';
       case 'about.appDescription':
         return 'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licenças de código aberto';
       case 'appUpdate.notAvailableMsg':
         return 'Já usando a versão mais recente';
       case 'appUpdate.dialogTitle':
@@ -20989,6 +21296,8 @@ extension on TranslationsPtBr {
         return 'Mais tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
       case 'tray.dashboard':
         return 'Painel';
       case 'tray.quit':
@@ -21771,6 +22080,12 @@ extension on TranslationsRu {
         return 'На macOS требуются права администратора';
       case 'settings.portChangeNotice':
         return 'Изменения порта применяются после переподключения';
+      case 'settings.groups.general':
+        return 'Общие';
+      case 'settings.groups.connection':
+        return 'Подключение';
+      case 'settings.groups.privacy':
+        return 'Конфиденциальность';
       case 'about.pageTitle':
         return 'О программе';
       case 'about.version':
@@ -21787,6 +22102,8 @@ extension on TranslationsRu {
         return 'Условия и положения';
       case 'about.appDescription':
         return 'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+      case 'about.openSourceLicenses':
+        return 'Лицензии открытого ПО';
       case 'appUpdate.notAvailableMsg':
         return 'Установлена последняя версия';
       case 'appUpdate.dialogTitle':
@@ -21803,6 +22120,8 @@ extension on TranslationsRu {
         return 'Позже';
       case 'appUpdate.ignoreBtnTxt':
         return 'Пропустить';
+      case 'appUpdate.checkFailedMsg':
+        return 'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
       case 'tray.dashboard':
         return 'Панель';
       case 'tray.quit':
@@ -22585,6 +22904,12 @@ extension on TranslationsTr {
         return 'macOS\'ta yönetici ayrıcalıkları gerekir';
       case 'settings.portChangeNotice':
         return 'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+      case 'settings.groups.general':
+        return 'Genel';
+      case 'settings.groups.connection':
+        return 'Bağlantı';
+      case 'settings.groups.privacy':
+        return 'Gizlilik';
       case 'about.pageTitle':
         return 'Hakkında';
       case 'about.version':
@@ -22601,6 +22926,8 @@ extension on TranslationsTr {
         return 'Şartlar ve koşullar';
       case 'about.appDescription':
         return 'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+      case 'about.openSourceLicenses':
+        return 'Açık kaynak lisansları';
       case 'appUpdate.notAvailableMsg':
         return ' En son sürümü kullanıyorsunuz';
       case 'appUpdate.dialogTitle':
@@ -22617,6 +22944,8 @@ extension on TranslationsTr {
         return 'Daha sonra';
       case 'appUpdate.ignoreBtnTxt':
         return 'Görmezden gel';
+      case 'appUpdate.checkFailedMsg':
+        return 'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
       case 'tray.dashboard':
         return 'Gösterge Paneli';
       case 'tray.quit':
@@ -23396,6 +23725,12 @@ extension on TranslationsZhCn {
         return 'macOS 需要管理员权限';
       case 'settings.portChangeNotice':
         return '端口修改需要重启连接生效';
+      case 'settings.groups.general':
+        return '通用';
+      case 'settings.groups.connection':
+        return '连接';
+      case 'settings.groups.privacy':
+        return '隐私';
       case 'about.pageTitle':
         return '关于';
       case 'about.version':
@@ -23412,6 +23747,8 @@ extension on TranslationsZhCn {
         return '条款和条件';
       case 'about.appDescription':
         return '基于 sing-box 核心的跨平台代理客户端';
+      case 'about.openSourceLicenses':
+        return '开源许可';
       case 'appUpdate.notAvailableMsg':
         return '已是最新版本';
       case 'appUpdate.dialogTitle':
@@ -23428,6 +23765,8 @@ extension on TranslationsZhCn {
         return '以后再说';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '检查更新失败，请检查网络后重试';
       case 'tray.dashboard':
         return '仪表板';
       case 'tray.quit':
@@ -24206,6 +24545,12 @@ extension on TranslationsZhTw {
         return 'macOS 上需要管理員權限';
       case 'settings.portChangeNotice':
         return '連接埠變更需要重新連線才會生效';
+      case 'settings.groups.general':
+        return '一般';
+      case 'settings.groups.connection':
+        return '連線';
+      case 'settings.groups.privacy':
+        return '隱私';
       case 'about.pageTitle':
         return '關於';
       case 'about.version':
@@ -24222,6 +24567,8 @@ extension on TranslationsZhTw {
         return '條款與條件';
       case 'about.appDescription':
         return '基於 sing-box 核心的跨平台代理用戶端';
+      case 'about.openSourceLicenses':
+        return '開放原始碼授權';
       case 'appUpdate.notAvailableMsg':
         return '已經是最新版本';
       case 'appUpdate.dialogTitle':
@@ -24238,6 +24585,8 @@ extension on TranslationsZhTw {
         return '稍後再說';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '檢查更新失敗，請檢查網路後再試';
       case 'tray.dashboard':
         return '儀表板';
       case 'tray.quit':

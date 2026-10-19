@@ -234,34 +234,28 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                               .where((e) => e != autoProxy)
                               .toList();
 
+                          // 自动选择卡只在订阅里真有自动选择组时才构建：没有
+                          // 就不画一张点了只会报错的卡（假入口）。有的话它
+                          // 占列表第 0 位，其余节点下标整体后移一位。
+                          final autoCardCount = autoProxy == null ? 0 : 1;
+
                           return ListView.builder(
                             padding: const EdgeInsets.only(bottom: 120),
-                            itemCount: otherProxies.length + 1,
+                            itemCount: otherProxies.length + autoCardCount,
                             itemBuilder: (ctx, index) {
-                              if (index == 0) {
+                              if (autoProxy != null && index == 0) {
                                 return _AutoSelectCard(
-                                  isSelected:
-                                      autoProxy != null &&
-                                      group.selected == autoProxy.tag,
-                                  onTap: () {
-                                    if (autoProxy == null) {
-                                      AppToast.error(
-                                        context,
-                                        t.proxies.emptyProxiesMsg,
-                                      );
-                                      return;
-                                    }
-                                    _selectProxy(
-                                      context,
-                                      ref,
-                                      group.tag,
-                                      autoProxy.tag,
-                                      isConnected,
-                                    );
-                                  },
+                                  isSelected: group.selected == autoProxy.tag,
+                                  onTap: () => _selectProxy(
+                                    context,
+                                    ref,
+                                    group.tag,
+                                    autoProxy.tag,
+                                    isConnected,
+                                  ),
                                 );
                               }
-                              final proxy = otherProxies[index - 1];
+                              final proxy = otherProxies[index - autoCardCount];
                               final isSelected = group.selected == proxy.tag;
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 8),

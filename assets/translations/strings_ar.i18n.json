@@ -310,7 +310,12 @@
     "systemProxyEnabled": "تم تفعيل بروكسي النظام",
     "systemProxyDisabled": "تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)",
     "adminPrivilegesRequired": "يتطلب صلاحيات المسؤول على macOS",
-    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها"
+    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها",
+    "groups": {
+      "general": "عام",
+      "connection": "الاتصال",
+      "privacy": "الخصوصية"
+    }
   },
   "about": {
     "pageTitle": "حول\nتعريب:م. ابراهيم قاسم",
@@ -320,7 +325,8 @@
     "checkForUpdate": "التحقق من وجود تحديث",
     "privacyPolicy": "سياسة الخصوصية",
     "termsAndConditions": "الشروط والأحكام",
-    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box"
+    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box",
+    "openSourceLicenses": "تراخيص المصدر المفتوح"
   },
   "appUpdate": {
     "notAvailableMsg": "أنت تستخدم أحدث إصدار بالفعل",
@@ -330,7 +336,8 @@
     "newVersionLbl": "الإصدار الجديد",
     "updateNowBtnTxt": "تحديث الآن",
     "laterBtnTxt": "لاحقًا",
-    "ignoreBtnTxt": "تجاهل"
+    "ignoreBtnTxt": "تجاهل",
+    "checkFailedMsg": "تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى."
   },
   "tray": {
     "dashboard": "لوحة التحكم",

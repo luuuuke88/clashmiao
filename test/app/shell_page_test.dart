@@ -153,6 +153,27 @@ void main() {
     expect(rect.height, lessThanOrEqualTo(52));
   });
 
+  testWidgets('底部导航不使用 BackdropFilter（底色不透明，模糊看不见却每帧离屏绘制）', (tester) async {
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = find.byKey(const ValueKey('bottom_nav_bar'));
+    expect(bar, findsOneWidget);
+    expect(
+      find.ancestor(of: bar, matching: find.byType(BackdropFilter)),
+      findsNothing,
+    );
+    // 圆角、底色、描边都还在。
+    final decoration =
+        tester.widget<Container>(bar).decoration! as BoxDecoration;
+    expect(decoration.borderRadius, isNotNull);
+    expect(decoration.color, isNotNull);
+    expect(decoration.border, isNotNull);
+  });
+
   testWidgets('底部导航在浅色模式使用实色蓝灰白底', (tester) async {
     final (widget, container) = await _host();
     addTearDown(container.dispose);

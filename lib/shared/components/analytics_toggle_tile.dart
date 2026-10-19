@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/shared/components/settings_row.dart';
 import 'package:flutter/material.dart';
 
 /// Analytics（数据分析）开关的统一 UI 外壳。
@@ -25,13 +26,11 @@ class AnalyticsToggleTile extends StatelessWidget {
   final String label;
 
   /// 可选副标题说明。为 null 时不展示副标题，布局跟没有副标题的其它设置行
-  /// 完全一致（单行、固定 56 高）。
+  /// 完全一致（单行、最小 56 高）。
   final String? subtitle;
 
   final bool value;
   final ValueChanged<bool> onChanged;
-
-  static const _iconColor = Color(0xFFF97316);
 
   @override
   Widget build(BuildContext context) {
@@ -64,19 +63,31 @@ class AnalyticsToggleTile extends StatelessWidget {
 
     return InkWell(
       onTap: () => onChanged(!value),
-      child: Container(
-        height: hasSubtitle ? null : 56,
-        padding: EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: hasSubtitle ? 12 : 0,
-        ),
-        child: Row(
-          children: [
-            const Icon(FluentIcons.bug_24_regular, size: 20, color: _iconColor),
-            const SizedBox(width: 16),
-            Expanded(child: labelColumn),
-            Switch(value: value, onChanged: onChanged),
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: kSettingsRowMinHeight),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: hasSubtitle ? 12 : 8,
+          ),
+          child: Row(
+            children: [
+              // 与设置页其它行一致：图标用中性色，不再单独染橙。
+              Icon(
+                FluentIcons.bug_24_regular,
+                size: 20,
+                color: aiUi.secondaryTextColor,
+              ),
+              const SizedBox(width: 16),
+              Expanded(child: labelColumn),
+              const SizedBox(width: 8),
+              Switch(
+                value: value,
+                onChanged: onChanged,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            ],
+          ),
         ),
       ),
     );

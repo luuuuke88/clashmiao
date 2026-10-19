@@ -310,7 +310,12 @@
     "systemProxyEnabled": "已开启系统代理",
     "systemProxyDisabled": "已关闭系统代理（需重连生效）",
     "adminPrivilegesRequired": "macOS 需要管理员权限",
-    "portChangeNotice": "端口修改需要重启连接生效"
+    "portChangeNotice": "端口修改需要重启连接生效",
+    "groups": {
+      "general": "通用",
+      "connection": "连接",
+      "privacy": "隐私"
+    }
   },
   "about": {
     "pageTitle": "关于",
@@ -320,7 +325,8 @@
     "checkForUpdate": "检查更新",
     "privacyPolicy": "隐私政策",
     "termsAndConditions": "条款和条件",
-    "appDescription": "基于 sing-box 核心的跨平台代理客户端"
+    "appDescription": "基于 sing-box 核心的跨平台代理客户端",
+    "openSourceLicenses": "开源许可"
   },
   "appUpdate": {
     "notAvailableMsg": "已是最新版本",
@@ -330,7 +336,8 @@
     "newVersionLbl": "新版本",
     "updateNowBtnTxt": "现在更新",
     "laterBtnTxt": "以后再说",
-    "ignoreBtnTxt": "忽略"
+    "ignoreBtnTxt": "忽略",
+    "checkFailedMsg": "检查更新失败，请检查网络后重试"
   },
   "tray": {
     "dashboard": "仪表板",

@@ -310,7 +310,12 @@
     "systemProxyEnabled": "Sistem proxy’si etkin",
     "systemProxyDisabled": "Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)",
     "adminPrivilegesRequired": "macOS'ta yönetici ayrıcalıkları gerekir",
-    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir"
+    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir",
+    "groups": {
+      "general": "Genel",
+      "connection": "Bağlantı",
+      "privacy": "Gizlilik"
+    }
   },
   "about": {
     "pageTitle": "Hakkında",
@@ -320,7 +325,8 @@
     "checkForUpdate": "Güncellemeleri kontrol et",
     "privacyPolicy": "Gizlilik Politikası",
     "termsAndConditions": "Şartlar ve koşullar",
-    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi"
+    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi",
+    "openSourceLicenses": "Açık kaynak lisansları"
   },
   "appUpdate": {
     "notAvailableMsg": " En son sürümü kullanıyorsunuz",
@@ -330,7 +336,8 @@
     "newVersionLbl": "Yeni versiyon",
     "updateNowBtnTxt": "Şimdi güncelle",
     "laterBtnTxt": "Daha sonra",
-    "ignoreBtnTxt": "Görmezden gel"
+    "ignoreBtnTxt": "Görmezden gel",
+    "checkFailedMsg": "Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin."
   },
   "tray": {
     "dashboard": "Gösterge Paneli",

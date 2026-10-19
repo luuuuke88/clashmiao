@@ -2,13 +2,12 @@ import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/settings/presentation/per_app_proxy_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
-import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/settings_row.dart';
 import 'package:clashmiao/shared/components/settings_selection_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -101,134 +100,115 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 24),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          t.settings.pageTitle,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w800,
-                            color: theme.colorScheme.onSurface,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const GlassIconButton(
-                          icon: FluentIcons.question_circle_24_regular,
-                          onTap: null,
-                        ),
-                      ],
+                    Text(
+                      t.settings.pageTitle,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
+                      ),
                     ),
                     const SizedBox(height: 32),
                   ],
                 ),
               ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 8, bottom: 20),
-                  child: GlassCard(
-                    padding: EdgeInsets.zero,
-                    child: Column(
-                      children: [
-                        _SettingsTile(
-                          iconColor: const Color(0xFF0EA5E9),
-                          icon: FluentIcons.globe_24_regular,
-                          label: t.settings.general.locale,
-                          trailing: _TrailingValue(value: _localeName(locale)),
-                          onTap: () => _showLocaleDialog(context, ref, t),
-                        ),
-                        const _Divider(),
-                        _SettingsTile(
-                          iconColor: const Color(0xFF8B5CF6),
-                          icon: FluentIcons.dark_theme_24_regular,
-                          label: t.settings.general.themeMode,
-                          trailing: _TrailingValue(value: themeMode.present(t)),
-                          onTap: () => _showThemeDialog(context, ref, t),
-                        ),
-                        const _Divider(),
-                        _AnalyticsToggle(
-                          label: t.settings.general.enableAnalytics,
-                        ),
-                        const _Divider(),
+              // 三组：通用 / 连接 / 隐私。组间 24 dp，组标题到卡片 8 dp。
+              // 图标不再各染一色——彩虹色会让「绿/橙/红」失去状态含义，
+              // 统一用中性的次要文字色（见 _SettingsTile）。
+              SliverList.list(
+                children: [
+                  _SettingsGroup(
+                    title: t.settings.groups.general,
+                    children: [
+                      _SettingsTile(
+                        icon: FluentIcons.globe_24_regular,
+                        label: t.settings.general.locale,
+                        trailing: _TrailingValue(value: _localeName(locale)),
+                        onTap: () => _showLocaleDialog(context, ref, t),
+                      ),
+                      _SettingsTile(
+                        icon: FluentIcons.dark_theme_24_regular,
+                        label: t.settings.general.themeMode,
+                        trailing: _TrailingValue(value: themeMode.present(t)),
+                        onTap: () => _showThemeDialog(context, ref, t),
+                      ),
+                      if (isAndroid)
                         _BoolPreferenceTile(
-                          iconColor: const Color(0xFF10B981),
-                          icon: FluentIcons.globe_search_24_regular,
-                          label: t.settings.general.autoIpCheck,
-                          prefKey: 'clashmiao_auto_ip_check',
+                          icon: FluentIcons.phone_vibrate_24_regular,
+                          label: t.settings.general.hapticFeedback,
+                          prefKey: 'clashmiao_haptic_feedback',
                           defaultValue: true,
                         ),
-                        if (isAndroid) ...[
-                          const _Divider(),
-                          _BoolPreferenceTile(
-                            iconColor: const Color(0xFFEC4899),
-                            icon: FluentIcons.top_speed_24_regular,
-                            label: t.settings.general.dynamicNotification,
-                            prefKey: 'dynamic_notification',
-                            defaultValue: true,
-                          ),
-                          const _Divider(),
-                          _BoolPreferenceTile(
-                            iconColor: BrandColors.indigo,
-                            icon: FluentIcons.phone_vibrate_24_regular,
-                            label: t.settings.general.hapticFeedback,
-                            prefKey: 'clashmiao_haptic_feedback',
-                            defaultValue: true,
-                          ),
-                          const _Divider(),
-                          _BatteryOptimizationTile(
-                            label:
-                                t.settings.general.ignoreBatteryOptimizations,
-                            subtitle: t
-                                .settings
-                                .general
-                                .ignoreBatteryOptimizationsMsg,
-                          ),
-                          const _Divider(),
-                          _SettingsTile(
-                            iconColor: const Color(0xFF059669),
-                            icon: FluentIcons.phone_tablet_24_regular,
-                            label: t.settings.network.perAppProxyPageTitle,
-                            trailing: _Chevron(),
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const PerAppProxyPage(),
-                              ),
+                      if (Platform.isMacOS || Platform.isWindows) ...[
+                        _SwitchSettingsTile(
+                          icon: FluentIcons.desktop_24_regular,
+                          label: t.settings.general.autoStart,
+                          value: ref.watch(autoStartProvider),
+                          onChanged: (_) =>
+                              ref.read(autoStartProvider.notifier).toggle(),
+                        ),
+                        _BoolPreferenceTile(
+                          icon: FluentIcons.eye_off_24_regular,
+                          label: t.settings.general.silentStart,
+                          prefKey: 'clashmiao_silent_start',
+                          defaultValue: false,
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _SettingsGroup(
+                    title: t.settings.groups.connection,
+                    children: [
+                      _BoolPreferenceTile(
+                        icon: FluentIcons.globe_search_24_regular,
+                        label: t.settings.general.autoIpCheck,
+                        prefKey: 'clashmiao_auto_ip_check',
+                        defaultValue: true,
+                      ),
+                      if (isAndroid) ...[
+                        _BoolPreferenceTile(
+                          icon: FluentIcons.top_speed_24_regular,
+                          label: t.settings.general.dynamicNotification,
+                          prefKey: 'dynamic_notification',
+                          defaultValue: true,
+                        ),
+                        _BatteryOptimizationTile(
+                          label: t.settings.general.ignoreBatteryOptimizations,
+                          subtitle:
+                              t.settings.general.ignoreBatteryOptimizationsMsg,
+                        ),
+                        _SettingsTile(
+                          icon: FluentIcons.phone_tablet_24_regular,
+                          label: t.settings.network.perAppProxyPageTitle,
+                          trailing: const _Chevron(),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const PerAppProxyPage(),
                             ),
                           ),
-                        ],
-                        if (Platform.isMacOS || Platform.isWindows) ...[
-                          const _Divider(),
-                          _SwitchSettingsTile(
-                            iconColor: const Color(0xFF06B6D4),
-                            icon: FluentIcons.desktop_24_regular,
-                            label: t.settings.general.autoStart,
-                            value: ref.watch(autoStartProvider),
-                            onChanged: (_) =>
-                                ref.read(autoStartProvider.notifier).toggle(),
-                          ),
-                          const _Divider(),
-                          _BoolPreferenceTile(
-                            iconColor: const Color(0xFF64748B),
-                            icon: FluentIcons.eye_off_24_regular,
-                            label: t.settings.general.silentStart,
-                            prefKey: 'clashmiao_silent_start',
-                            defaultValue: false,
-                          ),
-                        ],
-                        if (isIOS) ...[
-                          const _Divider(),
-                          _SettingsTile(
-                            iconColor: const Color(0xFFEF4444),
-                            icon: FluentIcons.arrow_reset_24_regular,
-                            label: t.settings.advanced.resetTunnel,
-                            trailing: _Chevron(),
-                            onTap: () => _resetTunnel(context, ref, t),
-                          ),
-                        ],
+                        ),
                       ],
-                    ),
+                      if (isIOS)
+                        _SettingsTile(
+                          icon: FluentIcons.arrow_reset_24_regular,
+                          label: t.settings.advanced.resetTunnel,
+                          trailing: const _Chevron(),
+                          onTap: () => _resetTunnel(context, ref, t),
+                        ),
+                    ],
                   ),
-                ),
+                  const SizedBox(height: 24),
+                  _SettingsGroup(
+                    title: t.settings.groups.privacy,
+                    children: [
+                      _AnalyticsToggle(
+                        label: t.settings.general.enableAnalytics,
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
@@ -340,17 +320,59 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+/// 一组设置：组标题 + 一张卡片，卡片内行与行之间画分隔线。
+///
+/// 组标题 13 sp / w500，到卡片 8 dp。标题标成 header 语义，读屏可按标题跳组。
+class _SettingsGroup extends StatelessWidget {
+  const _SettingsGroup({required this.title, required this.children});
+
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = <Widget>[];
+    for (final child in children) {
+      if (rows.isNotEmpty) rows.add(const _Divider());
+      rows.add(child);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Semantics(
+            header: true,
+            container: true,
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).aiUi.secondaryTextColor,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        GlassCard(
+          padding: EdgeInsets.zero,
+          child: Column(children: rows),
+        ),
+      ],
+    );
+  }
+}
+
 class _BoolPreferenceTile extends ConsumerWidget {
   const _BoolPreferenceTile({
     required this.icon,
-    required this.iconColor,
     required this.label,
     required this.prefKey,
     required this.defaultValue,
   });
 
   final IconData icon;
-  final Color iconColor;
   final String label;
   final String prefKey;
   final bool defaultValue;
@@ -361,7 +383,6 @@ class _BoolPreferenceTile extends ConsumerWidget {
     final value = ref.watch(_boolPreferenceProvider(spec));
     return _SwitchSettingsTile(
       icon: icon,
-      iconColor: iconColor,
       label: label,
       value: value,
       onChanged: (next) =>
@@ -462,7 +483,6 @@ class _BatteryOptimizationTileState
             ? status.pending
             : (exempted ? status.exempted : status.notExempted);
         return _SettingsTile(
-          iconColor: const Color(0xFF22C55E),
           icon: FluentIcons.battery_checkmark_24_regular,
           label: widget.label,
           subtitle: widget.subtitle,
@@ -492,24 +512,33 @@ class _TrailingValue extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 当前值最多占屏宽三成：文字放大或语言名很长（如「Português (Brasil)」）时
+    // 在这个宽度内换行，而不是把左边的标题挤到零宽、右边溢出。
+    final maxValueWidth = MediaQuery.sizeOf(context).width * 0.32;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 12,
-            color: Theme.of(context).aiUi.secondaryTextColor,
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxValueWidth),
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            style: TextStyle(
+              fontSize: 12,
+              color: Theme.of(context).aiUi.secondaryTextColor,
+            ),
           ),
         ),
         const SizedBox(width: 8),
-        _Chevron(),
+        const _Chevron(),
       ],
     );
   }
 }
 
 class _Chevron extends StatelessWidget {
+  const _Chevron();
+
   @override
   Widget build(BuildContext context) {
     return Icon(
@@ -520,21 +549,18 @@ class _Chevron extends StatelessWidget {
   }
 }
 
+/// 设置行：高度至少 [kSettingsRowMinHeight]，文案变长或字号放大时自然长高。
 class _SettingsTile extends StatelessWidget {
   final IconData icon;
   final String label;
 
   /// 可选副标题，用于展示补充说明（例如电池优化豁免入口的效果说明）。
-  /// 为 null 时布局与改动前完全一致（单行、固定 56 高）。
   final String? subtitle;
   final Widget trailing;
   final VoidCallback? onTap;
 
-  final Color? iconColor;
-
   const _SettingsTile({
     required this.icon,
-    this.iconColor,
     required this.label,
     this.subtitle,
     required this.trailing,
@@ -543,6 +569,7 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final secondary = Theme.of(context).aiUi.secondaryTextColor;
     final labelColumn = subtitle == null
         ? Text(
             label,
@@ -560,35 +587,29 @@ class _SettingsTile extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
-              Text(
-                subtitle!,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Theme.of(context).aiUi.secondaryTextColor,
-                ),
-              ),
+              Text(subtitle!, style: TextStyle(fontSize: 12, color: secondary)),
             ],
           );
 
     return InkWell(
       onTap: onTap,
-      child: Container(
-        height: subtitle == null ? 56 : null,
-        padding: EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: subtitle == null ? 0 : 12,
-        ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 20,
-              color: iconColor ?? Theme.of(context).aiUi.secondaryTextColor,
-            ),
-            const SizedBox(width: 16),
-            Expanded(child: labelColumn),
-            trailing,
-          ],
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: kSettingsRowMinHeight),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: subtitle == null ? 8 : 12,
+          ),
+          child: Row(
+            children: [
+              // 图标不染色：设置页不再是彩虹，绿/橙/红留给状态。
+              Icon(icon, size: 20, color: secondary),
+              const SizedBox(width: 16),
+              Expanded(child: labelColumn),
+              const SizedBox(width: 8),
+              trailing,
+            ],
+          ),
         ),
       ),
     );
@@ -597,14 +618,12 @@ class _SettingsTile extends StatelessWidget {
 
 class _SwitchSettingsTile extends StatelessWidget {
   final IconData icon;
-  final Color? iconColor;
   final String label;
   final bool value;
   final ValueChanged<bool> onChanged;
 
   const _SwitchSettingsTile({
     required this.icon,
-    this.iconColor,
     required this.label,
     required this.value,
     required this.onChanged,
@@ -614,9 +633,13 @@ class _SwitchSettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return _SettingsTile(
       icon: icon,
-      iconColor: iconColor,
       label: label,
-      trailing: Switch(value: value, onChanged: onChanged),
+      // shrinkWrap：开关自身不撑到 48 dp 高——整行本来就是点击区且至少 56 dp。
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
       onTap: () => onChanged(!value),
     );
   }

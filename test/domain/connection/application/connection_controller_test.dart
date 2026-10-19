@@ -360,6 +360,23 @@ void main() {
       expect(e.review.calls, 1);
     });
 
+    _sim('断开后再次连接：新的 attempt 再触发一次触觉与评分请求（「只弹一次」由评分服务自己守）', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.kernelStarted(e.requests.single, attempt: 1);
+      e.ctl.disconnect();
+      e.settle();
+      e.kernelStopped(e.requests.last, attempt: 1);
+
+      e.ctl.connect();
+      e.settle();
+      e.kernelStarted(e.requests.last, attempt: 2);
+
+      expect(e.haptic.heavy, 2);
+      expect(e.review.calls, 2);
+    });
+
     _sim('disconnect：发 off 请求 → 内核停止后 succeeded，触觉 medium 一次，起始时间清空', (e) {
       e.push();
       e.ctl.connect();

@@ -1641,7 +1641,7 @@ class _ActionTile extends StatelessWidget {
             Icon(
               FluentIcons.chevron_right_24_regular,
               size: 16,
-              color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
+              color: theme.aiUi.secondaryTextColor,
             ),
           ],
         ),

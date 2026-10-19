@@ -95,10 +95,9 @@ class AiUiModalWrapper extends StatelessWidget {
                                 width: 40,
                                 height: 4,
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context)
-                                      .aiUi
-                                      .secondaryTextColor
-                                      .withValues(alpha: 0.1),
+                                  // 拖拽柄是非文字元素，对比度要 ≥ 3:1：用 outline 角色，
+                                  // 不再把 secondaryTextColor 压到 10% 透明度。
+                                  color: Theme.of(context).colorScheme.outline,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                               ),

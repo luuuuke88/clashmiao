@@ -555,4 +555,48 @@ void main() {
       expect(find.text('VPN'), findsNothing, reason: '桌面端没有 TUN 驱动/权限，不能给这个档位');
     }, skip: Platform.isAndroid || Platform.isIOS);
   });
+
+  group('整行语义', () {
+    testWidgets('开关行合并为一个节点：标题 + 开关状态 + 点击，不拆成多个焦点', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, container) = await _host();
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final node = tester.getSemantics(find.text('启用 TLS 数据分段'));
+      expect(
+        node,
+        isSemantics(
+          label: '启用 TLS 数据分段',
+          hasToggledState: true,
+          isToggled: false,
+          hasEnabledState: true,
+          isEnabled: true,
+          hasTapAction: true,
+        ),
+      );
+      // 整行只有这一个焦点：同一行里没有另一个独立的开关节点。
+      expect(find.byType(Switch), findsOneWidget);
+      final switchNode = tester.getSemantics(find.byType(Switch));
+      expect(switchNode.id, node.id, reason: '开关与标题是同一个语义节点');
+
+      await tester.tap(find.text('启用 TLS 数据分段'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(container.read(networkSettingsProvider).enableTlsFragment, isTrue);
+      handle.dispose();
+    });
+
+    testWidgets('入口行读作按钮', (tester) async {
+      final handle = tester.ensureSemantics();
+      final (widget, _) = await _host();
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(
+        tester.getSemantics(find.text('所有进阶选项')),
+        isSemantics(label: '所有进阶选项', isButton: true, hasTapAction: true),
+      );
+      handle.dispose();
+    });
+  });
 }

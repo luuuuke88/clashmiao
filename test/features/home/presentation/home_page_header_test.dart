@@ -10,25 +10,27 @@ import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
-/// 首页页头（标题块 + 两颗圆按钮）在 320 dp、文字 1.0x / 2.0x、LTR / RTL 下的
-/// 布局断言。只读页头，不碰连接区。
+import '../../../support/known_overflow.dart';
+
+/// 首页页头（标题 + 两颗圆按钮）在 320 dp、文字 1.0x / 2.0x、LTR / RTL 下的布局
+/// 断言。只读页头，不碰连接区。
+///
+/// 页头本身必须**不溢出**：标题在 [PageHeader] 里是 Expanded（可折成两行再省略），
+/// 按钮永远排在屏内。
 ///
 /// ## 已知溢出（精确捕获，不是笼统吞掉）
 ///
-/// - 首页页头那一行（创建者链含 `DragToMoveArea`）在 320 dp 下横向溢出：flutter_test
-///   默认的 Ahem 字体比真机宽，1.0x 就会溢出；2.0x 真机上也必然出现（28 sp 标题
-///   放大一倍已超过按钮之外的剩余宽度）。属于首页页头与文字缩放的后续任务，
-///   这里不修，只**精确断言它存在**，并且按溢出量校验几何位置。
-/// - 2.0x 时连接区另有两处溢出（创建者链含 `ConnectionButton`、`_ModeSelector`），
-///   属于连接区（正在被重写、本任务不得触碰），同样列为已知项逐一断言。
-/// - 其它任何溢出一律让测试失败：未知溢出会原样转交给框架的错误处理。
+/// 2.0x 时连接区另有两处溢出（连接按钮的竖向 Column、模式分段控件的横向 Row），
+/// 属于连接区（正在被重写、本任务不得触碰），见 `test/support/known_overflow.dart`：
+/// 按创建者链前缀（具体的 RenderFlex 位置）、溢出边（bottom / right）与量级范围
+/// 精确匹配，且每项在一个场景里**恰好一次**。其它任何溢出（包括页头自己的）、
+/// 已知项的第二次出现、位置 / 边 / 量级对不上的溢出一律原样交给框架，让测试失败。
 ///
-/// 已知项被修掉之后，对应的期望会失败——到时候删掉那一项即可，不要放宽过滤。
+/// 连接区的已知项被修掉之后，对应的期望会失败——到时候删掉那一项即可，不要放宽过滤。
 
 const _profile = ProfileEntity(
   id: 'p1',
@@ -39,13 +41,6 @@ const _profile = ProfileEntity(
 
 Future<Widget> _host(TextDirection direction) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
-  PackageInfo.setMockInitialValues(
-    appName: 'ClashMiao',
-    packageName: 'com.clashmiao.app',
-    version: '1.2.3',
-    buildNumber: '45',
-    buildSignature: '',
-  );
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: [
@@ -75,28 +70,11 @@ Future<Widget> _host(TextDirection direction) async {
   );
 }
 
-/// 一次溢出报告：归类（按创建者链）、溢出量、框架报告的溢出边。
-class _Overflow {
-  _Overflow(this.kind, this.amount, this.side);
-
-  final String kind;
-  final double amount;
-  final String side;
-}
-
-/// 按 RenderFlex 的创建者链识别溢出属于哪一块；不认识的返回 null。
-String? _classify(String creatorChain) {
-  if (creatorChain.contains('DragToMoveArea')) return 'header';
-  if (creatorChain.contains('ConnectionButton')) return 'connectionButton';
-  if (creatorChain.contains('_ModeSelector')) return 'modeSelector';
-  return null;
-}
-
 void main() {
   for (final direction in TextDirection.values) {
     for (final scale in [1.0, 2.0]) {
       testWidgets('320 dp、文字 $scale 倍、${direction.name.toUpperCase()}：'
-          '首页页头按钮与标题块垂直居中，已知溢出被精确捕获', (tester) async {
+          '首页页头不溢出、按钮与标题垂直居中，连接区已知溢出被精确捕获', (tester) async {
         tester.view.physicalSize = const Size(320, 700);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.resetPhysicalSize);
@@ -105,46 +83,22 @@ void main() {
         addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
         final host = await _host(direction);
-        final previousHandler = FlutterError.onError;
-        final overflows = <_Overflow>[];
-        FlutterError.onError = (details) {
-          final message = details.exceptionAsString();
-          final match = RegExp(
-            r'overflowed by ([\d.]+) pixels on the (\w+)',
-          ).firstMatch(message);
-          if (match != null) {
-            final chain = (details.informationCollector?.call() ?? const [])
-                .map((n) => n.toStringDeep())
-                .join('\n');
-            final kind = _classify(chain);
-            if (kind != null) {
-              overflows.add(
-                _Overflow(kind, double.parse(match.group(1)!), match.group(2)!),
-              );
-              return;
-            }
-          }
-          // 不认识的溢出（或任何其它错误）原样交给框架，让测试失败。
-          previousHandler?.call(details);
-        };
-        addTearDown(() => FlutterError.onError = previousHandler);
-
-        await tester.pumpWidget(host);
-        await tester.pump(const Duration(milliseconds: 250));
-        FlutterError.onError = previousHandler;
-
-        // 已知溢出：恰好这几类，一类不多、一类不少。
-        final expectedKinds = <String>{
-          'header',
-          if (scale == 2.0) ...['connectionButton', 'modeSelector'],
-        };
+        // 只放行连接区的已知溢出（按创建者位置 + 溢出边 + 量级精确匹配），
+        // 每项在一个场景里恰好一次；页头自己的溢出、任何其它溢出、已知项的
+        // 第二次出现，都会原样交给框架让测试失败。
+        final expected = <KnownOverflow>[
+          if (scale == 2.0) ...[connectionButtonOverflow, modeSelectorOverflow],
+        ];
+        final seen = await runAllowingKnownOverflows(expected, () async {
+          await tester.pumpWidget(host);
+          await tester.pump(const Duration(milliseconds: 250));
+        });
         expect(
-          overflows.map((o) => o.kind).toSet(),
-          expectedKinds,
-          reason: '出现了与预期不同的溢出集合',
+          seen,
+          unorderedEquals(expected.map((k) => k.name)),
+          reason: '连接区已知溢出应各出现恰好一次',
         );
-        final headerOverflow = overflows.firstWhere((o) => o.kind == 'header');
-        expect(headerOverflow.amount, greaterThan(0));
+
         final header = find.byType(DragToMoveArea);
         expect(header, findsOneWidget);
         final title = find.descendant(
@@ -152,11 +106,13 @@ void main() {
           matching: find.text('ClashMiao'),
         );
         expect(title, findsOneWidget);
-        // 标题块：标题 Text 最近的那个 Column（标题 + 其下的小字）。
-        final titleBlock = find
-            .ancestor(of: title, matching: find.byType(Column))
-            .first;
-        final blockCenter = tester.getCenter(titleBlock).dy;
+        // 版本号已删：页头里除标题外没有别的文字。
+        expect(
+          find.descendant(of: header, matching: find.byType(Text)),
+          findsOneWidget,
+        );
+        final titleRect = tester.getRect(title);
+        final blockCenter = titleRect.center.dy;
 
         final buttons = find.descendant(
           of: header,
@@ -176,25 +132,29 @@ void main() {
         }
 
         // 方向感知的几何：沿「起点 → 末端」依次是 标题块、按钮 1、按钮 2。
-        final block = tester.getRect(titleBlock);
+        final block = titleRect;
         final ltr = direction == TextDirection.ltr;
         bool before(Rect a, Rect b) =>
             ltr ? a.right <= b.left + 0.5 : a.left >= b.right - 0.5;
         expect(before(block, rects[0]), isTrue, reason: '标题块不应压到第 1 颗按钮');
         expect(before(rects[0], rects[1]), isTrue, reason: '两颗按钮不应重叠');
 
-        // 屏内：所有元素的左缘不得出屏。右缘可以超出页头内容区（屏宽减去
-        // 24 dp 页边距）的量不得大于上面捕获的已知溢出量。框架在两种方向下
-        // 都把溢出报在物理右侧——LTR 时是末端的按钮越界，RTL 时是起点的标题块
-        // 越界（Row 的子项整体从左边缘 24 dp 处排起），所以这里按物理边界比较，
-        // 先后顺序则用上面方向感知的 before() 断言。
+        // 屏内：所有元素都落在页头内容区（屏宽两侧各留 24 dp 页边距）里，
+        // 不再有任何越界量。
         const screenWidth = 320.0;
         const pagePadding = 24.0;
-        final rightLimit = screenWidth - pagePadding + headerOverflow.amount;
         for (final r in [block, ...rects]) {
-          expect(r.left, greaterThanOrEqualTo(0));
-          expect(r.right, lessThanOrEqualTo(rightLimit + 0.5));
+          expect(r.left, greaterThanOrEqualTo(pagePadding - 0.5));
+          expect(r.right, lessThanOrEqualTo(screenWidth - pagePadding + 0.5));
         }
+
+        // 页头与线路页同一个 PageHeader：最小高度 48 dp。
+        final headerRect = tester.getRect(header);
+        expect(headerRect.height, greaterThanOrEqualTo(48));
+
+        // 两颗圆按钮的提示文字来自 i18n（简中）。
+        expect(find.byTooltip('快速设置'), findsOneWidget);
+        expect(find.byTooltip('新的配置文件'), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }

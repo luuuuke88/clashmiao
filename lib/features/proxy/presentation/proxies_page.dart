@@ -18,6 +18,7 @@ import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:collection/collection.dart';
@@ -200,64 +201,41 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        t.proxies.pageTitle,
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Theme.of(context).colorScheme.onSurface,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
+              // Header：与首页同一个 PageHeader（标题 24 sp、最小高 48 dp）。
+              PageHeader(
+                title: t.proxies.pageTitle,
+                actions: [
+                  _HeaderButton(
+                    icon: FluentIcons.arrow_sort_24_regular,
+                    tooltip: t.proxies.sortTooltip,
+                    onTap: () {
+                      showAiUiModal<void>(
+                        context: context,
+                        builder: (context) => const ProxiesSortModal(),
+                      );
+                    },
                   ),
-                  Row(
-                    children: [
-                      _HeaderButton(
-                        icon: FluentIcons.arrow_sort_24_regular,
-                        tooltip: t.proxies.sortTooltip,
-                        onTap: () {
-                          showAiUiModal<void>(
-                            context: context,
-                            builder: (context) => const ProxiesSortModal(),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      _HeaderButton(
-                        icon: FluentIcons.flash_24_regular,
-                        loading:
-                            primaryGroup != null &&
-                            latencyState.isGroupTesting(primaryGroup.tag),
-                        tooltip:
-                            primaryGroup != null &&
-                                latencyState.isGroupTesting(primaryGroup.tag)
-                            ? t.proxies.delaySemantics.testing
-                            : t.proxies.delayTestTooltip,
-                        onTap:
-                            primaryGroup != null &&
-                                canDelayTestGroup(primaryGroup)
-                            ? () => _testDelay(
-                                context,
-                                ref,
-                                primaryGroup,
-                                isConnected,
-                              )
-                            : () {
-                                AppToast.info(
-                                  context,
-                                  t.proxies.emptyProxiesMsg,
-                                );
-                              },
-                      ),
-                    ],
+                  _HeaderButton(
+                    icon: FluentIcons.flash_24_regular,
+                    loading:
+                        primaryGroup != null &&
+                        latencyState.isGroupTesting(primaryGroup.tag),
+                    tooltip:
+                        primaryGroup != null &&
+                            latencyState.isGroupTesting(primaryGroup.tag)
+                        ? t.proxies.delaySemantics.testing
+                        : t.proxies.delayTestTooltip,
+                    onTap:
+                        primaryGroup != null && canDelayTestGroup(primaryGroup)
+                        ? () => _testDelay(
+                            context,
+                            ref,
+                            primaryGroup,
+                            isConnected,
+                          )
+                        : () {
+                            AppToast.info(context, t.proxies.emptyProxiesMsg);
+                          },
                   ),
                 ],
               ),
@@ -518,6 +496,17 @@ class _AutoSelectCard extends HookConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 整张卡合并为一个节点，带选中语义（与节点行一致）。
+    return MergeSemantics(
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        child: _buildCard(context, ref),
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider);
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
@@ -551,7 +540,9 @@ class _AutoSelectCard extends HookConsumerWidget {
                 ),
                 child: Icon(
                   FluentIcons.flash_24_filled,
-                  color: isSelected ? Colors.white : theme.colorScheme.primary,
+                  color: isSelected
+                      ? theme.colorScheme.onPrimary
+                      : theme.colorScheme.primary,
                   size: 20,
                 ),
               ),
@@ -586,7 +577,7 @@ class _AutoSelectCard extends HookConsumerWidget {
                 Icon(
                   FluentIcons.chevron_right_24_regular,
                   size: 16,
-                  color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                  color: aiUi.secondaryTextColor,
                 ),
             ],
           ),

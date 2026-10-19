@@ -11,7 +11,8 @@ import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
-import 'package:clashmiao/core/theme/brand_colors.dart';
+import 'package:clashmiao/core/theme/motion.dart';
+import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/utils/formatters.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
@@ -25,6 +26,7 @@ import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart';
 import 'package:flutter/material.dart';
@@ -32,12 +34,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:package_info_plus/package_info_plus.dart';
 import 'package:window_manager/window_manager.dart';
-
-final _packageInfoProvider = FutureProvider<PackageInfo>((ref) {
-  return PackageInfo.fromPlatform();
-});
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -49,7 +46,7 @@ class HomePage extends ConsumerWidget {
     final connectionState = ref.watch(connectionControllerProvider);
     final status = connectionState.valueOrNull ?? const BoxStopped();
     final activeProfile = ref.watch(activeProfileProvider);
-    final packageInfo = ref.watch(_packageInfoProvider);
+    final t = ref.watch(translationsProvider);
 
     // 连接错误反馈：错误出现 → 弹 toast。只覆盖 connect()/disconnect() 的
     // 异常路径（SocketException/超时等）——致命 alert（内核没起来）不走这里，
@@ -108,56 +105,27 @@ class HomePage extends ConsumerWidget {
         children: [
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              // 上边距 24 dp，与线路页页头同高同位。
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
               child: Column(
                 children: [
-                  // 顶部 Header
+                  // 顶部页头：与线路页同一个 PageHeader（标题 24 sp、最小高 48 dp、
+                  // 按钮与标题垂直居中），不再带版本号——版本在「关于」页。
                   // shell_page 已统一处理顶部偏移
                   DragToMoveArea(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'ClashMiao',
-                              style: theme.textTheme.headlineMedium?.copyWith(
-                                color: theme.colorScheme.onSurface,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            packageInfo.maybeWhen(
-                              data: (info) => Text(
-                                'v${info.version}'.toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontFamily: 'Monospace',
-                                  color: aiUi.secondaryTextColor,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                              orElse: () => const SizedBox(),
-                            ),
-                          ],
+                    child: PageHeader(
+                      title: 'ClashMiao',
+                      actions: [
+                        _HeaderButton(
+                          icon: FluentIcons.options_24_regular,
+                          tooltip: t.config.quickSettings,
+                          onTap: () => QuickSettingsModal.show(context),
                         ),
-                        Row(
-                          children: [
-                            _HeaderButton(
-                              icon: FluentIcons.options_24_regular,
-                              onTap: () => QuickSettingsModal.show(context),
-                            ),
-                            const SizedBox(width: 12),
-                            _HeaderButton(
-                              icon: FluentIcons.add_24_regular,
-                              filled: true,
-                              onTap: () {
-                                final t = ref.read(translationsProvider);
-                                _showAddProfileSheet(context, ref, t);
-                              },
-                            ),
-                          ],
+                        _HeaderButton(
+                          icon: FluentIcons.add_24_regular,
+                          tooltip: t.profile.add.buttonText,
+                          filled: true,
+                          onTap: () => _showAddProfileSheet(context, ref, t),
                         ),
                       ],
                     ),
@@ -263,18 +231,25 @@ class HomePage extends ConsumerWidget {
 
 class _HeaderButton extends StatelessWidget {
   final IconData icon;
+  final String tooltip;
   final bool filled;
   final VoidCallback onTap;
 
   const _HeaderButton({
     required this.icon,
+    required this.tooltip,
     this.filled = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GlassIconButton(icon: icon, filled: filled, onTap: onTap);
+    return GlassIconButton(
+      icon: icon,
+      tooltip: tooltip,
+      filled: filled,
+      onTap: onTap,
+    );
   }
 }
 
@@ -333,7 +308,7 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
         borderRadius: 14,
         // 这张卡只有一行内容，上下留 10 就够——留 14 会让它比中间那颗按钮
         // 还抢戏。
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -374,8 +349,8 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
                           Container(
                             width: 6,
                             height: 6,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF10b981),
+                            decoration: BoxDecoration(
+                              color: StatusColors.connected(theme.brightness),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -396,13 +371,15 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
                   ),
                 ),
                 if (canUpdate)
+                  // 视觉图标 18 dp，交互区 48×48（Android 最小触控目标）。
                   SizedBox(
-                    width: 32,
-                    height: 32,
+                    width: kMinInteractiveDimension,
+                    height: kMinInteractiveDimension,
                     child: IconButton(
                       padding: EdgeInsets.zero,
                       tooltip: t.profile.update.tooltip,
-                      icon: _isUpdating
+                      // 更新中旋转；系统开了「减少动画」时停在静态图标上。
+                      icon: _isUpdating && Motion.loops(context)
                           ? Icon(
                                   FluentIcons.arrow_sync_24_regular,
                                   size: 18,
@@ -461,8 +438,12 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
                 ),
                 const SizedBox(height: 16),
               ],
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              // 用量与到期日：放得下就两端对齐，放不下（窄屏 / 大字号）自动折到
+              // 下一行，不把行撑出卡片。
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 12,
+                runSpacing: 4,
                 children: [
                   Text(
                     '${SubscriptionInfo.formatBytes(subInfo.used)} / ${SubscriptionInfo.formatBytes(subInfo.total)}',
@@ -1048,38 +1029,39 @@ class _SegmentTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: 200.ms,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        alignment: Alignment.center,
-        // 选中项用实心品牌色 + 白字。原来填的是 colorScheme.surface：深色
-        // 主题下它比底槽还暗，选中跟没选中只差一点字重，真机上分不出来。
-        decoration: BoxDecoration(
-          color: isSelected
-              ? BrandColors.indigo
-              : BrandColors.indigo.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? BrandColors.indigo.withValues(alpha: 0.35)
-                  : Colors.transparent,
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: AnimatedDefaultTextStyle(
-          duration: 200.ms,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-            color: isSelected ? Colors.white : theme.aiUi.secondaryTextColor,
+    // 分段控件的每一段：按钮 + 选中语义（读屏念「已选择」），互斥组。
+    return Semantics(
+      button: true,
+      selected: isSelected,
+      inMutuallyExclusiveGroup: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: Motion.duration(context, Motion.short),
+          curve: Motion.standard,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          alignment: Alignment.center,
+          // 选中项用 primaryContainer / onPrimaryContainer 这一对（与快速设置
+          // 里的分段控件同一套角色）。原来填的是 colorScheme.surface：深色
+          // 主题下它比底槽还暗，选中跟没选中只差一点字重，真机上分不出来。
+          decoration: BoxDecoration(
+            color: isSelected ? scheme.primaryContainer : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Text(text),
+          child: AnimatedDefaultTextStyle(
+            duration: Motion.duration(context, Motion.short),
+            curve: Motion.standard,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected
+                  ? scheme.onPrimaryContainer
+                  : theme.aiUi.secondaryTextColor,
+            ),
+            child: Text(text),
+          ),
         ),
       ),
     );
@@ -1293,11 +1275,14 @@ class _EmptyProfileBody extends ConsumerWidget {
                       size: 20,
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      t.profile.add.shortBtnTxt,
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                    // Flexible：窄屏 / 大字号 / 长翻译下文字换行，不把行撑出屏。
+                    Flexible(
+                      child: Text(
+                        t.profile.add.shortBtnTxt,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ],
@@ -1373,10 +1358,10 @@ class _EmptyActiveProfileBody extends ConsumerWidget {
                 ),
                 child: Text(
                   t.profile.overviewPageTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: theme.colorScheme.onPrimary,
                   ),
                 ),
               ),

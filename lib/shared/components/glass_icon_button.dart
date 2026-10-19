@@ -59,7 +59,7 @@ class GlassIconButton extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: aiUi.primaryShadow,
             ),
-            child: glyph(Colors.white),
+            child: glyph(theme.colorScheme.onPrimary),
           )
         // 跟 GlassCard 一样不用 BackdropFilter，理由见那边的注释。
         : ClipOval(

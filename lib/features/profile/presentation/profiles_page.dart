@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -529,7 +530,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                             onPressed: () => onChanged(sort, !ascending),
                             icon: AnimatedRotation(
                               turns: arrowTurn,
-                              duration: const Duration(milliseconds: 100),
+                              duration: Motion.duration(context, Motion.short),
                               child: Icon(
                                 FluentIcons.arrow_sort_up_24_regular,
                                 semanticLabel: ascending
@@ -797,14 +798,16 @@ class _HeaderButton extends StatelessWidget {
                     padding: const EdgeInsets.all(10),
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: filled ? Colors.white : aiUi.secondaryTextColor,
+                      color: filled
+                          ? theme.colorScheme.onPrimary
+                          : aiUi.secondaryTextColor,
                     ),
                   )
                 : Icon(
                     icon,
                     size: 20,
                     color: filled
-                        ? Colors.white
+                        ? theme.colorScheme.onPrimary
                         : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
           ),
@@ -1063,7 +1066,8 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            isLoading
+            // 减少动画时不转，停在静态图标上（加载中靠按钮变灰/文案表达）。
+            isLoading && Motion.loops(context)
                 ? Icon(
                         icon,
                         size: 20,
@@ -1076,7 +1080,10 @@ class _ActionButton extends StatelessWidget {
                 : Icon(
                     icon,
                     size: 20,
-                    color: isLight ? aiUi.secondaryTextColor : Colors.white70,
+                    // 加载中但减少动画：静态图标沿用「进行中」的强调色。
+                    color: isLoading
+                        ? (isLight ? theme.colorScheme.primary : Colors.white)
+                        : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
             const SizedBox(height: 8),
             Text(

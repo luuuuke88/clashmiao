@@ -304,7 +304,20 @@ class _ShellPageState extends ConsumerState<ShellPage> {
               children: [
                 if (topPad > 0) SizedBox(height: topPad),
                 Expanded(
-                  child: IndexedStack(index: selectedIndex, children: _pages),
+                  // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
+                  // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
+                  // 把它们静音；切回来时自动恢复。
+                  child: IndexedStack(
+                    index: selectedIndex,
+                    children: [
+                      for (var i = 0; i < _pages.length; i++)
+                        TickerMode(
+                          key: ValueKey('tab_ticker_$i'),
+                          enabled: i == selectedIndex,
+                          child: _pages[i],
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),

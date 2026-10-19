@@ -95,8 +95,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                         padding: const EdgeInsets.only(right: 16),
                         child: FilledButton(
                           onPressed: _busy ? null : () => _save(profile, t),
+                          // 前景用 FilledButton 默认的 onPrimary，与 primary 底配对。
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),

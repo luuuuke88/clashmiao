@@ -245,7 +245,10 @@ void main() async {
       options.attachScreenshot = false;
       options.sendDefaultPii = false;
       // 发送前与 app.log 同一个脱敏器：订阅地址凭据、分享链接不随上报离开设备。
+      // 请求整块丢弃、contexts 只留白名单，其余字段逐项脱敏。
       options.beforeSend = (event, hint) => redactSentryEvent(event);
+      options.beforeSendTransaction = (transaction, hint) =>
+          redactSentryTransaction(transaction);
       options.beforeBreadcrumb = (breadcrumb, hint) =>
           redactBreadcrumb(breadcrumb);
     }, appRunner: appRunner),

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/model/profile_patch.dart';
@@ -328,7 +329,14 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         // 否则用户会以为保存了新地址、实际连接用的还是旧配置。拉取失败会被
         // 下面的 catch 捕获并明确提示，不静默吞掉——旧配置文件保持不变，
         // 用户至少还能用旧的。
-        await repo.update(profile.id);
+        //
+        // 拉取途中订阅又被改动（stale）是预期内的取消：保存本身已经成功，
+        // 不提示失败。
+        try {
+          await repo.update(profile.id);
+        } catch (e) {
+          if (!isStaleRefresh(e)) rethrow;
+        }
       }
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
@@ -338,7 +346,11 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       }
     } catch (error) {
       if (mounted) {
-        AppToast.error(context, '${t.profile.save.failureMsg}: $error');
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(error, () => t) ??
+              '${t.profile.save.failureMsg}: $error',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -354,8 +366,16 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(activeProfileProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (error) {
-      if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $error');
+      if (isStaleRefresh(error)) {
+        // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
+        ref.invalidate(profileListProvider);
+        ref.invalidate(activeProfileProvider);
+      } else if (mounted) {
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(error, () => t) ??
+              '${t.profile.update.failureMsg}: $error',
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -383,7 +403,13 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (error) {
-      if (mounted) AppToast.error(context, '${t.failure.unexpected}: $error');
+      if (mounted) {
+        AppToast.error(
+          context,
+          profileStoreErrorMessage(error, () => t) ??
+              '${t.failure.unexpected}: $error',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }

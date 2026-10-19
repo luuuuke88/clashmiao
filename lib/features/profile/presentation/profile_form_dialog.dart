@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -273,7 +274,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
     final text = value.trim();
     if (text.isEmpty || _isLoading) return;
     setState(() => _isLoading = true);
-    await _doAdd(context, widget.ref, text);
+    await doAddProfile(context, widget.ref, text);
     if (!mounted) return;
     setState(() => _isLoading = false);
     unawaited(Navigator.of(context).maybePop());
@@ -348,9 +349,9 @@ Future<void> showProfileManualFormDialog(
 
         Navigator.of(ctx).pop();
         if (isEdit) {
-          await _doEdit(context, ref, profile.id, name: name, url: url);
+          await doEditProfile(context, ref, profile.id, name: name, url: url);
         } else {
-          await _doAdd(
+          await doAddProfile(
             context,
             ref,
             url,
@@ -712,7 +713,9 @@ bool isHttpDownloadUrl(String input) {
   return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
 }
 
-Future<void> _doAdd(
+/// 添加订阅并反馈结果。
+@visibleForTesting
+Future<void> doAddProfile(
   BuildContext context,
   WidgetRef ref,
   String urlOrUri, {
@@ -730,11 +733,19 @@ Future<void> _doAdd(
     ref.invalidate(offlineProxyGroupsProvider);
     if (context.mounted) AppToast.success(context, '添加成功');
   } catch (e) {
-    if (context.mounted) AppToast.error(context, '添加失败: $e');
+    if (context.mounted) {
+      AppToast.error(
+        context,
+        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
+            '添加失败: $e',
+      );
+    }
   }
 }
 
-Future<void> _doEdit(
+/// 保存订阅的名称 / URL 编辑并反馈结果。
+@visibleForTesting
+Future<void> doEditProfile(
   BuildContext context,
   WidgetRef ref,
   String id, {
@@ -747,7 +758,13 @@ Future<void> _doEdit(
     ref.invalidate(profileListProvider);
     if (context.mounted) AppToast.success(context, '保存成功');
   } catch (e) {
-    if (context.mounted) AppToast.error(context, '保存失败: $e');
+    if (context.mounted) {
+      AppToast.error(
+        context,
+        profileStoreErrorMessage(e, () => ref.read(translationsProvider)) ??
+            '保存失败: $e',
+      );
+    }
   }
 }
 

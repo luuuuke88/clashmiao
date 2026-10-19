@@ -376,7 +376,8 @@
       "notFound": "Profile Not Found",
       "noActive": "No Active Profile",
       "invalidConfig": "Invalid Configs",
-      "invalidUrl": "Invalid URL"
+      "invalidUrl": "Invalid URL",
+      "readOnlyUpgrade": "Please upgrade the app before changing subscriptions"
     },
     "connection": {
       "unexpected": "Unexpected Connection Error",

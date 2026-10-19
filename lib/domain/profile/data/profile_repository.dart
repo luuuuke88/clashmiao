@@ -25,7 +25,12 @@ class ProfileRepository {
     required this.prefs,
     required this.boxService,
     ProfileStore? store,
-  }) : store = store ?? ProfileStore(prefs: prefs, configDir: configDir);
+    DateTime Function()? clock,
+  }) : store = store ?? ProfileStore(prefs: prefs, configDir: configDir),
+       _now = clock ?? DateTime.now;
+
+  /// 取当前时间；测试注入固定时钟，避免靠真实等待制造「更晚的时间」。
+  final DateTime Function() _now;
 
   final Dio dio;
 
@@ -97,7 +102,7 @@ class ProfileRepository {
         // 不存完整 URI 到 url（可能含敏感凭据 / 密码）
         name: name.trim().isEmpty ? '本地导入' : name.trim(),
         url: 'content://${_truncate(content, 24)}',
-        lastUpdate: DateTime.now(),
+        lastUpdate: _now(),
         inc: store.newInc(),
       );
       final result = await store.commit<ProfileEntity>(
@@ -521,7 +526,7 @@ class ProfileRepository {
     if (fetched.userAgent != kDefaultUserAgent) {
       profile = profile.copyWith(customUserAgent: fetched.userAgent);
     }
-    profile = profile.copyWith(inc: store.newInc(), rev: 1);
+    profile = profile.copyWith(inc: store.newInc(), rev: 1, lastUpdate: _now());
 
     // 归一化：先把原始响应写到 tempFile（输入），让 native parse 读它、
     // 解析（Clash YAML / base64 / sing-box JSON）后**写到**暂存文件（输出）。
@@ -562,7 +567,15 @@ class ProfileRepository {
     if (customName != null && customName.trim().isNotEmpty) {
       await editProfile(profileId, newName: customName.trim());
     }
-    return update(profileId);
+    try {
+      return await update(profileId);
+    } on ProfileUpdateStaleException {
+      // 刷新途中这条订阅又被改动（或被删）：本次「再拉一次」作废，但「导入」这个
+      // 动作的目的——这条订阅存在——已经达成，不能把预期内的取消报成导入失败。
+      final existing = store.find(profileId);
+      if (existing == null) rethrow;
+      return existing;
+    }
   }
 
   /// 更新指定订阅。
@@ -572,6 +585,8 @@ class ProfileRepository {
   /// 并发调用共享同一个 Future；输入不同（比如期间改了 URL）互不共享。
   ///
   /// 期间订阅被删除 / 编辑 / 换代时结果被丢弃，抛 [ProfileUpdateStaleException]。
+  /// 这是**预期内的取消**而不是失败：调用方应静默跳过（或按「订阅仍存在」处理），
+  /// 不要提示刷新失败。可用 `isStaleRefresh`（profile_failures.dart）判断。
   Future<ProfileEntity> update(String profileId) async {
     final current = store.find(profileId);
     if (current == null) throw Exception('Profile not found/订阅不存在');
@@ -627,8 +642,8 @@ class ProfileRepository {
         }
         final updated = cur.copyWith(
           name: cur.name.trim().isEmpty ? parsed.name : cur.name,
-          lastUpdate: DateTime.now(),
-          subInfo: parsed.subInfo ?? cur.subInfo,
+          lastUpdate: _now(),
+          subInfo: _mergeSubInfo(cur.subInfo, parsed.subInfo),
           rev: cur.rev + 1,
         );
         return Plan<ProfileEntity>(
@@ -643,6 +658,25 @@ class ProfileRepository {
     } finally {
       await _deleteQuietly(staging);
     }
+  }
+
+  /// 响应头没带流量信息就保留旧的；带了就用新的已知字段，**但保留旧对象里的
+  /// 未知字段**（`extra`）——整体替换会让新版本写入的字段在一次刷新后消失。
+  static SubscriptionInfo? _mergeSubInfo(
+    SubscriptionInfo? current,
+    SubscriptionInfo? refreshed,
+  ) {
+    if (refreshed == null) return current;
+    if (current == null) return refreshed;
+    return SubscriptionInfo(
+      upload: refreshed.upload,
+      download: refreshed.download,
+      total: refreshed.total,
+      expire: refreshed.expire,
+      webPageUrl: refreshed.webPageUrl,
+      supportUrl: refreshed.supportUrl,
+      extra: current.extra,
+    );
   }
 
   static List<ProfileEntity> _replaced(
@@ -807,8 +841,10 @@ class ProfileRepository {
     for (final profile in store.read()) {
       try {
         await update(profile.id);
+      } on StoreReadOnlyException {
+        rethrow; // 只读模式下每一条都会失败，别装作更新成功了
       } catch (_) {
-        // 单个更新失败不影响其他
+        // 单个更新失败（含期间被改动而作废）不影响其他
       }
     }
   }

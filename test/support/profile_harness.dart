@@ -35,6 +35,13 @@ class ProfileHarness {
     bool flaky = false,
     Map<String, Object> initialPrefs = const {},
   }) async {
+    // 固定起点的时钟：每次取值比上一次晚一分钟，需要「更晚的时间」时不必真等。
+    var tick = DateTime.utc(2026, 1, 1);
+    DateTime clock() {
+      tick = tick.add(const Duration(minutes: 1));
+      return tick;
+    }
+
     SharedPreferences.setMockInitialValues(Map.of(initialPrefs));
     final real = await SharedPreferences.getInstance();
     final wrapped = flaky ? FlakyPrefs(real) : null;
@@ -46,6 +53,7 @@ class ProfileHarness {
       configDir: tmpDir,
       prefs: prefs,
       boxService: const StubBoxService(),
+      clock: clock,
     );
     return ProfileHarness._(
       tmpDir: tmpDir,

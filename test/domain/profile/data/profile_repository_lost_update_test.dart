@@ -86,7 +86,6 @@ void main() {
     expect(stale.subInfo?.upload, 1);
 
     // 刷新（比如定时刷新）把 lastUpdate / subInfo 写成了更新的值。
-    await Future<void>.delayed(const Duration(milliseconds: 5));
     final refreshed = await h.repo.update(a);
     expect(refreshed.subInfo?.upload, 2);
 
@@ -124,7 +123,7 @@ void main() {
     final first = h.repo.update(a); // 例如定时刷新
     await h.adapter.waitForRequests(2);
     final second = h.repo.update(a); // 例如用户手动点刷新
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+    await pumpEventQueue(); // 让第二次调用把能做的都做完
 
     expect(h.adapter.countFor('$base/a'), 2, reason: '1 次新增 + 1 次刷新，不是 2 次刷新');
     gate.complete();

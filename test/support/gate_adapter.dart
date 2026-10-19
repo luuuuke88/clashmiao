@@ -16,6 +16,7 @@ class GateAdapter implements HttpClientAdapter {
 
   final Map<String, List<Completer<void>>> _holds = {};
   final Map<String, int> _counts = {};
+  final List<(int, Completer<void>)> _waiters = [];
 
   /// 自定义响应体；默认给一份带一个节点的 sing-box JSON，且每次内容不同。
   String Function(String url, int nth)? bodyFor;
@@ -32,14 +33,12 @@ class GateAdapter implements HttpClientAdapter {
 
   int countFor(String url) => _counts[url] ?? 0;
 
-  /// 等到累计至少收到 [count] 次请求。
-  Future<void> waitForRequests(int count) async {
-    for (var i = 0; i < 5000 && requests.length < count; i++) {
-      await Future<void>.delayed(const Duration(milliseconds: 1));
-    }
-    if (requests.length < count) {
-      throw StateError('只收到 ${requests.length} 次请求，期望 $count');
-    }
+  /// 等到累计至少收到 [count] 次请求（请求一到达就被唤醒，不靠轮询或睡眠）。
+  Future<void> waitForRequests(int count) {
+    if (requests.length >= count) return Future<void>.value();
+    final waiter = Completer<void>();
+    _waiters.add((count, waiter));
+    return waiter.future;
   }
 
   static String defaultBody(String url, int nth) => jsonEncode({
@@ -56,6 +55,12 @@ class GateAdapter implements HttpClientAdapter {
   ) async {
     final url = options.uri.toString();
     requests.add(url);
+    for (final (count, waiter) in List.of(_waiters)) {
+      if (requests.length >= count) {
+        _waiters.remove((count, waiter));
+        waiter.complete();
+      }
+    }
     final nth = _counts.update(url, (n) => n + 1, ifAbsent: () => 1);
     final queue = _holds[url];
     if (queue != null && queue.isNotEmpty) {

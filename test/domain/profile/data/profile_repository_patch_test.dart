@@ -250,6 +250,154 @@ void main() {
     );
   });
 
+  group('刷新合并订阅信息：已知字段更新，未知字段保留', () {
+    test('响应头带 subscription-userinfo：流量更新，subInfo 里的未知字段仍在', () async {
+      h.adapter.headersFor = (url, nth) => {
+        'subscription-userinfo': [
+          'upload=5;download=6;total=100;expire=2000000000',
+        ],
+      };
+      await h.seedRaw([
+        _pj(
+          'a',
+          more: {
+            'subInfo': {
+              'upload': 1,
+              'download': 2,
+              'total': 3,
+              'webPageUrl': 'https://old.example/panel',
+              'quota': 'gold',
+              'nested': {'x': 1},
+            },
+          },
+        ),
+      ]);
+
+      final refreshed = await h.repo.update('a');
+
+      final info = refreshed.subInfo!;
+      expect(info.upload, 5);
+      expect(info.download, 6);
+      expect(info.total, 100);
+      expect(info.webPageUrl, isNull, reason: '新响应没带管理页面：已知字段以新响应为准');
+      expect(info.extra, {
+        'quota': 'gold',
+        'nested': {'x': 1},
+      });
+
+      final stored = h.storedJson.single['subInfo'] as Map<String, dynamic>;
+      expect(stored['upload'], 5);
+      expect(stored['quota'], 'gold');
+      expect(stored['nested'], {'x': 1});
+    });
+
+    test('原来没有 subInfo：直接采用响应头里的', () async {
+      h.adapter.headersFor = (url, nth) => {
+        'subscription-userinfo': ['upload=1;download=2;total=3'],
+      };
+      await h.seedRaw([_pj('a')]);
+      final refreshed = await h.repo.update('a');
+      expect(refreshed.subInfo?.total, 3);
+    });
+
+    test('响应头没带流量信息：保留旧的 subInfo（含未知字段）', () async {
+      await h.seedRaw([
+        _pj(
+          'a',
+          more: {
+            'subInfo': {
+              'upload': 1,
+              'download': 2,
+              'total': 3,
+              'quota': 'gold',
+            },
+          },
+        ),
+      ]);
+      final refreshed = await h.repo.update('a');
+      expect(refreshed.subInfo?.upload, 1);
+      expect(refreshed.subInfo?.extra, {'quota': 'gold'});
+    });
+  });
+
+  group('补丁 clear：非空字段回落默认值，可空字段置空', () {
+    Future<void> seedAdvanced() => h.seedRaw([
+      _pj(
+        'a',
+        more: {
+          'advancedConfig': {
+            'remoteDnsOverride': 'https://dns.example',
+            'muxEnabled': true,
+            'muxProtocol': 'smux',
+            'muxConcurrency': 9,
+            'fragmentEnabled': true,
+            'fragmentRange': '1-2',
+            'future': 1,
+          },
+        },
+      ),
+    ]);
+
+    Future<AdvancedConfig> patchAdvanced(AdvancedConfigPatch patch) async {
+      await h.repo.editProfile(
+        'a',
+        patch: ProfilePatch(advancedConfig: Patch.set(patch)),
+      );
+      return h.repo.getAll().single.advancedConfig!;
+    }
+
+    test('布尔字段 clear 回落 false', () async {
+      await seedAdvanced();
+      final adv = await patchAdvanced(
+        const AdvancedConfigPatch(
+          muxEnabled: Patch.clear(),
+          fragmentEnabled: Patch.clear(),
+        ),
+      );
+      expect(adv.muxEnabled, isFalse);
+      expect(adv.fragmentEnabled, isFalse);
+      expect(adv.muxProtocol, 'smux', reason: '没动的字段保持');
+    });
+
+    test('字符串字段 clear 回落默认协议', () async {
+      await seedAdvanced();
+      final adv = await patchAdvanced(
+        const AdvancedConfigPatch(muxProtocol: Patch.clear()),
+      );
+      expect(adv.muxProtocol, const AdvancedConfig().muxProtocol);
+      expect(adv.muxConcurrency, 9);
+    });
+
+    test('整数字段 clear 回落默认并发数', () async {
+      await seedAdvanced();
+      final adv = await patchAdvanced(
+        const AdvancedConfigPatch(muxConcurrency: Patch.clear()),
+      );
+      expect(adv.muxConcurrency, const AdvancedConfig().muxConcurrency);
+      expect(adv.muxEnabled, isTrue);
+    });
+
+    test('可空字段 clear 置空；未知字段始终保留', () async {
+      await seedAdvanced();
+      final adv = await patchAdvanced(
+        const AdvancedConfigPatch(
+          remoteDnsOverride: Patch.clear(),
+          fragmentRange: Patch.clear(),
+        ),
+      );
+      expect(adv.remoteDnsOverride, isNull);
+      expect(adv.fragmentRange, isNull);
+      expect(adv.extra, {'future': 1});
+    });
+
+    test('unset 与 clear 不同：unset 保持原值', () async {
+      await seedAdvanced();
+      final adv = await patchAdvanced(const AdvancedConfigPatch());
+      expect(adv.muxEnabled, isTrue);
+      expect(adv.muxConcurrency, 9);
+    });
+  });
+
   group('v0（旧版本）数据可以直接继续使用', () {
     test('老订阅（无 rev / inc，带 active 字段）能刷新、编辑、删除', () async {
       await h.seedRaw([

@@ -27,24 +27,21 @@
 
 ---
 
-## 里程碑 3 — iOS PacketTunnel 🟡 代码就绪 / 未上真机
+## 里程碑 3 — iOS PacketTunnel 🟡 真机已跑通 / 待上架
 
-**代码完成**：
+**已完成**：
 - `ios/SingBoxPacketTunnel/` Network Extension target（com.apple.product-type.app-extension）
-- `ios/Runner/{VPN,Handlers,Shared}/` 主 app 侧 Swift 全部完工（~20 个 .swift）
-- `Runner.xcodeproj` 注册 SingBoxPacketTunnel 为 app-extension，自动 embed Libcore.xcframework
-- Podfile 已加 extension target 段
-- CI `build-ios` job (`flutter build ios --debug --no-codesign`) 跑绿
+- `ios/Runner/` 主 App 侧 Swift 全部完工，`Runner.xcodeproj` 自动 embed Libcore.xcframework
+- CI `build-ios` job（`flutter build ios --debug --no-codesign`）跑绿
+- 组织类型的 Apple Developer 账号、App ID（主 App + `.SingBoxPacketTunnel` 扩展）、App Group `group.com.clashmiao.shared`、签名配置就绪
+- 2026-10 真机验证：导入订阅、建立 VPN、出口 IP 切换均正常
 
 **剩下要做的事**：
-1. ✅ Apple Developer 付费账号
-2. 确认账号类型：App Store 只允许**以组织身份**注册的开发者上架 VPN 类 App（审核指南 5.4），个人账号只能走 TestFlight / 开发安装
-3. App ID `com.clashmiao.clashmiao` + `com.clashmiao.clashmiao.SingBoxPacketTunnel` 注册
-4. App Group `group.com.clashmiao.shared` 注册
-5. Provisioning Profile 下载到本机 Xcode
-6. iOS 真机一台（Simulator 不支持 NetworkExtension）
+1. iOS 原生侧补上网络变化事件通道（Dart 侧 `watchNetworkChanged` 在 iOS 上目前收不到事件）
+2. App Store 上架材料：隐私说明、截图、审核备注（VPN 类 App 需说明用途，审核指南 5.4）
+3. 首发地区：美国、香港
 
-详见 `ios/SCAFFOLDING.md`。拿到资源后预期 ~半天调试可上真机。
+详见 `ios/SCAFFOLDING.md`。
 
 ---
 

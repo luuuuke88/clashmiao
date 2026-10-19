@@ -135,12 +135,24 @@ sealed class MachineAction {
   const MachineAction();
 }
 
+// 所有动作都是值对象（相等 + 全字段 toString），测试据此比较完整输出。
+
 /// 为 on 意图准备启动产物；完成后喂回 [LaunchPrepared] / [LaunchPrepareFailed]。
 final class PrepareLaunch extends MachineAction {
   const PrepareLaunch(this.id, this.reason);
 
   final int id;
   final RequestReason reason;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PrepareLaunch && other.id == id && other.reason == reason;
+
+  @override
+  int get hashCode => Object.hash(PrepareLaunch, id, reason);
+
+  @override
+  String toString() => 'PrepareLaunch(#$id ${reason.name})';
 }
 
 /// 调用 `KernelPort.request`；结果喂回 [ReceiptReceived] / [SendFailed]。
@@ -149,12 +161,56 @@ final class SendRequest extends MachineAction {
 
   final int id;
   final DesiredRequest request;
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! SendRequest || other.id != id) return false;
+    final a = request;
+    final b = other.request;
+    return a.epoch == b.epoch &&
+        a.seq == b.seq &&
+        a.desired == b.desired &&
+        a.reason == b.reason &&
+        a.launch == b.launch;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    SendRequest,
+    id,
+    request.epoch,
+    request.seq,
+    request.desired,
+    request.reason,
+    request.launch,
+  );
+
+  @override
+  String toString() {
+    final r = request;
+    final l = r.launch;
+    final launch = l == null
+        ? 'null'
+        : '{path=${l.runtimeConfigPath}, profile=${l.profileName}, '
+              'rev=${l.configRevision}, options=${l.optionsJson}}';
+    return 'SendRequest(#$id epoch=${r.epoch} seq=${r.seq} '
+        '${r.desired.name} ${r.reason.name} launch=$launch)';
+  }
 }
 
 /// 调用 `KernelPort.current()` 重新同步；结果作为 `SnapshotReceived(fromResync:
-/// true)`，失败喂 [ResyncFailed]。
+/// true)`，失败喂 [ResyncFailed]。同一时刻至多一个在途。
 final class Resync extends MachineAction {
   const Resync();
+
+  @override
+  bool operator ==(Object other) => other is Resync;
+
+  @override
+  int get hashCode => (Resync).hashCode;
+
+  @override
+  String toString() => 'Resync()';
 }
 
 /// 执行一个副作用（触觉、评分、重放手选……）。
@@ -162,6 +218,16 @@ final class RunEffect extends MachineAction {
   const RunEffect(this.effect);
 
   final SideEffect effect;
+
+  @override
+  bool operator ==(Object other) =>
+      other is RunEffect && other.effect == effect;
+
+  @override
+  int get hashCode => Object.hash(RunEffect, effect);
+
+  @override
+  String toString() => 'RunEffect($effect)';
 }
 
 /// 请求终结：用 [outcome] 完成意图 [id] 的 `Future<RequestOutcome>`。每个意图
@@ -171,6 +237,16 @@ final class SettleRequest extends MachineAction {
 
   final int id;
   final RequestOutcome outcome;
+
+  @override
+  bool operator ==(Object other) =>
+      other is SettleRequest && other.id == id && other.outcome == outcome;
+
+  @override
+  int get hashCode => Object.hash(SettleRequest, id, outcome);
+
+  @override
+  String toString() => 'SettleRequest(#$id $outcome)';
 }
 
 /// 副作用种类（spec §5 副作用表）。
@@ -193,7 +269,7 @@ enum SideEffectKind {
   /// 用户断开完成后清系统代理脏标记（桌面）。
   clearSystemProxyDirty,
 
-  /// 上报致命失败（控制器检查数据分析开关）。
+  /// 上报致命失败（控制器检查数据分析开关）。按失败所属的 (epoch, attempt) 去重。
   reportFailure,
 }
 
@@ -221,7 +297,7 @@ final class SideEffect {
   int get hashCode => Object.hash(kind, epoch, attempt, failure);
 
   @override
-  String toString() => 'SideEffect(${kind.name}, $epoch/$attempt)';
+  String toString() => 'SideEffect(${kind.name}, $epoch/$attempt, $failure)';
 }
 
 /// [ConnectionMachine.reduce] 的输出。
@@ -256,7 +332,8 @@ enum RequestStage {
   /// 等待启动产物（仅 on）。
   preparing,
 
-  /// 已就绪，等待快照提供纪元与 seq 基线，或等待重发时机。
+  /// 已就绪，等待快照提供纪元与 seq 基线，或等待有效的重同步结果（见
+  /// [MachineState.awaitingResync]）。
   ready,
 
   /// `request()` 已发出，回执未回。
@@ -279,6 +356,7 @@ final class RequestRecord {
     this.receiptAt,
     this.resends = 0,
     this.failureKeyAtSend,
+    this.blockedSince,
   });
 
   final int id;
@@ -300,6 +378,11 @@ final class RequestRecord {
   /// 发送时已见过的内核失败的键；用来区分「发送之后才出现的失败」（归属判定用）。
   final String? failureKeyAtSend;
 
+  /// 就绪却因「需先重同步」而发不出去的起始时间（失联/无响应之后、wrongEpoch
+  /// 回执之后）。独立截止时间 [ConnectionTiming.resyncWaitTimeout] 由此起算；
+  /// 发出后清空。
+  final DateTime? blockedSince;
+
   /// 「内核有没有确认」的时间基准：回执到达时刻，没有则发送时刻。
   DateTime? get ackBase => receiptAt ?? sentAt;
 
@@ -313,6 +396,8 @@ final class RequestRecord {
     bool clearTimes = false,
     int? resends,
     String? failureKeyAtSend,
+    DateTime? blockedSince,
+    bool clearBlocked = false,
   }) {
     return RequestRecord(
       id: id,
@@ -325,12 +410,46 @@ final class RequestRecord {
       receiptAt: clearTimes ? null : (receiptAt ?? this.receiptAt),
       resends: resends ?? this.resends,
       failureKeyAtSend: failureKeyAtSend ?? this.failureKeyAtSend,
+      blockedSince: clearBlocked ? null : (blockedSince ?? this.blockedSince),
     );
   }
 
   @override
+  bool operator ==(Object other) =>
+      other is RequestRecord &&
+      other.id == id &&
+      other.desired == desired &&
+      other.reason == reason &&
+      other.stage == stage &&
+      other.launch == launch &&
+      other.seq == seq &&
+      other.sentAt == sentAt &&
+      other.receiptAt == receiptAt &&
+      other.resends == resends &&
+      other.failureKeyAtSend == failureKeyAtSend &&
+      other.blockedSince == blockedSince;
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    desired,
+    reason,
+    stage,
+    launch,
+    seq,
+    sentAt,
+    receiptAt,
+    resends,
+    failureKeyAtSend,
+    blockedSince,
+  );
+
+  @override
   String toString() =>
-      'RequestRecord(#$id ${desired.name} ${stage.name} seq=$seq)';
+      'RequestRecord(#$id ${desired.name} ${reason.name} ${stage.name} '
+      'seq=$seq rev=${launch?.configRevision} sentAt=$sentAt '
+      'receiptAt=$receiptAt resends=$resends failureKey=$failureKeyAtSend '
+      'blockedSince=$blockedSince)';
 }
 
 /// 副作用去重键：同一 (epoch, attempt, kind) 至多执行一次。
@@ -352,7 +471,11 @@ final class MachineState {
       _link = o._link,
       _lostSince = o._lostSince,
       _nextSeq = o._nextSeq,
-      _awaitEpoch = o._awaitEpoch,
+      _barrier = o._barrier,
+      _barrierStaleEpoch = o._barrierStaleEpoch,
+      _barrierAttempts = o._barrierAttempts,
+      _resyncAfter = o._resyncAfter,
+      _unresponsiveBarrier = o._unresponsiveBarrier,
       _requests = List.of(o._requests),
       _reasonBySeq = Map.of(o._reasonBySeq),
       _done = Set.of(o._done),
@@ -376,7 +499,17 @@ final class MachineState {
   KernelLink _link;
   DateTime? _lostSince;
   int? _nextSeq;
-  String? _awaitEpoch;
+  // 发送屏障（§10.8 / §10.1）：失联、无响应、或 wrongEpoch 之后，必须先拿到一次
+  // 有效的重同步结果才允许为最新意图分配 seq 并发送。
+  bool _barrier = false;
+  // wrongEpoch 屏障：重同步取回的快照仍是这个纪元则不算放行。
+  String? _barrierStaleEpoch;
+  // 本次等待已发起的重同步次数；上限 ConnectionTiming.maxResyncAttempts。
+  int _barrierAttempts = 0;
+  // 上次重同步失败后的重试时刻。
+  DateTime? _resyncAfter;
+  // 等待重同步的意图因重试用尽/截止时间到期而失败：展示 nativeUnresponsive。
+  bool _unresponsiveBarrier = false;
   final List<RequestRecord> _requests;
   Map<int, RequestReason> _reasonBySeq;
   Set<EffectKey> _done;
@@ -417,8 +550,14 @@ final class MachineState {
   /// 首个快照即为 started（冷启动挂上运行中隧道），时长未知。
   bool get attached => _attached;
 
-  /// 状态流失联（或始终无快照）已超过 10 s，或请求长时间得不到确认。
-  bool get nativeUnresponsive => _unresponsiveLost || _unresponsiveSeq != null;
+  /// 状态流失联（或始终无快照）已超过 10 s，或请求长时间得不到确认，或等待
+  /// 重同步的意图有界地失败了。
+  bool get nativeUnresponsive =>
+      _unresponsiveLost || _unresponsiveSeq != null || _unresponsiveBarrier;
+
+  /// 发送屏障：失联/无响应或 wrongEpoch 之后，在收到有效的重同步结果之前不发送
+  /// 任何请求。
+  bool get awaitingResync => _barrier;
 
   /// 失联起始时间；未失联为 null。
   DateTime? get lostSince => _lostSince;
@@ -469,7 +608,7 @@ class ConnectionMachine {
       case SnapshotReceived():
         _onSnapshot(w, e, actions);
       case ResyncFailed():
-        _resyncDone(w, e.now, actions);
+        _resyncDone(w, e.now, actions, ok: false);
       case LinkChanged():
         _onLink(w, e);
       case Tick():
@@ -486,6 +625,7 @@ class ConnectionMachine {
         _onSendFailed(w, e, actions);
     }
     _checkDeadlines(w, e.now, actions);
+    _pumpResync(w, e.now, actions);
     _pumpSend(w, e.now, actions);
     final view = _finalize(w);
     return Transition(
@@ -507,8 +647,9 @@ class ConnectionMachine {
     final prev = w._snapshot;
     final epochChanged = prev == null || prev.epoch != snap.epoch;
     if (!epochChanged && snap.version <= prev.version) {
-      // 乱序/重复：丢弃。但这仍可能是一次重新同步的完成。
-      if (e.fromResync) _resyncDone(w, e.now, actions);
+      // 乱序/重复：丢弃。但这仍可能是一次重新同步的完成（原生可达，且没有比我们
+      // 已知更新的状态）。
+      if (e.fromResync) _resyncDone(w, e.now, actions, ok: true);
       return;
     }
 
@@ -519,7 +660,6 @@ class ConnectionMachine {
     }
     final prevStatus = epochChanged ? null : prev.status;
     w._snapshot = snap;
-    if (w._awaitEpoch == snap.epoch) w._awaitEpoch = null;
 
     // 收到快照且链路正常 = 原生可达。
     if (w._link == KernelLink.connected) w._unresponsiveLost = false;
@@ -530,10 +670,12 @@ class ConnectionMachine {
 
     _runSnapshotEffects(w, snap, prevStatus, epochChanged, e.now, actions);
     _resolveRequests(w, snap, actions);
-    if (e.fromResync) _resyncDone(w, e.now, actions);
+    if (e.fromResync) _resyncDone(w, e.now, actions, ok: true);
   }
 
   /// 纪元变化（含首个快照）：重置所有纪元内基线；已发送未终结的请求被中断。
+  /// 尚未发送的最新意图保留，用新基线发送。发送屏障不在这里解除：它只认重同步
+  /// 结果（见 [_resyncDone]）。
   void _resetEpoch(
     MachineState w,
     KernelSnapshot snap,
@@ -547,14 +689,18 @@ class ConnectionMachine {
       }
     }
     w._done = {};
+    // 首个快照里已存在的致命失败视为已处理（不上报），同时占用它的
+    // (epoch, attempt)：同一 attempt 之后的致命失败也不再上报。
+    final lf = snap.lastFailure;
+    if (lf != null && ConnectionFailure.fromKernel(lf).isFatal) {
+      w._done.add((snap.epoch, lf.attempt, SideEffectKind.reportFailure));
+    }
     w._reasonBySeq = {};
     w._startedAt = null;
     w._attached = false;
     w._nextSeq = snap.appliedSeq + 1;
-    w._awaitEpoch = null;
     w._localFailure = null;
     w._unresponsiveSeq = null;
-    w._resyncSince = null;
     w._seedFailureKey = true;
     w._seenKernelFailureKey = _kernelFailureKey(snap);
   }
@@ -567,23 +713,21 @@ class ConnectionMachine {
     DateTime now,
     List<MachineAction> actions,
   ) {
-    void once(SideEffectKind kind, {ConnectionFailure? failure}) {
-      final key = (snap.epoch, snap.attempt, kind);
+    void once(SideEffectKind kind, {int? attempt, ConnectionFailure? failure}) {
+      final a = attempt ?? snap.attempt;
+      final key = (snap.epoch, a, kind);
       if (!w._done.add(key)) return;
       actions.add(
         RunEffect(
-          SideEffect(
-            kind,
-            epoch: snap.epoch,
-            attempt: snap.attempt,
-            failure: failure,
-          ),
+          SideEffect(kind, epoch: snap.epoch, attempt: a, failure: failure),
         ),
       );
     }
 
     final reason = w._reasonBySeq[snap.appliedSeq];
 
+    // startedAt 的保留/清除与 phase 无关：重载中间态（desired 仍 on）保留，只在
+    // desired=off 且 stopped 时清。
     if (snap.status == KernelStatus.started) {
       if (first) {
         // 冷启动挂上运行中隧道：时长未知，不触觉、不评分。
@@ -618,21 +762,18 @@ class ConnectionMachine {
       once(SideEffectKind.replaySelections);
     }
 
-    // 新的 lastFailure：致命类上报（冷启动时已存在的旧失败只播种，不上报）。
+    // 新的 lastFailure：致命类上报，按失败所属的 (epoch, attempt) 去重（冷启动时
+    // 已存在的旧失败只播种，不上报）。
     final fkey = _kernelFailureKey(snap);
     if (fkey != null && fkey != w._seenKernelFailureKey) {
       w._seenKernelFailureKey = fkey;
-      final mapped = ConnectionFailure.fromKernel(snap.lastFailure!);
+      final lf = snap.lastFailure!;
+      final mapped = ConnectionFailure.fromKernel(lf);
       if (mapped.isFatal) {
-        actions.add(
-          RunEffect(
-            SideEffect(
-              SideEffectKind.reportFailure,
-              epoch: snap.epoch,
-              attempt: snap.attempt,
-              failure: mapped,
-            ),
-          ),
+        once(
+          SideEffectKind.reportFailure,
+          attempt: lf.attempt,
+          failure: mapped,
         );
       }
     }
@@ -676,6 +817,7 @@ class ConnectionMachine {
         return RequestFailed(ConnectionFailure.fromKernel(lf));
       }
     }
+    // 更新的请求已被协调器处理（appliedSeq 超过它）。
     if (snap.appliedSeq > seq) return const RequestSuperseded();
     switch (r.desired) {
       case Desired.on:
@@ -704,9 +846,15 @@ class ConnectionMachine {
           w._link = KernelLink.lost;
           w._lostSince = e.now;
         }
+        // 失联之后的基线不可信：下一次发送前必须先拿到有效的重同步结果。
+        _raiseBarrier(w);
       case KernelLink.connected:
         // 从失联恢复：原生可达，之前因失联/迟迟不确认而判的无响应一并撤销。
-        if (w._link == KernelLink.lost) w._unresponsiveSeq = null;
+        // 发送屏障仍在：链路恢复不等于拿到了新基线。
+        if (w._link == KernelLink.lost) {
+          w._unresponsiveSeq = null;
+          w._unresponsiveBarrier = false;
+        }
         w._link = KernelLink.connected;
         w._lostSince = null;
         w._unresponsiveLost = false;
@@ -717,7 +865,8 @@ class ConnectionMachine {
 
   void _onIntent(MachineState w, UserIntent e, List<MachineAction> actions) {
     if (w._find(e.id) != null) return; // id 重复：忽略
-    // 取代所有尚未发送的旧意图（只可能是最新的那个）。
+    // 取代所有尚未发送的旧意图（只可能是最新的那个）。它从未到达内核，新意图
+    // 就是取代它的更新请求。
     final last = w.latestRequest;
     if (last != null &&
         (last.stage == RequestStage.preparing ||
@@ -727,15 +876,13 @@ class ConnectionMachine {
     }
     w._localFailure = null;
     if (w._hasUnresponsive) {
-      // 点击 = 立即重新同步后重发最新意图；失联宽限重新计时。
+      // 点击 = 立即重新同步后重发最新意图（发送屏障保证先重同步，见
+      // [_pumpResync]）；失联宽限重新计时。
       w._unresponsiveLost = false;
       w._unresponsiveSeq = null;
+      w._unresponsiveBarrier = false;
       if (w._lostSince != null) w._lostSince = e.now;
       w._waitSince = e.now;
-      if (w._resyncSince == null) {
-        w._resyncSince = e.now;
-        actions.add(const Resync());
-      }
     }
     final needsPrepare = e.desired == Desired.on;
     w._requests.add(
@@ -768,15 +915,133 @@ class ConnectionMachine {
     actions.add(SettleRequest(r.id, RequestFailed(e.failure)));
   }
 
+  // ── 发送屏障与重新同步（spec §10.8、§10.1）──────────────────────────
+
+  static void _raiseBarrier(MachineState w, {String? staleEpoch}) {
+    w._barrier = true;
+    if (staleEpoch != null) w._barrierStaleEpoch = staleEpoch;
+  }
+
+  static void _clearBarrier(MachineState w) {
+    w._barrier = false;
+    w._barrierStaleEpoch = null;
+    w._barrierAttempts = 0;
+    w._resyncAfter = null;
+    w._unresponsiveBarrier = false;
+  }
+
+  /// 就绪、却被发送屏障挡住的最新意图。屏障已解除（本次事件刚取回有效的重同步
+  /// 结果）时即便截止时间已过也不算：它马上就会被发出。
+  static RequestRecord? _blocked(MachineState w) {
+    if (!w._barrier) return null;
+    final r = w.latestRequest;
+    if (r == null || r.stage != RequestStage.ready || r.blockedSince == null) {
+      return null;
+    }
+    return r;
+  }
+
+  /// 屏障在、且有意图在等：发起重新同步（同一时刻至多一个；失败后间隔重试，
+  /// 次数有上限）。
+  void _pumpResync(MachineState w, DateTime now, List<MachineAction> actions) {
+    if (!w._barrier) return;
+    final r = w.latestRequest;
+    if (r == null || r.stage != RequestStage.ready) return;
+    if (r.blockedSince == null) {
+      // 一次新的等待：独立截止时间从此刻起算，重试计数归零。
+      w._replace(r.copyWith(blockedSince: now));
+      w._barrierAttempts = 0;
+      w._resyncAfter = null;
+    }
+    if (w._resyncSince != null) return;
+    final after = w._resyncAfter;
+    if (after != null && now.isBefore(after)) return;
+    if (w._barrierAttempts >= ConnectionTiming.maxResyncAttempts) return;
+    w._barrierAttempts++;
+    w._resyncAfter = null;
+    w._resyncSince = now;
+    actions.add(const Resync());
+  }
+
+  /// 一次重新同步结束（[ok]：取回了快照；否则 current() 失败或宽限到期）。
+  void _resyncDone(
+    MachineState w,
+    DateTime now,
+    List<MachineAction> actions, {
+    required bool ok,
+  }) {
+    w._resyncSince = null;
+
+    // 发送屏障：有效的重同步结果（wrongEpoch 时还要求已不是被拒绝的旧纪元）才放行。
+    if (w._barrier) {
+      final stale = w._barrierStaleEpoch;
+      final satisfied = ok && (stale == null || w._snapshot?.epoch != stale);
+      if (satisfied) {
+        _clearBarrier(w);
+      } else {
+        _resyncAttemptFailed(w, now, actions);
+      }
+    }
+
+    // 未确认请求：仍追不上、且已过 5 s 的判失败（§5），并立起屏障。
+    int? maxSeq;
+    for (final r in List.of(_unconfirmed(w))) {
+      final base = r.ackBase;
+      if (base == null ||
+          now.difference(base) < ConnectionTiming.unconfirmedRequestTimeout) {
+        continue;
+      }
+      w._remove(r.id);
+      actions.add(
+        SettleRequest(r.id, const RequestFailed(NativeUnresponsive())),
+      );
+      if (maxSeq == null || r.seq! > maxSeq) maxSeq = r.seq;
+    }
+    if (maxSeq != null) {
+      w._unresponsiveSeq = maxSeq;
+      w._unresponsiveCount++;
+      _raiseBarrier(w);
+    }
+  }
+
+  /// 屏障期间一次重新同步没能放行：在上限内安排重试，用尽则让等待的意图失败。
+  void _resyncAttemptFailed(
+    MachineState w,
+    DateTime now,
+    List<MachineAction> actions,
+  ) {
+    final b = _blocked(w);
+    if (b == null) return;
+    if (w._barrierAttempts >= ConnectionTiming.maxResyncAttempts) {
+      _failBlocked(w, b, actions);
+      return;
+    }
+    w._resyncAfter = now.add(ConnectionTiming.resyncRetryDelay);
+  }
+
+  /// 等待重同步的意图有界地失败：nativeUnresponsive；屏障保留，下一次点击重来。
+  void _failBlocked(
+    MachineState w,
+    RequestRecord r,
+    List<MachineAction> actions,
+  ) {
+    w._remove(r.id);
+    w._unresponsiveBarrier = true;
+    w._unresponsiveCount++;
+    w._barrierAttempts = 0;
+    w._resyncAfter = null;
+    actions.add(SettleRequest(r.id, const RequestFailed(NativeUnresponsive())));
+  }
+
   // ── 发送与回执（spec §10.1）─────────────────────────────────────
 
-  /// 把「就绪」的最新意图发出去。seq 在此刻才分配：准备期间被取代的意图从不占号。
+  /// 把「就绪」的最新意图发出去。seq 在此刻才分配：准备期间被取代的意图从不占号；
+  /// 发送屏障在时不发送，等重同步取回新基线后再分配。
   void _pumpSend(MachineState w, DateTime now, List<MachineAction> actions) {
     final r = w.latestRequest;
     final snap = w._snapshot;
     if (r == null || r.stage != RequestStage.ready || snap == null) return;
-    final awaiting = w._awaitEpoch;
-    if (awaiting != null && snap.epoch != awaiting) return;
+    if (w._barrier) return;
     final seq = w._nextSeq ?? (snap.appliedSeq + 1);
     w._nextSeq = seq + 1;
     w._reasonBySeq[seq] = r.reason;
@@ -787,6 +1052,7 @@ class ConnectionMachine {
         seq: seq,
         sentAt: now,
         failureKeyAtSend: w._seenKernelFailureKey,
+        clearBlocked: true,
       ),
     );
     if (r.desired == Desired.on) {
@@ -849,9 +1115,18 @@ class ConnectionMachine {
     }
     final rejection = rc.reason ?? RequestRejection.stale;
     if (w.latestRequest?.id != r.id) {
-      // 更新的意图已经存在：旧请求被拒绝只说明它被取代了。
+      // 更新的意图已经存在，旧请求不再重发。stale = 协调器已处理到不小于它的
+      // 序号，即更新的请求已被受理；wrongEpoch = 原生已换纪元，它再也不可能被
+      // 确认。
       w._remove(r.id);
-      actions.add(SettleRequest(r.id, const RequestSuperseded()));
+      actions.add(
+        SettleRequest(
+          r.id,
+          rejection == RequestRejection.wrongEpoch
+              ? const RequestInterrupted()
+              : const RequestSuperseded(),
+        ),
+      );
       return;
     }
     if (r.resends >= ConnectionTiming.maxResends) {
@@ -869,14 +1144,16 @@ class ConnectionMachine {
         clearSeq: true,
         clearTimes: true,
         resends: r.resends + 1,
+        clearBlocked: true,
       ),
     );
+    final known = w._snapshot?.epoch;
     if (rejection == RequestRejection.wrongEpoch &&
-        w._snapshot?.epoch != rc.epoch) {
-      // 原生纪元已变而我们还不知道：先重新同步，新纪元快照到达后才重发。
-      w._awaitEpoch = rc.epoch;
-      w._resyncSince ??= e.now;
-      actions.add(const Resync());
+        known != null &&
+        known != rc.epoch) {
+      // 原生纪元已变而我们还不知道：立起屏障，重同步取回不再是旧纪元的快照后才
+      // 重发（等待有独立截止时间，见 _pumpResync / _checkDeadlines）。
+      _raiseBarrier(w, staleEpoch: known);
     }
   }
 
@@ -890,18 +1167,36 @@ class ConnectionMachine {
     if (r.stage != RequestStage.inFlight && r.stage != RequestStage.awaiting) {
       return;
     }
+    final seq = r.seq;
+    final applied = w._snapshot?.appliedSeq;
+    if (seq != null && applied != null && applied >= seq) {
+      // 快照已证明协调器处理了它：RPC 报错只是回执丢了，结果仍看快照。
+      if (r.stage == RequestStage.inFlight) {
+        w._replace(r.copyWith(stage: RequestStage.awaiting, receiptAt: e.now));
+      }
+      return;
+    }
+    final i = w._indexOf(r.id);
+    // 只有更新的请求已被受理（回执 accepted）才算被取代（§10.6）；否则 RPC 失败
+    // 就是失败。
+    final newerAccepted = w._requests
+        .skip(i + 1)
+        .any((o) => o.stage == RequestStage.awaiting);
     final isLatest = w.latestRequest?.id == r.id;
     w._remove(r.id);
-    if (!isLatest) {
+    if (newerAccepted) {
       actions.add(SettleRequest(r.id, const RequestSuperseded()));
       return;
     }
-    w._localFailure = e.failure;
-    w._localFailureCount++;
+    // 是否展示按最新意图决定：更新的意图还在路上时不拿旧请求的失败覆盖它。
+    if (isLatest) {
+      w._localFailure = e.failure;
+      w._localFailureCount++;
+    }
     actions.add(SettleRequest(r.id, RequestFailed(e.failure)));
   }
 
-  // ── 截止时间：未确认请求（§5）与失联（§10.8）──────────────────────
+  // ── 截止时间：未确认请求（§5）、失联（§10.8）、等待重同步 ────────────
 
   Iterable<RequestRecord> _unconfirmed(MachineState w) {
     final applied = w._snapshot?.appliedSeq;
@@ -927,6 +1222,7 @@ class ConnectionMachine {
         now.difference(silent) >= ConnectionTiming.nativeLostTimeout) {
       w._unresponsiveLost = true;
       w._unresponsiveCount++;
+      _raiseBarrier(w);
       for (final r in List.of(w._requests)) {
         w._remove(r.id);
         actions.add(
@@ -934,6 +1230,13 @@ class ConnectionMachine {
         );
       }
       w._resyncSince = null;
+    }
+
+    // 等待重同步的意图：独立截止时间（不依赖重同步是否有回音）。
+    final b = _blocked(w);
+    if (b != null &&
+        now.difference(b.blockedSince!) >= ConnectionTiming.resyncWaitTimeout) {
+      _failBlocked(w, b, actions);
     }
 
     // 未确认请求：先重新同步，仍追不上才判无响应。
@@ -950,29 +1253,7 @@ class ConnectionMachine {
         actions.add(const Resync());
       }
     } else if (now.difference(since) >= ConnectionTiming.resyncGrace) {
-      _resyncDone(w, now, actions);
-    }
-  }
-
-  /// 一次重新同步结束（成功、失败或宽限到期）：仍追不上、且已过 5 s 的请求判失败。
-  void _resyncDone(MachineState w, DateTime now, List<MachineAction> actions) {
-    w._resyncSince = null;
-    int? maxSeq;
-    for (final r in List.of(_unconfirmed(w))) {
-      final base = r.ackBase;
-      if (base == null ||
-          now.difference(base) < ConnectionTiming.unconfirmedRequestTimeout) {
-        continue;
-      }
-      w._remove(r.id);
-      actions.add(
-        SettleRequest(r.id, const RequestFailed(NativeUnresponsive())),
-      );
-      if (maxSeq == null || r.seq! > maxSeq) maxSeq = r.seq;
-    }
-    if (maxSeq != null) {
-      w._unresponsiveSeq = maxSeq;
-      w._unresponsiveCount++;
+      _resyncDone(w, now, actions, ok: false);
     }
   }
 
@@ -996,6 +1277,12 @@ class ConnectionMachine {
           consider(base.add(ConnectionTiming.unconfirmedRequestTimeout));
         }
       }
+    }
+    final b = _blocked(w);
+    if (b != null) {
+      consider(b.blockedSince!.add(ConnectionTiming.resyncWaitTimeout));
+      final after = w._resyncAfter;
+      if (since == null && after != null) consider(after);
     }
     return best;
   }
@@ -1040,6 +1327,8 @@ class ConnectionMachine {
     return null;
   }
 
+  /// 严格按 §5 phase 表，自上而下第一条命中的行。startedAt / attached 只影响
+  /// 时长显示，不参与 phase 判定。
   (ConnectionPhase, ConnectionFailure?, String?) _derive(MachineState w) {
     final snap = w._snapshot;
 
@@ -1054,54 +1343,44 @@ class ConnectionMachine {
       localKey = 'l|${w._localFailureCount}';
     }
 
+    // 行 1：尚无快照。
     if (snap == null) {
       return (ConnectionPhase.resolving, localOrNative, localKey);
     }
 
+    // 行 2：有未确认的本地请求 → 按它的方向显示（不看快照、不看 revision），且不
+    // 展示失败。
     final pending = _pending(w);
     if (pending != null) {
-      // 有未确认的本地请求：按它的方向显示，且不展示失败。
-      if (pending.desired == Desired.off) {
-        return (ConnectionPhase.disconnecting, null, null);
-      }
-      final established = w._startedAt != null || w._attached;
-      if (snap.desired == Desired.on &&
-          (snap.status == KernelStatus.started || established)) {
-        final sameRevision =
-            snap.status == KernelStatus.started &&
-            pending.launch != null &&
-            pending.launch!.configRevision == snap.activeConfigRevision;
-        return (
-          sameRevision
-              ? ConnectionPhase.connected
-              : ConnectionPhase.reconnecting,
-          null,
-          null,
-        );
-      }
-      return (ConnectionPhase.connecting, null, null);
+      return (
+        pending.desired == Desired.on
+            ? ConnectionPhase.connecting
+            : ConnectionPhase.disconnecting,
+        null,
+        null,
+      );
     }
 
     final ConnectionPhase phase;
     if (snap.desired == Desired.on) {
       if (snap.status == KernelStatus.started) {
-        // 已被受理但运行实例还不是它：配置待生效。
-        final waiting = w._requests.any(
+        // 行 3 / 行 4：本地请求都已确认；已确认却未终结的 on 请求的 revision 不是
+        // 运行实例的 → 配置待生效 / 重载中。
+        final configPending = w._requests.any(
           (r) =>
               r.desired == Desired.on &&
               r.launch != null &&
               r.launch!.configRevision != snap.activeConfigRevision,
         );
-        phase = waiting
+        phase = configPending
             ? ConnectionPhase.reconnecting
             : ConnectionPhase.connected;
       } else {
-        final established = w._startedAt != null || w._attached;
-        phase = established
-            ? ConnectionPhase.reconnecting
-            : ConnectionPhase.connecting;
+        // 行 5：desired=on 其他（含已建立会话的重载中间态）。
+        phase = ConnectionPhase.connecting;
       }
     } else {
+      // 行 6 / 行 7。
       phase = snap.status == KernelStatus.stopped
           ? ConnectionPhase.disconnected
           : ConnectionPhase.disconnecting;

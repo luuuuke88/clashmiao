@@ -13,6 +13,7 @@ import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
 import 'package:clashmiao/core/licenses/bundled_licenses.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/sentry_redaction.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
@@ -243,6 +244,10 @@ void main() async {
       options.tracesSampleRate = 0.05;
       options.attachScreenshot = false;
       options.sendDefaultPii = false;
+      // 发送前与 app.log 同一个脱敏器：订阅地址凭据、分享链接不随上报离开设备。
+      options.beforeSend = (event, hint) => redactSentryEvent(event);
+      options.beforeBreadcrumb = (breadcrumb, hint) =>
+          redactBreadcrumb(breadcrumb);
     }, appRunner: appRunner),
     // 桌面端全局键盘快捷键（Cmd/Ctrl+V 快速粘贴导入订阅是最高优先级的一个，
     // 另外还有 macOS 的 Cmd+W/Cmd+,、Linux 的 Ctrl+Q，见

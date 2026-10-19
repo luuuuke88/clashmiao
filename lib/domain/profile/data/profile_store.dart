@@ -218,6 +218,10 @@ class ProfileStore {
   /// 生成新的对象代际。
   String newInc() => _newInc();
 
+  /// 与 [newInc] 同样的生成方式（随机 64 位十六进制），供没有 Store 实例的
+  /// 场合使用——例如启动时的存储迁移给旧数据补发 inc。
+  static String randomInc() => _randomHex16();
+
   Future<void> dispose() => _changes.close();
 
   // ───────────────────────── 读取（同步、永不抛出） ─────────────────────────

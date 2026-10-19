@@ -317,13 +317,31 @@ const _validDomainStrategies = {
 const _validTunImplementations = {'mixed', 'system', 'gvisor'};
 const _validWarpDetourModes = {'proxyOverWarp', 'warpOverProxy'};
 
+// 以下三个读取器对「类型不符」（降级回退、手改、旧版本遗留）一律当作没存过：
+// SharedPreferences 的强类型 getter 在类型不符时会抛 TypeError，而 `_read`
+// 跑在启动路径上，抛出会让整个 App 起不来。
+int? _readInt(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is int ? v : null;
+}
+
+bool? _readBool(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is bool ? v : null;
+}
+
+String? _readString(SharedPreferences p, String key) {
+  final v = p.get(key);
+  return v is String ? v : null;
+}
+
 String _stringChoice(
   SharedPreferences p,
   String key,
   String fallback,
   Set<String> valid,
 ) {
-  final value = p.getString(key);
+  final value = _readString(p, key);
   if (value == null || !valid.contains(value)) return fallback;
   return value;
 }
@@ -372,28 +390,28 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
   static NetworkSettings _read(SharedPreferences p) {
     return NetworkSettings(
-      mixedPort: p.getInt(_kMixedPort) ?? 2080,
+      mixedPort: _readInt(p, _kMixedPort) ?? 2080,
       region: _stringChoice(p, _kRegion, 'other', _validRegions),
-      blockAds: p.getBool(_kBlockAds) ?? false,
+      blockAds: _readBool(p, _kBlockAds) ?? false,
       logLevel: _stringChoice(p, _kLogLevel, 'warn', _validLogLevels),
-      bypassLan: p.getBool(_kBypassLan) ?? false,
-      resolveDestination: p.getBool(_kResolveDestination) ?? false,
+      bypassLan: _readBool(p, _kBypassLan) ?? false,
+      resolveDestination: _readBool(p, _kResolveDestination) ?? false,
       ipv6Mode: _stringChoice(p, _kIpv6Mode, 'ipv4_only', _validIpv6Modes),
-      setSystemProxy: p.getBool(_kSetSystemProxy) ?? true,
-      enableTun: p.getBool(_kEnableTun) ?? false,
-      allowConnectionFromLan: p.getBool(_kAllowLan) ?? false,
-      enableDnsRouting: p.getBool(_kEnableDnsRouting) ?? true,
-      enableFakeDns: p.getBool(_kEnableFakeDns) ?? false,
-      independentDnsCache: p.getBool(_kIndependentDnsCache) ?? true,
+      setSystemProxy: _readBool(p, _kSetSystemProxy) ?? true,
+      enableTun: _readBool(p, _kEnableTun) ?? false,
+      allowConnectionFromLan: _readBool(p, _kAllowLan) ?? false,
+      enableDnsRouting: _readBool(p, _kEnableDnsRouting) ?? true,
+      enableFakeDns: _readBool(p, _kEnableFakeDns) ?? false,
+      independentDnsCache: _readBool(p, _kIndependentDnsCache) ?? true,
       remoteDnsAddress:
-          p.getString(_kRemoteDnsAddress) ?? 'https://1.1.1.1/dns-query',
+          _readString(p, _kRemoteDnsAddress) ?? 'https://1.1.1.1/dns-query',
       remoteDnsDomainStrategy: _stringChoice(
         p,
         _kRemoteDnsDomainStrategy,
         '',
         _validDomainStrategies,
       ),
-      directDnsAddress: p.getString(_kDirectDnsAddress) ?? '1.1.1.1',
+      directDnsAddress: _readString(p, _kDirectDnsAddress) ?? '1.1.1.1',
       directDnsDomainStrategy: _stringChoice(
         p,
         _kDirectDnsDomainStrategy,
@@ -406,43 +424,43 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         'mixed',
         _validTunImplementations,
       ),
-      strictRoute: p.getBool(_kStrictRoute) ?? true,
-      mtu: p.getInt(_kMtu) ?? 9000,
-      clashApiPort: p.getInt(_kClashApiPort) ?? 6756,
-      tproxyPort: p.getInt(_kTproxyPort) ?? 2081,
-      localDnsPort: p.getInt(_kLocalDnsPort) ?? 6450,
-      enableTlsFragment: p.getBool(_kEnableTlsFragment) ?? false,
-      tlsFragmentSize: p.getString(_kTlsFragmentSize) ?? '10-30',
-      tlsFragmentSleep: p.getString(_kTlsFragmentSleep) ?? '50-200',
-      enableTlsPadding: p.getBool(_kEnableTlsPadding) ?? false,
-      enableTlsMixedSniCase: p.getBool(_kEnableTlsMixedSniCase) ?? false,
-      tlsPaddingSize: p.getString(_kTlsPaddingSize) ?? '100-200',
-      muxPadding: p.getBool(_kMuxPadding) ?? false,
-      enableWarp: p.getBool(_kEnableWarp) ?? false,
-      warpConsentGiven: p.getBool(_kWarpConsentGiven) ?? false,
+      strictRoute: _readBool(p, _kStrictRoute) ?? true,
+      mtu: _readInt(p, _kMtu) ?? 9000,
+      clashApiPort: _readInt(p, _kClashApiPort) ?? 6756,
+      tproxyPort: _readInt(p, _kTproxyPort) ?? 2081,
+      localDnsPort: _readInt(p, _kLocalDnsPort) ?? 6450,
+      enableTlsFragment: _readBool(p, _kEnableTlsFragment) ?? false,
+      tlsFragmentSize: _readString(p, _kTlsFragmentSize) ?? '10-30',
+      tlsFragmentSleep: _readString(p, _kTlsFragmentSleep) ?? '50-200',
+      enableTlsPadding: _readBool(p, _kEnableTlsPadding) ?? false,
+      enableTlsMixedSniCase: _readBool(p, _kEnableTlsMixedSniCase) ?? false,
+      tlsPaddingSize: _readString(p, _kTlsPaddingSize) ?? '100-200',
+      muxPadding: _readBool(p, _kMuxPadding) ?? false,
+      enableWarp: _readBool(p, _kEnableWarp) ?? false,
+      warpConsentGiven: _readBool(p, _kWarpConsentGiven) ?? false,
       warpDetourMode: _stringChoice(
         p,
         _kWarpDetourMode,
         'proxyOverWarp',
         _validWarpDetourModes,
       ),
-      warpLicenseKey: p.getString(_kWarpLicenseKey) ?? '',
+      warpLicenseKey: _readString(p, _kWarpLicenseKey) ?? '',
       // fallback 与上面构造函数默认值保持一致：只有从未持久化过（key 不存在，
       // 即用户从没保存过）时才落到这些新默认值；已保存的用户偏好走 p.getX(...) 的
       // 非 null 分支，不受这次改动影响。
-      warpCleanIp: p.getString(_kWarpCleanIp) ?? 'auto',
-      warpPort: p.getInt(_kWarpPort) ?? 0,
-      warpNoise: p.getString(_kWarpNoise) ?? '1-3',
-      warpNoiseSize: p.getString(_kWarpNoiseSize) ?? '10-30',
-      warpNoiseMode: p.getString(_kWarpNoiseMode) ?? 'm6',
-      warpNoiseDelay: p.getString(_kWarpNoiseDelay) ?? '10-30',
-      warpAccountId: p.getString(_kWarpAccountId) ?? '',
-      warpAccessToken: p.getString(_kWarpAccessToken) ?? '',
-      warpWireguardConfig: p.getString(_kWarpWireguardConfig) ?? '',
+      warpCleanIp: _readString(p, _kWarpCleanIp) ?? 'auto',
+      warpPort: _readInt(p, _kWarpPort) ?? 0,
+      warpNoise: _readString(p, _kWarpNoise) ?? '1-3',
+      warpNoiseSize: _readString(p, _kWarpNoiseSize) ?? '10-30',
+      warpNoiseMode: _readString(p, _kWarpNoiseMode) ?? 'm6',
+      warpNoiseDelay: _readString(p, _kWarpNoiseDelay) ?? '10-30',
+      warpAccountId: _readString(p, _kWarpAccountId) ?? '',
+      warpAccessToken: _readString(p, _kWarpAccessToken) ?? '',
+      warpWireguardConfig: _readString(p, _kWarpWireguardConfig) ?? '',
       connectionTestUrl:
-          p.getString(_kConnectionTestUrl) ??
+          _readString(p, _kConnectionTestUrl) ??
           'http://connectivitycheck.gstatic.com/generate_204',
-      urlTestIntervalSeconds: p.getInt(_kUrlTestIntervalSeconds) ?? 600,
+      urlTestIntervalSeconds: _readInt(p, _kUrlTestIntervalSeconds) ?? 600,
     );
   }
 

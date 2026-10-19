@@ -667,4 +667,54 @@ void main() {
       expect(fresh.state.warpPort, 4500);
     });
   });
+
+  group('NetworkSettings 容错读取：类型不符的值回落默认，启动不抛', () {
+    Future<SharedPreferences> seed(Map<String, Object> v) async {
+      SharedPreferences.setMockInitialValues(v);
+      return SharedPreferences.getInstance();
+    }
+
+    test('整数键存成字符串、布尔键存成整数、字符串键存成布尔：全部回落默认', () async {
+      final prefs = await seed({
+        'clashmiao_mixed_port': 'not-a-number',
+        'clashmiao_mtu': true,
+        'clashmiao_url_test_interval_seconds': 1.5,
+        'clashmiao_block_ads': 1,
+        'clashmiao_strict_route': 'yes',
+        'clashmiao_region': 3,
+        'clashmiao_log_level': false,
+        'clashmiao_remote_dns_address': 7,
+        'clashmiao_connection_test_url': true,
+        'clashmiao_warp_license_key': 9,
+      });
+
+      late NetworkSettings s;
+      expect(() => s = NetworkSettingsNotifier(prefs).state, returnsNormally);
+      const d = NetworkSettings();
+      expect(s.mixedPort, d.mixedPort);
+      expect(s.mtu, d.mtu);
+      expect(s.urlTestIntervalSeconds, d.urlTestIntervalSeconds);
+      expect(s.blockAds, d.blockAds);
+      expect(s.strictRoute, d.strictRoute);
+      expect(s.region, d.region);
+      expect(s.logLevel, d.logLevel);
+      expect(s.remoteDnsAddress, d.remoteDnsAddress);
+      expect(s.connectionTestUrl, d.connectionTestUrl);
+      expect(s.warpLicenseKey, d.warpLicenseKey);
+    });
+
+    test('类型正确的值照常读取，不受别的键坏掉影响', () async {
+      final prefs = await seed({
+        'clashmiao_mixed_port': 2999,
+        'clashmiao_block_ads': true,
+        'clashmiao_region': 'cn',
+        'clashmiao_mtu': 'broken',
+      });
+      final s = NetworkSettingsNotifier(prefs).state;
+      expect(s.mixedPort, 2999);
+      expect(s.blockAds, isTrue);
+      expect(s.region, 'cn');
+      expect(s.mtu, const NetworkSettings().mtu);
+    });
+  });
 }

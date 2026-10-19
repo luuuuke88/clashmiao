@@ -1,9 +1,6 @@
 import 'package:clashmiao/core/config/build_config.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
-import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:dio/dio.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -143,9 +140,3 @@ class UpdateChecker {
     return false;
   }
 }
-
-final updateAvailableProvider = FutureProvider<String?>((ref) async {
-  final prefs = await ref.watch(sharedPreferencesProvider.future);
-  final mixedPort = ref.read(networkSettingsProvider).mixedPort;
-  return UpdateChecker.checkOnce(prefs, mixedPort: mixedPort);
-});

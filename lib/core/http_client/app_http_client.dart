@@ -11,7 +11,7 @@ import 'package:dio/io.dart';
 /// 在这个文件出现之前，全项目有 5 处各自独立 `Dio()` 实例化的地方
 /// （订阅刷新、出口 IP 查询、地区识别、GeoIP 资源更新、更新检查），
 /// 超时策略互不一致、零重试逻辑、大多没有默认 User-Agent。其中订阅刷新那处
-/// （`app_providers.dart` 的 `profileRepositoryProvider`）还把代理绕行策略
+/// （`profile_providers.dart` 的 `profileRepositoryProvider`）还把代理绕行策略
 /// 硬编码成"永远走 DIRECT"——如果订阅源本身是那种必须经隧道才能访问的服务器
 /// （比如被墙的域名），订阅刷新会在隧道明明健康可用的情况下必定失败。
 ///
@@ -77,11 +77,11 @@ Dio createAppHttpClient({
 const int kDefaultMixedPort = 2080;
 
 /// 统一的默认连接超时——取自项目里此前出现过的最长 `connectTimeout`
-/// （`app_providers.dart` 订阅刷新 / `geo_update_service.dart` 资源下载
+/// （`profile_providers.dart` 订阅刷新 / `geo_update_service.dart` 资源下载
 /// 都用的 15 秒），作为其余调用点的基准，不凭空定数字。
 const Duration kDefaultConnectTimeout = Duration(seconds: 15);
 
-/// 统一的默认接收超时——取自 `app_providers.dart` 订阅刷新此前的 30 秒
+/// 统一的默认接收超时——取自 `profile_providers.dart` 订阅刷新此前的 30 秒
 /// （比 `geo_update_service.dart` 下载大文件用的 60 秒更保守，后者作为
 /// 单独场景可以在调用处显式覆盖，见 `geo_update_service.dart`）。
 const Duration kDefaultReceiveTimeout = Duration(seconds: 30);

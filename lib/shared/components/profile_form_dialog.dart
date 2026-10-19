@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/core/warp/warp_config_service.dart';

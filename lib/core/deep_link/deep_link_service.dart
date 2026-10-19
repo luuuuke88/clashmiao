@@ -2,7 +2,8 @@ import 'dart:async';
 
 import 'package:app_links/app_links.dart';
 import 'package:clashmiao/core/deep_link/deep_link_parser.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';

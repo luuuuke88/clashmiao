@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:clashmiao/app/state/selected_tab.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/box_status.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -297,7 +297,7 @@ Future<void> performOpenPage({
 /// `getDefaultConfigOptions` + `changeConfigOptions` 推送逻辑——
 /// `connectionControllerProvider` 的 `connect()`/`reconnect()` 本来就会在每次调用
 /// 时现读 `proxyModeProvider` 的最新值去决定 `executeConfigAsIs`/`isSmart`（见
-/// `app_providers.dart` 里 `reconnect()` 的实现），所以：
+/// `connection_controller.dart` 里 `reconnect()` 的实现），所以：
 /// - 没连接时，只要模式状态更新 + 持久化了，下次用户点连接自然用的是新模式；
 /// - 已连接时，reconnect 一次就会用新模式重新生效，不需要在这里手动去拼
 ///   fork-side options 再推一遍。

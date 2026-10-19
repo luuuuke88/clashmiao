@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/features/logs/state/log_filter_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

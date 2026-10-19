@@ -2,7 +2,7 @@ import 'dart:async';
 // AppExitResponse 定义在 dart:ui，flutter 的 barrel 文件没有 re-export。
 import 'dart:ui' show AppExitResponse;
 
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

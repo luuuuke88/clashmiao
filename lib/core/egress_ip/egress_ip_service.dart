@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/http_client/app_http_client.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/settings/network_settings.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -117,7 +117,7 @@ class EgressIpService {
   static const _endpoint = 'https://ipwho.is/';
 
   static Dio _buildDefaultDio(Ref ref) {
-    // 故意不像 ProfileRepository（app_providers.dart 的
+    // 故意不像 ProfileRepository（profile_providers.dart 的
     // profileRepositoryProvider，此前）那样强制 `findProxy = (_) => 'DIRECT'`
     // 跳过系统代理——这里恰恰相反：要查的就是"经过 sing-box 隧道之后"外界
     // 看到的出口 IP，必须优先走隧道，`preferTunnel: true` 正是为这种场景

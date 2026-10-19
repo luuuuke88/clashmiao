@@ -1,4 +1,4 @@
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:flutter_test/flutter_test.dart';

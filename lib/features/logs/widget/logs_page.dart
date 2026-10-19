@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/features/logs/state/log_filter_notifier.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';

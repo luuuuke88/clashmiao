@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/app/state/selected_tab.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:clashmiao/core/model/profile_entity.dart';

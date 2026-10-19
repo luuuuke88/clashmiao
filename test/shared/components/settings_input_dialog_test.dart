@@ -1,4 +1,4 @@
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/settings_input_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

@@ -1,7 +1,8 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/logs/widget/logs_page.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

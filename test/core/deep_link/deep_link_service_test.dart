@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/deep_link/deep_link_service.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

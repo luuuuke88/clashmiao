@@ -1,4 +1,4 @@
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/core/update/update_checker.dart';

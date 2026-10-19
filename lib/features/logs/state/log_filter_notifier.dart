@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 enum LogLevel { all, info, warn, error, debug }

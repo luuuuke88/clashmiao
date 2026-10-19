@@ -171,13 +171,18 @@ class AppLogger {
           return;
         }
         final logName = log.uri.pathSegments.last;
-        final rotated = RegExp('^${RegExp.escape(logName)}\\.\\d+\$');
-        const tempSuffix = '.$_kRedactionTempSuffix';
+        final escaped = RegExp.escape(logName);
+        final rotated = RegExp('^$escaped\\.\\d+\$');
+        // 只认自己的临时文件：app.log.redacting、app.log.<数字>.redacting。
+        // 目录是 App 的 Documents，不是日志专用目录，别的 `.redacting` 不碰。
+        final ownTemp = RegExp(
+          '^$escaped(?:\\.\\d+)?\\.${RegExp.escape(_kRedactionTempSuffix)}\$',
+        );
         final targets = <File>[];
         await for (final entity in dir.list(followLinks: false)) {
           if (entity is! File) continue;
           final name = entity.uri.pathSegments.last;
-          if (name.endsWith(tempSuffix)) {
+          if (ownTemp.hasMatch(name)) {
             await entity.delete(); // 上次迁移被打断留下的
           } else if (name == logName || rotated.hasMatch(name)) {
             targets.add(entity);
@@ -318,7 +323,7 @@ class _AppFileLoggyPrinter extends LoggyPrinter {
       ..write(': ')
       ..write(record.message);
     if (record.error != null) {
-      buffer.write('\n  error: ${record.error}');
+      buffer.write('\n  error: ${_structuredFirst(record.error)}');
     }
     if (record.stackTrace != null) {
       buffer.write('\n${record.stackTrace}');
@@ -341,7 +346,7 @@ void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
     ..write(' [ERROR] ')
     ..write(where)
     ..write(': ')
-    ..write(error);
+    ..write(_structuredFirst(error));
   if (stackTrace != null && stackTrace != StackTrace.empty) {
     buffer.write('\n$stackTrace');
   }
@@ -356,6 +361,11 @@ void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
   }
   unawaited(AppLogger.instance.append(line));
 }
+
+/// 错误本身是 Map / List（解析失败时直接抛出的 JSON 片段之类）时，先按键名
+/// 结构化脱敏再转文本；其它对象原样交给字符串化，之后统一过 [redactLogText]。
+Object? _structuredFirst(Object? error) =>
+    error is Map || error is Iterable ? redactStructuredValue(error) : error;
 
 /// 一次 [logAppFailure] 的内容，交给测试用的 [debugAppFailureSink]。
 @immutable

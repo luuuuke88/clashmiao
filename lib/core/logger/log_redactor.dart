@@ -8,25 +8,23 @@
 // 规则（按顺序执行，结果幂等，可以重复过滤）：
 // 1. 代理分享链接（vmess:// vless:// ss:// trojan:// hysteria2:// tuic:// …）整条
 //    折叠为 `<scheme>://…`。
-// 2. 头部写法的 `Authorization` / `Proxy-Authorization` / `Cookie` / `Set-Cookie`
-//    （`Name: value`，值不带引号）：冒号后到行尾整体替换。
-// 3. 其它 URL：去掉 userinfo；查询串换成 `?…`、片段换成 `#…`；路径段先做宽松的
-//    百分号解码再判断像不像 token（长十六进制、UUID、长 base64、16 位以上字母
-//    数字混排、JWT），像就把**整个原始段**换成 `…`，不像就原样保留（包括原来的
-//    编码）。scheme、主机、端口保留。`file://` 不处理（堆栈帧）。JSON 里转义成
+// 2. 其它 URL：去掉 userinfo；查询串换成 `?…`、片段换成 `#…`；路径段原样以及
+//    最多三轮宽松的百分号解码之后，都按解出的 `/` 拆成子段逐个判断像不像 token
+//    （长十六进制、UUID、长 base64、16 位以上字母数字混排、JWT），任何子段像就把
+//    **整个原始段**换成 `…`，都不像就原样保留（包括原来的编码）。scheme、主机、端口保留。`file://` 不处理（堆栈帧）。JSON 里转义成
 //    `https:\/\/host\/path` 的 URL 先还原 `\/` 再按同样规则处理，处理完再转义回去。
-// 4. 键值形式的秘密：字段名可带引号（含转义引号），分隔符 `=` 或 `:`；值分
-//    引号值（正确跳过转义引号，可含空白与分隔符）、`[...]` 列表与裸值三种解析。
-//    - 强字段（password / token / secret / api_key / uuid / authorization /
-//      cookie …，含 `obfs-password`、`access_token` 这类复合名）：任何写法都遮盖。
-//      Dart `Map.toString` 写法（`{password: hello world, other: x}`：字段名不带
-//      引号、冒号分隔、位于未闭合的 `{` 里）的值不在空白处结束，而是遮到同一
-//      嵌套层的下一个 `, ` / `}` / `]` 或行尾；值本身是 Map / List 时整块遮盖。
-//      平铺的 `key=value` 文本仍按裸值（到空白为止）处理。
-//    - 弱字段（key / auth / sid / sig / signature / pwd …）：只在结构化写法里
-//      遮盖——`key=`、带引号的字段名 `"key":`——或者值本身像凭据；
-//      `Invalid key: profiles` 这类自然语言诊断原样保留。
-// 5. 游离的 `Bearer <token>`：token 像凭据时遮盖。
+// 3. 键值形式的秘密：字段名（可带引号，含转义引号）+ 分隔符 `=` 或 `:`。识别出
+//    秘密字段后**从值开头一直遮到行尾**，不去猜值在哪里结束——打印出来的文本
+//    （`Map.toString` 不给字符串加引号、不转义）里值的边界本来就不可靠。
+//    - 结构化写法：带引号的字段名（JSON `"key":`，值是任何类型）、`key=`、
+//      同一行前面出现过 `{` 或未闭合的 `[`（Map / Set / List 打印）里的 `key:`。
+//      强弱字段一律遮盖。
+//    - 其余的 `name: value`（自然语言、头部写法 `Authorization: Basic x`）：
+//      强字段（password / token / secret / api_key / uuid / authorization /
+//      cookie …，含 `obfs-password`、`access_token`、`Set-Cookie` 这类复合名）
+//      遮盖；弱字段（key / auth / sid / sig / signature / pwd …）只在值的第一个
+//      词像凭据时遮盖，`Invalid key: profiles` 原样保留。
+// 4. 游离的 `Bearer <token>`：token 像凭据时遮盖。
 
 import 'dart:convert';
 
@@ -35,7 +33,7 @@ const String kRedacted = '…';
 
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 3;
+const int kLogRedactionVersion = 4;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -62,13 +60,6 @@ const Set<String> kProxyShareSchemes = {
 
 final RegExp _shareLink = RegExp(
   '\\b(${kProxyShareSchemes.map(RegExp.escape).join('|')})://[^\\s"\'<>]+',
-  caseSensitive: false,
-);
-
-/// 头部写法：`Authorization: Basic x`、`"Cookie": a=b; c=d`。值以引号、`[`、`{`
-/// 开头的交给键值解析（JSON 写法），这里只管裸值，到行尾为止。
-final RegExp _headerLine = RegExp(
-  r'''(?<![A-Za-z0-9_\-])(\\*["']?)((?:proxy-)?authorization|set-cookie|cookie)\1[ \t]*:[ \t]*(?![\\"'\[{])([^\r\n]*)''',
   caseSensitive: false,
 );
 
@@ -155,11 +146,6 @@ final RegExp _nameSeparators = RegExp('[-_]');
 String redactLogText(String input) {
   if (input.isEmpty) return input;
   var out = input.replaceAllMapped(_shareLink, (m) => '${m[1]}://$kRedacted');
-  out = out.replaceAllMapped(_headerLine, (m) {
-    final value = m[3]!;
-    if (value.isEmpty || value == kRedacted) return m[0]!;
-    return '${m[0]!.substring(0, m[0]!.length - value.length)}$kRedacted';
-  });
   out = out.replaceAllMapped(_url, _redactUrlMatch);
   out = out.replaceAllMapped(_escapedUrl, _redactEscapedUrlMatch);
   out = _redactKeyValues(out);
@@ -180,164 +166,100 @@ bool _isStrongSecretName(String name) {
   return _strongSuffixes.any(normalized.endsWith);
 }
 
+/// 结构化数据（Map / List / JSON 值）在转成文本**之前**按键名脱敏：键名是秘密
+/// 字段（[isSecretFieldName]）的整项（含整个子树）换成 [kRedacted]，其余字符串
+/// 过 [redactLogText]；数字、布尔、null 原样；其它对象转成字符串后再过
+/// [redactLogText]。
+Object? redactStructuredValue(Object? value) => switch (value) {
+  null || bool() || num() => value,
+  final String s => redactLogText(s),
+  final Map<String, dynamic> m => redactStructuredMap(m),
+  final Map<dynamic, dynamic> m => {
+    for (final entry in m.entries)
+      entry.key: _redactStructuredEntry(entry.key, entry.value),
+  },
+  final Iterable<dynamic> l => [for (final v in l) redactStructuredValue(v)],
+  _ => redactLogText(value.toString()),
+};
+
+/// [redactStructuredValue] 的 `Map<String, dynamic>` 版本，保持类型。
+Map<String, dynamic> redactStructuredMap(Map<String, dynamic> map) => {
+  for (final entry in map.entries)
+    entry.key: _redactStructuredEntry(entry.key, entry.value),
+};
+
+Object? _redactStructuredEntry(Object? key, Object? value) {
+  if (value == null) return null;
+  if (key is String && isSecretFieldName(key)) return kRedacted;
+  return redactStructuredValue(value);
+}
+
 // ─── 键值 ─────────────────────────────────────────────────────────────
 
 String _redactKeyValues(String text) {
   StringBuffer? out;
   var copied = 0; // text[0, copied) 已写进 out
-  var resume = 0; // 已遮盖区域的末尾；落在里面的匹配跳过
+  var resume = 0; // 已遮盖区域（到行尾）的末尾；落在里面的匹配跳过
   for (final m in _kvField.allMatches(text)) {
     if (m.start < resume) continue;
-    final name = m[2]!;
-    final strong = _isStrongSecretName(name);
-    final mapEntry =
-        strong &&
-        m[1]!.isEmpty &&
-        m[3] == ':' &&
-        _insideOpenBrace(text, m.start);
-    final value = _readValue(text, m.end, mapEntry: mapEntry);
-    if (value == null) continue;
-    final content = text.substring(value.contentStart, value.contentEnd);
-    if (content.isEmpty || content == kRedacted) continue;
-    final structured = m[1]!.isNotEmpty || m[3] == '=';
-    final mask = strong || structured || _looksLikeToken(content);
+    final valueStart = m.end;
+    final eol = _endOfLine(text, valueStart);
+    final rest = text.substring(valueStart, eol);
+    if (rest.isEmpty || rest == kRedacted) continue;
+    final structured =
+        m[1]!.isNotEmpty || m[3] == '=' || _inStructure(text, m.start);
+    final mask =
+        structured ||
+        _isStrongSecretName(m[2]!) ||
+        _looksLikeToken(_firstWord(rest));
     if (!mask) continue;
     (out ??= StringBuffer())
-      ..write(text.substring(copied, value.contentStart))
+      ..write(text.substring(copied, valueStart))
       ..write(kRedacted);
-    copied = value.contentEnd;
-    resume = value.end;
+    copied = eol;
+    resume = eol;
   }
   if (out == null) return text;
   out.write(text.substring(copied));
   return out.toString();
 }
 
-/// 分隔符之后的一个值：[contentStart, contentEnd) 是要遮盖的内容（不含引号 /
-/// 方括号），[end] 是整个值（含收尾引号）之后的位置。
-typedef _Value = ({int contentStart, int contentEnd, int end});
-
-const _bareTerminators = ' \t\r\n&,;}])"\'<>';
-
-/// [mapEntry]：Dart `Map.toString` 写法里强字段的值，按 [_readMapValue] 读。
-_Value? _readValue(String text, int start, {bool mapEntry = false}) {
-  if (start >= text.length) return null;
-
-  // 引号值：开头可以有转义反斜杠（嵌在另一个字符串里的 JSON：`\"x\"`）。
-  var quoteAt = start;
-  while (quoteAt < text.length && text.codeUnitAt(quoteAt) == 0x5C) {
-    quoteAt++;
-  }
-  if (quoteAt < text.length) {
-    final q = text[quoteAt];
-    if (q == '"' || q == "'") {
-      return _readQuoted(text, quoteAt + 1, q, quoteAt - start);
-    }
-  }
-
-  if (mapEntry) return _readMapValue(text, start);
-
-  final first = text[start];
-  if (first == '{') return null; // 嵌套对象：里面的字段各自匹配
-  if (first == '[') {
-    final close = _lineIndexOf(text, ']', start + 1);
-    if (close < 0) {
-      final eol = _endOfLine(text, start + 1);
-      return (contentStart: start + 1, contentEnd: eol, end: eol);
-    }
-    return (contentStart: start + 1, contentEnd: close, end: close + 1);
-  }
-
-  var i = start;
-  while (i < text.length && !_bareTerminators.contains(text[i])) {
-    i++;
-  }
-  if (i == start) return null;
-  return (contentStart: start, contentEnd: i, end: i);
-}
-
-/// 从 [contentStart] 起找与开头配对的收尾引号 [q]。[depth] 是开头引号前的
-/// 反斜杠个数：0 是普通字符串（前面有偶数个反斜杠的引号才收尾），1 是嵌在
-/// 字符串里转义过一次的 JSON（`\"` 收尾、`\\\"` 是内容里的引号），依此类推。
-/// 同一行里找不到收尾就遮到行尾。
-_Value _readQuoted(String text, int contentStart, String q, int depth) {
-  final period = depth + 1;
-  final isPowerOfTwo = (period & (period - 1)) == 0;
-  for (var k = contentStart; k < text.length; k++) {
-    final c = text[k];
-    if (c == '\n' || c == '\r') {
-      return (contentStart: contentStart, contentEnd: k, end: k);
-    }
-    if (c != q) continue;
-    var run = 0;
-    while (k - run - 1 >= contentStart &&
-        text.codeUnitAt(k - run - 1) == 0x5C) {
-      run++;
-    }
-    final closes = isPowerOfTwo ? run % (2 * period) == depth : run == depth;
-    if (closes) {
-      return (contentStart: contentStart, contentEnd: k - depth, end: k + 1);
-    }
-  }
-  return (
-    contentStart: contentStart,
-    contentEnd: text.length,
-    end: text.length,
-  );
-}
-
-/// Dart `Map.toString` 里一项的值：到同一嵌套层的下一个 `, ` / `}` / `]`，或
-/// 行尾为止；值里的冒号、空白、嵌套的 Map / List 都算值的一部分，反斜杠转义
-/// 的字符跳过。末尾空白不算。
-_Value? _readMapValue(String text, int start) {
-  var depth = 0;
-  var k = start;
-  scan:
-  while (k < text.length) {
-    switch (text[k]) {
-      case '\n' || '\r':
-        break scan;
-      case '\\':
-        final next = k + 1 < text.length ? text[k + 1] : '\n';
-        if (next == '\n' || next == '\r') break scan;
-        k += 2;
-        continue scan;
-      case '{' || '[' || '(':
-        depth++;
-      case '}' || ']' || ')':
-        if (depth == 0) break scan;
-        depth--;
-      case ',':
-        if (depth == 0 && k + 1 < text.length && text[k + 1] == ' ') {
-          break scan;
-        }
-    }
-    k++;
-  }
-  var end = k;
-  while (end > start && (text[end - 1] == ' ' || text[end - 1] == '\t')) {
-    end--;
-  }
-  if (end == start) return null;
-  return (contentStart: start, contentEnd: end, end: end);
-}
-
-/// [index] 之前、同一行内是否有还没闭合的 `{`（即位于 Map / Set 打印里）。
-bool _insideOpenBrace(String text, int index) {
-  var closed = 0;
+/// [index] 之前、同一行内出现过 `{`，或者有未闭合的 `[`：位于 Map / Set /
+/// List 打印或 JSON 里。`{` 不要求未闭合——Map 打印里的字符串值本身可能带
+/// `}`，宁可多遮。`[` 要求未闭合，免得 `[ERROR] x: Invalid key: profiles` 这类
+/// 日志前缀把普通诊断也算进去。
+bool _inStructure(String text, int index) {
+  var closedSquare = 0;
   for (var k = index - 1; k >= 0; k--) {
     switch (text[k]) {
       case '\n' || '\r':
         return false;
-      case '}':
-        closed++;
       case '{':
-        if (closed == 0) return true;
-        closed--;
+        return true;
+      case ']':
+        closedSquare++;
+      case '[':
+        if (closedSquare == 0) return true;
+        closedSquare--;
     }
   }
   return false;
 }
+
+/// 值的第一个词（去掉开头的引号），只用来判断弱字段的值像不像凭据。
+String _firstWord(String rest) {
+  var start = 0;
+  while (start < rest.length && (rest[start] == '"' || rest[start] == "'")) {
+    start++;
+  }
+  var end = start;
+  while (end < rest.length && !_wordTerminators.contains(rest[end])) {
+    end++;
+  }
+  return rest.substring(start, end);
+}
+
+const _wordTerminators = ' \t&,;}])"\'<>';
 
 int _endOfLine(String text, int from) {
   for (var k = from; k < text.length; k++) {
@@ -345,15 +267,6 @@ int _endOfLine(String text, int from) {
     if (c == '\n' || c == '\r') return k;
   }
   return text.length;
-}
-
-int _lineIndexOf(String text, String char, int from) {
-  for (var k = from; k < text.length; k++) {
-    final c = text[k];
-    if (c == char) return k;
-    if (c == '\n' || c == '\r') return -1;
-  }
-  return -1;
 }
 
 // ─── URL ──────────────────────────────────────────────────────────────
@@ -427,18 +340,18 @@ String _redactUrlMatch(Match m) {
   return buffer.toString();
 }
 
-/// 路径段：先宽松解码（最多三层，应对重复编码）再判断；任何一层像 token 都算。
+/// 路径段：原样以及每一轮宽松解码（最多三轮，应对重复编码）之后，都按解出的
+/// `/` 拆成子段逐个判断；任何一个子段像 token，整个原始段都算敏感。
 bool _isSensitiveSegment(String segment) {
   if (segment.isEmpty || segment == kRedacted) return false;
   var current = segment;
-  for (var round = 0; round < 3; round++) {
-    if (_looksLikeToken(current)) return true;
-    if (!current.contains('%')) return false;
+  for (var round = 0; ; round++) {
+    if (current.split('/').any(_looksLikeToken)) return true;
+    if (round == 3 || !current.contains('%')) return false;
     final decoded = _percentDecodeLenient(current);
     if (decoded == current) return false;
     current = decoded;
   }
-  return _looksLikeToken(current);
 }
 
 /// 百分号解码，容忍畸形转义：`%` 后面不是两位十六进制就原样保留；解出的字节

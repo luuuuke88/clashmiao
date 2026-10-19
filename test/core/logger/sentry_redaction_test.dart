@@ -276,7 +276,7 @@ void main() {
       tags: {'sid': 'SECRET-TAG', 'url': subUrl},
       extra: {
         'cookie': 'SECRET-COOKIE',
-        'raw': '{"password":"SECRET JSON","server":"h.example.test"}',
+        'raw': '{"server":"h.example.test","password":"SECRET JSON"}',
         'object': Uri.parse(subUrl),
       },
       contexts: contexts,
@@ -344,6 +344,31 @@ void main() {
     expect(out.contexts['flutter_error_details'], isNull);
     expect(out.contexts.trace, isNotNull, reason: '事务必须保留 trace 上下文');
     expect(out.contexts.trace!.operation, 'ui.action');
+    expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
+  });
+
+  test('抛出物是 Map 时，异常 value 先按键名结构化脱敏', () {
+    final thrown = {
+      'server': 'h.example.test',
+      'password': 'first line\nSECRET second line',
+    };
+    final event = SentryEvent(
+      exceptions: [
+        SentryException(
+          type: '_Map<String, String>',
+          value: thrown.toString(),
+          throwable: thrown,
+        ),
+      ],
+    );
+
+    final out = redactSentryEvent(event);
+
+    // 结构化后是 `password: …}`，文本规则再按「遮到行尾」收一次，`}` 也一并遮掉。
+    expect(
+      out.exceptions!.single.value,
+      '{server: h.example.test, password: …',
+    );
     expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
   });
 

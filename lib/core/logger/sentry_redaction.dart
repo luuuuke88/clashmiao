@@ -7,10 +7,12 @@
 // - `contexts`：只留 device / os / app / runtime / culture / trace，其余（包括
 //   FlutterError 集成写入的 `flutter_error_details`、response、feedback 以及任何
 //   自定义上下文）全部丢弃；留下的几项把字符串值过一遍脱敏器。
-// - tags / extra / 面包屑 data / 异常 mechanism data：递归遍历 Map 与 List，
-//   键名是秘密字段（[isSecretFieldName]：token / password / key / cookie …）的
-//   整项遮盖，其余字符串过脱敏器；非 JSON 基本类型的对象转成字符串后再过。
-// - 事件消息、异常 value、面包屑 message、transaction / culprit：过脱敏器。
+// - tags / extra / 面包屑 data / 异常 mechanism data / 消息参数：递归遍历 Map 与
+//   List（[redactStructuredValue]），键名是秘密字段（[isSecretFieldName]：token /
+//   password / key / cookie …）的整项遮盖，其余字符串过脱敏器；非 JSON 基本类型
+//   的对象转成字符串后再过。
+// - 事件消息、异常 value、面包屑 message、transaction / culprit：过脱敏器。抛出
+//   的是 Map / List 时，异常 value 先按键名结构化脱敏再转文本。
 // - **不动**堆栈帧：排障要靠它，帧里只有代码位置。
 //
 // 只在用户主动开启「数据分析」时才会初始化 Sentry（见 main.dart 的门控）；
@@ -34,12 +36,20 @@ SentryEvent redactSentryEvent(SentryEvent event) {
     final template = message.template;
     if (template != null) message.template = redactLogText(template);
     final params = message.params;
-    if (params != null) message.params = [for (final p in params) _scrub(p)];
+    if (params != null) {
+      message.params = [for (final p in params) redactStructuredValue(p)];
+    }
   }
 
   for (final exception in event.exceptions ?? const <SentryException>[]) {
-    final value = exception.value;
-    if (value != null) exception.value = redactLogText(value);
+    final throwable = exception.throwable;
+    if (throwable is Map || throwable is Iterable) {
+      // 结构化的抛出物：先按键名脱敏再转文本，不靠事后从文本里猜边界。
+      exception.value = redactLogText('${redactStructuredValue(throwable)}');
+    } else {
+      final value = exception.value;
+      if (value != null) exception.value = redactLogText(value);
+    }
     final mechanism = exception.mechanism;
     if (mechanism != null) {
       final description = mechanism.description;
@@ -47,7 +57,7 @@ SentryEvent redactSentryEvent(SentryEvent event) {
         mechanism.description = redactLogText(description);
       }
       if (mechanism.data.isNotEmpty) {
-        mechanism.data = _scrubMap(mechanism.data);
+        mechanism.data = redactStructuredMap(mechanism.data);
       }
     }
   }
@@ -70,7 +80,7 @@ SentryEvent redactSentryEvent(SentryEvent event) {
   }
 
   final extra = event.extra;
-  if (extra != null) event.extra = _scrubMap(extra);
+  if (extra != null) event.extra = redactStructuredMap(extra);
 
   final transaction = event.transaction;
   if (transaction != null) event.transaction = redactLogText(transaction);
@@ -97,7 +107,7 @@ void _redactBreadcrumbInPlace(Breadcrumb crumb) {
   final message = crumb.message;
   if (message != null) crumb.message = redactLogText(message);
   final data = crumb.data;
-  if (data != null) crumb.data = _scrubMap(data);
+  if (data != null) crumb.data = redactStructuredMap(data);
 }
 
 // ─── contexts 白名单 ──────────────────────────────────────────────────
@@ -150,35 +160,8 @@ T? _roundTrip<T>(
 ) {
   if (value == null) return null;
   try {
-    return fromJson(_scrubMap(toJson(value)));
+    return fromJson(redactStructuredMap(toJson(value)));
   } catch (_) {
     return null;
   }
 }
-
-// ─── 结构化数据 ───────────────────────────────────────────────────────
-
-Map<String, dynamic> _scrubMap(Map<String, dynamic> map) => {
-  for (final entry in map.entries)
-    entry.key: _scrubEntry(entry.key, entry.value),
-};
-
-Object? _scrubEntry(Object? key, Object? value) {
-  if (value == null) return null;
-  if (key is String && isSecretFieldName(key)) return kRedacted;
-  return _scrub(value);
-}
-
-/// 字符串过脱敏器；Map / List 递归；数字、布尔、null 原样；其它对象转成
-/// 字符串再过脱敏器（它们序列化时同样会变成文本）。
-Object? _scrub(Object? value) => switch (value) {
-  null || bool() || num() => value,
-  final String s => redactLogText(s),
-  final Map<String, dynamic> m => _scrubMap(m),
-  final Map<dynamic, dynamic> m => {
-    for (final entry in m.entries)
-      entry.key: _scrubEntry(entry.key, entry.value),
-  },
-  final Iterable<dynamic> l => [for (final v in l) _scrub(v)],
-  _ => redactLogText(value.toString()),
-};

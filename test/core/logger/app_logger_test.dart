@@ -90,6 +90,22 @@ void main() {
       expect(content, contains(stack.toString().split('\n').first));
     });
 
+    test('结构化的错误先按键名脱敏再转文本：跨行的秘密值也不泄露', () async {
+      // 纯文本规则只遮到行尾；值里带换行时，第二行要靠结构化脱敏兜住。
+      logAppFailure('profiles.parse', {
+        'server': 'h.example.test',
+        'password': 'first line\nSECRET second line',
+      });
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(
+        content,
+        contains('[ERROR] profiles.parse: {server: h.example.test'),
+      );
+    });
+
     test('脱敏在唯一写入口：直接 append 的行（loggy、未处理异常兜底）也过滤', () async {
       await AppLogger.instance.append(
         '[PlatformDispatcher] fetch failed: https://u:pw@example.test/s?key=K '
@@ -251,7 +267,7 @@ void main() {
       expect(content, isNot(contains('SECRET')));
       expect(content, isNot(contains('hello world')));
       expect(content, contains('https://example.test/sub?…'));
-      expect(content, contains('"password":"…"'));
+      expect(content, contains('"password":…'));
       expect(content, contains('plain line'));
     }
 
@@ -261,6 +277,11 @@ void main() {
       await rotated.writeAsString('$rawLine\n');
       final unrelated = File('${tempDir.path}/notes.txt');
       await unrelated.writeAsString(rawLine);
+      // 同后缀但不是日志自己的临时文件：Documents 不是日志专用目录，不能删。
+      final foreignTemp = File('${tempDir.path}/notes.redacting');
+      await foreignTemp.writeAsString('keep me');
+      final rotatedTemp = File('${tempDir.path}/app.log.1.redacting');
+      await rotatedTemp.writeAsString(rawLine);
       // 上次迁移被打断留下的临时文件。
       final leftover = File('${tempDir.path}/app.log.redacting');
       await leftover.writeAsString(rawLine);
@@ -271,6 +292,8 @@ void main() {
       expect(await rotated.readAsString(), isNot(contains('SECRET')));
       expect(await unrelated.readAsString(), rawLine);
       expect(leftover.existsSync(), isFalse);
+      expect(rotatedTemp.existsSync(), isFalse);
+      expect(await foreignTemp.readAsString(), 'keep me');
     });
 
     test('迁移幂等：重复运行、去掉完成标记再跑，内容都不再变化', () async {

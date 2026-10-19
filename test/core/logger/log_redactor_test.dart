@@ -1,10 +1,21 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 落盘 / 导出日志的脱敏：抹掉订阅凭据、键值秘密与代理分享链接，保留排障需要的
 /// 异常类名、错误码、主机与端口、堆栈帧。
+///
+/// 键值规则：识别出秘密字段后从值开头遮到行尾，不猜值的边界。
 void main() {
-  group('脱敏用例表', () {
+  void expectCase(String input, String expected) {
+    final once = redactLogText(input);
+    expect(once, expected);
+    expect(redactLogText(once), once, reason: '幂等');
+  }
+
+  group('URL 与分享链接', () {
     const cases = <(String, String, String)>[
       // (说明, 输入, 期望)
       (
@@ -57,83 +68,6 @@ void main() {
         'vless://… trojan://… ss://… hysteria2://… tuic://…',
       ),
       (
-        '键值秘密：= 与 : 两种写法、JSON 引号写法',
-        'token=abc123 key=k-1 password: p@ss uuid=1234 secret=s auth=a '
-            '{"password":"hunter2","server":"h.example.test"}',
-        'token=… key=… password: … uuid=… secret=… auth=… '
-            '{"password":"…","server":"h.example.test"}',
-      ),
-      (
-        'Authorization 头整行折叠',
-        'request headers: Authorization: Bearer eyJhbGciOi.payload.sig',
-        'request headers: Authorization: …',
-      ),
-      (
-        'Proxy-Authorization 头',
-        'Proxy-Authorization: Basic dXNlcjpwYXNz',
-        'Proxy-Authorization: …',
-      ),
-    ];
-    for (final (name, input, expected) in cases) {
-      test(name, () => expect(redactLogText(input), expected));
-    }
-  });
-
-  group('复审反例：引号值、授权头、Cookie、编码路径、弱字段', () {
-    const cases = <(String, String, String)>[
-      ('引号值里有空白', '{"password":"hello world"}', '{"password":"…"}'),
-      (
-        '引号值里有逗号等分隔符',
-        '{"token":"abc,SECRET","server":"h.example.test"}',
-        '{"token":"…","server":"h.example.test"}',
-      ),
-      (
-        'JSON 写法的 Authorization',
-        '{"Authorization":"Bearer SECRET","Accept":"application/json"}',
-        '{"Authorization":"…","Accept":"application/json"}',
-      ),
-      (
-        '引号值里有转义引号',
-        r'{"password":"pa\"ss, wo\"rd","next":1}',
-        r'{"password":"…","next":1}',
-      ),
-      (
-        '引号值以转义反斜杠结尾',
-        r'{"secret":"abc\\","next":"keep"}',
-        r'{"secret":"…","next":"keep"}',
-      ),
-      (
-        '嵌在字符串里、转义过一次的 JSON',
-        r'body: "{\"password\":\"hello \\\"world\",\"server\":\"h\"}"',
-        r'body: "{\"password\":\"…\",\"server\":\"h\"}"',
-      ),
-      (
-        '单引号字段名与值、分隔符两侧有空格',
-        "{'password' : 'hello world', 'server': 'h'}",
-        "{'password' : '…', 'server': 'h'}",
-      ),
-      (
-        '同一行没有收尾引号：遮到行尾',
-        '{"password":"hello world\nnext line',
-        '{"password":"…\nnext line',
-      ),
-      (
-        '头部写法的 Authorization: Basic',
-        'Authorization: Basic dXNlcjpwYXNz\nnext: 1',
-        'Authorization: …\nnext: 1',
-      ),
-      (
-        'Cookie 与 Set-Cookie 头',
-        'Cookie: sid=abc123; theme=dark\n'
-            'Set-Cookie: session=SECRET; Path=/; HttpOnly',
-        'Cookie: …\nSet-Cookie: …',
-      ),
-      (
-        'JSON 里的 cookie 与 set-cookie 列表',
-        '{"cookie":"a=b; c=d","set-cookie":["s=SECRET; Path=/","t=2"]}',
-        '{"cookie":"…","set-cookie":[…]}',
-      ),
-      (
         '编码过的 UUID 路径段：整段遮盖',
         'GET https://example.test/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
         'GET https://example.test/s/…/clash',
@@ -149,19 +83,31 @@ void main() {
         'https://example.test/s/…',
       ),
       (
-        '复合字段名：obfs-password、access_token、x-api-key',
-        'obfs-password: hunter2 access_token=abc x-api-key: k1',
-        'obfs-password: … access_token=… x-api-key: …',
+        '编码的路径分隔符 %2F 把 UUID 和普通段粘成一段：整段遮盖',
+        'https://example.test/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
+        'https://example.test/s/…',
       ),
       (
-        '弱字段 key：结构化写法遮盖',
-        'key=k-1 "key":"k-1" {"key": 42}',
-        'key=… "key":"…" {"key": …}',
+        '重复编码的路径分隔符 %252F',
+        'https://example.test/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+        'https://example.test/s/…',
       ),
       (
-        '弱字段 key：值像凭据时冒号写法也遮盖',
-        'Invalid key: 0123456789abcdef0123',
-        'Invalid key: …',
+        '三层编码的分隔符与连字符',
+        'https://example.test/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
+            '%25252D9a0c%25252D0305e82c3301',
+        'https://example.test/s/…',
+      ),
+      (
+        '转义斜杠的 http URL：userinfo 与路径 token',
+        r'{"u":"http:\/\/u:p@example.test\/s\/'
+            r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
+        r'{"u":"http:\/\/example.test\/s\/…\/clash"}',
+      ),
+      (
+        '转义斜杠的分享链接',
+        r'{"u":"vless:\/\/uuid@1.2.3.4:443#hk"}',
+        r'{"u":"vless:\/\/…"}',
       ),
       (
         '游离的 Bearer token',
@@ -170,87 +116,277 @@ void main() {
       ),
     ];
     for (final (name, input, expected) in cases) {
-      test(name, () {
-        final once = redactLogText(input);
-        expect(once, expected);
-        expect(redactLogText(once), once, reason: '幂等');
-      });
+      test(name, () => expectCase(input, expected));
     }
   });
 
-  group('Dart Map / List / Set 打印写法与转义 URL', () {
+  group('键值：识别出秘密字段即遮到行尾', () {
     const cases = <(String, String, String)>[
       (
-        'Map 打印：多词值遮到下一个逗号空格',
-        '{password: hello world, server: h.example.test}',
-        '{password: …, server: h.example.test}',
+        '平铺 key=value：强弱字段都遮到行尾',
+        'retry token=abc123 server=h.example.test',
+        'retry token=…',
       ),
-      ('Map 打印：值里带冒号', '{token: a:b c:d, port: 443}', '{token: …, port: 443}'),
+      ('弱字段 key=', 'lookup key=k-1 next=1', 'lookup key=…'),
       (
-        'Map 打印：值里的逗号不跟空格时不算分隔',
-        '{secret: a,b c, port: 443}',
-        '{secret: …, port: 443}',
-      ),
-      (
-        'Map 打印：嵌套 Map 里的字段',
-        '{profile: {name: 机场 A, auth: {user: alice, password: hello world}}, '
-            'port: 443}',
-        '{profile: {name: 机场 A, auth: {user: alice, password: …}}, port: 443}',
+        '头部写法的 Authorization / Proxy-Authorization',
+        'Authorization: Basic dXNlcjpwYXNz\nProxy-Authorization: Basic x',
+        'Authorization: …\nProxy-Authorization: …',
       ),
       (
-        'Map 打印：强字段的值本身是 Map / List，整块遮盖',
-        '{secret: {a: b, c: d}, uuid: [1, 2], port: 443}',
-        '{secret: …, uuid: …, port: 443}',
+        'Cookie 与 Set-Cookie 头',
+        'Cookie: sid=abc123; theme=dark\n'
+            'Set-Cookie: session=SECRET; Path=/; HttpOnly',
+        'Cookie: …\nSet-Cookie: …',
       ),
       (
-        'List 里的 Map',
-        '[{password: hello world}, {password: second one, x: 1}]',
-        '[{password: …}, {password: …, x: 1}]',
+        '复合字段名：obfs-password、x-api-key',
+        'obfs-password: hunter2 and more\nx-api-key: k1',
+        'obfs-password: …\nx-api-key: …',
       ),
       (
-        'Set 里的 Map',
-        '{{token: abc def}, {token: ghi}}',
-        '{{token: …}, {token: …}}',
+        '弱字段在自然语言里：值像凭据时也遮',
+        'Invalid key: 0123456789abcdef0123',
+        'Invalid key: …',
       ),
       (
-        'Map 打印：行尾没有右括号，遮到行尾',
-        '{server: h.example.test, password: hello world\nnext line',
-        '{server: h.example.test, password: …\nnext line',
+        '强字段在自然语言里同样遮到行尾（偏安全的过度遮盖）',
+        'Invalid token: expired at 12:00',
+        'Invalid token: …',
       ),
       (
-        '平铺的 key=value 仍按裸值处理',
-        'password=hello world next=1',
-        'password=… world next=1',
+        '只遮到行尾，下一行照常保留',
+        '{"password":"hello\nnext line',
+        '{"password":…\nnext line',
       ),
       (
-        '转义斜杠的 https URL',
-        r'{\"url\":\"https:\/\/example.test\/sub?token=SECRET\"}',
-        r'{\"url\":\"https:\/\/example.test\/sub?…\"}',
-      ),
-      (
-        '转义斜杠的 http URL：userinfo 与路径 token',
-        r'{"url":"http:\/\/u:p@example.test\/s\/'
-            r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
-        r'{"url":"http:\/\/example.test\/s\/…\/clash"}',
-      ),
-      (
-        '转义斜杠的分享链接',
-        r'{"link":"vless:\/\/uuid@1.2.3.4:443#hk"}',
-        r'{"link":"vless:\/\/…"}',
+        '嵌在字符串里、转义过一次的 JSON',
+        r'body: "{\"server\":\"h\",\"password\":\"x\"}"',
+        r'body: "{\"server\":\"h\",\"password\":…',
       ),
     ];
     for (final (name, input, expected) in cases) {
-      test(name, () {
-        final once = redactLogText(input);
-        expect(once, expected);
-        expect(redactLogText(once), once, reason: '幂等');
-      });
+      test(name, () => expectCase(input, expected));
+    }
+  });
+
+  group('复审反例：用真实的 jsonEncode / Map.toString 输出构造', () {
+    void expectNoSecret(String input, {List<String> secrets = const []}) {
+      final once = redactLogText(input);
+      for (final s in ['SECRET', ...secrets]) {
+        expect(once, isNot(contains(s)), reason: '$input\n→ $once');
+      }
+      expect(redactLogText(once), once, reason: '幂等');
     }
 
-    test('转义斜杠的普通 URL 原样保留', () {
-      const text = r'{"url":"https:\/\/example.test\/api\/v1\/profiles"}';
-      expect(redactLogText(text), text);
+    test('JSON 列表值里的 ] 不再截断遮盖', () {
+      final input = jsonEncode({
+        'set-cookie': ['session=abc]SECRET; Path=/'],
+      });
+      expect(redactLogText(input), '{"set-cookie":…');
+      expectNoSecret(input);
     });
+
+    test('JSON 秘密字段下的嵌套对象整个遮盖', () {
+      final input = jsonEncode({
+        'server': 'h.example.test',
+        'secret': {'value': 'SECRET'},
+      });
+      expect(redactLogText(input), '{"server":"h.example.test","secret":…');
+      expectNoSecret(input);
+    });
+
+    test('JSON：值里有空白、逗号、转义引号', () {
+      expectNoSecret(jsonEncode({'password': 'hello, "SECRET" world'}));
+      expectNoSecret(jsonEncode({'token': 'abc,SECRET'}));
+      expectNoSecret(jsonEncode({'Authorization': 'Bearer SECRET'}));
+      expectNoSecret(jsonEncode({'secret': r'abc\SECRET'}));
+      expectNoSecret(
+        jsonEncode({
+          'servers': [
+            {'host': 'h', 'uuid': 'SECRET'},
+          ],
+        }),
+      );
+    });
+
+    test('Map 打印：值里的逗号空格不再当作边界', () {
+      final input = {'password': 'hello, SECRET', 'server': 'h'}.toString();
+      expect(input, '{password: hello, SECRET, server: h}');
+      expect(redactLogText(input), '{password: …');
+      expectNoSecret(input);
+    });
+
+    test('Map 打印：值里的右括号不再当作边界', () {
+      final input = {'password': 'abc}SECRET', 'server': 'h'}.toString();
+      expect(redactLogText(input), '{password: …');
+      expectNoSecret(input);
+    });
+
+    test('Map 打印：值以引号开头', () {
+      expectNoSecret({'password': '"abc"SECRET', 'server': 'h'}.toString());
+    });
+
+    test('Map 打印：弱字段 key / pwd / auth 也算结构化字段', () {
+      final input = {'key': 'k-1', 'pwd': 'hunter2', 'server': 'h'}.toString();
+      expect(redactLogText(input), '{key: …');
+      expectNoSecret(input, secrets: ['k-1', 'hunter2']);
+      expectNoSecret(
+        {'server': 'h', 'auth': 'SECRET'}.toString(),
+        secrets: ['SECRET'],
+      );
+    });
+
+    test('Map 打印：秘密字段排在前面的值里有右括号之后', () {
+      expectNoSecret({'note': 'a}b', 'pwd': 'SECRET'}.toString());
+    });
+
+    test('Map 打印：嵌套 Map、List、Set 里的 Map', () {
+      expectNoSecret(
+        {
+          'profile': {
+            'name': '机场 A',
+            'auth': {'user': 'alice', 'password': 'hello world SECRET'},
+          },
+          'port': 443,
+        }.toString(),
+      );
+      expectNoSecret(
+        [
+          {'host': 'h'},
+          {'password': 'SECRET, x: 1'},
+        ].toString(),
+      );
+      expectNoSecret(
+        {
+          {'token': 'SECRET'},
+        }.toString(),
+      );
+      expectNoSecret({'secret': '{a: SECRET}'}.toString());
+    });
+
+    test('Map 打印：值里带冒号', () {
+      expectNoSecret({'token': 'a:b SECRET:c', 'port': 443}.toString());
+    });
+
+    test('Map 打印：行尾没有右括号', () {
+      const line = '{server: h, password: hello SECRET';
+      expect(redactLogText('$line\nnext'), '{server: h, password: …\nnext');
+    });
+
+    test('Map 外的自然语言照常保留', () {
+      expect(redactLogText('Invalid key: profiles'), 'Invalid key: profiles');
+      expect(
+        redactLogText('[ERROR] profiles.update: Invalid key: profiles'),
+        '[ERROR] profiles.update: Invalid key: profiles',
+      );
+    });
+  });
+
+  group('结构化值先按键名脱敏再转文本', () {
+    test('Map / List 里的秘密键整项遮盖，其余字符串过文本脱敏', () {
+      final out = redactStructuredValue({
+        'password': 'hello, SECRET',
+        'servers': [
+          {'host': 'h.example.test', 'uuid': 1234},
+        ],
+        'url': 'https://example.test/sub?token=SECRET',
+        'count': 2,
+      });
+      expect(out, {
+        'password': '…',
+        'servers': [
+          {'host': 'h.example.test', 'uuid': '…'},
+        ],
+        'url': 'https://example.test/sub?…',
+        'count': 2,
+      });
+    });
+  });
+
+  test('随机生成的 Map / JSON：秘密值由任意标点、括号、引号组成也不泄露', () {
+    const secretKeys = [
+      'password',
+      'token',
+      'secret',
+      'uuid',
+      'Authorization',
+      'set-cookie',
+      'obfs-password',
+      'api_key',
+      'key',
+      'pwd',
+      'auth',
+      'sid',
+    ];
+    const pieces = [
+      ', ',
+      ',',
+      '{',
+      '}',
+      '[',
+      ']',
+      '"',
+      "'",
+      ':',
+      ': ',
+      '=',
+      ' ',
+      r'\',
+      '&',
+      ';',
+      '#',
+      'a',
+      'Z',
+      '9',
+      'SECRET',
+    ];
+    String randomText(Random r, {required bool allowSecret}) {
+      final buffer = StringBuffer();
+      final n = r.nextInt(8) + 1;
+      for (var i = 0; i < n; i++) {
+        final piece = pieces[r.nextInt(pieces.length)];
+        if (piece == 'SECRET' && !allowSecret) continue;
+        buffer.write(piece);
+      }
+      return buffer.toString();
+    }
+
+    for (var seed = 0; seed < 600; seed++) {
+      final r = Random(seed);
+      final secretValue =
+          '${randomText(r, allowSecret: true)}SECRET'
+          '${randomText(r, allowSecret: true)}';
+      final map = <String, Object?>{};
+      for (var i = r.nextInt(3); i > 0; i--) {
+        map['field$i'] = randomText(r, allowSecret: false);
+      }
+      final secretKey = secretKeys[r.nextInt(secretKeys.length)];
+      Object? container = {secretKey: secretValue};
+      // 随机套一层 Map / List，并把秘密项放到普通字段前后。
+      switch (r.nextInt(3)) {
+        case 0:
+          map['nested'] = container;
+        case 1:
+          map['list'] = [container];
+        default:
+          map.addAll(container as Map<String, Object?>);
+      }
+      for (var i = r.nextInt(2); i > 0; i--) {
+        map['tail$i'] = randomText(r, allowSecret: false);
+      }
+      container = map;
+
+      for (final rendered in [container.toString(), jsonEncode(container)]) {
+        final once = redactLogText(rendered);
+        expect(
+          once,
+          isNot(contains('SECRET')),
+          reason: 'seed $seed\n$rendered\n→ $once',
+        );
+        expect(redactLogText(once), once, reason: 'seed $seed 幂等');
+      }
+    }
   });
 
   group('不敏感的内容原样通过', () {
@@ -273,6 +409,7 @@ void main() {
       'selected outbound 香港 01 for group proxy',
       // 普通诊断里的弱字段名不算凭据。
       'Invalid key: profiles',
+      '[ERROR] profiles.update: Invalid key: profiles',
       'Missing key: "selected_outbound"',
       'SharedPreferences key: clashmiao_analytics_enabled',
       'Invalid signature: expected 3 parts',
@@ -280,10 +417,12 @@ void main() {
       'sid: 12',
       'pwd: /Users/me/code',
       'Bearer realm="clashmiao"',
-      // 路径段：普通段、带编码的普通段、畸形转义原样保留。
+      // 路径段：普通段、带编码的普通段、编码的分隔符、畸形转义原样保留。
       'https://example.test/api/v1/profiles/%E9%A6%99%E6%B8%AF',
+      'https://example.test/api/v1%2Fprofiles%252Fclash',
       'https://example.test/files/100%zz/abc%',
       'https://example.test/s/%E0%A4%A',
+      r'{"url":"https:\/\/example.test\/api\/v1\/profiles"}',
       'route: domain_suffix=example.test outbound=proxy',
       'dns: exchange example.test: context deadline exceeded',
       'outbound/vless[hk]: dial tcp 1.2.3.4:443: i/o timeout',
@@ -293,6 +432,7 @@ void main() {
       'Exception: profile not found (id=7)',
       'status code of 401: Unauthorized',
       '{"server":"h.example.test","port":443,"tag":"hk-01"}',
+      '{server: h.example.test, port: 443, tag: hk-01}',
       'keys: 3, tokens: 12',
       '',
     ];
@@ -325,5 +465,6 @@ void main() {
     expect(redactLogText(once), once);
     expect(once, isNot(contains('token=S')));
     expect(once, isNot(contains('u:p@')));
+    expect(once, isNot(contains('token=t')));
   });
 }

@@ -16,6 +16,7 @@ import io.nekohasekai.libbox.PlatformInterface
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -63,6 +64,9 @@ class KernelHost(
             runtime.tunFd = value
         }
 
+    /** 当前一代动态通知的启动任务；停止 / 销毁时取消（代际复查在 [ForegroundNotice] 内）。 */
+    private var noticeJob: Job? = null
+
     private var receiverRegistered = false
     private var noticeProfile = ""
     private var noticeStatusRes = R.string.status_starting
@@ -94,6 +98,7 @@ class KernelHost(
     fun onDestroy() {
         Log.d(TAG, "onDestroy instance=$id")
         unregisterControlReceiver()
+        cancelNoticeJob()
         runCatching { notice.close() }
         coordinator.onServiceDestroyed(this)
     }
@@ -116,10 +121,20 @@ class KernelHost(
 
     override fun noticeStarted(profileName: String) {
         showNotice(profileName, R.string.status_started)
-        GlobalScope.launch(Dispatchers.IO) { notice.start() }
+        cancelNoticeJob()
+        val generation = notice.beginUpdates()
+        noticeJob = GlobalScope.launch(Dispatchers.IO) { notice.startUpdates(generation) }
     }
 
-    override fun noticeStopUpdates() = notice.stopUpdates()
+    override fun noticeStopUpdates() {
+        cancelNoticeJob()
+        notice.stopUpdates()
+    }
+
+    private fun cancelNoticeJob() {
+        noticeJob?.cancel()
+        noticeJob = null
+    }
 
     // === 内部 ===============================================================
 

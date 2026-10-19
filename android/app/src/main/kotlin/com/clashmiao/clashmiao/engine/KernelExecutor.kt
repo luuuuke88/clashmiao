@@ -73,6 +73,20 @@ class KernelExecutor(
         tasks[token]?.cancelled = true
     }
 
+    /**
+     * 在执行层线程上、按提交顺序与生命周期任务**串行**执行 [block]（例如手选出站的写入）。
+     * 它不会与任何回收/启动任务并发；之前提交的任务（含其结果投递）都已完成。
+     */
+    fun runSerialized(block: () -> Unit) {
+        worker.execute {
+            try {
+                block()
+            } catch (t: Throwable) {
+                logger("serialized task crashed: $t")
+            }
+        }
+    }
+
     fun shutdown() {
         worker.shutdownNow()
     }

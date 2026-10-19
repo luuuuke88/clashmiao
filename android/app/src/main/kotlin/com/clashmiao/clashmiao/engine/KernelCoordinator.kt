@@ -1,6 +1,7 @@
 package com.clashmiao.clashmiao.engine
 
 import com.clashmiao.clashmiao.core.AlertCode
+import com.clashmiao.clashmiao.core.KernelStatus
 import java.util.concurrent.atomic.AtomicInteger
 
 /**
@@ -18,6 +19,20 @@ interface ServiceHandle {
     fun noticeStarting(profileName: String)
     fun noticeStarted(profileName: String)
     fun noticeStopUpdates()
+}
+
+/** 手选出站的实际写入（生产实现：libbox 独立命令客户端，经当前 command server 写入运行中的内核）。 */
+fun interface OutboundSelector {
+    fun select(group: String, outbound: String)
+}
+
+/** [KernelCoordinator.selectOutbound] 的结果。 */
+sealed interface SelectResult {
+    data object Ok : SelectResult
+
+    /** 期望的 attempt 已不是正在运行的内核实例：没有写入任何东西（spec §10.7）。 */
+    data class Stale(val message: String) : SelectResult
+    data class Failed(val message: String) : SelectResult
 }
 
 /** [KernelCoordinator] 需要平台提供的能力；Android 实现见 [AndroidCoordinatorPlatform]。 */
@@ -57,8 +72,15 @@ class KernelCoordinator(
     val logs: LogBuffer,
     epoch: String,
     config: CoordinatorCore.Config = CoordinatorCore.Config(),
+    private val selector: OutboundSelector = OutboundSelector { _, _ -> error("no outbound selector") },
 ) {
     private val core = CoordinatorCore(epoch, platform::currentMode, config)
+
+    /**
+     * 选择栅栏：已就绪（started）的内核实例的 attempt，否则为空。主线程在**执行任何动作之前**
+     * 更新它——所以派发回收 / 重载任务之前它已经清空；执行层线程上的选择任务据此复查。
+     */
+    @Volatile private var liveAttempt: Long? = null
 
     private val handles = HashMap<Int, ServiceHandle>()
     private val instanceIds = AtomicInteger(0)
@@ -116,6 +138,43 @@ class KernelCoordinator(
     }
 
     fun acknowledgeReplay(attempt: Long) = onMain { dispatch { core.onAckReplay(attempt) } }
+
+    /**
+     * 手选出站（spec §10.7）。[expectedAttempt] 非空时，校验与写入都绑定到该 attempt 的内核实例：
+     *  1. 主线程：该 attempt 必须是当前已就绪的实例，否则立即 stale；
+     *  2. 写入在执行层线程上与生命周期任务串行执行，执行前再按栅栏复查——期间主线程若已为该实例
+     *     派发回收 / 重载，栅栏已清空，返回 stale 且不写入；否则写入只会落到该实例
+     *     （它的回收任务排在这次写入之后）。新实例永远不会收到旧 attempt 的写入。
+     * [done] 在主线程回调，恰好一次。必须在主线程调用。
+     */
+    fun selectOutbound(
+        group: String,
+        outbound: String,
+        expectedAttempt: Long?,
+        done: (SelectResult) -> Unit,
+    ) {
+        check(platform.isMainThread()) { "selectOutbound() must be called on the main thread" }
+        if (expectedAttempt != null && liveAttempt != expectedAttempt) {
+            done(SelectResult.Stale(staleSelection(expectedAttempt)))
+            return
+        }
+        executor.runSerialized {
+            val result = if (expectedAttempt != null && liveAttempt != expectedAttempt) {
+                SelectResult.Stale(staleSelection(expectedAttempt))
+            } else {
+                try {
+                    selector.select(group, outbound)
+                    SelectResult.Ok
+                } catch (t: Throwable) {
+                    SelectResult.Failed(t.message ?: t.toString())
+                }
+            }
+            platform.post(Runnable { done(result) })
+        }
+    }
+
+    private fun staleSelection(expected: Long) =
+        "attempt $expected is not the running instance (live=${liveAttempt ?: "none"})"
 
     // === 外部入口 ===========================================================
 
@@ -191,6 +250,8 @@ class KernelCoordinator(
         try {
             while (queue.isNotEmpty()) {
                 val step = queue.removeFirst()()
+                // 先更新选择栅栏，再执行动作（其中可能派发回收 / 重载任务）。
+                liveAttempt = core.snapshot.let { if (it.status == KernelStatus.Started) it.attempt else null }
                 execute(step.effects)
                 publishIfChanged()
                 pruneHandles()
@@ -231,8 +292,8 @@ class KernelCoordinator(
                 is Effect.RetireService -> {
                     val h = handles[e.inst]
                     if (h == null) {
-                        val inst = e.inst
-                        queue.addLast { core.onServiceDestroyed(inst) }
+                        // 不伪造 onDestroy：退休只以该实例真实的 onDestroy 为准，超时由核心如实报告。
+                        platform.log("retire instance ${e.inst}: no handle, waiting for onDestroy")
                     } else {
                         val stopped = try {
                             h.stopSelfResult(e.maxStartId)

@@ -34,6 +34,12 @@ class KernelCoordinatorTest {
         var authAnswer: Boolean? = true // null = 不回应（模拟对话框开着）
         var startServiceError: Throwable? = null
 
+        /** 非空时授权走真实的 [VpnConsentBroker]（与 AndroidCoordinatorPlatform 同一份逻辑）。 */
+        var consent: VpnConsentBroker<String, Any>? = null
+
+        /** 非空时新 Service 实例使用它作为运行时（而不是 [nextRuntime] 的假 runtime）。 */
+        var runtimeOverride: KernelRuntime? = null
+
         override fun isMainThread() = Thread.currentThread() === mainThread
         override fun post(r: Runnable) {
             queue.put(r)
@@ -48,17 +54,23 @@ class KernelCoordinatorTest {
         }
 
         override fun requestVpnAuth(token: Long) {
+            consent?.let {
+                it.request(token)
+                return
+            }
             val a = authAnswer ?: return
             coordinator.onAuthResult(token, a)
         }
 
-        override fun cancelVpnAuth(token: Long) = Unit
+        override fun cancelVpnAuth(token: Long) {
+            consent?.cancel(token)
+        }
 
         override fun startService(type: ServiceType) {
             startServiceError?.let { throw it }
             // Android 会稍后在主线程调 onStartCommand：排队模拟。
             val rt = nextRuntime().also { runtimes += it }
-            val h = FakeHandle(coordinator.nextInstanceId(), type, rt)
+            val h = FakeHandle(coordinator.nextInstanceId(), type, runtimeOverride ?: rt)
             handles += h
             post(Runnable { coordinator.onServiceStarted(h, h.nextStartId()) })
         }
@@ -115,7 +127,7 @@ class KernelCoordinatorTest {
     }
 
     /** 可编程的假内核：start 可阻塞，记录资源与回收。 */
-    private class FakeRuntime(val blockStart: Boolean = false) : KernelRuntime {
+    private open class FakeRuntime(val blockStart: Boolean = false) : KernelRuntime {
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
         val resources = AtomicInteger(0)
@@ -171,12 +183,18 @@ class KernelCoordinatorTest {
     private val kv = MemoryKv()
     private val executor = KernelExecutor(postToMain = platform::post)
     private val epoch = "epoch-shell"
+
+    /** 手选写入记录（执行层线程上写入；条目里带写入时刻正在运行的 runtime 序号）。 */
+    private val selections = java.util.Collections.synchronizedList(ArrayList<String>())
+    private var selectHook: (String, String) -> Unit = { g, o -> selections += "$g/$o" }
+
     private val coordinator = KernelCoordinator(
         platform = platform,
         executor = executor,
         store = KernelStore(kv),
         logs = LogBuffer(10),
         epoch = epoch,
+        selector = OutboundSelector { g, o -> selectHook(g, o) },
     ).also { platform.coordinator = it }
 
     @After
@@ -445,5 +463,178 @@ class KernelCoordinatorTest {
         t.join()
         assertTrue(error != null)
         assertFalse(snap.desired == Desired.On)
+    }
+
+    // --- 授权归属：真实的平台授权逻辑（审核问题 3）---------------------------
+
+    private class ConsentScene(val platform: FakePlatform, val coordinator: KernelCoordinator) {
+        @Volatile var consented = false
+        val dialogs = ArrayList<String>()
+        val host = Any()
+        val broker = VpnConsentBroker<String, Any>(
+            prepare = { if (consented) null else "consent-intent" },
+            launch = { _, intent -> dialogs += intent },
+            sink = { t, g, m -> coordinator.onAuthResult(t, g, m) },
+        ).also {
+            it.attach(host)
+            platform.consent = it
+        }
+    }
+
+    @Test
+    fun `授权弹窗期间 on off on 不重复弹窗 旧弹窗结果只报给旧 token 新请求关窗后自己重新检查`() {
+        platform.mode = ServiceType.Vpn
+        val scene = ConsentScene(platform, coordinator)
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        assertEquals(1, scene.dialogs.size)
+        coordinator.request(epoch, 2, Desired.Off, null)
+        assertEquals(KernelStatus.Stopped, snap.status)
+        coordinator.request(epoch, 3, Desired.On, spec(1))
+        assertEquals("对话框还开着：不重复弹窗", 1, scene.dialogs.size)
+        assertEquals(KernelStatus.Starting, snap.status)
+
+        // 用户在第一个对话框里同意：结果报给 seq=1 的 token（被核心丢弃），seq=3 重新检查后直接通过
+        scene.consented = true
+        scene.broker.onResult(true)
+        platform.pump { snap.status == KernelStatus.Started }
+        assertEquals(3L, snap.appliedSeq)
+        assertNull(snap.lastFailure)
+        assertEquals(1, platform.handles.size)
+        assertEquals(1, scene.dialogs.size)
+    }
+
+    @Test
+    fun `授权弹窗期间 on off on 旧弹窗被拒不会让新请求失败 新请求为自己重新弹窗`() {
+        platform.mode = ServiceType.Vpn
+        val scene = ConsentScene(platform, coordinator)
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        coordinator.request(epoch, 2, Desired.Off, null)
+        coordinator.request(epoch, 3, Desired.On, spec(1))
+        scene.broker.onResult(false) // 拒绝的是 seq=1 弹出的对话框
+        platform.drain()
+        assertNull("旧拒绝不终结 seq=3", snap.lastFailure)
+        assertEquals(Desired.On, snap.desired)
+        assertEquals("seq=3 仍需授权：为它重新弹窗", 2, scene.dialogs.size)
+        assertTrue(platform.handles.isEmpty())
+
+        scene.broker.onResult(false) // seq=3 自己的对话框被拒
+        platform.drain()
+        assertEquals(FailureCode.PermissionDenied, snap.lastFailure!!.code)
+        assertEquals(3L, snap.lastFailure!!.seq)
+        assertEquals(KernelStatus.Stopped, snap.status)
+    }
+
+    // --- 手选与生命周期串行（审核问题 5）----------------------------------------
+
+    @Test
+    fun `手选 校验通过后任务被挂住 期间切换 attempt 恢复后返回 stale 且不写入新实例`() {
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        platform.pump { snap.status == KernelStatus.Started }
+        val a1 = snap.attempt
+
+        // 挂住执行层：选择任务在主线程校验通过之后、写入之前被延后
+        val gate = CountDownLatch(1)
+        val gateEntered = CountDownLatch(1)
+        executor.runSerialized {
+            gateEntered.countDown()
+            gate.await(5, TimeUnit.SECONDS)
+        }
+        assertTrue(gateEntered.await(5, TimeUnit.SECONDS))
+        var result: SelectResult? = null
+        coordinator.selectOutbound("g", "x", a1) { result = it }
+        assertNull("校验通过、已排队", result)
+
+        // 切换 attempt：新 revision → 重载（回收任务排在选择任务之后）
+        coordinator.request(epoch, 2, Desired.On, spec(2))
+        assertEquals(KernelStatus.Starting, snap.status)
+        gate.countDown()
+        platform.pump { result != null && snap.status == KernelStatus.Started }
+        assertTrue("旧 attempt 的写入返回 stale：$result", result is SelectResult.Stale)
+        assertTrue("没有写入任何实例", selections.isEmpty())
+        assertEquals(a1 + 1, snap.attempt)
+
+        // 旧 attempt 再来：主线程直接 stale
+        var late: SelectResult? = null
+        coordinator.selectOutbound("g", "z", a1) { late = it }
+        assertTrue(late is SelectResult.Stale)
+
+        // 新 attempt 的选择正常写入
+        var ok: SelectResult? = null
+        coordinator.selectOutbound("g", "y", snap.attempt) { ok = it }
+        platform.pump { ok != null }
+        assertEquals(SelectResult.Ok, ok)
+        assertEquals(listOf("g/y"), selections.toList())
+    }
+
+    @Test
+    fun `手选写入进行中才到达的重载 回收排在写入之后 写入只落在原实例`() {
+        val order = java.util.Collections.synchronizedList(ArrayList<String>())
+        platform.nextRuntime = {
+            object : FakeRuntime() {
+                override fun teardown(soft: Boolean, ctx: ExecContext) {
+                    order += "teardown"
+                    super.teardown(soft, ctx)
+                }
+            }
+        }
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        platform.pump { snap.status == KernelStatus.Started }
+        val writing = CountDownLatch(1)
+        val finishWrite = CountDownLatch(1)
+        selectHook = { g, o ->
+            writing.countDown()
+            finishWrite.await(5, TimeUnit.SECONDS)
+            order += "write $g/$o"
+        }
+        var result: SelectResult? = null
+        coordinator.selectOutbound("g", "x", snap.attempt) { result = it }
+        assertTrue(writing.await(5, TimeUnit.SECONDS))
+        coordinator.request(epoch, 2, Desired.On, spec(2)) // 写入进行中到达
+        finishWrite.countDown()
+        platform.pump { result != null && snap.status == KernelStatus.Started && snap.activeConfigRevision == 2L }
+        assertEquals(SelectResult.Ok, result)
+        assertEquals(listOf("write g/x", "teardown"), order.toList())
+    }
+
+    // --- start 阻塞期间取消：返回后不再绑定 command server（审核问题 7）---------
+
+    @Test
+    fun `start 阻塞期间收到 off 返回后不再 setService 直接进入完整回收`() {
+        val calls = java.util.Collections.synchronizedList(ArrayList<String>())
+        val inStart = CountDownLatch(1)
+        val releaseStart = CountDownLatch(1)
+        val ops = object : KernelStartOps {
+            override fun bootstrap() { calls += "bootstrap" }
+            override fun hasCommandServer() = calls.contains("commandServer")
+            override fun spawnCommandServer() { calls += "commandServer" }
+            override fun buildConfig(spec: LaunchSpec): String = "cfg".also { calls += "buildConfig" }
+            override fun prepareRuntime() { calls += "prepareRuntime" }
+            override fun newService(content: String) { calls += "newService" }
+            override fun settleAfterReload(ctx: ExecContext) = true
+            override fun startService() {
+                calls += "start"
+                inStart.countDown()
+                releaseStart.await(5, TimeUnit.SECONDS)
+            }
+            override fun bindCommandServer() { calls += "setService" }
+        }
+        val runtime = object : KernelRuntime {
+            override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext) =
+                runStartSequence(ops, spec, reload, ctx)
+
+            override fun teardown(soft: Boolean, ctx: ExecContext) {
+                calls += "teardown(soft=$soft)"
+            }
+        }
+        platform.runtimeOverride = runtime // 生产同款的启动链编排，原生步骤是假的
+        coordinator.request(epoch, 1, Desired.On, LaunchSpec("/cfg/1.json", "{}", "p1", 1))
+        platform.pump { inStart.count == 0L }
+        coordinator.request(epoch, 2, Desired.Off, null)
+        assertEquals(KernelStatus.Stopping, snap.status)
+        releaseStart.countDown()
+        platform.pump { snap.status == KernelStatus.Stopped }
+        assertFalse("start 返回后不得再调用 setService：$calls", calls.contains("setService"))
+        assertEquals("teardown(soft=false)", calls.last())
+        assertEquals("start", calls[calls.indexOf("teardown(soft=false)") - 1])
     }
 }

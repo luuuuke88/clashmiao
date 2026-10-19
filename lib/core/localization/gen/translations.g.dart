@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4410 (441 per locale)
+/// Strings: 4420 (442 per locale)
 ///
-/// Built on 2026-10-19 at 19:59 UTC
+/// Built on 2026-10-19 at 20:33 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -551,6 +551,7 @@ class TranslationsConfigEn {
   String get warpNoiseDelay => 'Noise Delay';
   String get desktopProxyScopeNotice =>
       'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
+  String get serviceModeIosVpnOnly => 'iOS supports VPN mode only';
 }
 
 // Path: general.toggle
@@ -2006,6 +2007,8 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
+  @override
+  String get serviceModeIosVpnOnly => 'يدعم iOS وضع VPN فقط';
 }
 
 // Path: general.toggle
@@ -3831,6 +3834,8 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS solo admite el modo VPN';
 }
 
 // Path: stats
@@ -5737,6 +5742,8 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS فقط از حالت VPN پشتیبانی می‌کند';
 }
 
 // Path: general.toggle
@@ -7599,6 +7606,8 @@ class TranslationsConfigId extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS hanya mendukung mode VPN';
 }
 
 // Path: general.toggle
@@ -9469,6 +9478,8 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
+  @override
+  String get serviceModeIosVpnOnly => 'O iOS só oferece suporte ao modo VPN';
 }
 
 // Path: general.toggle
@@ -11349,6 +11360,8 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS поддерживает только режим VPN';
 }
 
 // Path: general.toggle
@@ -13221,6 +13234,8 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS yalnızca VPN modunu destekler';
 }
 
 // Path: general.toggle
@@ -15076,6 +15091,8 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   String get warpNoiseSize => '噪音大小';
   @override
   String get warpNoiseMode => '噪音模式';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS 仅支持 VPN 模式';
 }
 
 // Path: general.toggle
@@ -16905,6 +16922,8 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS 僅支援 VPN 模式';
 }
 
 // Path: general.toggle
@@ -18909,6 +18928,8 @@ extension on Translations {
         return 'Noise Delay';
       case 'config.desktopProxyScopeNotice':
         return 'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS supports VPN mode only';
       default:
         return null;
     }
@@ -19827,6 +19848,8 @@ extension on TranslationsAr {
         return 'وضع الضجيج';
       case 'config.desktopProxyScopeNotice':
         return 'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'يدعم iOS وضع VPN فقط';
       default:
         return null;
     }
@@ -20725,6 +20748,8 @@ extension on TranslationsEs {
         return 'Retardo de ruido';
       case 'config.desktopProxyScopeNotice':
         return 'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS solo admite el modo VPN';
       case 'stats.traffic':
         return 'Tráfico';
       case 'stats.trafficLive':
@@ -21669,6 +21694,8 @@ extension on TranslationsFa {
         return 'همهٔ گزینه‌های پیشرفته';
       case 'config.desktopProxyScopeNotice':
         return 'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS فقط از حالت VPN پشتیبانی می‌کند';
       default:
         return null;
     }
@@ -22589,6 +22616,8 @@ extension on TranslationsId {
         return 'Penundaan Noise';
       case 'config.desktopProxyScopeNotice':
         return 'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS hanya mendukung mode VPN';
       default:
         return null;
     }
@@ -23510,6 +23539,8 @@ extension on TranslationsPtBr {
         return 'Modo de ruído';
       case 'config.desktopProxyScopeNotice':
         return 'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'O iOS só oferece suporte ao modo VPN';
       default:
         return null;
     }
@@ -24431,6 +24462,8 @@ extension on TranslationsRu {
         return 'Задержка шума';
       case 'config.desktopProxyScopeNotice':
         return 'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS поддерживает только режим VPN';
       default:
         return null;
     }
@@ -25352,6 +25385,8 @@ extension on TranslationsTr {
         return 'Gürültü Gecikmesi';
       case 'config.desktopProxyScopeNotice':
         return 'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS yalnızca VPN modunu destekler';
       default:
         return null;
     }
@@ -26264,6 +26299,8 @@ extension on TranslationsZhCn {
         return '噪音大小';
       case 'config.warpNoiseMode':
         return '噪音模式';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS 仅支持 VPN 模式';
       default:
         return null;
     }
@@ -27176,6 +27213,8 @@ extension on TranslationsZhTw {
         return '雜訊模式';
       case 'config.desktopProxyScopeNotice':
         return '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS 僅支援 VPN 模式';
       default:
         return null;
     }

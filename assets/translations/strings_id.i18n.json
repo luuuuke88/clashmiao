@@ -552,6 +552,7 @@
     "warpNoiseSize": "Ukuran Noise",
     "warpNoiseMode": "Mode Noise",
     "warpNoiseDelay": "Penundaan Noise",
-    "desktopProxyScopeNotice": "Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda."
+    "desktopProxyScopeNotice": "Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.",
+    "serviceModeIosVpnOnly": "iOS hanya mendukung mode VPN"
   }
 }

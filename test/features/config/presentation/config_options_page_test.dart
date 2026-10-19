@@ -5,6 +5,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/config/presentation/config_options_page.dart';
 import 'package:clashmiao/shared/components/tip_card.dart';
@@ -134,8 +135,16 @@ void main() {
       expect(find.text('远程 DNS 域名策略'), findsOneWidget);
       expect(find.text('直连 DNS'), findsOneWidget);
       expect(find.text('直连 DNS 域名策略'), findsOneWidget);
-      expect(find.text('严格路由'), findsOneWidget);
-      expect(find.text('TUN 实现'), findsOneWidget);
+      // 严格路由 / TUN 实现只对 TUN 起作用；宿主是桌面（没有 TUN 档），不展示。
+      // 各平台的展示规则见下面的「服务模式按平台」。
+      expect(
+        find.text('严格路由'),
+        Platform.isAndroid || Platform.isIOS ? findsOneWidget : findsNothing,
+      );
+      expect(
+        find.text('TUN 实现'),
+        Platform.isAndroid || Platform.isIOS ? findsOneWidget : findsNothing,
+      );
       expect(find.text('启用 TLS 数据分段'), findsOneWidget);
       expect(find.text('混合端口'), findsOneWidget);
       expect(find.text('2080'), findsOneWidget);
@@ -511,6 +520,109 @@ void main() {
 
       final settings = container.read(networkSettingsProvider);
       expect(settings.mtu, 9000);
+    });
+  });
+
+  // 不给假入口（真机验收后的裁决）：iOS 的 Packet Tunnel 恒为 TUN，「仅线路」
+  // 在 iOS 上什么也不改变；桌面没有 TUN，只对 TUN 起作用的设置改了也没用。
+  group('服务模式按平台：不能生效的选项不出现', () {
+    tearDown(() => debugServiceModePlatformOverride = null);
+
+    Future<void> pumpOn(
+      WidgetTester tester,
+      ServiceModePlatform platform, {
+      Map<String, Object> prefs = const {},
+    }) async {
+      debugServiceModePlatformOverride = platform;
+      SharedPreferences.setMockInitialValues({'locale': 'zhCn', ...prefs});
+      final p = await SharedPreferences.getInstance();
+      final container = await _containerWith(p);
+      addTearDown(container.dispose);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: ToastificationWrapper(
+            child: MaterialApp(
+              theme: ThemeData.light().copyWith(
+                extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+              ),
+              home: const ConfigOptionsPage(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(find.text('服务模式'), 600);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('iOS：只展示 VPN 与边界说明，没有可点开的选择器', (tester) async {
+      // 旧版本在 iOS 上点过「仅线路」留下的组合，也只能显示 VPN。
+      await pumpOn(
+        tester,
+        ServiceModePlatform.ios,
+        prefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+
+      expect(find.text('iOS 仅支持 VPN 模式'), findsOneWidget);
+      expect(find.text('VPN'), findsOneWidget);
+      await tester.tap(find.text('服务模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('仅线路'), findsNothing, reason: '点了也不能弹出选择列表');
+      expect(find.text('严格路由'), findsOneWidget, reason: 'iOS 恒以 TUN 运行');
+      expect(find.text('TUN 实现'), findsOneWidget);
+    });
+
+    testWidgets('Android VPN：可选择，TUN 相关设置可见，没有 iOS 说明', (tester) async {
+      await pumpOn(
+        tester,
+        ServiceModePlatform.android,
+        prefs: {'clashmiao_enable_tun': true},
+      );
+
+      expect(find.text('iOS 仅支持 VPN 模式'), findsNothing);
+      expect(find.text('严格路由'), findsOneWidget);
+      expect(find.text('TUN 实现'), findsOneWidget);
+      await tester.tap(find.text('服务模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('仅线路'), findsWidgets);
+    });
+
+    testWidgets('Android「仅线路」：TUN 相关设置不展示（此时改了不起作用）', (tester) async {
+      await pumpOn(
+        tester,
+        ServiceModePlatform.android,
+        prefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+
+      expect(find.text('仅线路'), findsOneWidget);
+      expect(find.text('严格路由'), findsNothing);
+      expect(find.text('TUN 实现'), findsNothing);
+    });
+
+    testWidgets('桌面：残留 enableTun=true 也不显示 VPN、不显示 TUN 设置', (tester) async {
+      await pumpOn(
+        tester,
+        ServiceModePlatform.desktop,
+        prefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': true,
+        },
+      );
+
+      expect(find.text('仅线路'), findsOneWidget, reason: '落在真实存在的档位上');
+      expect(find.text('严格路由'), findsNothing);
+      expect(find.text('TUN 实现'), findsNothing);
+      expect(find.textContaining('桌面端只有遵循系统代理'), findsOneWidget);
+      await tester.tap(find.text('服务模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('VPN'), findsNothing);
     });
   });
 }

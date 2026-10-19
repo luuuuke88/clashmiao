@@ -552,6 +552,7 @@
     "tproxyPort": "Porta de linha transparente",
     "warpNoiseSize": "Tamanho do ruído",
     "warpNoiseMode": "Modo de ruído",
-    "desktopProxyScopeNotice": "No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real."
+    "desktopProxyScopeNotice": "No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.",
+    "serviceModeIosVpnOnly": "O iOS só oferece suporte ao modo VPN"
   }
 }

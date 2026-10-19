@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
@@ -16,8 +14,8 @@ const kExperimentalNoticeDismissedKey =
 /// 判断"当前生效配置"是否命中任意一个已知的实验性字段。
 ///
 /// 字段列表覆盖两层配置来源：
-/// - [settings]：全局网络设置（TLS fragment / TLS padding / WARP / 局域网访问 /
-///   桌面端 TUN 模式），来自 [networkSettingsProvider]。
+/// - [settings]：全局网络设置（TLS fragment / TLS padding / WARP / 局域网访问），
+///   来自 [networkSettingsProvider]。
 /// - [advancedConfig]：当前激活订阅的 per-profile 高级配置（TLS fragment /
 ///   多路复用 mux），来自 [ProfileEntity.advancedConfig]。
 ///
@@ -26,13 +24,8 @@ bool hasExperimentalFeatures({
   required NetworkSettings settings,
   AdvancedConfig? advancedConfig,
 }) {
-  // 移动端 TUN 是强制开启的（VpnService 接管流量的唯一入口），不是用户的
-  // 主动实验性选择；只有桌面端用户自己打开 TUN 才算"选择了实验性功能"
-  // （对应 default_config_options.dart 里 `isMobile ? true : s.enableTun`
-  // 这条平台差异）。
-  final isDesktop = !(Platform.isAndroid || Platform.isIOS);
-  if (isDesktop && settings.enableTun) return true;
-
+  // TUN 不在这里：移动端的 VPN 是正常的服务模式；桌面端没有 TUN 档，残留的
+  // `enableTun` 也不会进启动配置（见 service_mode.dart 的 kernelEnableTun）。
   if (settings.enableTlsFragment) return true;
   if (advancedConfig?.fragmentEnabled ?? false) return true;
   if (settings.enableTlsPadding) return true;

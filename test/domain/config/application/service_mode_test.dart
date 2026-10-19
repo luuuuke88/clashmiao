@@ -12,39 +12,59 @@ void main() {
   tearDown(() => debugServiceModePlatformOverride = null);
 
   // 真机验收 BUG-4：移动端默认值落在不存在的「系统线路」档，分段控件两段都不亮。
-  group('移动端档位', () {
-    for (final platform in [
-      ServiceModePlatform.android,
-      ServiceModePlatform.ios,
-    ]) {
-      test('${platform.name}：只有仅线路 / VPN 两档，任何设置都落在其中之一', () {
-        debugServiceModePlatformOverride = platform;
-        expect(serviceModeChoices(), [ServiceMode.proxyOnly, ServiceMode.vpn]);
-        expect(
-          serviceModeOf(_defaults),
-          ServiceMode.vpn,
-          reason: '默认值就是一直在跑的 VPN',
-        );
-        expect(serviceModeOf(_proxyOnly), ServiceMode.proxyOnly);
-        expect(serviceModeOf(_vpn), ServiceMode.vpn);
-        expect(
-          serviceModeOf(
-            const NetworkSettings(setSystemProxy: true, enableTun: true),
-          ),
-          ServiceMode.vpn,
-        );
-      });
+  test('Android：只有仅线路 / VPN 两档，任何设置都落在其中之一', () {
+    debugServiceModePlatformOverride = ServiceModePlatform.android;
+    expect(serviceModeChoices(), [ServiceMode.proxyOnly, ServiceMode.vpn]);
+    expect(serviceModeIsFixed, isFalse);
+    expect(serviceModeOf(_defaults), ServiceMode.vpn, reason: '默认值就是一直在跑的 VPN');
+    expect(serviceModeOf(_proxyOnly), ServiceMode.proxyOnly);
+    expect(serviceModeOf(_vpn), ServiceMode.vpn);
+    expect(
+      serviceModeOf(
+        const NetworkSettings(setSystemProxy: true, enableTun: true),
+      ),
+      ServiceMode.vpn,
+    );
+  });
+
+  // 不给假入口：Packet Tunnel 恒为 TUN，「仅线路」在 iOS 上什么也不改变。
+  test('iOS：只有 VPN 一档，任何设置都显示为 VPN', () {
+    debugServiceModePlatformOverride = ServiceModePlatform.ios;
+    expect(serviceModeChoices(), [ServiceMode.vpn]);
+    expect(serviceModeIsFixed, isTrue);
+    for (final s in [_defaults, _proxyOnly, _vpn]) {
+      expect(serviceModeOf(s), ServiceMode.vpn);
+      expect(tunSettingsTakeEffect(s), isTrue);
     }
   });
 
-  test('桌面端档位不变：仅线路 / 系统线路', () {
+  test('桌面端档位：仅线路 / 系统线路；残留的 enableTun 不让结果落到不存在的档', () {
     debugServiceModePlatformOverride = ServiceModePlatform.desktop;
     expect(serviceModeChoices(), [
       ServiceMode.proxyOnly,
       ServiceMode.systemProxy,
     ]);
+    expect(serviceModeIsFixed, isFalse);
     expect(serviceModeOf(_defaults), ServiceMode.systemProxy);
     expect(serviceModeOf(_proxyOnly), ServiceMode.proxyOnly);
+    expect(serviceModeOf(_vpn), ServiceMode.proxyOnly);
+    expect(
+      serviceModeOf(
+        const NetworkSettings(setSystemProxy: true, enableTun: true),
+      ),
+      ServiceMode.systemProxy,
+    );
+    for (final s in [_defaults, _proxyOnly, _vpn]) {
+      expect(serviceModeChoices(), contains(serviceModeOf(s)));
+      expect(tunSettingsTakeEffect(s), isFalse, reason: '桌面没有 TUN');
+    }
+  });
+
+  test('Android：TUN 相关设置只在 VPN 档起作用', () {
+    debugServiceModePlatformOverride = ServiceModePlatform.android;
+    expect(tunSettingsTakeEffect(_vpn), isTrue);
+    expect(tunSettingsTakeEffect(_defaults), isTrue);
+    expect(tunSettingsTakeEffect(_proxyOnly), isFalse);
   });
 
   // 真机验收 BUG-3：移动端 enable-tun 无条件为 true，选「仅线路」不进请求、
@@ -77,10 +97,11 @@ void main() {
       expect(kernelEnableTun(_proxyOnly), isTrue);
     });
 
-    test('桌面端按用户开关', () {
+    test('桌面端恒为 false：没有 TUN 档，残留的 enableTun 不进启动配置', () {
       debugServiceModePlatformOverride = ServiceModePlatform.desktop;
-      expect(kernelEnableTun(_vpn), isTrue);
+      expect(kernelEnableTun(_vpn), isFalse);
       expect(kernelEnableTun(_defaults), isFalse);
+      expect(getDefaultConfigOptions(settings: _vpn)['enable-tun'], isFalse);
     });
   });
 }

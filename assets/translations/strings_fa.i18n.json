@@ -487,6 +487,8 @@
     "muxProtocol": "پروتکل Mux",
     "muxMaxStreams": "حداکثر جریان‌های هم‌زمان",
     "enableWarp": "فعال‌سازی WARP",
+    "setUpWarp": "راه‌اندازی WARP",
+    "warpNotConfigured": "پیکربندی نشده",
     "warpDetourMode": "حالت وارپ",
     "warpDetourModes": {
       "proxyOverWarp": "عبور پروکسی‌ها از طریق WARP",

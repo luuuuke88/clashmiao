@@ -486,6 +486,8 @@
     "muxProtocol": "بروتوكول Mux",
     "muxMaxStreams": "أقصى عدد من التدفقات المتزامنة",
     "enableWarp": "تمكين WARP",
+    "setUpWarp": "إعداد WARP",
+    "warpNotConfigured": "غير مهيأ",
     "warpDetourMode": "وضع التفاف",
     "warpDetourModes": {
       "proxyOverWarp": "لف الخوادم الوكيلية عبر WARP",

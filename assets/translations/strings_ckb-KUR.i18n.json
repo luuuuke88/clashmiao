@@ -486,6 +486,8 @@
     "muxProtocol": "پرۆتۆکۆڵی Mux",
     "muxMaxStreams": "زۆرترین ڕەوتی هاوکات",
     "enableWarp": "چالاک کردنی WARP",
+    "setUpWarp": "ڕێکخستنی WARP",
+    "warpNotConfigured": "ڕێک نەخراوە",
     "warpDetourMode": "دۆخی وارپ",
     "warpDetourModes": {
       "proxyOverWarp": "تێپەڕاندنی پرۆکسیەکان لە ڕێگەی WARP",

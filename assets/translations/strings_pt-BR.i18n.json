@@ -476,6 +476,8 @@
     "muxProtocol": "Protocolo Mux",
     "muxMaxStreams": "Máximo de fluxos simultâneos",
     "enableWarp": "Habilitar WARP",
+    "setUpWarp": "Configurar WARP",
+    "warpNotConfigured": "Não configurado",
     "warpDetourMode": "Modo de desvio",
     "warpDetourModes": {
       "inbound": "Desvie o WARP através de proxies",

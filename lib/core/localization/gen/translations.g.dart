@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3960 (396 per locale)
+/// Strings: 3980 (398 per locale)
 ///
-/// Built on 2026-10-19 at 15:56 UTC
+/// Built on 2026-10-19 at 16:08 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -525,6 +525,8 @@ class TranslationsConfigEn {
   String get muxProtocol => 'Mux Protocol';
   String get muxMaxStreams => 'Max Concurrent Streams';
   String get enableWarp => 'Enable WARP';
+  String get setUpWarp => 'Set up WARP';
+  String get warpNotConfigured => 'Not configured';
   String get warpDetourMode => 'Detour Mode';
   late final TranslationsConfigWarpDetourModesEn warpDetourModes =
       TranslationsConfigWarpDetourModesEn._(_root);
@@ -1863,6 +1865,10 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   String get muxMaxStreams => 'أقصى عدد من التدفقات المتزامنة';
   @override
   String get enableWarp => 'تمكين WARP';
+  @override
+  String get setUpWarp => 'إعداد WARP';
+  @override
+  String get warpNotConfigured => 'غير مهيأ';
   @override
   String get warpDetourMode => 'وضع التفاف';
   @override
@@ -3534,6 +3540,10 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Sin configurar';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -5311,6 +5321,10 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   @override
   String get enableWarp => 'فعال‌سازی WARP';
   @override
+  String get setUpWarp => 'راه‌اندازی WARP';
+  @override
+  String get warpNotConfigured => 'پیکربندی نشده';
+  @override
   String get warpDetourMode => 'حالت وارپ';
   @override
   late final TranslationsConfigWarpDetourModesFa warpDetourModes =
@@ -7010,6 +7024,10 @@ class TranslationsConfigId extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'Siapkan WARP';
+  @override
+  String get warpNotConfigured => 'Belum dikonfigurasi';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -8744,6 +8762,10 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   String get muxMaxStreams => 'Máximo de fluxos simultâneos';
   @override
   String get enableWarp => 'Habilitar WARP';
+  @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Não configurado';
   @override
   String get warpDetourMode => 'Modo de desvio';
   @override
@@ -10489,6 +10511,10 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Enable WARP';
   @override
+  String get setUpWarp => 'Настроить WARP';
+  @override
+  String get warpNotConfigured => 'Не настроено';
+  @override
   String get warpDetourMode => 'Detour Mode';
   @override
   late final TranslationsConfigWarpDetourModesRu warpDetourModes =
@@ -12196,6 +12222,10 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'WARP\'ı ayarla';
+  @override
+  String get warpNotConfigured => 'Yapılandırılmadı';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -13933,6 +13963,10 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   @override
   String get enableWarp => '启用 WARP';
   @override
+  String get setUpWarp => '设置 WARP';
+  @override
+  String get warpNotConfigured => '未配置';
+  @override
   String get warpDetourMode => '链式线路';
   @override
   late final TranslationsConfigWarpDetourModesZhCn warpDetourModes =
@@ -15628,6 +15662,10 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   String get muxMaxStreams => '最大並發數';
   @override
   String get enableWarp => '啟用 WARP';
+  @override
+  String get setUpWarp => '設定 WARP';
+  @override
+  String get warpNotConfigured => '未設定';
   @override
   String get warpDetourMode => '鏈式線路';
   @override
@@ -17433,6 +17471,10 @@ extension on Translations {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Set up WARP';
+      case 'config.warpNotConfigured':
+        return 'Not configured';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -18248,6 +18290,10 @@ extension on TranslationsAr {
         return 'أقصى عدد من التدفقات المتزامنة';
       case 'config.enableWarp':
         return 'تمكين WARP';
+      case 'config.setUpWarp':
+        return 'إعداد WARP';
+      case 'config.warpNotConfigured':
+        return 'غير مهيأ';
       case 'config.warpDetourMode':
         return 'وضع التفاف';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -19031,6 +19077,10 @@ extension on TranslationsEs {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Sin configurar';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -19899,6 +19949,10 @@ extension on TranslationsFa {
         return 'حداکثر جریان‌های هم‌زمان';
       case 'config.enableWarp':
         return 'فعال‌سازی WARP';
+      case 'config.setUpWarp':
+        return 'راه‌اندازی WARP';
+      case 'config.warpNotConfigured':
+        return 'پیکربندی نشده';
       case 'config.warpDetourMode':
         return 'حالت وارپ';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -20698,6 +20752,10 @@ extension on TranslationsId {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Siapkan WARP';
+      case 'config.warpNotConfigured':
+        return 'Belum dikonfigurasi';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -21528,6 +21586,10 @@ extension on TranslationsPtBr {
         return 'Máximo de fluxos simultâneos';
       case 'config.enableWarp':
         return 'Habilitar WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Não configurado';
       case 'config.warpDetourMode':
         return 'Modo de desvio';
       case 'config.warpDetourModes.inbound':
@@ -22368,6 +22430,10 @@ extension on TranslationsRu {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Настроить WARP';
+      case 'config.warpNotConfigured':
+        return 'Не настроено';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -23170,6 +23236,10 @@ extension on TranslationsTr {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'WARP\'ı ayarla';
+      case 'config.warpNotConfigured':
+        return 'Yapılandırılmadı';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -24018,6 +24088,10 @@ extension on TranslationsZhCn {
         return 'Mux 最大并发数';
       case 'config.enableWarp':
         return '启用 WARP';
+      case 'config.setUpWarp':
+        return '设置 WARP';
+      case 'config.warpNotConfigured':
+        return '未配置';
       case 'config.warpDetourMode':
         return '链式线路';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -24832,6 +24906,10 @@ extension on TranslationsZhTw {
         return '最大並發數';
       case 'config.enableWarp':
         return '啟用 WARP';
+      case 'config.setUpWarp':
+        return '設定 WARP';
+      case 'config.warpNotConfigured':
+        return '未設定';
       case 'config.warpDetourMode':
         return '鏈式線路';
       case 'config.warpDetourModes.proxyOverWarp':

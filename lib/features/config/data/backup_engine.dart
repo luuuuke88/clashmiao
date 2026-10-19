@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
@@ -270,11 +271,11 @@ class BackupEngine {
       await _apply(plan);
       await _clearMarker();
     } catch (e, st) {
-      debugPrint('[backup] 恢复应用失败，用快照回滚: $e\n$st');
+      logAppFailure('backup.applyRestore', e, st);
       try {
         await _rollbackTo(snapshot);
       } catch (e2, st2) {
-        debugPrint('[backup] 快照回滚失败（标记保留，下次再试）: $e2\n$st2');
+        logAppFailure('backup.rollbackAfterFailedRestore', e2, st2);
         // 恢复线索在内存里也记一份：磁盘标记可能没清掉也可能已经没了，
         // 这个进程里下一次导入必须先把这件事了结，不能直接覆盖线索。
         _state.pendingSnapshot = snapshot.path;
@@ -440,7 +441,7 @@ class BackupEngine {
       }
       return file;
     } catch (e, st) {
-      debugPrint('[backup] 恢复前快照失败: $e\n$st');
+      logAppFailure('backup.writeSnapshot', e, st);
       if (file != null) {
         await _deleteQuietly(file);
         await _deleteQuietly(File('${file.path}.tmp'));
@@ -479,8 +480,8 @@ class BackupEngine {
   Future<void> _reassertMarker(String path) async {
     try {
       await prefs.setString(kRestoreMarkerKey, path);
-    } catch (e) {
-      debugPrint('[backup] 补回恢复标记失败（内存里仍记着）: $e');
+    } catch (e, st) {
+      logAppFailure('backup.reassertMarker', e, st);
     }
   }
 
@@ -530,8 +531,8 @@ class BackupEngine {
       for (final stale in files.skip(keepSnapshots)) {
         await _deleteQuietly(stale);
       }
-    } catch (e) {
-      debugPrint('[backup] 清理旧快照失败（忽略）: $e');
+    } catch (e, st) {
+      logAppFailure('backup.pruneSnapshots', e, st);
     }
   }
 
@@ -581,7 +582,7 @@ class BackupEngine {
     final file = File(p.join(backupsDir.path, name));
     try {
       if (name.isEmpty || !await file.exists()) {
-        debugPrint('[backup] 恢复标记指向的快照不存在，无法回滚: $clue');
+        logAppFailure('backup.snapshotMissing', 'snapshot not found: $clue');
         await _forgetMarker();
         _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
@@ -593,8 +594,8 @@ class BackupEngine {
           currentSchema: kCurrentStorageSchema,
           trusted: true,
         );
-      } catch (e) {
-        debugPrint('[backup] 恢复快照损坏，无法回滚: $e');
+      } catch (e, st) {
+        logAppFailure('backup.snapshotCorrupt', e, st);
         await _forgetMarker();
         _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
@@ -605,7 +606,7 @@ class BackupEngine {
       debugPrint('[backup] 已用恢复前快照回到上次恢复之前的状态');
       return RecoveryOutcome.recovered;
     } catch (e, st) {
-      debugPrint('[backup] 回滚失败，标记保留: $e\n$st');
+      logAppFailure('backup.rollback', e, st);
       _state.pendingSnapshot = file.path;
       await _reassertMarker(file.path);
       return RecoveryOutcome.failed;

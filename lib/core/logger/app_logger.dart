@@ -240,19 +240,45 @@ void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
   }
   final line = buffer.toString();
   debugPrint(line);
+  final sink = debugAppFailureSink;
+  if (sink != null) {
+    sink(AppFailureRecord(where, error, stackTrace, line));
+    return;
+  }
   unawaited(AppLogger.instance.append(line));
 }
 
+/// 一次 [logAppFailure] 的内容，交给测试用的 [debugAppFailureSink]。
+@immutable
+class AppFailureRecord {
+  const AppFailureRecord(this.where, this.error, this.stackTrace, this.line);
+
+  final String where;
+  final Object error;
+  final StackTrace? stackTrace;
+
+  /// 本该写进 app.log 的那一行（含时间戳与堆栈）。
+  final String line;
+}
+
+/// 测试接缝：非空时 [logAppFailure] 把记录交给它，**不**写盘。界面测试据此用
+/// 完成信号断言「失败被记录了」，不必等待真实文件 I/O；真实写盘由
+/// app_logger_test 覆盖。
+@visibleForTesting
+void Function(AppFailureRecord record)? debugAppFailureSink;
+
 /// 每个 [where] 最近一次已记录的错误，给 [logAppFailureOnce] 去重。
-final Map<String, Object> _lastLoggedFailure = {};
+final Map<String, String> _lastLoggedFailure = {};
 
 /// [logAppFailure] 的去重版，给 `AsyncValue.when(error: ...)` 这类会随重建反复
-/// 执行的错误分支用：同一 [where] 上同一个错误对象只记一次，不让每次重建都往
-/// 日志里刷一遍同样的堆栈。
+/// 执行的错误分支、以及会以同样原因反复失败的调用用：同一 [where] 上内容相同的
+/// 错误只记一次，不让每次重建都往日志里刷一遍同样的堆栈。
 void logAppFailureOnce(String where, Object error, [StackTrace? stackTrace]) {
-  final last = _lastLoggedFailure[where];
-  if (last != null && (identical(last, error) || last == error)) return;
-  _lastLoggedFailure[where] = error;
+  // 按文本去重：同一个错误对象，或每次新建但内容相同的错误（例如托盘图标
+  // 每次设置都以同样原因失败），都只记一次；内容变了再记。
+  final text = '$error';
+  if (_lastLoggedFailure[where] == text) return;
+  _lastLoggedFailure[where] = text;
   logAppFailure(where, error, stackTrace);
 }
 

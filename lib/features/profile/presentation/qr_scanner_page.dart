@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -112,8 +113,8 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage>
       await _controller.start();
       if (!mounted) return;
       setState(() => _started = true);
-    } catch (error) {
-      debugPrint('Error starting QR scanner: $error');
+    } catch (error, st) {
+      logAppFailure('qrScanner.start', error, st);
     }
   }
 

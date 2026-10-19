@@ -79,6 +79,34 @@ void main() {
       expect('first'.allMatches(content), hasLength(1));
       expect(content, contains('second'));
     });
+
+    test('logAppFailureOnce：每次新建但内容相同的错误也只记一次', () async {
+      logAppFailureOnce('tray.setIcon', Exception('asset missing'));
+      await AppLogger.instance.flush();
+      logAppFailureOnce('tray.setIcon', Exception('asset missing'));
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect('asset missing'.allMatches(content), hasLength(1));
+    });
+
+    test('测试接缝 debugAppFailureSink：拿到完整记录，且不写盘', () async {
+      final records = <AppFailureRecord>[];
+      debugAppFailureSink = records.add;
+      addTearDown(() => debugAppFailureSink = null);
+      final error = StateError('seam');
+      final stack = StackTrace.current;
+
+      logAppFailure('where', error, stack);
+      await AppLogger.instance.flush();
+
+      expect(records, hasLength(1));
+      expect(records.single.where, 'where');
+      expect(records.single.error, same(error));
+      expect(records.single.stackTrace, same(stack));
+      expect(records.single.line, contains('[ERROR] where: Bad state: seam'));
+      expect(logFile.existsSync(), isFalse, reason: '接缝生效时不写盘');
+    });
   });
 
   group('AppLogger 日志文件大小控制（超阈值截断）', () {

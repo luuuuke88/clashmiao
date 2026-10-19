@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
@@ -98,10 +99,14 @@ void main() {
       debugPrint = (String? message, {int? wrapWidth}) {
         if (message != null) logs.add(message);
       };
+      // 失败走应用日志（app.log）；这里接住记录，不写盘。
+      debugAppFailureSink = (record) => logs.add(record.line);
     });
 
     tearDown(() {
       debugPrint = originalDebugPrint;
+      debugAppFailureSink = null;
+      resetAppFailureDedupForTesting();
     });
 
     test('按顺序执行：先断开连接，再清理托盘，最后销毁窗口', () async {
@@ -140,7 +145,7 @@ void main() {
       expect(calls, ['destroyWindow']);
       expect(
         logs,
-        anyElement(contains('[Tray] dispose failed during quit')),
+        anyElement(contains('[ERROR] quit.disposeTray')),
         reason: '托盘清理失败不该被静默吞掉，退出前的失败也要留日志，跟 setIcon 失败的日志约定一致',
       );
     });
@@ -172,10 +177,14 @@ void main() {
       debugPrint = (String? message, {int? wrapWidth}) {
         if (message != null) logs.add(message);
       };
+      // 失败走应用日志（app.log）；这里接住记录，不写盘。
+      debugAppFailureSink = (record) => logs.add(record.line);
     });
 
     tearDown(() {
       debugPrint = originalDebugPrint;
+      debugAppFailureSink = null;
+      resetAppFailureDedupForTesting();
     });
 
     test('setIcon 成功时不产生任何日志', () async {
@@ -193,7 +202,7 @@ void main() {
       );
       expect(
         logs,
-        anyElement(contains('[Tray] setIcon failed')),
+        anyElement(contains('[ERROR] tray.setIcon')),
         reason:
             '此前 tray_controller.dart 里状态变化时的 setIcon 调用是 '
             '.catchError((_) {})，图标文件缺失时的失败被完全静默吞掉，'

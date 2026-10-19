@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -289,9 +290,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       if (context.mounted) {
         AppToast.success(context, t.settings.advanced.resetTunnelSuccess);
       }
-    } catch (e) {
+    } catch (e, st) {
       // 技术细节只进日志，界面只给本地化文案。
-      debugPrint('重置隧道失败: $e');
+      logAppFailure('settings.resetTunnel', e, st);
       if (context.mounted) {
         AppToast.error(context, t.failure.unexpected);
       }

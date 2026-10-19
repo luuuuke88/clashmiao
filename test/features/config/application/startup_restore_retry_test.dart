@@ -184,14 +184,30 @@ void main() {
     expect(gate.requests, isNotEmpty);
   });
 
-  test('没有待处理的恢复（none）：不暂停、不刷新、不改任何东西', () async {
+  test('没有恢复线索（none）：不暂停、不刷新——暂停标志与 provider 重建都零变化', () async {
     h.prefs.failWhen = null;
     expect(await retry(), RecoveryOutcome.recovered);
-    final flags = <bool>[];
-    h.prefs.beforeWrite = (op, key) async =>
-        flags.add(container.read(restoreInProgressProvider));
+    // 先让会被刷新的 provider 建好，再开始观察。
+    container.read(networkSettingsProvider);
+    await container.read(profileListProvider.future);
+    await container.read(activeProfileProvider.future);
+
+    final flagChanges = <bool>[];
+    var networkRebuilds = 0;
+    var listRebuilds = 0;
+    var activeRebuilds = 0;
+    container.listen(
+      restoreInProgressProvider,
+      (_, next) => flagChanges.add(next),
+    );
+    container.listen(networkSettingsProvider, (_, _) => networkRebuilds++);
+    container.listen(profileListProvider, (_, _) => listRebuilds++);
+    container.listen(activeProfileProvider, (_, _) => activeRebuilds++);
+
     expect(await retry(), RecoveryOutcome.none);
-    expect(flags, isEmpty);
-    expect(container.read(restoreInProgressProvider), isFalse);
+    await pumpEventQueue();
+
+    expect(flagChanges, isEmpty, reason: '没有可恢复的东西，不能碰暂停标志');
+    expect([networkRebuilds, listRebuilds, activeRebuilds], [0, 0, 0]);
   });
 }

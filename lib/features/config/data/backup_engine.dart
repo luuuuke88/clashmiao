@@ -365,6 +365,11 @@ class BackupEngine {
       if (!result.isCommitted) {
         throw StateError('订阅提交未成功: ${result.status.name} ${result.error}');
       }
+      if (result.incompleteCleanup.isNotEmpty) {
+        // 列表已换，但要删的配置文件没删干净。不能报告成功 / 清标记：留着恢复线索，
+        // 之后重试（启动清理会删完 `.del`，不会复活）。
+        throw StateError('配置文件删除未完成: ${result.incompleteCleanup}');
+      }
     } catch (_) {
       for (final s in staged) {
         await _deleteQuietly(s.file);
@@ -524,6 +529,17 @@ class BackupEngine {
     }
   }
 
+  /// 是否有待处理的恢复线索（磁盘 / 缓存里的标记，或本进程记着的未了结恢复）。
+  /// 廉价的同步检查：启动重试据此判断「没有要恢复的」时完全不必暂停与刷新。
+  bool get hasRecoveryClue {
+    if (_state.pendingSnapshot != null) return true;
+    try {
+      return prefs.containsKey(kRestoreMarkerKey);
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// [recoverInterrupted] 的本体，调用者必须已经在 [runExclusive] 里（启动重试要在
   /// 同一次互斥里完成暂停 → 恢复 → 刷新）。永不抛出。
   Future<RecoveryOutcome> recoverHoldingLock() async {
@@ -562,6 +578,10 @@ class BackupEngine {
         return RecoveryOutcome.unrecoverable;
       }
       await store.cleanupResidue();
+      final stuck = await store.pendingConfigDeletions();
+      if (stuck.isNotEmpty) {
+        throw StateError('上次遗留的配置文件删除仍未完成: $stuck');
+      }
       await _apply(plan);
       await _clearMarker();
       _state.pendingSnapshot = null;

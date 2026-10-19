@@ -112,13 +112,18 @@ class RestoreRefresher {
   ///
   /// 已有恢复在进行时返回 [RecoveryOutcome.busy]，不碰暂停标志。永不抛出。
   Future<RecoveryOutcome> recoverInterrupted(BackupEngine engine) async {
+    // 没有恢复线索：什么都不用做，更不该暂停调度器或刷新 provider。
+    if (!engine.hasRecoveryClue) return RecoveryOutcome.none;
     try {
       return await engine.runExclusive(() async {
         final flag = container.read(restoreInProgressProvider.notifier);
         flag.state = true;
         try {
           final outcome = await engine.recoverHoldingLock();
-          if (outcome != RecoveryOutcome.none) await _refreshQuietly();
+          if (outcome != RecoveryOutcome.none &&
+              outcome != RecoveryOutcome.busy) {
+            await _refreshQuietly();
+          }
           return outcome;
         } finally {
           flag.state = false;

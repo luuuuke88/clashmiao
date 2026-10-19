@@ -27,10 +27,17 @@ enum CommitStatus {
 }
 
 class CommitResult<T> {
-  const CommitResult._(this.status, this.value, this.error);
+  const CommitResult._(
+    this.status,
+    this.value,
+    this.error, [
+    this.incompleteCleanup = const [],
+  ]);
 
-  const CommitResult.committed(T? value)
-    : this._(CommitStatus.committed, value, null);
+  const CommitResult.committed(
+    T? value, {
+    List<String> incompleteCleanup = const [],
+  }) : this._(CommitStatus.committed, value, null, incompleteCleanup);
   const CommitResult.unchanged(T? value)
     : this._(CommitStatus.unchanged, value, null);
   const CommitResult.stale() : this._(CommitStatus.stale, null, null);
@@ -40,6 +47,12 @@ class CommitResult<T> {
   final CommitStatus status;
   final T? value;
   final Object? error;
+
+  /// 提交已成功，但「只删配置文件」（[Plan.removedConfigIds]）的收尾没做完——
+  /// 文件已移出正式路径、残留还在磁盘上（路径列表）。调用者必须当作「删除未完成」
+  /// 处理（保留恢复线索重试），不能宣布完成。下次启动清理会把这类残留**删完**，
+  /// 绝不会还原。普通替换 / 删订阅的残留不在此列（它们的 `.undo` 本来就无害）。
+  final List<String> incompleteCleanup;
 
   bool get isCommitted => status == CommitStatus.committed;
   bool get isStale => status == CommitStatus.stale;
@@ -175,8 +188,17 @@ class ProfileStore {
     required this.configDir,
     String Function()? incGenerator,
     String Function()? opIdGenerator,
+    @visibleForTesting Future<void> Function(File file)? deleteFile,
+    @visibleForTesting
+    Future<File> Function(File file, String newPath)? renameFile,
   }) : _newInc = incGenerator ?? _randomHex16,
-       _newOpId = opIdGenerator ?? _randomHex8;
+       _newOpId = opIdGenerator ?? _randomHex8,
+       _deleteFile = deleteFile ?? ((f) => f.delete()),
+       _renameFile = renameFile ?? ((f, to) => f.rename(to));
+
+  /// 「只删配置」收尾与残留清理里用的文件操作（测试注入故障用）。
+  final Future<void> Function(File file) _deleteFile;
+  final Future<File> Function(File file, String newPath) _renameFile;
 
   final SharedPreferences prefs;
 
@@ -491,10 +513,22 @@ class ProfileStore {
         await staged.file.rename(formal.path);
         entry.installed = true;
       }
-      for (final id in [...plan.removedProfileIds, ...plan.removedConfigIds]) {
+      for (final id in plan.removedProfileIds) {
         final formal = File(configFilePath(id));
         if (!await formal.exists()) continue;
         final entry = _Undo(formal, File('${formal.path}.${_newOpId()}.undo'));
+        undo.add(entry);
+        await formal.rename(entry.undo.path);
+        entry.movedOld = true;
+      }
+      for (final id in plan.removedConfigIds) {
+        final formal = File(configFilePath(id));
+        if (!await formal.exists()) continue;
+        final entry = _Undo(
+          formal,
+          File('${formal.path}.${_newOpId()}.undo'),
+          configOnlyRemoval: true,
+        );
         undo.add(entry);
         await formal.rename(entry.undo.path);
         entry.movedOld = true;
@@ -534,8 +568,17 @@ class ProfileStore {
     _frozen = null;
 
     // 成功后的收尾：失败只留下无害的孤儿，不再回滚已写入的列表。
+    final incomplete = <String>[];
     for (final entry in undo) {
-      await _deleteQuietly(entry.undo);
+      if (entry.configOnlyRemoval) {
+        // 订阅还在列表里、只是配置要没有：这个 `.undo` 若留到下次启动会被当成
+        // 「列表里有、正式文件缺失」而还原，复活本应不存在的文件。所以先把它改名成
+        // 「已提交的删除」`.del`（启动清理只会删完它，绝不还原），再删。
+        final left = await _finishConfigRemoval(entry);
+        if (left != null) incomplete.add(left);
+      } else {
+        await _deleteQuietly(entry.undo);
+      }
     }
     final aux = <String>{
       for (final id in plan.removedProfileIds) ...auxKeysFor(id),
@@ -549,7 +592,28 @@ class ProfileStore {
       }
     }
     if (!_changes.isClosed) _changes.add(null);
-    return CommitResult<T>.committed(plan.value);
+    return CommitResult<T>.committed(plan.value, incompleteCleanup: incomplete);
+  }
+
+  /// 「只删配置」的收尾：残留改名为 `.del`（已提交删除的残留）后删除。
+  /// 返回仍留在磁盘上的残留路径；全部清掉返回 null。
+  Future<String?> _finishConfigRemoval(_Undo entry) async {
+    var target = entry.undo;
+    try {
+      target = await _renameFile(
+        entry.undo,
+        '${entry.formal.path}.${_newOpId()}.del',
+      );
+    } catch (e) {
+      debugPrint('[ProfileStore] 残留改名 .del 失败，直接删除 ${entry.undo.path}: $e');
+    }
+    try {
+      await _deleteFile(target);
+      if (!await target.exists()) return null;
+    } catch (e) {
+      debugPrint('[ProfileStore] 删除配置残留失败 ${target.path}: $e');
+    }
+    return target.path;
   }
 
   /// 序列化主列表。迁移未完成（schema < 1）时继续写条目级 `active` 标记
@@ -683,6 +747,7 @@ class ProfileStore {
   /// 启动时清理上次进程遗留的暂存文件。必须在任何业务读写之前调用。
   ///
   /// - `.staging`（及其 `.next` / `.tmp` 衍生物）：未提交的暂存，直接删除；
+  /// - `.del`：已提交的「只删配置」残留，**删完**，不还原；
   /// - `.undo`：若正式文件存在则保留正式文件、删 `.undo`——这是刷新时进程死在
   ///   「文件已替换」与「列表已写入」之间的良性窗口（较新的同源配置配较旧元数据）；
   ///   正式文件缺失且该订阅仍在列表里 → 还原 `.undo`；订阅已不在列表 → 删除。
@@ -703,6 +768,9 @@ class ProfileStore {
                 name.endsWith('.json.next') ||
                 name.endsWith('.json.tmp')) {
               await entity.delete();
+            } else if (name.endsWith('.del')) {
+              // 已提交的「只删配置」残留：只能删完，绝不还原（订阅即使仍在列表里）。
+              await _deleteFile(entity);
             } else if (name.endsWith('.undo')) {
               final id = name.split('.').first;
               if (!isValidId(id)) {
@@ -724,6 +792,17 @@ class ProfileStore {
         debugPrint('[ProfileStore] 清理残留失败: $e');
       }
     });
+  }
+
+  /// 磁盘上还没清掉的「只删配置」残留（`.del`）与（订阅仍在列表里、本应被删的）
+  /// 文件名。备份恢复据此判断删除是否真正完成。
+  Future<List<String>> pendingConfigDeletions() async {
+    final dir = Directory(profilesDirPath);
+    if (!await dir.exists()) return const [];
+    return [
+      for (final e in await dir.list(followLinks: false).toList())
+        if (e is File && p.basename(e.path).endsWith('.del')) e.path,
+    ];
   }
 
   static Future<void> _deleteQuietly(File file) async {
@@ -770,10 +849,13 @@ class _ParsedList {
 }
 
 class _Undo {
-  _Undo(this.formal, this.undo);
+  _Undo(this.formal, this.undo, {this.configOnlyRemoval = false});
 
   final File formal;
   final File undo;
+
+  /// 来自 [Plan.removedConfigIds]：订阅仍在列表里，只删配置文件。
+  final bool configOnlyRemoval;
   bool movedOld = false;
   bool installed = false;
 }

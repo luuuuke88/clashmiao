@@ -21,6 +21,7 @@ import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -194,6 +195,7 @@ Future<Widget> _hostWithProfiles({
 
 Future<Widget> _hostConnectionInfo({
   required ConnectionPhase phase,
+  ValueListenable<ConnectionPhase>? phaseListenable,
   required List<OutboundGroup> groups,
   void Function(ProviderContainer)? onContainer,
 }) async {
@@ -218,7 +220,14 @@ Future<Widget> _hostConnectionInfo({
       theme: ThemeData.light().copyWith(
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
       ),
-      home: Scaffold(body: ConnectionInfoForTest(phase: phase)),
+      home: Scaffold(
+        body: phaseListenable == null
+            ? ConnectionInfoForTest(phase: phase)
+            : ValueListenableBuilder<ConnectionPhase>(
+                valueListenable: phaseListenable,
+                builder: (_, p, _) => ConnectionInfoForTest(phase: p),
+              ),
+      ),
     ),
   );
 }
@@ -320,14 +329,14 @@ void main() {
     await tester.pumpWidget(await _host(profile));
     await tester.pump(const Duration(milliseconds: 250));
 
-    expect(find.text('流量使用'), findsOneWidget);
-    expect(find.text('实时速度'), findsOneWidget);
-    expect(find.text('检测 IP 地址'), findsOneWidget);
+    expect(find.text('本次流量'), findsOneWidget);
+    expect(find.text('下载速度'), findsOneWidget);
+    expect(find.text('出口 IP'), findsOneWidget);
 
     // 三个 tile 排成一行：标签垂直位置一致（同一行），水平从左到右。
-    final trafficCenter = tester.getCenter(find.text('流量使用'));
-    final speedCenter = tester.getCenter(find.text('实时速度'));
-    final ipCenter = tester.getCenter(find.text('检测 IP 地址'));
+    final trafficCenter = tester.getCenter(find.text('本次流量'));
+    final speedCenter = tester.getCenter(find.text('下载速度'));
+    final ipCenter = tester.getCenter(find.text('出口 IP'));
     expect(speedCenter.dy, closeTo(trafficCenter.dy, 1.0));
     expect(ipCenter.dy, closeTo(trafficCenter.dy, 1.0));
     expect(trafficCenter.dx, lessThan(speedCenter.dx));
@@ -436,16 +445,26 @@ void main() {
     expect(container.read(selectedTabProvider), AppTab.proxies);
   });
 
-  testWidgets('节点行不再夹英文：连接中走译文，延迟未知显示破折号而不是 Checking', (tester) async {
-    await tester.pumpWidget(
-      await _hostConnectionInfo(
-        phase: ConnectionPhase.connecting,
-        groups: const [],
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 250));
-    expect(find.text('Connecting...'), findsNothing);
-    expect(find.text('正在连接'), findsOneWidget);
+  testWidgets('节点区：过渡期留白（加载指示在连接按钮上），已连接才出现节点胶囊；高度恒为 48', (tester) async {
+    for (final phase in [
+      ConnectionPhase.disconnected,
+      ConnectionPhase.connecting,
+      ConnectionPhase.disconnecting,
+      ConnectionPhase.reconnecting,
+    ]) {
+      await tester.pumpWidget(
+        await _hostConnectionInfo(phase: phase, groups: const []),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.text('Connecting...'), findsNothing);
+      expect(find.text('正在连接'), findsNothing, reason: '$phase：文字属于连接按钮，节点区不重复');
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(
+        tester.getSize(find.byType(ConnectionInfoForTest)).height,
+        48,
+        reason: '$phase：节点区高度固定，状态切换页面不跳动',
+      );
+    }
 
     await tester.pumpWidget(
       await _hostConnectionInfo(
@@ -462,121 +481,211 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Checking'), findsNothing);
-    expect(find.text('—'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget, reason: '延迟未知显示破折号，不是 Checking');
+    expect(tester.getSize(find.byType(ConnectionInfoForTest)).height, 48);
   });
 
-  testWidgets('FooterStats 未连接时展示未知 IP 文案，点击不发起查询', (tester) async {
-    var requests = 0;
-    final dio = Dio();
-    dio.httpClientAdapter = _FakeAdapter((_) {
-      requests++;
-      return Future.value(ResponseBody.fromString('{}', 200));
-    });
-    final (widget, _) = await _hostFooterStats(dio: dio);
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.text('检测 IP 地址'), findsOneWidget);
-    expect(find.text('未知的 IP'), findsOneWidget);
-
-    await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(requests, 0, reason: '没连接时不会去查：那只是设备自己的 IP');
-  });
-
-  testWidgets('已连接且自动检测关闭：点击 IP tile 触发查询并展示结果（含国旗）', (tester) async {
-    final dio = _dioReturning(
-      jsonEncode({
-        'success': true,
-        'ip': '156.243.244.222',
-        'country_code': 'JP',
-      }),
-      200,
-    );
-    final (widget, _) = await _hostFooterStats(
-      dio: dio,
-      phase: ConnectionPhase.connected,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.text('未知的 IP'), findsOneWidget);
-
-    await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.textContaining('156.243.244.222'), findsOneWidget);
-    expect(find.text('未知的 IP'), findsNothing);
-  });
-
-  testWidgets('已连接且自动检测开启：不用点击，连上后自动查出出口 IP', (tester) async {
-    final dio = _dioReturning(
-      jsonEncode({'success': true, 'ip': '198.51.100.9', 'country_code': 'US'}),
-      200,
-    );
-    final (widget, _) = await _hostFooterStats(
-      dio: dio,
-      phase: ConnectionPhase.connected,
-      autoCheck: true,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.textContaining('198.51.100.9'), findsOneWidget);
-  });
-
-  testWidgets('全部尝试失败后展示未知 IP 文案（不再转圈）', (tester) async {
-    final dio = _dioReturning(
-      jsonEncode({'success': false, 'message': 'boom'}),
-      200,
-    );
-    final (widget, _) = await _hostFooterStats(
-      dio: dio,
-      phase: ConnectionPhase.connected,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump(const Duration(seconds: 25));
-
-    expect(find.text('未知的 IP'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-  });
-
-  testWidgets('查询进行中展示加载态（转圈），完成后转圈消失', (tester) async {
-    final completer = Completer<ResponseBody>();
-    final dio = Dio();
-    dio.httpClientAdapter = _FakeAdapter((_) => completer.future);
-
-    final (widget, _) = await _hostFooterStats(
-      dio: dio,
-      phase: ConnectionPhase.connected,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-
-    await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump(); // 只推进一帧：fetch 还没完成，应该已经进入加载态
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    completer.complete(
-      ResponseBody.fromString(
-        jsonEncode({'success': true, 'ip': '1.2.3.4'}),
-        200,
-        headers: {
-          Headers.contentTypeHeader: ['application/json'],
-        },
+  testWidgets('节点区出现 / 消失是 150–200 ms 的淡入淡出，没有弹性高度（easeOutBack）', (
+    tester,
+  ) async {
+    const groups = [
+      OutboundGroup(
+        tag: 'proxy',
+        type: 'selector',
+        selected: 'A',
+        items: [OutboundProxy(tag: 'A', type: 'shadowsocks', delay: 10)],
       ),
+    ];
+    // 同一个宿主里把 phase 从 disconnected 切到 connected：用 StatefulBuilder 驱动。
+    final phase = ValueNotifier(ConnectionPhase.disconnected);
+    addTearDown(phase.dispose);
+    final host = await _hostConnectionInfo(
+      phase: ConnectionPhase.disconnected,
+      groups: groups,
+      phaseListenable: phase,
     );
+    await tester.pumpWidget(host);
     await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('A'), findsNothing);
 
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.textContaining('1.2.3.4'), findsOneWidget);
+    phase.value = ConnectionPhase.connected;
+    await tester.pump();
+    // 每一帧高度都是 48，不会因为动画弹性伸缩。
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(tester.getSize(find.byType(ConnectionInfoForTest)).height, 48);
+    }
+    expect(find.text('A'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 250));
+    // 淡入淡出（不是位移 / 缩放）：动画结束后旧子树已移除，只剩一个节点胶囊。
+    expect(find.text('A'), findsOneWidget);
+  });
+
+  group('出口 IP 卡：五种内容（UI 设计 §1）', () {
+    testWidgets('未连接：「连接后显示出口 IP」，整卡不可点、没有刷新图标，点了也不查询', (tester) async {
+      var requests = 0;
+      final dio = Dio();
+      dio.httpClientAdapter = _FakeAdapter((_) {
+        requests++;
+        return Future.value(ResponseBody.fromString('{}', 200));
+      });
+      final (widget, _) = await _hostFooterStats(dio: dio);
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('出口 IP'), findsOneWidget);
+      expect(find.text('连接后显示出口 IP'), findsOneWidget);
+      expect(find.text('未知的 IP'), findsNothing, reason: '不再出现「未知的 IP」');
+      expect(find.byIcon(FluentIcons.arrow_sync_24_regular), findsNothing);
+
+      await tester.tap(find.text('出口 IP'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(requests, 0, reason: '没连接时不会去查：那只是设备自己的 IP');
+    });
+
+    testWidgets('已连接且自动检测关闭：「点击检测出口 IP」，点击后查询并展示完整 IP（含国旗）', (tester) async {
+      final dio = _dioReturning(
+        jsonEncode({
+          'success': true,
+          'ip': '156.243.244.222',
+          'country_code': 'JP',
+        }),
+        200,
+      );
+      final (widget, _) = await _hostFooterStats(
+        dio: dio,
+        phase: ConnectionPhase.connected,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.text('点击检测出口 IP'), findsOneWidget);
+      expect(find.byIcon(FluentIcons.arrow_sync_24_regular), findsOneWidget);
+
+      await tester.tap(find.text('出口 IP'));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.textContaining('156.243.244.222'), findsOneWidget);
+      expect(find.text('点击检测出口 IP'), findsNothing);
+    });
+
+    testWidgets('已连接且自动检测开启：不用点击，连上后自动查出出口 IP', (tester) async {
+      final dio = _dioReturning(
+        jsonEncode({
+          'success': true,
+          'ip': '198.51.100.9',
+          'country_code': 'US',
+        }),
+        200,
+      );
+      final (widget, _) = await _hostFooterStats(
+        dio: dio,
+        phase: ConnectionPhase.connected,
+        autoCheck: true,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.textContaining('198.51.100.9'), findsOneWidget);
+    });
+
+    testWidgets('查询中：「正在检测…」+ 转圈，不显示「未知的 IP」；完成后转圈消失', (tester) async {
+      final completer = Completer<ResponseBody>();
+      final dio = Dio();
+      dio.httpClientAdapter = _FakeAdapter((_) => completer.future);
+
+      final (widget, _) = await _hostFooterStats(
+        dio: dio,
+        phase: ConnectionPhase.connected,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+
+      await tester.tap(find.text('出口 IP'));
+      await tester.pump(); // 只推进一帧：fetch 还没完成，应该已经进入加载态
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      expect(find.text('正在检测…'), findsOneWidget);
+      expect(find.text('未知的 IP'), findsNothing, reason: '加载期间不显示「未知的 IP」');
+
+      completer.complete(
+        ResponseBody.fromString(
+          jsonEncode({'success': true, 'ip': '1.2.3.4'}),
+          200,
+          headers: {
+            Headers.contentTypeHeader: ['application/json'],
+          },
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(find.textContaining('1.2.3.4'), findsOneWidget);
+    });
+
+    testWidgets('全部尝试失败：「检测失败，点击重试」，可再点一次', (tester) async {
+      var requests = 0;
+      final dio = Dio();
+      dio.httpClientAdapter = _FakeAdapter((_) {
+        requests++;
+        return Future.value(
+          ResponseBody.fromString(
+            jsonEncode({'success': false, 'message': 'boom'}),
+            200,
+            headers: {
+              Headers.contentTypeHeader: ['application/json'],
+            },
+          ),
+        );
+      });
+      final (widget, _) = await _hostFooterStats(
+        dio: dio,
+        phase: ConnectionPhase.connected,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      await tester.tap(find.text('出口 IP'));
+      await tester.pump(const Duration(seconds: 25));
+
+      expect(find.text('检测失败，点击重试'), findsOneWidget);
+      expect(find.byType(CircularProgressIndicator), findsNothing);
+      expect(requests, 4, reason: '串行最多 4 次');
+
+      await tester.tap(find.text('出口 IP'));
+      await tester.pump();
+      expect(find.text('正在检测…'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 25));
+    });
+
+    testWidgets('完整 IPv6 允许换行，不用省略号截断', (tester) async {
+      const ipv6 = '2001:0db8:85a3:0000:0000:8a2e:0370:7334';
+      final dio = _dioReturning(
+        jsonEncode({'success': true, 'ip': ipv6, 'country_code': 'JP'}),
+        200,
+      );
+      tester.view.physicalSize = const Size(320, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final (widget, _) = await _hostFooterStats(
+        dio: dio,
+        phase: ConnectionPhase.connected,
+        autoCheck: true,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 250));
+
+      final text = tester.widget<Text>(
+        find.byKey(const ValueKey('egress-ip-value')),
+      );
+      expect(text.data, contains(ipv6));
+      expect(text.overflow, isNot(TextOverflow.ellipsis));
+      expect(text.maxLines, isNull);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   testWidgets('配置变更触发的自动重连应该弹一条轻提示，而不是纯静默', (tester) async {

@@ -44,7 +44,14 @@
     "coreMissingMsg": "Uygulama ağ çekirdeğini yükleyemedi. Bağlantı kullanılamıyor. Uygulamayı yeniden kurun ya da çekirdek kitaplık dosyasının çalıştırılabilir dosyanın yanında olduğundan emin olun.",
     "degradedTitle": "Bağlandı, ancak internet erişimi yok",
     "degradedMsg": "Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.",
-    "degradedRetry": "Yeniden Denetle"
+    "degradedRetry": "Yeniden Denetle",
+    "egressIp": {
+      "label": "Çıkış IP'si",
+      "notConnected": "Çıkış IP'sini görmek için bağlanın",
+      "tapToCheck": "Çıkış IP'sini denetlemek için dokunun",
+      "checking": "Denetleniyor…",
+      "failedRetry": "Denetim başarısız, yeniden denemek için dokunun"
+    }
   },
   "stats": {
     "trafficLive": "Canlı Trafik",
@@ -56,7 +63,9 @@
     "liveSpeed": "Anlık Hız",
     "connection": "Bağlantı",
     "speed": "Hız",
-    "totalTransferred": "Toplam Aktarılan"
+    "totalTransferred": "Toplam Aktarılan",
+    "sessionTraffic": "Bu oturumun trafiği",
+    "downloadSpeed": "İndirme hızı"
   },
   "profile": {
     "overviewPageTitle": "Profiller",

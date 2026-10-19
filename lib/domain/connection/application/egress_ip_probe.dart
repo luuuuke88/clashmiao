@@ -2,7 +2,9 @@
 // IP，首次就能拿到正确的结果。
 //
 // - 触发：某 `(epoch, attempt)` 进入 connected 且其手选重放已确认
-//   （`replayPending == false`）；
+//   （`replayPending == false`）。自动与手动入口共用这一道门槛——重放确认前
+//   用户点了出口 IP 卡，只记下这次点击（卡片显示「检测中」），确认后才真正
+//   发起，避免展示重放前（默认节点）的出口；
 // - 客户端：只走 `PROXY 127.0.0.1:<mixedPort>`，没有 DIRECT 回退。这验证的是
 //   「经本地代理、按当前路由规则」的出口，不是对某个 outbound 的强制探测；
 // - 节奏：串行最多 4 次，单次 4 s，失败后间隔 1 s，首次成功即停（总上限约
@@ -116,34 +118,65 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
   (String?, int?)? _session;
   bool _autoStarted = false;
 
+  /// 最近一次看到的「手选重放未确认」。
+  bool _replayPending = false;
+
+  /// 重放确认前被点下、等待确认后执行的手动查询。
+  Completer<void>? _queuedManual;
+
   bool get _autoCheckEnabled =>
       _ref.read(egressIpServiceProvider).autoCheckEnabled;
 
   void _onConnection(_ConnView c) {
+    _replayPending = c.replayPending;
     if (!c.connected) {
       _generation++; // 离开 connected：在途探测作废
       _session = null;
       _autoStarted = false;
+      _dropQueuedManual();
       state = EgressIpState.notConnected;
       return;
     }
     final key = (c.epoch, c.attempt);
     if (_session != key) {
-      // 新的 (epoch, attempt)：清掉上一段连接的出口 IP，在途探测作废。
+      // 新的 (epoch, attempt)：清掉上一段连接的出口 IP，在途探测作废；上一段
+      // 里排队的手动查询也作废。
       _generation++;
       _session = key;
       _autoStarted = false;
+      _dropQueuedManual();
       state = const EgressIpState(EgressIpStatus.idle);
     }
-    if (!_autoStarted && !c.replayPending && _autoCheckEnabled) {
+    if (c.replayPending) return; // 统一门槛：重放确认前，自动 / 手动都不查
+
+    final queued = _queuedManual;
+    if (queued != null) {
+      _queuedManual = null;
+      _autoStarted = true;
+      unawaited(_run().whenComplete(queued.complete));
+    } else if (!_autoStarted && _autoCheckEnabled) {
       _autoStarted = true;
       unawaited(_run());
     }
   }
 
+  void _dropQueuedManual() {
+    final q = _queuedManual;
+    _queuedManual = null;
+    if (q != null && !q.isCompleted) q.complete();
+  }
+
   /// 手动查询（点击出口 IP 卡）：使在途探测作废并重新开始。未连接时无效。
+  /// 手选重放尚未确认时，只记下这次点击，确认之后才执行（卡片先显示「检测中」）。
   Future<void> checkNow() async {
     if (state.status == EgressIpStatus.notConnected) return;
+    if (_replayPending) {
+      final queued = _queuedManual ??= Completer<void>();
+      _generation++;
+      state = const EgressIpState(EgressIpStatus.checking);
+      await queued.future;
+      return;
+    }
     _autoStarted = true;
     await _run();
   }
@@ -177,6 +210,7 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
   void dispose() {
     _sub?.close();
     _generation++;
+    _dropQueuedManual();
     super.dispose();
   }
 }

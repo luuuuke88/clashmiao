@@ -13,7 +13,8 @@ import 'package:clashmiao/core/box_service/kernel_port_hub.dart';
 /// - [selectCalls] 记录 [selectOutbound]；[selectResult] 决定结果。
 /// - [acknowledged] 记录 [acknowledgeReplay] 的 attempt。
 /// - [currentError] 非空时 [current] 抛它；[currentGate] 非空时 [current]
-///   等它完成后再返回（用来制造「在途查询」）。
+///   等它完成后再返回（用来制造「在途查询」）；[currentResult] 非空时 [current]
+///   返回它而不是最近推送的快照。
 class FakeKernelPort implements KernelPort {
   FakeKernelPort({KernelSnapshot? initial}) {
     if (initial != null) _snapshots.add(initial);
@@ -34,6 +35,9 @@ class FakeKernelPort implements KernelPort {
 
   Object? currentError;
   Completer<void>? currentGate;
+
+  /// 非空时 [current] 返回它（不经事件流）——模拟「重新同步取回的是另一个基线」。
+  KernelSnapshot? currentResult;
   Object? requestError;
 
   /// 自定义回执；默认受理。
@@ -67,7 +71,7 @@ class FakeKernelPort implements KernelPort {
     if (gate != null) await gate.future;
     final err = currentError;
     if (err != null) throw err;
-    final s = snapshot;
+    final s = currentResult ?? snapshot;
     if (s == null) {
       throw const KernelPortException('unavailable', 'FakeKernelPort 无快照');
     }

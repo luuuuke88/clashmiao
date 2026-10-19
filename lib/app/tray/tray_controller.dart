@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
@@ -219,8 +220,15 @@ Future<void> performQuitSequence({
   await destroyWindow();
 }
 
-/// 退出时「断开被取代」最多重发的轮数。
-const kQuitDisconnectMaxRounds = 3;
+/// 退出清理的**总期限**：托盘菜单「退出」、全局快捷键、操作系统退出守卫三条
+/// 路径共用这一个值（见 [performShutdownCleanup]）。
+const kQuitCleanupDeadline = Duration(seconds: 5);
+
+/// 断开被取代后重发之前让出事件循环的间隔：既不空转，也让期限计时器有机会触发。
+const kQuitResubmitGap = Duration(milliseconds: 20);
+
+/// 期限用尽后清托盘最多再给这么久（托盘清理是本地操作，正常瞬间完成）。
+const kQuitTrayGrace = Duration(milliseconds: 500);
 
 /// 退出前的清理部分：停内核（**这一步负责还原系统代理**）+ 清托盘。
 ///
@@ -247,41 +255,64 @@ const kQuitDisconnectMaxRounds = 3;
 /// 残留风险说明：崩溃、强制退出、断电这类路径谁都拦不住，本函数只覆盖"操作
 /// 系统给了我们清理机会"的情形。
 ///
-/// ## 按 [RequestOutcome] 处理断开结果
+/// ## 按 [RequestOutcome] 处理断开结果，整体受 [deadline] 约束
 ///
+/// 三条退出路径（托盘、快捷键、OS 守卫）共用同一个总期限 [kQuitCleanupDeadline]
+/// （5 s）。期限内：
 /// - `RequestSucceeded`：内核确认已停止，系统代理已还原（脏标记由
-///   `ConnectionController.disconnect` 在此时清除）；
+///   `ConnectionController` 在此时清除）；
 /// - `RequestSuperseded`：这次断开被更新的请求取代（例如退出途中又点了连接）。
-///   最新的意图未必是断开，所以再发一次断开并等它的结果（最多
-///   [kQuitDisconnectMaxRounds] 轮）；
+///   最新的意图未必是断开，所以**持续重发最新的断开**并等它的结果，直到得到
+///   成功或失败，不设轮数上限——期限就是上限；
 /// - `RequestFailed` / `RequestInterrupted`：内核没能确认停止。**不清**系统
-///   代理脏标记（残留交给下次启动的自愈），也不卡住退出——照常继续，整体仍受
-///   [kDesktopExitCleanupTimeout] 约束。
+///   代理脏标记（残留交给下次启动的自愈），照常继续退出。
+///
+/// 期限用尽：放弃等待，**保留**脏标记（没确认停止就不清），完成剩下的退出清理
+/// （清托盘）。
 Future<void> performShutdownCleanup({
   required Future<RequestOutcome> Function() disconnect,
   required Future<void> Function() disposeTray,
+  Duration deadline = kQuitCleanupDeadline,
 }) async {
+  final clock = Stopwatch()..start();
   // 这两行日志**不加 kDebugMode 判断**，正式包里也要留。当用户报"退出之后
   // 上不了网了"，唯一能立刻定性的信息就是"退出时这段清理到底跑没跑完"——
   // 每次退出仅一行，没有噪音成本。
   debugPrint('[Quit] 开始退出清理（停内核 → 还原系统代理 → 清托盘）');
+
+  var abandoned = false;
+  Future<void> disconnectUntilSettled() async {
+    var rounds = 0;
+    while (!abandoned) {
+      rounds++;
+      final outcome = await disconnect();
+      if (outcome is! RequestSuperseded) {
+        debugPrint('[Quit] 断开结果（第 $rounds 轮）: $outcome');
+        return;
+      }
+      await Future<void>.delayed(kQuitResubmitGap);
+    }
+  }
+
   // 两步都不能因为前一步失败就中止——disconnect 失败照样要继续清托盘，
   // 更不能让用户点了"退出"卡住退不出去。
   try {
-    RequestOutcome outcome = await disconnect();
-    for (
-      var i = 1;
-      outcome is RequestSuperseded && i < kQuitDisconnectMaxRounds;
-      i++
-    ) {
-      outcome = await disconnect();
-    }
-    debugPrint('[Quit] 断开结果: $outcome');
+    await disconnectUntilSettled().timeout(deadline);
+  } on TimeoutException {
+    abandoned = true;
+    debugPrint(
+      '[Quit] 停内核超过 ${deadline.inMilliseconds}ms 仍无结论，放弃等待'
+      '（保留系统代理脏标记，留给下次启动自愈）',
+    );
   } catch (e) {
+    abandoned = true;
     if (kDebugMode) debugPrint('[Quit] disconnect failed during quit: $e');
   }
   try {
-    await disposeTray();
+    final remaining = deadline - clock.elapsed;
+    await disposeTray().timeout(
+      remaining > kQuitTrayGrace ? remaining : kQuitTrayGrace,
+    );
   } catch (e) {
     if (kDebugMode) debugPrint('[Tray] dispose failed during quit: $e');
   }

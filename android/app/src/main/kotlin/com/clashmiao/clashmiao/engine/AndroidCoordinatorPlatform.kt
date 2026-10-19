@@ -133,4 +133,11 @@ class PrefsKeyValueStore : KeyValueStore {
     }
 
     override fun getBoolean(key: String, default: Boolean): Boolean = sp.getBoolean(key, default)
+
+    /** `commit()` 的返回值才是可验证的落盘结果（`apply()` 失败不可见）。 */
+    override fun commit(values: Map<String, String>): Boolean {
+        val editor = sp.edit()
+        values.forEach { (k, v) -> editor.putString(k, v) }
+        return editor.commit()
+    }
 }

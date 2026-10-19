@@ -73,6 +73,8 @@ class KernelCoordinator(
     epoch: String,
     config: CoordinatorCore.Config = CoordinatorCore.Config(),
     private val selector: OutboundSelector = OutboundSelector { _, _ -> error("no outbound selector") },
+    /** 持久化落盘（`commit()`）所在的后台线程；按提交顺序串行执行。 */
+    private val persistIo: java.util.concurrent.Executor = defaultPersistIo(),
 ) {
     private val core: CoordinatorCore = readStoredSpecPath().let { (path, known) ->
         CoordinatorCore(epoch, platform::currentMode, config, storedSpecPath = path, storedSpecKnown = known)
@@ -338,16 +340,17 @@ class KernelCoordinator(
                 is Effect.CancelTimer -> platform.cancel(e.key.slot)
 
                 is Effect.Persist -> {
-                    try {
-                        store.saveDesired(e.desired)
-                        e.spec?.let(store::saveSpec)
-                    } catch (t: Throwable) {
-                        platform.log("persist failed: $t")
-                    }
-                    // 引用集合以存储的真实内容为准（写入失败时旧 spec 仍在存储里）。
-                    if (e.spec != null) {
-                        val (path, known) = readStoredSpecPath()
-                        queue.addLast { core.onSpecStored(path, known) }
+                    // 后台线程上 commit()，以它的返回值为准：确认落盘之前核心同时声明新旧两份路径。
+                    val serial = e.serial
+                    persistIo.execute {
+                        val ok = try {
+                            store.commitIntent(e.desired, e.spec)
+                        } catch (t: Throwable) {
+                            platform.log("persist #$serial failed: $t")
+                            false
+                        }
+                        if (!ok) platform.log("persist #$serial not confirmed on disk")
+                        platform.post(Runnable { dispatch { core.onPersistResult(serial, ok) } })
                     }
                 }
 
@@ -373,6 +376,12 @@ class KernelCoordinator(
 
     companion object {
         private val wiring by lazy { AndroidKernelWiring() }
+
+        /** 单线程、守护线程：持久化按提交顺序落盘，后一次写入的内存内容必然包含前一次。 */
+        fun defaultPersistIo(): java.util.concurrent.Executor =
+            java.util.concurrent.Executors.newSingleThreadExecutor { r ->
+                Thread(r, "kernel-persist").apply { isDaemon = true }
+            }
 
         /** 进程级单例。 */
         val instance: KernelCoordinator get() = wiring.coordinator

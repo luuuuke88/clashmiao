@@ -174,9 +174,6 @@ class KernelCoordinatorTest {
     private class MemoryKv : KeyValueStore {
         val m = HashMap<String, Any?>()
 
-        /** 非空时对该键的写入抛异常（模拟持久化失败）。 */
-        var failPutFor: String? = null
-
         /** 为真时所有读取抛异常（模拟存储不可读）。 */
         var failReads = false
         override fun getString(key: String): String? {
@@ -185,7 +182,6 @@ class KernelCoordinatorTest {
         }
 
         override fun putString(key: String, value: String) {
-            if (key == failPutFor) error("kv write failed")
             m[key] = value
         }
 
@@ -210,6 +206,7 @@ class KernelCoordinatorTest {
         logs = LogBuffer(10),
         epoch = epoch,
         selector = OutboundSelector { g, o -> selectHook(g, o) },
+        persistIo = { it.run() }, // 同步落盘，结果仍经主线程队列回报
     ).also { platform.coordinator = it }
 
     @After
@@ -822,10 +819,12 @@ class KernelCoordinatorTest {
 
     // --- 原生声明的配置文件引用（快照 retainedConfigPaths）-------------------
 
-    private fun newProcess(): Triple<KernelCoordinator, FakePlatform, KernelExecutor> {
+    private fun newProcess(
+        store: KernelStore = KernelStore(kv),
+    ): Triple<KernelCoordinator, FakePlatform, KernelExecutor> {
         val p2 = FakePlatform()
         val e2 = KernelExecutor(postToMain = p2::post)
-        val c2 = KernelCoordinator(p2, e2, KernelStore(kv), LogBuffer(5), "epoch-2")
+        val c2 = KernelCoordinator(p2, e2, store, LogBuffer(5), "epoch-2", persistIo = { it.run() })
         p2.coordinator = c2
         return Triple(c2, p2, e2)
     }
@@ -915,22 +914,61 @@ class KernelCoordinatorTest {
         assertEquals(listOf("/cfg/runtime-5.json"), snap.retainedConfigPaths)
     }
 
+    /** 内存与磁盘分开的存储：getString 读内存（SharedPreferences 语义），commit 失败时磁盘不变。 */
+    private class DiskKv(val disk: MutableMap<String, Any?> = HashMap()) : KeyValueStore {
+        val mem = HashMap<String, Any?>(disk)
+        var failCommit = false
+        override fun getString(key: String) = mem[key] as String?
+        override fun putString(key: String, value: String) {
+            mem[key] = value
+        }
+
+        override fun getBoolean(key: String, default: Boolean) = mem[key] as Boolean? ?: default
+        override fun commit(values: Map<String, String>): Boolean {
+            mem.putAll(values) // 内存先更新（与 SharedPreferences 一致）
+            if (failCommit) return false
+            disk.clear()
+            disk.putAll(mem)
+            return true
+        }
+    }
+
     @Test
-    fun `引用集合 持久化写入失败时以存储里仍在的旧路径为准`() {
-        coordinator.request(epoch, 1, Desired.On, spec(1))
-        platform.pump { snap.status == KernelStatus.Started }
-        kv.failPutFor = KernelStore.KEY_SPEC
-        coordinator.request(epoch, 2, Desired.On, spec(2))
-        platform.pump { snap.status == KernelStatus.Started && snap.activeConfigRevision == 2L }
-        assertEquals("/cfg/1.json", KernelStore(kv).loadSpec()?.runtimeConfigPath)
-        assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), snap.retainedConfigPaths)
+    fun `引用集合 内存已是 B 而磁盘仍是 A 且 commit 失败 A 全程被声明 冷进程恢复读的正是 A`() {
+        val diskKv = DiskKv()
+        val p1 = FakePlatform()
+        val e1 = KernelExecutor(postToMain = p1::post)
+        val c1 = KernelCoordinator(p1, e1, KernelStore(diskKv), LogBuffer(5), "epoch-1", persistIo = { it.run() })
+        p1.coordinator = c1
+        val seen = ArrayList<KernelSnapshot>()
+        try {
+            c1.request("epoch-1", 1, Desired.On, spec(1))
+            p1.pump { c1.snapshot.status == KernelStatus.Started && c1.snapshot.retainedConfigPaths == listOf("/cfg/1.json") }
+            assertEquals("/cfg/1.json", KernelStore(DiskKv(HashMap(diskKv.disk))).loadSpec()?.runtimeConfigPath)
 
-        coordinator.request(epoch, 3, Desired.Off, null)
-        platform.pump { snap.status == KernelStatus.Stopped }
-        assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), snap.retainedConfigPaths)
+            c1.observeSnapshot { seen += it }
+            diskKv.failCommit = true
+            c1.request("epoch-1", 2, Desired.On, spec(2))
+            p1.pump { c1.snapshot.status == KernelStatus.Started && c1.snapshot.activeConfigRevision == 2L }
+            p1.drain()
+            assertEquals("内存已是 B", "/cfg/2.json", KernelStore(diskKv).loadSpec()?.runtimeConfigPath)
+            assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), c1.snapshot.retainedConfigPaths)
+            assertTrue(p1.logs.any { it.contains("not confirmed on disk") })
 
-        // 新进程的外部入口读的是存储里的旧路径：它必须一直被声明。
-        val (c2, p2, e2) = newProcess()
+            c1.request("epoch-1", 3, Desired.Off, null)
+            p1.pump { c1.snapshot.status == KernelStatus.Stopped }
+            p1.drain()
+            assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), c1.snapshot.retainedConfigPaths)
+            assertTrue(
+                "A 在每一份快照里都被声明",
+                seen.all { it.retainedConfigPaths?.contains("/cfg/1.json") == true },
+            )
+        } finally {
+            e1.shutdown()
+        }
+
+        // 进程被杀：只有磁盘上的内容留下来。冷进程的外部入口读的是 A。
+        val (c2, p2, e2) = newProcess(KernelStore(DiskKv(HashMap(diskKv.disk))))
         try {
             assertEquals(listOf("/cfg/1.json"), c2.snapshot.retainedConfigPaths)
             c2.external(Source.Boot, Desired.On)
@@ -938,6 +976,33 @@ class KernelCoordinatorTest {
             assertEquals(listOf("/cfg/1.json"), p2.runtimes.single().reads)
         } finally {
             e2.shutdown()
+        }
+    }
+
+    @Test
+    fun `引用集合 commit 失败后的下一次确认成功 撤下旧路径`() {
+        val diskKv = DiskKv()
+        val p1 = FakePlatform()
+        val e1 = KernelExecutor(postToMain = p1::post)
+        val c1 = KernelCoordinator(p1, e1, KernelStore(diskKv), LogBuffer(5), "epoch-1", persistIo = { it.run() })
+        p1.coordinator = c1
+        try {
+            c1.request("epoch-1", 1, Desired.On, spec(1))
+            p1.pump { c1.snapshot.status == KernelStatus.Started }
+            p1.drain()
+            diskKv.failCommit = true
+            c1.request("epoch-1", 2, Desired.On, spec(2))
+            p1.pump { c1.snapshot.activeConfigRevision == 2L }
+            p1.drain()
+            assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), c1.snapshot.retainedConfigPaths)
+            diskKv.failCommit = false
+            c1.request("epoch-1", 3, Desired.Off, null) // 只改 desired，但整文件写盘把 B 带了下去
+            p1.pump { c1.snapshot.status == KernelStatus.Stopped }
+            p1.drain()
+            assertEquals("/cfg/2.json", KernelStore(DiskKv(HashMap(diskKv.disk))).loadSpec()?.runtimeConfigPath)
+            assertEquals(listOf("/cfg/2.json"), c1.snapshot.retainedConfigPaths)
+        } finally {
+            e1.shutdown()
         }
     }
 
@@ -964,6 +1029,7 @@ class KernelCoordinatorTest {
             kv.failReads = false
             c2.request("epoch-2", 1, Desired.On, spec(8))
             p2.pump { c2.snapshot.status == KernelStatus.Started }
+            p2.drain()
             assertEquals(listOf("/cfg/8.json"), c2.snapshot.retainedConfigPaths)
         } finally {
             e2.shutdown()

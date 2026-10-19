@@ -10,6 +10,15 @@ interface KeyValueStore {
     fun getString(key: String): String?
     fun putString(key: String, value: String)
     fun getBoolean(key: String, default: Boolean): Boolean
+
+    /**
+     * 同步写入并落盘，返回是否**确认**写到了磁盘（生产实现：`Editor.commit()`）。
+     * 只能在后台线程调用。
+     */
+    fun commit(values: Map<String, String>): Boolean {
+        values.forEach { (k, v) -> putString(k, v) }
+        return true
+    }
 }
 
 /**
@@ -44,6 +53,14 @@ class KernelStore(private val kv: KeyValueStore) {
     }
 
     fun saveSpec(spec: LaunchSpec) = kv.putString(KEY_SPEC, encode(spec))
+
+    /** 一次性写入 desired 与（若有）spec 并落盘；返回是否确认落盘。后台线程调用。 */
+    fun commitIntent(desired: Desired, spec: LaunchSpec?): Boolean = kv.commit(
+        buildMap {
+            put(KEY_DESIRED, desired.wire)
+            if (spec != null) put(KEY_SPEC, encode(spec))
+        },
+    )
 
     internal fun encode(spec: LaunchSpec): String = gson.toJson(
         mapOf(

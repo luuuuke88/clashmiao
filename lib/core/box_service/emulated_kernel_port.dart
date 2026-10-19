@@ -34,10 +34,14 @@ import 'package:uuid/uuid.dart';
 /// [KernelFailureCode.coreUnavailable] 失败，不调用内核。
 ///
 /// 配置文件引用（快照 `retainedConfigPaths`）：本端口实际持有的路径——当前意图、
-/// 在途启动、运行中、以及最近一次交给平台 `start/restart` 的路径（iOS 会把它
-/// 持久化，系统侧重连时再读）。[platformPersistsConfigPath] 为真时，本实例在
-/// 交给平台第一个路径之前不知道平台持久化了什么（可能是上一个进程留下的），
-/// 此时报「未知」（null），调用方不得删除任何运行时配置文件。
+/// 在途启动、运行中，以及平台可能持久化着的路径（iOS 在 `start/restart` 入口
+/// 记下路径，系统侧重连时再读）。后者分两类维护：
+/// - **已确认**：平台调用成功返回之后，平台持久化的就是这次的路径；
+/// - **未确认**：已发起、尚未返回或失败 / 结果不明的调用的路径——RPC 可能根本
+///   没送达，平台仍持久化着旧路径，也可能已在入口记下了新路径，所以新旧都声明，
+///   直到更晚的一次调用成功返回。
+/// [platformPersistsConfigPath] 为真时，在第一次确认之前不知道平台持久化了什么
+/// （可能是上一个进程留下的），此时报「未知」（null），调用方不得删除任何文件。
 class EmulatedKernelPort implements KernelPort {
   EmulatedKernelPort(
     this._service, {
@@ -77,8 +81,12 @@ class EmulatedKernelPort implements KernelPort {
   KernelSnapshot? _last;
 
   // ── 配置文件引用 ────────────────────────────────────────────
-  /// 最近一次交给平台 start/restart 的路径（平台可能已持久化）。
-  String? _issuedPath;
+  /// 平台调用成功返回后确认的持久化路径；[_persistedKnown] 为假时未知。
+  String? _persistedPath;
+  late bool _persistedKnown = !platformPersistsConfigPath;
+
+  /// 已交给平台、尚未确认（在途 / 失败 / 结果不明）的路径，按发起顺序。
+  final List<String> _unconfirmedPaths = [];
 
   /// 在途启动 / 运行中实例读取的路径。
   String? _startingPath;
@@ -283,10 +291,11 @@ class EmulatedKernelPort implements KernelPort {
   );
 
   List<String>? _retainedPaths() {
-    if (platformPersistsConfigPath && _issuedPath == null) return null;
+    if (!_persistedKnown) return null;
     final paths = <String>{
       ?_launch?.runtimeConfigPath,
-      ?_issuedPath,
+      ?_persistedPath,
+      ..._unconfirmedPaths,
       ?_startingPath,
       ?_runningPath,
     }.where((p) => p.isNotEmpty).toList()..sort();
@@ -408,14 +417,21 @@ class EmulatedKernelPort implements KernelPort {
   }) async {
     await _service.changeConfigOptions(spec.optionsJson);
     if (exec.failed) return;
-    // 平台在调用入口就会记下路径：调用之前登记，失败也照样保留。
-    _issuedPath = spec.runtimeConfigPath;
+    // 调用之前登记为「未确认」：失败或结果不明时一直保留（连同旧的已确认路径）。
+    final path = spec.runtimeConfigPath;
+    _unconfirmedPaths.add(path);
     _commit();
     if (reload) {
-      await _service.restart(spec.runtimeConfigPath, name: spec.profileName);
+      await _service.restart(path, name: spec.profileName);
     } else {
-      await _service.start(spec.runtimeConfigPath, name: spec.profileName);
+      await _service.start(path, name: spec.profileName);
     }
+    // 成功返回：平台持久化的就是它。执行通道保证同一时刻至多一个平台调用，
+    // 所以更早的未确认路径都已被这一次覆盖。
+    _persistedPath = path;
+    _persistedKnown = true;
+    _unconfirmedPaths.clear();
+    _commit();
   }
 
   /// 本次启动已到达 started。

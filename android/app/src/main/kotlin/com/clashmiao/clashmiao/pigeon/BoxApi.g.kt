@@ -248,6 +248,8 @@ data class KernelSnapshotMsg (
   /**
    * 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
    * 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+   * 原生与 Dart 总在同一个二进制里发布，所以 Pigeon 查询响应必然带这个尾字段
+   * （不存在「旧原生 + 新 Dart」的组合，生成的解码不做缺字段兼容）。
    */
   val retainedConfigPaths: List<String>? = null
 )

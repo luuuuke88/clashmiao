@@ -28,7 +28,7 @@ import com.clashmiao.clashmiao.core.KernelStatus
 //     onDestroy 后再起新的。退休超时只报告失败、继续跟踪该实例，绝不越过它去起另一类 Service。
 //   · 配置文件引用由原生声明（快照 retainedConfigPaths）：Dart 无从得知原生持久化了哪份 spec，
 //     所以每份快照都列出原生之后可能还会读取的全部路径——当前意图的 spec、持久化的 spec
-//     （以协调器回读的存储为准，见 [onSpecStored]）、运行中内核的 spec、在途启动任务的 spec。
+//     （已确认落盘的 + 尚未确认落盘的，见 [onPersistResult]）、运行中内核的 spec、在途启动任务的 spec。
 // ============================================================================
 
 enum class TimerKind { StartTimeout, Watchdog, NetDebounce, Retire }
@@ -71,7 +71,7 @@ sealed interface Effect {
     data class CancelTimer(val key: TimerKey) : Effect
 
     /** 持久化当前 desired 与最近一次被受理的 LaunchSpec（计划 P2③）。 */
-    data class Persist(val desired: Desired, val spec: LaunchSpec?) : Effect
+    data class Persist(val desired: Desired, val spec: LaunchSpec?, val serial: Long = 0L) : Effect
 
     data class NoticeStarting(val inst: Int, val profileName: String) : Effect
     data class NoticeStarted(val inst: Int, val profileName: String) : Effect
@@ -182,9 +182,16 @@ class CoordinatorCore(
     private var lastFailure: KernelFailure? = null
     private var replayNeeded = false
 
-    /** 存储里持久化的 spec 路径（只由 [onSpecStored] 按回读结果更新）。 */
+    /** 已确认在磁盘上的持久化 spec 路径（构造时读取；之后只由成功的 [onPersistResult] 更新）。 */
     private var storedPath: String? = storedSpecPath
     private var storedKnown: Boolean = storedSpecKnown
+
+    /**
+     * 已发出、尚未确认落盘的持久化（serial → spec 路径）。失败的也留在这里：内存里已是新值，
+     * 之后任何一次整文件写盘都可能把它带到磁盘上；只有更晚的一次确认成功才能清掉它。
+     */
+    private val unconfirmedStored = LinkedHashMap<Long, String>()
+    private var persistSerial = 0L
 
     /** 运行中内核启动时读取的配置文件路径。 */
     private var activePath: String? = null
@@ -323,12 +330,23 @@ class CoordinatorCore(
     }
 
     /**
-     * 持久化写入之后，协调器回读存储得到的 spec 路径（[known]=false 表示回读失败）。
-     * 以存储的真实内容为准：写入失败时旧路径仍在存储里，引用集合照旧保留它。
+     * 第 [serial] 次持久化的落盘结果（后台线程上 `commit()` 的返回值）。
+     *  - 成功：磁盘上就是这一次（及之前）的内容——它成为已确认路径，它和更早的未确认项全部撤下；
+     *  - 失败：什么都不撤（旧的已确认路径与新路径都继续声明），只记日志。
      */
-    fun onSpecStored(path: String?, known: Boolean = true): CoreStep = step {
-        storedPath = path
-        storedKnown = known
+    fun onPersistResult(serial: Long, ok: Boolean): CoreStep = step {
+        if (!ok) {
+            log("persist #$serial not confirmed on disk; keep declaring old and new spec paths")
+            return@step null
+        }
+        // 一次 commit 写出整份内存内容：其中的 spec 是不晚于本次的最后一次写入（可能来自先前
+        // 没确认的那次）。
+        val path = unconfirmedStored.filterKeys { it <= serial }.values.lastOrNull()
+        if (path != null) {
+            storedPath = path
+            storedKnown = true
+        }
+        unconfirmedStored.keys.removeAll { it <= serial }
         null
     }
 
@@ -578,7 +596,9 @@ class CoordinatorCore(
     }
 
     private fun persist() {
-        out += Effect.Persist(desired, spec)
+        val serial = ++persistSerial
+        spec?.runtimeConfigPath?.let { unconfirmedStored[serial] = it }
+        out += Effect.Persist(desired, spec, serial)
     }
 
     /** 当前请求失败：写 failure（seq = 当前请求）并把 desired 置 off。 */
@@ -829,7 +849,7 @@ class CoordinatorCore(
                     storedPath,
                     activePath,
                     job?.takeIf { it.kind == JobKind.Start }?.specPath,
-                ),
+                ) + unconfirmedStored.values,
             ),
         )
         if (candidate != snapshot) snapshot = candidate.copy(version = snapshot.version + 1)

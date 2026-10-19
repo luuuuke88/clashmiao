@@ -236,6 +236,8 @@ class KernelSnapshot {
   /// 持久化 spec（磁贴、开机等外部入口用）、当前意图、运行中、在途启动。
   /// 为 null = 未知（载荷没有该字段——更早的原生——或无法确定）：调用方不得
   /// 据此删除任何运行时配置文件。
+  /// 原生与 Dart 总在同一个二进制里发布：Pigeon 查询响应必然带该字段；缺字段的
+  /// 容错只针对 JSON 事件载荷。
   final List<String>? retainedConfigPaths;
 
   /// 解析事件通道载荷。结构非法（缺字段、必填 bool 类型不对、未知 status/desired）抛

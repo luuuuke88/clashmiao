@@ -465,7 +465,7 @@ class CoordinatorCoreTest {
         h.finishTeardown()
         h.assertSnap(status = KernelStatus.Stopped)
         assertEquals(
-            "任务返回后只剩当前意图的 spec（本用例未模拟持久化回读）",
+            "任务返回后只剩当前意图（也是已确认落盘）的 spec",
             listOf("/cfg/runtime-2.json"),
             h.snap.retainedConfigPaths,
         )
@@ -473,16 +473,33 @@ class CoordinatorCoreTest {
     }
 
     @Test
-    fun `引用集合 构造时的持久化路径进首份快照 回读结果按存储更新`() {
-        val core = CoordinatorCore("e", { ServiceType.Vpn }, storedSpecPath = "/w/runtime-9.json")
+    fun `引用集合 构造时的持久化路径进首份快照 只有确认落盘才撤下旧路径`() {
+        val a = "/w/runtime-9.json"
+        val core = CoordinatorCore("e", { ServiceType.Vpn }, storedSpecPath = a)
         assertEquals(1L, core.snapshot.version)
-        assertEquals(listOf("/w/runtime-9.json"), core.snapshot.retainedConfigPaths)
-        core.onSpecStored("/w/runtime-10.json")
+        assertEquals(listOf(a), core.snapshot.retainedConfigPaths)
+
+        fun spec(rev: Long) = LaunchSpec("/w/runtime-$rev.json", "{}", "p", rev)
+        fun persistOf(step: CoreStep) = step.effects.filterIsInstance<Effect.Persist>().single()
+
+        val pB = persistOf(core.onRequest("e", 1, Desired.On, spec(10)))
+        assertEquals(listOf("/w/runtime-10.json", a), core.snapshot.retainedConfigPaths)
+        core.onPersistResult(pB.serial, ok = false)
+        core.onRequest("e", 2, Desired.Off, null)
+        assertEquals("落盘失败：新旧都声明", listOf("/w/runtime-10.json", a), core.snapshot.retainedConfigPaths)
+
+        // 更晚的一次只写 desired 也是整文件写盘：内存里的 B 随之落盘，A 才能撤下。
+        val pOn = persistOf(core.onRequest("e", 3, Desired.On, spec(10)))
+        assertEquals(listOf("/w/runtime-10.json", a), core.snapshot.retainedConfigPaths)
+        core.onPersistResult(pOn.serial, ok = true)
         assertEquals(listOf("/w/runtime-10.json"), core.snapshot.retainedConfigPaths)
-        core.onSpecStored(null, known = false)
-        assertNull(core.snapshot.retainedConfigPaths)
-        core.onSpecStored(null)
-        assertEquals(emptyList<String>(), core.snapshot.retainedConfigPaths)
+
+        val unknown = CoordinatorCore("e", { ServiceType.Vpn }, storedSpecKnown = false)
+        assertNull(unknown.snapshot.retainedConfigPaths)
+        val pC = persistOf(unknown.onRequest("e", 1, Desired.On, spec(11)))
+        assertNull("未确认前仍未知", unknown.snapshot.retainedConfigPaths)
+        unknown.onPersistResult(pC.serial, ok = true)
+        assertEquals(listOf("/w/runtime-11.json"), unknown.snapshot.retainedConfigPaths)
     }
 
     @Test
@@ -1280,12 +1297,23 @@ class CoordinatorCoreTest {
     fun `desired 与 spec 的变化会发出持久化动作 空操作不发`() {
         val h = CoreHarness()
         h.on(1, rev = 1)
-        assertEquals(Effect.Persist(Desired.On, h.spec(1)), h.last<Effect.Persist>())
+        h.last<Effect.Persist>().let {
+            assertEquals(Desired.On, it.desired)
+            assertEquals(h.spec(1), it.spec)
+        }
         val n = h.count<Effect.Persist>()
         h.on(2, rev = 1)
         assertEquals(n, h.count<Effect.Persist>())
         h.on(3, rev = 2)
-        assertEquals(Effect.Persist(Desired.On, h.spec(2)), h.last<Effect.Persist>())
+        h.last<Effect.Persist>().let {
+            assertEquals(Desired.On, it.desired)
+            assertEquals(h.spec(2), it.spec)
+        }
+        assertEquals(
+            "每次持久化有递增的 serial",
+            h.all<Effect.Persist>().map { it.serial },
+            h.all<Effect.Persist>().map { it.serial }.sorted().distinct(),
+        )
         h.off(4)
         assertEquals(Desired.Off, h.last<Effect.Persist>().desired)
     }

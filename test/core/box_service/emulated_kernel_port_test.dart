@@ -873,6 +873,59 @@ void main() {
       );
     });
 
+    test('start RPC 未送达原生（通道错误）：原生仍持久化 A，A 与 B 都被声明直到下一次成功', () async {
+      await setUp0();
+      await port.request(_on(1, rev: 1)); // A 成功：已确认
+      await pumpEventQueue();
+      await port.request(_off(2));
+      await pumpEventQueue();
+      expect(last().retainedConfigPaths, ['/rc/runtime-config-1.json']);
+
+      // B：RPC 在送达 Swift 入口之前就失败。
+      box.startBehavior = (_) async => throw PlatformException(
+        code: 'channel-error',
+        message: 'Unable to establish connection on channel.',
+      );
+      final during = <List<String>?>[];
+      final watch = port.watch().listen(
+        (s) => during.add(s.retainedConfigPaths),
+      );
+      await port.request(_on(3, rev: 2));
+      await pumpEventQueue();
+      await watch.cancel();
+      expect(last().lastFailure?.seq, 3, reason: '这次启动失败了');
+      expect(last().status, KernelStatus.stopped);
+      expect(last().retainedConfigPaths, [
+        '/rc/runtime-config-1.json',
+        '/rc/runtime-config-3.json',
+      ]);
+      expect(
+        during.every((r) => r!.contains('/rc/runtime-config-1.json')),
+        isTrue,
+        reason: '在途与失败之后都不能撤下 A',
+      );
+
+      // 下一次调用成功返回：平台持久化的变成 C，A、B 才撤下。
+      box.startBehavior = (_) async {
+        box.status.add(const BoxStarting());
+        box.status.add(const BoxStarted());
+      };
+      await port.request(_on(4, rev: 3));
+      await pumpEventQueue();
+      expect(last().status, KernelStatus.started);
+      expect(last().retainedConfigPaths, ['/rc/runtime-config-4.json']);
+    });
+
+    test('冷启动后第一次调用就失败：仍然未知（null），一个都不删', () async {
+      await setUp0();
+      box.startBehavior = (_) async =>
+          throw PlatformException(code: 'channel-error');
+      await port.request(_on(1, rev: 1));
+      await pumpEventQueue();
+      expect(last().lastFailure?.seq, 1);
+      expect(seen.every((s) => s.retainedConfigPaths == null), isTrue);
+    });
+
     test('平台不跨进程持久化（桌面 FFI）：一开始就是已知的空集合', () async {
       await setUp0(persists: false);
       expect(seen.single.retainedConfigPaths, isEmpty);

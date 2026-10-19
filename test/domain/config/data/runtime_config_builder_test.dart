@@ -173,7 +173,7 @@ void main() {
       expect(d.containsKey('u'), isFalse, reason: 'urltest 没有可还原的默认值');
     });
 
-    test('selector 没有 default 或 default 不是成员：取 outbounds 第一项', () {
+    test('selector 没写 default：取 outbounds 第一项；写了但不是成员：默认值未知（内核会报错，不回退）', () {
       final d = runtimeSelectorDefaults({
         'outbounds': [
           {
@@ -191,18 +191,24 @@ void main() {
         ],
       });
       expect(d['a'], 'x');
-      expect(d['b'], 'x');
+      expect(d.containsKey('b'), isFalse);
       expect(d.containsKey('empty'), isFalse);
     });
 
-    test('节点带默认标记但 tag 本身不等于标记：主选择组默认值不是成员，取第一项 auto', () {
+    test('节点带默认标记但没有恰好叫这个标记的成员：主选择组默认值未知（内核启动报错，不回退）', () {
       final d = runtimeSelectorDefaults({
         'outbounds': [
           {'type': 'vless', 'tag': 'hk §default§'},
           {'type': 'vless', 'tag': 'sg §hide§'},
         ],
       });
-      expect(d[kRuntimeMainSelectorTag], kRuntimeAutoGroupTag);
+      expect(d.containsKey(kRuntimeMainSelectorTag), isFalse);
+    });
+
+    test('没有任何节点：主选择组只有 auto，默认 auto', () {
+      expect(runtimeSelectorDefaults({'outbounds': <Object>[]}), {
+        kRuntimeMainSelectorTag: kRuntimeAutoGroupTag,
+      });
     });
   });
 }

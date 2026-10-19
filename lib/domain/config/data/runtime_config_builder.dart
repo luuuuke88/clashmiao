@@ -201,13 +201,13 @@ const Set<String> _kNonMemberTypes = {
 /// 选择组默认值」：选择组 tag → 内核启动时它选中的出站。用户在某个订阅下没有
 /// 手选记录时，切到该订阅要把选择组还原成这个值，不能留着上一个订阅的选择。
 ///
-/// 规则：
-/// - 配置里每个 selector：`default` 字段（且确实是它的成员），否则 `outbounds`
-///   第一项；
+/// 规则（与内核选择组启动时的行为一致）：
+/// - 配置里每个 selector：写了 `default` 就用它；没写则是 `outbounds` 第一项；
 /// - 内核配置构建器会丢弃订阅自带的 selector / urltest，重建主选择组
 ///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点，默认
-///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记）；同样
-///   按「默认值是成员则用它，否则第一项」取值。
+///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记字面值）；
+/// - 写明的默认值不是成员时，内核启动该组直接报错、不回退第一项：这种组的默认
+///   值视为**未知**，不出现在结果里（调用方据此不做还原）。
 ///
 /// 只描述 selector；urltest / 自动选择组没有可还原的默认值，调用方不碰它们。
 /// 结果里可能含运行时并不存在的 tag（订阅自带、被内核丢弃的 selector），调用方
@@ -237,11 +237,16 @@ Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
   final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
       ? _kDefaultMarker
       : kRuntimeAutoGroupTag;
-  result[kRuntimeMainSelectorTag] = _defaultOrFirst(mainDefault, mainMembers)!;
+  final main = _defaultOrFirst(mainDefault, mainMembers);
+  if (main != null) result[kRuntimeMainSelectorTag] = main;
   return result;
 }
 
+/// 选择组启动时选中的出站：写明了默认值（非空）就必须是成员，否则未知；
+/// 没写则是第一项。
 String? _defaultOrFirst(Object? preferred, List<String> members) {
-  if (preferred is String && members.contains(preferred)) return preferred;
+  if (preferred is String && preferred.isNotEmpty) {
+    return members.contains(preferred) ? preferred : null;
+  }
   return members.isEmpty ? null : members.first;
 }

@@ -6,8 +6,8 @@
 //   3. 迁移运行时不存在的分组记录（旧版本按配置文件 tag 记下的 `proxy` 等）到
 //      运行时主组——先写目标、确认落盘后才删来源，失败保留来源以便下次重试，
 //      重复执行幂等；
-//   4. 只重放运行时存在的分组（且节点在该组里）；订阅没有手选记录的选择组
-//      回到这份运行时配置的默认值（内核当前不在默认值上才发）；
+//   4. 对每个运行时选择组显式下发：有效手选记录，否则这份运行时配置的默认值
+//      （默认值未知则不发）；自动选择（urltest）组不碰；
 //   5. 确认重放（`acknowledgeReplay`）；出口探测在确认之后才开始（探测器只认
 //      `replayPending == false`）。
 //
@@ -169,40 +169,38 @@ class SelectionReplayPipeline {
         if (g.type == 'selector' && runtimeTags.contains(g.tag)) g.tag,
     ];
 
-    // 重放：每一项发送前读存储里的最新值；只发运行时存在的分组、且节点就在该组
-    // 里；发送后若存储里的值又变了（用户在重放期间改了选择），继续发最新值直到
-    // 收敛。没有手选记录的选择组：内核当前选中的（实时分组）不是默认值才发默认
-    // 值；自动选择（urltest）组永远不碰。stale（内核已换新 attempt）立即放弃且
-    // 不确认。
+    // 重放：对每个运行时选择组都**显式**下发一次——有效的手选记录（节点在该组
+    // 里）就发它，否则发这份运行时配置的默认值，默认值未知则不发。不看实时分组
+    // 里的「当前选中」：分组快照与我们的写入之间没有先后保证，按它跳过会把迟到
+    // 快照当成内核现状（同值下发是幂等的，多发无害）。自动选择（urltest）组永远
+    // 不碰。每一项发送前读存储里的最新值；发送后若存储里的值又变了（用户在重放
+    // 期间改了选择），继续发最新值直到收敛。stale（内核已换新 attempt）立即放弃
+    // 且不确认。
     final sent = <String, String>{};
     for (var pass = 0; pass < 4; pass++) {
       var sentAny = false;
-      final selections = _ownedSelections(owner);
-      if (selections == null) return _drop(owner, _Stage.replay);
-      for (final group in {...selections.keys, ...selectorTags}) {
+      if (_ownedSelections(owner) == null) {
+        return _drop(owner, _Stage.replay);
+      }
+      for (final group in selectorTags) {
         if (!owned()) return _drop(owner, _Stage.replay);
+        final runtimeGroup = groupsByTag[group]!;
+        bool member(String? t) =>
+            t != null && runtimeGroup.items.any((item) => item.tag == t);
         final stored = _ownedSelections(owner)?[group];
-        final runtimeGroup = groupsByTag[group];
-        if (runtimeGroup == null || !runtimeTags.contains(group)) continue;
+        if (stored != null && !member(stored)) {
+          debugPrint('手选编排：[$group] 里没有节点 [$stored]，改发默认值');
+        }
+        final fallback = defaults[group];
         final String tag;
-        if (stored != null) {
-          tag = stored;
+        if (member(stored)) {
+          tag = stored!;
+        } else if (member(fallback)) {
+          tag = fallback!;
         } else {
-          final fallback = defaults[group];
-          if (fallback == null || runtimeGroup.type != 'selector') continue;
-          tag = fallback;
-          if (sent[group] == tag) continue;
-          if (_liveSelected(owner, group) == tag) {
-            sent[group] = tag; // 内核已经在默认值上：不必调用
-            continue;
-          }
+          continue; // 没有有效手选、默认值未知：不发
         }
         if (sent[group] == tag) continue;
-        if (!runtimeGroup.items.any((item) => item.tag == tag)) {
-          debugPrint('手选编排：[$group] 里没有节点 [$tag]，不重放');
-          sent[group] = tag;
-          continue;
-        }
         sentAny = true;
         sent[group] = tag;
         _beforeKernelWrite();
@@ -214,8 +212,8 @@ class SelectionReplayPipeline {
         if (outcome is SelectStale) return _drop(owner, _Stage.replayStale);
         if (outcome is SelectFailed) {
           debugPrint('重放手选代理失败 [$group -> $tag]: ${outcome.code}');
-        } else if (stored == null) {
-          debugPrint('手选编排：[$group] 没有手选记录，回到默认值 [$tag]');
+        } else if (tag != stored) {
+          debugPrint('手选编排：[$group] 没有有效手选，回到默认值 [$tag]');
         }
       }
       if (!sentAny) break;
@@ -302,20 +300,6 @@ class SelectionReplayPipeline {
       debugPrint('手选编排：存储写入异常（按未落盘处理）: $e');
       return false;
     }
-  }
-
-  /// 这个实例最新的实时分组里 [group] 当前选中的出站（没有则 null）。
-  String? _liveSelected(ReplayOwner owner, String group) {
-    final live = _ref.read(liveGroupsProvider).valueOrNull;
-    if (live == null ||
-        live.instance.epoch != owner.epoch ||
-        live.instance.attempt != owner.attempt) {
-      return null;
-    }
-    for (final g in live.groups) {
-      if (g.tag == group) return g.selected;
-    }
-    return null;
   }
 
   /// 归属仍有效时返回当前订阅存储里的手选，否则 null。

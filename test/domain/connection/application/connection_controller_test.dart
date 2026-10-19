@@ -809,7 +809,7 @@ void main() {
     };
 
     _sim(
-      '按存储里的最新值逐条重放，带 expectedAttempt，最后确认一次',
+      '按存储里的最新值重放选择组，带 expectedAttempt，最后确认一次；自动选择（urltest）组即使有记录也不碰',
       (e) {
         e.push();
         e.ctl.connect();
@@ -820,7 +820,6 @@ void main() {
 
         expect(e.port.selectCalls, [
           (group: 'proxy', tag: 'hk', expectedAttempt: 7),
-          (group: 'auto', tag: 'sg', expectedAttempt: 7),
         ]);
         expect(e.port.acknowledged, [7]);
       },
@@ -859,15 +858,27 @@ void main() {
         e.ctl.connect();
         e.settle();
         e.container.read(proxySelectionStoreProvider);
+        e.runtimeGroups = [
+          ...e.runtimeGroups,
+          const OutboundGroup(
+            tag: 'region',
+            type: 'selector',
+            selected: 'jp',
+            items: [
+              OutboundProxy(tag: 'jp', type: 'vless'),
+              OutboundProxy(tag: 'us', type: 'vless'),
+            ],
+          ),
+        ];
         e.port.selectResult = (g, _, _) =>
             g == 'proxy' ? const SelectFailed('gone') : const SelectOk();
 
         e.kernelStarted(e.requests.single, attempt: 2, replay: true);
 
-        expect(e.port.selectCalls.map((c) => c.group), ['proxy', 'auto']);
+        expect(e.port.selectCalls.map((c) => c.group), ['proxy', 'region']);
         expect(e.port.acknowledged, [2]);
       },
-      prefs: stored({'proxy': 'hk', 'auto': 'sg'}),
+      prefs: stored({'proxy': 'hk', 'region': 'us'}),
     );
 
     _sim(
@@ -1430,16 +1441,26 @@ void main() {
     }, prefs: prefs);
 
     // 性质：任意交错（A/B 同 revision 互切、配置落定、select 悬停 / 放行、
-    // 时间推进）之后静止，内核上的最终选择 == 当前订阅存储的选择；没有存储
-    // 选择时 == 运行时默认值。内核每次选择生效后实时分组随之更新（与真机的
-    // 分组推送一致）。偶数种子 B 存了 sg，奇数种子 B 没有任何手选。
-    for (var seed = 0; seed < 200; seed++) {
+    // 时间推进、分组推送）之后静止，内核上的最终选择 == 当前订阅存储的选择；
+    // 没有存储选择时 == 运行时默认值。分组推送与写入**独立**调度：可能迟到、
+    // 乱序（推一份历史上的旧状态），也可能一直不来。
+    // 种子决定手选：A 除 seed % 4 == 3 外存 hk；B 在偶数种子存 sg。
+    for (var seed = 0; seed < 240; seed++) {
+      final aHasSelection = seed % 4 != 3;
       final bHasSelection = seed.isEven;
       _sim(
-        '随机交错 seed=$seed（B ${bHasSelection ? '存 sg' : '无手选'}）：静止后内核选择 = 存储选择或默认值',
+        '随机交错 seed=$seed（A ${aHasSelection ? 'hk' : '无手选'}，B ${bHasSelection ? 'sg' : '无手选'}）：静止后内核选择 = 存储选择或默认值',
         (e) {
           e.launcher.defaults = const {'select': 'auto'};
-          connectAndAck(e);
+          e.push();
+          e.ctl.connect();
+          e.settle();
+          e.container.read(proxySelectionStoreProvider);
+          final r1 = e.requests.single;
+          e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+          e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
+          e.kernelStarted(r1, attempt: 1, withGroups: false);
+
           String kernel() {
             final applied = e.port.selectApplied.where(
               (c) => c.group == 'select',
@@ -1447,19 +1468,11 @@ void main() {
             return applied.isEmpty ? 'auto' : applied.last.tag;
           }
 
-          var pushed = kernel();
-          void reflect() {
-            final k = kernel();
-            if (k == pushed) return;
-            pushed = k;
-            e.pushGroups(attempt: 1, groups: runtimeSelecting(k));
-          }
-
           final rnd = Random(seed);
           Completer<void>? gate;
           var current = 'p1';
-          for (var step = 0; step < 14; step++) {
-            switch (rnd.nextInt(5)) {
+          for (var step = 0; step < 16; step++) {
+            switch (rnd.nextInt(7)) {
               case 0:
                 current = current == 'p1' ? 'p2' : 'p1';
                 e.container.read(_Env.activeProfileIdProvider.notifier).state =
@@ -1476,25 +1489,31 @@ void main() {
                 e.port.onSelectGate = null;
                 g?.complete();
                 e.settle();
+              case 4:
+                // 分组推送：内核当前状态，或历史上任一旧状态（迟到 / 乱序）。
+                final history = [
+                  'auto',
+                  for (final c in e.port.selectApplied)
+                    if (c.group == 'select') c.tag,
+                ];
+                final shown = rnd.nextBool()
+                    ? kernel()
+                    : history[rnd.nextInt(history.length)];
+                e.pushGroups(attempt: 1, groups: runtimeSelecting(shown));
               default:
                 e.fa.elapse(Duration(milliseconds: rnd.nextInt(3000)));
             }
-            reflect();
           }
 
-          // 静止：放行悬停、让最后一次重新应用落定、时间走完。
+          // 静止：放行悬停、让最后一次重新应用落定、时间走完；不再推分组。
           e.port.onSelectGate = null;
           gate?.complete();
           e.settle();
-          reflect();
           e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-          for (var i = 0; i < 5; i++) {
-            e.fa.elapse(const Duration(seconds: 2));
-            reflect();
-          }
+          e.fa.elapse(const Duration(seconds: 10));
 
           final expected = current == 'p1'
-              ? 'hk'
+              ? (aHasSelection ? 'hk' : 'auto')
               : (bHasSelection ? 'sg' : 'auto');
           expect(
             kernel(),
@@ -1504,7 +1523,7 @@ void main() {
           expect(e.port.selectCalls.map((c) => c.expectedAttempt).toSet(), {1});
         },
         prefs: {
-          'proxy_selection_p1': '{"select":"hk"}',
+          if (aHasSelection) 'proxy_selection_p1': '{"select":"hk"}',
           if (bHasSelection) 'proxy_selection_p2': '{"select":"sg"}',
         },
       );
@@ -1542,7 +1561,7 @@ void main() {
       prefs: const {'proxy_selection_p1': '{"select":"sg"}'},
     );
 
-    _sim('没有任何手选的订阅新连接：内核已在默认值上，不发任何 select', (e) {
+    _sim('没有任何手选的订阅新连接：即使分组快照显示已在默认值，也显式下发一次默认值（同值幂等）', (e) {
       e.launcher.defaults = const {'select': 'auto'};
       e.push();
       e.ctl.connect();
@@ -1556,9 +1575,71 @@ void main() {
       );
       e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
 
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'auto', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged, [1]);
+    });
+
+    _sim('没有手选且默认值未知：选择组不发任何 select，照常确认', (e) {
+      e.launcher.defaults = const {};
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      e.kernelStarted(
+        e.requests.single,
+        attempt: 1,
+        replay: true,
+        withGroups: false,
+      );
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
+
       expect(e.port.selectCalls, isEmpty);
       expect(e.port.acknowledged, [1]);
     });
+
+    _sim(
+      'A 无手选（默认 auto）：B 的 sg 写入悬停、分组推送迟迟不到时切回 A，最后仍下发 auto',
+      (e) {
+        e.launcher.defaults = const {'select': 'auto'};
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+        e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
+        e.kernelStarted(r1, attempt: 1, withGroups: false);
+        final base = e.port.selectCalls.length;
+
+        final gate = e.port.onSelectGate = Completer<void>();
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+        e.settle();
+        expect(e.port.selectCalls.sublist(base), [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+        ], reason: 'B 的写入已发出、悬停');
+        e.port.onSelectGate = null;
+
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+        e.rebuild();
+        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+        e.settle();
+
+        gate.complete(); // B 的写入生效，但分组推送（sg）迟迟不到：快照仍是 auto
+        e.settle();
+        e.fa.elapse(const Duration(seconds: 1));
+
+        expect(e.port.selectCalls.sublist(base), [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+          (group: 'select', tag: 'auto', expectedAttempt: 1),
+        ], reason: '不能因为过期快照显示 auto 就跳过');
+        expect(e.port.selectApplied.last.tag, 'auto');
+      },
+      prefs: const {'proxy_selection_p2': '{"select":"sg"}'},
+    );
 
     _sim('没有手选、内核却不在默认值上：只把选择组拨回默认值，自动选择组不碰', (e) {
       e.launcher.defaults = const {'select': 'auto', 'auto': 'hk'};

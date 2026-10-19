@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/app/app.dart';
+import 'package:clashmiao/app/bootstrap/storage_bootstrap.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
@@ -47,6 +48,9 @@ void main() async {
   final container = ProviderContainer();
   // Ensure shared preferences are loaded before app runs
   await container.read(sharedPreferencesProvider.future);
+  // 启动屏障：恢复标记检查（C1-3 接入）→ 存储迁移，必须先于任何业务 provider
+  // 读取偏好、推送原生配置。
+  await prepareStorage(container.read(sharedPreferencesProvider).requireValue);
 
   // 初始化 BoxService
   final boxService = container.read(boxServiceProvider);

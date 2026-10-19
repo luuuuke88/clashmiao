@@ -8,12 +8,16 @@ part 'theme_preferences.g.dart';
 class ThemePreferences extends _$ThemePreferences {
   @override
   AppThemeMode build() {
-    final persisted = ref
-        .watch(sharedPreferencesProvider)
-        .requireValue
-        .getString("theme_mode");
-    if (persisted == null) return AppThemeMode.system;
-    return AppThemeMode.values.byName(persisted);
+    final prefs = ref.watch(sharedPreferencesProvider).requireValue;
+    // 未知枚举值（版本回退、手改）或错误类型：回落默认，不能在启动时抛出。
+    final Object? persisted;
+    try {
+      persisted = prefs.get("theme_mode");
+    } catch (_) {
+      return AppThemeMode.system;
+    }
+    if (persisted is! String) return AppThemeMode.system;
+    return AppThemeMode.values.asNameMap()[persisted] ?? AppThemeMode.system;
   }
 
   Future<void> changeThemeMode(AppThemeMode value) async {

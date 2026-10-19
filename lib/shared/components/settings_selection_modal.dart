@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:flutter/material.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -67,7 +68,7 @@ class SettingsSelectionModal<T> extends StatelessWidget {
                         Navigator.of(context).pop(item);
                       },
                     )
-                    .animate()
+                    .animateWithMotion(context)
                     .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
                     .slideX(
                       begin: 0.1,
@@ -106,7 +107,7 @@ class _SelectionTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: Motion.duration(context, Motion.short),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             color: isSelected

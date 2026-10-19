@@ -1,3 +1,5 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 
@@ -108,7 +110,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                                 t,
                               ),
                             )
-                            .animate()
+                            .animateWithMotion(context)
                             .fadeIn(
                               duration: 300.ms,
                               delay: (200 + index * 50).ms,
@@ -125,7 +127,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   loading: () => const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
+                      child: MotionProgress(strokeWidth: 4),
                     ),
                   ),
                   error: (e, _) => Center(
@@ -244,7 +246,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                             t,
                           ),
                         )
-                        .animate()
+                        .animateWithMotion(context)
                         .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
                         .slideX(
                           begin: 0.1,
@@ -255,7 +257,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
+              loading: () =>
+                  const Center(child: MotionProgress(strokeWidth: 4)),
               error: (e, _) =>
                   Center(child: Text('${t.failure.unexpected}: $e')),
             ),
@@ -529,7 +532,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                             onPressed: () => onChanged(sort, !ascending),
                             icon: AnimatedRotation(
                               turns: arrowTurn,
-                              duration: const Duration(milliseconds: 100),
+                              duration: Motion.duration(context, Motion.short),
                               child: Icon(
                                 FluentIcons.arrow_sort_up_24_regular,
                                 semanticLabel: ascending
@@ -540,7 +543,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                           )
                         : null,
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: (200 + sort.index * 50).ms)
                   .slideX(
                     begin: 0.1,
@@ -602,7 +605,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onShare();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 200.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
             // 只有远程订阅才有真正可分享的 URL 可编码——本地导入的
@@ -623,7 +626,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                       onShowQr();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 225.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 225.ms),
             ListTile(
@@ -640,7 +643,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onEdit();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 250.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
             if (canUpdate)
@@ -658,16 +661,20 @@ class _ProfileActionsModal extends ConsumerWidget {
                       onUpdate();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 300.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(
-                height: 1,
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-              ),
-            ).animate().fadeIn(duration: 300.ms, delay: 350.ms),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
+                )
+                .animateWithMotion(context)
+                .fadeIn(duration: 300.ms, delay: 350.ms),
             ListTile(
                   leading: const Icon(
                     FluentIcons.delete_24_regular,
@@ -685,7 +692,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onDelete();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 400.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 400.ms),
             const SizedBox(height: 24),
@@ -733,10 +740,7 @@ class _EmptyState extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             '',
-            style: TextStyle(
-              fontSize: 13,
-              color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
-            ),
+            style: TextStyle(fontSize: 13, color: aiUi.secondaryTextColor),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
@@ -795,16 +799,17 @@ class _HeaderButton extends StatelessWidget {
             child: isLoading
                 ? Padding(
                     padding: const EdgeInsets.all(10),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: filled ? Colors.white : aiUi.secondaryTextColor,
+                    child: MotionProgress(
+                      color: filled
+                          ? theme.colorScheme.onPrimary
+                          : aiUi.secondaryTextColor,
                     ),
                   )
                 : Icon(
                     icon,
                     size: 20,
                     color: filled
-                        ? Colors.white
+                        ? theme.colorScheme.onPrimary
                         : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
           ),
@@ -1063,7 +1068,8 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            isLoading
+            // 减少动画时不转，停在静态图标上（加载中靠按钮变灰/文案表达）。
+            isLoading && Motion.loops(context)
                 ? Icon(
                         icon,
                         size: 20,
@@ -1076,7 +1082,10 @@ class _ActionButton extends StatelessWidget {
                 : Icon(
                     icon,
                     size: 20,
-                    color: isLight ? aiUi.secondaryTextColor : Colors.white70,
+                    // 加载中但减少动画：静态图标沿用「进行中」的强调色。
+                    color: isLoading
+                        ? (isLight ? theme.colorScheme.primary : Colors.white)
+                        : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
             const SizedBox(height: 8),
             Text(

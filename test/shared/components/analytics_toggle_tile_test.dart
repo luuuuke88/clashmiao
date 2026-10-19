@@ -89,4 +89,16 @@ void main() {
 
     expect(received, isFalse);
   });
+
+  testWidgets('整行通过 Android 点按目标与标签规范，开关保持 48 dp', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpTile(tester, subtitle: '说明文字');
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    expect(
+      tester.getSize(find.byType(Switch)).height,
+      greaterThanOrEqualTo(kMinInteractiveDimension),
+    );
+    handle.dispose();
+  });
 }

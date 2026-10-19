@@ -24,7 +24,8 @@
     "openAppSettings": "فتح إعدادات التطبيق",
     "grantPermission": "منح الإذن",
     "underDevelopment": "قيد التطوير",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "close": "إغلاق"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بمواصلة استخدامك، فإنك توافق على ${tap(@:about.termsAndConditions)}",
@@ -189,7 +190,9 @@
     "delaySemantics": {
       "result": "التأخير: ${delay} مللي ثانية",
       "timeout": "انتهاء الوقت في اختبار التأخير",
-      "testing": "التأخير: قيد الاختبار..."
+      "testing": "التأخير: قيد الاختبار...",
+      "untested": "التأخير: لم يُختبر بعد",
+      "stale": "التأخير: ${delay} مللي ثانية (نتيجة سابقة)"
     },
     "ipInfoSemantics": {
       "address": "عنوان IP",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "يرجى الاتصال قبل تبديل الخطوط",
     "startDelayTestForGroups": "بدأ اختبار التأخير لـ ${count} خط",
     "delayTestBtn": "التأخير",
+    "delayTimeout": "انتهت المهلة",
+    "connectBeforeTest": "اتصل أولاً لاختبار التأخير",
     "lineCount": "${count} خط",
     "manualSelect": "اختيار يدوي",
     "autoTest": "اختبار تلقائي"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "تم تفعيل بروكسي النظام",
     "systemProxyDisabled": "تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)",
     "adminPrivilegesRequired": "يتطلب صلاحيات المسؤول على macOS",
-    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها"
+    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها",
+    "groups": {
+      "general": "عام",
+      "connection": "الاتصال",
+      "privacy": "الخصوصية"
+    }
   },
   "about": {
     "pageTitle": "حول\nتعريب:م. ابراهيم قاسم",
@@ -320,7 +330,8 @@
     "checkForUpdate": "التحقق من وجود تحديث",
     "privacyPolicy": "سياسة الخصوصية",
     "termsAndConditions": "الشروط والأحكام",
-    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box"
+    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box",
+    "openSourceLicenses": "تراخيص المصدر المفتوح"
   },
   "appUpdate": {
     "notAvailableMsg": "أنت تستخدم أحدث إصدار بالفعل",
@@ -330,7 +341,8 @@
     "newVersionLbl": "الإصدار الجديد",
     "updateNowBtnTxt": "تحديث الآن",
     "laterBtnTxt": "لاحقًا",
-    "ignoreBtnTxt": "تجاهل"
+    "ignoreBtnTxt": "تجاهل",
+    "checkFailedMsg": "تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى."
   },
   "tray": {
     "dashboard": "لوحة التحكم",
@@ -479,6 +491,8 @@
     "muxProtocol": "بروتوكول Mux",
     "muxMaxStreams": "أقصى عدد من التدفقات المتزامنة",
     "enableWarp": "تمكين WARP",
+    "setUpWarp": "إعداد WARP",
+    "warpNotConfigured": "غير مهيأ",
     "warpDetourMode": "وضع التفاف",
     "warpDetourModes": {
       "proxyOverWarp": "لف الخوادم الوكيلية عبر WARP",

@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// 订阅表单弹窗（新增 / 编辑 共用）
 ///
@@ -28,15 +30,29 @@ Future<void> showProfileFormDialog(
 }) {
   final isEdit = profile != null;
 
-  if (!isEdit) {
-    return showAiUiModal(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _AddProfileModal(ref: ref),
-    );
-  }
+  if (!isEdit) return _showAddProfileSheet(context, ref);
 
   return showProfileManualFormDialog(context, ref, profile: profile);
+}
+
+/// 「添加订阅」弹窗关闭时带回来的后续动作。
+enum _AddSheetResult { manualInput }
+
+/// 打开「添加订阅」弹窗；用户选「手动输入」时，弹窗**先正常退出**，再由仍然
+/// 活着的调用方页面（它自己的、稳定的 context 与 ref）打开手动表单。
+///
+/// 不能在弹窗内部「`maybePop()` 之后立刻再 push 手动表单」：`maybePop` 要等
+/// `willPop`，等它返回时路由栈已经被新 push 的表单改了，pop 就放弃了，结果两层
+/// 弹窗叠在一起，而且手动表单还拿着已销毁弹窗的 context。
+Future<void> _showAddProfileSheet(BuildContext context, WidgetRef ref) async {
+  final result = await showAiUiModal<_AddSheetResult>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => _AddProfileModal(ref: ref),
+  );
+  if (result == _AddSheetResult.manualInput && context.mounted) {
+    await showProfileManualFormDialog(context, ref);
+  }
 }
 
 class _AddProfileModal extends ConsumerStatefulWidget {
@@ -63,7 +79,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: AnimatedSize(
-          duration: const Duration(milliseconds: 250),
+          duration: Motion.layoutDuration(context, Motion.medium),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final buttonWidth =
@@ -98,7 +114,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                           ],
                         ),
                       )
-                      .animate()
+                      .animateWithMotion(context)
                       .fadeIn(duration: 300.ms, delay: 200.ms)
                       .slideX(
                         begin: 0.1,
@@ -123,7 +139,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                             const SizedBox(height: 16),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(4),
-                              child: const LinearProgressIndicator(
+                              // 减少动画时停成静态条，语义仍是「加载中」。
+                              child: const MotionProgress.linear(
                                 minHeight: 6,
                                 backgroundColor: Colors.transparent,
                               ),
@@ -202,7 +219,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 250.ms)
                               .slideX(
                                 begin: 0.1,
@@ -244,7 +261,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 300.ms)
                               .slideX(
                                 begin: 0.1,
@@ -258,7 +275,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                     crossFadeState: _isLoading
                         ? CrossFadeState.showFirst
                         : CrossFadeState.showSecond,
-                    duration: const Duration(milliseconds: 250),
+                    duration: Motion.duration(context, Motion.medium),
                   ),
                 ],
               );
@@ -279,10 +296,10 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
     unawaited(Navigator.of(context).maybePop());
   }
 
-  void _showManualForm() {
-    unawaited(Navigator.of(context).maybePop());
-    showProfileManualFormDialog(context, widget.ref);
-  }
+  /// 选「手动输入」：只负责带着结果关闭本弹窗，手动表单由调用方在弹窗退出后
+  /// 打开（见 [_showAddProfileSheet]）。
+  void _showManualForm() =>
+      Navigator.of(context).pop(_AddSheetResult.manualInput);
 
   Future<void> _showWarpConsent() async {
     final settings = ref.read(networkSettingsProvider);
@@ -388,7 +405,6 @@ Future<void> showProfileManualFormDialog(
                         FilledButton(
                           onPressed: submit,
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 10,
@@ -402,7 +418,7 @@ Future<void> showProfileManualFormDialog(
                       ],
                     ),
                   )
-                  .animate()
+                  .animateWithMotion(ctx)
                   .fadeIn(duration: 300.ms, delay: 150.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 150.ms),
               _SectionHeader(title: t.profile.details.basicInfo),
@@ -511,9 +527,8 @@ class _ProfileTextField extends StatelessWidget {
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(
-                color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
+              // 占位提示同样是小字：用不透明的 onSurfaceVariant，不叠 alpha。
+              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
               filled: true,
               fillColor: theme.canvasColor,
               suffixIcon: suffixIcon,

@@ -24,7 +24,8 @@
     "openAppSettings": "Открыть настройки",
     "grantPermission": "Дать права доступа",
     "underDevelopment": "В разработке",
-    "confirm": "Подтвердить"
+    "confirm": "Подтвердить",
+    "close": "Закрыть"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "Продолжая, Вы соглашаетесь с ${tap(@:about.termsAndConditions)}",
@@ -189,7 +190,9 @@
     "delaySemantics": {
       "result": "Задержка: ${delay}мс",
       "timeout": "Тайм-аут при тестировании задержки",
-      "testing": "Задержка: Тестирование..."
+      "testing": "Задержка: Тестирование...",
+      "untested": "Задержка: не проверялась",
+      "stale": "Задержка: ${delay}мс (прежний результат)"
     },
     "ipInfoSemantics": {
       "address": "IP адрес",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "Подключитесь перед сменой линии",
     "startDelayTestForGroups": "Запущена проверка задержки для ${count} линий",
     "delayTestBtn": "Задержка",
+    "delayTimeout": "Тайм-аут",
+    "connectBeforeTest": "Сначала подключитесь, чтобы проверить задержку",
     "lineCount": "Линий: ${count}",
     "manualSelect": "Ручной выбор",
     "autoTest": "Автотест"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "Системный прокси включён",
     "systemProxyDisabled": "Системный прокси отключён (переподключитесь для применения)",
     "adminPrivilegesRequired": "На macOS требуются права администратора",
-    "portChangeNotice": "Изменения порта применяются после переподключения"
+    "portChangeNotice": "Изменения порта применяются после переподключения",
+    "groups": {
+      "general": "Общие",
+      "connection": "Подключение",
+      "privacy": "Конфиденциальность"
+    }
   },
   "about": {
     "pageTitle": "О программе",
@@ -320,7 +330,8 @@
     "checkForUpdate": "Проверка обновления",
     "privacyPolicy": "Политика конфиденциальности",
     "termsAndConditions": "Условия и положения",
-    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box"
+    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box",
+    "openSourceLicenses": "Лицензии открытого ПО"
   },
   "appUpdate": {
     "notAvailableMsg": "Установлена последняя версия",
@@ -330,7 +341,8 @@
     "newVersionLbl": "Новая версия",
     "updateNowBtnTxt": "Обновить",
     "laterBtnTxt": "Позже",
-    "ignoreBtnTxt": "Пропустить"
+    "ignoreBtnTxt": "Пропустить",
+    "checkFailedMsg": "Не удалось проверить обновления. Проверьте сеть и повторите попытку."
   },
   "tray": {
     "dashboard": "Панель",
@@ -479,6 +491,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Настроить WARP",
+    "warpNotConfigured": "Не настроено",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "proxyOverWarp": "Работа прокси через WARP",

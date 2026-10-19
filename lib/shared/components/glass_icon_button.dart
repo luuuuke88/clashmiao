@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
 
@@ -18,6 +19,7 @@ class GlassIconButton extends StatelessWidget {
     this.size = 40,
     this.iconSize = 20,
     this.tooltip,
+    this.loading = false,
   });
 
   final IconData icon;
@@ -29,11 +31,25 @@ class GlassIconButton extends StatelessWidget {
   /// 同时用作无障碍标签：圆按钮上只有一个图标，读屏没有文字可念。
   final String? tooltip;
 
+  /// 进行中：图标换成同尺寸区域内的 18 dp 圆形进度指示器（按钮本身保持不变，
+  /// 点击仍由 [onTap] 决定是否响应）。
+  final bool loading;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
     final isLight = theme.brightness == Brightness.light;
+
+    Widget glyph(Color color) => loading
+        ? Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: MotionProgress(color: color),
+            ),
+          )
+        : Icon(icon, size: iconSize, color: color);
 
     final Widget button = filled
         ? Container(
@@ -44,7 +60,7 @@ class GlassIconButton extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: aiUi.primaryShadow,
             ),
-            child: Icon(icon, size: iconSize, color: Colors.white),
+            child: glyph(theme.colorScheme.onPrimary),
           )
         // 跟 GlassCard 一样不用 BackdropFilter，理由见那边的注释。
         : ClipOval(
@@ -62,24 +78,46 @@ class GlassIconButton extends StatelessWidget {
                       : Colors.white.withValues(alpha: 0.14),
                 ),
               ),
-              child: Icon(
-                icon,
-                size: iconSize,
-                color: isLight
+              child: glyph(
+                isLight
                     ? aiUi.secondaryTextColor
                     : Colors.white.withValues(alpha: 0.8),
               ),
             ),
           );
 
-    return Semantics(
-      label: tooltip,
-      button: true,
-      child: GestureDetector(
-        onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: RepaintBoundary(child: button),
+    // 视觉直径仍是 [size]（默认 40），交互区放大到至少 48×48（Material 与
+    // Android 无障碍的最小触控目标）。热区放在 GestureDetector 里、圆本身
+    // 居中，所以点圆外那一圈 4 dp 也算点中。
+    final Widget tappable = GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+          minWidth: kMinInteractiveDimension,
+          minHeight: kMinInteractiveDimension,
+        ),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: RepaintBoundary(child: button),
+        ),
       ),
+    );
+
+    // 真正构建 Tooltip：长按出可见的文字提示。无障碍标签由外层 Semantics 的
+    // label 提供（Tooltip 的 excludeFromSemantics 打开，免得读屏把同一句话念
+    // 两遍）。
+    final label = tooltip;
+    final Widget labelled = label == null
+        ? tappable
+        : Tooltip(message: label, excludeFromSemantics: true, child: tappable);
+
+    return Semantics(
+      label: label,
+      button: true,
+      enabled: onTap != null,
+      child: labelled,
     );
   }
 }

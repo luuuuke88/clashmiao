@@ -24,7 +24,8 @@
     "clipboardExportSuccessMsg": "Copiado al portapapeles",
     "openAppSettings": "Abrir ajustes de la app",
     "underDevelopment": "En desarrollo",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "close": "Cerrar"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "al continuar, aceptas ${tap(@:about.termsAndConditions)}",
@@ -180,7 +181,9 @@
     "delaySemantics": {
       "result": "Latencia: ${delay} ms",
       "timeout": "Tiempo de prueba de latencia agotado",
-      "testing": "Latencia: probando..."
+      "testing": "Latencia: probando...",
+      "untested": "Latencia: sin probar",
+      "stale": "Latencia: ${delay} ms (resultado anterior)"
     },
     "ipInfoSemantics": {
       "address": "Dirección IP",
@@ -192,6 +195,8 @@
     "connectBeforeSwitch": "Conéctate antes de cambiar de línea",
     "startDelayTestForGroups": "Prueba de latencia iniciada para ${count} líneas",
     "delayTestBtn": "Latencia",
+    "delayTimeout": "Agotado",
+    "connectBeforeTest": "Conéctate primero para probar la latencia",
     "lineCount": "${count} líneas",
     "manualSelect": "Selección manual",
     "autoTest": "Prueba automática"
@@ -298,7 +303,12 @@
     "systemProxyEnabled": "Proxy del sistema activado",
     "systemProxyDisabled": "Proxy del sistema desactivado (reconecta para aplicar)",
     "adminPrivilegesRequired": "Se requieren privilegios de administrador en macOS",
-    "portChangeNotice": "Los cambios de puerto requieren reconectar para aplicarse"
+    "portChangeNotice": "Los cambios de puerto requieren reconectar para aplicarse",
+    "groups": {
+      "general": "General",
+      "connection": "Conexión",
+      "privacy": "Privacidad"
+    }
   },
   "about": {
     "pageTitle": "Acerca de",
@@ -308,7 +318,8 @@
     "checkForUpdate": "Buscar actualizaciones",
     "privacyPolicy": "Política de privacidad",
     "termsAndConditions": "Términos y condiciones",
-    "appDescription": "Un cliente proxy multiplataforma basado en el núcleo sing-box"
+    "appDescription": "Un cliente proxy multiplataforma basado en el núcleo sing-box",
+    "openSourceLicenses": "Licencias de código abierto"
   },
   "appUpdate": {
     "notAvailableMsg": "Ya estas usando la última versión.",
@@ -318,7 +329,8 @@
     "newVersionLbl": "Nueva versión",
     "updateNowBtnTxt": "Actualizar ahora",
     "laterBtnTxt": "Más tarde",
-    "ignoreBtnTxt": "Ignorar"
+    "ignoreBtnTxt": "Ignorar",
+    "checkFailedMsg": "No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo."
   },
   "tray": {
     "dashboard": "Panel",
@@ -454,6 +466,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Configurar WARP",
+    "warpNotConfigured": "Sin configurar",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",

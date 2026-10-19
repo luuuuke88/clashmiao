@@ -24,7 +24,8 @@
     "openAppSettings": "Buka Pengaturan Aplikasi",
     "grantPermission": "Berikan Izin",
     "underDevelopment": "Dalam Pengembangan",
-    "confirm": "Konfirmasi"
+    "confirm": "Konfirmasi",
+    "close": "Tutup"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "lanjut berarti setuju dengan ${tap(@:about.termsAndConditions)}",
@@ -192,7 +193,9 @@
     "delaySemantics": {
       "result": "Jeda: ${delay}ms",
       "timeout": "Waktu Uji Jeda Habis",
-      "testing": "Jeda: Menguji..."
+      "testing": "Jeda: Menguji...",
+      "untested": "Jeda: Belum diuji",
+      "stale": "Jeda: ${delay}ms (hasil sebelumnya)"
     },
     "ipInfoSemantics": {
       "address": "Alamat IP",
@@ -204,6 +207,8 @@
     "connectBeforeSwitch": "Sambungkan terlebih dahulu sebelum mengganti jalur",
     "startDelayTestForGroups": "Uji jeda dimulai untuk ${count} jalur",
     "delayTestBtn": "Jeda",
+    "delayTimeout": "Habis waktu",
+    "connectBeforeTest": "Sambungkan dulu untuk menguji jeda",
     "lineCount": "${count} jalur",
     "manualSelect": "Pilih Manual",
     "autoTest": "Tes Otomatis"
@@ -310,7 +315,12 @@
     "systemProxyEnabled": "Proxy sistem diaktifkan",
     "systemProxyDisabled": "Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)",
     "adminPrivilegesRequired": "Memerlukan hak administrator di macOS",
-    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku"
+    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku",
+    "groups": {
+      "general": "Umum",
+      "connection": "Koneksi",
+      "privacy": "Privasi"
+    }
   },
   "about": {
     "pageTitle": "Tentang",
@@ -320,7 +330,8 @@
     "checkForUpdate": "Periksa perbaruan",
     "privacyPolicy": "Kebijakan Privasi",
     "termsAndConditions": "Syarat dan Ketentuan Umum",
-    "appDescription": "Klien proxy lintas platform berbasis inti sing-box"
+    "appDescription": "Klien proxy lintas platform berbasis inti sing-box",
+    "openSourceLicenses": "Lisensi sumber terbuka"
   },
   "appUpdate": {
     "notAvailableMsg": "Sudah menggunakan versi terakhir",
@@ -330,7 +341,8 @@
     "newVersionLbl": "Versi Baru",
     "updateNowBtnTxt": "Perbarui Sekarang",
     "laterBtnTxt": "Nanti",
-    "ignoreBtnTxt": "Lewati"
+    "ignoreBtnTxt": "Lewati",
+    "checkFailedMsg": "Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi."
   },
   "tray": {
     "dashboard": "Dashboard",
@@ -466,6 +478,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Siapkan WARP",
+    "warpNotConfigured": "Belum dikonfigurasi",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",

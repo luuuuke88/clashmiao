@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// 把核心（sing-box）日志行写到一个临时文件，供"分享核心日志"使用。
 /// 抽成顶层函数是为了能在 logs_page_test.dart 里直接验证它和
@@ -165,7 +166,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
               return Center(child: Text('日志读取失败: ${logsAsync.error}'));
             }
             if (logsAsync.isLoading && state.lines.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: MotionProgress(strokeWidth: 4));
             }
 
             if (state.lines.isEmpty) {

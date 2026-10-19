@@ -6,8 +6,11 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/settings/presentation/per_app_proxy_page.dart';
 import 'package:clashmiao/features/settings/presentation/settings_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
+import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -70,6 +73,15 @@ class _ResetTunnelSpyBoxService extends StubBoxService {
   }
 }
 
+/// 设置页分了三组、多了组标题，Android 上整页比默认 800x600 的测试视口高；
+/// 需要点到下面几行的用例先把视口拉高，免得目标行被懒加载在视口外。
+void _useTallView(WidgetTester tester) {
+  tester.view.physicalSize = const Size(800, 1800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(tester.view.resetDevicePixelRatio);
+}
+
 void main() {
   // 电池优化豁免 tile 走裸 MethodChannel（未接 Pigeon），这里在 binary messenger
   // 层面直接 mock 原生桥接层（MethodBridge.kt CHANNEL_PLATFORM）的两个方法。
@@ -98,6 +110,229 @@ void main() {
   tearDown(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(platformChannel, null);
+  });
+
+  group('SettingsPage 分组与结构', () {
+    testWidgets('渲染 通用 / 连接 / 隐私 三组标题，且按此顺序自上而下', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      final general = find.text('通用');
+      final connection = find.text('连接');
+      final privacy = find.text('隐私');
+      expect(general, findsOneWidget);
+      expect(connection, findsOneWidget);
+      expect(privacy, findsOneWidget);
+
+      final generalY = tester.getTopLeft(general).dy;
+      final connectionY = tester.getTopLeft(connection).dy;
+      final privacyY = tester.getTopLeft(privacy).dy;
+      expect(generalY, lessThan(connectionY));
+      expect(connectionY, lessThan(privacyY));
+
+      // 组标题是 header 语义，读屏可以按标题跳组。
+      for (final title in ['通用', '连接', '隐私']) {
+        expect(
+          tester.getSemantics(find.text(title)),
+          matchesSemantics(label: title, isHeader: true),
+        );
+      }
+    });
+
+    testWidgets('各行落在规定的组里', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      double y(String text) => tester.getTopLeft(find.text(text)).dy;
+      final connection = y('连接');
+      final privacy = y('隐私');
+
+      // 通用：语言、主题、触觉反馈
+      for (final label in ['语言', '主题模式', '触觉反馈']) {
+        expect(y(label), lessThan(connection), reason: '$label 应在「通用」组');
+      }
+      // 连接：自动检查 IP、通知栏网速、电池优化、分应用代理
+      for (final label in ['自动检查连接的 IP', '在通知中显示网络速度', '禁用电池优化', '分应用线路']) {
+        expect(y(label), greaterThan(connection), reason: '$label 应在「连接」组');
+        expect(y(label), lessThan(privacy), reason: '$label 应在「连接」组');
+      }
+      // 隐私：启用分析
+      expect(y('启用分析'), greaterThan(privacy));
+    });
+
+    testWidgets('标题到卡片 8 dp，组与组之间 24 dp', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      final cards = find.byType(GlassCard);
+      expect(cards, findsNWidgets(3));
+      final firstCardTop = tester.getTopLeft(cards.at(0)).dy;
+      final firstCardBottom = tester.getBottomLeft(cards.at(0)).dy;
+      final secondCardTop = tester.getTopLeft(cards.at(1)).dy;
+
+      // 标题文字底到卡片顶：标题行高度随字体而定，这里只断言间距由 8 dp 的
+      // SizedBox 贡献——标题 Text 的下边缘与卡片顶边相差 8。
+      final titleBottom = tester.getBottomLeft(find.text('通用')).dy;
+      expect(firstCardTop - titleBottom, 8);
+
+      // 第一张卡片底到第二组标题顶：24 dp。
+      final connectionTop = tester.getTopLeft(find.text('连接')).dy;
+      expect(connectionTop - firstCardBottom, 24);
+      expect(secondCardTop, greaterThan(connectionTop));
+    });
+
+    testWidgets('页头没有问号按钮（它从来没有 onTap，是假入口）', (tester) async {
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byIcon(FluentIcons.question_circle_24_regular), findsNothing);
+      expect(find.byType(GlassIconButton), findsNothing);
+    });
+
+    testWidgets('每一行高度不低于 56，长文案换行后会长高而不是溢出', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true, locale: 'en'));
+      await tester.pumpAndSettle();
+
+      for (final inkWell in tester.widgetList<InkWell>(
+        find.descendant(
+          of: find.byType(GlassCard),
+          matching: find.byType(InkWell),
+        ),
+      )) {
+        expect(inkWell.onTap, isNotNull);
+      }
+      for (final element
+          in find
+              .descendant(
+                of: find.byType(GlassCard),
+                matching: find.byType(InkWell),
+              )
+              .evaluate()) {
+        final height = (element.renderObject! as RenderBox).size.height;
+        expect(height, greaterThanOrEqualTo(56));
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('图标不再是彩虹色：全部使用同一个中性色', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      final colors = tester
+          .widgetList<Icon>(
+            find.descendant(
+              of: find.byType(GlassCard),
+              matching: find.byType(Icon),
+            ),
+          )
+          .map((i) => i.color)
+          .toSet();
+      expect(colors, hasLength(1), reason: '设置页图标颜色应收敛为一个中性色');
+    });
+
+    // 开关行：整行一个语义节点（标题 + 开关状态 + 单一操作），开关自身仍
+    // 保持 48 dp 点击目标。曾经 shrinkWrap 把开关缩到 40 dp，且 InkWell 与
+    // Switch 各自带一个可点节点。
+    testWidgets('开关行合并成单一语义节点，开关点击目标不小于 48 dp', (tester) async {
+      final handle = tester.ensureSemantics();
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      // 数「带点击操作的语义节点」。被合并进父节点的子节点只是父节点数据的
+      // 一部分（mergedIntoParent），不另计——读屏看到的是合并后的那一个。
+      int tapNodes(SemanticsNode node) {
+        if (node.isMergedIntoParent) return 0;
+        var count = node.getSemanticsData().hasAction(SemanticsAction.tap)
+            ? 1
+            : 0;
+        node.visitChildren((child) {
+          count += tapNodes(child);
+          return true;
+        });
+        return count;
+      }
+
+      // 标题 + 开关状态 + 点击操作在同一个节点上
+      final analytics = tester.getSemantics(find.byType(AnalyticsToggleTile));
+      expect(
+        analytics,
+        isSemantics(
+          label: '启用分析',
+          hasToggledState: true,
+          isToggled: false,
+          hasTapAction: true,
+        ),
+      );
+      expect(tapNodes(analytics), 1, reason: '整行只应有一个可点节点');
+
+      // 设置页自己的开关行（触觉反馈）同理。
+      final haptic = tester.getSemantics(
+        find.ancestor(
+          of: find.text('触觉反馈'),
+          matching: find.byType(MergeSemantics),
+        ),
+      );
+      expect(
+        haptic,
+        isSemantics(label: '触觉反馈', hasToggledState: true, hasTapAction: true),
+      );
+      expect(tapNodes(haptic), 1);
+
+      // 开关控件本身没被缩小。
+      for (final size
+          in tester
+              .widgetList(find.byType(Switch))
+              .map((w) => tester.getSize(find.byWidget(w)))) {
+        expect(size.height, greaterThanOrEqualTo(kMinInteractiveDimension));
+      }
+      handle.dispose();
+    });
+
+    testWidgets('整页通过 Android 点按目标与标签无障碍规范', (tester) async {
+      final handle = tester.ensureSemantics();
+      _useTallView(tester);
+      await tester.pumpWidget(await _host(debugIsAndroid: true));
+      await tester.pumpAndSettle();
+
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+      await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+      handle.dispose();
+    });
+
+    for (final scale in [1.3, 2.0]) {
+      testWidgets('文字放大 $scale 倍、窄屏 320 dp 不溢出且可滚动到底', (tester) async {
+        tester.view.physicalSize = const Size(320, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+        await tester.pumpWidget(
+          await _host(debugIsAndroid: true, locale: 'ptBr'),
+        );
+        await tester.pumpAndSettle();
+
+        // 一路滚到最后一组，沿途每一行都会被布局一遍——溢出会在这里抛出。
+        await tester.scrollUntilVisible(
+          find.text('Privacidade'),
+          300,
+          scrollable: find.byType(Scrollable).first,
+          maxScrolls: 200,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Privacidade'), findsOneWidget);
+        expect(find.text('Habilitar Análise'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      });
+    }
   });
 
   group('SettingsPage smoke', () {
@@ -162,6 +397,7 @@ void main() {
     });
 
     testWidgets('Android 上显示每应用代理入口并可导航到该页面', (tester) async {
+      _useTallView(tester);
       await tester.pumpWidget(await _host(debugIsAndroid: true));
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -203,6 +439,7 @@ void main() {
     });
 
     testWidgets('点击电池优化豁免入口触发系统请求并刷新为已豁免', (tester) async {
+      _useTallView(tester);
       await tester.pumpWidget(await _host(debugIsAndroid: true));
       await tester.pumpAndSettle();
 
@@ -241,6 +478,7 @@ void main() {
     });
 
     testWidgets('英文 locale 下点击豁免入口后徽标刷新为 Exempted', (tester) async {
+      _useTallView(tester);
       await tester.pumpWidget(await _host(debugIsAndroid: true, locale: 'en'));
       await tester.pumpAndSettle();
 

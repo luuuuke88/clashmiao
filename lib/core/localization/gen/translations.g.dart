@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 4030 (403 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-19 at 17:26 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -162,6 +162,7 @@ class TranslationsGeneralEn {
   String get grantPermission => 'Grant Permission';
   String get underDevelopment => 'Under Development';
   String get confirm => 'Confirm';
+  String get close => 'Close';
 }
 
 // Path: intro
@@ -301,6 +302,8 @@ class TranslationsProxiesEn {
   String startDelayTestForGroups({required Object count}) =>
       'Started delay test for ${count} lines';
   String get delayTestBtn => 'Delay';
+  String get delayTimeout => 'Timeout';
+  String get connectBeforeTest => 'Connect first to test delay';
   String lineCount({required Object count}) => '${count} lines';
   String get manualSelect => 'Manual Select';
   String get autoTest => 'Auto Test';
@@ -358,6 +361,8 @@ class TranslationsSettingsEn {
   String get adminPrivilegesRequired =>
       'Administrator privileges required on macOS';
   String get portChangeNotice => 'Port changes require reconnect to apply';
+  late final TranslationsSettingsGroupsEn groups =
+      TranslationsSettingsGroupsEn._(_root);
 }
 
 // Path: about
@@ -376,6 +381,7 @@ class TranslationsAboutEn {
   String get termsAndConditions => 'Terms and Conditions';
   String get appDescription =>
       'A cross-platform proxy client based on sing-box core';
+  String get openSourceLicenses => 'Open-source licenses';
 }
 
 // Path: appUpdate
@@ -394,6 +400,8 @@ class TranslationsAppUpdateEn {
   String get updateNowBtnTxt => 'Update Now';
   String get laterBtnTxt => 'Later';
   String get ignoreBtnTxt => 'Ignore';
+  String get checkFailedMsg =>
+      'Couldn\'t check for updates. Check your network and try again.';
 }
 
 // Path: tray
@@ -520,6 +528,8 @@ class TranslationsConfigEn {
   String get muxProtocol => 'Mux Protocol';
   String get muxMaxStreams => 'Max Concurrent Streams';
   String get enableWarp => 'Enable WARP';
+  String get setUpWarp => 'Set up WARP';
+  String get warpNotConfigured => 'Not configured';
   String get warpDetourMode => 'Detour Mode';
   late final TranslationsConfigWarpDetourModesEn warpDetourModes =
       TranslationsConfigWarpDetourModesEn._(_root);
@@ -783,6 +793,8 @@ class TranslationsProxiesDelaySemanticsEn {
   String result({required Object delay}) => 'Delay: ${delay}ms';
   String get timeout => 'Delay Test Timeout';
   String get testing => 'Delay: Testing...';
+  String get untested => 'Delay: Not tested';
+  String stale({required Object delay}) => 'Delay: ${delay}ms (earlier result)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -886,6 +898,18 @@ class TranslationsSettingsGeoAssetsEn {
   String get addRecommended => 'Add Recommended Assets';
   String get missingGeoAssetsMsg =>
       'Selected Routing Assets\' files are missing. Either download them or choose existing ones';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get general => 'General';
+  String get connection => 'Connection';
+  String get privacy => 'Privacy';
 }
 
 // Path: tray.status
@@ -1281,6 +1305,8 @@ class TranslationsGeneralAr extends TranslationsGeneralEn {
   String get underDevelopment => 'قيد التطوير';
   @override
   String get confirm => 'تأكيد';
+  @override
+  String get close => 'إغلاق';
 }
 
 // Path: intro
@@ -1489,6 +1515,10 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'التأخير';
   @override
+  String get delayTimeout => 'انتهت المهلة';
+  @override
+  String get connectBeforeTest => 'اتصل أولاً لاختبار التأخير';
+  @override
   String lineCount({required Object count}) => '${count} خط';
   @override
   String get manualSelect => 'اختيار يدوي';
@@ -1580,6 +1610,9 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'يتطلب صلاحيات المسؤول على macOS';
   @override
   String get portChangeNotice => 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+  @override
+  late final TranslationsSettingsGroupsAr groups =
+      TranslationsSettingsGroupsAr._(_root);
 }
 
 // Path: about
@@ -1607,6 +1640,8 @@ class TranslationsAboutAr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+  @override
+  String get openSourceLicenses => 'تراخيص المصدر المفتوح';
 }
 
 // Path: appUpdate
@@ -1636,6 +1671,9 @@ class TranslationsAppUpdateAr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'لاحقًا';
   @override
   String get ignoreBtnTxt => 'تجاهل';
+  @override
+  String get checkFailedMsg =>
+      'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
 }
 
 // Path: tray
@@ -1838,6 +1876,10 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   String get muxMaxStreams => 'أقصى عدد من التدفقات المتزامنة';
   @override
   String get enableWarp => 'تمكين WARP';
+  @override
+  String get setUpWarp => 'إعداد WARP';
+  @override
+  String get warpNotConfigured => 'غير مهيأ';
   @override
   String get warpDetourMode => 'وضع التفاف';
   @override
@@ -2258,6 +2300,11 @@ class TranslationsProxiesDelaySemanticsAr
   String get timeout => 'انتهاء الوقت في اختبار التأخير';
   @override
   String get testing => 'التأخير: قيد الاختبار...';
+  @override
+  String get untested => 'التأخير: لم يُختبر بعد';
+  @override
+  String stale({required Object delay}) =>
+      'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -2424,6 +2471,24 @@ class TranslationsSettingsGeoAssetsAr extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'ملفات أصول التوجيه المحددة مفقودة. قم بتنزيلها أو اختر ملفات موجودة';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsAr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عام';
+  @override
+  String get connection => 'الاتصال';
+  @override
+  String get privacy => 'الخصوصية';
 }
 
 // Path: tray.status
@@ -2968,6 +3033,8 @@ class TranslationsGeneralEs extends TranslationsGeneralEn {
   String get underDevelopment => 'En desarrollo';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Cerrar';
 }
 
 // Path: intro
@@ -3148,6 +3215,10 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Latencia';
   @override
+  String get delayTimeout => 'Agotado';
+  @override
+  String get connectBeforeTest => 'Conéctate primero para probar la latencia';
+  @override
   String lineCount({required Object count}) => '${count} líneas';
   @override
   String get manualSelect => 'Selección manual';
@@ -3242,6 +3313,9 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Los cambios de puerto requieren reconectar para aplicarse';
+  @override
+  late final TranslationsSettingsGroupsEs groups =
+      TranslationsSettingsGroupsEs._(_root);
 }
 
 // Path: about
@@ -3269,6 +3343,8 @@ class TranslationsAboutEs extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licencias de código abierto';
 }
 
 // Path: appUpdate
@@ -3298,6 +3374,9 @@ class TranslationsAppUpdateEs extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Más tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
 }
 
 // Path: tray
@@ -3483,6 +3562,10 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Sin configurar';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -3957,6 +4040,11 @@ class TranslationsProxiesDelaySemanticsEs
   String get timeout => 'Tiempo de prueba de latencia agotado';
   @override
   String get testing => 'Latencia: probando...';
+  @override
+  String get untested => 'Latencia: sin probar';
+  @override
+  String stale({required Object delay}) =>
+      'Latencia: ${delay} ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -4125,6 +4213,24 @@ class TranslationsSettingsGeoAssetsEs extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsEs extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'General';
+  @override
+  String get connection => 'Conexión';
+  @override
+  String get privacy => 'Privacidad';
 }
 
 // Path: tray.status
@@ -4671,6 +4777,8 @@ class TranslationsGeneralFa extends TranslationsGeneralEn {
   String get underDevelopment => 'در حال توسعه';
   @override
   String get confirm => 'تأیید';
+  @override
+  String get close => 'بستن';
 }
 
 // Path: intro
@@ -4881,6 +4989,10 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'تأخیر';
   @override
+  String get delayTimeout => 'مهلت تمام';
+  @override
+  String get connectBeforeTest => 'برای تست تأخیر ابتدا متصل شوید';
+  @override
   String lineCount({required Object count}) => '${count} خط';
   @override
   String get manualSelect => 'انتخاب دستی';
@@ -4973,6 +5085,9 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+  @override
+  late final TranslationsSettingsGroupsFa groups =
+      TranslationsSettingsGroupsFa._(_root);
 }
 
 // Path: about
@@ -5000,6 +5115,8 @@ class TranslationsAboutFa extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+  @override
+  String get openSourceLicenses => 'مجوزهای متن‌باز';
 }
 
 // Path: appUpdate
@@ -5029,6 +5146,9 @@ class TranslationsAppUpdateFa extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'بعداً';
   @override
   String get ignoreBtnTxt => 'نادیده‌گرفتن';
+  @override
+  String get checkFailedMsg =>
+      'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
 }
 
 // Path: tray
@@ -5233,6 +5353,10 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   String get muxMaxStreams => 'حداکثر جریان‌های هم‌زمان';
   @override
   String get enableWarp => 'فعال‌سازی WARP';
+  @override
+  String get setUpWarp => 'راه‌اندازی WARP';
+  @override
+  String get warpNotConfigured => 'پیکربندی نشده';
   @override
   String get warpDetourMode => 'حالت وارپ';
   @override
@@ -5654,6 +5778,10 @@ class TranslationsProxiesDelaySemanticsFa
   String get timeout => 'مهلت تست تأخیر به اتمام رسید';
   @override
   String get testing => 'تأخیر: در حال آزمایش...';
+  @override
+  String get untested => 'تأخیر: آزمایش نشده';
+  @override
+  String stale({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -5821,6 +5949,24 @@ class TranslationsSettingsGeoAssetsFa extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'فایل‌های مسیریابی انتخاب شده وجود ندارند. یا آن‌ها را دانلود کنید و یا یکی از موارد موجود را انتخاب کنید';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsFa extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عمومی';
+  @override
+  String get connection => 'اتصال';
+  @override
+  String get privacy => 'حریم خصوصی';
 }
 
 // Path: tray.status
@@ -6365,6 +6511,8 @@ class TranslationsGeneralId extends TranslationsGeneralEn {
   String get underDevelopment => 'Dalam Pengembangan';
   @override
   String get confirm => 'Konfirmasi';
+  @override
+  String get close => 'Tutup';
 }
 
 // Path: intro
@@ -6574,6 +6722,10 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Jeda';
   @override
+  String get delayTimeout => 'Habis waktu';
+  @override
+  String get connectBeforeTest => 'Sambungkan dulu untuk menguji jeda';
+  @override
   String lineCount({required Object count}) => '${count} jalur';
   @override
   String get manualSelect => 'Pilih Manual';
@@ -6665,6 +6817,9 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Perubahan port memerlukan sambung ulang agar berlaku';
+  @override
+  late final TranslationsSettingsGroupsId groups =
+      TranslationsSettingsGroupsId._(_root);
 }
 
 // Path: about
@@ -6692,6 +6847,8 @@ class TranslationsAboutId extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Klien proxy lintas platform berbasis inti sing-box';
+  @override
+  String get openSourceLicenses => 'Lisensi sumber terbuka';
 }
 
 // Path: appUpdate
@@ -6721,6 +6878,9 @@ class TranslationsAppUpdateId extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Nanti';
   @override
   String get ignoreBtnTxt => 'Lewati';
+  @override
+  String get checkFailedMsg =>
+      'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
 }
 
 // Path: tray
@@ -6907,6 +7067,10 @@ class TranslationsConfigId extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'Siapkan WARP';
+  @override
+  String get warpNotConfigured => 'Belum dikonfigurasi';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -7344,6 +7508,11 @@ class TranslationsProxiesDelaySemanticsId
   String get timeout => 'Waktu Uji Jeda Habis';
   @override
   String get testing => 'Jeda: Menguji...';
+  @override
+  String get untested => 'Jeda: Belum diuji';
+  @override
+  String stale({required Object delay}) =>
+      'Jeda: ${delay}ms (hasil sebelumnya)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -7510,6 +7679,24 @@ class TranslationsSettingsGeoAssetsId extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsId extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Umum';
+  @override
+  String get connection => 'Koneksi';
+  @override
+  String get privacy => 'Privasi';
 }
 
 // Path: tray.status
@@ -8054,6 +8241,8 @@ class TranslationsGeneralPtBr extends TranslationsGeneralEn {
   String get underDevelopment => 'Em desenvolvimento';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Fechar';
 }
 
 // Path: intro
@@ -8267,6 +8456,10 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Latência';
   @override
+  String get delayTimeout => 'Esgotado';
+  @override
+  String get connectBeforeTest => 'Conecte primeiro para testar o atraso';
+  @override
   String lineCount({required Object count}) => '${count} linhas';
   @override
   String get manualSelect => 'Seleção manual';
@@ -8365,6 +8558,9 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Alterações de porta exigem reconexão para serem aplicadas';
+  @override
+  late final TranslationsSettingsGroupsPtBr groups =
+      TranslationsSettingsGroupsPtBr._(_root);
 }
 
 // Path: about
@@ -8394,6 +8590,8 @@ class TranslationsAboutPtBr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licenças de código aberto';
 }
 
 // Path: appUpdate
@@ -8423,6 +8621,9 @@ class TranslationsAppUpdatePtBr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Mais tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
 }
 
 // Path: tray
@@ -8615,6 +8816,10 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   String get muxMaxStreams => 'Máximo de fluxos simultâneos';
   @override
   String get enableWarp => 'Habilitar WARP';
+  @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Não configurado';
   @override
   String get warpDetourMode => 'Modo de desvio';
   @override
@@ -9055,6 +9260,11 @@ class TranslationsProxiesDelaySemanticsPtBr
   String get timeout => 'atrasar o tempo limite do teste';
   @override
   String get testing => 'atraso: testando...';
+  @override
+  String get untested => 'atraso: não testado';
+  @override
+  String stale({required Object delay}) =>
+      'atraso: ${delay}ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -9224,6 +9434,24 @@ class TranslationsSettingsGeoAssetsPtBr
   @override
   String get missingGeoAssetsMsg =>
       'Os arquivos dos ativos de roteamento selecionados estão ausentes. Baixe-os ou escolha os existentes.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsPtBr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Geral';
+  @override
+  String get connection => 'Conexão';
+  @override
+  String get privacy => 'Privacidade';
 }
 
 // Path: tray.status
@@ -9772,6 +10000,8 @@ class TranslationsGeneralRu extends TranslationsGeneralEn {
   String get underDevelopment => 'В разработке';
   @override
   String get confirm => 'Подтвердить';
+  @override
+  String get close => 'Закрыть';
 }
 
 // Path: intro
@@ -9982,6 +10212,11 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Задержка';
   @override
+  String get delayTimeout => 'Тайм-аут';
+  @override
+  String get connectBeforeTest =>
+      'Сначала подключитесь, чтобы проверить задержку';
+  @override
   String lineCount({required Object count}) => 'Линий: ${count}';
   @override
   String get manualSelect => 'Ручной выбор';
@@ -10075,6 +10310,9 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Изменения порта применяются после переподключения';
+  @override
+  late final TranslationsSettingsGroupsRu groups =
+      TranslationsSettingsGroupsRu._(_root);
 }
 
 // Path: about
@@ -10102,6 +10340,8 @@ class TranslationsAboutRu extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+  @override
+  String get openSourceLicenses => 'Лицензии открытого ПО';
 }
 
 // Path: appUpdate
@@ -10131,6 +10371,9 @@ class TranslationsAppUpdateRu extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Позже';
   @override
   String get ignoreBtnTxt => 'Пропустить';
+  @override
+  String get checkFailedMsg =>
+      'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
 }
 
 // Path: tray
@@ -10333,6 +10576,10 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'Настроить WARP';
+  @override
+  String get warpNotConfigured => 'Не настроено';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -10757,6 +11004,11 @@ class TranslationsProxiesDelaySemanticsRu
   String get timeout => 'Тайм-аут при тестировании задержки';
   @override
   String get testing => 'Задержка: Тестирование...';
+  @override
+  String get untested => 'Задержка: не проверялась';
+  @override
+  String stale({required Object delay}) =>
+      'Задержка: ${delay}мс (прежний результат)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -10925,6 +11177,24 @@ class TranslationsSettingsGeoAssetsRu extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Файлы выбранных ресурсов маршрутизации отсутствуют. Либо скачайте их, либо выберите существующие.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsRu extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Общие';
+  @override
+  String get connection => 'Подключение';
+  @override
+  String get privacy => 'Конфиденциальность';
 }
 
 // Path: tray.status
@@ -11471,6 +11741,8 @@ class TranslationsGeneralTr extends TranslationsGeneralEn {
   String get underDevelopment => 'Geliştirme Aşamasında';
   @override
   String get confirm => 'Onayla';
+  @override
+  String get close => 'Kapat';
 }
 
 // Path: intro
@@ -11680,6 +11952,10 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => 'Gecikme';
   @override
+  String get delayTimeout => 'Zaman aşımı';
+  @override
+  String get connectBeforeTest => 'Gecikmeyi test etmek için önce bağlanın';
+  @override
   String lineCount({required Object count}) => '${count} hat';
   @override
   String get manualSelect => 'Elle Seçim';
@@ -11773,6 +12049,9 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+  @override
+  late final TranslationsSettingsGroupsTr groups =
+      TranslationsSettingsGroupsTr._(_root);
 }
 
 // Path: about
@@ -11800,6 +12079,8 @@ class TranslationsAboutTr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+  @override
+  String get openSourceLicenses => 'Açık kaynak lisansları';
 }
 
 // Path: appUpdate
@@ -11829,6 +12110,9 @@ class TranslationsAppUpdateTr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Daha sonra';
   @override
   String get ignoreBtnTxt => 'Görmezden gel';
+  @override
+  String get checkFailedMsg =>
+      'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
 }
 
 // Path: tray
@@ -12015,6 +12299,10 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   String get muxMaxStreams => 'Max Concurrent Streams';
   @override
   String get enableWarp => 'Enable WARP';
+  @override
+  String get setUpWarp => 'WARP\'ı ayarla';
+  @override
+  String get warpNotConfigured => 'Yapılandırılmadı';
   @override
   String get warpDetourMode => 'Detour Mode';
   @override
@@ -12454,6 +12742,11 @@ class TranslationsProxiesDelaySemanticsTr
   String get timeout => 'Gecikme Testi Zaman Aşımı';
   @override
   String get testing => 'Gecikme: Test ediliyor...';
+  @override
+  String get untested => 'Gecikme: Test edilmedi';
+  @override
+  String stale({required Object delay}) =>
+      'Gecikme: ${delay} ms (önceki sonuç)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -12622,6 +12915,24 @@ class TranslationsSettingsGeoAssetsTr extends TranslationsSettingsGeoAssetsEn {
   @override
   String get missingGeoAssetsMsg =>
       'Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin.';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsTr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Genel';
+  @override
+  String get connection => 'Bağlantı';
+  @override
+  String get privacy => 'Gizlilik';
 }
 
 // Path: tray.status
@@ -13165,6 +13476,8 @@ class TranslationsGeneralZhCn extends TranslationsGeneralEn {
   String get underDevelopment => '功能开发中';
   @override
   String get confirm => '确认';
+  @override
+  String get close => '关闭';
 }
 
 // Path: intro
@@ -13373,6 +13686,10 @@ class TranslationsProxiesZhCn extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => '测速';
   @override
+  String get delayTimeout => '超时';
+  @override
+  String get connectBeforeTest => '请连接后测速';
+  @override
   String lineCount({required Object count}) => '${count} 个节点';
   @override
   String get manualSelect => '手动选择';
@@ -13462,6 +13779,9 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 需要管理员权限';
   @override
   String get portChangeNotice => '端口修改需要重启连接生效';
+  @override
+  late final TranslationsSettingsGroupsZhCn groups =
+      TranslationsSettingsGroupsZhCn._(_root);
 }
 
 // Path: about
@@ -13490,6 +13810,8 @@ class TranslationsAboutZhCn extends TranslationsAboutEn {
   String get termsAndConditions => '条款和条件';
   @override
   String get appDescription => '基于 sing-box 核心的跨平台代理客户端';
+  @override
+  String get openSourceLicenses => '开源许可';
 }
 
 // Path: appUpdate
@@ -13518,6 +13840,8 @@ class TranslationsAppUpdateZhCn extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '以后再说';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '检查更新失败，请检查网络后重试';
 }
 
 // Path: tray
@@ -13726,6 +14050,10 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   String get muxMaxStreams => 'Mux 最大并发数';
   @override
   String get enableWarp => '启用 WARP';
+  @override
+  String get setUpWarp => '设置 WARP';
+  @override
+  String get warpNotConfigured => '未配置';
   @override
   String get warpDetourMode => '链式线路';
   @override
@@ -14137,6 +14465,10 @@ class TranslationsProxiesDelaySemanticsZhCn
   String get timeout => '延迟测试超时';
   @override
   String get testing => '正在测试延迟';
+  @override
+  String get untested => '延迟: 未测试';
+  @override
+  String stale({required Object delay}) => '延迟: ${delay}ms（历史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -14298,6 +14630,24 @@ class TranslationsSettingsGeoAssetsZhCn
   String get addRecommended => '添加建议的资源文件';
   @override
   String get missingGeoAssetsMsg => '所选路由资源的文件丢失。下载它们或选择现有的。';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsZhCn extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '通用';
+  @override
+  String get connection => '连接';
+  @override
+  String get privacy => '隐私';
 }
 
 // Path: tray.status
@@ -14841,6 +15191,8 @@ class TranslationsGeneralZhTw extends TranslationsGeneralEn {
   String get underDevelopment => '功能開發中';
   @override
   String get confirm => '確認';
+  @override
+  String get close => '關閉';
 }
 
 // Path: intro
@@ -15050,6 +15402,10 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
   @override
   String get delayTestBtn => '延遲';
   @override
+  String get delayTimeout => '逾時';
+  @override
+  String get connectBeforeTest => '請連線後再測速';
+  @override
   String lineCount({required Object count}) => '${count} 條線路';
   @override
   String get manualSelect => '手動選擇';
@@ -15139,6 +15495,9 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 上需要管理員權限';
   @override
   String get portChangeNotice => '連接埠變更需要重新連線才會生效';
+  @override
+  late final TranslationsSettingsGroupsZhTw groups =
+      TranslationsSettingsGroupsZhTw._(_root);
 }
 
 // Path: about
@@ -15167,6 +15526,8 @@ class TranslationsAboutZhTw extends TranslationsAboutEn {
   String get termsAndConditions => '條款與條件';
   @override
   String get appDescription => '基於 sing-box 核心的跨平台代理用戶端';
+  @override
+  String get openSourceLicenses => '開放原始碼授權';
 }
 
 // Path: appUpdate
@@ -15195,6 +15556,8 @@ class TranslationsAppUpdateZhTw extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '稍後再說';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '檢查更新失敗，請檢查網路後再試';
 }
 
 // Path: tray
@@ -15397,6 +15760,10 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   String get muxMaxStreams => '最大並發數';
   @override
   String get enableWarp => '啟用 WARP';
+  @override
+  String get setUpWarp => '設定 WARP';
+  @override
+  String get warpNotConfigured => '未設定';
   @override
   String get warpDetourMode => '鏈式線路';
   @override
@@ -15815,6 +16182,10 @@ class TranslationsProxiesDelaySemanticsZhTw
   String get timeout => '延遲測試超時';
   @override
   String get testing => '正在測試延遲';
+  @override
+  String get untested => '延遲： 未測試';
+  @override
+  String stale({required Object delay}) => '延遲： ${delay}ms（歷史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -15976,6 +16347,24 @@ class TranslationsSettingsGeoAssetsZhTw
   String get addRecommended => '新增推薦的資源文件';
   @override
   String get missingGeoAssetsMsg => '所選路由資源的檔案遺失。下載它們或選擇現有的。';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsZhTw extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '一般';
+  @override
+  String get connection => '連線';
+  @override
+  String get privacy => '隱私';
 }
 
 // Path: tray.status
@@ -16439,6 +16828,8 @@ extension on Translations {
         return 'Under Development';
       case 'general.confirm':
         return 'Confirm';
+      case 'general.close':
+        return 'Close';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -16699,6 +17090,11 @@ extension on Translations {
         return 'Delay Test Timeout';
       case 'proxies.delaySemantics.testing':
         return 'Delay: Testing...';
+      case 'proxies.delaySemantics.untested':
+        return 'Delay: Not tested';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Delay: ${delay}ms (earlier result)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Address';
       case 'proxies.ipInfoSemantics.country':
@@ -16716,6 +17112,10 @@ extension on Translations {
             'Started delay test for ${count} lines';
       case 'proxies.delayTestBtn':
         return 'Delay';
+      case 'proxies.delayTimeout':
+        return 'Timeout';
+      case 'proxies.connectBeforeTest':
+        return 'Connect first to test delay';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} lines';
       case 'proxies.manualSelect':
@@ -16890,6 +17290,12 @@ extension on Translations {
         return 'Administrator privileges required on macOS';
       case 'settings.portChangeNotice':
         return 'Port changes require reconnect to apply';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Connection';
+      case 'settings.groups.privacy':
+        return 'Privacy';
       case 'about.pageTitle':
         return 'About';
       case 'about.version':
@@ -16906,6 +17312,8 @@ extension on Translations {
         return 'Terms and Conditions';
       case 'about.appDescription':
         return 'A cross-platform proxy client based on sing-box core';
+      case 'about.openSourceLicenses':
+        return 'Open-source licenses';
       case 'appUpdate.notAvailableMsg':
         return 'Already Using The Latest Version';
       case 'appUpdate.dialogTitle':
@@ -16922,6 +17330,8 @@ extension on Translations {
         return 'Later';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignore';
+      case 'appUpdate.checkFailedMsg':
+        return 'Couldn\'t check for updates. Check your network and try again.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -17174,6 +17584,10 @@ extension on Translations {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Set up WARP';
+      case 'config.warpNotConfigured':
+        return 'Not configured';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -17251,6 +17665,8 @@ extension on TranslationsAr {
         return 'قيد التطوير';
       case 'general.confirm':
         return 'تأكيد';
+      case 'general.close':
+        return 'إغلاق';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -17505,6 +17921,11 @@ extension on TranslationsAr {
         return 'انتهاء الوقت في اختبار التأخير';
       case 'proxies.delaySemantics.testing':
         return 'التأخير: قيد الاختبار...';
+      case 'proxies.delaySemantics.untested':
+        return 'التأخير: لم يُختبر بعد';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
       case 'proxies.ipInfoSemantics.address':
         return 'عنوان IP';
       case 'proxies.ipInfoSemantics.country':
@@ -17527,6 +17948,10 @@ extension on TranslationsAr {
         return ({required Object count}) => 'بدأ اختبار التأخير لـ ${count} خط';
       case 'proxies.delayTestBtn':
         return 'التأخير';
+      case 'proxies.delayTimeout':
+        return 'انتهت المهلة';
+      case 'proxies.connectBeforeTest':
+        return 'اتصل أولاً لاختبار التأخير';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -17701,6 +18126,12 @@ extension on TranslationsAr {
         return 'يتطلب صلاحيات المسؤول على macOS';
       case 'settings.portChangeNotice':
         return 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+      case 'settings.groups.general':
+        return 'عام';
+      case 'settings.groups.connection':
+        return 'الاتصال';
+      case 'settings.groups.privacy':
+        return 'الخصوصية';
       case 'about.pageTitle':
         return 'حول\nتعريب:م. ابراهيم قاسم';
       case 'about.version':
@@ -17717,6 +18148,8 @@ extension on TranslationsAr {
         return 'الشروط والأحكام';
       case 'about.appDescription':
         return 'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+      case 'about.openSourceLicenses':
+        return 'تراخيص المصدر المفتوح';
       case 'appUpdate.notAvailableMsg':
         return 'أنت تستخدم أحدث إصدار بالفعل';
       case 'appUpdate.dialogTitle':
@@ -17733,6 +18166,8 @@ extension on TranslationsAr {
         return 'لاحقًا';
       case 'appUpdate.ignoreBtnTxt':
         return 'تجاهل';
+      case 'appUpdate.checkFailedMsg':
+        return 'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
       case 'tray.dashboard':
         return 'لوحة التحكم';
       case 'tray.quit':
@@ -17979,6 +18414,10 @@ extension on TranslationsAr {
         return 'أقصى عدد من التدفقات المتزامنة';
       case 'config.enableWarp':
         return 'تمكين WARP';
+      case 'config.setUpWarp':
+        return 'إعداد WARP';
+      case 'config.warpNotConfigured':
+        return 'غير مهيأ';
       case 'config.warpDetourMode':
         return 'وضع التفاف';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -18062,6 +18501,8 @@ extension on TranslationsEs {
         return 'En desarrollo';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Cerrar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18305,6 +18746,11 @@ extension on TranslationsEs {
         return 'Tiempo de prueba de latencia agotado';
       case 'proxies.delaySemantics.testing':
         return 'Latencia: probando...';
+      case 'proxies.delaySemantics.untested':
+        return 'Latencia: sin probar';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Latencia: ${delay} ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Dirección IP';
       case 'proxies.ipInfoSemantics.country':
@@ -18322,6 +18768,10 @@ extension on TranslationsEs {
             'Prueba de latencia iniciada para ${count} líneas';
       case 'proxies.delayTestBtn':
         return 'Latencia';
+      case 'proxies.delayTimeout':
+        return 'Agotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conéctate primero para probar la latencia';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} líneas';
       case 'proxies.manualSelect':
@@ -18496,6 +18946,12 @@ extension on TranslationsEs {
         return 'Se requieren privilegios de administrador en macOS';
       case 'settings.portChangeNotice':
         return 'Los cambios de puerto requieren reconectar para aplicarse';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Conexión';
+      case 'settings.groups.privacy':
+        return 'Privacidad';
       case 'about.pageTitle':
         return 'Acerca de';
       case 'about.version':
@@ -18512,6 +18968,8 @@ extension on TranslationsEs {
         return 'Términos y condiciones';
       case 'about.appDescription':
         return 'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licencias de código abierto';
       case 'appUpdate.notAvailableMsg':
         return 'Ya estas usando la última versión.';
       case 'appUpdate.dialogTitle':
@@ -18528,6 +18986,8 @@ extension on TranslationsEs {
         return 'Más tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
       case 'tray.dashboard':
         return 'Panel';
       case 'tray.quit':
@@ -18752,6 +19212,10 @@ extension on TranslationsEs {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Sin configurar';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -18877,6 +19341,8 @@ extension on TranslationsFa {
         return 'در حال توسعه';
       case 'general.confirm':
         return 'تأیید';
+      case 'general.close':
+        return 'بستن';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19133,6 +19599,10 @@ extension on TranslationsFa {
         return 'مهلت تست تأخیر به اتمام رسید';
       case 'proxies.delaySemantics.testing':
         return 'تأخیر: در حال آزمایش...';
+      case 'proxies.delaySemantics.untested':
+        return 'تأخیر: آزمایش نشده';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
       case 'proxies.ipInfoSemantics.address':
         return 'آدرس آی‌پی';
       case 'proxies.ipInfoSemantics.country':
@@ -19156,6 +19626,10 @@ extension on TranslationsFa {
             'آزمایش تأخیر برای ${count} خط آغاز شد';
       case 'proxies.delayTestBtn':
         return 'تأخیر';
+      case 'proxies.delayTimeout':
+        return 'مهلت تمام';
+      case 'proxies.connectBeforeTest':
+        return 'برای تست تأخیر ابتدا متصل شوید';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -19330,6 +19804,12 @@ extension on TranslationsFa {
         return 'در macOS به دسترسی مدیر نیاز است';
       case 'settings.portChangeNotice':
         return 'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+      case 'settings.groups.general':
+        return 'عمومی';
+      case 'settings.groups.connection':
+        return 'اتصال';
+      case 'settings.groups.privacy':
+        return 'حریم خصوصی';
       case 'about.pageTitle':
         return 'درباره';
       case 'about.version':
@@ -19346,6 +19826,8 @@ extension on TranslationsFa {
         return 'شرایط و ضوابط استفاده';
       case 'about.appDescription':
         return 'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+      case 'about.openSourceLicenses':
+        return 'مجوزهای متن‌باز';
       case 'appUpdate.notAvailableMsg':
         return 'در حال استفاده از آخرین نسخه هستید';
       case 'appUpdate.dialogTitle':
@@ -19362,6 +19844,8 @@ extension on TranslationsFa {
         return 'بعداً';
       case 'appUpdate.ignoreBtnTxt':
         return 'نادیده‌گرفتن';
+      case 'appUpdate.checkFailedMsg':
+        return 'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
       case 'tray.dashboard':
         return 'داشبورد';
       case 'tray.quit':
@@ -19610,6 +20094,10 @@ extension on TranslationsFa {
         return 'حداکثر جریان‌های هم‌زمان';
       case 'config.enableWarp':
         return 'فعال‌سازی WARP';
+      case 'config.setUpWarp':
+        return 'راه‌اندازی WARP';
+      case 'config.warpNotConfigured':
+        return 'پیکربندی نشده';
       case 'config.warpDetourMode':
         return 'حالت وارپ';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -19691,6 +20179,8 @@ extension on TranslationsId {
         return 'Dalam Pengembangan';
       case 'general.confirm':
         return 'Konfirmasi';
+      case 'general.close':
+        return 'Tutup';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19952,6 +20442,11 @@ extension on TranslationsId {
         return 'Waktu Uji Jeda Habis';
       case 'proxies.delaySemantics.testing':
         return 'Jeda: Menguji...';
+      case 'proxies.delaySemantics.untested':
+        return 'Jeda: Belum diuji';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Jeda: ${delay}ms (hasil sebelumnya)';
       case 'proxies.ipInfoSemantics.address':
         return 'Alamat IP';
       case 'proxies.ipInfoSemantics.country':
@@ -19969,6 +20464,10 @@ extension on TranslationsId {
             'Uji jeda dimulai untuk ${count} jalur';
       case 'proxies.delayTestBtn':
         return 'Jeda';
+      case 'proxies.delayTimeout':
+        return 'Habis waktu';
+      case 'proxies.connectBeforeTest':
+        return 'Sambungkan dulu untuk menguji jeda';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} jalur';
       case 'proxies.manualSelect':
@@ -20143,6 +20642,12 @@ extension on TranslationsId {
         return 'Memerlukan hak administrator di macOS';
       case 'settings.portChangeNotice':
         return 'Perubahan port memerlukan sambung ulang agar berlaku';
+      case 'settings.groups.general':
+        return 'Umum';
+      case 'settings.groups.connection':
+        return 'Koneksi';
+      case 'settings.groups.privacy':
+        return 'Privasi';
       case 'about.pageTitle':
         return 'Tentang';
       case 'about.version':
@@ -20159,6 +20664,8 @@ extension on TranslationsId {
         return 'Syarat dan Ketentuan Umum';
       case 'about.appDescription':
         return 'Klien proxy lintas platform berbasis inti sing-box';
+      case 'about.openSourceLicenses':
+        return 'Lisensi sumber terbuka';
       case 'appUpdate.notAvailableMsg':
         return 'Sudah menggunakan versi terakhir';
       case 'appUpdate.dialogTitle':
@@ -20175,6 +20682,8 @@ extension on TranslationsId {
         return 'Nanti';
       case 'appUpdate.ignoreBtnTxt':
         return 'Lewati';
+      case 'appUpdate.checkFailedMsg':
+        return 'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -20399,6 +20908,10 @@ extension on TranslationsId {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Siapkan WARP';
+      case 'config.warpNotConfigured':
+        return 'Belum dikonfigurasi';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -20504,6 +21017,8 @@ extension on TranslationsPtBr {
         return 'Em desenvolvimento';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Fechar';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20760,6 +21275,11 @@ extension on TranslationsPtBr {
         return 'atrasar o tempo limite do teste';
       case 'proxies.delaySemantics.testing':
         return 'atraso: testando...';
+      case 'proxies.delaySemantics.untested':
+        return 'atraso: não testado';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'atraso: ${delay}ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Endereço de IP';
       case 'proxies.ipInfoSemantics.country':
@@ -20783,6 +21303,10 @@ extension on TranslationsPtBr {
             'Teste de latência iniciado para ${count} linhas';
       case 'proxies.delayTestBtn':
         return 'Latência';
+      case 'proxies.delayTimeout':
+        return 'Esgotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conecte primeiro para testar o atraso';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} linhas';
       case 'proxies.manualSelect':
@@ -20957,6 +21481,12 @@ extension on TranslationsPtBr {
         return 'Requer privilégios de administrador no macOS';
       case 'settings.portChangeNotice':
         return 'Alterações de porta exigem reconexão para serem aplicadas';
+      case 'settings.groups.general':
+        return 'Geral';
+      case 'settings.groups.connection':
+        return 'Conexão';
+      case 'settings.groups.privacy':
+        return 'Privacidade';
       case 'about.pageTitle':
         return 'Sobre';
       case 'about.version':
@@ -20973,6 +21503,8 @@ extension on TranslationsPtBr {
         return 'Termos e Condições';
       case 'about.appDescription':
         return 'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licenças de código aberto';
       case 'appUpdate.notAvailableMsg':
         return 'Já usando a versão mais recente';
       case 'appUpdate.dialogTitle':
@@ -20989,6 +21521,8 @@ extension on TranslationsPtBr {
         return 'Mais tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
       case 'tray.dashboard':
         return 'Painel';
       case 'tray.quit':
@@ -21219,6 +21753,10 @@ extension on TranslationsPtBr {
         return 'Máximo de fluxos simultâneos';
       case 'config.enableWarp':
         return 'Habilitar WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Não configurado';
       case 'config.warpDetourMode':
         return 'Modo de desvio';
       case 'config.warpDetourModes.inbound':
@@ -21318,6 +21856,8 @@ extension on TranslationsRu {
         return 'В разработке';
       case 'general.confirm':
         return 'Подтвердить';
+      case 'general.close':
+        return 'Закрыть';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -21574,6 +22114,11 @@ extension on TranslationsRu {
         return 'Тайм-аут при тестировании задержки';
       case 'proxies.delaySemantics.testing':
         return 'Задержка: Тестирование...';
+      case 'proxies.delaySemantics.untested':
+        return 'Задержка: не проверялась';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Задержка: ${delay}мс (прежний результат)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP адрес';
       case 'proxies.ipInfoSemantics.country':
@@ -21597,6 +22142,10 @@ extension on TranslationsRu {
             'Запущена проверка задержки для ${count} линий';
       case 'proxies.delayTestBtn':
         return 'Задержка';
+      case 'proxies.delayTimeout':
+        return 'Тайм-аут';
+      case 'proxies.connectBeforeTest':
+        return 'Сначала подключитесь, чтобы проверить задержку';
       case 'proxies.lineCount':
         return ({required Object count}) => 'Линий: ${count}';
       case 'proxies.manualSelect':
@@ -21771,6 +22320,12 @@ extension on TranslationsRu {
         return 'На macOS требуются права администратора';
       case 'settings.portChangeNotice':
         return 'Изменения порта применяются после переподключения';
+      case 'settings.groups.general':
+        return 'Общие';
+      case 'settings.groups.connection':
+        return 'Подключение';
+      case 'settings.groups.privacy':
+        return 'Конфиденциальность';
       case 'about.pageTitle':
         return 'О программе';
       case 'about.version':
@@ -21787,6 +22342,8 @@ extension on TranslationsRu {
         return 'Условия и положения';
       case 'about.appDescription':
         return 'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+      case 'about.openSourceLicenses':
+        return 'Лицензии открытого ПО';
       case 'appUpdate.notAvailableMsg':
         return 'Установлена последняя версия';
       case 'appUpdate.dialogTitle':
@@ -21803,6 +22360,8 @@ extension on TranslationsRu {
         return 'Позже';
       case 'appUpdate.ignoreBtnTxt':
         return 'Пропустить';
+      case 'appUpdate.checkFailedMsg':
+        return 'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
       case 'tray.dashboard':
         return 'Панель';
       case 'tray.quit':
@@ -22049,6 +22608,10 @@ extension on TranslationsRu {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Настроить WARP';
+      case 'config.warpNotConfigured':
+        return 'Не настроено';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -22132,6 +22695,8 @@ extension on TranslationsTr {
         return 'Geliştirme Aşamasında';
       case 'general.confirm':
         return 'Onayla';
+      case 'general.close':
+        return 'Kapat';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -22394,6 +22959,11 @@ extension on TranslationsTr {
         return 'Gecikme Testi Zaman Aşımı';
       case 'proxies.delaySemantics.testing':
         return 'Gecikme: Test ediliyor...';
+      case 'proxies.delaySemantics.untested':
+        return 'Gecikme: Test edilmedi';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Gecikme: ${delay} ms (önceki sonuç)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Adresi';
       case 'proxies.ipInfoSemantics.country':
@@ -22411,6 +22981,10 @@ extension on TranslationsTr {
             '${count} hat için gecikme testi başlatıldı';
       case 'proxies.delayTestBtn':
         return 'Gecikme';
+      case 'proxies.delayTimeout':
+        return 'Zaman aşımı';
+      case 'proxies.connectBeforeTest':
+        return 'Gecikmeyi test etmek için önce bağlanın';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} hat';
       case 'proxies.manualSelect':
@@ -22585,6 +23159,12 @@ extension on TranslationsTr {
         return 'macOS\'ta yönetici ayrıcalıkları gerekir';
       case 'settings.portChangeNotice':
         return 'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+      case 'settings.groups.general':
+        return 'Genel';
+      case 'settings.groups.connection':
+        return 'Bağlantı';
+      case 'settings.groups.privacy':
+        return 'Gizlilik';
       case 'about.pageTitle':
         return 'Hakkında';
       case 'about.version':
@@ -22601,6 +23181,8 @@ extension on TranslationsTr {
         return 'Şartlar ve koşullar';
       case 'about.appDescription':
         return 'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+      case 'about.openSourceLicenses':
+        return 'Açık kaynak lisansları';
       case 'appUpdate.notAvailableMsg':
         return ' En son sürümü kullanıyorsunuz';
       case 'appUpdate.dialogTitle':
@@ -22617,6 +23199,8 @@ extension on TranslationsTr {
         return 'Daha sonra';
       case 'appUpdate.ignoreBtnTxt':
         return 'Görmezden gel';
+      case 'appUpdate.checkFailedMsg':
+        return 'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
       case 'tray.dashboard':
         return 'Gösterge Paneli';
       case 'tray.quit':
@@ -22841,6 +23425,10 @@ extension on TranslationsTr {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'WARP\'ı ayarla';
+      case 'config.warpNotConfigured':
+        return 'Yapılandırılmadı';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -22946,6 +23534,8 @@ extension on TranslationsZhCn {
         return '功能开发中';
       case 'general.confirm':
         return '确认';
+      case 'general.close':
+        return '关闭';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -23206,6 +23796,10 @@ extension on TranslationsZhCn {
         return '延迟测试超时';
       case 'proxies.delaySemantics.testing':
         return '正在测试延迟';
+      case 'proxies.delaySemantics.untested':
+        return '延迟: 未测试';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延迟: ${delay}ms（历史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -23222,6 +23816,10 @@ extension on TranslationsZhCn {
         return ({required Object count}) => '已开始测试当前订阅的 ${count} 个节点';
       case 'proxies.delayTestBtn':
         return '测速';
+      case 'proxies.delayTimeout':
+        return '超时';
+      case 'proxies.connectBeforeTest':
+        return '请连接后测速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 个节点';
       case 'proxies.manualSelect':
@@ -23396,6 +23994,12 @@ extension on TranslationsZhCn {
         return 'macOS 需要管理员权限';
       case 'settings.portChangeNotice':
         return '端口修改需要重启连接生效';
+      case 'settings.groups.general':
+        return '通用';
+      case 'settings.groups.connection':
+        return '连接';
+      case 'settings.groups.privacy':
+        return '隐私';
       case 'about.pageTitle':
         return '关于';
       case 'about.version':
@@ -23412,6 +24016,8 @@ extension on TranslationsZhCn {
         return '条款和条件';
       case 'about.appDescription':
         return '基于 sing-box 核心的跨平台代理客户端';
+      case 'about.openSourceLicenses':
+        return '开源许可';
       case 'appUpdate.notAvailableMsg':
         return '已是最新版本';
       case 'appUpdate.dialogTitle':
@@ -23428,6 +24034,8 @@ extension on TranslationsZhCn {
         return '以后再说';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '检查更新失败，请检查网络后重试';
       case 'tray.dashboard':
         return '仪表板';
       case 'tray.quit':
@@ -23679,6 +24287,10 @@ extension on TranslationsZhCn {
         return 'Mux 最大并发数';
       case 'config.enableWarp':
         return '启用 WARP';
+      case 'config.setUpWarp':
+        return '设置 WARP';
+      case 'config.warpNotConfigured':
+        return '未配置';
       case 'config.warpDetourMode':
         return '链式线路';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -23756,6 +24368,8 @@ extension on TranslationsZhTw {
         return '功能開發中';
       case 'general.confirm':
         return '確認';
+      case 'general.close':
+        return '關閉';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -24010,6 +24624,10 @@ extension on TranslationsZhTw {
         return '延遲測試超時';
       case 'proxies.delaySemantics.testing':
         return '正在測試延遲';
+      case 'proxies.delaySemantics.untested':
+        return '延遲： 未測試';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延遲： ${delay}ms（歷史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -24032,6 +24650,10 @@ extension on TranslationsZhTw {
         return ({required Object count}) => '已開始檢測 ${count} 條線路的延遲';
       case 'proxies.delayTestBtn':
         return '延遲';
+      case 'proxies.delayTimeout':
+        return '逾時';
+      case 'proxies.connectBeforeTest':
+        return '請連線後再測速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 條線路';
       case 'proxies.manualSelect':
@@ -24206,6 +24828,12 @@ extension on TranslationsZhTw {
         return 'macOS 上需要管理員權限';
       case 'settings.portChangeNotice':
         return '連接埠變更需要重新連線才會生效';
+      case 'settings.groups.general':
+        return '一般';
+      case 'settings.groups.connection':
+        return '連線';
+      case 'settings.groups.privacy':
+        return '隱私';
       case 'about.pageTitle':
         return '關於';
       case 'about.version':
@@ -24222,6 +24850,8 @@ extension on TranslationsZhTw {
         return '條款與條件';
       case 'about.appDescription':
         return '基於 sing-box 核心的跨平台代理用戶端';
+      case 'about.openSourceLicenses':
+        return '開放原始碼授權';
       case 'appUpdate.notAvailableMsg':
         return '已經是最新版本';
       case 'appUpdate.dialogTitle':
@@ -24238,6 +24868,8 @@ extension on TranslationsZhTw {
         return '稍後再說';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '檢查更新失敗，請檢查網路後再試';
       case 'tray.dashboard':
         return '儀表板';
       case 'tray.quit':
@@ -24483,6 +25115,10 @@ extension on TranslationsZhTw {
         return '最大並發數';
       case 'config.enableWarp':
         return '啟用 WARP';
+      case 'config.setUpWarp':
+        return '設定 WARP';
+      case 'config.warpNotConfigured':
+        return '未設定';
       case 'config.warpDetourMode':
         return '鏈式線路';
       case 'config.warpDetourModes.proxyOverWarp':

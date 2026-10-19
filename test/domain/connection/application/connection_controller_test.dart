@@ -1263,6 +1263,135 @@ void main() {
     );
   });
 
+  group('确认之后切换订阅：内核上的手选始终跟随当前订阅', () {
+    // select 组当前选中 [selected] 的运行时分组（出口探测据此解析生效节点）。
+    List<OutboundGroup> runtimeSelecting(String selected) => [
+      OutboundGroup(
+        tag: 'select',
+        type: 'selector',
+        selected: selected,
+        items: const [
+          OutboundProxy(tag: 'auto', type: 'urltest'),
+          OutboundProxy(tag: 'hk', type: 'vless'),
+          OutboundProxy(tag: 'sg', type: 'vless'),
+        ],
+      ),
+      const OutboundGroup(
+        tag: 'auto',
+        type: 'urltest',
+        selected: 'sg',
+        items: [
+          OutboundProxy(tag: 'hk', type: 'vless'),
+          OutboundProxy(tag: 'sg', type: 'vless'),
+        ],
+      ),
+    ];
+
+    /// 连上 attempt 1，按 p1 重放 hk 并确认，出口探测已开始。返回 on 请求。
+    DesiredRequest connectAndAck(_Env e) {
+      e.container.listen(egressIpProbeProvider, (_, _) {});
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      final r1 = e.requests.single;
+      e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged, [1]);
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('hk')); // 内核报出新选择
+      expect(e.egressFetches, 0, reason: '确认快照到达之前不探测');
+      e.kernelStarted(r1, attempt: 1, withGroups: false); // replay=false
+      expect(e.egressFetches, 1);
+      return r1;
+    }
+
+    const prefs = {
+      'proxy_selection_p1': '{"select":"hk"}',
+      'proxy_selection_p2': '{"select":"sg"}',
+    };
+
+    _sim('已确认后切到 revision 相同的订阅 B：同一 attempt 按 B 的手选重放，生效节点变了出口重新探测', (e) {
+      connectAndAck(e);
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      final r2 = e.requests.last;
+      expect(e.port.selectCalls, hasLength(1), reason: '重新应用落定之前不重放');
+      e.kernelStarted(r2, attempt: 1, withGroups: false); // revision 相同：同一实例
+      e.settle();
+
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 1),
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged, [1, 1], reason: '同一 attempt 再确认一次是无操作');
+
+      final fetches = e.egressFetches;
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
+      expect(e.egressFetches, fetches + 1, reason: '生效节点 hk → sg：出口重新探测');
+    }, prefs: prefs);
+
+    _sim('已确认后切到 revision 不同的订阅：只由新 attempt 重放一次，旧 attempt 不再重放', (e) {
+      connectAndAck(e);
+      final base = e.port.selectCalls.length;
+
+      e.launcher.revision = 2;
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      final r2 = e.requests.last;
+      expect(r2.launch!.configRevision, 2);
+      e.kernelStarted(r2, attempt: 2, replay: true, withGroups: false);
+      e.pushGroups(attempt: 2, groups: runtimeSelecting('auto'));
+      e.fa.elapse(const Duration(seconds: 6));
+
+      expect(e.port.selectCalls.sublist(base), [
+        (group: 'select', tag: 'sg', expectedAttempt: 2),
+      ]);
+      expect(e.port.acknowledged, [1, 2]);
+    }, prefs: prefs);
+
+    _sim('已确认后快速切到 B 再切回 A：收敛到 A，内核最终选择是 hk', (e) {
+      connectAndAck(e);
+      final base = e.port.selectCalls.length;
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.fa.elapse(const Duration(seconds: 6));
+
+      final after = e.port.selectCalls.sublist(base);
+      expect(after.where((c) => c.tag == 'sg'), isEmpty, reason: '没有按 B 重放');
+      expect(e.port.selectCalls.last.tag, 'hk');
+    }, prefs: prefs);
+
+    _sim('已确认后在 B 上重放完成再切回 A：同一 attempt 再按 A 重放，最终 hk', (e) {
+      connectAndAck(e);
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
+      expect(e.port.selectCalls.last.tag, 'sg');
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
+
+      expect(e.port.selectCalls.last, (
+        group: 'select',
+        tag: 'hk',
+        expectedAttempt: 1,
+      ));
+      expect(e.port.acknowledged, [1, 1, 1]);
+    }, prefs: prefs);
+  });
+
   group('失联与超时（Tick 由控制器按 nextWake 安排）', () {
     _sim('始终没有首个快照：10 s 后 nativeUnresponsive，按钮可点', (e) {
       e.fa.elapse(const Duration(seconds: 9, milliseconds: 900));

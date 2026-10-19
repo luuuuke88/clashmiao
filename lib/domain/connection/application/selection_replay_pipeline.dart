@@ -96,6 +96,11 @@ class SelectionReplayPipeline {
   final bool Function() _ownerUnsettled;
   final Duration _groupsWait;
 
+  /// 这条流水线捕获的归属（[run] 等到订阅就绪之后才有）。确认后它就是「手选
+  /// 已按谁应用到这个实例」。
+  ReplayOwner? get owner => _owner;
+  ReplayOwner? _owner;
+
   Future<ReplayPipelineOutcome> run(String epoch, int attempt) async {
     // 先等激活订阅与选择存储就绪——内核快照可能先于订阅加载到达，此时存储还是
     // 空的，直接确认等于一次「空重放」。
@@ -115,7 +120,7 @@ class SelectionReplayPipeline {
     // 激活订阅在第一个 await 之前就切换了也无妨：归属在这里才捕获。
 
     final profile = _ref.read(activeProfileProvider).valueOrNull;
-    final ReplayOwner owner = (
+    final ReplayOwner owner = _owner = (
       profileId: profile?.id,
       profileInc: profile?.inc,
       epoch: epoch,

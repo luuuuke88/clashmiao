@@ -532,10 +532,95 @@ import 'package:clashmiao/core/storage/stub.dart'
       );
     });
 
-    test('相对 URI 解析后跳出 lib/：不当作项目内依赖', () {
+    test('反斜杠写法 core → domain：被报（不再漏）', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/x.dart':
+              r"export r'..\..\domain\profile\model\profile_entity.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'core/storage/x.dart');
+      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.hint, contains('请改用 package:clashmiao/ 导入'));
+      expect(bad.single.hint, contains(r'..\..\domain'));
+    });
+
+    test('百分号转义 %2e%2e 写法：被报', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/x.dart':
+              "export '%2e%2e/%2e%2e/domain/profile/model/m.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.to, contains('%2e%2e'));
+    });
+
+    test('多余的 .. 越出 lib/：被报，不是跳过', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/x.dart':
+              "export '../../../domain/profile/model/m.dart';",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.rule, '非规范相对 URI');
+      expect(bad.single.hint, contains('../../../domain/profile/model/m.dart'));
+    });
+
+    test('query / fragment / 空段 / 绝对路径写法：被报', () {
+      for (final uri in ['a.dart?x=1', 'a.dart#f', 'b//a.dart', '/a.dart']) {
+        final bad = checkLayering(
+          scan({'core/x.dart': "export '$uri';"}),
+          allowlist: const [],
+        );
+        expect(bad, hasLength(1), reason: uri);
+      }
+    });
+
+    test('R1：模型引用 ../../../../core/u.dart 越出 lib/：被报，不是跳过', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart': "export '../../../../core/u.dart';",
+        }),
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'domain/profile/model/m.dart');
+      expect(bad.single.to, '../../../../core/u.dart');
+      expect(bad.single.hint, contains('请改用 package:clashmiao/ 导入'));
+    });
+
+    test('R1：传递链中途出现反斜杠写法：被报', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart':
+              "export 'package:clashmiao/core/u.dart';",
+          'core/u.dart': r"export r'..\core\v.dart';",
+        }),
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.hint, contains('core/u.dart'));
+    });
+
+    test('非规范 URI 不会让 staleEntries 崩溃，也不会让白名单条目显得「在用」', () {
+      final uris = scan({'features/a/x.dart': r"import r'..\b\y.dart';"});
+      expect(
+        staleEntries(uris, const [
+          AllowedEdge('features/a/x.dart', 'features/b/y.dart', '反斜杠'),
+        ]),
+        hasLength(1),
+      );
+    });
+
+    test('app / main 里的非规范 URI 不受层规则约束（与 app 可依赖任意层一致）', () {
       expect(
         checkLayering(
-          scan({'core/a.dart': "export '../../outside.dart';"}),
+          scan({'app/x.dart': r"export r'..\core\a.dart';"}),
           allowlist: const [],
         ),
         isEmpty,

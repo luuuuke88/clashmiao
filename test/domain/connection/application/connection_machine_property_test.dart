@@ -4,6 +4,7 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/domain/connection/application/connection_machine.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/machine_harness.dart';
@@ -146,7 +147,67 @@ const _oncePerAttempt = {
   SideEffectKind.hapticMedium,
   SideEffectKind.replaySelections,
   SideEffectKind.clearSystemProxyDirty,
+  SideEffectKind.reportFailure,
 };
+
+/// 机器状态里所有对外可见的跨事件历史，序列化成可比较的字符串。
+String _describe(MachineState s) {
+  final reasons = s.reasonBySeq.entries.toList()
+    ..sort((a, b) => a.key.compareTo(b.key));
+  final effects =
+      s.executedEffects.map((k) => '${k.$1}/${k.$2}/${k.$3.name}').toList()
+        ..sort();
+  return [
+    'snap=${s.snapshot}',
+    'link=${s.link.name}',
+    'nextSeq=${s.nextSeq}',
+    'requests=${s.requests}',
+    'reasons=${reasons.map((e) => '${e.key}:${e.value.name}').join(',')}',
+    'effects=${effects.join(',')}',
+    'startedAt=${s.startedAt}',
+    'attached=${s.attached}',
+    'unresponsive=${s.nativeUnresponsive}',
+    'lostSince=${s.lostSince}',
+    'failureSeq=${s.failureSeq}',
+    'awaitingResync=${s.awaitingResync}',
+  ].join(' ; ');
+}
+
+/// 契约预言机里的本地请求：只从输入事件与输出动作重建，不读机器的请求表。
+final class _Local {
+  _Local(this.desired);
+
+  final Desired desired;
+  int? seq;
+  int? rev;
+}
+
+/// 独立复述 spec §5 phase 表（含本地请求）。
+ConnectionPhase _oraclePhase(KernelSnapshot? snap, Map<int, _Local> local) {
+  if (snap == null) return ConnectionPhase.resolving;
+  _Local? pending;
+  for (final r in local.values) {
+    final seq = r.seq;
+    if (seq == null || seq > snap.appliedSeq) pending = r;
+  }
+  if (pending != null) {
+    return pending.desired == Desired.on
+        ? ConnectionPhase.connecting
+        : ConnectionPhase.disconnecting;
+  }
+  if (snap.desired == Desired.on) {
+    if (snap.status != KernelStatus.started) return ConnectionPhase.connecting;
+    final configPending = local.values.any(
+      (r) => r.desired == Desired.on && r.rev != snap.activeConfigRevision,
+    );
+    return configPending
+        ? ConnectionPhase.reconnecting
+        : ConnectionPhase.connected;
+  }
+  return snap.status == KernelStatus.stopped
+      ? ConnectionPhase.disconnected
+      : ConnectionPhase.disconnecting;
+}
 
 void main() {
   group('随机快照/事件序列：安全性质（固定种子，500 条）', () {
@@ -155,20 +216,27 @@ void main() {
         final events = _generate(seed);
         final ctx = 'seed=$seed';
 
-        // 第一遍：检查性质；第二遍：同样输入必须得到完全相同的输出（确定性）。
-        final firstViews = <String>[];
-        final firstActions = <String>[];
+        // 第一遍：检查性质；第二遍：同样输入必须得到完全相同的输出（确定性）——
+        // 视图、动作（值相等 + 全字段 toString）、nextWake 与全部对外历史状态。
+        final firstViews = <ConnectionSnapshot>[];
+        final firstActions = <List<MachineAction>>[];
+        final firstWakes = <DateTime?>[];
+        final firstStates = <String>[];
         for (var pass = 0; pass < 2; pass++) {
           var state = MachineState.initial(_t0);
           final raised = <int>{};
           final settled = <int>{};
           final effectKeys = <EffectKey>{};
           final lastSeqByEpoch = <String, int>{};
+          final local = <int, _Local>{};
+          KernelSnapshot? oracleSnap;
+          var gated = false;
           var failureSeq = 0;
           var sawSnapshot = false;
 
           for (final (i, e) in events.indexed) {
             final where = '$ctx step=$i ${e.runtimeType}';
+            final wasUnresponsive = state.nativeUnresponsive;
             final t = const ConnectionMachine().reduce(state, e);
             state = t.state;
             final v = t.snapshot;
@@ -176,17 +244,75 @@ void main() {
             if (state.snapshot != null) sawSnapshot = true;
 
             if (pass == 0) {
-              firstViews.add(v.toString());
-              firstActions.add(t.actions.map((a) => a.toString()).join('|'));
+              firstViews.add(v);
+              firstActions.add(t.actions);
+              firstWakes.add(t.nextWake);
+              firstStates.add(_describe(state));
             } else {
-              expect(v.toString(), firstViews[i], reason: '$where 视图不确定');
+              expect(v, firstViews[i], reason: '$where 视图不确定');
+              expect(t.actions, firstActions[i], reason: '$where 动作不确定');
               expect(
-                t.actions.map((a) => a.toString()).join('|'),
-                firstActions[i],
-                reason: '$where 动作不确定',
+                t.actions.map((a) => a.toString()).toList(),
+                firstActions[i].map((a) => a.toString()).toList(),
+                reason: '$where 动作描述不确定',
               );
+              expect(t.nextWake, firstWakes[i], reason: '$where nextWake 不确定');
+              expect(_describe(state), firstStates[i], reason: '$where 状态不确定');
               continue;
             }
+
+            // 契约预言机：快照过滤 + 本地请求表都由输入/输出独立重建。
+            if (e is SnapshotReceived) {
+              final prev = oracleSnap;
+              if (prev == null ||
+                  prev.epoch != e.snapshot.epoch ||
+                  e.snapshot.version > prev.version) {
+                oracleSnap = e.snapshot;
+              }
+            }
+            if (e is UserIntent && !local.containsKey(e.id)) {
+              local[e.id] = _Local(e.desired);
+            }
+            if (e is ReceiptReceived && !e.receipt.accepted) {
+              final r = local[e.id];
+              if (r != null && r.seq != null) r.seq = null;
+            }
+            for (final a in t.actions) {
+              switch (a) {
+                case SendRequest():
+                  local[a.id]
+                    ?..seq = a.request.seq
+                    ..rev = a.request.launch?.configRevision;
+                case SettleRequest():
+                  local.remove(a.id);
+                default:
+                  break;
+              }
+            }
+            expect(
+              v.phase,
+              _oraclePhase(oracleSnap, local),
+              reason: '$where 与 §5 契约预言机不一致 snap=$oracleSnap',
+            );
+            expect(
+              state.requests.map((r) => r.id).toList(),
+              local.keys.toList(),
+              reason: '$where 请求表与动作流不一致',
+            );
+
+            // 失联 / 进入无响应之后，直到下一次重同步结果到达前，不得发送。
+            final becameUnresponsive =
+                !wasUnresponsive && state.nativeUnresponsive;
+            if (e is LinkChanged && e.link == KernelLink.lost) gated = true;
+            if (e is SnapshotReceived && e.fromResync) gated = false;
+            if (gated || becameUnresponsive) {
+              expect(
+                t.actions.whereType<SendRequest>(),
+                isEmpty,
+                reason: '$where 失联后未重同步就发送',
+              );
+            }
+            if (becameUnresponsive) gated = true;
 
             // 终结：只对发起过的意图，且每个意图至多一次。
             for (final a in t.actions.whereType<SettleRequest>()) {
@@ -327,8 +453,6 @@ void main() {
         var state = MachineState.initial(_t0);
         var now = _t0;
         var version = 0;
-        var established = false;
-        KernelSnapshot? latest;
         for (var i = 0; i < 40; i++) {
           now = now.add(Duration(milliseconds: rnd.nextInt(800)));
           version++;
@@ -340,32 +464,17 @@ void main() {
             source: DesiredSource.values[rnd.nextInt(6)],
             appliedSeq: rnd.nextInt(3),
           );
-          final prev = latest;
-          latest = s;
           final t = const ConnectionMachine().reduce(
             state,
             SnapshotReceived(s, now: now),
           );
           state = t.state;
-          // 预言机：独立复述 spec §5（无本地请求、无失败）。
-          if (s.status == KernelStatus.started && prev == null) {
-            established = true;
-          }
-          if (s.status == KernelStatus.started &&
-              s.desired == Desired.on &&
-              prev != null &&
-              !established) {
-            established = true;
-          }
-          if (s.status == KernelStatus.stopped && s.desired == Desired.off) {
-            established = false;
-          }
+          // 预言机：独立复述 spec §5（无本地请求）。startedAt / attached 不影响
+          // phase：desired=on 而未 started 一律 connecting。
           final expected = s.desired == Desired.on
               ? (s.status == KernelStatus.started
                     ? ConnectionPhase.connected
-                    : (established
-                          ? ConnectionPhase.reconnecting
-                          : ConnectionPhase.connecting))
+                    : ConnectionPhase.connecting)
               : (s.status == KernelStatus.stopped
                     ? ConnectionPhase.disconnected
                     : ConnectionPhase.disconnecting);

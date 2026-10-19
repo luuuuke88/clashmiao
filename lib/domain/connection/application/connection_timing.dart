@@ -16,6 +16,17 @@ abstract final class ConnectionTiming {
   /// 同一意图因 stale / wrongEpoch 回执最多重发的次数，防止与原生互相拉扯。
   static const maxResends = 3;
 
+  /// 发送被「先重新同步」挡住（失联/无响应之后，或 wrongEpoch 回执之后）时，单个
+  /// 意图等待有效重同步结果的上限；到期仍未放行 → failed(nativeUnresponsive)。
+  static const resyncWaitTimeout = Duration(seconds: 10);
+
+  /// 同一次等待中最多发起的重新同步次数（含首次）；用尽仍未放行 → failed。
+  static const maxResyncAttempts = 3;
+
+  /// 一次重新同步失败（current() 抛错、宽限到期、取回的仍是旧纪元）后，下一次
+  /// 重试前的间隔。
+  static const resyncRetryDelay = Duration(seconds: 1);
+
   /// 界面加载指示延迟出现的时间（§10.9：120–150 ms 之间），防止闪烁。
   static const loadingIndicatorDelay = Duration(milliseconds: 140);
 }

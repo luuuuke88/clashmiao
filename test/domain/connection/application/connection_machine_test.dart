@@ -151,12 +151,44 @@ void main() {
       expect(h.view.phase, ConnectionPhase.connected);
     });
 
-    test('4a. started 但新配置请求未确认 → reconnecting', () {
+    test('2d. 未确认的 on 请求优先于快照：started 时也显示 connecting（新配置请求）', () {
       final h = _connected(rev: 1);
+      final t0 = h.view.startedAt;
       h.intent(2, _on, reason: RequestReason.applyConfig);
-      expect(h.view.phase, ConnectionPhase.reconnecting);
+      expect(h.view.phase, ConnectionPhase.connecting);
       h.prepared(2, revision: 2);
-      expect(h.view.phase, ConnectionPhase.reconnecting);
+      expect(h.view.phase, ConnectionPhase.connecting);
+      h.receipt(2, MachineHarness.accepted(2));
+      expect(h.view.phase, ConnectionPhase.connecting, reason: '受理 ≠ 确认');
+      expect(h.view.startedAt, t0, reason: 'startedAt 的保留与 phase 无关');
+    });
+
+    test('2e. 未确认的 on 请求即便 revision 与运行实例相同，也显示 connecting', () {
+      final h = _connected(rev: 4);
+      h.intent(2, _on, reason: RequestReason.applyConfig);
+      h.prepared(2, revision: 4);
+      h.receipt(2, MachineHarness.accepted(2));
+      expect(h.view.phase, ConnectionPhase.connecting);
+      h.snap(
+        _s(
+          version: 3,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 2,
+          rev: 4,
+        ),
+      );
+      expect(h.view.phase, ConnectionPhase.connected);
+      expect(h.outcomes[2], [const RequestSucceeded()]);
+    });
+
+    test('2f. started 时未确认的 off 请求 → disconnecting（与 revision 无关）', () {
+      final h = _connected(rev: 4);
+      h.intent(2, _off);
+      h.receipt(2, MachineHarness.accepted(2));
+      expect(h.view.phase, ConnectionPhase.disconnecting);
     });
 
     test('4b. 新配置已被受理、但运行实例仍是旧 revision → reconnecting，换上后 connected', () {
@@ -190,28 +222,56 @@ void main() {
       expect(h.view.phase, ConnectionPhase.connected);
     });
 
-    test(
-      '4c. 已连接过的会话重载中间态（starting/stopping/stopped，desired 仍 on）→ reconnecting',
-      () {
-        final h = _connected();
-        for (final (i, st) in [_stopping, _stopped, _starting].indexed) {
-          h.snap(
-            _s(
-              version: 3 + i,
-              status: st,
-              attempt: 2,
-              desired: _on,
-              source: DesiredSource.app,
-              appliedSeq: 1,
-              rev: 1,
-            ),
-          );
-          expect(h.view.phase, ConnectionPhase.reconnecting, reason: st.name);
-        }
-      },
-    );
+    test('4c. 已连接过的会话重载中间态（status≠started，desired 仍 on）→ connecting，'
+        'startedAt 保留', () {
+      final h = _connected();
+      final t0 = h.view.startedAt;
+      expect(t0, isNotNull);
+      for (final (i, st) in [_stopping, _stopped, _starting].indexed) {
+        h.snap(
+          _s(
+            version: 3 + i,
+            status: st,
+            attempt: 2,
+            desired: _on,
+            source: DesiredSource.app,
+            appliedSeq: 1,
+            rev: 1,
+          ),
+        );
+        expect(h.view.phase, ConnectionPhase.connecting, reason: st.name);
+        expect(h.view.startedAt, t0, reason: st.name);
+      }
+    });
 
-    test('5. desired=on 其他（未建立过会话）→ connecting', () {
+    test('4d. attached 会话的重载中间态同样是 connecting（不因已建立而改为 reconnecting）', () {
+      final h = MachineHarness()
+        ..snap(
+          _s(
+            status: _started,
+            attempt: 4,
+            desired: _on,
+            source: DesiredSource.app,
+            appliedSeq: 3,
+            rev: 2,
+          ),
+        );
+      expect(h.state.attached, isTrue);
+      h.snap(
+        _s(
+          version: 2,
+          status: _starting,
+          attempt: 5,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 3,
+          rev: 2,
+        ),
+      );
+      expect(h.view.phase, ConnectionPhase.connecting);
+    });
+
+    test('5. desired=on 其他 → connecting（无论是否建立过会话）', () {
       for (final st in [_stopped, _starting, _stopping]) {
         final h = MachineHarness()
           ..snap(
@@ -837,6 +897,65 @@ void main() {
       expect(attached.effectsOf(SideEffectKind.reportFailure), isEmpty);
     });
 
+    test('reportFailure 按 (epoch, attempt) 去重：同一 attempt 先后出现不同的致命失败只上报一次', () {
+      final h = MachineHarness()..snap(_s());
+      h.snap(
+        _s(
+          version: 2,
+          attempt: 2,
+          failure: _kf(KernelFailureCode.createService, attempt: 2, seq: 1),
+        ),
+      );
+      h.snap(
+        _s(
+          version: 3,
+          status: _stopping,
+          attempt: 2,
+          failure: _kf(KernelFailureCode.kernelUnresponsive, attempt: 2),
+        ),
+      );
+      final reports = h.effectsOf(SideEffectKind.reportFailure).toList();
+      expect(reports, hasLength(1));
+      expect(reports.single.attempt, 2);
+      expect(reports.single.epoch, 'e1');
+      expect(
+        reports.single.failure,
+        const KernelStartFailed(KernelFailureCode.createService, ''),
+      );
+      expect(
+        h.state.executedEffects,
+        contains(('e1', 2, SideEffectKind.reportFailure)),
+      );
+      // 下一个 attempt 的致命失败照常上报。
+      h.snap(
+        _s(
+          version: 4,
+          attempt: 3,
+          failure: _kf(KernelFailureCode.startService, attempt: 3),
+        ),
+      );
+      expect(h.effectsOf(SideEffectKind.reportFailure), hasLength(2));
+    });
+
+    test('冷启动已有的致命失败占用其 (epoch, attempt)：同 attempt 的后续致命失败不再上报', () {
+      final h = MachineHarness()
+        ..snap(
+          _s(
+            attempt: 3,
+            failure: _kf(KernelFailureCode.startService, attempt: 3),
+          ),
+        );
+      h.snap(
+        _s(
+          version: 2,
+          status: _stopping,
+          attempt: 3,
+          failure: _kf(KernelFailureCode.kernelUnresponsive, attempt: 3),
+        ),
+      );
+      expect(h.effectsOf(SideEffectKind.reportFailure), isEmpty);
+    });
+
     test('failureSeq：新失败递增、重复快照与冷启动旧失败不递增', () {
       final h = MachineHarness()
         ..snap(
@@ -1130,14 +1249,44 @@ void main() {
       expect(h.outcomes[1], [const RequestSuperseded()]);
     });
 
-    test('superseded：非最新请求的 RPC 失败/stale 回执 → superseded，不留失败', () {
-      final h = MachineHarness()..snap(_s());
-      h.intent(1, _on);
-      h.prepared(1);
+    test('failed：非最新请求的 RPC 失败仍是 failed（更新的请求尚未被受理），不展示失败', () {
+      // disconnect 正在 RPC 中，新的 connect 还在准备；旧 disconnect 的 RPC 失败。
+      final h = _connected();
       h.intent(2, _off);
+      expect(h.sends.last.id, 2);
+      h.intent(3, _on);
+      h.sendFailed(2, const PlatformFailure('timeout', ''));
+      expect(h.outcomes[2], [
+        const RequestFailed(PlatformFailure('timeout', '')),
+      ]);
+      expect(h.view.failure, isNull, reason: '展示按最新意图：新的 connect 仍未确认');
+      expect(h.view.phase, ConnectionPhase.connecting);
+      // 新 connect 随后准备失败：只展示它自己的失败。
+      h.prepareFailed(3, const NoActiveProfile());
+      expect(h.outcomes[3], [const RequestFailed(NoActiveProfile())]);
+      expect(h.view.failure, const NoActiveProfile());
+    });
+
+    test('superseded：非最新请求 RPC 失败、且更新的请求已被受理 → superseded', () {
+      final h = MachineHarness()..snap(_s());
+      h.intent(1, _off);
+      h.intent(2, _off);
+      expect(h.sends.map((s) => s.id), [1, 2]);
+      h.receipt(2, MachineHarness.accepted(2));
       h.sendFailed(1, const PlatformFailure('timeout', ''));
       expect(h.outcomes[1], [const RequestSuperseded()]);
       expect(h.view.failure, isNull);
+    });
+
+    test('非最新请求的 wrongEpoch 回执 → interrupted（纪元已变，不能再被确认）', () {
+      final h = MachineHarness()..snap(_s());
+      h.intent(1, _off);
+      h.intent(2, _off);
+      h.receipt(
+        1,
+        MachineHarness.rejected(RequestRejection.wrongEpoch, epoch: 'e2'),
+      );
+      expect(h.outcomes[1], [const RequestInterrupted()]);
     });
 
     test('interrupted：纪元变化时已发送、未终结的请求被中断，并重置基线', () {
@@ -1370,12 +1519,29 @@ void main() {
       expect(h.view.failure, const NativeUnresponsive());
       expect(h.view.phase, ConnectionPhase.connected, reason: 'phase 按快照显示');
       expect(h.view.failureSeq, 1);
-      // 点击 = 立即重新同步后重发最新意图。
+      // 点击 = 立即重新同步，**有效的重同步快照到达后**才为最新意图分配 seq 并发送。
       final before = h.resyncs;
+      final sendsBefore = h.sends.length;
       h.intent(3, _off);
       expect(h.resyncs, before + 1);
-      expect(h.sends.last.id, 3);
+      expect(h.sends.length, sendsBefore, reason: '重同步结果到达前不发送');
       expect(h.view.failure, isNull);
+      expect(h.view.phase, ConnectionPhase.disconnecting);
+      h.snap(
+        _s(
+          version: 3,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 2,
+          rev: 1,
+        ),
+        fromResync: true,
+      );
+      expect(h.sends.length, sendsBefore + 1);
+      expect(h.sends.last.id, 3);
+      expect(h.sends.last.request.seq, 3, reason: '按重同步的新基线分配');
     });
 
     test('重新同步本身失败 / 无响应：宽限期后同样判 nativeUnresponsive', () {
@@ -1468,9 +1634,23 @@ void main() {
       h.advance(const Duration(seconds: 10));
       expect(h.view.failure, const NativeUnresponsive());
       final before = h.resyncs;
+      final sendsBefore = h.sends.length;
       h.intent(2, _off);
       expect(h.resyncs, before + 1);
       expect(h.view.failure, isNull);
+      expect(h.sends.length, sendsBefore, reason: '重同步结果到达前不发送');
+      h.snap(
+        _s(
+          version: 2,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 1,
+          rev: 1,
+        ),
+        fromResync: true,
+      );
       expect(h.sends.last.id, 2);
       h.receipt(2, MachineHarness.accepted(2));
       h.snap(
@@ -1505,6 +1685,274 @@ void main() {
       h.link(KernelLink.lost);
       h.advance(const Duration(seconds: 10));
       expect(h.view.failure, const NativeUnresponsive());
+    });
+  });
+
+  group('失联之后先重同步再发送（spec §10.8）', () {
+    test('链路 lost 期间点击：只发 Resync，不发 SendRequest；重同步快照到达后才发送', () {
+      final h = _connected();
+      h.link(KernelLink.lost);
+      final sendsBefore = h.sends.length;
+      h.intent(2, _off);
+      expect(h.lastActions.whereType<Resync>(), hasLength(1));
+      expect(h.lastActions.whereType<SendRequest>(), isEmpty);
+      expect(h.sends.length, sendsBefore);
+      expect(h.state.awaitingResync, isTrue);
+      expect(h.view.phase, ConnectionPhase.disconnecting);
+      // watch 推来的普通快照不算重同步结果。
+      h.snap(
+        _s(
+          version: 3,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 1,
+          rev: 1,
+        ),
+      );
+      expect(h.sends.length, sendsBefore);
+      h.snap(
+        _s(
+          version: 4,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 5,
+          rev: 1,
+        ),
+        fromResync: true,
+      );
+      expect(h.state.awaitingResync, isFalse);
+      expect(h.sends.length, sendsBefore + 1);
+      expect(h.sends.last.id, 2);
+      expect(h.sends.last.request.seq, 6, reason: '基线 = 重同步快照 appliedSeq + 1');
+    });
+
+    test('失联后点击，重同步返回新纪元：意图不被中断，按新纪元基线发送', () {
+      final h = _connected();
+      h.link(KernelLink.lost);
+      h.intent(2, _off);
+      expect(h.lastActions.whereType<SendRequest>(), isEmpty);
+      h.snap(_s(epoch: 'e2', version: 1, appliedSeq: 0), fromResync: true);
+      expect(h.outcomes[2], isNull, reason: '从未发出的意图不会因纪元变化中断');
+      expect(h.sends.last.id, 2);
+      expect(h.sends.last.request.epoch, 'e2');
+      expect(h.sends.last.request.seq, 1);
+      h.receipt(2, MachineHarness.accepted(1, epoch: 'e2'));
+      h.snap(
+        _s(epoch: 'e2', version: 2, source: DesiredSource.app, appliedSeq: 1),
+      );
+      expect(h.outcomes[2], [const RequestSucceeded()]);
+    });
+
+    test('on 意图同样等待：准备完成后先重同步，结果到达后才置脏标记并发送', () {
+      final h = MachineHarness()..snap(_s());
+      h.link(KernelLink.lost);
+      h.intent(1, _on);
+      h.prepared(1);
+      expect(h.lastActions.whereType<Resync>(), hasLength(1));
+      expect(h.effectsOf(SideEffectKind.markSystemProxyDirty), isEmpty);
+      expect(h.sends, isEmpty);
+      h.snap(_s(version: 1), fromResync: true);
+      expect(h.sends, hasLength(1));
+      expect(h.effectsOf(SideEffectKind.markSystemProxyDirty), hasLength(1));
+    });
+
+    test('重同步失败：有界重试，仍失败则 failed(nativeUnresponsive)', () {
+      final h = _connected();
+      h.link(KernelLink.lost);
+      h.intent(2, _off);
+      expect(h.resyncs, 1);
+      h.resyncFailed();
+      expect(h.outcomes[2], isNull);
+      expect(h.last.nextWake, isNotNull);
+      for (var i = 1; i < ConnectionTiming.maxResyncAttempts; i++) {
+        h.advance(ConnectionTiming.resyncRetryDelay);
+        expect(h.resyncs, 1 + i);
+        h.resyncFailed();
+      }
+      expect(h.outcomes[2], [const RequestFailed(NativeUnresponsive())]);
+      expect(h.sends.where((s) => s.id == 2), isEmpty);
+      expect(h.view.failure, const NativeUnresponsive());
+    });
+
+    test('链路恢复不等于重同步：恢复后点击仍先 Resync', () {
+      final h = _connected();
+      h.link(KernelLink.lost);
+      h.link(KernelLink.connected);
+      h.intent(2, _off);
+      expect(h.lastActions.whereType<Resync>(), hasLength(1));
+      expect(h.lastActions.whereType<SendRequest>(), isEmpty);
+      h.snap(
+        _s(
+          version: 2,
+          status: _started,
+          attempt: 1,
+          desired: _on,
+          source: DesiredSource.app,
+          appliedSeq: 1,
+          rev: 1,
+        ),
+        fromResync: true,
+      );
+      expect(h.sends.last.id, 2);
+      // 屏障已解除：下一次点击直接发送。
+      h.intent(3, _on);
+      h.prepared(3);
+      expect(h.lastActions.whereType<SendRequest>(), hasLength(1));
+      expect(h.lastActions.whereType<Resync>(), isEmpty);
+    });
+  });
+
+  group('wrongEpoch 请求的独立截止时间（spec §10.1、§10.6）', () {
+    MachineHarness wrongEpoch() {
+      final h = MachineHarness()..snap(_s());
+      h.intent(1, _off);
+      h.receipt(
+        1,
+        MachineHarness.rejected(
+          RequestRejection.wrongEpoch,
+          epoch: 'e2',
+          appliedSeq: 6,
+        ),
+      );
+      return h;
+    }
+
+    test('等待新纪元期间 nextWake 不为空（不会无人唤醒）', () {
+      final h = wrongEpoch();
+      expect(h.resyncs, 1);
+      expect(h.state.awaitingResync, isTrue);
+      expect(h.last.nextWake, isNotNull);
+    });
+
+    test('重同步失败：有界重试后 failed', () {
+      final h = wrongEpoch();
+      for (var guard = 0; guard < 50 && h.outcomes[1] == null; guard++) {
+        if (h.lastActions.whereType<Resync>().isNotEmpty) {
+          h.resyncFailed();
+        } else {
+          h.now = h.last.nextWake!;
+          h.feed(Tick(now: h.now));
+        }
+      }
+      expect(h.outcomes[1], [const RequestFailed(NativeUnresponsive())]);
+      expect(h.resyncs, ConnectionTiming.maxResyncAttempts);
+      expect(h.sends, hasLength(1), reason: '始终没有重发');
+    });
+
+    test('重同步只取回旧纪元快照：不算放行，有界重试后 failed', () {
+      final h = wrongEpoch();
+      var v = 1;
+      for (var guard = 0; guard < 50 && h.outcomes[1] == null; guard++) {
+        if (h.lastActions.whereType<Resync>().isNotEmpty) {
+          h.snap(_s(version: ++v), fromResync: true);
+        } else {
+          h.now = h.last.nextWake!;
+          h.feed(Tick(now: h.now));
+        }
+      }
+      expect(h.outcomes[1], [const RequestFailed(NativeUnresponsive())]);
+      expect(h.sends, hasLength(1));
+    });
+
+    test('重同步一直不返回：独立截止时间到期 failed', () {
+      final h = wrongEpoch();
+      final t0 = h.now;
+      while (h.outcomes[1] == null) {
+        final wake = h.last.nextWake;
+        expect(wake, isNotNull, reason: '等待中必须有唤醒时间');
+        h.now = wake!;
+        h.feed(Tick(now: h.now));
+        expect(
+          h.now.difference(t0),
+          lessThanOrEqualTo(ConnectionTiming.resyncWaitTimeout),
+        );
+      }
+      expect(h.outcomes[1], [const RequestFailed(NativeUnresponsive())]);
+      expect(h.now.difference(t0), ConnectionTiming.resyncWaitTimeout);
+    });
+
+    test('第一次重同步失败、重试取回新纪元：按新基线重发并正常完成', () {
+      final h = wrongEpoch();
+      h.resyncFailed();
+      h.advance(ConnectionTiming.resyncRetryDelay);
+      expect(h.resyncs, 2);
+      h.snap(_s(epoch: 'e2', version: 1, appliedSeq: 6), fromResync: true);
+      expect(h.sends.last.request.epoch, 'e2');
+      expect(h.sends.last.request.seq, 7);
+      h.receipt(1, MachineHarness.accepted(7, epoch: 'e2'));
+      h.snap(
+        _s(epoch: 'e2', version: 2, source: DesiredSource.app, appliedSeq: 7),
+      );
+      expect(h.outcomes[1], [const RequestSucceeded()]);
+    });
+  });
+
+  group('动作的值语义', () {
+    test('相同字段的动作相等，toString 含全部字段', () {
+      final a = SendRequest(
+        1,
+        DesiredRequest(
+          epoch: 'e1',
+          seq: 2,
+          desired: _on,
+          reason: RequestReason.userConnect,
+          launch: MachineHarness.launch(3),
+        ),
+      );
+      final b = SendRequest(
+        1,
+        DesiredRequest(
+          epoch: 'e1',
+          seq: 2,
+          desired: _on,
+          reason: RequestReason.userConnect,
+          launch: MachineHarness.launch(3),
+        ),
+      );
+      final c = SendRequest(
+        1,
+        DesiredRequest(
+          epoch: 'e1',
+          seq: 3,
+          desired: _on,
+          reason: RequestReason.userConnect,
+          launch: MachineHarness.launch(3),
+        ),
+      );
+      expect(a, b);
+      expect(a.hashCode, b.hashCode);
+      expect(a, isNot(c));
+      expect(a.toString(), isNot(c.toString()));
+      expect(a.toString(), contains('seq=2'));
+      expect(a.toString(), contains('rev=3'));
+      expect(
+        const SettleRequest(1, RequestFailed(StartTimeout())),
+        isNot(const SettleRequest(1, RequestSuperseded())),
+      );
+      expect(
+        const SettleRequest(1, RequestFailed(StartTimeout())).toString(),
+        contains('StartTimeout'),
+      );
+      expect(
+        const RunEffect(
+          SideEffect(
+            SideEffectKind.reportFailure,
+            epoch: 'e1',
+            attempt: 1,
+            failure: KernelUnresponsive(),
+          ),
+        ).toString(),
+        contains('KernelUnresponsive'),
+      );
+      expect(const Resync(), const Resync());
+      expect(
+        const PrepareLaunch(1, RequestReason.userConnect),
+        isNot(const PrepareLaunch(2, RequestReason.userConnect)),
+      );
     });
   });
 }

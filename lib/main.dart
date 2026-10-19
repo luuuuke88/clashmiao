@@ -26,6 +26,7 @@ import 'package:clashmiao/app/window/desktop_exit_guard.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/domain/profile/application/profiles_update_scheduler.dart';
 import 'package:clashmiao/features/config/application/restore_refresher.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 import 'package:clashmiao/features/config/data/restore_recovery.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart'
     show isHttpDownloadUrl;
@@ -57,6 +58,9 @@ void main() async {
     container.read(sharedPreferencesProvider).requireValue,
     checkRestoreMarker: checkRestoreMarkerAtStartup,
   );
+  // 启动时恢复失败 / 无法回滚的结果交给界面（ShellPage 首帧后提示）。
+  container.read(startupRestoreRecoveryProvider.notifier).state =
+      lastRestoreRecoveryOutcome;
 
   // 初始化 BoxService
   final boxService = container.read(boxServiceProvider);

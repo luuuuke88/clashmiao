@@ -53,6 +53,7 @@ class BackupMessages {
         RestoreFailureKind.readOnly => t.failure.profiles.readOnlyUpgrade,
         RestoreFailureKind.snapshotFailed => b.errSnapshotFailed,
         RestoreFailureKind.unresolvedPrevious => b.errUnresolvedPrevious,
+        RestoreFailureKind.busy => b.errBusy,
         RestoreFailureKind.rolledBack => b.errRolledBack,
         RestoreFailureKind.notRolledBack => b.errNotRolledBack(
           path: error.snapshotPath ?? '',

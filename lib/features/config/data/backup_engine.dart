@@ -27,6 +27,9 @@ enum RestoreFailureKind {
 
   /// 应用中途失败，用快照回滚也没成功：标记保留，下次启动会再试一次。
   notRolledBack,
+
+  /// 另一次恢复正在进行（恢复流程互斥，不排队）：什么都没改。
+  busy,
 }
 
 class RestoreFailure implements Exception {
@@ -54,6 +57,9 @@ enum RecoveryOutcome {
 
   /// 回滚过程中失败；标记保留，下次启动再试。
   failed,
+
+  /// 另一次恢复正在进行，这次没有检查（不会去回滚别人进行中的恢复）。
+  busy,
 }
 
 /// 备份的导出、校验后的恢复与恢复前快照。
@@ -70,7 +76,17 @@ class BackupEngine {
     this.extraValidators = const {},
     DateTime Function()? now,
     this.keepSnapshots = 3,
-  }) : _now = now ?? DateTime.now;
+    Future<String> Function(File file)? readConfigFile,
+  }) : _now = now ?? DateTime.now,
+       _readConfigFile = readConfigFile ?? ((file) => file.readAsString());
+
+  /// 读订阅配置文件的入口（测试注入读取故障用）。
+  final Future<String> Function(File file) _readConfigFile;
+
+  /// 与 [store] 绑定的进程内状态：恢复互斥与「恢复线索待处理」。
+  /// 挂在 Store 上而不是引擎实例上——页面每次导入都新建引擎，互斥必须跨实例。
+  static final Expando<_RestoreState> _states = Expando<_RestoreState>();
+  _RestoreState get _state => _states[store] ??= _RestoreState();
 
   final ProfileStore store;
   final SharedPreferences prefs;
@@ -98,13 +114,15 @@ class BackupEngine {
       final configs = <String, String>{};
       for (final profile in view.profiles) {
         profiles.add(_exportProfile(profile));
+        // 「文件不存在」与「读取失败」是两回事：前者就是没有配置；后者说明本机
+        // 有一份读不出来的数据，绝不能当作没有——否则快照缺了它，随后的
+        // 破坏性应用一旦失败就无从还原。读取失败整个导出 / 快照中止。
         try {
-          final file = File(store.configFilePath(profile.id));
-          if (await file.exists()) {
-            configs[profile.id] = await file.readAsString();
-          }
-        } catch (e) {
-          debugPrint('[backup] 读取配置失败 ${profile.id}: $e');
+          configs[profile.id] = await _readConfigFile(
+            File(store.configFilePath(profile.id)),
+          );
+        } on PathNotFoundException {
+          // 确实没有这个配置文件：快照里也记为「没有」。
         }
       }
       return BackupBundle(
@@ -179,9 +197,27 @@ class BackupEngine {
 
   // ───────────────────────── 导入：应用 ─────────────────────────
 
+  /// 同一时刻只允许一个恢复流程（恢复检查 → 快照 → 应用 → 回滚）。已有恢复
+  /// 在进行时直接拒绝（[RestoreFailureKind.busy]），不排队。[body] 里的工作
+  /// 属于这次恢复；只有拿到锁的一方才有资格暂停 / 恢复定时刷新。
+  Future<T> runExclusive<T>(Future<T> Function() body) async {
+    final state = _state;
+    if (state.busy) throw const RestoreFailure(RestoreFailureKind.busy);
+    state.busy = true;
+    try {
+      return await body();
+    } finally {
+      state.busy = false;
+    }
+  }
+
   /// 应用已校验的 [plan]。失败时抛 [RestoreFailure]，且（`rolledBack` / 其它
-  /// 「什么都没改」的情形下）本机状态与调用前一致。
-  Future<RestoreReport> restore(RestorePlan plan) async {
+  /// 「什么都没改」的情形下）本机状态与调用前一致。自带互斥。
+  Future<RestoreReport> restore(RestorePlan plan) =>
+      runExclusive(() => restoreHoldingLock(plan));
+
+  /// [restore] 的本体，调用者必须已经在 [runExclusive] 里。
+  Future<RestoreReport> restoreHoldingLock(RestorePlan plan) async {
     if (store.isReadOnly) {
       throw RestoreFailure(
         RestoreFailureKind.readOnly,
@@ -190,8 +226,8 @@ class BackupEngine {
     }
     final removed = removedBy(plan).length;
 
-    // 上次恢复若被中断，先回到那次恢复之前，再开始新的一次。
-    final previous = await recoverInterrupted();
+    // 上次恢复若被中断（或回滚没完成），先回到那次恢复之前，再开始新的一次。
+    final previous = await _recover();
     if (previous == RecoveryOutcome.failed) {
       throw const RestoreFailure(RestoreFailureKind.unresolvedPrevious);
     }
@@ -205,7 +241,11 @@ class BackupEngine {
       try {
         await _rollbackTo(snapshot);
       } catch (e2, st2) {
-        debugPrint('[backup] 快照回滚失败（标记保留，下次启动再试）: $e2\n$st2');
+        debugPrint('[backup] 快照回滚失败（标记保留，下次再试）: $e2\n$st2');
+        // 恢复线索在内存里也记一份：磁盘标记可能没清掉也可能已经没了，
+        // 这个进程里下一次导入必须先把这件事了结，不能直接覆盖线索。
+        _state.pendingSnapshot = snapshot.path;
+        await _reassertMarker(snapshot.path);
         throw RestoreFailure(
           RestoreFailureKind.notRolledBack,
           cause: e,
@@ -265,7 +305,27 @@ class BackupEngine {
       }
       rethrow;
     }
+    if (plan.exactPrefs) await _pruneConfigFiles(plan.configs.keys.toSet());
     await _writePrefs(plan);
+  }
+
+  /// 精确还原配置文件集合：`profiles/` 里除 [keep] 之外的 `<id>.json` 全部删除。
+  /// 快照里「没有配置」的订阅、以及这次恢复装进来却还没入列表的文件都在此清掉。
+  /// 在 Store 锁内做，删不掉就抛（回滚没完成要如实报告，不能假装还原了）。
+  Future<void> _pruneConfigFiles(Set<String> keep) {
+    return store.readConsistent((_) async {
+      final dir = Directory(store.profilesDirPath);
+      if (!await dir.exists()) return;
+      final entries = await dir.list(followLinks: false).toList();
+      for (final entry in entries) {
+        if (entry is! File) continue;
+        final name = p.basename(entry.path);
+        if (!name.endsWith('.json')) continue;
+        final id = name.substring(0, name.length - '.json'.length);
+        if (!ProfileStore.isValidId(id) || keep.contains(id)) continue;
+        await entry.delete();
+      }
+    });
   }
 
   Future<void> _writePrefs(RestorePlan plan) async {
@@ -334,6 +394,8 @@ class BackupEngine {
         await _deleteQuietly(file);
         await _deleteQuietly(File('${file.path}.tmp'));
       }
+      // 写标记失败时平台已先改了内存缓存：撤销它，不留下指向已删快照的标记。
+      await _forgetMarker();
       throw RestoreFailure(RestoreFailureKind.snapshotFailed, cause: e);
     }
   }
@@ -353,10 +415,21 @@ class BackupEngine {
   }
 
   Future<void> _clearMarker() async {
-    if (!await prefs.remove(kRestoreMarkerKey)) {
+    final ok = await prefs.remove(kRestoreMarkerKey);
+    if (!ok || prefs.containsKey(kRestoreMarkerKey)) {
       // 标记清不掉就不能宣布成功：下次启动会拿快照把「成功的恢复」回滚掉。
       // 抛出让调用方走回滚路径，状态与标记保持一致。
       throw StateError('恢复标记清除失败');
+    }
+  }
+
+  /// 回滚没完成时把标记补回去（清标记失败时平台缓存里它可能已经没了）。尽力而为：
+  /// 补不回去也没关系，内存里的 [_RestoreState.pendingSnapshot] 仍会挡住新导入。
+  Future<void> _reassertMarker(String path) async {
+    try {
+      await prefs.setString(kRestoreMarkerKey, path);
+    } catch (e) {
+      debugPrint('[backup] 补回恢复标记失败（内存里仍记着）: $e');
     }
   }
 
@@ -392,24 +465,39 @@ class BackupEngine {
   // ───────────────────────── 启动恢复 ─────────────────────────
 
   /// 发现恢复标记（上次恢复被杀 / 回滚没完成）时，用标记指向的快照回到恢复前
-  /// 的状态。永不抛出。
+  /// 的状态。永不抛出。另一次恢复正在进行时返回 [RecoveryOutcome.busy]，
+  /// 不去碰它的标记与快照。
   Future<RecoveryOutcome> recoverInterrupted() async {
+    final state = _state;
+    if (state.busy) return RecoveryOutcome.busy;
+    state.busy = true;
+    try {
+      return await _recover();
+    } finally {
+      state.busy = false;
+    }
+  }
+
+  Future<RecoveryOutcome> _recover() async {
     final Object? marker;
     try {
       marker = prefs.get(kRestoreMarkerKey);
     } catch (_) {
       return RecoveryOutcome.none;
     }
-    if (marker == null) return RecoveryOutcome.none;
+    // 磁盘 / 缓存里没有标记，但本进程里还记着一次没了结的恢复：以内存为准。
+    final Object? clue = marker ?? _state.pendingSnapshot;
+    if (clue == null) return RecoveryOutcome.none;
 
     // 只取文件名、在本机 backups 目录里找：路径里的目录部分可能已经过期
     // （iOS 容器路径会变），也不能让标记把读取引到别处。
-    final name = marker is String ? p.basename(marker) : '';
+    final name = clue is String ? p.basename(clue) : '';
     final file = File(p.join(backupsDir.path, name));
     try {
       if (name.isEmpty || !await file.exists()) {
-        debugPrint('[backup] 恢复标记指向的快照不存在，无法回滚: $marker');
+        debugPrint('[backup] 恢复标记指向的快照不存在，无法回滚: $clue');
         await _forgetMarker();
+        _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
       }
       final RestorePlan plan;
@@ -422,15 +510,19 @@ class BackupEngine {
       } catch (e) {
         debugPrint('[backup] 恢复快照损坏，无法回滚: $e');
         await _forgetMarker();
+        _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
       }
       await store.cleanupResidue();
       await _apply(plan);
       await _clearMarker();
+      _state.pendingSnapshot = null;
       debugPrint('[backup] 已用恢复前快照回到上次恢复之前的状态');
       return RecoveryOutcome.recovered;
     } catch (e, st) {
-      debugPrint('[backup] 启动回滚失败，标记保留: $e\n$st');
+      debugPrint('[backup] 回滚失败，标记保留: $e\n$st');
+      _state.pendingSnapshot = file.path;
+      await _reassertMarker(file.path);
       return RecoveryOutcome.failed;
     }
   }
@@ -446,4 +538,14 @@ class BackupEngine {
       if (await file.exists()) await file.delete();
     } catch (_) {}
   }
+}
+
+/// 挂在 [ProfileStore] 上的恢复状态（见 [BackupEngine._states]）。
+class _RestoreState {
+  /// 有恢复流程（或恢复检查）正在进行。
+  bool busy = false;
+
+  /// 上次恢复没了结时的快照路径（回滚失败后设置，回滚成功 / 无法回滚后清除）。
+  /// 磁盘标记因平台缓存的先改后写语义可能丢失，这份内存记录是第二道保险。
+  String? pendingSnapshot;
 }

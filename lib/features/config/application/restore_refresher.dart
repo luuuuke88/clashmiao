@@ -77,28 +77,33 @@ class RestoreRefresher {
     if (controller.isStarted) await controller.reconnect();
   };
 
-  /// 恢复整个流程：暂停定时刷新 → [BackupEngine.restore] → 刷新界面 →
-  /// 后台补拉缺配置的远程订阅。
+  /// 恢复整个流程：拿到恢复互斥 → 暂停定时刷新 → [BackupEngine.restoreHoldingLock]
+  /// → 刷新界面 → 后台补拉缺配置的远程订阅。
+  ///
+  /// 已有恢复在进行时立刻抛 [RestoreFailureKind.busy]，且**不碰**暂停标志：
+  /// 只有拿到互斥的那一次才有资格暂停、也只有它才会解除暂停。
   ///
   /// 失败（含回滚）也会刷新一次界面，确保 provider 缓存与磁盘状态一致，然后
   /// 把 [RestoreFailure] 原样抛出。返回的 [RestoreOutcome.backfill] 是后台补拉
   /// 的 Future（调用方可以不等；测试用它确定性地等到结束）。
-  Future<RestoreOutcome> restore(BackupEngine engine, RestorePlan plan) async {
-    final flag = container.read(restoreInProgressProvider.notifier);
-    flag.state = true;
-    try {
-      final RestoreReport report;
+  Future<RestoreOutcome> restore(BackupEngine engine, RestorePlan plan) {
+    return engine.runExclusive(() async {
+      final flag = container.read(restoreInProgressProvider.notifier);
+      flag.state = true;
       try {
-        report = await engine.restore(plan);
-      } on RestoreFailure {
-        await _refreshQuietly();
-        rethrow;
+        final RestoreReport report;
+        try {
+          report = await engine.restoreHoldingLock(plan);
+        } on RestoreFailure {
+          await _refreshQuietly();
+          rethrow;
+        }
+        await refresh();
+        return RestoreOutcome(report, _startBackfill(plan.needsFetch));
+      } finally {
+        flag.state = false;
       }
-      await refresh();
-      return RestoreOutcome(report, _startBackfill(plan.needsFetch));
-    } finally {
-      flag.state = false;
-    }
+    });
   }
 
   Future<void> _refreshQuietly() async {

@@ -324,7 +324,15 @@
       "errUnresolvedPrevious": "Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.",
       "errRolledBack": "Impor gagal. Data Anda sebelumnya telah dipulihkan.",
       "errNotRolledBack": "Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.",
-      "errFailed": "Impor gagal."
+      "errFailed": "Impor gagal.",
+      "errBusy": "Impor lain sedang berjalan. Tunggu sampai selesai.",
+      "recoveryFailedTitle": "Pemulihan otomatis belum selesai",
+      "recoveryFailedMsg": "Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.",
+      "recoveryUnrecoverableTitle": "Impor yang terhenti tidak dapat dibatalkan",
+      "recoveryUnrecoverableMsg": "Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.",
+      "recoveryRetry": "Coba lagi",
+      "recoveryClose": "Tutup",
+      "recoveryRetried": "Data Anda dipulihkan ke keadaan sebelum impor yang terhenti."
     },
     "systemProxyEnabled": "Proxy sistem diaktifkan",
     "systemProxyDisabled": "Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)",

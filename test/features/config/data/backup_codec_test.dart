@@ -300,12 +300,13 @@ void main() {
             'service-mode': 'proxy',
             'proxy_selection_a': '{}',
             'totally_unknown': 1,
+            'clashmiao_analytics_enabled': true,
             'clashmiao_log_level': 'info',
           },
         ),
       );
       expect(plan.prefs, {'clashmiao_log_level': 'info'});
-      expect(plan.skippedPrefKeys, hasLength(12));
+      expect(plan.skippedPrefKeys, hasLength(13));
     });
 
     test('类型不对 / null / 嵌套值：跳过并报告，其余照常', () {

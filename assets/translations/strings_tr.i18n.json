@@ -324,7 +324,15 @@
       "errUnresolvedPrevious": "Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.",
       "errRolledBack": "İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.",
       "errNotRolledBack": "İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.",
-      "errFailed": "İçe aktarma başarısız oldu."
+      "errFailed": "İçe aktarma başarısız oldu.",
+      "errBusy": "Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.",
+      "recoveryFailedTitle": "Otomatik geri yükleme tamamlanmadı",
+      "recoveryFailedMsg": "Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.",
+      "recoveryUnrecoverableTitle": "Yarıda kalan içe aktarma geri alınamadı",
+      "recoveryUnrecoverableMsg": "Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.",
+      "recoveryRetry": "Yeniden dene",
+      "recoveryClose": "Kapat",
+      "recoveryRetried": "Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi."
     },
     "systemProxyEnabled": "Sistem proxy’si etkin",
     "systemProxyDisabled": "Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)",

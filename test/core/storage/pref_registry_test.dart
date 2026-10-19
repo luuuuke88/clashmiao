@@ -54,6 +54,7 @@ void main() {
         kRestoreMarkerKey,
         'clashmiao_system_proxy_dirty',
         'clashmiao_store_review_requested',
+        'clashmiao_analytics_enabled', // 同意与否每台设备各自决定
         'update_last_check_ms',
         'update_latest_tag',
         'service-mode',

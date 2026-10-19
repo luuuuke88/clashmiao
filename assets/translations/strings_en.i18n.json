@@ -248,7 +248,15 @@
       "errUnresolvedPrevious": "A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.",
       "errRolledBack": "Import failed. Your previous data has been restored.",
       "errNotRolledBack": "Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.",
-      "errFailed": "Import failed."
+      "errFailed": "Import failed.",
+      "errBusy": "Another import is already running. Please wait for it to finish.",
+      "recoveryFailedTitle": "Automatic restore did not finish",
+      "recoveryFailedMsg": "The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.",
+      "recoveryUnrecoverableTitle": "Interrupted import could not be undone",
+      "recoveryUnrecoverableMsg": "The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.",
+      "recoveryRetry": "Retry",
+      "recoveryClose": "Close",
+      "recoveryRetried": "Your data was restored to before the interrupted import."
     },
     "general": {
       "sectionTitle": "General",

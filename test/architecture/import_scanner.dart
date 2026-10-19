@@ -39,7 +39,35 @@ List<String> extractDirectiveUris(String source) {
   return uris;
 }
 
-/// `package:clashmiao/x/y.dart` → `x/y.dart`；非项目内 URI 返回 `null`。
-String? projectPath(String uri) => uri.startsWith(_projectPrefix)
-    ? uri.substring(_projectPrefix.length)
-    : null;
+/// 把 URI 解析成 `lib/` 内的相对路径；不是项目内文件返回 `null`。
+///
+/// - `package:clashmiao/x/y.dart` → `x/y.dart`；
+/// - 相对 URI（`../a.dart`、`./b.dart`）按 [from]（导入方自己的 `lib/` 内相对路径）
+///   解析并规整 `.` / `..`。`always_use_package_imports` 只管 import 的主 URI，
+///   export 与条件导入分支里的相对写法它拦不住，所以这里必须自己解析，
+///   否则这些依赖边会被静默漏掉；
+/// - 解析后跳出 `lib/` 的相对 URI、没给 [from] 的相对 URI → `null`；
+/// - `dart:`、其他 package、`file:` 等带 scheme 的 URI → `null`。
+String? projectPath(String uri, {String? from}) {
+  if (uri.startsWith(_projectPrefix)) {
+    return uri.substring(_projectPrefix.length);
+  }
+  // 带 scheme（`dart:io`、`package:x/...`）或绝对路径：不是项目内的相对引用。
+  if (uri.startsWith('/') ||
+      RegExp(r'^[a-zA-Z][a-zA-Z0-9+.-]*:').hasMatch(uri)) {
+    return null;
+  }
+  if (from == null) return null;
+
+  final segments = from.split('/')..removeLast(); // 导入方所在目录
+  for (final seg in uri.split('/')) {
+    if (seg.isEmpty || seg == '.') continue;
+    if (seg == '..') {
+      if (segments.isEmpty) return null; // 跳出 lib/
+      segments.removeLast();
+    } else {
+      segments.add(seg);
+    }
+  }
+  return segments.join('/');
+}

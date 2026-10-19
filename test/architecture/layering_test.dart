@@ -47,17 +47,17 @@ void main() {
     },
   );
 
-  test('白名单没有过期条目，且条数不超过上限', () {
+  test('白名单没有过期条目', () {
     final stale = staleEntries(uris, kAllowlist);
     expect(
       stale,
       isEmpty,
       reason: '以下白名单条目对应的依赖已经消除，请从 allowlist.dart 删除：${render(stale)}',
     );
-    expect(
-      kAllowlist.length,
-      lessThanOrEqualTo(kAllowlistCeiling),
-      reason: '白名单只减不增：当前 ${kAllowlist.length} 条，上限 $kAllowlistCeiling',
-    );
+  });
+
+  test('白名单合法：条数不超上限，且只含 features → features', () {
+    final problems = checkAllowlist(kAllowlist, ceiling: kAllowlistCeiling);
+    expect(problems, isEmpty, reason: render(problems));
   });
 }

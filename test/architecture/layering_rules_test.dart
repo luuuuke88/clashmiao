@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'allowlist.dart';
+import 'import_scanner.dart';
 import 'layering_rules.dart';
 
 /// 合成数据里的 import 一律写成 `package:clashmiao/...`，与真实源码一致。
@@ -398,14 +398,158 @@ void main() {
     });
   });
 
-  group('白名单上限', () {
-    test('超过 kAllowlistCeiling 的比较逻辑成立', () {
-      final six = [
-        for (var i = 0; i < kAllowlistCeiling + 1; i++)
-          AllowedEdge('features/a/$i.dart', 'features/b/$i.dart', '合成'),
-      ];
-      expect(six.length <= kAllowlistCeiling, isFalse);
-      expect(six.take(kAllowlistCeiling).length <= kAllowlistCeiling, isTrue);
+  group('checkAllowlist：白名单自身校验（数字均写死，不依赖 kAllowlistCeiling）', () {
+    AllowedEdge feat(int i) =>
+        AllowedEdge('features/a/p$i.dart', 'features/b/q$i.dart', '合成');
+
+    test('恰好 5 条、上限 5：通过', () {
+      expect(
+        checkAllowlist([for (var i = 0; i < 5; i++) feat(i)], ceiling: 5),
+        isEmpty,
+      );
+    });
+
+    test('手写第 6 条：超限失败', () {
+      final problems = checkAllowlist([
+        feat(0),
+        feat(1),
+        feat(2),
+        feat(3),
+        feat(4),
+        const AllowedEdge(
+          'features/a/extra.dart',
+          'features/b/extra.dart',
+          '第六条',
+        ),
+      ], ceiling: 5);
+      expect(problems, hasLength(1));
+      expect(problems.single, contains('6'));
+    });
+
+    test('core → domain 条目：失败', () {
+      final problems = checkAllowlist(const [
+        AllowedEdge('core/a.dart', 'domain/x/b.dart', '越层'),
+      ], ceiling: 5);
+      expect(problems, hasLength(1));
+      expect(problems.single, contains('白名单条目非法'));
+    });
+
+    test('超限与非法同时存在：两类问题都报', () {
+      final problems = checkAllowlist([
+        for (var i = 0; i < 5; i++) feat(i),
+        const AllowedEdge('core/a.dart', 'domain/x/b.dart', '越层'),
+      ], ceiling: 5);
+      expect(problems, hasLength(2));
+    });
+
+    test('空名单合法', () {
+      expect(checkAllowlist(const [], ceiling: 0), isEmpty);
+    });
+  });
+
+  group('相对 URI：扫描源码 → 规则判定（端到端）', () {
+    /// 把 {文件路径: 源码} 扫描成 uris，再交给规则。
+    Map<String, List<String>> scan(Map<String, String> sources) => {
+      for (final e in sources.entries) e.key: extractDirectiveUris(e.value),
+    };
+
+    test('(a) core 里相对 export 到 domain：被报', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/a.dart': "export '../../domain/profile/model/m.dart';",
+          'domain/profile/model/m.dart': '',
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'core/storage/a.dart');
+      expect(bad.single.to, 'domain/profile/model/m.dart');
+    });
+
+    test('(b) 条件导入的相对 if 分支 core → domain：被报', () {
+      final bad = checkLayering(
+        scan({
+          'core/storage/a.dart': """
+import 'package:clashmiao/core/storage/stub.dart'
+    if (dart.library.io) '../../domain/profile/model/m.dart';
+""",
+        }),
+        allowlist: const [],
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.to, 'domain/profile/model/m.dart');
+    });
+
+    test('(c) R1：模型经相对 export 链触达 application：被报并带传递链', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart': "export '../../../core/u.dart';",
+          'core/u.dart': "export '../domain/profile/application/svc.dart';",
+          'domain/profile/application/svc.dart': '',
+        }),
+      );
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'domain/profile/model/m.dart');
+      expect(bad.single.to, 'domain/profile/application/svc.dart');
+      expect(
+        bad.single.hint,
+        contains(
+          'domain/profile/model/m.dart → core/u.dart → domain/profile/application/svc.dart',
+        ),
+      );
+    });
+
+    test('(c2) R1：相对 export 链通到 flutter 也被报', () {
+      final bad = checkModelPurity(
+        scan({
+          'domain/profile/model/m.dart': "export './n.dart';",
+          'domain/profile/model/n.dart':
+              "import 'package:flutter/material.dart';",
+        }),
+      );
+      // m 与 n 都是模型，各自触达 flutter 一次；m 的那条要带上经过 n 的链。
+      final fromM = bad.where((v) => v.from == 'domain/profile/model/m.dart');
+      expect(fromM, hasLength(1));
+      expect(fromM.single.to, 'package:flutter/material.dart');
+      expect(
+        fromM.single.hint,
+        contains('model/m.dart → domain/profile/model/n.dart'),
+      );
+    });
+
+    test('(d) 同层内的相对 import 仍合规', () {
+      expect(
+        checkLayering(
+          scan({
+            'core/storage/a.dart':
+                "import './b.dart'; export '../utils/c.dart';",
+            'core/storage/b.dart': '',
+            'core/utils/c.dart': '',
+          }),
+          allowlist: const [],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('相对 URI 解析后跳出 lib/：不当作项目内依赖', () {
+      expect(
+        checkLayering(
+          scan({'core/a.dart': "export '../../outside.dart';"}),
+          allowlist: const [],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('白名单条目对应的依赖写成相对 URI 时不算过期', () {
+      final uris = scan({'features/a/x.dart': "import '../b/y.dart';"});
+      expect(
+        staleEntries(uris, const [
+          AllowedEdge('features/a/x.dart', 'features/b/y.dart', '相对写法'),
+        ]),
+        isEmpty,
+      );
     });
   });
 }

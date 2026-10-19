@@ -115,10 +115,14 @@ class FakeKernelPort implements KernelPort {
       tag: outboundTag,
       expectedAttempt: expectedAttempt,
     ));
+    // 结果在调用进入时就固定：悬停（gate）的调用恢复后返回的仍是它进入时的结果，
+    // 与调用顺序无关。
+    final SelectOutcome result =
+        selectResult?.call(groupTag, outboundTag, expectedAttempt) ??
+        const SelectOk();
     final gate = onSelectGate;
     if (gate != null) await gate.future;
-    return selectResult?.call(groupTag, outboundTag, expectedAttempt) ??
-        const SelectOk();
+    return result;
   }
 
   Future<void> dispose() async {

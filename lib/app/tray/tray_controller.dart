@@ -221,14 +221,16 @@ Future<void> performQuitSequence({
 }
 
 /// 退出清理的**总期限**：托盘菜单「退出」、全局快捷键、操作系统退出守卫三条
-/// 路径共用这一个值（见 [performShutdownCleanup]）。
+/// 路径共用这一个值（见 [performShutdownCleanup]），所有步骤（含托盘清理）共享
+/// 这一个截止时间，没有额外的宽限。
 const kQuitCleanupDeadline = Duration(seconds: 5);
 
 /// 断开被取代后重发之前让出事件循环的间隔：既不空转，也让期限计时器有机会触发。
 const kQuitResubmitGap = Duration(milliseconds: 20);
 
-/// 期限用尽后清托盘最多再给这么久（托盘清理是本地操作，正常瞬间完成）。
-const kQuitTrayGrace = Duration(milliseconds: 500);
+/// 从总期限里预留给托盘清理的时间：停内核最多用 `deadline - 预留`，托盘清理
+/// 用到截止时间为止（停内核提前完成时可以更多）。预留不超过总期限的十分之一。
+const kQuitTrayReserve = Duration(milliseconds: 500);
 
 /// 退出前的清理部分：停内核（**这一步负责还原系统代理**）+ 清托盘。
 ///
@@ -274,11 +276,19 @@ Future<void> performShutdownCleanup({
   required Future<void> Function() disposeTray,
   Duration deadline = kQuitCleanupDeadline,
 }) async {
-  final clock = Stopwatch()..start();
   // 这两行日志**不加 kDebugMode 判断**，正式包里也要留。当用户报"退出之后
   // 上不了网了"，唯一能立刻定性的信息就是"退出时这段清理到底跑没跑完"——
   // 每次退出仅一行，没有噪音成本。
   debugPrint('[Quit] 开始退出清理（停内核 → 还原系统代理 → 清托盘）');
+
+  // 总截止时间：所有步骤共享，只用计时器（可被 fake_async 精确控制）。
+  final overall = Completer<void>();
+  final overallTimer = Timer(deadline, () {
+    if (!overall.isCompleted) overall.complete();
+  });
+  final reserve = kQuitTrayReserve < deadline ~/ 10
+      ? kQuitTrayReserve
+      : deadline ~/ 10;
 
   var abandoned = false;
   Future<void> disconnectUntilSettled() async {
@@ -297,25 +307,24 @@ Future<void> performShutdownCleanup({
   // 两步都不能因为前一步失败就中止——disconnect 失败照样要继续清托盘，
   // 更不能让用户点了"退出"卡住退不出去。
   try {
-    await disconnectUntilSettled().timeout(deadline);
+    await disconnectUntilSettled().timeout(deadline - reserve);
   } on TimeoutException {
-    abandoned = true;
+    abandoned = true; // 之后不再提交任何断开请求
     debugPrint(
-      '[Quit] 停内核超过 ${deadline.inMilliseconds}ms 仍无结论，放弃等待'
-      '（保留系统代理脏标记，留给下次启动自愈）',
+      '[Quit] 停内核超过 ${(deadline - reserve).inMilliseconds}ms 仍无结论，'
+      '放弃等待（保留系统代理脏标记，留给下次启动自愈）',
     );
   } catch (e) {
     abandoned = true;
     if (kDebugMode) debugPrint('[Quit] disconnect failed during quit: $e');
   }
   try {
-    final remaining = deadline - clock.elapsed;
-    await disposeTray().timeout(
-      remaining > kQuitTrayGrace ? remaining : kQuitTrayGrace,
-    );
+    // 托盘清理只用剩下的预算：到总截止时间为止。
+    await Future.any<void>([disposeTray(), overall.future]);
   } catch (e) {
     if (kDebugMode) debugPrint('[Tray] dispose failed during quit: $e');
   }
+  overallTimer.cancel();
   debugPrint('[Quit] 退出清理完成');
 }
 

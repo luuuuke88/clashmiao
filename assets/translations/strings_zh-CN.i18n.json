@@ -373,7 +373,8 @@
       "start": "服务启动错误",
       "startTimeout": "服务启动超时",
       "kernelUnresponsive": "内核无响应，请重试或重启应用",
-      "kernelExited": "内核意外退出"
+      "kernelExited": "内核意外退出",
+      "runtimeFilesFull": "残留的运行配置文件过多，请重启应用后再试"
     },
     "connectivity": {
       "unexpected": "意外失败",

@@ -412,6 +412,15 @@ void main() {
       await addProfile('p1');
       await repo.setActive('p1');
       l = launcher();
+      // 控制器发送任何请求之前一定已经收到过首个快照：这是发送元数据（绑定
+      // seq 时内核的 attempt）的来源。没有它，launcher 只会保守地保留文件。
+      await l.observe(
+        FakeKernelPort.snap(
+          status: KernelStatus.stopped,
+          attempt: 0,
+          appliedSeq: 0,
+        ),
+      );
     });
 
     KernelSnapshot kernel({
@@ -450,19 +459,20 @@ void main() {
 
     bool exists(LaunchSpec s) => File(s.runtimeConfigPath).existsSync();
 
-    test('运行中的 spec：之后相同 revision 的请求（内核不重启）受理再多次也不删它', () async {
+    test('运行中的 spec：之后相同 revision 的请求（内核不重启）受理再多次也不删它；被无操作合并的中间产物回收', () async {
       final s1 = await accept(1, 1, revision: 7);
       await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
 
       // 相同 revision 的 on：协调器无操作，attempt 不变。
       final s2 = await accept(2, 2, revision: 7);
       await l.observe(kernel(appliedSeq: 2, attempt: 1, revision: 7));
+      expect(exists(s2), isTrue, reason: '它此刻是最新一份已处理的（持久化引用）');
       final s3 = await accept(3, 3, revision: 7);
       await l.observe(kernel(appliedSeq: 3, attempt: 1, revision: 7));
 
-      expect(exists(s1), isTrue, reason: 'seq1 可能仍是运行实例 / 持久化引用的那份');
-      expect(exists(s2), isTrue);
-      expect(exists(s3), isTrue);
+      expect(exists(s1), isTrue, reason: 'seq1 启动了运行中的实例，绝不能删');
+      expect(exists(s2), isFalse, reason: '被无操作合并、且已被更新的请求取代：证明无引用，回收');
+      expect(exists(s3), isTrue, reason: '最新一份');
     });
 
     test('新实例确认运行（revision 变了且 attempt 增长）之后，被替换的旧文件才释放', () async {
@@ -474,13 +484,13 @@ void main() {
       // 新配置：受理了但内核还没把它跑起来。
       final s3 = await accept(3, 3, revision: 8);
       await l.observe(kernel(appliedSeq: 3, attempt: 1, revision: 7));
-      expect(exists(s1), isTrue, reason: '替换尚未确认');
-      expect(exists(s2), isTrue, reason: '替换尚未确认');
+      expect(exists(s1), isTrue, reason: '运行中的，替换尚未确认');
+      expect(exists(s2), isFalse, reason: '无操作合并的中间产物已回收');
+      expect(exists(s3), isTrue);
 
       await l.observe(kernel(appliedSeq: 3, attempt: 2, revision: 8));
 
       expect(exists(s1), isFalse, reason: '新实例已在运行，旧文件释放');
-      expect(exists(s2), isFalse);
       expect(exists(s3), isTrue, reason: '运行中');
     });
 
@@ -497,6 +507,7 @@ void main() {
     });
 
     test('还没有任何内核快照（不确定）：什么都不删', () async {
+      l = launcher(); // 新的 launcher：没有观察过任何快照
       final s1 = await accept(1, 1, revision: 7);
       final s2 = await accept(2, 2, revision: 8);
       final s3 = await accept(3, 3, revision: 9);
@@ -548,23 +559,162 @@ void main() {
       expect(exists(s2), isTrue);
     });
 
-    test('没有记录引用的旧 seq 文件（上次进程遗留）：确认运行前不删，确认后超过宽限期才删', () async {
-      final old = File('${workDir.path}/runtime-config-99.json')
-        ..writeAsStringSync('{}');
-      final fresh = File('${workDir.path}/runtime-config-98.json')
-        ..writeAsStringSync('{}');
-      old.setLastModifiedSync(
-        DateTime.now().subtract(const Duration(hours: 2)),
-      );
+    test('没有记录引用的 seq 文件：最新两份与宽限期内的保留；其余超过宽限即删；确认运行后旧的也删', () async {
+      File mk(int n, Duration age) =>
+          File('${workDir.path}/runtime-config-$n.json')
+            ..writeAsStringSync('{}')
+            ..setLastModifiedSync(DateTime.now().subtract(age));
+      final veryOld = mk(97, const Duration(hours: 5));
+      final old = mk(99, const Duration(hours: 2));
+      final fresh = mk(98, Duration.zero);
 
       final s1 = await accept(1, 1, revision: 7);
-      expect(old.existsSync(), isTrue, reason: '运行中的是谁拿不准，先留');
+      expect(veryOld.existsSync(), isFalse, reason: '不在最新两份里，且早已过了宽限');
+      expect(old.existsSync(), isTrue, reason: '最新两份之一：可能是运行中 / 持久化的那份，先留');
+      expect(fresh.existsSync(), isTrue);
 
       await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
-      // observe 触发清理：新 spec 确认运行 → 遗留的旧文件可以释放。
-      expect(old.existsSync(), isFalse);
-      expect(fresh.existsSync(), isTrue, reason: '刚写的可能还在去协调器的路上');
+      expect(old.existsSync(), isFalse, reason: '新 spec 已确认运行，过了宽限的遗留文件释放');
+      expect(fresh.existsSync(), isTrue, reason: '刚写的可能还在去协调器的路上（宽限期内）');
       expect(exists(s1), isTrue);
+    });
+
+    test('发送元数据在意图终结（discard）后仍保留：快照先于回执时 runtime-1 不被误删', () async {
+      final s1 = await accept(1, 1, revision: 7);
+      await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
+
+      // 相同 revision 的请求：绑定 seq 发送；快照先到、控制器终结意图并 discard，
+      // 回执最后才到。
+      final spec = await l.bindSeq(2, await l.prepare(2), 2);
+      await l.observe(kernel(appliedSeq: 2, attempt: 1, revision: 7));
+      await l.discard(2);
+      await l.accepted(
+        2,
+        LaunchSpec(
+          runtimeConfigPath: spec.runtimeConfigPath,
+          optionsJson: spec.optionsJson,
+          profileName: spec.profileName,
+          configRevision: 7,
+        ),
+        epoch: 'e1',
+        seq: 2,
+      );
+      l.sendFinished(2);
+
+      expect(exists(s1), isTrue, reason: 'runtime-1 仍是运行中实例的 spec');
+      expect(File(spec.runtimeConfigPath).existsSync(), isTrue);
+    });
+
+    test('发送元数据缺失 = 无法确认：绝不据此推断新启动，旧文件一律保留', () async {
+      final s1 = await accept(1, 1, revision: 7);
+      await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
+
+      final spec = await l.bindSeq(2, await l.prepare(2), 2);
+      l.sendFinished(2); // 元数据已被丢弃（模拟缺失）
+      await l.accepted(
+        2,
+        LaunchSpec(
+          runtimeConfigPath: spec.runtimeConfigPath,
+          optionsJson: spec.optionsJson,
+          profileName: spec.profileName,
+          configRevision: 7,
+        ),
+        epoch: 'e1',
+        seq: 2,
+      );
+      await l.observe(kernel(appliedSeq: 2, attempt: 1, revision: 7));
+
+      expect(exists(s1), isTrue, reason: '无法证明 seq2 启动了新实例，不能释放运行中的 seq1');
+    });
+
+    int seqFileCount() => workDir
+        .listSync()
+        .whereType<File>()
+        .where((f) => RegExp(r'runtime-config-\d+\.json$').hasMatch(f.path))
+        .length;
+
+    test('反复失败：每次失败的旧产物被证明无引用而回收，磁盘文件数有界，也不会触发配额', () async {
+      for (var seq = 1; seq <= 12; seq++) {
+        final spec = await l.prepare(seq); // 配额检查在这里；不得抛
+        final bound = await l.bindSeq(seq, spec, seq);
+        await l.accepted(
+          seq,
+          LaunchSpec(
+            runtimeConfigPath: bound.runtimeConfigPath,
+            optionsJson: bound.optionsJson,
+            profileName: bound.profileName,
+            configRevision: 100 + seq, // 每次都不同
+          ),
+          epoch: 'e1',
+          seq: seq,
+        );
+        l.sendFinished(seq);
+        // 启动失败：内核停止，appliedSeq 追上。
+        await l.observe(
+          kernel(
+            appliedSeq: seq,
+            attempt: seq,
+            revision: null,
+            status: KernelStatus.stopped,
+          ),
+        );
+        expect(seqFileCount(), lessThanOrEqualTo(2), reason: '第 $seq 次失败后');
+      }
+    });
+
+    test('大量相同 revision 的请求（内核从不重启）：只留运行中与最新两份，不触发配额', () async {
+      await accept(1, 1, revision: 7);
+      await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
+      for (var seq = 2; seq <= 30; seq++) {
+        await accept(seq, seq, revision: 7);
+        await l.observe(kernel(appliedSeq: seq, attempt: 1, revision: 7));
+        expect(seqFileCount(), lessThanOrEqualTo(2), reason: '第 $seq 次请求后');
+      }
+      expect(
+        File('${workDir.path}/runtime-config-1.json').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('${workDir.path}/runtime-config-30.json').existsSync(),
+        isTrue,
+      );
+    });
+
+    test('配额：无法证明可释放的文件达到上限时，新的准备请求以类型化失败拒绝，且不再写文件', () async {
+      await accept(1, 1, revision: 7);
+      await l.observe(kernel(appliedSeq: 1, attempt: 1, revision: 7));
+      // 5 份相同 revision、但缺发送元数据的请求：无法证明它们没被引用。
+      // （运行中 1 份 + 最新 1 份之外还留着 3 份，仍低于上限 4。）
+      for (var seq = 2; seq <= 6; seq++) {
+        final spec = await l.bindSeq(seq, await l.prepare(seq), seq);
+        l.sendFinished(seq);
+        await l.accepted(
+          seq,
+          LaunchSpec(
+            runtimeConfigPath: spec.runtimeConfigPath,
+            optionsJson: spec.optionsJson,
+            profileName: spec.profileName,
+            configRevision: 7,
+          ),
+          epoch: 'e1',
+          seq: seq,
+        );
+        await l.observe(kernel(appliedSeq: seq, attempt: 1, revision: 7));
+      }
+      final before = workDir.listSync().length;
+
+      await expectLater(
+        l.prepare(99),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const RuntimeFilesExhausted(),
+          ),
+        ),
+      );
+
+      expect(workDir.listSync().length, before, reason: '拒绝时不得再写任何文件');
     });
 
     test('清理不动仍在准备中的 prep 文件', () async {

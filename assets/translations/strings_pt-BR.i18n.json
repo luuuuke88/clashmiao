@@ -373,7 +373,8 @@
       "coreLibraryMissing": "Biblioteca do núcleo não instalada",
       "startTimeout": "Tempo de inicialização do serviço esgotado",
       "kernelUnresponsive": "O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.",
-      "kernelExited": "O núcleo foi encerrado inesperadamente"
+      "kernelExited": "O núcleo foi encerrado inesperadamente",
+      "runtimeFilesFull": "Há arquivos de configuração residuais demais. Reinicie o app e tente novamente"
     },
     "connectivity": {
       "unexpected": "Falha inesperada",

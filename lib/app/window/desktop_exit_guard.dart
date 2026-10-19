@@ -75,11 +75,16 @@ class DesktopExitGuard {
   @visibleForTesting
   Future<AppExitResponse> handleExitRequest() async {
     try {
-      // 总期限在 performShutdownCleanup 内部统一执行（含托盘清理）。
+      // 总期限在 performShutdownCleanup 内部统一执行（含托盘清理）；这里再包一层
+      // 同样的期限，是最后一道保险——清理流程本身出了意外也不能把退出挂住。
       await performShutdownCleanup(
         disconnect: () =>
             _container.read(connectionControllerProvider.notifier).disconnect(),
         disposeTray: TrayController.instance.dispose,
+      ).timeout(kDesktopExitCleanupTimeout);
+    } on TimeoutException {
+      debugPrint(
+        '[Quit] 退出清理超时（${kDesktopExitCleanupTimeout.inSeconds}s），照常退出',
       );
     } catch (e) {
       // performShutdownCleanup 内部已经逐步兜住异常了，这里只是最后一道：

@@ -106,7 +106,7 @@ class QuickSettingsModal extends ConsumerWidget {
                 border: Border.all(color: theme.aiUi.borderColor),
               ),
               child: Row(
-                children: serviceModeChoices().map((mode) {
+                children: serviceModeChoices(settings).map((mode) {
                   final isSelected = selectedMode == mode;
                   // 只有一档（iOS 恒为 VPN）时不是可选控件：不暴露按钮语义、
                   // 点了也没有动作，边界由下面的说明文字交代。

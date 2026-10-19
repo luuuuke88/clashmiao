@@ -7,10 +7,14 @@
 // 2. 不写死中文：`lib/` 里的 CJK 字符串字面量必须来自生成的 i18n；真正不该翻
 //    译的（品牌、语言自称、解析节点名用的关键词表、调试夹具）逐条登记在白名单。
 //
-// 两条规则都豁免「技术通道」：日志调用（debugPrint / print / log / 日志对象
-// 上的方法）、throw、assert、异常 / 失败类型的构造（名字以 Exception、
-// Error、Failure、Failed、Fault 结尾——它们携带技术信息，展示时再映射成本地化
-// 文案）、以及 `toString()` 的实现。
+// 两条规则都豁免「技术通道」：日志调用（debugPrint / print / log /
+// logAppFailure / 日志对象上的方法）、throw、assert、`toString()` 的实现，以及
+// 调用方**逐个登记**的内部异常载体类型的构造（[scanUserStrings] 的
+// `internalCarrierTypes`）。
+//
+// 载体不按名字后缀放行：`XxxFailure` 既可能是只进日志的内部异常，也可能是直接
+// 展示给用户的结果（例如深链导入的 `DeepLinkImportFailure.message`）。只有确认
+// 「内容绝不会原样展示」的类型才能登记；没登记的构造，参数照常检查。
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
@@ -42,6 +46,7 @@ List<StringViolation> scanUserStrings(
   Set<String>? allowedCjk = const {},
   bool checkCjk = true,
   bool checkRawError = true,
+  Set<String> internalCarrierTypes = const {},
 }) {
   final result = parseString(content: source, throwIfDiagnostics: false);
   final visitor = _Visitor(
@@ -50,6 +55,7 @@ List<StringViolation> scanUserStrings(
     allowedCjk: allowedCjk,
     checkCjk: checkCjk && allowedCjk != null,
     checkRawError: checkRawError,
+    carrierTypes: internalCarrierTypes,
   );
   result.unit.accept(visitor);
   return visitor.violations;
@@ -62,6 +68,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
     required this.allowedCjk,
     required this.checkCjk,
     required this.checkRawError,
+    required this.carrierTypes,
   });
 
   final String path;
@@ -69,6 +76,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
   final Set<String>? allowedCjk;
   final bool checkCjk;
   final bool checkRawError;
+  final Set<String> carrierTypes;
   final violations = <StringViolation>[];
 
   /// 当前作用域里的错误变量名（catch 参数、error 回调参数）。
@@ -186,17 +194,21 @@ class _Visitor extends RecursiveAstVisitor<void> {
     return false;
   }
 
-  static const _logFunctions = {'debugPrint', 'print', 'log', 'debugLog'};
+  static const _logFunctions = {
+    'debugPrint',
+    'print',
+    'log',
+    'debugLog',
+    // 应用日志通道（core/logger/app_logger.dart），写进用户可导出的 app.log。
+    'logAppFailure',
+    'logAppFailureOnce',
+  };
   // 日志对象：`_log.warning(...)`、`logger.e(...)`。只认这几个名字，免得
   // `dialog.show(...)` 之类被误当成日志通道。
   static final _loggerTarget = RegExp(
     r'^_?(log|logger|appLogger)$',
     caseSensitive: false,
   );
-  static final _carrierType = RegExp(
-    r'(Exception|Error|Failure|Failed|Fault)$',
-  );
-
   bool _inTechnicalSink(AstNode node) {
     for (AstNode? p = node.parent; p != null; p = p.parent) {
       if (p is ThrowExpression || p is Assertion || p is AssertInitializer) {
@@ -204,7 +216,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
       }
       if (p is MethodDeclaration && p.name.lexeme == 'toString') return true;
       if (p is InstanceCreationExpression &&
-          _carrierType.hasMatch(p.constructorName.type.name2.lexeme)) {
+          carrierTypes.contains(p.constructorName.type.name2.lexeme)) {
         return true;
       }
       if (p is MethodInvocation) {
@@ -212,7 +224,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
         final target = p.target;
         if (target == null && _logFunctions.contains(name)) return true;
         // 不带 new 的构造调用解析成 MethodInvocation。
-        if (target == null && _carrierType.hasMatch(name)) return true;
+        if (target == null && carrierTypes.contains(name)) return true;
         if (target is SimpleIdentifier && _loggerTarget.hasMatch(target.name)) {
           return true;
         }

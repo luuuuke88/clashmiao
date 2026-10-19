@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class GeoUpdateService {
@@ -60,9 +60,8 @@ class GeoUpdateService {
       }
     } on GeoChecksumMismatchException {
       rethrow;
-    } catch (e) {
-      // 取不到校验文件不算失败（有的镜像不提供 .sha256），照常使用下载结果。
-      debugPrint('读取 ${asset.filename} 的 SHA256 失败，跳过校验: $e');
+    } catch (e, st) {
+      logAppFailure('geo.sha256Skipped', e, st);
     }
 
     final dest = File('${workDir.path}/${asset.filename}');

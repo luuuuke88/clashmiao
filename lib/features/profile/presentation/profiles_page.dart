@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
@@ -131,8 +132,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                       child: MotionProgress(strokeWidth: 4),
                     ),
                   ),
-                  error: (e, _) {
-                    debugPrint('订阅列表读取失败: $e');
+                  error: (e, st) {
+                    logAppFailureOnce('profiles.list', e, st);
                     return Center(
                       child: Padding(
                         padding: const EdgeInsets.all(24),
@@ -263,8 +264,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
               },
               loading: () =>
                   const Center(child: MotionProgress(strokeWidth: 4)),
-              error: (e, _) {
-                debugPrint('订阅列表读取失败: $e');
+              error: (e, st) {
+                logAppFailureOnce('profiles.list', e, st);
                 return Center(child: Text(t.failure.unexpected));
               },
             ),
@@ -351,9 +352,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
             : t.profile.share.configCopied;
         AppToast.success(context, message);
       }
-    } catch (e) {
-      // 技术细节只进日志，界面只给本地化文案。
-      debugPrint('复制订阅失败: $e');
+    } catch (e, st) {
+      logAppFailure('profiles.copyLink', e, st);
       if (context.mounted) {
         AppToast.error(context, t.failure.unexpected);
       }
@@ -404,17 +404,13 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (widget.embedInSheet && mounted) {
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.setActive', e, st);
       if (mounted) {
         final t = ref.read(translationsProvider);
         AppToast.error(
           context,
-          profileFailureMessage(
-            e,
-            t,
-            failed: t.profile.switchFailedMsg,
-            operation: 'switchProfile',
-          ),
+          profileFailureMessage(e, t, failed: t.profile.switchFailedMsg),
         );
       }
     }
@@ -430,7 +426,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.update', e, st);
       if (isStaleRefresh(e)) {
         // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
         // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
@@ -438,12 +435,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       } else if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            e,
-            t,
-            failed: t.profile.update.failureMsg,
-            operation: 'updateProfile',
-          ),
+          profileFailureMessage(e, t, failed: t.profile.update.failureMsg),
         );
       }
     } finally {
@@ -474,16 +466,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.info(context, t.profile.delete.successMsg);
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.delete', e, st);
       if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            e,
-            t,
-            failed: t.failure.unexpected,
-            operation: 'deleteProfile',
-          ),
+          profileFailureMessage(e, t, failed: t.failure.unexpected),
         );
       }
     }
@@ -498,16 +486,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.updateAll', e, st);
       if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            e,
-            t,
-            failed: t.profile.update.failureMsg,
-            operation: 'updateAllProfiles',
-          ),
+          profileFailureMessage(e, t, failed: t.profile.update.failureMsg),
         );
       }
     } finally {

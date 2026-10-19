@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -102,9 +102,8 @@ class GeoUpdateNotifier
           lastUpdated: DateTime.now(),
         ),
       };
-    } catch (e) {
-      // 技术细节只进日志；界面按「失败」显示本地化文案。
-      debugPrint('更新路由资源 ${asset.type.name} 失败: $e');
+    } catch (e, st) {
+      logAppFailure('geo.update', e, st);
       state = {...state, asset.type: GeoUpdateState(error: e)};
     } finally {
       await progressSub?.cancel();

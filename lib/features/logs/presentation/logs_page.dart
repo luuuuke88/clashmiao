@@ -104,8 +104,8 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         onPressed: () async {
                           try {
                             await notifier.clear();
-                          } catch (error) {
-                            debugPrint('清除日志失败: $error');
+                          } catch (error, st) {
+                            logAppFailure('logs.clear', error, st);
                             if (!context.mounted) return;
                             AppToast.error(context, t.logs.clearFailed);
                           }
@@ -164,7 +164,11 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         body: Builder(
           builder: (context) {
             if (logsAsync.hasError) {
-              debugPrint('日志读取失败: ${logsAsync.error}');
+              logAppFailureOnce(
+                'logs.load',
+                logsAsync.error!,
+                logsAsync.stackTrace,
+              );
               return Center(child: Text(t.logs.loadFailed));
             }
             if (logsAsync.isLoading && state.lines.isEmpty) {

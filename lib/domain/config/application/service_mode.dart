@@ -12,7 +12,8 @@
 // 「仅线路」才会写出这个组合），其余（含默认值）都是 VPN——这也是升级前实际
 // 一直在跑的形态。Android 上这一档直接决定请求里的 `enable-tun`，原生协调器据
 // 此选择 Service 类（VPN / 纯代理），形态随请求走、进 revision。iOS 恒为 VPN，
-// 不提供选择；桌面端没有 TUN 档。原则：一个平台上不能生效的档位不出现。
+// 不提供选择。原则：界面上的可选档位（能力）与启动参数（显式设置）分开算——
+// 界面只藏一个平台上不能生效的档位，**不改写**用户持久化的显式设置。
 
 import 'dart:io';
 
@@ -47,28 +48,37 @@ ServiceModePlatform get serviceModePlatform {
 }
 
 /// 当前平台提供的档位：只列真正能生效的档，不给必定无效或必定失败的选项。
+/// [settings] 只用于桌面端：已持久化的显式 TUN 设置要能看到、能切走。
 ///
 /// - Android：仅线路 / VPN（没有「系统线路」：改系统代理需要 root）。
 /// - iOS：只有 VPN。Packet Tunnel 恒以 TUN 形态运行，「仅线路」在 iOS 上什么
 ///   也不会改变，所以不提供；界面用 `t.config.serviceModeIosVpnOnly` 说明边界。
-/// - 桌面端：仅线路 / 系统线路，**没有** TUN 档：仓库里不带 wintun 驱动，macOS
-///   的 entitlements 也只有 `network.client/server`，既没有网络扩展权限、也没有
-///   特权 helper，选了 TUN 只会让内核起 tun 设备失败。桌面因此只做到"系统代理级
-///   接管"，泄漏面（不遵循系统代理的程序会直连）由
-///   `t.config.desktopProxyScopeNotice` 明确告知，不藏着。
-List<ServiceMode> serviceModeChoices() => switch (serviceModePlatform) {
-  ServiceModePlatform.android => const [ServiceMode.proxyOnly, ServiceMode.vpn],
-  ServiceModePlatform.ios => const [ServiceMode.vpn],
-  ServiceModePlatform.desktop => const [
-    ServiceMode.proxyOnly,
-    ServiceMode.systemProxy,
-  ],
-};
+/// - 桌面端：仅线路 / 系统线路，**不主动提供** TUN 档：仓库里不带 wintun 驱动，
+///   macOS 的 entitlements 也只有 `network.client/server`，普通桌面进程起 tun
+///   设备会失败。桌面因此默认只做到"系统代理级接管"，泄漏面（不遵循系统代理的
+///   程序会直连）由 `t.config.desktopProxyScopeNotice` 明确告知，不藏着。
+///   但这不能证明所有桌面 TUN 路径都无效（例如以足够权限运行的 Linux），所以
+///   已持久化的 `enableTun=true`（旧版本、备份恢复）照旧生效（见
+///   [kernelEnableTun]），档位列表里也带上 VPN 显示为选中，用户随时能切走；
+///   一旦切走，它就不再出现。
+List<ServiceMode> serviceModeChoices(NetworkSettings settings) =>
+    switch (serviceModePlatform) {
+      ServiceModePlatform.android => const [
+        ServiceMode.proxyOnly,
+        ServiceMode.vpn,
+      ],
+      ServiceModePlatform.ios => const [ServiceMode.vpn],
+      ServiceModePlatform.desktop =>
+        settings.enableTun
+            ? const [
+                ServiceMode.proxyOnly,
+                ServiceMode.systemProxy,
+                ServiceMode.vpn,
+              ]
+            : const [ServiceMode.proxyOnly, ServiceMode.systemProxy],
+    };
 
-/// [settings] 当前对应的档位；结果一定在 [serviceModeChoices] 里。
-///
-/// 桌面端忽略 `enableTun`：旧版本或备份里可能留着 `enableTun=true`，但桌面没有
-/// TUN 档，它既不显示、也不进启动配置（见 [kernelEnableTun]）。
+/// [settings] 当前对应的档位；结果一定在 `serviceModeChoices(settings)` 里。
 ServiceMode serviceModeOf(NetworkSettings settings) {
   switch (serviceModePlatform) {
     case ServiceModePlatform.ios:
@@ -78,6 +88,7 @@ ServiceMode serviceModeOf(NetworkSettings settings) {
           ? ServiceMode.proxyOnly
           : ServiceMode.vpn;
     case ServiceModePlatform.desktop:
+      if (settings.enableTun) return ServiceMode.vpn;
       return settings.setSystemProxy
           ? ServiceMode.systemProxy
           : ServiceMode.proxyOnly;
@@ -88,30 +99,33 @@ ServiceMode serviceModeOf(NetworkSettings settings) {
 ///
 /// - Android：由服务模式决定，原生协调器按它选择 Service 类（VPN / 纯代理）；
 /// - iOS：Packet Tunnel 只能以 TUN 形态运行，恒为 true（不改变 iOS 现有行为）；
-/// - 桌面端：恒为 false——桌面没有 TUN 档（见 [serviceModeChoices]），残留的
-///   `enableTun=true` 不能让内核去起一个必定失败的 tun 设备。
+/// - 桌面端：尊重显式设置 `enableTun`。界面不主动提供 TUN 档（见
+///   [serviceModeChoices]），但不替用户改写已持久化的设置：有权限的环境里它
+///   本来就能工作，强制关掉会让这类用户升级后"显示已连接、实际失去全局接管"。
 bool kernelEnableTun(NetworkSettings settings) {
   return switch (serviceModePlatform) {
     ServiceModePlatform.android => serviceModeOf(settings) == ServiceMode.vpn,
     ServiceModePlatform.ios => true,
-    ServiceModePlatform.desktop => false,
+    ServiceModePlatform.desktop => settings.enableTun,
   };
 }
 
 /// 只对 TUN 生效的设置（严格路由、TUN 实现）此刻是否会起作用：内核真的以 TUN
-/// 形态运行时才会。桌面端恒为 false、Android「仅线路」为 false——这时界面不展示
-/// 这些设置，免得给出改了也没有任何效果的选项。
+/// 形态运行时才会。与 [kernelEnableTun] 同一口径：Android「仅线路」、桌面未开
+/// TUN 时为 false——这时界面不展示这些设置，免得给出改了也没有任何效果的选项。
 bool tunSettingsTakeEffect(NetworkSettings settings) =>
     kernelEnableTun(settings);
 
 /// 服务模式在当前平台是否只有一档、用户无从选择（iOS 恒为 VPN）。界面据此不画
 /// 选择控件，而是说明边界。
-bool get serviceModeIsFixed => serviceModeChoices().length == 1;
+bool get serviceModeIsFixed => serviceModePlatform == ServiceModePlatform.ios;
 
-/// 运行时配置是否保留订阅配置里的 tun inbound：与 [kernelEnableTun] 一致——桌面端
-/// 一律剥（没有权限建 tun）；Android「仅线路」跑在纯代理 Service 里，配置里留着
-/// tun 内核启动即失败。
+/// 运行时配置是否保留订阅配置里的 tun inbound：桌面端一律剥——桌面的 TUN 只由
+/// 显式设置经 `enable-tun` 交给内核创建，不让订阅里自带的 tun inbound 绕过这个
+/// 开关；移动端与 [kernelEnableTun] 一致，Android「仅线路」跑在纯代理 Service
+/// 里，配置里留着 tun 内核启动即失败。
 bool runtimeKeepsTunInbound(NetworkSettings settings) =>
+    serviceModePlatform != ServiceModePlatform.desktop &&
     kernelEnableTun(settings);
 
 /// 把 [mode] 写进网络设置（两个开关互斥）。

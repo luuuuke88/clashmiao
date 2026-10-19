@@ -6,7 +6,6 @@ import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/data/subscription_fetch.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart';
 
 /// 订阅存储相关的异常 → 给用户看的本地化文案；不属于这一类返回 null，
 /// 由调用方用自己场景的兜底文案。
@@ -34,15 +33,16 @@ bool isStaleRefresh(Object error) => error is ProfileUpdateStaleException;
 ///
 /// [failed] 是该操作自己的失败文案（如 `t.profile.update.failureMsg`）；能从
 /// 异常类型识别出原因时，用 `t.failure.withReason` 附上本地化的原因（网络超时、
-/// 配置无效……）。只读存储直接给升级提示。**异常原文只进日志**（[operation] 作为
-/// 日志标签），绝不拼进文案。
+/// 配置无效……）。只读存储直接给升级提示。异常原文绝不拼进文案。
+///
+/// 这是纯映射、不记日志：调用方在 catch 里**先**无条件 `logAppFailure`（不看
+/// `mounted`），再在页面仍挂载时用它生成提示——日志不能跟着界面反馈一起被
+/// `mounted` 挡掉。
 String profileFailureMessage(
   Object error,
   TranslationsEn t, {
   required String failed,
-  required String operation,
 }) {
-  debugPrint('[$operation] 订阅操作失败: $error');
   if (error is StoreReadOnlyException) {
     return t.failure.profiles.readOnlyUpgrade;
   }

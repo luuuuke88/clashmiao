@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
@@ -328,9 +329,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       if (!mounted) return;
       AppToast.success(context, t.config.warpConfigGenerated);
       unawaited(Navigator.of(context).maybePop());
-    } catch (e) {
-      // 技术细节只进日志；用户看到的是本地化文案。
-      debugPrint('生成 WARP 配置失败: $e');
+    } catch (e, st) {
+      logAppFailure('addProfile.generateWarp', e, st);
       if (mounted) AppToast.error(context, t.config.warpConfigFailed);
     } finally {
       if (mounted) setState(() => _isGeneratingWarp = false);
@@ -761,17 +761,13 @@ Future<void> doAddProfile(
         ref.read(translationsProvider).profile.add.successMsg,
       );
     }
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('profiles.add', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileFailureMessage(
-          e,
-          t,
-          failed: t.profile.add.failureMsg,
-          operation: 'addProfile',
-        ),
+        profileFailureMessage(e, t, failed: t.profile.add.failureMsg),
       );
     }
   }
@@ -796,17 +792,13 @@ Future<void> doEditProfile(
         ref.read(translationsProvider).profile.save.successMsg,
       );
     }
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('profiles.edit', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileFailureMessage(
-          e,
-          t,
-          failed: t.profile.save.failureMsg,
-          operation: 'saveProfile',
-        ),
+        profileFailureMessage(e, t, failed: t.profile.save.failureMsg),
       );
     }
   }

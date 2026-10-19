@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -156,8 +157,8 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
   try {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     clipboardText = data?.text?.trim() ?? '';
-  } catch (e) {
-    debugPrint('读取剪贴板失败: $e');
+  } catch (e, st) {
+    logAppFailure('pasteImport.readClipboard', e, st);
     if (context.mounted) {
       AppToast.error(
         context,
@@ -201,17 +202,13 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
             .importedNamed(name: profile.name),
       );
     }
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('pasteImport.import', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(
         context,
-        profileFailureMessage(
-          e,
-          t,
-          failed: t.profile.add.failureMsg,
-          operation: 'pasteImport',
-        ),
+        profileFailureMessage(e, t, failed: t.profile.add.failureMsg),
       );
     }
   }

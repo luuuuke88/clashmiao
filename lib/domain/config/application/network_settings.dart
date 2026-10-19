@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -808,8 +808,8 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         );
       }
       map = Map<String, dynamic>.from(decoded);
-    } on FormatException catch (e) {
-      debugPrint('配置选项 JSON 解析失败: ${e.message}');
+    } on FormatException catch (e, st) {
+      logAppFailure('settings.importJson', e, st);
       return const NetworkSettingsImportResult(
         appliedKeys: [],
         skippedKeys: [],

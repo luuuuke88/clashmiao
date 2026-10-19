@@ -113,7 +113,7 @@ void main() {
       // 顶部的实验性功能提示应该用共享的 TipCard 组件（跟 assets_page 用
       // 的是同一个组件，风格统一——见 tip_card_test.dart）。桌面端在服务模式
       // 那一栏还有第二张 TipCard，说明"只有遵循系统代理的程序会走隧道"这个
-      // 泄漏面（桌面没有 TUN，见 _serviceModeChoices）。
+      // 泄漏面（桌面不主动提供 TUN，见 serviceModeChoices）。
       expect(
         find.byType(TipCard),
         Platform.isAndroid || Platform.isIOS
@@ -135,7 +135,7 @@ void main() {
       expect(find.text('远程 DNS 域名策略'), findsOneWidget);
       expect(find.text('直连 DNS'), findsOneWidget);
       expect(find.text('直连 DNS 域名策略'), findsOneWidget);
-      // 严格路由 / TUN 实现只对 TUN 起作用；宿主是桌面（没有 TUN 档），不展示。
+      // 严格路由 / TUN 实现只对 TUN 起作用；宿主是桌面且默认未开 TUN，不展示。
       // 各平台的展示规则见下面的「服务模式按平台」。
       expect(
         find.text('严格路由'),
@@ -170,8 +170,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('系统线路'), findsWidgets);
-      // 桌面端不提供 VPN(TUN) 档：没有 wintun 驱动、没有网络扩展权限，
-      // 选了只会让内核起 tun 设备失败（见 _serviceModeChoices）。
+      // 桌面端不主动提供 VPN(TUN) 档：没有 wintun 驱动、没有网络扩展权限，
+      // 普通桌面进程起 tun 设备会失败（见 serviceModeChoices）。
       expect(
         find.text('VPN'),
         Platform.isAndroid || Platform.isIOS ? findsOneWidget : findsNothing,
@@ -530,7 +530,7 @@ void main() {
   });
 
   // 不给假入口（真机验收后的裁决）：iOS 的 Packet Tunnel 恒为 TUN，「仅线路」
-  // 在 iOS 上什么也不改变；桌面没有 TUN，只对 TUN 起作用的设置改了也没用。
+  // 在 iOS 上什么也不改变；桌面不主动提供 TUN，但已持久化的显式设置照旧生效。
   group('服务模式按平台：不能生效的选项不出现', () {
     tearDown(() => debugServiceModePlatformOverride = null);
 
@@ -612,7 +612,30 @@ void main() {
       expect(find.text('TUN 实现'), findsNothing);
     });
 
-    testWidgets('桌面：残留 enableTun=true 也不显示 VPN、不显示 TUN 设置', (tester) async {
+    testWidgets('桌面默认：不提供 VPN 档、不显示 TUN 设置，并说明系统代理级接管的边界', (tester) async {
+      await pumpOn(
+        tester,
+        ServiceModePlatform.desktop,
+        prefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+
+      expect(find.text('仅线路'), findsOneWidget);
+      expect(find.text('严格路由'), findsNothing);
+      expect(find.text('TUN 实现'), findsNothing);
+      expect(find.textContaining('桌面端只有遵循系统代理'), findsOneWidget);
+      await tester.tap(find.text('服务模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('VPN'), findsNothing);
+    });
+
+    // 界面能力与运行能力分开：桌面不主动提供 TUN，但已持久化的显式设置不被改写，
+    // 照旧显示为选中、照旧生效，用户能看见、能切走。
+    testWidgets('桌面：已持久化 enableTun=true 显示为选中、TUN 设置可见，切走后不再出现', (
+      tester,
+    ) async {
       await pumpOn(
         tester,
         ServiceModePlatform.desktop,
@@ -622,13 +645,28 @@ void main() {
         },
       );
 
-      expect(find.text('仅线路'), findsOneWidget, reason: '落在真实存在的档位上');
-      expect(find.text('严格路由'), findsNothing);
-      expect(find.text('TUN 实现'), findsNothing);
-      expect(find.textContaining('桌面端只有遵循系统代理'), findsOneWidget);
+      expect(find.text('VPN'), findsOneWidget, reason: '显式设置照旧显示');
+      expect(find.text('严格路由'), findsOneWidget);
+      expect(find.text('TUN 实现'), findsOneWidget);
+      expect(
+        find.textContaining('桌面端只有遵循系统代理'),
+        findsNothing,
+        reason: 'TUN 生效时这条边界说明不成立',
+      );
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getBool('clashmiao_enable_tun'), isTrue, reason: '渲染不改写设置');
+
       await tester.tap(find.text('服务模式'));
       await tester.pumpAndSettle();
-      expect(find.text('VPN'), findsNothing);
+      expect(find.text('VPN'), findsWidgets);
+      await tester.tap(find.text('仅线路').last);
+      await tester.pumpAndSettle();
+
+      expect(prefs.getBool('clashmiao_enable_tun'), isFalse);
+      expect(find.text('严格路由'), findsNothing);
+      await tester.tap(find.text('服务模式'));
+      await tester.pumpAndSettle();
+      expect(find.text('VPN'), findsNothing, reason: '切走后桌面不再提供 TUN 档');
     });
   });
 }

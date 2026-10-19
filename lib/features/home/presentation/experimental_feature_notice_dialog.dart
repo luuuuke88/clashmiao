@@ -2,6 +2,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -15,8 +16,8 @@ const kExperimentalNoticeDismissedKey =
 /// 判断"当前生效配置"是否命中任意一个已知的实验性字段。
 ///
 /// 字段列表覆盖两层配置来源：
-/// - [settings]：全局网络设置（TLS fragment / TLS padding / WARP / 局域网访问），
-///   来自 [networkSettingsProvider]。
+/// - [settings]：全局网络设置（TLS fragment / TLS padding / WARP / 局域网访问 /
+///   桌面端 TUN 模式），来自 [networkSettingsProvider]。
 /// - [advancedConfig]：当前激活订阅的 per-profile 高级配置（TLS fragment /
 ///   多路复用 mux），来自 [ProfileEntity.advancedConfig]。
 ///
@@ -25,8 +26,13 @@ bool hasExperimentalFeatures({
   required NetworkSettings settings,
   AdvancedConfig? advancedConfig,
 }) {
-  // TUN 不在这里：移动端的 VPN 是正常的服务模式；桌面端没有 TUN 档，残留的
-  // `enableTun` 也不会进启动配置（见 service_mode.dart 的 kernelEnableTun）。
+  // 移动端的 VPN 是正常的服务模式，不算实验性；桌面端不主动提供 TUN 档，但
+  // 显式开着的 `enableTun` 照旧进启动配置（见 service_mode.dart 的
+  // kernelEnableTun），这是用户自己选择的实验性形态。
+  if (serviceModePlatform == ServiceModePlatform.desktop &&
+      kernelEnableTun(settings)) {
+    return true;
+  }
   if (settings.enableTlsFragment) return true;
   if (advancedConfig?.fragmentEnabled ?? false) return true;
   if (settings.enableTlsPadding) return true;

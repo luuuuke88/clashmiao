@@ -12,12 +12,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// 订阅操作失败 → 类型化的本地化文案；异常原文绝不进文案。
 void main() {
   final t = AppLocale.zhCn.build();
-  String msg(Object e) => profileFailureMessage(
-    e,
-    t,
-    failed: t.profile.update.failureMsg,
-    operation: 'test',
-  );
+  String msg(Object e) =>
+      profileFailureMessage(e, t, failed: t.profile.update.failureMsg);
   DioException dio(DioExceptionType type) =>
       DioException(requestOptions: RequestOptions(), type: type);
 
@@ -60,7 +56,6 @@ void main() {
         dio(DioExceptionType.receiveTimeout),
         en,
         failed: en.profile.update.failureMsg,
-        operation: 'test',
       ),
       '${en.profile.update.failureMsg}: ${en.failure.connection.timeout}',
     );

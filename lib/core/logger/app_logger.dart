@@ -219,3 +219,43 @@ class _AppFileLoggyPrinter extends LoggyPrinter {
     unawaited(AppLogger.instance.append(buffer.toString()));
   }
 }
+
+/// 业务失败的统一落盘口：异常与堆栈写进 [kAppLogFileName]（用户可导出的应用
+/// 日志），同时 `debugPrint` 到开发控制台。
+///
+/// 约定：catch 里**第一句**就调它，且**不看** `mounted`——页面销毁后失败照样
+/// 要留下技术详情；之后再用 `mounted` 决定要不要给界面反馈。用户看到的文案
+/// 只用本地化的原因描述，异常原文只进这里。
+///
+/// [where] 是排障用的定位标签（例如 `profiles.update`），不是用户文案。
+void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
+  final buffer = StringBuffer()
+    ..write(DateTime.now().toIso8601String())
+    ..write(' [ERROR] ')
+    ..write(where)
+    ..write(': ')
+    ..write(error);
+  if (stackTrace != null && stackTrace != StackTrace.empty) {
+    buffer.write('\n$stackTrace');
+  }
+  final line = buffer.toString();
+  debugPrint(line);
+  unawaited(AppLogger.instance.append(line));
+}
+
+/// 每个 [where] 最近一次已记录的错误，给 [logAppFailureOnce] 去重。
+final Map<String, Object> _lastLoggedFailure = {};
+
+/// [logAppFailure] 的去重版，给 `AsyncValue.when(error: ...)` 这类会随重建反复
+/// 执行的错误分支用：同一 [where] 上同一个错误对象只记一次，不让每次重建都往
+/// 日志里刷一遍同样的堆栈。
+void logAppFailureOnce(String where, Object error, [StackTrace? stackTrace]) {
+  final last = _lastLoggedFailure[where];
+  if (last != null && (identical(last, error) || last == error)) return;
+  _lastLoggedFailure[where] = error;
+  logAppFailure(where, error, stackTrace);
+}
+
+/// 测试专用：清空 [logAppFailureOnce] 的去重记录。
+@visibleForTesting
+void resetAppFailureDedupForTesting() => _lastLoggedFailure.clear();

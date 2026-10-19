@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:clashmiao/features/home/presentation/experimental_feature_notice_dialog.dart';
@@ -47,9 +48,27 @@ void main() {
       expect(hasExperimentalFeatures(settings: settings), isTrue);
     });
 
-    test('残留的 enableTun 不算实验性：桌面没有 TUN 档，它不进启动配置', () {
+    test('桌面端开启 TUN → 实验性（显式设置照旧进启动配置）', () {
+      debugServiceModePlatformOverride = ServiceModePlatform.desktop;
+      addTearDown(() => debugServiceModePlatformOverride = null);
       final settings = const NetworkSettings().copyWith(enableTun: true);
-      expect(hasExperimentalFeatures(settings: settings), isFalse);
+      expect(hasExperimentalFeatures(settings: settings), isTrue);
+    });
+
+    test('移动端的 VPN 是正常服务模式，不算实验性', () {
+      final settings = const NetworkSettings().copyWith(enableTun: true);
+      for (final platform in [
+        ServiceModePlatform.android,
+        ServiceModePlatform.ios,
+      ]) {
+        debugServiceModePlatformOverride = platform;
+        addTearDown(() => debugServiceModePlatformOverride = null);
+        expect(
+          hasExperimentalFeatures(settings: settings),
+          isFalse,
+          reason: '$platform',
+        );
+      }
     });
 
     test('per-profile advancedConfig.fragmentEnabled → 实验性', () {

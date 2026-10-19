@@ -14,7 +14,10 @@ void main() {
   // 真机验收 BUG-4：移动端默认值落在不存在的「系统线路」档，分段控件两段都不亮。
   test('Android：只有仅线路 / VPN 两档，任何设置都落在其中之一', () {
     debugServiceModePlatformOverride = ServiceModePlatform.android;
-    expect(serviceModeChoices(), [ServiceMode.proxyOnly, ServiceMode.vpn]);
+    expect(serviceModeChoices(_defaults), [
+      ServiceMode.proxyOnly,
+      ServiceMode.vpn,
+    ]);
     expect(serviceModeIsFixed, isFalse);
     expect(serviceModeOf(_defaults), ServiceMode.vpn, reason: '默认值就是一直在跑的 VPN');
     expect(serviceModeOf(_proxyOnly), ServiceMode.proxyOnly);
@@ -30,7 +33,7 @@ void main() {
   // 不给假入口：Packet Tunnel 恒为 TUN，「仅线路」在 iOS 上什么也不改变。
   test('iOS：只有 VPN 一档，任何设置都显示为 VPN', () {
     debugServiceModePlatformOverride = ServiceModePlatform.ios;
-    expect(serviceModeChoices(), [ServiceMode.vpn]);
+    expect(serviceModeChoices(_vpn), [ServiceMode.vpn]);
     expect(serviceModeIsFixed, isTrue);
     for (final s in [_defaults, _proxyOnly, _vpn]) {
       expect(serviceModeOf(s), ServiceMode.vpn);
@@ -38,26 +41,33 @@ void main() {
     }
   });
 
-  test('桌面端档位：仅线路 / 系统线路；残留的 enableTun 不让结果落到不存在的档', () {
+  test('桌面端档位：不主动提供 TUN；已持久化的 enableTun 显示为选中、可切走', () {
     debugServiceModePlatformOverride = ServiceModePlatform.desktop;
-    expect(serviceModeChoices(), [
+    expect(serviceModeChoices(_defaults), [
       ServiceMode.proxyOnly,
       ServiceMode.systemProxy,
+    ]);
+    expect(serviceModeChoices(_vpn), [
+      ServiceMode.proxyOnly,
+      ServiceMode.systemProxy,
+      ServiceMode.vpn,
     ]);
     expect(serviceModeIsFixed, isFalse);
     expect(serviceModeOf(_defaults), ServiceMode.systemProxy);
     expect(serviceModeOf(_proxyOnly), ServiceMode.proxyOnly);
-    expect(serviceModeOf(_vpn), ServiceMode.proxyOnly);
+    expect(serviceModeOf(_vpn), ServiceMode.vpn);
     expect(
       serviceModeOf(
         const NetworkSettings(setSystemProxy: true, enableTun: true),
       ),
-      ServiceMode.systemProxy,
+      ServiceMode.vpn,
     );
     for (final s in [_defaults, _proxyOnly, _vpn]) {
-      expect(serviceModeChoices(), contains(serviceModeOf(s)));
-      expect(tunSettingsTakeEffect(s), isFalse, reason: '桌面没有 TUN');
+      expect(serviceModeChoices(s), contains(serviceModeOf(s)));
     }
+    expect(tunSettingsTakeEffect(_defaults), isFalse);
+    expect(tunSettingsTakeEffect(_proxyOnly), isFalse);
+    expect(tunSettingsTakeEffect(_vpn), isTrue, reason: '显式 TUN 照旧生效');
   });
 
   test('Android：TUN 相关设置只在 VPN 档起作用', () {
@@ -97,11 +107,65 @@ void main() {
       expect(kernelEnableTun(_proxyOnly), isTrue);
     });
 
-    test('桌面端恒为 false：没有 TUN 档，残留的 enableTun 不进启动配置', () {
+    test('桌面端尊重显式设置：enableTun=true 才进启动配置', () {
       debugServiceModePlatformOverride = ServiceModePlatform.desktop;
-      expect(kernelEnableTun(_vpn), isFalse);
+      expect(kernelEnableTun(_vpn), isTrue);
       expect(kernelEnableTun(_defaults), isFalse);
-      expect(getDefaultConfigOptions(settings: _vpn)['enable-tun'], isFalse);
+      expect(getDefaultConfigOptions(settings: _vpn)['enable-tun'], isTrue);
     });
+  });
+
+  // 启动参数回归矩阵：平台 × 设置组合。界面档位（能力）与启动参数（显式设置）
+  // 分开算——这里锁住的是后者，界面怎么隐藏都不能改写它。
+  group('启动参数矩阵（平台 × 设置）', () {
+    const combos = {
+      'tun=0 sys=0': NetworkSettings(setSystemProxy: false, enableTun: false),
+      'tun=0 sys=1': NetworkSettings(setSystemProxy: true, enableTun: false),
+      'tun=1 sys=0': NetworkSettings(setSystemProxy: false, enableTun: true),
+      'tun=1 sys=1': NetworkSettings(setSystemProxy: true, enableTun: true),
+    };
+    // 期望值：(enable-tun, 保留订阅里的 tun inbound)
+    const expected = <ServiceModePlatform, Map<String, (bool, bool)>>{
+      ServiceModePlatform.android: {
+        'tun=0 sys=0': (false, false),
+        'tun=0 sys=1': (true, true),
+        'tun=1 sys=0': (true, true),
+        'tun=1 sys=1': (true, true),
+      },
+      ServiceModePlatform.ios: {
+        'tun=0 sys=0': (true, true),
+        'tun=0 sys=1': (true, true),
+        'tun=1 sys=0': (true, true),
+        'tun=1 sys=1': (true, true),
+      },
+      ServiceModePlatform.desktop: {
+        'tun=0 sys=0': (false, false),
+        'tun=0 sys=1': (false, false),
+        'tun=1 sys=0': (true, false),
+        'tun=1 sys=1': (true, false),
+      },
+    };
+    for (final platform in ServiceModePlatform.values) {
+      for (final entry in combos.entries) {
+        test('${platform.name} / ${entry.key}', () {
+          debugServiceModePlatformOverride = platform;
+          final (tun, keepInbound) = expected[platform]![entry.key]!;
+          final options = getDefaultConfigOptions(settings: entry.value);
+          expect(options['enable-tun'], tun, reason: 'enable-tun');
+          expect(kernelEnableTun(entry.value), tun);
+          expect(
+            runtimeKeepsTunInbound(entry.value),
+            keepInbound,
+            reason: 'tun inbound',
+          );
+          // 不变量：选中态一定在档位里；TUN 专属设置与 enable-tun 同口径。
+          expect(
+            serviceModeChoices(entry.value),
+            contains(serviceModeOf(entry.value)),
+          );
+          expect(tunSettingsTakeEffect(entry.value), tun);
+        });
+      }
+    }
   });
 }

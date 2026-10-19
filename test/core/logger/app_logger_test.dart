@@ -53,6 +53,34 @@ void main() {
     });
   });
 
+  group('logAppFailure：业务失败统一落盘', () {
+    tearDown(resetAppFailureDedupForTesting);
+
+    test('异常与堆栈写进 app.log，带定位标签', () async {
+      final stack = StackTrace.current;
+      logAppFailure('profiles.update', StateError('boom'), stack);
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect(content, contains('[ERROR] profiles.update: Bad state: boom'));
+      expect(content, contains(stack.toString().split('\n').first));
+    });
+
+    test('logAppFailureOnce：同一标签同一错误只记一次，换了错误再记', () async {
+      final first = StateError('first');
+      logAppFailureOnce('profiles.list', first);
+      await AppLogger.instance.flush();
+      logAppFailureOnce('profiles.list', first);
+      await AppLogger.instance.flush();
+      logAppFailureOnce('profiles.list', StateError('second'));
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect('first'.allMatches(content), hasLength(1));
+      expect(content, contains('second'));
+    });
+  });
+
   group('AppLogger 日志文件大小控制（超阈值截断）', () {
     test('文件字节数超过阈值时，只保留最后 maxLines 行', () async {
       AppLogger.configureForTesting(

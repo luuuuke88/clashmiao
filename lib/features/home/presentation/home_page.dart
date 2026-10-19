@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
@@ -168,8 +169,8 @@ class HomePage extends ConsumerWidget {
                             loading: () => const Center(
                               child: MotionProgress(strokeWidth: 4),
                             ),
-                            error: (e, _) {
-                              debugPrint('首页读取订阅失败: $e');
+                            error: (e, st) {
+                              logAppFailureOnce('home.profiles', e, st);
                               final t = ref.watch(translationsProvider);
                               return Center(child: Text(t.failure.unexpected));
                             },

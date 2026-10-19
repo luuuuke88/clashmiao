@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/profile/data/deep_link_parser.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -149,15 +150,11 @@ Future<void> _importAndReport(
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);
     resultNotifier.state = DeepLinkImportSuccess(profile.name);
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('deepLink.import', e, st);
     final t = ref.read(translationsProvider);
     resultNotifier.state = DeepLinkImportFailure(
-      profileFailureMessage(
-        e,
-        t,
-        failed: t.profile.add.failureMsg,
-        operation: 'deepLinkImport',
-      ),
+      profileFailureMessage(e, t, failed: t.profile.add.failureMsg),
     );
   }
 }

@@ -201,7 +201,7 @@ native 层依赖 `android/app/libs/libcore.aar`（gomobile 生成的 libbox 包�
 
 `FFIBoxService` 直接 `DynamicLibrary.open` `libcore.dylib`（macOS）/ `libcore.so`（Linux）/ `libcore.dll`（Windows），用 `lookupFunction` 绑定 13 个 Go 导出符号：`setupOnce` / `setup` / `start` / `stop` / `restart` / `parse` / `generateConfig` / `generateWarpConfig` / `selectOutbound` / `urlTest` / `startCommandClient` / `stopCommandClient` / `changeConfigOptions`。状态通过 `ReceivePort` 由 Go 侧推回；配置文件结构跟 Android 端一致。
 
-**桌面端默认不走 TUN**（需 admin 权限）：`NetworkSettings` 的默认值是 `setSystemProxy = true`、`enableTun = false`，sing-box 在默认端口 `127.0.0.1:2080`（`mixedPort`）起 mixed inbound，系统代理指向这里；两个开关用户都可以在设置页改。
+**桌面端默认不走 TUN**（需 admin 权限）：`NetworkSettings` 的默认值是 `setSystemProxy = true`、`enableTun = false`，sing-box 在默认端口 `127.0.0.1:2080`（`mixedPort`）起 mixed inbound，系统代理指向这里。设置页的服务模式只提供「仅线路 / 系统线路」两档，不主动提供 TUN；但已持久化的 `enableTun = true`（旧版本、备份恢复、导入配置选项）不会被改写，照旧进启动配置（以足够权限运行时可用），界面把它显示为选中的 VPN 档并展示 TUN 相关设置，用户切到别的档后它就不再出现。
 
 平台 lib 的落点：
 - macOS：`libcore/bin/libcore.dylib` 由 Xcode 的 shell script build phase 拷到 `Runner.app/Contents/Frameworks/`
@@ -257,10 +257,10 @@ ios/
 
 `getDefaultConfigOptions` 把用户设置与当前模式拼成推给内核的 `configOptions`。按平台分流的两项：
 
-- `enable-tun` 取自 `service_mode.dart` 的 `kernelEnableTun`：Android 由服务模式决定（VPN → true，「仅线路」→ false，原生协调器据此选 `TunnelService` / `PlainService`，形态进 revision）；iOS 恒为 true（Packet Tunnel 只能以 TUN 运行）；桌面恒为 false（没有 TUN 驱动与权限）。
+- `enable-tun` 取自 `service_mode.dart` 的 `kernelEnableTun`：Android 由服务模式决定（VPN → true，「仅线路」→ false，原生协调器据此选 `TunnelService` / `PlainService`，形态进 revision）；iOS 恒为 true（Packet Tunnel 只能以 TUN 运行）；桌面尊重显式设置 `enableTun`（界面不主动提供，但不替用户改写）。订阅配置里自带的 tun inbound 由 `runtimeKeepsTunInbound` 决定去留：桌面一律剥掉（桌面的 TUN 只经 `enable-tun` 由内核创建），Android「仅线路」剥掉，其余保留。
 - `set-system-proxy`：移动端恒为 false（改系统代理需要 root）；桌面按用户开关（CI smoke 强制 false）。
 
-服务模式的可选档位同样只列能生效的：Android「仅线路 / VPN」，iOS 只有 VPN（界面说明「iOS 仅支持 VPN 模式」，不给选择器），桌面「仅线路 / 系统线路」；只对 TUN 起作用的设置（严格路由、TUN 实现）在内核不以 TUN 运行时不展示。
+服务模式的可选档位同样只列能生效的：Android「仅线路 / VPN」，iOS 只有 VPN（界面说明「iOS 仅支持 VPN 模式」，不给选择器），桌面「仅线路 / 系统线路」（已持久化 `enableTun = true` 时额外显示选中的 VPN 档，可切走）；界面能力与启动参数分开算：界面只藏不能生效的档位，不改写持久化的显式设置。只对 TUN 起作用的设置（严格路由、TUN 实现）在内核不以 TUN 运行时不展示。
 
 智能模式（`isSmart`，即模式索引不为 0）下，中国大陆 IP 段与域名（`cn_direct_rules.dart`，由 `assets/rule-sets/` 里的 `.srs` 反编译生成）作为 `rules` 字段注入、走 `bypass` 直连；全局模式不注入。原因是当前打包的内核在 `region: "other"` 下不支持任何 rule-set，分流数据只能以明文列表经 `rules` 注入——详见 `default_config_options.dart` 与 `cn_direct_rules.dart` 文件头的注释。
 

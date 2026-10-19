@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
@@ -329,7 +330,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                   subtitle: _presentServiceMode(t, settings),
                                   icon: FluentIcons.settings_24_regular,
                                   selected: serviceModeOf(settings),
-                                  choices: serviceModeChoices(),
+                                  choices: serviceModeChoices(settings),
                                   itemLabel: (value) =>
                                       _serviceModeLabel(t, value),
                                   itemIcon: (value) => switch (value) {
@@ -345,11 +346,12 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                     value,
                                   ),
                                 ),
-                              // 桌面端只做到"系统代理级接管"，不遵循系统代理
-                              // 的程序会直连、暴露真实 IP。这是当前架构的边界，
-                              // 作为 VPN 产品必须让用户知道，不能藏着。
+                              // 桌面端（未开 TUN 时）只做到"系统代理级接管"，
+                              // 不遵循系统代理的程序会直连、暴露真实 IP。这是
+                              // 当前架构的边界，作为 VPN 产品必须让用户知道。
                               if (serviceModePlatform ==
-                                  ServiceModePlatform.desktop)
+                                      ServiceModePlatform.desktop &&
+                                  !kernelEnableTun(settings))
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -362,7 +364,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                   ),
                                 ),
                               // 严格路由与 TUN 实现只对 TUN 起作用：内核不以 TUN
-                              // 运行时（桌面端、Android「仅线路」）不展示。
+                              // 运行时（Android「仅线路」、桌面未开 TUN）不展示。
                               if (tunSettingsTakeEffect(settings)) ...[
                                 _ConfigSwitchTile(
                                   title: t.config.strictRoute,
@@ -850,9 +852,8 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
         context,
         ref.read(translationsProvider).config.warpConfigGenerated,
       );
-    } catch (e) {
-      // 技术细节只进日志；用户看到的是本地化文案。
-      debugPrint('生成 WARP 配置失败: $e');
+    } catch (e, st) {
+      logAppFailure('config.generateWarp', e, st);
       if (!mounted) return;
       AppToast.error(
         context,
@@ -1456,8 +1457,8 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                     Navigator.pop(context);
                     try {
                       await BackupService.export(container);
-                    } catch (e) {
-                      debugPrint('导出备份失败: $e');
+                    } catch (e, st) {
+                      logAppFailure('backup.export', e, st);
                       if (navContext.mounted) {
                         AppToast.error(
                           navContext,
@@ -1530,7 +1531,8 @@ Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
   final PreparedImport? prepared;
   try {
     prepared = await BackupService.pickAndPrepare(container);
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('backup.pick', e, st);
     if (context.mounted) Navigator.pop(context);
     if (navContext.mounted) {
       AppToast.error(navContext, BackupMessages.error(t, e));
@@ -1555,7 +1557,8 @@ Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
     if (navContext.mounted) {
       AppToast.success(navContext, BackupMessages.report(t, outcome.report));
     }
-  } catch (e) {
+  } catch (e, st) {
+    logAppFailure('backup.apply', e, st);
     if (navContext.mounted) {
       AppToast.error(navContext, BackupMessages.error(t, e));
     }

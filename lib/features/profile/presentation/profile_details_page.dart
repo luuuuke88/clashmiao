@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -270,8 +271,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
             ],
           );
         },
-        error: (error, _) {
-          debugPrint('订阅详情读取失败: $error');
+        error: (error, st) {
+          logAppFailureOnce('profileDetails.load', error, st);
           return Center(child: Text(t.failure.unexpected));
         },
         loading: () => const Center(child: MotionProgress(strokeWidth: 4)),
@@ -348,16 +349,12 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         AppToast.success(context, t.profile.save.successMsg);
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (error) {
+    } catch (error, st) {
+      logAppFailure('profileDetails.save', error, st);
       if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            error,
-            t,
-            failed: t.profile.save.failureMsg,
-            operation: 'saveProfile',
-          ),
+          profileFailureMessage(error, t, failed: t.profile.save.failureMsg),
         );
       }
     } finally {
@@ -373,7 +370,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (error) {
+    } catch (error, st) {
+      logAppFailure('profileDetails.update', error, st);
       if (isStaleRefresh(error)) {
         // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
         // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
@@ -381,12 +379,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       } else if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            error,
-            t,
-            failed: t.profile.update.failureMsg,
-            operation: 'updateProfile',
-          ),
+          profileFailureMessage(error, t, failed: t.profile.update.failureMsg),
         );
       }
     } finally {
@@ -414,16 +407,12 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         AppToast.success(context, t.profile.delete.successMsg);
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (error) {
+    } catch (error, st) {
+      logAppFailure('profileDetails.delete', error, st);
       if (mounted) {
         AppToast.error(
           context,
-          profileFailureMessage(
-            error,
-            t,
-            failed: t.failure.unexpected,
-            operation: 'deleteProfile',
-          ),
+          profileFailureMessage(error, t, failed: t.failure.unexpected),
         );
       }
     } finally {

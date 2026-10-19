@@ -635,6 +635,36 @@ void main() {
       expect(find.text('系统线路'), findsWidgets, reason: '桌面端唯一真正能用的接管方式');
       expect(find.text('VPN'), findsNothing, reason: '桌面端没有 TUN 驱动/权限，不能给这个档位');
     }, skip: Platform.isAndroid || Platform.isIOS);
+
+    // 界面能力与运行能力分开：桌面不主动提供 TUN 档，但已持久化的显式设置不被
+    // 改写——显示为选中、点别的档能切走，切走后 VPN 不再出现。
+    testWidgets('桌面端已持久化 enableTun=true：VPN 显示为选中，可切走', (tester) async {
+      debugServiceModePlatformOverride = ServiceModePlatform.desktop;
+      addTearDown(() => debugServiceModePlatformOverride = null);
+      final (widget, container) = await _host(
+        initialPrefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': true,
+        },
+      );
+      final handle = tester.ensureSemantics();
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(
+        tester.getSemantics(find.text('VPN')),
+        isSemantics(isSelected: true, isButton: true),
+      );
+      expect(container.read(networkSettingsProvider).enableTun, isTrue);
+
+      await tester.tap(find.text('系统线路'));
+      await tester.pump(const Duration(milliseconds: 500));
+      final settings = container.read(networkSettingsProvider);
+      expect(settings.enableTun, isFalse);
+      expect(settings.setSystemProxy, isTrue);
+      expect(find.text('VPN'), findsNothing);
+      handle.dispose();
+    });
   });
 
   group('整行语义', () {

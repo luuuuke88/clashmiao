@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -145,4 +148,122 @@ void main() {
       });
     },
   );
+
+  group('connectionFailureMessage：类型化失败 → 文案', () {
+    test('每种失败在英文与中文下都有非空文案', () {
+      final failures = <ConnectionFailure>[
+        const NoActiveProfile(),
+        const ConfigMissing(),
+        const CoreUnavailable(),
+        const PermissionDenied(),
+        const StartTimeout(),
+        for (final code in KernelFailureCode.values)
+          KernelStartFailed(code, 'm'),
+        const KernelUnresponsive(),
+        const NativeUnresponsive(),
+        const PlatformFailure('c', 'm'),
+        const UnexpectedFailure('x'),
+      ];
+      for (final f in failures) {
+        expect(connectionFailureMessage(f, en), isNotEmpty, reason: '$f');
+        expect(connectionFailureMessage(f, zhCn), isNotEmpty, reason: '$f');
+      }
+    });
+
+    test('沿用既有文案：缺订阅 / 缺配置 / 核心库缺失 / VPN 授权 / 启动超时', () {
+      expect(
+        connectionFailureMessage(const NoActiveProfile(), en),
+        en.failure.profiles.noActive,
+      );
+      expect(
+        connectionFailureMessage(const ConfigMissing(), en),
+        en.failure.profiles.notFound,
+      );
+      expect(
+        connectionFailureMessage(const CoreUnavailable(), en),
+        en.failure.singbox.coreLibraryMissing,
+      );
+      expect(
+        connectionFailureMessage(const PermissionDenied(), en),
+        en.failure.connectivity.missingVpnPermission,
+      );
+      expect(
+        connectionFailureMessage(const StartTimeout(), en),
+        en.failure.singbox.startTimeout,
+      );
+    });
+
+    test('内核启动失败码：配置为空 → 无效配置；建服务 / 起服务 / 起命令服务 → 服务启动错误', () {
+      expect(
+        connectionFailureMessage(
+          const KernelStartFailed(KernelFailureCode.emptyConfiguration, ''),
+          en,
+        ),
+        en.failure.singbox.invalidConfig,
+      );
+      for (final code in [
+        KernelFailureCode.createService,
+        KernelFailureCode.startService,
+        KernelFailureCode.startCommandServer,
+      ]) {
+        expect(
+          connectionFailureMessage(KernelStartFailed(code, ''), en),
+          en.failure.singbox.start,
+          reason: code.name,
+        );
+      }
+    });
+
+    test('失联类失败有各自可操作的文案，且互不相同', () {
+      final a = connectionFailureMessage(const KernelUnresponsive(), en);
+      final b = connectionFailureMessage(const NativeUnresponsive(), en);
+      final c = connectionFailureMessage(
+        const KernelStartFailed(KernelFailureCode.kernelExited, ''),
+        en,
+      );
+      expect({a, b, c}.length, 3);
+      expect(a, en.failure.singbox.kernelUnresponsive);
+      expect(b, en.failure.connectivity.nativeUnresponsive);
+      expect(c, en.failure.singbox.kernelExited);
+    });
+
+    test('平台/未知失败兜底为「意外错误」，不暴露原始异常文本', () {
+      expect(
+        connectionFailureMessage(const PlatformFailure('boom', 'secret'), en),
+        en.failure.unexpected,
+      );
+      expect(
+        connectionFailureMessage(const UnexpectedFailure('secret'), en),
+        en.failure.unexpected,
+      );
+    });
+  });
+
+  group('failureFromError：异常 → 类型化失败', () {
+    test('端口 2 s 超时 → nativeUnresponsive；其它端口错误保留错误码', () {
+      expect(
+        failureFromError(const KernelPortException('timeout')),
+        const NativeUnresponsive(),
+      );
+      expect(
+        failureFromError(const KernelPortException('unsupported', 'ios')),
+        const PlatformFailure('unsupported', 'ios'),
+      );
+    });
+
+    test(
+      'PlatformException → PlatformFailure；TimeoutException → startTimeout',
+      () {
+        expect(
+          failureFromError(PlatformException(code: 'c', message: 'm')),
+          const PlatformFailure('c', 'm'),
+        );
+        expect(failureFromError(TimeoutException('t')), const StartTimeout());
+      },
+    );
+
+    test('其它异常 → unexpected', () {
+      expect(failureFromError(StateError('x')), isA<UnexpectedFailure>());
+    });
+  });
 }

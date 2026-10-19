@@ -362,14 +362,17 @@
       "create": "Erro ao criar serviço",
       "start": "Erro de inicialização do serviço",
       "coreLibraryMissing": "Biblioteca do núcleo não instalada",
-      "startTimeout": "Tempo de inicialização do serviço esgotado"
+      "startTimeout": "Tempo de inicialização do serviço esgotado",
+      "kernelUnresponsive": "O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.",
+      "kernelExited": "O núcleo foi encerrado inesperadamente"
     },
     "connectivity": {
       "unexpected": "Falha inesperada",
       "missingVpnPermission": "Permissão VPN ausente",
       "missingNotificationPermission": "Permissão de notificação ausente",
       "core": "Erro central",
-      "networkUnavailable": "Rede indisponível"
+      "networkUnavailable": "Rede indisponível",
+      "nativeUnresponsive": "Perdeu-se o contato com o serviço em segundo plano. Tente novamente."
     },
     "profiles": {
       "unexpected": "Erro inesperado",

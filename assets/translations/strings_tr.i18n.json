@@ -362,14 +362,17 @@
       "create": "Servis oluşturma hatası",
       "start": "Servis başlatma hatası",
       "coreLibraryMissing": "Çekirdek Kitaplığı Yüklü Değil",
-      "startTimeout": "Servis Başlatma Zaman Aşımı"
+      "startTimeout": "Servis Başlatma Zaman Aşımı",
+      "kernelUnresponsive": "Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.",
+      "kernelExited": "Çekirdek beklenmedik şekilde kapandı"
     },
     "connectivity": {
       "unexpected": "Beklenmedik Hata",
       "missingVpnPermission": "Eksik VPN İzni",
       "missingNotificationPermission": "Eksik Bildirim İzni",
       "core": "Temel Hata",
-      "networkUnavailable": "Ağ Kullanılamıyor"
+      "networkUnavailable": "Ağ Kullanılamıyor",
+      "nativeUnresponsive": "Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin."
     },
     "profiles": {
       "unexpected": "Beklenmedik hata",

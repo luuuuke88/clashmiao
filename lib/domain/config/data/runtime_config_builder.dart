@@ -25,7 +25,12 @@ class RuntimeConfigBuilder {
 
   static const _runtimeFileName = 'runtime-config.json';
 
-  /// 读 [baseProfile]，写到 [workingDir]/runtime-config.json 并返回该 File。
+  /// 读 [baseProfile]，写到 [workingDir]/[outputFileName]（默认
+  /// `runtime-config.json`）并返回该 File。
+  ///
+  /// 连接生命周期（子项目 B）里每个请求使用独立文件（先
+  /// `runtime-config-prep-<token>.json`，分配 seq 后改名为
+  /// `runtime-config-<seq>.json`），所以文件名由调用方决定。
   ///
   /// [remoteDnsAddress] 会覆盖 profile 里 `dns.servers[tag=remote]` 的 address。
   /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）
@@ -35,6 +40,7 @@ class RuntimeConfigBuilder {
     required Directory workingDir,
     String? remoteDnsAddress,
     AdvancedConfig? advancedConfig,
+    String outputFileName = _runtimeFileName,
   }) async {
     final raw = await baseProfile.readAsString();
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
@@ -67,7 +73,7 @@ class RuntimeConfigBuilder {
       _injectMux(cfg, advancedConfig!);
     }
 
-    final out = File('${workingDir.path}/$_runtimeFileName');
+    final out = File('${workingDir.path}/$outputFileName');
     await out.writeAsString(jsonEncode(cfg), flush: true);
     if (kDebugMode) {
       debugPrint(

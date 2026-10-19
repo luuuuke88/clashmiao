@@ -362,14 +362,17 @@
       "create": "服務建立錯誤",
       "start": "服務啟動錯誤",
       "coreLibraryMissing": "核心程式庫未安裝",
-      "startTimeout": "服務啟動逾時"
+      "startTimeout": "服務啟動逾時",
+      "kernelUnresponsive": "核心無回應，請重試或重新啟動應用程式",
+      "kernelExited": "核心意外結束"
     },
     "connectivity": {
       "unexpected": "意外失敗",
       "missingVpnPermission": "缺少 VPN 權限",
       "missingNotificationPermission": "缺少通知權限",
       "core": "核心錯誤",
-      "networkUnavailable": "網路無法使用"
+      "networkUnavailable": "網路無法使用",
+      "nativeUnresponsive": "與背景服務失去連線，請重試"
     },
     "profiles": {
       "unexpected": "意外錯誤",

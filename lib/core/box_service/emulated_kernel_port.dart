@@ -4,6 +4,7 @@ import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_hub.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/box_service/model/box_service_exception.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:flutter/foundation.dart';
@@ -600,8 +601,11 @@ class EmulatedKernelPort implements KernelPort {
     _abort(exec, _Fault(code, alert.message ?? ''));
   }
 
-  static String _describe(Object e) =>
-      e is PlatformException ? '${e.code}: ${e.message}' : '$e';
+  static String _describe(Object e) => e is PlatformException
+      ? '${e.code}: ${e.message}'
+      : e is BoxServiceException
+      ? '${e.code}: ${e.message}'
+      : '$e';
 }
 
 class _StartExec {

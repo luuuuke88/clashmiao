@@ -362,14 +362,17 @@
       "invalidConfig": "Invalid Configuration",
       "create": "Service Creation Error",
       "start": "Service Startup Error",
-      "startTimeout": "Service Startup Timed Out"
+      "startTimeout": "Service Startup Timed Out",
+      "kernelUnresponsive": "The core is not responding. Please try again, or restart the app.",
+      "kernelExited": "The core exited unexpectedly"
     },
     "connectivity": {
       "unexpected": "Unexpected Failure",
       "missingVpnPermission": "Missing VPN Permission",
       "missingNotificationPermission": "Missing Notification Permission",
       "networkUnavailable": "Network Unavailable",
-      "core": "Core Error"
+      "core": "Core Error",
+      "nativeUnresponsive": "Lost contact with the background service. Please try again."
     },
     "profiles": {
       "unexpected": "Unexpected Error",

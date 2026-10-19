@@ -538,7 +538,8 @@
     "warpNoiseSize": "Tamaño del ruido",
     "warpNoiseMode": "Modo de ruido",
     "warpNoiseDelay": "Retardo de ruido",
-    "desktopProxyScopeNotice": "En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real."
+    "desktopProxyScopeNotice": "En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.",
+    "serviceModeIosVpnOnly": "iOS solo admite el modo VPN"
   },
   "stats": {
     "traffic": "Tráfico",

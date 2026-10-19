@@ -47,9 +47,9 @@ void main() {
       expect(hasExperimentalFeatures(settings: settings), isTrue);
     });
 
-    test('桌面端开启 TUN → 实验性（测试进程跑在桌面 OS 上，isDesktop 恒真）', () {
+    test('残留的 enableTun 不算实验性：桌面没有 TUN 档，它不进启动配置', () {
       final settings = const NetworkSettings().copyWith(enableTun: true);
-      expect(hasExperimentalFeatures(settings: settings), isTrue);
+      expect(hasExperimentalFeatures(settings: settings), isFalse);
     });
 
     test('per-profile advancedConfig.fragmentEnabled → 实验性', () {

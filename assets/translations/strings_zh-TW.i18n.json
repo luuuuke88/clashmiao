@@ -552,6 +552,7 @@
     "blockAds": "封鎖廣告",
     "warpNoiseSize": "雜訊大小",
     "warpNoiseMode": "雜訊模式",
-    "desktopProxyScopeNotice": "桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。"
+    "desktopProxyScopeNotice": "桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。",
+    "serviceModeIosVpnOnly": "iOS 僅支援 VPN 模式"
   }
 }

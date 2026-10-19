@@ -10,7 +10,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-// 档位、选中态与写入都走 service_mode.dart 的唯一口径（与配置选项页一致）。
+// 档位、选中态与写入都走 service_mode.dart 的唯一口径（与配置选项页一致）：
+// 某个平台上不能生效的档位不出现（iOS 只有 VPN，桌面没有 TUN）。
 String _quickServiceModeLabel(TranslationsEn t, ServiceMode mode) {
   return switch (mode) {
     ServiceMode.proxyOnly => t.config.shortServiceModes.proxy,
@@ -107,14 +108,19 @@ class QuickSettingsModal extends ConsumerWidget {
               child: Row(
                 children: serviceModeChoices().map((mode) {
                   final isSelected = selectedMode == mode;
+                  // 只有一档（iOS 恒为 VPN）时不是可选控件：不暴露按钮语义、
+                  // 点了也没有动作，边界由下面的说明文字交代。
+                  final selectable = !serviceModeIsFixed;
                   return Expanded(
                     child: Semantics(
-                      button: true,
+                      button: selectable,
                       selected: isSelected,
-                      inMutuallyExclusiveGroup: true,
+                      inMutuallyExclusiveGroup: selectable,
                       child: GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: () => _changeServiceMode(ref, mode),
+                        onTap: selectable
+                            ? () => _changeServiceMode(ref, mode)
+                            : null,
                         child: AnimatedContainer(
                           duration: reduceMotion ? Duration.zero : Motion.short,
                           // 最小 48 dp 的交互高度（Android 触控目标）；文字放大时
@@ -151,6 +157,20 @@ class QuickSettingsModal extends ConsumerWidget {
               ),
             ),
           ),
+          if (serviceModeIsFixed) ...[
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Text(
+                t.config.serviceModeIosVpnOnly,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: theme.aiUi.secondaryTextColor,
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 24),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),

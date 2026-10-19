@@ -241,6 +241,52 @@ void main() {
       handle.dispose();
     });
 
+    // 不给假入口：iOS 的 Packet Tunnel 恒为 TUN，「仅线路」在 iOS 上什么也不
+    // 改变，所以不出现；只展示 VPN 并说明边界。
+    testWidgets('iOS：只有 VPN 一档、不是可点的按钮，并说明「iOS 仅支持 VPN 模式」', (tester) async {
+      debugServiceModePlatformOverride = ServiceModePlatform.ios;
+      addTearDown(() => debugServiceModePlatformOverride = null);
+      final handle = tester.ensureSemantics();
+      // 旧版本在 iOS 上点过「仅线路」留下的组合。
+      final (widget, container) = await _host(
+        initialPrefs: {
+          'clashmiao_set_system_proxy': false,
+          'clashmiao_enable_tun': false,
+        },
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('仅线路'), findsNothing);
+      expect(find.text('系统线路'), findsNothing);
+      expect(find.text('iOS 仅支持 VPN 模式'), findsOneWidget);
+      expect(
+        tester.getSemantics(find.text('VPN')),
+        isSemantics(isSelected: true, hasSelectedState: true, isButton: false),
+      );
+
+      await tester.tap(find.text('VPN'));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(
+        container.read(networkSettingsProvider).enableTun,
+        isFalse,
+        reason: '只有一档时点击没有动作，不写设置',
+      );
+      handle.dispose();
+    });
+
+    testWidgets('Android：两档可选，没有 iOS 的边界说明', (tester) async {
+      debugServiceModePlatformOverride = ServiceModePlatform.android;
+      addTearDown(() => debugServiceModePlatformOverride = null);
+      final (widget, _) = await _host();
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 50));
+
+      expect(find.text('仅线路'), findsOneWidget);
+      expect(find.text('VPN'), findsOneWidget);
+      expect(find.text('iOS 仅支持 VPN 模式'), findsNothing);
+    });
+
     testWidgets('服务模式分段控件：选中项带 selected 语义并用 primaryContainer', (tester) async {
       final handle = tester.ensureSemantics();
       final (widget, _) = await _host(

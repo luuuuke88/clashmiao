@@ -2,7 +2,6 @@ import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
@@ -304,29 +303,53 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             icon: FluentIcons.box_arrow_left_24_regular,
                             iconColor: Colors.orange,
                             children: [
-                              _ChoiceTile<ServiceMode>(
-                                title: t.config.serviceMode,
-                                subtitle: _presentServiceMode(t, settings),
-                                icon: FluentIcons.settings_24_regular,
-                                selected: serviceModeOf(settings),
-                                choices: serviceModeChoices(),
-                                itemLabel: (value) =>
-                                    _serviceModeLabel(t, value),
-                                itemIcon: (value) => switch (value) {
-                                  ServiceMode.proxyOnly =>
-                                    FluentIcons.plug_disconnected_24_regular,
-                                  ServiceMode.systemProxy =>
-                                    FluentIcons.globe_search_24_regular,
-                                  ServiceMode.vpn =>
-                                    FluentIcons.arrow_routing_24_regular,
-                                },
-                                onSelected: (value) =>
-                                    _setServiceMode(ref, context, t, value),
-                              ),
+                              // 只有一档的平台（iOS 恒为 VPN）不给选择器，只展示
+                              // 当前值并说明边界——点开一个只有一个选项的列表
+                              // 本身就是假入口。
+                              if (serviceModeIsFixed) ...[
+                                _BasePreferenceTile(
+                                  title: t.config.serviceMode,
+                                  subtitle: _presentServiceMode(t, settings),
+                                  icon: FluentIcons.settings_24_regular,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
+                                  ),
+                                  child: TipCard(
+                                    message: t.config.serviceModeIosVpnOnly,
+                                  ),
+                                ),
+                              ] else
+                                _ChoiceTile<ServiceMode>(
+                                  title: t.config.serviceMode,
+                                  subtitle: _presentServiceMode(t, settings),
+                                  icon: FluentIcons.settings_24_regular,
+                                  selected: serviceModeOf(settings),
+                                  choices: serviceModeChoices(),
+                                  itemLabel: (value) =>
+                                      _serviceModeLabel(t, value),
+                                  itemIcon: (value) => switch (value) {
+                                    ServiceMode.proxyOnly =>
+                                      FluentIcons.plug_disconnected_24_regular,
+                                    ServiceMode.systemProxy =>
+                                      FluentIcons.globe_search_24_regular,
+                                    ServiceMode.vpn =>
+                                      FluentIcons.arrow_routing_24_regular,
+                                  },
+                                  onSelected: (value) => applyServiceMode(
+                                    ref.read(networkSettingsProvider.notifier),
+                                    value,
+                                  ),
+                                ),
                               // 桌面端只做到"系统代理级接管"，不遵循系统代理
                               // 的程序会直连、暴露真实 IP。这是当前架构的边界，
                               // 作为 VPN 产品必须让用户知道，不能藏着。
-                              if (!Platform.isAndroid && !Platform.isIOS)
+                              if (serviceModePlatform ==
+                                  ServiceModePlatform.desktop)
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -338,27 +361,31 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                     message: t.config.desktopProxyScopeNotice,
                                   ),
                                 ),
-                              _ConfigSwitchTile(
-                                title: t.config.strictRoute,
-                                value: settings.strictRoute,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setStrictRoute(value),
-                                icon: FluentIcons.prohibited_24_regular,
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.config.tunImplementation,
-                                subtitle: settings.tunImplementation,
-                                icon: FluentIcons.keyboard_24_regular,
-                                selected: settings.tunImplementation,
-                                choices: _tunImplementationChoices,
-                                itemLabel: (value) => value,
-                                itemIcon: (_) =>
-                                    FluentIcons.keyboard_24_regular,
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setTunImplementation(value),
-                              ),
+                              // 严格路由与 TUN 实现只对 TUN 起作用：内核不以 TUN
+                              // 运行时（桌面端、Android「仅线路」）不展示。
+                              if (tunSettingsTakeEffect(settings)) ...[
+                                _ConfigSwitchTile(
+                                  title: t.config.strictRoute,
+                                  value: settings.strictRoute,
+                                  onChanged: (value) => ref
+                                      .read(networkSettingsProvider.notifier)
+                                      .setStrictRoute(value),
+                                  icon: FluentIcons.prohibited_24_regular,
+                                ),
+                                _ChoiceTile<String>(
+                                  title: t.config.tunImplementation,
+                                  subtitle: settings.tunImplementation,
+                                  icon: FluentIcons.keyboard_24_regular,
+                                  selected: settings.tunImplementation,
+                                  choices: _tunImplementationChoices,
+                                  itemLabel: (value) => value,
+                                  itemIcon: (_) =>
+                                      FluentIcons.keyboard_24_regular,
+                                  onSelected: (value) => ref
+                                      .read(networkSettingsProvider.notifier)
+                                      .setTunImplementation(value),
+                                ),
+                              ],
                               _ValueTile(
                                 title: t.config.mixedPort,
                                 subtitle: '${settings.mixedPort}',
@@ -512,19 +539,6 @@ Future<void> _setRegion(WidgetRef ref, String value) async {
   final notifier = ref.read(networkSettingsProvider.notifier);
   await notifier.setRegion(value);
   await notifier.setDirectDnsAddress(value == 'cn' ? '223.5.5.5' : '1.1.1.1');
-}
-
-Future<void> _setServiceMode(
-  WidgetRef ref,
-  BuildContext context,
-  TranslationsEn t,
-  ServiceMode mode,
-) async {
-  if (mode == ServiceMode.vpn &&
-      serviceModePlatform == ServiceModePlatform.desktop) {
-    AppToast.info(context, t.settings.adminPrivilegesRequired);
-  }
-  await applyServiceMode(ref.read(networkSettingsProvider.notifier), mode);
 }
 
 void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
@@ -1232,14 +1246,16 @@ class _BasePreferenceTile extends StatelessWidget {
   const _BasePreferenceTile({
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
     this.icon,
     this.enabled = true,
   });
 
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+
+  /// null = 只读展示：不可点、没有箭头。
+  final VoidCallback? onTap;
   final IconData? icon;
   final bool enabled;
 
@@ -1285,13 +1301,14 @@ class _BasePreferenceTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                FluentIcons.chevron_right_24_regular,
-                size: 16,
-                color: Theme.of(
-                  context,
-                ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
+              if (onTap != null)
+                Icon(
+                  FluentIcons.chevron_right_24_regular,
+                  size: 16,
+                  color: Theme.of(
+                    context,
+                  ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                ),
             ],
           ),
         ),

@@ -552,6 +552,7 @@
     "warpNoiseSize": "Gürültü Boyutu",
     "warpNoiseMode": "Gürültü Modu",
     "warpNoiseDelay": "Gürültü Gecikmesi",
-    "desktopProxyScopeNotice": "Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır."
+    "desktopProxyScopeNotice": "Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.",
+    "serviceModeIosVpnOnly": "iOS yalnızca VPN modunu destekler"
   }
 }

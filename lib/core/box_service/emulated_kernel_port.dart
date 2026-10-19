@@ -70,10 +70,9 @@ class EmulatedKernelPort implements KernelPort {
   bool _driving = false;
   bool _needsTeardown = false;
   bool _stopStuck = false;
-  bool _sawProgress = false;
   bool _disposed = false;
-  Completer<_Fault?>? _startWaiter;
-  Completer<void>? _stopWaiter;
+  _StartExec? _startExec;
+  _StopExec? _stopExec;
 
   // ── 初始化 ──────────────────────────────────────────────────
   Future<void>? _init;
@@ -318,6 +317,9 @@ class EmulatedKernelPort implements KernelPort {
     return null;
   }
 
+  /// 一次启动/重载执行。执行通道（[_drive]）在平台调用真正返回之前不会前进：
+  /// 超时只**发布**失败（[_abort]），不放行下一步，保证任何时刻至多一个在途的
+  /// 平台调用，且不会出现「stop 与尚未返回的 start 并发」。
   Future<void> _runStart({required bool reload}) async {
     final spec = _launch!;
     final seq = _appliedSeq;
@@ -326,63 +328,102 @@ class EmulatedKernelPort implements KernelPort {
       return;
     }
     _attempt++;
-    final attempt = _attempt;
+    final exec = _startExec = _StartExec(seq: seq, attempt: _attempt);
     _status = KernelStatus.starting;
     _replay = false;
     _commit();
 
-    final waiter = _startWaiter = Completer<_Fault?>();
-    _sawProgress = false;
-    _Fault? fault;
+    final timer = Timer(startTimeout, () {
+      _abort(
+        exec,
+        const _Fault(KernelFailureCode.startTimeout, '启动超过 30 s 仍未完成'),
+      );
+    });
     try {
-      fault = await (() async {
-        await _service.changeConfigOptions(spec.optionsJson);
-        if (reload) {
-          await _service.restart(
-            spec.runtimeConfigPath,
-            name: spec.profileName,
-          );
-        } else {
-          await _service.start(spec.runtimeConfigPath, name: spec.profileName);
-        }
-        // 平台状态可能在调用期间已经推送过（FFI），或本就是 started（重载未
-        // 经过中间态）：此时没有后续事件可等。
-        if (_native is BoxStarted && !waiter.isCompleted) waiter.complete(null);
-        return waiter.future;
-      })().timeout(startTimeout);
-    } on TimeoutException {
-      fault = const _Fault(KernelFailureCode.startTimeout, '启动超过 30 s 仍未完成');
+      await _startCalls(exec, spec, reload: reload);
+      // 平台状态可能在调用期间已经推送过（FFI），或本就是 started（重载未
+      // 经过中间态）：此时没有后续事件可等。
+      if (!exec.failed && _native is BoxStarted) _settle(exec);
+      await exec.done.future;
     } catch (e) {
-      fault = _Fault(KernelFailureCode.startService, _describe(e));
+      _abort(exec, _Fault(KernelFailureCode.startService, _describe(e)));
     }
-    _startWaiter = null;
+    timer.cancel();
+    _startExec = null;
 
-    if (fault == null) {
+    if (!exec.failed) {
       _status = KernelStatus.started;
       _activeRev = spec.configRevision;
       _replay = true;
       _commit();
       return;
     }
-    // 失败：无论归属，都要回收这个半启动的实例。
+    // 失败（含超时后才返回的迟到成功）：回收这个半启动或已启动的实例，且
+    // 不会再次启动它。
     _needsTeardown = true;
-    _fail(seq, fault, attempt: attempt);
+    _commit();
   }
 
-  /// 只有仍是当前请求的那次执行才能把 desired 置 off 并写 failure。
-  void _fail(int seq, _Fault fault, {int? attempt}) {
+  /// 顺序执行平台调用；每个异步步骤之后检查执行是否已作废，作废则不再发起
+  /// 后续调用（迟到的 changeConfigOptions 不会继续 start）。
+  Future<void> _startCalls(
+    _StartExec exec,
+    LaunchSpec spec, {
+    required bool reload,
+  }) async {
+    await _service.changeConfigOptions(spec.optionsJson);
+    if (exec.failed) return;
+    if (reload) {
+      await _service.restart(spec.runtimeConfigPath, name: spec.profileName);
+    } else {
+      await _service.start(spec.runtimeConfigPath, name: spec.profileName);
+    }
+  }
+
+  /// 本次启动已到达 started。
+  void _settle(_StartExec exec) {
+    if (!exec.done.isCompleted) exec.done.complete();
+  }
+
+  /// 判定本次启动失败：**只发布**，不碰执行通道。只有仍是当前请求的那次执行
+  /// 才把 desired 置 off 并写 failure（状态如实记为 stopping：回收即将发生，
+  /// 但要等在途平台调用返回）；已被更新请求取代的执行不改 desired、不写
+  /// failure，只作废自己。幂等。
+  void _abort(_StartExec exec, _Fault fault) {
+    if (exec.failed) return;
+    exec.failed = true;
+    if (_appliedSeq == exec.seq) {
+      _desired = Desired.off;
+      _failure = KernelFailure(
+        code: fault.code,
+        message: fault.message,
+        attempt: exec.attempt,
+        seq: exec.seq,
+      );
+      _status = KernelStatus.stopping;
+    }
+    _commit();
+    if (!exec.done.isCompleted) exec.done.complete();
+  }
+
+  /// 不经执行（尚未启动）的失败：只有仍是当前请求才写。
+  void _fail(int seq, _Fault fault) {
     if (_appliedSeq == seq) {
       _desired = Desired.off;
       _failure = KernelFailure(
         code: fault.code,
         message: fault.message,
-        attempt: attempt ?? _attempt,
+        attempt: _attempt,
         seq: seq,
       );
     }
     _commit();
   }
 
+  /// 一次停止执行。超时（默认 20 s）从执行开始计时，覆盖 `stop()` 调用与等待
+  /// 平台推送 Stopped：到点即发布 kernelUnresponsive，状态保持 stopping（如实）。
+  /// 若 `stop()` 调用本身仍未返回，执行通道继续占用，不会并发地再发 stop；
+  /// 调用返回之后才按归属决定停住或再回收一次。
   Future<void> _runStop() async {
     final seq = _appliedSeq;
     _needsTeardown = false;
@@ -390,48 +431,71 @@ class EmulatedKernelPort implements KernelPort {
     _status = KernelStatus.stopping;
     _commit();
 
-    final waiter = _stopWaiter = Completer<void>();
-    _Fault? fault;
-    try {
-      if (_native is BoxStopped) {
-        waiter.complete();
-      } else {
-        await _service.stop();
-        if (_native is BoxStopped && !waiter.isCompleted) waiter.complete();
+    final exec = _stopExec = _StopExec(seq: seq);
+    if (_native is BoxStopped) exec.done.complete();
+    final timer = Timer(stopTimeout, () {
+      if (exec.done.isCompleted) return;
+      exec.timedOut = true;
+      if (_appliedSeq == seq) {
+        _failure = KernelFailure(
+          code: KernelFailureCode.kernelUnresponsive,
+          message: '停止超过 20 s 仍未完成',
+          attempt: _attempt,
+          seq: seq,
+        );
+        _commit();
       }
-      await waiter.future.timeout(stopTimeout);
-    } on TimeoutException {
-      fault = const _Fault(
-        KernelFailureCode.kernelUnresponsive,
-        '停止超过 20 s 仍未完成',
-      );
+      exec.done.complete();
+    });
+    _Fault? error;
+    try {
+      if (_native is! BoxStopped) {
+        await _service.stop();
+        if (_native is BoxStopped && !exec.done.isCompleted) {
+          exec.done.complete();
+        }
+      }
+      await exec.done.future;
     } catch (e) {
       if (_native is! BoxStopped) {
-        fault = _Fault(KernelFailureCode.unknown, _describe(e));
+        error = _Fault(KernelFailureCode.unknown, _describe(e));
       }
     }
-    _stopWaiter = null;
+    timer.cancel();
+    _stopExec = null;
 
-    if (fault == null) {
-      _status = KernelStatus.stopped;
-      _activeRev = null;
-      _replay = false;
-      _commit();
+    if (error == null && !exec.timedOut) {
+      _markStopped();
       return;
     }
-    // 如实：状态保持 stopping。仍是当前请求 → 写 failure 并停住，等下一个请求
-    // 重试；已有更新请求 → 为它再回收一次。
+    // 超时或停止调用失败；此时没有任何在途的平台调用。
+    if (_native is BoxStopped) {
+      // 迟到的成功：平台其实已经停了（failure 作为历史保留）。
+      _markStopped();
+      return;
+    }
     if (_appliedSeq == seq) {
-      _failure = KernelFailure(
-        code: fault.code,
-        message: fault.message,
-        attempt: _attempt,
-        seq: seq,
-      );
+      // 仍是当前请求：写 failure 并停住，等下一个请求重试。
+      if (error != null) {
+        _failure = KernelFailure(
+          code: error.code,
+          message: error.message,
+          attempt: _attempt,
+          seq: seq,
+        );
+      }
       _stopStuck = true;
     } else {
+      // 已有更新请求：为它再回收一次。
       _needsTeardown = true;
     }
+    _commit();
+  }
+
+  void _markStopped() {
+    _status = KernelStatus.stopped;
+    _activeRev = null;
+    _replay = false;
     _commit();
   }
 
@@ -440,19 +504,20 @@ class EmulatedKernelPort implements KernelPort {
   void _onNativeStatus(BoxStatus s) {
     _native = s;
 
-    final startWaiter = _startWaiter;
-    if (startWaiter != null) {
-      if (startWaiter.isCompleted) return;
+    final start = _startExec;
+    if (start != null) {
+      if (start.done.isCompleted) return;
       switch (s) {
         case BoxStarted():
-          startWaiter.complete(null);
+          _settle(start);
         case BoxStarting():
-          _sawProgress = true;
+          start.sawProgress = true;
         case BoxStopping() || BoxStopped():
           // 还没出现过 Starting 的 Stopped 可能是调用之前的陈旧事件，忽略；
           // 出现过进展之后又停止，才算启动失败。
-          if (_sawProgress) {
-            startWaiter.complete(
+          if (start.sawProgress) {
+            _abort(
+              start,
               const _Fault(KernelFailureCode.startService, '内核启动后又停止'),
             );
           }
@@ -460,9 +525,9 @@ class EmulatedKernelPort implements KernelPort {
       return;
     }
 
-    final stopWaiter = _stopWaiter;
-    if (stopWaiter != null) {
-      if (s is BoxStopped && !stopWaiter.isCompleted) stopWaiter.complete();
+    final stop = _stopExec;
+    if (stop != null) {
+      if (s is BoxStopped && !stop.done.isCompleted) stop.done.complete();
       return;
     }
 
@@ -495,6 +560,7 @@ class EmulatedKernelPort implements KernelPort {
           _source = DesiredSource.system;
         }
       case BoxStopped():
+        _stopStuck = false;
         if (_status != KernelStatus.stopped) {
           _status = KernelStatus.stopped;
           _activeRev = null;
@@ -511,18 +577,38 @@ class EmulatedKernelPort implements KernelPort {
 
   void _onAlert(BoxAlert alert) {
     if (!alert.type.isFatal) return;
-    final waiter = _startWaiter;
-    if (waiter == null || waiter.isCompleted) return;
+    final exec = _startExec;
+    if (exec == null || exec.done.isCompleted) return;
     final code = switch (alert.type) {
       BoxAlertType.emptyConfiguration => KernelFailureCode.emptyConfiguration,
       BoxAlertType.createService => KernelFailureCode.createService,
       _ => KernelFailureCode.startService,
     };
-    waiter.complete(_Fault(code, alert.message ?? ''));
+    _abort(exec, _Fault(code, alert.message ?? ''));
   }
 
   static String _describe(Object e) =>
       e is PlatformException ? '${e.code}: ${e.message}' : '$e';
+}
+
+class _StartExec {
+  _StartExec({required this.seq, required this.attempt});
+  final int seq;
+  final int attempt;
+
+  /// 到达 started，或被 [EmulatedKernelPort._abort] 判定失败时完成。
+  final Completer<void> done = Completer<void>();
+  bool failed = false;
+  bool sawProgress = false;
+}
+
+class _StopExec {
+  _StopExec({required this.seq});
+  final int seq;
+
+  /// 平台已 Stopped，或超时时完成。
+  final Completer<void> done = Completer<void>();
+  bool timedOut = false;
 }
 
 class _Fault {

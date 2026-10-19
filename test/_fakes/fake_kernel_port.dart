@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_hub.dart';
 
 /// 可编程的 [KernelPort] 测试替身，B3/B4 的状态机与控制器测试复用。
 ///
-/// - [push]：向 [watch] 订阅者推快照，同时更新 [current] 的返回值；
+/// - [push]：向 [watch] 订阅者推快照，同时更新 [current] 的返回值与后续订阅者的
+///   首值；订阅时先**原子地**注册并回放首值，首值回调里同步 push/request 不丢事件；
 ///   [pushLink] 推链路状态。
 /// - [requests]：按调用顺序记录所有 [request]；[receiptFor] 决定回执
 ///   （默认受理并返回 `appliedSeq = seq`）；[requestError] 非空时 request 抛它。
@@ -13,11 +15,16 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 /// - [currentError] 非空时 [current] 抛它；[currentGate] 非空时 [current]
 ///   等它完成后再返回（用来制造「在途查询」）。
 class FakeKernelPort implements KernelPort {
-  FakeKernelPort({KernelSnapshot? initial}) : snapshot = initial;
+  FakeKernelPort({KernelSnapshot? initial}) {
+    if (initial != null) _snapshots.add(initial);
+    _links.add(KernelLink.connected);
+  }
 
-  /// [current] 返回、[watch] 订阅时回放的快照；null 表示尚无快照。
-  KernelSnapshot? snapshot;
-  KernelLink link = KernelLink.connected;
+  /// [current] 返回、[watch] 订阅时回放的快照；null 表示尚无快照。用 [push] 改。
+  KernelSnapshot? get snapshot => _snapshots.latest;
+
+  /// 当前链路状态；用 [pushLink] 改。
+  KernelLink get link => _links.latest ?? KernelLink.connected;
 
   final List<DesiredRequest> requests = [];
   final List<({String group, String tag, int? expectedAttempt})> selectCalls =
@@ -40,21 +47,15 @@ class FakeKernelPort implements KernelPort {
   /// 一样随请求推进快照。
   FutureOr<void> Function(DesiredRequest r)? onRequest;
 
-  final StreamController<KernelSnapshot> _snapshots =
-      StreamController<KernelSnapshot>.broadcast();
-  final StreamController<KernelLink> _links =
-      StreamController<KernelLink>.broadcast();
+  // 订阅注册与首值回放在同一同步步骤里完成（KernelPortHub），所以首值回调里
+  // 立即 push / pushLink / request 也不会丢事件。
+  final KernelPortHub<KernelSnapshot> _snapshots = KernelPortHub();
+  final KernelPortHub<KernelLink> _links = KernelPortHub();
 
   /// 推送一份快照（并成为 [current] 的返回值）。
-  void push(KernelSnapshot s) {
-    snapshot = s;
-    _snapshots.add(s);
-  }
+  void push(KernelSnapshot s) => _snapshots.add(s);
 
-  void pushLink(KernelLink l) {
-    link = l;
-    _links.add(l);
-  }
+  void pushLink(KernelLink l) => _links.add(l);
 
   @override
   Future<KernelSnapshot> current() async {
@@ -71,17 +72,10 @@ class FakeKernelPort implements KernelPort {
   }
 
   @override
-  Stream<KernelSnapshot> watch() async* {
-    final s = snapshot;
-    if (s != null) yield s;
-    yield* _snapshots.stream;
-  }
+  Stream<KernelSnapshot> watch() => _snapshots.stream();
 
   @override
-  Stream<KernelLink> watchLink() async* {
-    yield link;
-    yield* _links.stream;
-  }
+  Stream<KernelLink> watchLink() => _links.stream();
 
   @override
   Future<RequestReceipt> request(DesiredRequest request) async {

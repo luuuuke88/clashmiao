@@ -92,6 +92,8 @@ void main() {
       '未知 desired': {'desired': 'maybe'},
       'version 不是数字': {'version': 'x'},
       '缺 appliedSeq': {'appliedSeq': null},
+      '缺 selectionsReplayNeeded': {'selectionsReplayNeeded': null},
+      'selectionsReplayNeeded 类型错误': {'selectionsReplayNeeded': 'true'},
     }.entries) {
       test('非法载荷抛 FormatException：${bad.key}', () {
         expect(

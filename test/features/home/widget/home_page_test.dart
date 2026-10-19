@@ -1,3 +1,5 @@
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/app/state/selected_tab.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
@@ -202,6 +204,7 @@ Future<Widget> _hostWithProfiles({
 Future<Widget> _hostConnectionInfo({
   required BoxStatus status,
   required List<OutboundGroup> groups,
+  void Function(ProviderContainer)? onContainer,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
@@ -217,6 +220,7 @@ Future<Widget> _hostConnectionInfo({
   // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
   addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
+  onContainer?.call(container);
   return UncontrolledProviderScope(
     container: container,
     child: MaterialApp(
@@ -451,6 +455,61 @@ void main() {
     expect(find.text('香港 01 | SS'), findsOneWidget);
     expect(find.text('128ms'), findsOneWidget);
     expect(find.textContaining('已连接 '), findsNothing);
+  });
+
+  testWidgets('节点行看得出能点：带箭头，点了跳到线路页', (tester) async {
+    late ProviderContainer container;
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        status: const BoxStarted(),
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [
+              OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks', delay: 128),
+            ],
+          ),
+        ],
+        onContainer: (c) => container = c,
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.byIcon(FluentIcons.chevron_right_16_regular), findsOneWidget);
+    expect(container.read(selectedTabProvider), AppTab.home);
+
+    await tester.tap(find.text('香港 01 | SS'));
+    await tester.pump();
+
+    expect(container.read(selectedTabProvider), AppTab.proxies);
+  });
+
+  testWidgets('节点行不再夹英文：连接中走译文，延迟未知显示破折号而不是 Checking', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(status: const BoxStarting(), groups: const []),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(find.text('Connecting...'), findsNothing);
+    expect(find.text('正在连接'), findsOneWidget);
+
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        status: const BoxStarted(),
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks')],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Checking'), findsNothing);
+    expect(find.text('—'), findsOneWidget);
   });
 
   testWidgets('FooterStats 未查询过时展示未知 IP 文案', (tester) async {

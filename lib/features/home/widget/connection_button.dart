@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:clashmiao/core/model/box_status.dart';
+import 'package:clashmiao/core/providers/app_providers.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
@@ -38,17 +41,21 @@ class ConnectionButton extends HookConsumerWidget {
       BoxStopped() => t.connection.tapToConnect,
     };
 
+    // 连接状态是整个 App 最重要的一条信息。首页会把整颗按钮缩到约 0.73 倍
+    // （FittedBox 300 → 220），这里的 22 落到屏幕上大约 16pt——原来的 16 只剩
+    // 不到 12pt，是全屏最不起眼的字之一。
     final label = Text(
       statusText.toUpperCase(),
       style: TextStyle(
         color: isConnected
-            ? theme.colorScheme.primary
+            ? BrandColors.connected
             : theme.aiUi.secondaryTextColor,
-        fontSize: 16,
+        fontSize: 22,
         fontWeight: FontWeight.w700,
         letterSpacing: 1.5,
       ),
     );
+    final startedAt = ref.watch(connectionStartedAtProvider);
 
     return GestureDetector(
       onTap: isSwitching
@@ -89,7 +96,29 @@ class ConnectionButton extends HookConsumerWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              label,
+              // 时长跟状态字放同一行：按钮是固定 280×300 再整体缩放的，另起一行
+              // 会撑破高度；加高的话首页的 FittedBox 又会把整颗按钮缩得更小。
+              // 最长的译文（俄语"点击连接"有 23 个字母）放大到 22 号会超出按钮
+              // 宽度，放不下时整行等比缩小，而不是撑破或截断。
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    label,
+                    if (isConnected && startedAt != null) ...[
+                      const SizedBox(width: 10),
+                      _ConnectedDuration(
+                        key: const ValueKey('connection-duration'),
+                        startedAt: startedAt,
+                        color: theme.aiUi.secondaryTextColor,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -99,6 +128,67 @@ class ConnectionButton extends HookConsumerWidget {
 }
 
 const double _discSize = 190;
+
+/// 已连接时长，每秒走一次字。
+///
+/// 只在知道真实起点时出现（见 connectionStartedAtProvider）：挂上一条早就在跑
+/// 的隧道时起点未知，宁可不显示也不从 0 开始数。
+class _ConnectedDuration extends StatefulWidget {
+  const _ConnectedDuration({
+    super.key,
+    required this.startedAt,
+    required this.color,
+  });
+
+  final DateTime startedAt;
+  final Color color;
+
+  @override
+  State<_ConnectedDuration> createState() => _ConnectedDurationState();
+}
+
+class _ConnectedDurationState extends State<_ConnectedDuration> {
+  late final Timer _ticker;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() {}),
+    );
+  }
+
+  @override
+  void dispose() {
+    _ticker.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final elapsed = DateTime.now().difference(widget.startedAt);
+    return Text(
+      formatConnectedDuration(elapsed.isNegative ? Duration.zero : elapsed),
+      style: TextStyle(
+        color: widget.color,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      ),
+    );
+  }
+}
+
+/// 一小时内 `mm:ss`，超过一小时 `h:mm:ss`。
+@visibleForTesting
+String formatConnectedDuration(Duration d) {
+  String two(int n) => n.toString().padLeft(2, '0');
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60);
+  final s = d.inSeconds.remainder(60);
+  return h > 0 ? '$h:${two(m)}:${two(s)}' : '${two(m)}:${two(s)}';
+}
 
 /// 已连接：满饱和的品牌蓝实心圆——整颗按钮"通电"，跟未连接时那块磨砂玻璃
 /// 拉开的不只是明度，还有饱和度。

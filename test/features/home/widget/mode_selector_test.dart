@@ -2,6 +2,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/model/outbound.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/state/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/home/widget/home_page.dart';
@@ -78,4 +79,68 @@ void main() {
     expect(spy.changeConfigOptionsCalls, 1);
     expect(spy.lastJsonOptions, contains('"execute-config-as-is":true'));
   });
+
+  for (final brightness in Brightness.values) {
+    testWidgets('选中项是实心品牌色 + 白字，一眼看得出选了哪个（$brightness）', (tester) async {
+      // 原来选中项填的是 colorScheme.surface：深色主题下它比底槽还暗，
+      // 选中跟没选中只差一点字重，真机上根本分不出来。
+      SharedPreferences.setMockInitialValues({
+        'locale': 'zhCn',
+        'clashmiao_proxy_mode': 1,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [
+          sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+          boxServiceProvider.overrideWithValue(_SpyBoxService()),
+        ],
+      );
+      await container.read(sharedPreferencesProvider.future);
+      final isDark = brightness == Brightness.dark;
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: (isDark ? ThemeData.dark() : ThemeData.light()).copyWith(
+              extensions: <ThemeExtension<dynamic>>[
+                isDark ? AiUiTheme.dark : AiUiTheme.light,
+              ],
+            ),
+            home: const Scaffold(body: ModeSelectorForTest()),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final t = container.read(translationsProvider);
+      BoxDecoration fillOf(String label) =>
+          tester
+                  .widget<AnimatedContainer>(
+                    find.ancestor(
+                      of: find.text(label),
+                      matching: find.byType(AnimatedContainer),
+                    ),
+                  )
+                  .decoration!
+              as BoxDecoration;
+      Color? textColorOf(String label) => tester
+          .widget<DefaultTextStyle>(
+            find
+                .ancestor(
+                  of: find.text(label),
+                  matching: find.byType(DefaultTextStyle),
+                )
+                .first,
+          )
+          .style
+          .color;
+
+      final smart = t.home.routingMode.smart;
+      final global = t.home.routingMode.global;
+      expect(fillOf(smart).color, BrandColors.indigo);
+      expect(textColorOf(smart), Colors.white);
+      expect(fillOf(global).color!.a, 0);
+    });
+  }
 }

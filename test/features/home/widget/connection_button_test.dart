@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/model/box_status.dart';
 import 'package:clashmiao/core/providers/app_providers.dart';
+import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/widget/connection_button.dart';
 import 'package:clashmiao/features/home/widget/speed_cat_connection_mark.dart';
@@ -13,12 +14,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// 显式锁定 zh-CN locale，用 ProviderContainer 预读
 /// sharedPreferencesProvider，再用 UncontrolledProviderScope 装载，
 /// 这样第一帧 build 时 translationsProvider 链路已经 ready。
-Future<Widget> _host(BoxStatus status, {VoidCallback? onTap}) async {
-  SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+Future<Widget> _host(
+  BoxStatus status, {
+  VoidCallback? onTap,
+  DateTime? startedAt,
+  String locale = 'zhCn',
+}) async {
+  SharedPreferences.setMockInitialValues({'locale': locale});
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      connectionStartedAtProvider.overrideWith((_) => startedAt),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
@@ -102,6 +109,60 @@ void main() {
       await tester.tap(find.byType(ConnectionButton));
       await tester.pump();
       expect(tapped, 1);
+    });
+
+    testWidgets('已连接：状态字用连接绿，字号够大（按钮会被整体缩小到 0.73 倍）', (tester) async {
+      await tester.pumpWidget(await _host(const BoxStarted()));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final style = tester.widget<Text>(find.text('已连接')).style!;
+      expect(style.color, BrandColors.connected);
+      expect(style.fontSize, greaterThanOrEqualTo(22));
+    });
+
+    testWidgets('知道连接起点时，状态下方显示已连接时长', (tester) async {
+      // 多给半秒余量：起点到第一帧之间的真实耗时不会把 65 秒推成 66 秒。
+      final startedAt = DateTime.now().subtract(
+        const Duration(seconds: 65, milliseconds: 500),
+      );
+      await tester.pumpWidget(
+        await _host(const BoxStarted(), startedAt: startedAt),
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.text('01:05'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('不知道连接起点（挂上了已在跑的隧道）时不显示时长，绝不从 0 开始数', (tester) async {
+      await tester.pumpWidget(await _host(const BoxStarted()));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.byKey(const ValueKey('connection-duration')), findsNothing);
+    });
+
+    testWidgets('最长的译文（俄语"点击连接"）放大后也不撑破按钮', (tester) async {
+      await tester.pumpWidget(await _host(const BoxStopped(), locale: 'ru'));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.text('НАЖМИТЕ ДЛЯ ПОДКЛЮЧЕНИЯ'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    test('时长格式：一小时内 mm:ss，超过一小时 h:mm:ss', () {
+      expect(formatConnectedDuration(const Duration(seconds: 5)), '00:05');
+      expect(
+        formatConnectedDuration(const Duration(minutes: 59, seconds: 59)),
+        '59:59',
+      );
+      expect(
+        formatConnectedDuration(const Duration(hours: 1, seconds: 3)),
+        '1:00:03',
+      );
+      expect(
+        formatConnectedDuration(const Duration(hours: 26, minutes: 4)),
+        '26:04:00',
+      );
     });
 
     testWidgets('猫咪跟外面的 Logo 同比例：比底盘大一圈，状态文字落在圆盘下方', (tester) async {

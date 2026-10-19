@@ -304,12 +304,22 @@ class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
     });
   }
 
-  /// 跟 connectionStartedAtProvider 同步：进入 Started 时记录时间，离开时清零。
+  /// 上一次同步到 [connectionStartedAtProvider] 时看到的状态。
+  BoxStatus? _lastSyncedStatus;
+
+  /// 跟 connectionStartedAtProvider 同步：从 Starting 进入 Started 时记录时间，
+  /// 断开时清零。
+  ///
+  /// 只认"连接中 → 已连接"这一步：App 重启后挂上一条早就在跑的隧道，状态是
+  /// 直接以 Started 出现的，那时真实的起点无从知道——记成"现在"会让首页的
+  /// 已连接时长从 0 开始，显示的是错的。宁可不显示。
   void _syncStartedAt(BoxStatus status) {
+    final previous = _lastSyncedStatus;
+    _lastSyncedStatus = status;
     final prov = _ref.read(connectionStartedAtProvider.notifier);
     if (status is BoxStarted) {
       // 已有时间戳就不覆盖（避免重复 listener 重置）
-      if (prov.state == null) {
+      if (prov.state == null && previous is BoxStarting) {
         prov.state = DateTime.now();
       }
     } else if (status is BoxStopped) {
@@ -963,7 +973,9 @@ final connectionErrorProvider = StateProvider<String?>((_) => null);
 final configChangeReconnectNoticeProvider = StateProvider<int>((_) => 0);
 
 /// 进入 BoxStarted 时记录的时间戳（用来算"已连接 N 分钟"）。
-/// 由 ConnectionController 在 state 变 Started 时设置，断开时清零。
+/// 由 ConnectionController 在 Starting → Started 时设置，断开时清零。
+/// 为 null 也可能是"已连接但不知道从什么时候开始"（挂上了已在运行的隧道），
+/// 这时 UI 不显示时长。
 final connectionStartedAtProvider = StateProvider<DateTime?>((_) => null);
 
 /// sing-box 实时日志流。

@@ -158,7 +158,8 @@ class PrefRegistry {
       _inc,
       validator: (v) => v == 0 || v == 1,
     ),
-    const PrefSpec('clashmiao_analytics_enabled', PrefType.boolean, _inc),
+    // 数据分析同意是每台设备各自的决定：导入备份不得替用户改它，也不随备份导出。
+    const PrefSpec('clashmiao_analytics_enabled', PrefType.boolean, _exc),
     const PrefSpec('clashmiao_auto_ip_check', PrefType.boolean, _inc),
     const PrefSpec('clashmiao_haptic_feedback', PrefType.boolean, _inc),
     const PrefSpec('clashmiao_silent_start', PrefType.boolean, _inc),

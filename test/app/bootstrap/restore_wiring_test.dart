@@ -49,5 +49,12 @@ void main() {
       main,
       contains('isPaused: () => container.read(restoreInProgressProvider)'),
     );
+    expect(
+      main,
+      contains(
+        'startupRestoreRecoveryProvider.notifier).state =\n      lastRestoreRecoveryOutcome',
+      ),
+      reason: '启动恢复结果要交给界面提示',
+    );
   });
 }

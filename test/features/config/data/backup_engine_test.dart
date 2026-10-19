@@ -29,6 +29,7 @@ Future<RestoreHarness> _seededHarness({
     initialPrefs: {
       'clashmiao_mixed_port': 2080,
       'clashmiao_block_ads': false,
+      'clashmiao_analytics_enabled': false,
       'clashmiao_enable_warp': true,
       'clashmiao_warp_access_token': 'local-token',
       'clashmiao_warp_license_key': 'local-license',
@@ -79,6 +80,7 @@ String _backup({Map<String, Object>? prefs}) => jsonEncode({
         'clashmiao_enable_warp': true,
         'theme_mode': 'light',
         'clashmiao_warp_access_token': 'attacker-token',
+        'clashmiao_analytics_enabled': true,
       },
 });
 
@@ -105,6 +107,7 @@ void main() {
       final text = BackupCodec.encode(bundle);
       expect(text, isNot(contains('local-token')));
       expect(text, isNot(contains('local-license')));
+      expect(text, isNot(contains('analytics')), reason: '同意与否是每台设备各自的决定');
       expect(text, isNot(contains('started_by_user')));
       expect(text, isNot(contains('update_latest_tag')));
       expect(text, isNot(contains('proxy_selection_')));
@@ -240,7 +243,16 @@ void main() {
       expect(report.profilesRemoved, 1);
       expect(report.profilesDropped, 0);
       expect(report.prefsImported, 5);
-      expect(report.prefsSkipped, 1, reason: '备份里的 WARP 令牌属于机密，被忽略');
+      expect(
+        report.prefsSkipped,
+        2,
+        reason: '备份里的 WARP 令牌（机密）与 analytics（每设备各自决定）被忽略',
+      );
+      expect(
+        h.real.getBool('clashmiao_analytics_enabled'),
+        false,
+        reason: '导入不得替用户改数据分析同意',
+      );
       expect(report.warpDisabled, isTrue);
       expect(report.refreshQueued, 0);
       expect(h.strayFiles(), isEmpty);
@@ -357,6 +369,249 @@ void main() {
     });
   });
 
+  group('精确还原配置文件集合', () {
+    test('订阅原本没有配置文件：导入装进来的文件在回滚后被清掉（逐个文件比较）', () async {
+      h = await _seededHarness();
+      File(h.store.configFilePath('b')).deleteSync(); // b 在列表里，但没有配置文件
+      final before = await h.state();
+      expect(before['files'], isNot(contains('b.json')));
+      var armed = true;
+      h.prefs.failWhen = (op, key) {
+        if (armed && op == 'set' && key == 'clashmiao_mixed_port') {
+          armed = false;
+          return true;
+        }
+        return false;
+      };
+
+      await expectLater(
+        h.engine.restore(h.engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.rolledBack,
+          ),
+        ),
+      );
+
+      expect(File(h.store.configFilePath('b')).existsSync(), isFalse);
+      expect(File(h.store.configFilePath('c')).existsSync(), isFalse);
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+
+    test('进程被杀（c.json 已装进来、列表还没写）：重启恢复后文件集合与导入前完全一致', () async {
+      h = await _seededHarness();
+      File(h.store.configFilePath('b')).deleteSync();
+      final before = await h.state();
+      final killed = Completer<void>();
+      final never = Completer<void>();
+      var firstMarkerWrite = true;
+      h.prefs.beforeWrite = (op, key) async {
+        if (key == _markerKey && op == 'set' && firstMarkerWrite) {
+          firstMarkerWrite = false;
+          return;
+        }
+        if (op == 'set' && key == ProfileStore.profilesKey) {
+          if (!killed.isCompleted) killed.complete();
+          await never.future;
+        }
+      };
+      unawaited(
+        h.engine
+            .restore(h.engine.prepare(_backup()))
+            .then<void>((_) {}, onError: (_) {}),
+      );
+      await killed.future;
+      // 被杀的现场：b.json、c.json 都已装进来，而列表还是旧的。
+      expect(File(h.store.configFilePath('c')).existsSync(), isTrue);
+      expect(File(h.store.configFilePath('b')).existsSync(), isTrue);
+
+      final restarted = BackupEngine(
+        store: h.restartedStore(),
+        prefs: h.real,
+        backupsDir: h.backupsDir,
+      );
+      expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+  });
+
+  group('快照读取失败 → 中止导入', () {
+    BackupEngine engineReading(Future<String> Function(File file) reader) =>
+        BackupEngine(
+          store: h.store,
+          prefs: h.prefs,
+          backupsDir: h.backupsDir,
+          readConfigFile: reader,
+        );
+
+    test('已存在的配置文件读不出来：导入在任何破坏性步骤之前中止，导出同样失败', () async {
+      h = await _seededHarness();
+      final before = await h.state();
+      final engine = engineReading((file) async {
+        if (p.basename(file.path) == 'b.json') {
+          throw const FileSystemException('permission denied');
+        }
+        return file.readAsString();
+      });
+
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.snapshotFailed,
+          ),
+        ),
+      );
+      expect(await h.state(via: h.restartedStore()), before);
+      expect(h.real.containsKey(_markerKey), isFalse);
+      expect(h.snapshots(), isEmpty);
+      expect(
+        File(h.store.configFilePath('b')).readAsStringSync(),
+        sampleConfig('local-b'),
+        reason: '读不出来的原配置一个字节都没动',
+      );
+      await expectLater(
+        engine.exportBundle(),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
+
+    test('文件确实不存在（PathNotFound）与读取失败是两回事：前者照常快照', () async {
+      h = await _seededHarness();
+      File(h.store.configFilePath('b')).deleteSync();
+      final bundle = await h.engine.exportBundle();
+      expect(bundle.profileConfigs.keys, {'a'});
+      expect([for (final j in bundle.profiles) j['id']], ['a', 'b']);
+    });
+  });
+
+  group('恢复流程互斥', () {
+    test('一次恢复进行中，另一次（哪怕是新建的引擎实例）被拒绝，且不碰它的标记与快照', () async {
+      h = await _seededHarness();
+      final reached = Completer<void>();
+      final release = Completer<void>();
+      h.prefs.beforeWrite = (op, key) async {
+        if (op == 'set' && key == 'clashmiao_mixed_port') {
+          if (!reached.isCompleted) reached.complete();
+          await release.future;
+        }
+      };
+      final first = h.engine.restore(h.engine.prepare(_backup()));
+      await reached.future;
+      final snapshotsMidway = h.snapshots().map((f) => f.path).toList();
+      final markerMidway = h.real.getString(_markerKey);
+      expect(markerMidway, snapshotsMidway.single);
+
+      // 页面每次导入都新建引擎：互斥必须跨实例。
+      final other = BackupEngine(
+        store: h.store,
+        prefs: h.prefs,
+        backupsDir: h.backupsDir,
+      );
+      await expectLater(
+        other.restore(other.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.busy,
+          ),
+        ),
+      );
+      expect(
+        await other.recoverInterrupted(),
+        RecoveryOutcome.busy,
+        reason: '不能把别人进行中的恢复当成「被中断的恢复」去回滚',
+      );
+      expect(h.real.getString(_markerKey), markerMidway);
+      expect(h.snapshots().map((f) => f.path), snapshotsMidway);
+
+      h.prefs.beforeWrite = null;
+      release.complete();
+      final report = await first;
+      expect(report.profilesImported, 2);
+      expect(h.ids, ['b', 'c']);
+      expect(h.real.containsKey(_markerKey), isFalse);
+
+      // 第一次结束后互斥释放：再导入一次可以正常进行。
+      await other.restore(other.prepare(_backup()));
+      expect(h.ids, ['b', 'c']);
+    });
+  });
+
+  group('恢复线索（标记）失败路径', () {
+    test('清标记失败 + 回滚也失败：缓存里的标记没了，但本进程仍记着「恢复待处理」，新导入被挡住', () async {
+      h = await _seededHarness();
+      final before = await h.state();
+      var snapshotMarkerWritten = false;
+      h.prefs.failWhen = (op, key) => op == 'remove' && key == _markerKey;
+      h.prefs.beforeWrite = (op, key) async {
+        if (op == 'set' && key == _markerKey) {
+          if (!snapshotMarkerWritten) {
+            snapshotMarkerWritten = true; // 写快照标记那一次放行
+            return;
+          }
+          throw StateError('platform channel gone'); // 之后补写标记也失败
+        }
+      };
+
+      await expectLater(
+        h.engine.restore(h.engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.notRolledBack,
+          ),
+        ),
+      );
+      expect(
+        h.real.containsKey(_markerKey),
+        isFalse,
+        reason: '前提：平台缓存里的标记确实没了，只剩内存里的记录',
+      );
+      final stuck = await h.state();
+      expect(h.snapshots(), hasLength(1));
+
+      // 新建的引擎实例（页面每次都新建）也要被挡住：线索挂在 Store 上。
+      final other = BackupEngine(
+        store: h.store,
+        prefs: h.prefs,
+        backupsDir: h.backupsDir,
+      );
+      await expectLater(
+        other.restore(other.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.unresolvedPrevious,
+          ),
+        ),
+      );
+      expect(await other.recoverInterrupted(), RecoveryOutcome.failed);
+      expect(await h.state(), stuck, reason: '被挡住的导入什么都不能改');
+      expect(h.snapshots(), hasLength(1), reason: '也不能覆盖恢复线索（不写新快照）');
+
+      // 问题消失：先自动了结上一次，再正常导入。
+      h.prefs.failWhen = null;
+      h.prefs.beforeWrite = null;
+      final report = await other.restore(other.prepare(_backup()));
+      expect(report.profilesImported, 2);
+      expect(h.ids, ['b', 'c']);
+      expect(h.real.containsKey(_markerKey), isFalse);
+      expect(await other.recoverInterrupted(), RecoveryOutcome.none);
+      // 了结上一次时回到的就是导入前的状态（订阅 a、b 的配置再被这次导入替换，
+      // 这里只验证线索已清、没有残留）。
+      expect(h.strayFiles(), isEmpty);
+      expect(before['active'], 'a');
+    });
+  });
+
   group('恢复前快照', () {
     test('快照写在标记之前、内容就是导入前状态；快照带附属偏好', () async {
       h = await _seededHarness();
@@ -416,8 +671,9 @@ void main() {
         ),
       );
       h.prefs.failWhen = null;
-      // 失败的标记写入已改了内存缓存：与「没有标记」比较前先清掉它。
-      await h.real.remove(_markerKey);
+      // 平台先改内存缓存再返回 false：失败路径自己必须把缓存里的标记撤销，
+      // 不能留下一个指向已删快照的标记。
+      expect(h.real.containsKey(_markerKey), isFalse);
       expect(await h.state(), before);
       expect(h.snapshots(), isEmpty);
     });
@@ -569,8 +825,14 @@ void main() {
           backupsDir: h.backupsDir,
         );
         expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
-        expect(await h.state(), before);
+        // 新进程视角：全新 Store、只看磁盘与偏好；配置文件集合逐个比较（含 .json）。
+        expect(await h.state(via: h.restartedStore()), before);
         expect(h.real.containsKey(_markerKey), isFalse);
+        expect(
+          File(h.store.configFilePath('c')).existsSync(),
+          isFalse,
+          reason: '这次恢复装进来的 c.json 不在快照里，必须被清掉',
+        );
       });
     }
   });

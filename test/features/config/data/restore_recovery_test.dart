@@ -86,8 +86,7 @@ void main() {
     expect(h.real.getString(ProfileStore.activeProfileKey), 'a');
     final after = await h.state();
     expect(after['profiles'], before['profiles']);
-    expect(after['configs'], before['configs']);
-    expect(after['stray'], isEmpty);
+    expect(after['files'], before['files']);
   });
 
   test('没有标记：不构造 Store、不碰 backups 目录', () async {

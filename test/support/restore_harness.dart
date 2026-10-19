@@ -112,15 +112,14 @@ class RestoreHarness {
     }
   }
 
-  /// 与「回到原状」比较用的全貌：订阅（不含本机 inc）、激活、配置文件内容、
-  /// 全部偏好（订阅列表键除外，它的 inc 会换新，列表已单独比较）。
-  Future<Map<String, Object?>> state() async {
-    final view = store.view();
-    final configs = <String, String>{};
-    for (final profile in view.profiles) {
-      final file = File(store.configFilePath(profile.id));
-      if (file.existsSync()) configs[profile.id] = file.readAsStringSync();
-    }
+  /// 与「回到原状」比较用的全貌：订阅（不含本机 inc）、激活、`profiles/` 目录里
+  /// **全部文件**（含 `.json` 配置、暂存 / undo 残留）的内容、全部偏好（订阅列表键
+  /// 除外，它的 inc 会换新，列表已单独比较）。
+  ///
+  /// [via] 指定从哪个 Store 读列表 / 激活；传 [restartedStore] 的结果就是
+  /// 「新进程只看磁盘与偏好」的视角。
+  Future<Map<String, Object?>> state({ProfileStore? via}) async {
+    final view = (via ?? store).view();
     final prefsSnapshot = <String, Object?>{
       for (final key in real.getKeys().toList()..sort())
         if (key != ProfileStore.profilesKey) key: real.get(key),
@@ -131,9 +130,21 @@ class RestoreHarness {
           (Map<String, dynamic>.from(profile.toJson())..remove('inc')),
       ],
       'active': view.activeId,
-      'configs': configs,
+      'files': allProfileFiles(),
       'prefs': prefsSnapshot,
-      'stray': strayFiles(),
+    };
+  }
+
+  /// 模拟重启：全新的 Store，没有任何内存状态。
+  ProfileStore restartedStore() => ProfileStore(prefs: real, configDir: tmp);
+
+  /// `profiles/` 目录里每个文件的 文件名 → 内容（含所有残留）。
+  Map<String, String> allProfileFiles() {
+    final dir = Directory(p.join(tmp.path, 'profiles'));
+    if (!dir.existsSync()) return const {};
+    return {
+      for (final f in dir.listSync().whereType<File>())
+        p.basename(f.path): f.readAsStringSync(),
     };
   }
 

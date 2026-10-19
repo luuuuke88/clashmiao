@@ -324,7 +324,15 @@
       "errUnresolvedPrevious": "Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.",
       "errRolledBack": "A importação falhou. Seus dados anteriores foram restaurados.",
       "errNotRolledBack": "A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.",
-      "errFailed": "A importação falhou."
+      "errFailed": "A importação falhou.",
+      "errBusy": "Já há outra importação em andamento. Aguarde ela terminar.",
+      "recoveryFailedTitle": "A restauração automática não terminou",
+      "recoveryFailedMsg": "A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.",
+      "recoveryUnrecoverableTitle": "Não foi possível desfazer a importação interrompida",
+      "recoveryUnrecoverableMsg": "A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.",
+      "recoveryRetry": "Tentar novamente",
+      "recoveryClose": "Fechar",
+      "recoveryRetried": "Seus dados foram restaurados ao estado anterior à importação interrompida."
     },
     "systemProxyEnabled": "Proxy do sistema ativado",
     "systemProxyDisabled": "Proxy do sistema desativado (reconecte para aplicar)",

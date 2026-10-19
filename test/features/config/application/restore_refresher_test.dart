@@ -229,6 +229,54 @@ void main() {
     expect(fetched, isEmpty);
   });
 
+  test('两次恢复交错：第二次被拒绝，暂停标志只由拿到互斥的第一次释放', () async {
+    final reached = Completer<void>();
+    final release = Completer<void>();
+    h.prefs.beforeWrite = (op, key) async {
+      if (op == 'set' && key == 'clashmiao_mixed_port') {
+        if (!reached.isCompleted) reached.complete();
+        await release.future;
+      }
+    };
+    final plan = h.engine.prepare(
+      _backup(prefs: {'clashmiao_mixed_port': 3000}),
+    );
+    final first = refresher().restore(h.engine, plan);
+    await reached.future;
+    expect(container.read(restoreInProgressProvider), isTrue);
+
+    // 第二次导入（新建的引擎实例）：被拒绝，而且不能动暂停标志。
+    final other = BackupEngine(
+      store: h.store,
+      prefs: h.prefs,
+      backupsDir: h.backupsDir,
+      extraValidators: networkPrefValidators,
+    );
+    await expectLater(
+      refresher().restore(other, other.prepare(_backup())),
+      throwsA(
+        isA<RestoreFailure>().having(
+          (e) => e.kind,
+          'kind',
+          RestoreFailureKind.busy,
+        ),
+      ),
+    );
+    expect(
+      container.read(restoreInProgressProvider),
+      isTrue,
+      reason: '被拒绝的那次不能提前解除第一次的暂停',
+    );
+
+    h.prefs.beforeWrite = null;
+    release.complete();
+    final outcome = await first;
+    await outcome.backfill;
+    expect(container.read(restoreInProgressProvider), isFalse);
+    expect(container.read(networkSettingsProvider).mixedPort, 3000);
+    expect(h.snapshots(), hasLength(1), reason: '被拒绝的那次没有写快照');
+  });
+
   group('后台补拉缺配置的远程订阅', () {
     test('只补拉备份里缺配置的订阅；激活订阅补拉成功且已连接时重连一次', () async {
       activeForBackfill = 'c';

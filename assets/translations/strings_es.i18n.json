@@ -312,7 +312,15 @@
       "errUnresolvedPrevious": "Una importación anterior se interrumpió y aún no se pudo deshacer. No se cambió nada. Reinicia la aplicación e inténtalo de nuevo.",
       "errRolledBack": "La importación falló. Se han restaurado tus datos anteriores.",
       "errNotRolledBack": "La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.",
-      "errFailed": "La importación falló."
+      "errFailed": "La importación falló.",
+      "errBusy": "Ya hay otra importación en curso. Espera a que termine.",
+      "recoveryFailedTitle": "La restauración automática no terminó",
+      "recoveryFailedMsg": "La última importación de la copia de seguridad se interrumpió y la aplicación no pudo devolver tus datos a su estado anterior. Es posible que algunos datos se hayan importado a medias. Reintenta la restauración automática ahora.",
+      "recoveryUnrecoverableTitle": "No se pudo deshacer la importación interrumpida",
+      "recoveryUnrecoverableMsg": "La última importación de la copia de seguridad se interrumpió, pero su instantánea falta o no se puede leer, así que no se puede deshacer. Revisa tus suscripciones y ajustes.",
+      "recoveryRetry": "Reintentar",
+      "recoveryClose": "Cerrar",
+      "recoveryRetried": "Tus datos se restauraron al estado anterior a la importación interrumpida."
     },
     "systemProxyEnabled": "Proxy del sistema activado",
     "systemProxyDisabled": "Proxy del sistema desactivado (reconecta para aplicar)",

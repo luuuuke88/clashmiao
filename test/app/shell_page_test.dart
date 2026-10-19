@@ -20,6 +20,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/config/data/backup_engine.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
@@ -286,6 +288,125 @@ void main() {
         findsNothing,
       );
     });
+  });
+
+  group('启动时上次备份恢复被中断的提示', () {
+    // 启动屏障早于 ShellPage 挂载：结果在挂载前就已写进 provider，首帧后要补提示。
+    Future<(Widget, ProviderContainer, List<int>)> host(
+      RecoveryOutcome outcome, {
+      List<RecoveryOutcome> retryResults = const [],
+    }) async {
+      final calls = <int>[];
+      final (widget, container) = await _host(
+        extraOverrides: [
+          startupRestoreRecoveryProvider.overrideWith((ref) => outcome),
+          startupRestoreRetryProvider.overrideWithValue(() async {
+            calls.add(calls.length + 1);
+            return retryResults[calls.length - 1];
+          }),
+        ],
+      );
+      addTearDown(container.dispose);
+      return (widget, container, calls);
+    }
+
+    String zh(ProviderContainer c) =>
+        c.read(translationsProvider).settings.backup.recoveryFailedTitle;
+
+    testWidgets('自动回滚没完成（failed）：首帧后明确提示，并提供重试；关闭不重试、标记不动', (tester) async {
+      final (widget, container, calls) = await host(RecoveryOutcome.failed);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(find.text(b.recoveryFailedTitle), findsOneWidget);
+      expect(find.text(b.recoveryFailedMsg), findsOneWidget);
+      expect(find.byKey(const Key('restoreRecoveryRetry')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryClose')));
+      await tester.pumpAndSettle();
+      expect(find.text(b.recoveryFailedTitle), findsNothing);
+      expect(calls, isEmpty, reason: '关闭不是重试');
+      expect(
+        container.read(startupRestoreRecoveryProvider),
+        RecoveryOutcome.failed,
+        reason: '没有重试成功就不能当作已了结',
+      );
+    });
+
+    testWidgets('重试成功：对话框关闭、提示已恢复、结果清除', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.failed,
+        retryResults: [RecoveryOutcome.recovered],
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(calls, [1]);
+      expect(find.text(b.recoveryFailedTitle), findsNothing);
+      expect(find.text(b.recoveryRetried), findsOneWidget);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('重试仍失败：回到对话框继续提供重试', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.failed,
+        retryResults: [RecoveryOutcome.failed, RecoveryOutcome.recovered],
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(calls, [1]);
+      expect(find.text(zh(container)), findsOneWidget, reason: '仍在提示');
+      expect(
+        container.read(startupRestoreRecoveryProvider),
+        RecoveryOutcome.failed,
+      );
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(calls, [1, 2]);
+      expect(find.text(zh(container)), findsNothing);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('快照丢了（unrecoverable）：说明无法撤销，没有重试按钮，确认后不再提示', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.unrecoverable,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(find.text(b.recoveryUnrecoverableTitle), findsOneWidget);
+      expect(find.text(b.recoveryUnrecoverableMsg), findsOneWidget);
+      expect(find.byKey(const Key('restoreRecoveryRetry')), findsNothing);
+
+      await tester.tap(find.text(b.recoveryClose));
+      await tester.pumpAndSettle();
+      expect(find.text(b.recoveryUnrecoverableTitle), findsNothing);
+      expect(calls, isEmpty);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+    });
+
+    for (final outcome in [RecoveryOutcome.none, RecoveryOutcome.recovered]) {
+      testWidgets('${outcome.name}：不打扰用户', (tester) async {
+        final (widget, container, _) = await host(outcome);
+        await tester.pumpWidget(widget);
+        await tester.pumpAndSettle(const Duration(milliseconds: 300));
+        final b = container.read(translationsProvider).settings.backup;
+        expect(find.text(b.recoveryFailedTitle), findsNothing);
+        expect(find.text(b.recoveryUnrecoverableTitle), findsNothing);
+      });
+    }
   });
 
   group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {

@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 4090 (409 per locale)
+/// Strings: 4170 (417 per locale)
 ///
-/// Built on 2026-10-19 at 16:59 UTC
+/// Built on 2026-10-19 at 17:22 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -835,6 +835,19 @@ class TranslationsSettingsBackupEn {
   String errNotRolledBack({required Object path}) =>
       'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
   String get errFailed => 'Import failed.';
+  String get errBusy =>
+      'Another import is already running. Please wait for it to finish.';
+  String get recoveryFailedTitle => 'Automatic restore did not finish';
+  String get recoveryFailedMsg =>
+      'The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.';
+  String get recoveryUnrecoverableTitle =>
+      'Interrupted import could not be undone';
+  String get recoveryUnrecoverableMsg =>
+      'The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.';
+  String get recoveryRetry => 'Retry';
+  String get recoveryClose => 'Close';
+  String get recoveryRetried =>
+      'Your data was restored to before the interrupted import.';
 }
 
 // Path: settings.general
@@ -2379,6 +2392,26 @@ class TranslationsSettingsBackupAr extends TranslationsSettingsBackupEn {
       'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
   @override
   String get errFailed => 'فشل الاستيراد.';
+  @override
+  String get errBusy =>
+      'هناك استيراد آخر قيد التنفيذ. يرجى الانتظار حتى ينتهي.';
+  @override
+  String get recoveryFailedTitle => 'لم تكتمل الاستعادة التلقائية';
+  @override
+  String get recoveryFailedMsg =>
+      'توقف آخر استيراد للنسخة الاحتياطية ولم يتمكن التطبيق من إعادة بياناتك إلى حالتها السابقة. قد تكون بعض البيانات قد استُوردت جزئيًا. أعد محاولة الاستعادة التلقائية الآن.';
+  @override
+  String get recoveryUnrecoverableTitle => 'تعذر التراجع عن الاستيراد المتوقف';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.';
+  @override
+  String get recoveryRetry => 'إعادة المحاولة';
+  @override
+  String get recoveryClose => 'إغلاق';
+  @override
+  String get recoveryRetried =>
+      'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
 }
 
 // Path: settings.general
@@ -4295,6 +4328,27 @@ class TranslationsSettingsBackupEs extends TranslationsSettingsBackupEn {
       'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
   @override
   String get errFailed => 'La importación falló.';
+  @override
+  String get errBusy =>
+      'Ya hay otra importación en curso. Espera a que termine.';
+  @override
+  String get recoveryFailedTitle => 'La restauración automática no terminó';
+  @override
+  String get recoveryFailedMsg =>
+      'La última importación de la copia de seguridad se interrumpió y la aplicación no pudo devolver tus datos a su estado anterior. Es posible que algunos datos se hayan importado a medias. Reintenta la restauración automática ahora.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'No se pudo deshacer la importación interrumpida';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'La última importación de la copia de seguridad se interrumpió, pero su instantánea falta o no se puede leer, así que no se puede deshacer. Revisa tus suscripciones y ajustes.';
+  @override
+  String get recoveryRetry => 'Reintentar';
+  @override
+  String get recoveryClose => 'Cerrar';
+  @override
+  String get recoveryRetried =>
+      'Tus datos se restauraron al estado anterior a la importación interrumpida.';
 }
 
 // Path: tray.status
@@ -5906,6 +5960,27 @@ class TranslationsSettingsBackupFa extends TranslationsSettingsBackupEn {
       'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
   @override
   String get errFailed => 'درون‌ریزی ناموفق بود.';
+  @override
+  String get errBusy =>
+      'درون‌ریزی دیگری در حال اجراست. لطفاً تا پایان آن صبر کنید.';
+  @override
+  String get recoveryFailedTitle => 'بازیابی خودکار کامل نشد';
+  @override
+  String get recoveryFailedMsg =>
+      'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند و برنامه نتوانست داده‌های شما را به حالت قبل برگرداند. ممکن است بخشی از داده‌ها نیمه‌کاره درون‌ریزی شده باشد. اکنون بازیابی خودکار را دوباره امتحان کنید.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'بازگردانی درون‌ریزی نیمه‌کاره ممکن نشد';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.';
+  @override
+  String get recoveryRetry => 'تلاش دوباره';
+  @override
+  String get recoveryClose => 'بستن';
+  @override
+  String get recoveryRetried =>
+      'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
 }
 
 // Path: settings.general
@@ -7810,6 +7885,26 @@ class TranslationsSettingsBackupId extends TranslationsSettingsBackupEn {
       'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
   @override
   String get errFailed => 'Impor gagal.';
+  @override
+  String get errBusy => 'Impor lain sedang berjalan. Tunggu sampai selesai.';
+  @override
+  String get recoveryFailedTitle => 'Pemulihan otomatis belum selesai';
+  @override
+  String get recoveryFailedMsg =>
+      'Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Impor yang terhenti tidak dapat dibatalkan';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.';
+  @override
+  String get recoveryRetry => 'Coba lagi';
+  @override
+  String get recoveryClose => 'Tutup';
+  @override
+  String get recoveryRetried =>
+      'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
 }
 
 // Path: tray.status
@@ -9590,6 +9685,27 @@ class TranslationsSettingsBackupPtBr extends TranslationsSettingsBackupEn {
       'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
   @override
   String get errFailed => 'A importação falhou.';
+  @override
+  String get errBusy =>
+      'Já há outra importação em andamento. Aguarde ela terminar.';
+  @override
+  String get recoveryFailedTitle => 'A restauração automática não terminou';
+  @override
+  String get recoveryFailedMsg =>
+      'A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Não foi possível desfazer a importação interrompida';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.';
+  @override
+  String get recoveryRetry => 'Tentar novamente';
+  @override
+  String get recoveryClose => 'Fechar';
+  @override
+  String get recoveryRetried =>
+      'Seus dados foram restaurados ao estado anterior à importação interrompida.';
 }
 
 // Path: tray.status
@@ -11206,6 +11322,28 @@ class TranslationsSettingsBackupRu extends TranslationsSettingsBackupEn {
       'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
   @override
   String get errFailed => 'Не удалось импортировать.';
+  @override
+  String get errBusy =>
+      'Другой импорт уже выполняется. Дождитесь его завершения.';
+  @override
+  String get recoveryFailedTitle =>
+      'Автоматическое восстановление не завершилось';
+  @override
+  String get recoveryFailedMsg =>
+      'Последний импорт резервной копии был прерван, и приложению не удалось вернуть данные в прежнее состояние. Часть данных могла быть импортирована не полностью. Повторите автоматическое восстановление.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Не удалось отменить прерванный импорт';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.';
+  @override
+  String get recoveryRetry => 'Повторить';
+  @override
+  String get recoveryClose => 'Закрыть';
+  @override
+  String get recoveryRetried =>
+      'Данные возвращены в состояние до прерванного импорта.';
 }
 
 // Path: settings.general
@@ -13119,6 +13257,27 @@ class TranslationsSettingsBackupTr extends TranslationsSettingsBackupEn {
       'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
   @override
   String get errFailed => 'İçe aktarma başarısız oldu.';
+  @override
+  String get errBusy =>
+      'Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.';
+  @override
+  String get recoveryFailedTitle => 'Otomatik geri yükleme tamamlanmadı';
+  @override
+  String get recoveryFailedMsg =>
+      'Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Yarıda kalan içe aktarma geri alınamadı';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.';
+  @override
+  String get recoveryRetry => 'Yeniden dene';
+  @override
+  String get recoveryClose => 'Kapat';
+  @override
+  String get recoveryRetried =>
+      'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
 }
 
 // Path: tray.status
@@ -14708,6 +14867,24 @@ class TranslationsSettingsBackupZhCn extends TranslationsSettingsBackupEn {
       '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
   @override
   String get errFailed => '导入失败。';
+  @override
+  String get errBusy => '已有另一个导入正在进行，请等它结束后再试。';
+  @override
+  String get recoveryFailedTitle => '自动恢复没有完成';
+  @override
+  String get recoveryFailedMsg =>
+      '上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。';
+  @override
+  String get recoveryUnrecoverableTitle => '无法撤销被中断的导入';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      '上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。';
+  @override
+  String get recoveryRetry => '重试';
+  @override
+  String get recoveryClose => '关闭';
+  @override
+  String get recoveryRetried => '已把数据恢复到被中断的导入之前。';
 }
 
 // Path: settings.general
@@ -16443,6 +16620,24 @@ class TranslationsSettingsBackupZhTw extends TranslationsSettingsBackupEn {
       '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
   @override
   String get errFailed => '匯入失敗。';
+  @override
+  String get errBusy => '已有另一個匯入正在進行，請等它結束後再試。';
+  @override
+  String get recoveryFailedTitle => '自動還原沒有完成';
+  @override
+  String get recoveryFailedMsg =>
+      '上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。';
+  @override
+  String get recoveryUnrecoverableTitle => '無法復原被中斷的匯入';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      '上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。';
+  @override
+  String get recoveryRetry => '重試';
+  @override
+  String get recoveryClose => '關閉';
+  @override
+  String get recoveryRetried => '已把資料還原到被中斷的匯入之前。';
 }
 
 // Path: settings.general
@@ -17415,6 +17610,22 @@ extension on Translations {
             'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
       case 'settings.backup.errFailed':
         return 'Import failed.';
+      case 'settings.backup.errBusy':
+        return 'Another import is already running. Please wait for it to finish.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Automatic restore did not finish';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Interrupted import could not be undone';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.';
+      case 'settings.backup.recoveryRetry':
+        return 'Retry';
+      case 'settings.backup.recoveryClose':
+        return 'Close';
+      case 'settings.backup.recoveryRetried':
+        return 'Your data was restored to before the interrupted import.';
       case 'settings.general.sectionTitle':
         return 'General';
       case 'settings.general.locale':
@@ -18268,6 +18479,22 @@ extension on TranslationsAr {
             'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
       case 'settings.backup.errFailed':
         return 'فشل الاستيراد.';
+      case 'settings.backup.errBusy':
+        return 'هناك استيراد آخر قيد التنفيذ. يرجى الانتظار حتى ينتهي.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'لم تكتمل الاستعادة التلقائية';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'توقف آخر استيراد للنسخة الاحتياطية ولم يتمكن التطبيق من إعادة بياناتك إلى حالتها السابقة. قد تكون بعض البيانات قد استُوردت جزئيًا. أعد محاولة الاستعادة التلقائية الآن.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'تعذر التراجع عن الاستيراد المتوقف';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.';
+      case 'settings.backup.recoveryRetry':
+        return 'إعادة المحاولة';
+      case 'settings.backup.recoveryClose':
+        return 'إغلاق';
+      case 'settings.backup.recoveryRetried':
+        return 'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
       case 'settings.general.sectionTitle':
         return 'عام';
       case 'settings.general.locale':
@@ -19225,6 +19452,22 @@ extension on TranslationsEs {
             'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
       case 'settings.backup.errFailed':
         return 'La importación falló.';
+      case 'settings.backup.errBusy':
+        return 'Ya hay otra importación en curso. Espera a que termine.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'La restauración automática no terminó';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'La última importación de la copia de seguridad se interrumpió y la aplicación no pudo devolver tus datos a su estado anterior. Es posible que algunos datos se hayan importado a medias. Reintenta la restauración automática ahora.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'No se pudo deshacer la importación interrumpida';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'La última importación de la copia de seguridad se interrumpió, pero su instantánea falta o no se puede leer, así que no se puede deshacer. Revisa tus suscripciones y ajustes.';
+      case 'settings.backup.recoveryRetry':
+        return 'Reintentar';
+      case 'settings.backup.recoveryClose':
+        return 'Cerrar';
+      case 'settings.backup.recoveryRetried':
+        return 'Tus datos se restauraron al estado anterior a la importación interrumpida.';
       case 'settings.systemProxyEnabled':
         return 'Proxy del sistema activado';
       case 'settings.systemProxyDisabled':
@@ -19981,6 +20224,22 @@ extension on TranslationsFa {
             'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
       case 'settings.backup.errFailed':
         return 'درون‌ریزی ناموفق بود.';
+      case 'settings.backup.errBusy':
+        return 'درون‌ریزی دیگری در حال اجراست. لطفاً تا پایان آن صبر کنید.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'بازیابی خودکار کامل نشد';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند و برنامه نتوانست داده‌های شما را به حالت قبل برگرداند. ممکن است بخشی از داده‌ها نیمه‌کاره درون‌ریزی شده باشد. اکنون بازیابی خودکار را دوباره امتحان کنید.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'بازگردانی درون‌ریزی نیمه‌کاره ممکن نشد';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.';
+      case 'settings.backup.recoveryRetry':
+        return 'تلاش دوباره';
+      case 'settings.backup.recoveryClose':
+        return 'بستن';
+      case 'settings.backup.recoveryRetried':
+        return 'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
       case 'settings.general.sectionTitle':
         return 'عمومی';
       case 'settings.general.locale':
@@ -20956,6 +21215,22 @@ extension on TranslationsId {
             'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
       case 'settings.backup.errFailed':
         return 'Impor gagal.';
+      case 'settings.backup.errBusy':
+        return 'Impor lain sedang berjalan. Tunggu sampai selesai.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Pemulihan otomatis belum selesai';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Impor yang terhenti tidak dapat dibatalkan';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.';
+      case 'settings.backup.recoveryRetry':
+        return 'Coba lagi';
+      case 'settings.backup.recoveryClose':
+        return 'Tutup';
+      case 'settings.backup.recoveryRetried':
+        return 'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
       case 'settings.systemProxyEnabled':
         return 'Proxy sistem diaktifkan';
       case 'settings.systemProxyDisabled':
@@ -21812,6 +22087,22 @@ extension on TranslationsPtBr {
             'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
       case 'settings.backup.errFailed':
         return 'A importação falhou.';
+      case 'settings.backup.errBusy':
+        return 'Já há outra importação em andamento. Aguarde ela terminar.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'A restauração automática não terminou';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Não foi possível desfazer a importação interrompida';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.';
+      case 'settings.backup.recoveryRetry':
+        return 'Tentar novamente';
+      case 'settings.backup.recoveryClose':
+        return 'Fechar';
+      case 'settings.backup.recoveryRetried':
+        return 'Seus dados foram restaurados ao estado anterior à importação interrompida.';
       case 'settings.systemProxyEnabled':
         return 'Proxy do sistema ativado';
       case 'settings.systemProxyDisabled':
@@ -22544,6 +22835,22 @@ extension on TranslationsRu {
             'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
       case 'settings.backup.errFailed':
         return 'Не удалось импортировать.';
+      case 'settings.backup.errBusy':
+        return 'Другой импорт уже выполняется. Дождитесь его завершения.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Автоматическое восстановление не завершилось';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Последний импорт резервной копии был прерван, и приложению не удалось вернуть данные в прежнее состояние. Часть данных могла быть импортирована не полностью. Повторите автоматическое восстановление.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Не удалось отменить прерванный импорт';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.';
+      case 'settings.backup.recoveryRetry':
+        return 'Повторить';
+      case 'settings.backup.recoveryClose':
+        return 'Закрыть';
+      case 'settings.backup.recoveryRetried':
+        return 'Данные возвращены в состояние до прерванного импорта.';
       case 'settings.general.sectionTitle':
         return 'Основные';
       case 'settings.general.locale':
@@ -23524,6 +23831,22 @@ extension on TranslationsTr {
             'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
       case 'settings.backup.errFailed':
         return 'İçe aktarma başarısız oldu.';
+      case 'settings.backup.errBusy':
+        return 'Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Otomatik geri yükleme tamamlanmadı';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Yarıda kalan içe aktarma geri alınamadı';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.';
+      case 'settings.backup.recoveryRetry':
+        return 'Yeniden dene';
+      case 'settings.backup.recoveryClose':
+        return 'Kapat';
+      case 'settings.backup.recoveryRetried':
+        return 'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
       case 'settings.systemProxyEnabled':
         return 'Sistem proxy’si etkin';
       case 'settings.systemProxyDisabled':
@@ -24253,6 +24576,22 @@ extension on TranslationsZhCn {
             '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
       case 'settings.backup.errFailed':
         return '导入失败。';
+      case 'settings.backup.errBusy':
+        return '已有另一个导入正在进行，请等它结束后再试。';
+      case 'settings.backup.recoveryFailedTitle':
+        return '自动恢复没有完成';
+      case 'settings.backup.recoveryFailedMsg':
+        return '上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return '无法撤销被中断的导入';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return '上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。';
+      case 'settings.backup.recoveryRetry':
+        return '重试';
+      case 'settings.backup.recoveryClose':
+        return '关闭';
+      case 'settings.backup.recoveryRetried':
+        return '已把数据恢复到被中断的导入之前。';
       case 'settings.general.sectionTitle':
         return '一般选项';
       case 'settings.general.locale':
@@ -25101,6 +25440,22 @@ extension on TranslationsZhTw {
             '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
       case 'settings.backup.errFailed':
         return '匯入失敗。';
+      case 'settings.backup.errBusy':
+        return '已有另一個匯入正在進行，請等它結束後再試。';
+      case 'settings.backup.recoveryFailedTitle':
+        return '自動還原沒有完成';
+      case 'settings.backup.recoveryFailedMsg':
+        return '上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return '無法復原被中斷的匯入';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return '上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。';
+      case 'settings.backup.recoveryRetry':
+        return '重試';
+      case 'settings.backup.recoveryClose':
+        return '關閉';
+      case 'settings.backup.recoveryRetried':
+        return '已把資料還原到被中斷的匯入之前。';
       case 'settings.general.sectionTitle':
         return '一般';
       case 'settings.general.locale':

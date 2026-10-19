@@ -248,7 +248,15 @@
       "errUnresolvedPrevious": "上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。",
       "errRolledBack": "导入失败，已恢复到导入之前的数据。",
       "errNotRolledBack": "导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。",
-      "errFailed": "导入失败。"
+      "errFailed": "导入失败。",
+      "errBusy": "已有另一个导入正在进行，请等它结束后再试。",
+      "recoveryFailedTitle": "自动恢复没有完成",
+      "recoveryFailedMsg": "上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。",
+      "recoveryUnrecoverableTitle": "无法撤销被中断的导入",
+      "recoveryUnrecoverableMsg": "上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。",
+      "recoveryRetry": "重试",
+      "recoveryClose": "关闭",
+      "recoveryRetried": "已把数据恢复到被中断的导入之前。"
     },
     "general": {
       "sectionTitle": "一般选项",

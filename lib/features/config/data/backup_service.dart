@@ -32,9 +32,16 @@ class PreparedImport {
 class BackupService {
   const BackupService._();
 
-  static Future<BackupEngine> engine(ProviderContainer container) async {
-    final store = await container.read(profileStoreProvider.future);
-    final prefs = await container.read(sharedPreferencesProvider.future);
+  static Future<BackupEngine> engine(ProviderContainer container) =>
+      engineWith(container.read);
+
+  /// 用任意「读 provider」的入口（`ref.read` / `container.read`）构造引擎。
+  /// 恢复互斥挂在 [ProfileStore] 上，所以每次新建引擎也共享同一把互斥。
+  static Future<BackupEngine> engineWith(
+    T Function<T>(ProviderListenable<T> provider) read,
+  ) async {
+    final store = await read(profileStoreProvider.future);
+    final prefs = await read(sharedPreferencesProvider.future);
     final docs = await getApplicationDocumentsDirectory();
     return BackupEngine(
       store: store,

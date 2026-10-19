@@ -248,7 +248,15 @@
       "errUnresolvedPrevious": "上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。",
       "errRolledBack": "匯入失敗，已還原到匯入之前的資料。",
       "errNotRolledBack": "匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。",
-      "errFailed": "匯入失敗。"
+      "errFailed": "匯入失敗。",
+      "errBusy": "已有另一個匯入正在進行，請等它結束後再試。",
+      "recoveryFailedTitle": "自動還原沒有完成",
+      "recoveryFailedMsg": "上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。",
+      "recoveryUnrecoverableTitle": "無法復原被中斷的匯入",
+      "recoveryUnrecoverableMsg": "上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。",
+      "recoveryRetry": "重試",
+      "recoveryClose": "關閉",
+      "recoveryRetried": "已把資料還原到被中斷的匯入之前。"
     },
     "general": {
       "sectionTitle": "一般",

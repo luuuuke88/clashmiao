@@ -22,6 +22,8 @@ class CoreHarness(
     var autoAuth: Boolean = true,
     var autoService: Boolean = true,
     var autoDestroy: Boolean = true,
+    /** 持久化动作自动以「确认落盘」回应。 */
+    var autoPersist: Boolean = true,
     config: CoordinatorCore.Config = CoordinatorCore.Config(),
 ) {
     data class InFlight(val token: Long, val inst: Int, val isStart: Boolean, val soft: Boolean)
@@ -192,6 +194,7 @@ class CoreHarness(
                     assertEquals("stopSelfResult uses the instance's own max startId", maxId, e.maxStartId)
                     if (autoDestroy) queue.addLast { core.onServiceDestroyed(e.inst) }
                 }
+                is Effect.Persist -> if (autoPersist) queue.addLast { core.onPersistResult(e.serial, true) }
                 is Effect.RequestAuth -> if (autoAuth) queue.addLast { core.onAuthResult(e.token, true) }
                 is Effect.StartService -> if (autoService) {
                     val inst = nextInst++

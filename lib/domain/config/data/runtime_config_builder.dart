@@ -173,3 +173,75 @@ class RuntimeConfigBuilder {
     }
   }
 }
+
+/// 内核配置构建器重建的主选择组 tag（订阅里的 selector / urltest 一律被丢弃，
+/// 换成这一组加自动选择组 [kRuntimeAutoGroupTag]）。
+const String kRuntimeMainSelectorTag = 'select';
+
+/// 内核配置构建器重建的自动选择（urltest）组 tag。
+const String kRuntimeAutoGroupTag = 'auto';
+
+/// 节点 tag 带这个标记时，内核把主选择组的默认值设成它（而不是自动选择组）。
+const String _kDefaultMarker = '§default§';
+
+/// 节点 tag 带这个标记时，内核不把它放进主选择组 / 自动选择组。
+const String _kHideMarker = '§hide§';
+
+/// 不会成为主选择组成员的出站类型（内核构建主选择组时跳过）。
+const Set<String> _kNonMemberTypes = {
+  'direct',
+  'block',
+  'dns',
+  'selector',
+  'urltest',
+  'custom',
+};
+
+/// 运行时配置 [cfg]（[RuntimeConfigBuilder.build] 写出的 JSON）对应的「运行时
+/// 选择组默认值」：选择组 tag → 内核启动时它选中的出站。用户在某个订阅下没有
+/// 手选记录时，切到该订阅要把选择组还原成这个值，不能留着上一个订阅的选择。
+///
+/// 规则：
+/// - 配置里每个 selector：`default` 字段（且确实是它的成员），否则 `outbounds`
+///   第一项；
+/// - 内核配置构建器会丢弃订阅自带的 selector / urltest，重建主选择组
+///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点，默认
+///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记）；同样
+///   按「默认值是成员则用它，否则第一项」取值。
+///
+/// 只描述 selector；urltest / 自动选择组没有可还原的默认值，调用方不碰它们。
+/// 结果里可能含运行时并不存在的 tag（订阅自带、被内核丢弃的 selector），调用方
+/// 只对运行时真实存在的分组生效。
+Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
+  final outbounds = (cfg['outbounds'] as List?) ?? const [];
+  final result = <String, String>{};
+  final memberTags = <String>[];
+  for (final o in outbounds) {
+    if (o is! Map) continue;
+    final tag = o['tag'];
+    final type = o['type'];
+    if (tag is! String || type is! String) continue;
+    if (type == 'selector') {
+      final members = [
+        for (final m in (o['outbounds'] as List?) ?? const [])
+          if (m is String) m,
+      ];
+      final picked = _defaultOrFirst(o['default'], members);
+      if (picked != null) result[tag] = picked;
+    }
+    if (!_kNonMemberTypes.contains(type) && !tag.contains(_kHideMarker)) {
+      memberTags.add(tag);
+    }
+  }
+  final mainMembers = [kRuntimeAutoGroupTag, ...memberTags];
+  final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
+      ? _kDefaultMarker
+      : kRuntimeAutoGroupTag;
+  result[kRuntimeMainSelectorTag] = _defaultOrFirst(mainDefault, mainMembers)!;
+  return result;
+}
+
+String? _defaultOrFirst(Object? preferred, List<String> members) {
+  if (preferred is String && members.contains(preferred)) return preferred;
+  return members.isEmpty ? null : members.first;
+}

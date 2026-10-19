@@ -108,6 +108,9 @@ class ConnectionLauncher {
   /// 正在构建中的临时文件（绝不能被清理删掉）。
   final Set<String> _prepInProgress = {};
 
+  /// 各 revision 的运行时选择组默认值（见 [selectorDefaults]）。
+  final Map<int, Map<String, String>> _selectorDefaults = {};
+
   /// 最近观察到的内核快照；尚未观察到为 null——此时**什么都不删**。
   KernelSnapshot? _kernel;
 
@@ -129,6 +132,43 @@ class ConnectionLauncher {
     final run = _ioChain.then((_) => op());
     _ioChain = run.then((_) {}, onError: (_) {});
     return run;
+  }
+
+  /// [revision] 这份运行时配置的选择组默认值（`runtimeSelectorDefaults`）。本进程
+  /// 准备过就直接给；否则（例如冷启动挂上了上一个进程启动的内核）读工作目录里
+  /// 的 `runtime-<revision>.json` 现算。拿不到（revision 未知、文件已不在、解析
+  /// 失败）返回空表——调用方据此不做默认值还原，不臆造。
+  Future<Map<String, String>> selectorDefaults(int? revision) async {
+    if (revision == null) return const {};
+    final cached = _selectorDefaults[revision];
+    if (cached != null) return cached;
+    try {
+      final dir = await _workingDirectory();
+      final file = File('${dir.path}/${runtimeConfigFileName(revision)}');
+      if (!await file.exists()) return const {};
+      return _rememberSelectorDefaults(revision, await file.readAsBytes());
+    } catch (e) {
+      debugPrint('读取运行时配置 $revision 的选择组默认值失败: $e');
+      return const {};
+    }
+  }
+
+  Map<String, String> _rememberSelectorDefaults(int revision, List<int> bytes) {
+    try {
+      final cfg = jsonDecode(utf8.decode(bytes));
+      if (cfg is! Map<String, dynamic>) return const {};
+      final defaults = Map<String, String>.unmodifiable(
+        runtimeSelectorDefaults(cfg),
+      );
+      _selectorDefaults[revision] = defaults;
+      while (_selectorDefaults.length > 8) {
+        _selectorDefaults.remove(_selectorDefaults.keys.first);
+      }
+      return defaults;
+    } catch (e) {
+      debugPrint('解析运行时配置 $revision 的选择组默认值失败: $e');
+      return const {};
+    }
   }
 
   /// 为意图 [id] 准备启动产物。失败抛 [LaunchPreparationException]。
@@ -174,6 +214,7 @@ class ConnectionLauncher {
       );
       final bytes = await built.readAsBytes();
       final revision = computeConfigRevision(optionsJson, bytes);
+      _rememberSelectorDefaults(revision, bytes);
       final target = File(
         '${workingDir.path}/${runtimeConfigFileName(revision)}',
       );

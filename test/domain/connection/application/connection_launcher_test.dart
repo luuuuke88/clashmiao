@@ -339,6 +339,46 @@ void main() {
     });
   });
 
+  group('selectorDefaults：按 revision 给出运行时选择组默认值', () {
+    test(
+      'prepare 过的 revision 直接给；新实例（冷启动）读 runtime-<revision>.json 现算',
+      () async {
+        await addProfile('p1');
+        await writeConfig('p1', {
+          'outbounds': [
+            {
+              'type': 'selector',
+              'tag': 'proxy',
+              'outbounds': ['hk', 'sg'],
+              'default': 'sg',
+            },
+            {'type': 'vless', 'tag': 'hk'},
+            {'type': 'vless', 'tag': 'sg'},
+          ],
+        });
+        await repo.setActive('p1');
+        final prepared = launcher();
+        final spec = await prepared.prepare(1);
+        expect(await prepared.selectorDefaults(spec.configRevision), {
+          'proxy': 'sg',
+          'select': 'auto',
+        });
+
+        final fresh = launcher(); // 另一个进程：没 prepare 过，只能读文件
+        final defaults = await fresh.selectorDefaults(spec.configRevision);
+        expect(defaults['select'], 'auto');
+        expect(defaults['proxy'], 'sg');
+
+        expect(await fresh.selectorDefaults(null), isEmpty);
+        expect(
+          await fresh.selectorDefaults(424242),
+          isEmpty,
+          reason: '文件不在：不臆造',
+        );
+      },
+    );
+  });
+
   group('配置缺失 → 自愈刷新 → 重读当前激活订阅', () {
     setUp(() async {
       await addProfile('p1', config: false);

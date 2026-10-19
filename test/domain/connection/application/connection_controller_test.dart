@@ -46,6 +46,9 @@ class _FakeLauncher extends ConnectionLauncher {
   ConnectionFailure? failWith;
 
   int revision = 1;
+
+  /// [selectorDefaults] 返回的运行时选择组默认值（不分 revision）。
+  Map<String, String> defaults = const {};
   final List<int> prepared = [];
   final List<({int id, int seq, String path})> bound = [];
   final List<int> finished = [];
@@ -65,6 +68,9 @@ class _FakeLauncher extends ConnectionLauncher {
       configRevision: revision,
     );
   }
+
+  @override
+  Future<Map<String, String>> selectorDefaults(int? revision) async => defaults;
 
   @override
   Future<LaunchSpec> bindSeq(int id, LaunchSpec spec, int seq) async {
@@ -1424,50 +1430,155 @@ void main() {
     }, prefs: prefs);
 
     // 性质：任意交错（A/B 同 revision 互切、配置落定、select 悬停 / 放行、
-    // 时间推进）之后静止，内核上的最终选择 == 当前订阅存储的选择。
+    // 时间推进）之后静止，内核上的最终选择 == 当前订阅存储的选择；没有存储
+    // 选择时 == 运行时默认值。内核每次选择生效后实时分组随之更新（与真机的
+    // 分组推送一致）。偶数种子 B 存了 sg，奇数种子 B 没有任何手选。
     for (var seed = 0; seed < 200; seed++) {
-      _sim('随机交错 seed=$seed：静止后内核选择等于当前订阅的存储选择', (e) {
-        connectAndAck(e);
-        final rnd = Random(seed);
-        Completer<void>? gate;
-        var current = 'p1';
-        for (var step = 0; step < 14; step++) {
-          switch (rnd.nextInt(5)) {
-            case 0:
-              current = current == 'p1' ? 'p2' : 'p1';
-              e.container.read(_Env.activeProfileIdProvider.notifier).state =
-                  current;
-              e.rebuild();
-            case 1:
-              e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-              e.settle();
-            case 2:
-              gate ??= e.port.onSelectGate = Completer<void>();
-            case 3:
-              final g = gate;
-              gate = null;
-              e.port.onSelectGate = null;
-              g?.complete();
-              e.settle();
-            default:
-              e.fa.elapse(Duration(milliseconds: rnd.nextInt(3000)));
+      final bHasSelection = seed.isEven;
+      _sim(
+        '随机交错 seed=$seed（B ${bHasSelection ? '存 sg' : '无手选'}）：静止后内核选择 = 存储选择或默认值',
+        (e) {
+          e.launcher.defaults = const {'select': 'auto'};
+          connectAndAck(e);
+          String kernel() {
+            final applied = e.port.selectApplied.where(
+              (c) => c.group == 'select',
+            );
+            return applied.isEmpty ? 'auto' : applied.last.tag;
           }
-        }
 
-        // 静止：放行悬停、让最后一次重新应用落定、时间走完。
-        e.port.onSelectGate = null;
-        gate?.complete();
-        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-        e.fa.elapse(const Duration(seconds: 10));
+          var pushed = kernel();
+          void reflect() {
+            final k = kernel();
+            if (k == pushed) return;
+            pushed = k;
+            e.pushGroups(attempt: 1, groups: runtimeSelecting(k));
+          }
 
-        expect(
-          e.port.selectCalls.last.tag,
-          current == 'p1' ? 'hk' : 'sg',
-          reason: '当前订阅 $current，调用序列 ${e.port.selectCalls}',
-        );
-        expect(e.port.selectCalls.map((c) => c.expectedAttempt).toSet(), {1});
-      }, prefs: prefs);
+          final rnd = Random(seed);
+          Completer<void>? gate;
+          var current = 'p1';
+          for (var step = 0; step < 14; step++) {
+            switch (rnd.nextInt(5)) {
+              case 0:
+                current = current == 'p1' ? 'p2' : 'p1';
+                e.container.read(_Env.activeProfileIdProvider.notifier).state =
+                    current;
+                e.rebuild();
+              case 1:
+                e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+                e.settle();
+              case 2:
+                gate ??= e.port.onSelectGate = Completer<void>();
+              case 3:
+                final g = gate;
+                gate = null;
+                e.port.onSelectGate = null;
+                g?.complete();
+                e.settle();
+              default:
+                e.fa.elapse(Duration(milliseconds: rnd.nextInt(3000)));
+            }
+            reflect();
+          }
+
+          // 静止：放行悬停、让最后一次重新应用落定、时间走完。
+          e.port.onSelectGate = null;
+          gate?.complete();
+          e.settle();
+          reflect();
+          e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+          for (var i = 0; i < 5; i++) {
+            e.fa.elapse(const Duration(seconds: 2));
+            reflect();
+          }
+
+          final expected = current == 'p1'
+              ? 'hk'
+              : (bHasSelection ? 'sg' : 'auto');
+          expect(
+            kernel(),
+            expected,
+            reason: '当前订阅 $current，生效序列 ${e.port.selectApplied}',
+          );
+          expect(e.port.selectCalls.map((c) => c.expectedAttempt).toSet(), {1});
+        },
+        prefs: {
+          'proxy_selection_p1': '{"select":"hk"}',
+          if (bHasSelection) 'proxy_selection_p2': '{"select":"sg"}',
+        },
+      );
     }
+
+    _sim(
+      'A 存 sg、B 没有手选（默认 hk）：同 revision 切到 B 后选择组回到 hk',
+      (e) {
+        e.launcher.defaults = const {'select': 'hk'};
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+        e.pushGroups(attempt: 1, groups: runtimeSelecting('hk')); // 启动在默认值
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+        ]);
+        e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
+        e.kernelStarted(r1, attempt: 1, withGroups: false);
+
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+        e.settle();
+
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+          (group: 'select', tag: 'hk', expectedAttempt: 1),
+        ], reason: 'B 没有手选：回到运行时默认值，不留 A 的 sg');
+        expect(e.port.selectCalls.where((c) => c.group == 'auto'), isEmpty);
+        expect(e.port.acknowledged, [1, 1]);
+      },
+      prefs: const {'proxy_selection_p1': '{"select":"sg"}'},
+    );
+
+    _sim('没有任何手选的订阅新连接：内核已在默认值上，不发任何 select', (e) {
+      e.launcher.defaults = const {'select': 'auto'};
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      e.kernelStarted(
+        e.requests.single,
+        attempt: 1,
+        replay: true,
+        withGroups: false,
+      );
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
+
+      expect(e.port.selectCalls, isEmpty);
+      expect(e.port.acknowledged, [1]);
+    });
+
+    _sim('没有手选、内核却不在默认值上：只把选择组拨回默认值，自动选择组不碰', (e) {
+      e.launcher.defaults = const {'select': 'auto', 'auto': 'hk'};
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      e.kernelStarted(
+        e.requests.single,
+        attempt: 1,
+        replay: true,
+        withGroups: false,
+      );
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
+
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'auto', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged, [1]);
+    });
   });
 
   group('失联与超时（Tick 由控制器按 nextWake 安排）', () {

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -64,6 +65,43 @@ void main() {
       final content = await logFile.readAsString();
       expect(content, contains('[ERROR] profiles.update: Bad state: boom'));
       expect(content, contains(stack.toString().split('\n').first));
+    });
+
+    test('订阅地址凭据不进 app.log：Dio 包着带 token 的 HttpException', () async {
+      const secretUrl = 'https://example.test/sub?token=SECRET';
+      final error = DioException(
+        requestOptions: RequestOptions(path: secretUrl),
+        error: HttpException(
+          'Connection closed before full header was received',
+          uri: Uri.parse(secretUrl),
+        ),
+      );
+      final stack = StackTrace.current;
+      logAppFailure('restore.backfill profile-a', error, stack);
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(content, isNot(contains(secretUrl)));
+      // 排障需要的东西都在：异常类别、底层异常、主机路径、堆栈帧。
+      expect(content, contains('DioException'));
+      expect(content, contains('HttpException: Connection closed'));
+      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains(stack.toString().split('\n').first));
+    });
+
+    test('脱敏在唯一写入口：直接 append 的行（loggy、未处理异常兜底）也过滤', () async {
+      await AppLogger.instance.append(
+        '[PlatformDispatcher] fetch failed: https://u:pw@example.test/s?key=K '
+        'vless://uuid@1.2.3.4:443#hk',
+      );
+
+      final content = await logFile.readAsString();
+      expect(content, isNot(contains('key=K')));
+      expect(content, isNot(contains('u:pw@')));
+      expect(content, isNot(contains('uuid@1.2.3.4')));
+      expect(content, contains('https://example.test/s?…'));
+      expect(content, contains('vless://…'));
     });
 
     test('logAppFailureOnce：同一标签同一错误只记一次，换了错误再记', () async {

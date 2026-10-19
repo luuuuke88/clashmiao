@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/features/logs/application/log_filter_notifier.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
@@ -17,11 +18,14 @@ import 'package:clashmiao/shared/components/motion_progress.dart';
 /// 抽成顶层函数是为了能在 logs_page_test.dart 里直接验证它和
 /// [resolveAppLogSharePath] 返回的是两个不同的文件——这是"分享核心日志"
 /// 和"分享应用日志"必须是两个真正不同数据源的核心验证点。
+///
+/// 写出前逐行过 [redactLogText]（与 app.log 同一个脱敏器）：内核日志里可能带
+/// 订阅地址、出站的分享链接，导出文件会被用户发给别人。
 @visibleForTesting
 Future<String> writeCoreLogsTempFile(List<String> lines) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/clashmiao-core-logs.txt');
-  await file.writeAsString(lines.join('\n'));
+  await file.writeAsString(lines.map(redactLogText).join('\n'));
   return file.path;
 }
 

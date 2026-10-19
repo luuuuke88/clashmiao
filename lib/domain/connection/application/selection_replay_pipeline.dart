@@ -78,14 +78,21 @@ class SelectionReplayPipeline {
     required KernelPort port,
     required bool Function(String epoch, int attempt) isCurrentInstance,
     bool Function()? ownerUnsettled,
+    void Function()? beforeKernelWrite,
     Duration groupsWait = kReplayGroupsWait,
   }) : _ref = ref,
        _port = port,
        _isCurrentInstance = isCurrentInstance,
        _ownerUnsettled = ownerUnsettled ?? _never,
+       _beforeKernelWrite = beforeKernelWrite ?? _noop,
        _groupsWait = groupsWait;
 
   static bool _never() => false;
+  static void _noop() {}
+
+  /// 每次 `selectOutbound` 之前调用：内核上的选择即将被这条流水线改动，此前
+  /// 「已按某归属应用」的记录从这一刻起不再可信（调用方据此作废）。
+  final void Function() _beforeKernelWrite;
 
   final Ref _ref;
   final KernelPort _port;
@@ -167,6 +174,7 @@ class SelectionReplayPipeline {
         }
         sentAny = true;
         sent[group] = tag;
+        _beforeKernelWrite();
         final outcome = await _port.selectOutbound(
           group,
           tag,

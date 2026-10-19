@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
@@ -1390,6 +1391,83 @@ void main() {
       ));
       expect(e.port.acknowledged, [1, 1, 1]);
     }, prefs: prefs);
+
+    _sim('B 的 select→sg 悬停期间切回 A：放行后先 sg 后 hk，内核最终与 A 一致', (e) {
+      connectAndAck(e);
+      final base = e.port.selectCalls.length;
+
+      final gate = e.port.onSelectGate = Completer<void>();
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
+      expect(e.port.selectCalls.sublist(base), [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+      ], reason: 'B 的选择已发出、悬停');
+      e.port.onSelectGate = null;
+
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
+      expect(e.port.selectCalls, hasLength(base + 1), reason: '同一实例不并发跑两条');
+
+      gate.complete();
+      e.settle();
+      e.fa.elapse(const Duration(seconds: 1));
+
+      expect(e.port.selectCalls.sublist(base), [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+        (group: 'select', tag: 'hk', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged.last, 1);
+    }, prefs: prefs);
+
+    // 性质：任意交错（A/B 同 revision 互切、配置落定、select 悬停 / 放行、
+    // 时间推进）之后静止，内核上的最终选择 == 当前订阅存储的选择。
+    for (var seed = 0; seed < 200; seed++) {
+      _sim('随机交错 seed=$seed：静止后内核选择等于当前订阅的存储选择', (e) {
+        connectAndAck(e);
+        final rnd = Random(seed);
+        Completer<void>? gate;
+        var current = 'p1';
+        for (var step = 0; step < 14; step++) {
+          switch (rnd.nextInt(5)) {
+            case 0:
+              current = current == 'p1' ? 'p2' : 'p1';
+              e.container.read(_Env.activeProfileIdProvider.notifier).state =
+                  current;
+              e.rebuild();
+            case 1:
+              e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+              e.settle();
+            case 2:
+              gate ??= e.port.onSelectGate = Completer<void>();
+            case 3:
+              final g = gate;
+              gate = null;
+              e.port.onSelectGate = null;
+              g?.complete();
+              e.settle();
+            default:
+              e.fa.elapse(Duration(milliseconds: rnd.nextInt(3000)));
+          }
+        }
+
+        // 静止：放行悬停、让最后一次重新应用落定、时间走完。
+        e.port.onSelectGate = null;
+        gate?.complete();
+        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+        e.fa.elapse(const Duration(seconds: 10));
+
+        expect(
+          e.port.selectCalls.last.tag,
+          current == 'p1' ? 'hk' : 'sg',
+          reason: '当前订阅 $current，调用序列 ${e.port.selectCalls}',
+        );
+        expect(e.port.selectCalls.map((c) => c.expectedAttempt).toSet(), {1});
+      }, prefs: prefs);
+    }
   });
 
   group('失联与超时（Tick 由控制器按 nextWake 安排）', () {

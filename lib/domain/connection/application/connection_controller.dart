@@ -667,28 +667,34 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       // 配置变更暂停期间（备份恢复）激活订阅随时可能再变：不按任何订阅重放、
       // 确认，记成欠账，释放后再按最终归属评估。
       ownerUnsettled: () => _configPauses > 0,
+      // 写内核之前先作废「已应用」记录：这条流水线中途被丢弃时，内核上可能
+      // 已经是它（另一个归属）的部分选择，不能再假定任何归属已应用。
+      beforeKernelWrite: () => _applied = null,
       groupsWait: _ref.read(replayGroupsWaitProvider),
     );
-    final ReplayPipelineOutcome outcome;
+    ReplayPipelineOutcome? outcome;
     try {
       outcome = await pipeline.run(epoch, attempt);
       debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
     } finally {
       if (_replayRunning == key) _replayRunning = null;
-    }
-    if (!mounted) return;
-    switch (outcome) {
-      case ReplayPipelineOutcome.acknowledged ||
-          ReplayPipelineOutcome.acknowledgedWithoutGroups:
-        final owner = pipeline.owner;
-        if (owner != null) _applied = owner;
-      case ReplayPipelineOutcome.droppedOwnerChanged ||
-          ReplayPipelineOutcome.deferred:
+      if (mounted) {
+        // 只有这条流水线完整走完（未被丢弃）才记「已按它的归属应用」。
+        if (outcome == ReplayPipelineOutcome.acknowledged ||
+            outcome == ReplayPipelineOutcome.acknowledgedWithoutGroups) {
+          final owner = pipeline.owner;
+          if (owner != null) _applied = owner;
+        }
+        // 任一出口（成功、丢弃、延后、超时、异常）都对账：实例仍在运行而当前
+        // 归属不是已应用的归属，就按当前归属补齐。异常出口、以及内核已判定
+        // 本实例过期（stale）的出口只记账、不立即重跑——等下一个事件（新快照、
+        // 请求终结）再评估，避免确认持续失败或内核已换实例时原地空转。
         _replayOwed = key;
-      case ReplayPipelineOutcome.dropped:
-        break;
+        if (outcome != null && outcome != ReplayPipelineOutcome.dropped) {
+          _maybeRescheduleReplay();
+        }
+      }
     }
-    _maybeRescheduleReplay();
   }
 
   /// 激活订阅的归属 (id, inc) 变了（由 [connectionControllerProvider] 的监听器
@@ -726,7 +732,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         applied.profileInc == profile?.inc;
   }
 
-  /// 欠账的实例若仍是当前实例、且（仍待重放，或已应用的归属不是当前归属），
+  /// 欠账的实例若仍是当前实例、且还没有按当前归属完整应用过（[_applied]），
   /// 并且没有未终结的请求（订阅切换引发的重新应用已经落定：要么产生了新
   /// attempt——它有自己的流水线，欠账作废；要么 revision 相同、实例不变），就
   /// 按当前归属重新跑一遍流水线。
@@ -748,8 +754,10 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     }
     if (s.status != KernelStatus.started) return;
     if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
-    if (!s.selectionsReplayNeeded &&
-        _appliedForCurrentOwner(owed.epoch, owed.attempt)) {
+    // 只看「是否已按当前归属完整应用」，不看快照的 replayNeeded：确认之后
+    // replay=false 的快照是异步到的，在它到达之前按 replayNeeded 判断会把刚
+    // 确认的实例再跑一遍。
+    if (_appliedForCurrentOwner(owed.epoch, owed.attempt)) {
       _replayOwed = null; // 已按当前归属应用过
       return;
     }

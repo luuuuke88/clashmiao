@@ -10,6 +10,7 @@ import 'package:clashmiao/domain/connection/application/connection_launcher.dart
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:dio/dio.dart';
@@ -377,6 +378,23 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('刷新撞上只读存储（降级安装）→ ProfileStoreReadOnly，不误报「配置不存在」', () async {
+      repo.onUpdate = (_) async => throw const StoreReadOnlyException(9);
+
+      await expectLater(
+        launcher().prepare(1),
+        throwsA(
+          isA<LaunchPreparationException>().having(
+            (e) => e.failure,
+            'failure',
+            const ProfileStoreReadOnly(9),
+          ),
+        ),
+      );
+      expect(repo.updated, ['p1'], reason: '只读是在自愈刷新里才发现的');
+      expect(workDir.listSync(), isEmpty, reason: '准备失败不留下任何启动产物');
     });
 
     test('刷新期间激活订阅被切换（旧订阅仍缺失、新订阅有配置）→ 用新订阅，不报缺失', () async {

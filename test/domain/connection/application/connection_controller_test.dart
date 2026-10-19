@@ -509,6 +509,19 @@ void main() {
       expect(e.phase, ConnectionPhase.disconnected);
     });
 
+    _sim('准备失败（订阅存储只读）：不发请求，界面可见「请升级 App」的类型化失败', (e) {
+      e.push();
+      e.launcher.failWith = const ProfileStoreReadOnly(9);
+
+      final out = e.track(e.ctl.connect());
+
+      expect(e.requests, isEmpty);
+      expect(out, [const RequestFailed(ProfileStoreReadOnly(9))]);
+      expect(e.view.failure, const ProfileStoreReadOnly(9));
+      expect(e.view.failureSeq, greaterThan(0));
+      expect(e.phase, ConnectionPhase.disconnected);
+    });
+
     _sim('准备期间又点断开：不发送 on，旧意图 superseded，准备产物被丢弃', (e) {
       e.push();
       e.launcher.gate = Completer<void>();

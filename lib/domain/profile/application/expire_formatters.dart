@@ -4,7 +4,7 @@ import 'package:clashmiao/core/utils/formatters.dart';
 /// 格式化剩余天数（首页 footer / 订阅列表用）。
 ///
 /// 文案走 i18n，复用 profile 模块已有的 key（跟
-/// `lib/features/profile/widget/profiles_page.dart` 里的 `_formatExpire`
+/// `lib/features/profile/presentation/profiles_page.dart` 里的 `_formatExpire`
 /// 是同一套 [SubscriptionInfo] 语义，故意不重复造新 key）。
 String formatExpireDate(DateTime? expire, TranslationsEn t) {
   if (isEffectivelyUnlimited(expire)) return t.profile.details.unlimited;

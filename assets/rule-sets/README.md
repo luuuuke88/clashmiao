@@ -23,7 +23,7 @@ libcore 在 `region:"other"` 前提下物理上不支持任何形式的 rule-set
    （见 `docs/superpowers/parity/deferred-and-blocked.md` H 节）。
 
 因此这两个文件现在的唯一用途是：**在构建期被反编译成
-`lib/core/config/cn_direct_rules.dart`**，分流数据以明文列表经
+`lib/domain/config/data/cn_direct_rules.dart`**，分流数据以明文列表经
 `configOptions.rules` 注入内核。原来那个 `RuleSetProvisioner` 已随此结论删除。
 
 ## 反编译（规则库更新后需要重跑）

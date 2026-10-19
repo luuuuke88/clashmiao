@@ -9,7 +9,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 暴露一个绑定到当前 container 的真实 [Ref]，跟
-/// `test/core/egress_ip/egress_ip_service_test.dart` 建立的模式一致——
+/// `test/domain/connection/application/egress_ip_service_test.dart` 建立的模式一致——
 /// `GeoUpdateNotifier` 现在需要 `Ref` 来读取 `networkSettingsProvider` 的
 /// mixed 端口配置。
 final _refExposerProvider = Provider<Ref>((ref) => ref);
@@ -29,7 +29,7 @@ Future<Ref> _testRef() async {
 }
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录，跟
-/// test/core/providers/connection_controller_test.dart 里 `_mockPathProvider()`
+/// test/domain/connection/application/connection_controller_test.dart 里 `_mockPathProvider()`
 /// 的写法一致。GeoUpdateNotifier 构造函数里的 `_loadExistingFiles()` 会调
 /// getApplicationDocumentsDirectory()，劫持后行为确定（拿到一个保证不存在
 /// geoip-cn.srs / geosite-cn.srs 的空目录），不依赖"平台插件缺失时那条

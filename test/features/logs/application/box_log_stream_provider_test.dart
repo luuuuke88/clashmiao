@@ -9,7 +9,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../support/temp_dirs.dart';
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录（同
-/// test/core/providers/connection_controller_test.dart 里的写法）。
+/// test/domain/connection/application/connection_controller_test.dart 里的写法）。
 Future<Directory> _mockPathProvider() async {
   final tmp = await Directory.systemTemp.createTemp('box_log_stream_test_');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

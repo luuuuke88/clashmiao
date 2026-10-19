@@ -85,7 +85,7 @@ Future<ProviderContainer> _containerWith(
 
 /// toastification 的 toast 自带一个真实 Timer 做自动关闭，`pumpAndSettle`
 /// 不一定能把它排干——测试结束时框架会断言"没有 pending timer"。跟
-/// `test/app/app_toast_test.dart` 的 `_drainToasts` 用法一致：往前推够长
+/// `test/shared/components/app_toast_test.dart` 的 `_drainToasts` 用法一致：往前推够长
 /// 时间再强制关掉剩余 toast。
 Future<void> _drainToasts(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 6));

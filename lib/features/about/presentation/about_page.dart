@@ -1,9 +1,9 @@
-import 'package:clashmiao/features/about/application/update_available_provider.dart';
 import 'dart:async';
 
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/about/application/update_available_provider.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';

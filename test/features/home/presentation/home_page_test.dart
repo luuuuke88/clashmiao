@@ -28,7 +28,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 /// 手写的假 [HttpClientAdapter]，跟
-/// `test/core/egress_ip/egress_ip_service_test.dart` 里的同名类同一个写法——
+/// `test/domain/connection/application/egress_ip_service_test.dart` 里的同名类同一个写法——
 /// 两个测试文件各自独立、自包含（跟这个仓库里其他测试文件的既有风格一致），
 /// 没有抽共享 test helper。
 class _FakeAdapter implements HttpClientAdapter {
@@ -913,7 +913,7 @@ void main() {
 
 /// 把健康度钉死在某个值的 monitor，让 widget 测试能独立验证渲染，
 /// 不用去真的跑一遍探测流程（探测逻辑本身由
-/// `test/core/health/connection_health_monitor_test.dart` 覆盖）。
+/// `test/domain/connection/application/connection_health_monitor_test.dart` 覆盖）。
 class _FixedHealthMonitor extends ConnectionHealthMonitor {
   _FixedHealthMonitor(super.ref, ConnectionHealth health) {
     state = health;

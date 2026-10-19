@@ -8,7 +8,7 @@ import 'package:path_provider/path_provider.dart';
 /// App 层（Dart/Flutter）日志基础设施。
 ///
 /// 和 `core/box_service` 那条实时 log 流（sing-box 核心自己的输出，见
-/// `features/logs/state/log_filter_notifier.dart`）是两个完全独立的数据源：
+/// `features/logs/application/log_filter_notifier.dart`）是两个完全独立的数据源：
 /// 这里只关心 Dart/Flutter 应用层——未处理异常、原生层桥接错误——落地到
 /// 本地 [kAppLogFileName] 文件，供"设置 -> 日志 -> 分享应用日志"排障使用。
 /// 不做多级别、多文件的日志框架；持久化就是"追加写 + 超阈值截断"，运行时

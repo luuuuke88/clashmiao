@@ -75,7 +75,7 @@ String proxyModeSubmenuLabel(Translations t) {
 ///   这个 App 没有按页面区分的 GoRouter 路由（见 `app_router.dart`，只有根
 ///   路由 `/`），实际的页面切换是 `ShellPage` 用
 ///   `selectedTabProvider`（一个 tab 下标）驱动 `IndexedStack`（见
-///   `lib/app/shell_page.dart` / `lib/app/state/selected_tab.dart`）。所以"跳转
+///   `lib/app/shell_page.dart` / `lib/shared/navigation/selected_tab.dart`）。所以"跳转
 ///   到具体页面"在这里等价于"把 selectedTabProvider 设成目标 tab，再把窗口显示
 ///   出来"，由 [performOpenPage] 负责。"订阅列表"对应的是这三个常驻 tab 里最
 ///   接近的 `AppTab.proxies`（线路列表）——真正的订阅管理页 `ProfilesPage` 不是
@@ -85,7 +85,7 @@ String proxyModeSubmenuLabel(Translations t) {
 ///   额外的挂钩机制，超出"列出几个固定选项+点击回调"这个子菜单该做的事，
 ///   所以这里只覆盖三个常驻 tab。
 /// - `proxy_mode`："服务模式"子菜单，对齐 home 页那个"智能分流/全局代理"分段
-///   选择器（`proxyModeProvider`，见 `lib/features/home/state/proxy_mode_notifier.dart`
+///   选择器（`proxyModeProvider`，见 `lib/domain/routing/application/proxy_mode_notifier.dart`
 ///   和 `home_page.dart` 里的 `_ModeSelector`）。当前生效的模式用
 ///   `MenuItem.checkbox` 打勾。
 Menu buildTrayMenu({

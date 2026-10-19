@@ -128,7 +128,7 @@ void main() {
     });
   });
 
-  group('订阅刷新场景的 Dio 不再硬编码 DIRECT（回归验证 app_providers.dart 的 bug 修复）', () {
+  group('订阅刷新场景的 Dio 不再硬编码 DIRECT（回归验证 profile_providers.dart 的 bug 修复）', () {
     test(
       'createAppHttpClient(preferTunnel: true) 构造出的 adapter 不会强制 DIRECT',
       () async {

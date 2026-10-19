@@ -10,7 +10,8 @@ import 'package:flutter/material.dart';
 /// 自动生成 `progressBar` + 75% 的确定进度语义，所以那一层用 [ExcludeSemantics]
 /// 屏蔽，由外层 [Semantics] 重新声明未知进度。
 ///
-/// 按钮内、行内的小转圈统一用它，别直接写 `CircularProgressIndicator()`。
+/// 按钮内、行内的小转圈与整页加载占位（整页传 `strokeWidth: 4`，与框架默认
+/// 粗细一致）统一用它，别直接写 `CircularProgressIndicator()`。
 class MotionProgress extends StatelessWidget {
   const MotionProgress({super.key, this.strokeWidth = 2, this.color});
 

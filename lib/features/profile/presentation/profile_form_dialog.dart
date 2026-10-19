@@ -525,9 +525,8 @@ class _ProfileTextField extends StatelessWidget {
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(
-                color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
+              // 占位提示同样是小字：用不透明的 onSurfaceVariant，不叠 alpha。
+              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
               filled: true,
               fillColor: theme.canvasColor,
               suffixIcon: suffixIcon,

@@ -6,9 +6,10 @@ import 'dart:typed_data';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
@@ -26,6 +27,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
+
+import '../../../support/fake_connection_controller.dart';
 
 /// 手写的假 [HttpClientAdapter]，跟
 /// `test/domain/connection/application/egress_ip_service_test.dart` 里的同名类同一个写法——
@@ -45,23 +48,6 @@ class _FakeAdapter implements HttpClientAdapter {
 
   @override
   void close({bool force = false}) {}
-}
-
-/// 可控的 [ConnectionController] fake：测试代码通过 [emit] 直接把
-/// connectionControllerProvider 的状态推到任意 [BoxStatus]，用来精确控制
-/// "连接状态切换"发生的时间点——跟 [_FakeAdapter] + `Completer` 控制
-/// "查询几时 resolve"配合，才能在 widget 测试里真实复现出口 IP 展示的竞态
-/// （连接状态切换 vs. 一次仍在飞行的旧查询，谁先谁后）。
-///
-/// 继承自真实的 [ConnectionController] 而不是从零实现一个假 notifier——
-/// 这样构造函数原有的副作用（比如 `boxServiceProvider` 是 [StubBoxService]
-/// 时跳过 watchStatus/watchAlerts 订阅）保持不变，测试只需要像 [_host] 一样
-/// 把 `boxServiceProvider` 覆盖成 [StubBoxService]，不需要再额外 mock 任何
-/// stream。
-class _FakeConnectionController extends ConnectionController {
-  _FakeConnectionController(super.ref);
-
-  void emit(BoxStatus status) => state = AsyncData(status);
 }
 
 Dio _dioReturning(String body, int statusCode) {
@@ -92,6 +78,7 @@ Future<Widget> _host(ProfileEntity profile) async {
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       activeProfileProvider.overrideWith((_) => Future.value(profile)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(const []),
@@ -135,6 +122,7 @@ Future<(Widget, ProviderContainer)> _hostWithContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       activeProfileProvider.overrideWith((_) => Future.value(profile)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(const []),
@@ -177,6 +165,7 @@ Future<Widget> _hostWithProfiles({
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       activeProfileProvider.overrideWith((_) => Future.value(activeProfile)),
       profileListProvider.overrideWith((_) => Future.value(profiles)),
       outboundGroupsProvider.overrideWith(
@@ -204,7 +193,7 @@ Future<Widget> _hostWithProfiles({
 }
 
 Future<Widget> _hostConnectionInfo({
-  required BoxStatus status,
+  required ConnectionPhase phase,
   required List<OutboundGroup> groups,
   void Function(ProviderContainer)? onContainer,
 }) async {
@@ -229,87 +218,46 @@ Future<Widget> _hostConnectionInfo({
       theme: ThemeData.light().copyWith(
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
       ),
-      home: Scaffold(body: ConnectionInfoForTest(status: status)),
+      home: Scaffold(body: ConnectionInfoForTest(phase: phase)),
     ),
   );
 }
 
-Future<Widget> _hostFooterStats({required Dio dio}) async {
-  SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
+/// [phase] 决定出口 IP 探测是否有意义（只有已连接才查）；[autoCheck] 对应设置页
+/// 「自动检查 IP」开关，默认关，让测试自己决定何时触发查询。
+Future<(Widget, ProviderContainer)> _hostFooterStats({
+  required Dio dio,
+  ConnectionPhase phase = ConnectionPhase.disconnected,
+  bool autoCheck = false,
+}) async {
+  SharedPreferences.setMockInitialValues({
+    'locale': 'zhCn',
+    'clashmiao_auto_ip_check': autoCheck,
+  });
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
-      egressIpServiceProvider.overrideWith(
+      connectionControllerProvider.overrideWith(
+        (ref) => FakeConnectionController(ref, phase: phase),
+      ),
+      egressProbeServiceProvider.overrideWith(
         (ref) => EgressIpService(ref, dio: dio),
       ),
     ],
   );
-  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
-  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
   addTearDown(container.dispose);
   await container.read(sharedPreferencesProvider.future);
-  return UncontrolledProviderScope(
+  // 探测器随 App 创建（见 main.dart）；测试里同样先建出来再渲染。
+  container.read(egressIpProbeProvider);
+  final widget = UncontrolledProviderScope(
     container: container,
     child: MaterialApp(
       theme: ThemeData.light().copyWith(
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
       ),
       home: const Scaffold(body: FooterStatsForTest()),
-    ),
-  );
-}
-
-/// 跟 [_host] 一样搭一个真实的 HomePage，但额外把
-/// [connectionControllerProvider] 换成 [_FakeConnectionController]、把
-/// [egressIpServiceProvider] 换成用可控 dio 的实例——用于精确控制"连接状态
-/// 切换"和"查询 resolve 时机"两条独立时间线的先后顺序，复现出口 IP 展示的
-/// 竞态（见文件末尾"竞态"相关的两个 testWidgets）。返回 [ProviderContainer]
-/// 本身而不只是 widget，方便测试代码直接拿到 fake controller 触发状态切换。
-Future<(Widget, ProviderContainer)> _hostForEgressRace({
-  required ProfileEntity profile,
-  required Dio dio,
-}) async {
-  SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
-  PackageInfo.setMockInitialValues(
-    appName: 'ClashMiao',
-    packageName: 'com.clashmiao.app',
-    version: '1.2.3',
-    buildNumber: '45',
-    buildSignature: '',
-  );
-  final prefs = await SharedPreferences.getInstance();
-  final container = ProviderContainer(
-    overrides: [
-      sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(const StubBoxService()),
-      activeProfileProvider.overrideWith((_) => Future.value(profile)),
-      outboundGroupsProvider.overrideWith(
-        (_) => Stream<List<OutboundGroup>>.value(const []),
-      ),
-      connectionControllerProvider.overrideWith(
-        (ref) => _FakeConnectionController(ref),
-      ),
-      egressIpServiceProvider.overrideWith(
-        (ref) => EgressIpService(ref, dio: dio),
-      ),
-    ],
-  );
-  // monitor 的周期探测定时器挂在 container 上，不 dispose 会留下
-  // pending timer 让测试框架报错（也是本来就该有的测试卫生）。
-  addTearDown(container.dispose);
-  await container.read(sharedPreferencesProvider.future);
-  await container.read(activeProfileProvider.future);
-  final widget = UncontrolledProviderScope(
-    container: container,
-    child: ToastificationWrapper(
-      child: MaterialApp(
-        theme: ThemeData.light().copyWith(
-          extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
-        ),
-        home: const HomePage(),
-      ),
     ),
   );
   return (widget, container);
@@ -439,7 +387,7 @@ void main() {
   testWidgets('连接态中间信息保持单行节点和延迟，不显示连接时长', (tester) async {
     await tester.pumpWidget(
       await _hostConnectionInfo(
-        status: const BoxStarted(),
+        phase: ConnectionPhase.connected,
         groups: const [
           OutboundGroup(
             tag: 'proxy',
@@ -463,7 +411,7 @@ void main() {
     late ProviderContainer container;
     await tester.pumpWidget(
       await _hostConnectionInfo(
-        status: const BoxStarted(),
+        phase: ConnectionPhase.connected,
         groups: const [
           OutboundGroup(
             tag: 'proxy',
@@ -490,7 +438,10 @@ void main() {
 
   testWidgets('节点行不再夹英文：连接中走译文，延迟未知显示破折号而不是 Checking', (tester) async {
     await tester.pumpWidget(
-      await _hostConnectionInfo(status: const BoxStarting(), groups: const []),
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connecting,
+        groups: const [],
+      ),
     );
     await tester.pump(const Duration(milliseconds: 250));
     expect(find.text('Connecting...'), findsNothing);
@@ -498,7 +449,7 @@ void main() {
 
     await tester.pumpWidget(
       await _hostConnectionInfo(
-        status: const BoxStarted(),
+        phase: ConnectionPhase.connected,
         groups: const [
           OutboundGroup(
             tag: 'proxy',
@@ -514,15 +465,27 @@ void main() {
     expect(find.text('—'), findsOneWidget);
   });
 
-  testWidgets('FooterStats 未查询过时展示未知 IP 文案', (tester) async {
-    await tester.pumpWidget(await _hostFooterStats(dio: Dio()));
+  testWidgets('FooterStats 未连接时展示未知 IP 文案，点击不发起查询', (tester) async {
+    var requests = 0;
+    final dio = Dio();
+    dio.httpClientAdapter = _FakeAdapter((_) {
+      requests++;
+      return Future.value(ResponseBody.fromString('{}', 200));
+    });
+    final (widget, _) = await _hostFooterStats(dio: dio);
+    await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('检测 IP 地址'), findsOneWidget);
     expect(find.text('未知的 IP'), findsOneWidget);
+
+    await tester.tap(find.text('检测 IP 地址'));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(requests, 0, reason: '没连接时不会去查：那只是设备自己的 IP');
   });
 
-  testWidgets('点击 FooterStats 的 IP tile 触发查询并展示结果（含国旗）', (tester) async {
+  testWidgets('已连接且自动检测关闭：点击 IP tile 触发查询并展示结果（含国旗）', (tester) async {
     final dio = _dioReturning(
       jsonEncode({
         'success': true,
@@ -531,7 +494,11 @@ void main() {
       }),
       200,
     );
-    await tester.pumpWidget(await _hostFooterStats(dio: dio));
+    final (widget, _) = await _hostFooterStats(
+      dio: dio,
+      phase: ConnectionPhase.connected,
+    );
+    await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('未知的 IP'), findsOneWidget);
@@ -543,18 +510,39 @@ void main() {
     expect(find.text('未知的 IP'), findsNothing);
   });
 
-  testWidgets('查询失败时点击后仍然展示未知 IP 文案', (tester) async {
+  testWidgets('已连接且自动检测开启：不用点击，连上后自动查出出口 IP', (tester) async {
+    final dio = _dioReturning(
+      jsonEncode({'success': true, 'ip': '198.51.100.9', 'country_code': 'US'}),
+      200,
+    );
+    final (widget, _) = await _hostFooterStats(
+      dio: dio,
+      phase: ConnectionPhase.connected,
+      autoCheck: true,
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.textContaining('198.51.100.9'), findsOneWidget);
+  });
+
+  testWidgets('全部尝试失败后展示未知 IP 文案（不再转圈）', (tester) async {
     final dio = _dioReturning(
       jsonEncode({'success': false, 'message': 'boom'}),
       200,
     );
-    await tester.pumpWidget(await _hostFooterStats(dio: dio));
+    final (widget, _) = await _hostFooterStats(
+      dio: dio,
+      phase: ConnectionPhase.connected,
+    );
+    await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 250));
 
     await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(seconds: 25));
 
     expect(find.text('未知的 IP'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 
   testWidgets('查询进行中展示加载态（转圈），完成后转圈消失', (tester) async {
@@ -562,7 +550,11 @@ void main() {
     final dio = Dio();
     dio.httpClientAdapter = _FakeAdapter((_) => completer.future);
 
-    await tester.pumpWidget(await _hostFooterStats(dio: dio));
+    final (widget, _) = await _hostFooterStats(
+      dio: dio,
+      phase: ConnectionPhase.connected,
+    );
+    await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
@@ -585,150 +577,6 @@ void main() {
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.textContaining('1.2.3.4'), findsOneWidget);
-  });
-
-  testWidgets('断连竞态：断连前发起的旧查询 resolve 时不应覆盖断连后的展示', (tester) async {
-    tester.view.physicalSize = const Size(430, 932);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final completer = Completer<ResponseBody>();
-    final dio = Dio();
-    dio.httpClientAdapter = _FakeAdapter((_) => completer.future);
-
-    const profile = ProfileEntity(
-      id: 'race-profile-1',
-      name: '竞态测试配置',
-      url: 'https://example.com/sub',
-      active: true,
-    );
-
-    final (widget, container) = await _hostForEgressRace(
-      profile: profile,
-      dio: dio,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.text('未知的 IP'), findsOneWidget);
-
-    final controller =
-        container.read(connectionControllerProvider.notifier)
-            as _FakeConnectionController;
-
-    // 1) 连接成功：HomePage 的 ref.listen 自动发起查询（开关默认开启），
-    //    但 fetch 被 completer 卡住，不会立刻 resolve。
-    controller.emit(const BoxStarted());
-    await tester.pump();
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    // 2) 查询 resolve 之前用户断开连接：ref.listen 应该立即把展示重置为
-    //    未知 IP，不等这次仍在飞行的查询。
-    controller.emit(const BoxStopped());
-    await tester.pump();
-
-    expect(find.byType(CircularProgressIndicator), findsNothing);
-    expect(find.text('未知的 IP'), findsOneWidget);
-
-    // 3) 断连前发起的旧查询才姗姗来迟地 resolve（带一个连接期间查到的隧道 IP）。
-    completer.complete(
-      ResponseBody.fromString(
-        jsonEncode({'success': true, 'ip': '9.9.9.9', 'country_code': 'JP'}),
-        200,
-        headers: {
-          Headers.contentTypeHeader: ['application/json'],
-        },
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 250));
-
-    // 核心断言：旧结果不应该覆盖断连后的展示——用户已经断开，不该看到一个
-    // "看起来仍受保护"的过期隧道 IP。
-    expect(find.textContaining('9.9.9.9'), findsNothing);
-    expect(find.text('未知的 IP'), findsOneWidget);
-
-    // 收尾：ConnectionButton 连接态渲染时用 flutter_animate 起了几个错开
-    // delay（0/1000/2000ms）的涟漪动画，跟本次修复的竞态逻辑无关——纯粹是
-    // 让它们在测试结束前触发完，避免测试框架的 "A Timer is still pending"
-    // 收尾断言误报。
-    await tester.pump(const Duration(seconds: 3));
-  });
-
-  testWidgets('反向竞态：连接后更快的新查询不应被断连前较慢的旧查询事后覆盖', (tester) async {
-    tester.view.physicalSize = const Size(430, 932);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final oldQueryCompleter = Completer<ResponseBody>();
-    var callCount = 0;
-    final dio = Dio();
-    dio.httpClientAdapter = _FakeAdapter((_) {
-      callCount++;
-      if (callCount == 1) return oldQueryCompleter.future;
-      return Future.value(
-        ResponseBody.fromString(
-          jsonEncode({'success': true, 'ip': '7.7.7.7', 'country_code': 'US'}),
-          200,
-          headers: {
-            Headers.contentTypeHeader: ['application/json'],
-          },
-        ),
-      );
-    });
-
-    const profile = ProfileEntity(
-      id: 'race-profile-2',
-      name: '竞态测试配置2',
-      url: 'https://example.com/sub',
-      active: true,
-    );
-
-    final (widget, container) = await _hostForEgressRace(
-      profile: profile,
-      dio: dio,
-    );
-    await tester.pumpWidget(widget);
-    await tester.pump(const Duration(milliseconds: 250));
-
-    // 1) 断开态手动点一次（慢——第一次请求被 oldQueryCompleter 卡住）。
-    await tester.tap(find.text('检测 IP 地址'));
-    await tester.pump();
-
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    // 2) 紧接着连接：ref.listen 重置 + 自动发起第二个新查询（第二次请求，
-    //    立刻 resolve，比第一个手动查询快）。
-    final controller =
-        container.read(connectionControllerProvider.notifier)
-            as _FakeConnectionController;
-    controller.emit(const BoxStarted());
-    await tester.pump(const Duration(milliseconds: 250));
-
-    expect(find.textContaining('7.7.7.7'), findsOneWidget);
-
-    // 3) 断连前那次更旧、更慢的手动查询这才 resolve（一个连接前查到的、
-    //    未受保护的真实 ISP IP）。
-    oldQueryCompleter.complete(
-      ResponseBody.fromString(
-        jsonEncode({'success': true, 'ip': '203.0.113.5'}),
-        200,
-        headers: {
-          Headers.contentTypeHeader: ['application/json'],
-        },
-      ),
-    );
-    await tester.pump(const Duration(milliseconds: 250));
-
-    // 核心断言：旧的、较慢的查询不应该把新连接查到的隧道 IP 覆盖回去——
-    // 用户已经连接，不该看到一个未受保护的 IP。
-    expect(find.textContaining('203.0.113.5'), findsNothing);
-    expect(find.textContaining('7.7.7.7'), findsOneWidget);
-
-    // 收尾：同上一个测试，让 ConnectionButton 连接态的涟漪动画触发完再结束。
-    await tester.pump(const Duration(seconds: 3));
   });
 
   testWidgets('配置变更触发的自动重连应该弹一条轻提示，而不是纯静默', (tester) async {

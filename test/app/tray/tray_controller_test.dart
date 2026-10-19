@@ -1,5 +1,7 @@
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -24,32 +26,44 @@ import 'package:tray_manager/tray_manager.dart';
 ///    纯 Dart 测试里验证结构和调用序列。
 void main() {
   group('buildTrayMenuLabels', () {
-    test('英文：4 种状态下 toggle 文案 + 固定的 show/hide/quit', () {
+    test('英文：各阶段下 toggle 文案 + 固定的 show/hide/quit', () {
       final t = AppLocale.en.build();
 
-      expect(buildTrayMenuLabels(const BoxStopped(), t).toggle, 'Connect');
-      expect(buildTrayMenuLabels(const BoxStarting(), t).toggle, 'Connecting');
-      expect(buildTrayMenuLabels(const BoxStarted(), t).toggle, 'Disconnect');
       expect(
-        buildTrayMenuLabels(const BoxStopping(), t).toggle,
+        buildTrayMenuLabels(ConnectionPhase.disconnected, t).toggle,
+        'Connect',
+      );
+      expect(
+        buildTrayMenuLabels(ConnectionPhase.connecting, t).toggle,
+        'Connecting',
+      );
+      expect(
+        buildTrayMenuLabels(ConnectionPhase.connected, t).toggle,
+        'Disconnect',
+      );
+      expect(
+        buildTrayMenuLabels(ConnectionPhase.disconnecting, t).toggle,
         'Disconnecting',
       );
 
-      final labels = buildTrayMenuLabels(const BoxStopped(), t);
+      final labels = buildTrayMenuLabels(ConnectionPhase.disconnected, t);
       expect(labels.show, 'Open');
       expect(labels.hide, 'Hide to Tray');
       expect(labels.quit, 'Quit');
     });
 
-    test('简体中文：4 种状态下 toggle 文案 + 固定的 show/hide/quit', () {
+    test('简体中文：各阶段下 toggle 文案 + 固定的 show/hide/quit', () {
       final t = AppLocale.zhCn.build();
 
-      expect(buildTrayMenuLabels(const BoxStopped(), t).toggle, '连接');
-      expect(buildTrayMenuLabels(const BoxStarting(), t).toggle, '正在连接');
-      expect(buildTrayMenuLabels(const BoxStarted(), t).toggle, '断开连接');
-      expect(buildTrayMenuLabels(const BoxStopping(), t).toggle, '正在断开连接');
+      expect(buildTrayMenuLabels(ConnectionPhase.disconnected, t).toggle, '连接');
+      expect(buildTrayMenuLabels(ConnectionPhase.connecting, t).toggle, '正在连接');
+      expect(buildTrayMenuLabels(ConnectionPhase.connected, t).toggle, '断开连接');
+      expect(
+        buildTrayMenuLabels(ConnectionPhase.disconnecting, t).toggle,
+        '正在断开连接',
+      );
 
-      final labels = buildTrayMenuLabels(const BoxStopped(), t);
+      final labels = buildTrayMenuLabels(ConnectionPhase.disconnected, t);
       expect(labels.show, '打开');
       expect(labels.hide, '隐藏到托盘');
       expect(labels.quit, '退出');
@@ -61,7 +75,7 @@ void main() {
       // 记了下来。现在 10 个语言的 UI key 已全部补齐（见
       // translations_completeness_test.dart 的门禁），兜底路径不再被触发。
       final t = AppLocale.ar.build();
-      final hide = buildTrayMenuLabels(const BoxStopped(), t).hide;
+      final hide = buildTrayMenuLabels(ConnectionPhase.disconnected, t).hide;
       expect(hide, isNotEmpty);
       expect(
         hide,
@@ -90,7 +104,10 @@ void main() {
     test('按顺序执行：先断开连接，再清理托盘，最后销毁窗口', () async {
       final calls = <String>[];
       await performQuitSequence(
-        disconnect: () async => calls.add('disconnect'),
+        disconnect: () async {
+          calls.add('disconnect');
+          return const RequestSucceeded();
+        },
         disposeTray: () async => calls.add('disposeTray'),
         destroyWindow: () async => calls.add('destroyWindow'),
       );
@@ -113,7 +130,7 @@ void main() {
     test('disposeTray 抛异常（托盘图标已经不存在等）时记录日志，但仍然继续销毁窗口退出，而不是卡住/中止退出流程', () async {
       final calls = <String>[];
       await performQuitSequence(
-        disconnect: () async {},
+        disconnect: () async => const RequestSucceeded(),
         disposeTray: () async => throw Exception('tray dispose failed'),
         destroyWindow: () async => calls.add('destroyWindow'),
       );
@@ -200,7 +217,7 @@ void main() {
     test('英文：顶层结构不变——toggle/分隔线/show/hide/分隔线/打开子菜单/模式子菜单/分隔线/quit', () {
       final t = AppLocale.en.build();
       final menu = buildTrayMenu(
-        status: const BoxStopped(),
+        phase: ConnectionPhase.disconnected,
         t: t,
         proxyMode: 1,
       );
@@ -222,9 +239,9 @@ void main() {
 
     test('toggle/show/hide/quit 文案跟 buildTrayMenuLabels 保持一致（不破坏既有回归）', () {
       final t = AppLocale.zhCn.build();
-      final labels = buildTrayMenuLabels(const BoxStarted(), t);
+      final labels = buildTrayMenuLabels(ConnectionPhase.connected, t);
       final menu = buildTrayMenu(
-        status: const BoxStarted(),
+        phase: ConnectionPhase.connected,
         t: t,
         proxyMode: 1,
       );
@@ -235,26 +252,22 @@ void main() {
       expect(menu.getMenuItem('quit')!.label, labels.quit);
     });
 
-    test('连接中/断开中时 toggle 仍然 disabled（不破坏既有回归）', () {
+    test('过渡期 toggle 也可点（spec §10.9：连接中点 = 取消，断开中点 = 重新连接）', () {
       final t = AppLocale.en.build();
-      final starting = buildTrayMenu(
-        status: const BoxStarting(),
-        t: t,
-        proxyMode: 1,
-      );
-      final stopping = buildTrayMenu(
-        status: const BoxStopping(),
-        t: t,
-        proxyMode: 1,
-      );
-      expect(starting.getMenuItem('toggle')!.disabled, isTrue);
-      expect(stopping.getMenuItem('toggle')!.disabled, isTrue);
+      for (final phase in ConnectionPhase.values) {
+        final menu = buildTrayMenu(phase: phase, t: t, proxyMode: 1);
+        expect(
+          menu.getMenuItem('toggle')!.disabled,
+          isNot(isTrue),
+          reason: '$phase',
+        );
+      }
     });
 
     test('"打开..."子菜单：至少包含首页/线路(订阅列表对应的持久化页面)/设置三个跳转项', () {
       final t = AppLocale.en.build();
       final menu = buildTrayMenu(
-        status: const BoxStopped(),
+        phase: ConnectionPhase.disconnected,
         t: t,
         proxyMode: 1,
       );
@@ -278,7 +291,7 @@ void main() {
     test('"服务模式"子菜单：列出智能/全局两个模式，且当前生效的模式带勾选', () {
       final t = AppLocale.en.build();
       final menuGlobal = buildTrayMenu(
-        status: const BoxStopped(),
+        phase: ConnectionPhase.disconnected,
         t: t,
         proxyMode: 0, // 0 = Global
       );
@@ -299,7 +312,7 @@ void main() {
       expect(subItems[1].checked, isFalse);
 
       final menuSmart = buildTrayMenu(
-        status: const BoxStopped(),
+        phase: ConnectionPhase.disconnected,
         t: t,
         proxyMode: 1, // 1 = Smart
       );
@@ -312,7 +325,7 @@ void main() {
     test('简体中文：子菜单标题和子项文案都过 i18n，不是硬编码中文', () {
       final t = AppLocale.zhCn.build();
       final menu = buildTrayMenu(
-        status: const BoxStopped(),
+        phase: ConnectionPhase.disconnected,
         t: t,
         proxyMode: 1,
       );
@@ -344,41 +357,116 @@ void main() {
     });
   });
 
+  group('performShutdownCleanup 按断开请求的 RequestOutcome 处理', () {
+    late DebugPrintCallback originalDebugPrint;
+
+    setUp(() {
+      originalDebugPrint = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) {};
+    });
+
+    tearDown(() {
+      debugPrint = originalDebugPrint;
+    });
+
+    test('succeeded：断开一次，然后清理托盘', () async {
+      final calls = <String>[];
+      await performShutdownCleanup(
+        disconnect: () async {
+          calls.add('disconnect');
+          return const RequestSucceeded();
+        },
+        disposeTray: () async => calls.add('disposeTray'),
+      );
+      expect(calls, ['disconnect', 'disposeTray']);
+    });
+
+    test('superseded：断开被更新的请求取代时继续等最新的断开，直到有结论', () async {
+      final calls = <String>[];
+      final outcomes = <RequestOutcome>[
+        const RequestSuperseded(),
+        const RequestSuperseded(),
+        const RequestSucceeded(),
+      ];
+      await performShutdownCleanup(
+        disconnect: () async {
+          calls.add('disconnect');
+          return outcomes.removeAt(0);
+        },
+        disposeTray: () async => calls.add('disposeTray'),
+      );
+      expect(calls, ['disconnect', 'disconnect', 'disconnect', 'disposeTray']);
+    });
+
+    test('一直 superseded：最多重发 kQuitDisconnectMaxRounds 轮，之后照常退出', () async {
+      var n = 0;
+      final calls = <String>[];
+      await performShutdownCleanup(
+        disconnect: () async {
+          n++;
+          return const RequestSuperseded();
+        },
+        disposeTray: () async => calls.add('disposeTray'),
+      );
+      expect(n, kQuitDisconnectMaxRounds);
+      expect(calls, ['disposeTray']);
+    });
+
+    test('failed / interrupted：不重试（也不清标记——标记归控制器管），照常清理托盘退出', () async {
+      for (final outcome in <RequestOutcome>[
+        const RequestFailed(KernelUnresponsive()),
+        const RequestInterrupted(),
+      ]) {
+        var n = 0;
+        final calls = <String>[];
+        await performShutdownCleanup(
+          disconnect: () async {
+            n++;
+            return outcome;
+          },
+          disposeTray: () async => calls.add('disposeTray'),
+        );
+        expect(n, 1, reason: '$outcome');
+        expect(calls, ['disposeTray'], reason: '$outcome');
+      }
+    });
+  });
+
   group('performProxyModeSwitch', () {
-    test('目标模式跟当前模式相同：什么都不做（不重复推送/不重连）', () async {
+    test('目标模式跟当前模式相同：什么都不做（不重复推送/不重新应用）', () async {
       final calls = <String>[];
       await performProxyModeSwitch(
         targetMode: 1,
         currentMode: () => 1,
         updateMode: (v) async => calls.add('updateMode($v)'),
         isConnected: () => true,
-        reconnect: () async => calls.add('reconnect'),
+        applyConfig: () async => calls.add('applyConfig'),
       );
       expect(calls, isEmpty);
     });
 
-    test('切换模式且当前未连接：只更新模式，不触发 reconnect', () async {
+    test('切换模式且当前未连接：只更新模式，不重新应用配置', () async {
       final calls = <String>[];
       await performProxyModeSwitch(
         targetMode: 0,
         currentMode: () => 1,
         updateMode: (v) async => calls.add('updateMode($v)'),
         isConnected: () => false,
-        reconnect: () async => calls.add('reconnect'),
+        applyConfig: () async => calls.add('applyConfig'),
       );
       expect(calls, ['updateMode(0)']);
     });
 
-    test('切换模式且当前已连接：更新模式后要 reconnect 让新模式立刻生效', () async {
+    test('切换模式且当前已连接：更新模式后要重新应用配置让新模式立刻生效', () async {
       final calls = <String>[];
       await performProxyModeSwitch(
         targetMode: 0,
         currentMode: () => 1,
         updateMode: (v) async => calls.add('updateMode($v)'),
         isConnected: () => true,
-        reconnect: () async => calls.add('reconnect'),
+        applyConfig: () async => calls.add('applyConfig'),
       );
-      expect(calls, ['updateMode(0)', 'reconnect']);
+      expect(calls, ['updateMode(0)', 'applyConfig']);
     });
   });
 }

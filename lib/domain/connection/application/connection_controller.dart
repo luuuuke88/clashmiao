@@ -194,6 +194,20 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
 
   ConnectionLauncher get _launcher => _ref.read(connectionLauncherProvider);
 
+  /// 网络设置变更的防抖定时器（见 [onNetworkSettingsChanged]）。
+  Timer? _settingsDebounce;
+
+  /// 未释放的 [pauseConfigChanges] 数。大于 0 时配置变更只记下、不触发请求。
+  int _configPauses = 0;
+
+  /// 暂停期间是否有过网络设置变更。
+  bool _deferredSettings = false;
+
+  /// 暂停期间激活订阅的变化：第一次变化前的 id 与最新的 id。
+  bool _deferredActive = false;
+  String? _deferredActiveFrom;
+  String? _deferredActiveTo;
+
   // ── 对外 API ─────────────────────────────────────────────────────
 
   /// 连接。Future 在该请求终结时完成（见 [RequestOutcome]）；从不抛。
@@ -253,12 +267,94 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   /// - 连接中/已连接时激活订阅被删光（变为 null）→ 断开；
   /// - 从一个订阅切到另一个 → 以新订阅重新发一次 on。
   void onActiveProfileChanged(String? previousId, String? nextId) {
-    if (previousId == nextId || !_wantsConnection) return;
+    if (previousId == nextId) return;
+    if (_configPauses > 0) {
+      if (!_deferredActive) _deferredActiveFrom = previousId;
+      _deferredActive = true;
+      _deferredActiveTo = nextId;
+      return;
+    }
+    if (!_wantsConnection) return;
     if (nextId == null) {
       unawaited(disconnect());
     } else if (previousId != null) {
       unawaited(applyConfig());
     }
+  }
+
+  /// 网络设置（端口 / TUN / LAN / DNS）变更（由 [connectionControllerProvider]
+  /// 的监听器调用）。正在跑的内核仍用旧值，必须重新应用配置才生效。
+  ///
+  /// 防抖：把一串密集的设置变更合并成**一次**请求 + 一条提示
+  /// （`NetworkSettingsNotifier.importJson` 会逐字段更新，滑杆拖动同理）。
+  /// 400 ms 用户无感，而且「等用户改完再应用」本来就更合理。
+  void onNetworkSettingsChanged() {
+    if (_configPauses > 0) {
+      _deferredSettings = true;
+      return;
+    }
+    if (!_wantsConnection) return;
+    _settingsDebounce?.cancel();
+    _settingsDebounce = Timer(kConfigChangeReconnectDebounce, () {
+      _settingsDebounce = null;
+      // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
+      if (!_wantsConnection) return;
+      _applyWithNotice();
+    });
+  }
+
+  /// 暂停「配置变更 → 重新应用」（备份恢复期间用）。
+  ///
+  /// 恢复会逐项改写偏好与订阅，期间的网络设置 / 激活订阅变化如果各自触发
+  /// 重新应用，内核会在半新半旧的中间态上重载。暂停期间：已排队的防抖重新
+  /// 应用立即取消；新的变化只记下。最后一个暂停被释放时，按最终状态**至多**
+  /// 处理一次：已连接（或想连接）而激活订阅没了 → 断开；激活订阅换了或设置
+  /// 变了 → 重新应用一次（已连接时推进提示 nonce）。
+  ///
+  /// 可嵌套；返回的 [ConfigChangePause.release] 幂等。
+  ConfigChangePause pauseConfigChanges() {
+    _configPauses++;
+    if (_settingsDebounce != null) {
+      _settingsDebounce!.cancel();
+      _settingsDebounce = null;
+      // 已排队、但还没发出的那一次：并入释放时的统一处理，不丢。
+      _deferredSettings = true;
+    }
+    return ConfigChangePause._(this);
+  }
+
+  /// 当前是否处于 [pauseConfigChanges] 之内。
+  bool get configChangesPaused => _configPauses > 0;
+
+  void _releaseConfigPause() {
+    if (_configPauses == 0) return;
+    if (--_configPauses > 0 || !mounted) return;
+    final settings = _deferredSettings;
+    final active = _deferredActive;
+    final from = _deferredActiveFrom;
+    final to = _deferredActiveTo;
+    _deferredSettings = false;
+    _deferredActive = false;
+    _deferredActiveFrom = null;
+    _deferredActiveTo = null;
+
+    if (!_wantsConnection) return;
+    final activeChanged = active && from != to;
+    if (activeChanged && to == null) {
+      unawaited(disconnect());
+      return;
+    }
+    // 与 [onActiveProfileChanged] 一致：首次读到订阅（from == null）不算切换。
+    if (settings || (activeChanged && from != null)) _applyWithNotice();
+  }
+
+  /// 重新应用配置；已连接时递增提示 nonce，让首页弹一条轻提示，免得用户把
+  /// 这次重新应用误当成网络抖动。
+  void _applyWithNotice() {
+    if (phase == ConnectionPhase.connected) {
+      _ref.read(configChangeReconnectNoticeProvider.notifier).state++;
+    }
+    unawaited(applyConfig());
   }
 
   Future<RequestOutcome> _submit(Desired desired, RequestReason reason) {
@@ -614,6 +710,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
   @override
   void dispose() {
     _wake?.cancel();
+    _settingsDebounce?.cancel();
     unawaited(_snapshotSub?.cancel());
     unawaited(_linkSub?.cancel());
     for (final c in _completers.values) {
@@ -628,26 +725,10 @@ final connectionControllerProvider =
     StateNotifierProvider<ConnectionController, ConnectionSnapshot>((ref) {
       final controller = ConnectionController(ref);
 
-      // 网络设置（端口 / TUN / LAN / DNS）变更后，正在跑的内核仍用旧值，必须
-      // 重新应用配置才生效。防抖：把一串密集的设置变更合并成**一次**请求 +
-      // 一条提示（`NetworkSettingsNotifier.importJson` 会逐字段更新，滑杆拖动
-      // 同理）。400 ms 用户无感，而且「等用户改完再应用」本来就更合理。
-      Timer? settingsDebounce;
-      ref.onDispose(() => settingsDebounce?.cancel());
+      // 网络设置变更：防抖后重新应用（见 onNetworkSettingsChanged）。
       ref.listen(networkSettingsProvider, (prev, next) {
         if (prev == null || identical(prev, next)) return;
-        if (!controller._wantsConnection) return;
-        settingsDebounce?.cancel();
-        settingsDebounce = Timer(kConfigChangeReconnectDebounce, () {
-          // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
-          if (!controller._wantsConnection) return;
-          // 已连接时递增 nonce，让首页弹一条轻提示，免得用户把这次重新应用
-          // 误当成网络抖动。
-          if (controller.phase == ConnectionPhase.connected) {
-            ref.read(configChangeReconnectNoticeProvider.notifier).state++;
-          }
-          unawaited(controller.applyConfig());
-        });
+        controller.onNetworkSettingsChanged();
       });
 
       // 激活订阅变化：连接中最后一个订阅被删 → 断开；切到另一个订阅 → 应用新
@@ -675,3 +756,18 @@ const kConfigChangeReconnectDebounce = Duration(milliseconds: 400);
 /// 用单调递增的 int 而不是 bool/文本：UI（`HomePage`）用 `ref.listen` 监听变
 /// 化弹 toast；取值不变的话连续两次变更之间 Riverpod 不会重新触发回调。
 final configChangeReconnectNoticeProvider = StateProvider<int>((_) => 0);
+
+/// [ConnectionController.pauseConfigChanges] 的句柄。
+class ConfigChangePause {
+  ConfigChangePause._(this._controller);
+
+  final ConnectionController _controller;
+  bool _released = false;
+
+  /// 释放这次暂停（幂等）。最后一个暂停释放时按最终状态至多处理一次。
+  void release() {
+    if (_released) return;
+    _released = true;
+    _controller._releaseConfigPause();
+  }
+}

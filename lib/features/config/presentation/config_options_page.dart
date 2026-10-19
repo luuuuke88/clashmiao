@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/warp_config_service.dart';
@@ -9,13 +10,13 @@ import 'package:clashmiao/features/assets/presentation/assets_page.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
 import 'package:clashmiao/features/config/data/backup_service.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
+import 'package:clashmiao/shared/components/agreement_modal.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
 import 'package:clashmiao/shared/components/settings_input_dialog.dart';
 import 'package:clashmiao/shared/components/settings_selection_modal.dart';
 import 'package:clashmiao/shared/components/tip_card.dart';
-import 'package:clashmiao/shared/components/warp_license_agreement_modal.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
@@ -100,7 +101,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
         if (!mounted) return;
         showDialog<bool>(
           context: context,
-          builder: (context) => const WarpLicenseAgreementModal(),
+          builder: (context) => const _WarpConsentModal(),
         );
       });
     }
@@ -886,7 +887,7 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
             if (!settings.warpConsentGiven) {
               final agreed = await showDialog<bool>(
                 context: context,
-                builder: (context) => const WarpLicenseAgreementModal(),
+                builder: (context) => const _WarpConsentModal(),
               );
               if (agreed != true) return;
               await notifier.setWarpConsentGiven(true);
@@ -1644,6 +1645,24 @@ class _ActionTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// WARP 同意弹窗：标题、正文与条款链接都是 WARP 专属内容，所以放在使用它的功能里，
+/// 通用版式交给 shared 的 [AgreementModal]。
+class _WarpConsentModal extends ConsumerWidget {
+  const _WarpConsentModal();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = ref.watch(translationsProvider);
+    return AgreementModal(
+      title: t.config.warpConsent.title,
+      body: t.config.warpConsent.description(
+        tos: (text) => linkTextSpan(text, kWarpTermsOfServiceUrl),
+        privacy: (text) => linkTextSpan(text, kWarpPrivacyPolicyUrl),
       ),
     );
   }

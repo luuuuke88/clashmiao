@@ -571,7 +571,7 @@ class _GlassContainer extends StatelessWidget {
       // 绘制背景与水波纹；这里的 Container 自带 BoxDecoration.color，若不插入一层
       // transparency 类型的 Material，ListTile 会在 debug 模式下抛出
       // "ListTile background color or ink splashes may be invisible" 断言。
-      // 用法与 lib/shared/components/warp_license_agreement_modal.dart 一致。
+      // 用法与 lib/shared/components/agreement_modal.dart 一致。
       child: Material(type: MaterialType.transparency, child: child),
     );
   }

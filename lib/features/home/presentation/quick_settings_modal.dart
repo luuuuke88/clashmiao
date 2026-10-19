@@ -248,63 +248,109 @@ class _SettingTile extends StatelessWidget {
   final ValueChanged<bool>? onChanged;
   final VoidCallback? onTap;
 
+  static const _labelStyle = TextStyle(
+    fontWeight: FontWeight.w600,
+    fontSize: 13,
+  );
+
+  /// 状态文字与标题并排放得下吗？放不下就把状态文字挪到标题下面一行，
+  /// 而不是挤压标题或溢出（窄屏 + 大字号 + 长翻译）。
+  bool _statusFitsBesideLabel(BuildContext context, double rowWidth) {
+    final status = trailingText;
+    if (status == null) return true;
+    final textScaler = MediaQuery.textScalerOf(context);
+    final direction = Directionality.of(context);
+    final base = DefaultTextStyle.of(context).style;
+    double measure(String text, TextStyle style) {
+      final painter = TextPainter(
+        text: TextSpan(text: text, style: base.merge(style)),
+        textDirection: direction,
+        textScaler: textScaler,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    final labelWidth = measure(label, _labelStyle);
+    final statusWidth = measure(status, const TextStyle(fontSize: 12));
+    // 图标 32 + 间距 12 + 状态与标题间距 8 + 状态与箭头间距 4 + 箭头 16。
+    const chrome = 32 + 12 + 8 + 4 + 16;
+    return labelWidth + statusWidth + chrome <= rowWidth;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final status = trailingText;
+    final hasSwitch = onChanged != null && value != null;
     return GestureDetector(
       onTap: onTap ?? (onChanged != null ? () => onChanged!(!value!) : null),
       child: Container(
-        height: 56,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        constraints: const BoxConstraints(minHeight: 56),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: theme.aiUi.softBackgroundColor,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: theme.aiUi.borderColor),
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(icon, color: color, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final inline =
+                status != null &&
+                !hasSwitch &&
+                _statusFitsBesideLabel(context, constraints.maxWidth);
+            final stacked = status != null && !hasSwitch && !inline;
+            final statusStyle = TextStyle(
+              fontSize: 12,
+              color: theme.aiUi.secondaryTextColor,
+            );
+            return Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(icon, color: color, size: 16),
                 ),
-              ),
-            ),
-            if (onChanged != null && value != null)
-              SizedBox(
-                height: 32,
-                child: Switch.adaptive(value: value!, onChanged: onChanged),
-              )
-            else ...[
-              if (trailingText != null) ...[
-                Text(
-                  trailingText!,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: theme.aiUi.secondaryTextColor,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(label, style: _labelStyle),
+                      if (stacked) ...[
+                        const SizedBox(height: 2),
+                        Text(status, style: statusStyle),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(width: 4),
+                if (hasSwitch)
+                  SizedBox(
+                    height: 32,
+                    child: Switch.adaptive(value: value!, onChanged: onChanged),
+                  )
+                else ...[
+                  if (inline) ...[
+                    const SizedBox(width: 8),
+                    Text(status, style: statusStyle),
+                    const SizedBox(width: 4),
+                  ],
+                  Icon(
+                    FluentIcons.chevron_right_24_regular,
+                    size: 16,
+                    color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
+                  ),
+                ],
               ],
-              Icon(
-                FluentIcons.chevron_right_24_regular,
-                size: 16,
-                color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
-              ),
-            ],
-          ],
+            );
+          },
         ),
       ),
     );

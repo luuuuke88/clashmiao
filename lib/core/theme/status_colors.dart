@@ -22,10 +22,11 @@ abstract final class StatusColors {
   static const Color _latencyMediumLight = Color(0xFF92400E);
   static const Color _latencySlowLight = Color(0xFFB91C1C);
 
-  // 深色：emerald-400 / amber-400 / red-400。
+  // 深色：emerald-400 / amber-400 / 介于 red-400 与 red-300 之间（red-400 压在
+  // 带品牌晕染的首页胶囊底上只有 4.32:1，提亮一档才过 4.5:1）。
   static const Color _latencyFastDark = Color(0xFF34D399);
   static const Color _latencyMediumDark = Color(0xFFFBBF24);
-  static const Color _latencySlowDark = Color(0xFFF87171);
+  static const Color _latencySlowDark = Color(0xFFFB8A8A);
 
   // 「已连接」绿点：浅色 emerald-700（压白 ≥ 4.5:1，小标记也读得清）/ 深色 emerald-400。
   static const Color _connectedLight = Color(0xFF047857);

@@ -26,9 +26,33 @@ void main() {
       expect(conflict.flagSource, FlagSource.leading);
     });
 
-    test('只有旗帜没有名字时保持原样，不把名字搬空', () {
-      final d = NodeDisplay.parse('🇭🇰');
-      expect(d.label, isNotEmpty);
+    test('只有旗帜没有名字：旗帜只出现一次（在 flag），label 为空交给展示层占位', () {
+      for (final tag in ['🇭🇰', ' 🇭🇰 ', '🇭🇰 §2']) {
+        final d = NodeDisplay.parse(tag);
+        expect(d.flag, '🇭🇰', reason: tag);
+        expect(d.flagSource, FlagSource.leading, reason: tag);
+        expect(d.label, isEmpty, reason: tag);
+        expect(d.label.contains('🇭🇰'), isFalse, reason: '旗帜不能左右各显示一次');
+      }
+    });
+
+    test('前导空格 / 制表符：检测与截取用同一个规范化字符串，旗帜不被切断', () {
+      for (final tag in [' 🇭🇰 香港 01', '\t🇭🇰 香港 01', '  \t 🇭🇰香港 01 ']) {
+        final d = NodeDisplay.parse(tag);
+        expect(d.flag, '🇭🇰', reason: tag);
+        expect(d.flagSource, FlagSource.leading, reason: tag);
+        expect(d.label, '香港 01', reason: tag);
+        // 没有落单的代理项（被切断的旗帜会留下孤立的 UTF-16 代理项）。
+        for (final unit in d.label.codeUnits) {
+          expect(unit >= 0xD800 && unit <= 0xDFFF, isFalse, reason: tag);
+        }
+      }
+    });
+
+    test('前导空白但没有旗帜：label 去掉首尾空白', () {
+      final d = NodeDisplay.parse('  Premium Node 12 ');
+      expect(d.label, 'Premium Node 12');
+      expect(d.flagSource, FlagSource.none);
     });
   });
 

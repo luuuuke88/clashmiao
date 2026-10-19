@@ -21,6 +21,7 @@ class BackupBundle {
     required this.profileConfigs,
     required this.preferences,
     this.auxPreferences = const {},
+    this.orphanConfigs = const {},
   });
 
   /// 当前（也是唯一会导出的）备份格式版本。
@@ -42,6 +43,11 @@ class BackupBundle {
   /// 快照带上它们，是因为恢复会删除「不在备份中的订阅」的附属键，失败回滚时要能还原。
   final Map<String, String> auxPreferences;
 
+  /// 恢复前快照专属：`profiles/` 里存在、却不属于任何列表订阅的 `<id>.json`
+  /// （订阅被隔离、或遗留的孤儿文件）的 id → 内容。回滚要**原样保留**它们——
+  /// 只有「这次恢复新装进来」的文件才能删。用户导出的备份不含。
+  final Map<String, String> orphanConfigs;
+
   Map<String, dynamic> toJson() => {
     'version': currentVersion,
     'schema': schema,
@@ -51,6 +57,7 @@ class BackupBundle {
     'profileConfigs': profileConfigs,
     'preferences': preferences,
     if (auxPreferences.isNotEmpty) 'auxPreferences': auxPreferences,
+    if (orphanConfigs.isNotEmpty) 'orphanConfigs': orphanConfigs,
   };
 }
 

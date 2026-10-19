@@ -7,6 +7,7 @@ import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
+import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/config/data/backup_codec.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:dio/dio.dart';
@@ -434,6 +435,251 @@ void main() {
       );
       expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
       expect(await h.state(via: h.restartedStore()), before);
+    });
+  });
+
+  group('回滚只删这次恢复新装进来的文件', () {
+    /// 本机既有的、不属于任何列表订阅的配置文件：
+    /// - `q.json`：订阅 q 因元数据损坏被隔离（原始条目在隔离区键里），配置完好；
+    /// - `orphan1.json`：旧版本删订阅时没删掉的孤儿。
+    Future<void> seedStrays() async {
+      File(
+        h.store.configFilePath('q'),
+      ).writeAsStringSync(sampleConfig('q-old'));
+      File(
+        h.store.configFilePath('orphan1'),
+      ).writeAsStringSync(sampleConfig('orphan-old'));
+      await h.real.setString(
+        ProfileStore.quarantineKey,
+        jsonEncode([
+          {'id': 'q', 'name': 'broken entry'},
+        ]),
+      );
+    }
+
+    void failOnceAt(String key) {
+      var armed = true;
+      h.prefs.failWhen = (op, k) {
+        if (armed && op == 'set' && k == key) {
+          armed = false;
+          return true;
+        }
+        return false;
+      };
+    }
+
+    test('既有的隔离订阅配置与孤儿文件：导入失败回滚后原样还在（逐个文件比较）', () async {
+      h = await _seededHarness();
+      await seedStrays();
+      final before = await h.state();
+      expect(before['files'], containsPair('q.json', sampleConfig('q-old')));
+      failOnceAt('clashmiao_mixed_port');
+
+      await expectLater(
+        h.engine.restore(h.engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.rolledBack,
+          ),
+        ),
+      );
+
+      expect(await h.state(via: h.restartedStore()), before);
+      expect(
+        File(h.store.configFilePath('c')).existsSync(),
+        isFalse,
+        reason: '这次恢复新装进来的 c.json 才该删',
+      );
+    });
+
+    test('导入的订阅恰好与隔离订阅同 id：失败回滚后被覆盖的游离文件内容也要还原', () async {
+      h = await _seededHarness();
+      await seedStrays();
+      final before = await h.state();
+      final raw = jsonEncode({
+        'version': 2,
+        'profiles': [_profile('q'), _profile('b')],
+        'activeProfileId': 'q',
+        'profileConfigs': {
+          'q': sampleConfig('backup-q'),
+          'b': sampleConfig('backup-b'),
+        },
+        'preferences': {'clashmiao_mixed_port': 3000},
+      });
+      failOnceAt('clashmiao_mixed_port');
+
+      await expectLater(
+        h.engine.restore(h.engine.prepare(raw)),
+        throwsA(isA<RestoreFailure>()),
+      );
+
+      expect(
+        File(h.store.configFilePath('q')).readAsStringSync(),
+        sampleConfig('q-old'),
+      );
+      expect(h.store.find('q'), isNull, reason: 'q 不在恢复前的列表里');
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+
+    for (final overlapping in [false, true]) {
+      test('进程被杀后重启恢复：既有游离文件保留，装进来的新文件被清'
+          '${overlapping ? '（含与游离文件同 id 的订阅）' : ''}', () async {
+        h = await _seededHarness();
+        await seedStrays();
+        final before = await h.state();
+        final raw = overlapping
+            ? jsonEncode({
+                'version': 2,
+                'profiles': [_profile('q'), _profile('c')],
+                'profileConfigs': {
+                  'q': sampleConfig('backup-q'),
+                  'c': sampleConfig('backup-c'),
+                },
+                'preferences': <String, Object>{},
+              })
+            : _backup();
+        final killed = Completer<void>();
+        final never = Completer<void>();
+        var firstMarkerWrite = true;
+        h.prefs.beforeWrite = (op, key) async {
+          if (key == _markerKey && op == 'set' && firstMarkerWrite) {
+            firstMarkerWrite = false;
+            return;
+          }
+          if (op == 'set' && key == ProfileStore.profilesKey) {
+            if (!killed.isCompleted) killed.complete();
+            await never.future;
+          }
+        };
+        unawaited(
+          h.engine
+              .restore(h.engine.prepare(raw))
+              .then<void>((_) {}, onError: (_) {}),
+        );
+        await killed.future;
+
+        final restarted = BackupEngine(
+          store: h.restartedStore(),
+          prefs: h.real,
+          backupsDir: h.backupsDir,
+        );
+        expect(await restarted.recoverInterrupted(), RecoveryOutcome.recovered);
+        expect(await h.state(via: h.restartedStore()), before);
+      });
+    }
+
+    test('快照里记着既有游离文件，且用户导出的备份不带它们', () async {
+      h = await _seededHarness();
+      await seedStrays();
+      expect((await h.engine.exportBundle()).orphanConfigs, isEmpty);
+      final snap = await h.engine.exportBundle(includeAux: true);
+      expect(snap.orphanConfigs, {
+        'q': sampleConfig('q-old'),
+        'orphan1': sampleConfig('orphan-old'),
+      });
+    });
+
+    test('游离文件读不出来：快照中止，导入不开始', () async {
+      h = await _seededHarness();
+      await seedStrays();
+      final before = await h.state();
+      final engine = BackupEngine(
+        store: h.store,
+        prefs: h.prefs,
+        backupsDir: h.backupsDir,
+        readConfigFile: (file) async {
+          if (p.basename(file.path) == 'orphan1.json') {
+            throw const FileSystemException('denied');
+          }
+          return file.readAsString();
+        },
+      );
+      await expectLater(
+        engine.restore(engine.prepare(_backup())),
+        throwsA(
+          isA<RestoreFailure>().having(
+            (e) => e.kind,
+            'kind',
+            RestoreFailureKind.snapshotFailed,
+          ),
+        ),
+      );
+      expect(await h.state(via: h.restartedStore()), before);
+    });
+  });
+
+  group('列表回滚与文件处理在同一个临界区', () {
+    test('回滚持锁期间排队的普通提交（新增订阅 d）在回滚之后落地：d 与它的文件都在', () async {
+      h = await _seededHarness();
+      // 先把 d 的暂存文件备好，这样 commit 一调用就同步入队。
+      final entity = ProfileEntity(
+        id: 'd',
+        name: 'added-during-rollback',
+        url: 'https://example.com/d',
+        inc: h.store.newInc(),
+      );
+      final staging = await h.store.createStagingFile('d');
+      await staging.writeAsString(sampleConfig('d'));
+
+      var listWrites = 0;
+      final rollbackHoldsLock = Completer<void>();
+      final releaseRollback = Completer<void>();
+      var armed = true;
+      h.prefs.failWhen = (op, key) {
+        if (armed && op == 'set' && key == 'clashmiao_mixed_port') {
+          armed = false;
+          return true;
+        }
+        return false;
+      };
+      h.prefs.beforeWrite = (op, key) async {
+        if (op == 'set' && key == ProfileStore.profilesKey) {
+          listWrites++;
+          if (listWrites == 2) {
+            // 第二次写列表 = 回滚的提交，此刻回滚持有 Store 锁。
+            rollbackHoldsLock.complete();
+            await releaseRollback.future;
+          }
+        }
+      };
+
+      final restoreResult = h.engine
+          .restore(h.engine.prepare(_backup()))
+          .then<Object?>((r) => r, onError: (Object e) => e);
+      await rollbackHoldsLock.future;
+      // 排队：它拿不到锁，必须等回滚整个临界区（换列表 + 处理文件）结束。
+      final added = h.store.commit<void>(
+        (view) => Plan<void>(
+          profiles: [...view.profiles, entity],
+          staged: [StagedConfig('d', staging)],
+        ),
+      );
+      h.prefs.beforeWrite = null;
+      releaseRollback.complete();
+
+      expect(
+        (await restoreResult),
+        isA<RestoreFailure>().having(
+          (e) => e.kind,
+          'kind',
+          RestoreFailureKind.rolledBack,
+        ),
+      );
+      expect((await added).isCommitted, isTrue);
+
+      expect(h.ids, ['a', 'b', 'd']);
+      expect(
+        File(h.store.configFilePath('d')).readAsStringSync(),
+        sampleConfig('d'),
+        reason: '回滚不能把期间新增订阅的配置文件当成「新装的」删掉',
+      );
+      expect(File(h.store.configFilePath('c')).existsSync(), isFalse);
+      expect(
+        File(h.store.configFilePath('a')).readAsStringSync(),
+        sampleConfig('local-a'),
+      );
     });
   });
 

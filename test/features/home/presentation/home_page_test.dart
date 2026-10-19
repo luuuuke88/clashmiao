@@ -18,7 +18,11 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
+import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
+import 'package:clashmiao/shared/components/latency_label.dart';
 import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show ValueListenable;
@@ -30,6 +34,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/fake_connection_controller.dart';
+import '../../../support/profile_store_support.dart';
 
 /// 手写的假 [HttpClientAdapter]，跟
 /// `test/domain/connection/application/egress_ip_service_test.dart` 里的同名类同一个写法——
@@ -198,14 +203,22 @@ Future<Widget> _hostConnectionInfo({
   ValueListenable<ConnectionPhase>? phaseListenable,
   required List<OutboundGroup> groups,
   void Function(ProviderContainer)? onContainer,
+  Future<List<Override>> Function(SharedPreferences prefs)? extraOverrides,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
+  final extra = await extraOverrides?.call(prefs) ?? const <Override>[];
   final container = ProviderContainer(
     overrides: [
+      ...extra,
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       outboundGroupsProvider.overrideWith(
         (_) => Stream<List<OutboundGroup>>.value(groups),
+      ),
+      // 节点胶囊的延迟读测速协调器，协调器跟着连接阶段走：给它同一个阶段。
+      boxServiceProvider.overrideWithValue(const StubBoxService()),
+      connectionControllerProvider.overrideWith(
+        (ref) => FakeConnectionController(ref, phase: phase),
       ),
     ],
   );
@@ -231,6 +244,11 @@ Future<Widget> _hostConnectionInfo({
     ),
   );
 }
+
+/// 已连接时测速协调器会排 2 s 预热、10 s 测速超时：把假时钟推过去，让定时器
+/// 自然跑完（与代理页测试同一做法）。
+Future<void> _drainLatency(WidgetTester tester) =>
+    tester.pump(kLatencyWarmupDelay + kLatencyRoundTimeout);
 
 /// [phase] 决定出口 IP 探测是否有意义（只有已连接才查）；[autoCheck] 对应设置页
 /// 「自动检查 IP」开关，默认关，让测试自己决定何时触发查询。
@@ -417,7 +435,113 @@ void main() {
     expect(find.text('香港 01 | SS'), findsOneWidget);
     expect(find.text('128ms'), findsOneWidget);
     expect(find.textContaining('已连接 '), findsNothing);
+
+    await _drainLatency(tester);
   });
+
+  testWidgets('节点胶囊的延迟用共用延迟标签：成功/占位，且不再有 Wi-Fi 图标', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [
+              OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks', delay: 128),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final label = tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+    expect(label.state, LatencyDisplayState.success);
+    expect(label.ms, 128);
+    expect(find.byIcon(FluentIcons.wifi_1_24_filled), findsNothing);
+
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '香港 01 | SS',
+            items: [OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks')],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(
+      tester.widget<LatencyLabel>(find.byType(LatencyLabel)).state,
+      LatencyDisplayState.untested,
+    );
+
+    await _drainLatency(tester);
+  });
+
+  // 与代理页同一套 resolveNodeLatency：只有离线兜底分组时缓存可以顶上（历史值），
+  // 有真实实时分组时实时值缺席不拿缓存冒充（cacheIsFallback 接线两个方向）。
+  for (final live in [false, true]) {
+    testWidgets(
+      '节点胶囊与代理页同一套延迟规则：${live ? '实时分组在、实时值缺席 → 不拿缓存冒充' : '只有离线兜底分组 → 显示缓存的历史值'}',
+      (tester) async {
+        const group = OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: '香港 01 | SS',
+          items: [OutboundProxy(tag: '香港 01 | SS', type: 'shadowsocks')],
+        );
+        late ProviderContainer container;
+        await tester.pumpWidget(
+          await _hostConnectionInfo(
+            phase: ConnectionPhase.connected,
+            groups: live ? const [group] : const [],
+            onContainer: (c) => container = c,
+            // 延迟缓存按订阅分区、写入经 ProfileStore 校验：给一个真实的激活订阅。
+            extraOverrides: (prefs) async {
+              const profile = ProfileEntity(
+                id: 'p1',
+                name: 'p1',
+                url: 'https://example.com/p1',
+                active: true,
+              );
+              final store = await seededProfileStore(prefs, [profile]);
+              return [
+                profileStoreProvider.overrideWith((_) => Future.value(store)),
+                activeProfileProvider.overrideWith(
+                  (_) => Future.value(profile),
+                ),
+                offlineProxyGroupsProvider.overrideWith(
+                  (_) async => const [group],
+                ),
+              ];
+            },
+          ),
+        );
+        await tester.pump(const Duration(milliseconds: 250));
+        container.read(proxyDelayCacheProvider.notifier).recordMeasured({
+          '香港 01 | SS': 222,
+        }, at: DateTime.now().subtract(const Duration(hours: 1)));
+        await tester.pump(const Duration(milliseconds: 250));
+
+        final label = tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+        if (live) {
+          expect(label.state, LatencyDisplayState.untested);
+          expect(label.ms, isNull);
+        } else {
+          expect(label.state, LatencyDisplayState.stale);
+          expect(label.ms, 222);
+        }
+
+        await _drainLatency(tester);
+      },
+    );
+  }
 
   testWidgets('节点行看得出能点：带箭头，点了跳到线路页', (tester) async {
     late ProviderContainer container;
@@ -446,6 +570,8 @@ void main() {
     await tester.pump();
 
     expect(container.read(selectedTabProvider), AppTab.proxies);
+
+    await _drainLatency(tester);
   });
 
   testWidgets('节点区：过渡期留白（加载指示在连接按钮上），已连接才出现节点胶囊；高度恒为 48', (tester) async {
@@ -486,6 +612,8 @@ void main() {
     expect(find.text('Checking'), findsNothing);
     expect(find.text('—'), findsOneWidget, reason: '延迟未知显示破折号，不是 Checking');
     expect(tester.getSize(find.byType(ConnectionInfoForTest)).height, 48);
+
+    await _drainLatency(tester);
   });
 
   testWidgets('节点区出现 / 消失是 150–200 ms 的淡入淡出，没有弹性高度（easeOutBack）', (

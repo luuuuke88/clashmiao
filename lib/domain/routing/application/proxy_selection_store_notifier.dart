@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,7 +11,7 @@ const _kProxySelectionPrefix = 'proxy_selection_';
 /// 每次 reconnect/restart 都会用 runtime-config.json 里的静态 `default` 重新起
 /// 一个全新实例——不持久化 + 主动重放的话，用户手选的节点在下一次重连后会
 /// 静默回退到 config 声明的默认值。这里按 profileId 分区记住每个 group 最近
-/// 一次的手选结果，供 [ConnectionController] 在每次真正进入 BoxStarted 后重放。
+/// 一次的手选结果，供 `ConnectionController` 在每次真正进入 BoxStarted 后重放。
 final proxySelectionStoreProvider =
     StateNotifierProvider<ProxySelectionStoreNotifier, Map<String, String>>((
       ref,

@@ -94,8 +94,12 @@ class _Env {
       ref: ref,
       port: port,
       isCurrentInstance: (e, a) => e == current.epoch && a == current.attempt,
+      ownerUnsettled: () => paused,
     ),
   );
+
+  /// 模拟配置变更暂停（归属未定）。
+  bool paused = false;
 
   /// 启动一条流水线；结局写进返回的列表。
   List<ReplayPipelineOutcome> run(int attempt) {
@@ -356,6 +360,29 @@ void main() {
         (group: 'select', tag: 'hk', expectedAttempt: 2),
       ]);
       expect(e.port.acknowledged, [2]);
+    }, p1: {'proxy': 'hk'});
+  });
+
+  group('归属未定（配置变更暂停中）', () {
+    _sim('暂停期间分组到达：不迁移、不重放、不确认，返回 deferred；暂停解除后重跑完成', (e) {
+      final out = e.run(1);
+      e.paused = true;
+      e.pushGroups(1);
+      expect(out, [ReplayPipelineOutcome.deferred]);
+      expect(e.disk('p1'), '{"proxy":"hk"}');
+      expect(e.port.selectCalls, isEmpty);
+      expect(e.port.acknowledged, isEmpty);
+
+      expect(e.run(1), [ReplayPipelineOutcome.deferred], reason: '仍在暂停：一开始就延后');
+
+      e.paused = false;
+      final again = e.run(1);
+      expect(again, [ReplayPipelineOutcome.acknowledged]);
+      expect(e.disk('p1'), '{"select":"hk"}');
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 1),
+      ]);
+      expect(e.port.acknowledged, [1]);
     }, p1: {'proxy': 'hk'});
   });
 

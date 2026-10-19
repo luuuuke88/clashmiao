@@ -1118,6 +1118,149 @@ void main() {
         'proxy_selection_p2': '{"select":"sg"}',
       },
     );
+
+    _sim(
+      '配置暂停内 A→B→A：期间不按 B 重放、不确认；释放后配置未变不重新应用，同一 attempt 按 A/HK 重放并确认',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+
+        final pause = e.ctl.pauseConfigChanges();
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.pushGroups(attempt: 1, groups: runtime); // 旧实例的分组在暂停期间到达
+        e.fa.elapse(const Duration(seconds: 6));
+        expect(e.port.selectCalls, isEmpty, reason: '暂停期间不按 B 重放');
+        expect(e.port.acknowledged, isEmpty, reason: '暂停期间不确认');
+
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+        e.rebuild();
+        e.fa.elapse(const Duration(seconds: 6));
+        expect(e.port.selectCalls, isEmpty);
+        expect(e.port.acknowledged, isEmpty);
+        expect(e.requests, [r1], reason: '暂停期间不发请求');
+
+        pause.release();
+        e.rebuild();
+
+        expect(e.requests, [r1], reason: '最终订阅没变：不重新应用');
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'hk', expectedAttempt: 1),
+        ], reason: '内核选择与最终订阅 A 一致');
+        expect(e.port.acknowledged, [1]);
+        expect(e.prefs.getString('proxy_selection_p2'), '{"select":"sg"}');
+      },
+      prefs: {
+        'proxy_selection_p1': '{"select":"hk"}',
+        'proxy_selection_p2': '{"select":"sg"}',
+      },
+    );
+
+    _sim(
+      '配置暂停内 A→B 并释放：先重新应用配置，等它落定（revision 相同、attempt 不变）再按 B 重放并确认',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+
+        final pause = e.ctl.pauseConfigChanges();
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.pushGroups(attempt: 1, groups: runtime);
+        expect(e.port.acknowledged, isEmpty);
+
+        pause.release();
+        e.rebuild();
+        final r2 = e.requests.last;
+        expect(r2, isNot(same(r1)), reason: '先处理最终配置意图：重新应用');
+        expect(e.port.selectCalls, isEmpty, reason: '重新应用落定之前不重放');
+
+        e.kernelStarted(r2, attempt: 1, replay: true, withGroups: false);
+        e.settle();
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+        ]);
+        expect(e.port.acknowledged, [1]);
+      },
+      prefs: {
+        'proxy_selection_p1': '{"select":"hk"}',
+        'proxy_selection_p2': '{"select":"sg"}',
+      },
+    );
+
+    _sim(
+      '重新调度的重放确认超时：经统一副作用入口捕获，不成为未处理异常',
+      (e) {
+        e.port.acknowledgeError = TimeoutException('ack');
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.kernelStarted(
+          e.requests.last,
+          attempt: 1,
+          replay: true,
+          withGroups: false,
+        );
+        e.pushGroups(attempt: 1, groups: runtime);
+        e.fa.elapse(const Duration(seconds: 6));
+
+        expect(e.port.selectCalls, [
+          (group: 'select', tag: 'sg', expectedAttempt: 1),
+        ]);
+        expect(e.port.acknowledged, [1], reason: '确认发出后抛错，被捕获');
+        expect(e.phase, ConnectionPhase.connected);
+      },
+      prefs: {
+        'proxy_selection_p1': '{"select":"hk"}',
+        'proxy_selection_p2': '{"select":"sg"}',
+      },
+    );
+
+    _sim(
+      '重新调度的重放进行中控制器被销毁：不成为未处理异常，也不再确认',
+      (e) {
+        e.push();
+        e.ctl.connect();
+        e.settle();
+        e.container.read(proxySelectionStoreProvider);
+        final r1 = e.requests.single;
+        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+
+        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+        e.rebuild();
+        e.kernelStarted(
+          e.requests.last,
+          attempt: 1,
+          replay: true,
+          withGroups: false,
+        );
+        e.settle(); // 重新调度的流水线正在等这个实例的分组
+
+        e.dispose();
+        e.fa.elapse(const Duration(seconds: 6));
+        e.fa.flushMicrotasks();
+
+        expect(e.port.selectCalls, isEmpty);
+        expect(e.port.acknowledged, isEmpty);
+      },
+      prefs: {
+        'proxy_selection_p1': '{"select":"hk"}',
+        'proxy_selection_p2': '{"select":"sg"}',
+      },
+    );
   });
 
   group('失联与超时（Tick 由控制器按 nextWake 安排）', () {

@@ -6,15 +6,18 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.MainActivity
-import com.clashmiao.clashmiao.core.KernelStatus
 import com.clashmiao.clashmiao.core.Prefs
-import com.clashmiao.clashmiao.engine.KernelHost
+import com.clashmiao.clashmiao.engine.Desired
+import com.clashmiao.clashmiao.engine.KernelCoordinator
+import com.clashmiao.clashmiao.engine.KernelSnapshot
+import com.clashmiao.clashmiao.engine.LaunchSpec
+import com.clashmiao.clashmiao.engine.LibboxKernelRuntime
 import com.clashmiao.clashmiao.pigeon.BoxHostApi
 import com.clashmiao.clashmiao.pigeon.ConfigOptions
 import com.clashmiao.clashmiao.pigeon.DesiredRequestMsg
 import com.clashmiao.clashmiao.pigeon.FlutterError
 import com.clashmiao.clashmiao.pigeon.InstalledApp
+import com.clashmiao.clashmiao.pigeon.KernelFailureMsg
 import com.clashmiao.clashmiao.pigeon.KernelSnapshotMsg
 import com.clashmiao.clashmiao.pigeon.ReceiptMsg
 import com.clashmiao.clashmiao.pigeon.SelectOutboundRequest
@@ -24,19 +27,21 @@ import com.clashmiao.clashmiao.pigeon.ValidateConfigResult
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.nekohasekai.libbox.Libbox
 import io.nekohasekai.mobile.Mobile
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Pigeon 强类型 host API 桥 —— 跟 [MethodBridge] 并存的过渡形态。
+ * Pigeon 强类型 host API 桥。
  *
- * 一个 method 一个 method 往这边搬，搬完一个就把 [MethodBridge] 对应 entry 删掉。
- * 已迁：validateConfig、setup、changeConfigOptions、start、stop、restart、
- * selectOutbound、urlTest、generateFullConfig、clearLogs。
- * 全部 kernel method 已迁移，[MethodBridge] kernelOps 表已清空对应条目。
+ * 连接生命周期走进程级 [KernelCoordinator]：`getSnapshot` / `request` / `acknowledgeReplay`
+ * 是新协议；旧的 `start` / `stop` / `restart` 只是转发到协调器（供尚未迁移的旧调用方）。
+ *
+ * **错误契约**：每个回调都恰好被调用一次，失败一律 `Result.failure(FlutterError(...))`，
+ * 绝不在协程里抛出（旧实现里 setup / generateFullConfig / restart 的异常会直接崩进程，
+ * 或让 Dart 的 Future 永远悬挂）。
  *
  * Channel namespace 跟 MethodBridge 不冲突：
  *   - MethodBridge: `com.clashmiao.app/method`（字符串契约 MethodChannel）
@@ -45,7 +50,12 @@ import kotlinx.coroutines.withContext
 class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostApi {
     companion object {
         private const val TAG = "PigeonBridge"
+
+        /** 旧 start/restart 没有 revision：用进程内递增值保证每次都被视为「新配置」。 */
+        private val legacyRevision = AtomicLong(1L shl 40)
     }
+
+    private val coordinator get() = KernelCoordinator.instance
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         BoxHostApi.setUp(binding.binaryMessenger, this)
@@ -55,22 +65,54 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         BoxHostApi.setUp(binding.binaryMessenger, null)
     }
 
-    // === migrated ==========================================================
+    // === 错误契约 ===========================================================
+
+    /** 同步执行 [block]（主线程），任何异常都转成 FlutterError 回调。 */
+    private fun <T> respond(callback: (Result<T>) -> Unit, code: String, block: () -> T) {
+        val result = try {
+            Result.success(block())
+        } catch (e: FlutterError) {
+            Result.failure(e)
+        } catch (e: Exception) {
+            Log.w(TAG, "$code failed", e)
+            Result.failure(FlutterError(code, e.message ?: e.toString(), null))
+        }
+        safeCallback(callback, result)
+    }
+
+    /** 在协程里执行 [block]；异常转 FlutterError，取消异常照常向上抛（协程框架需要它）。 */
+    private fun <T> launchResponding(
+        dispatcher: kotlinx.coroutines.CoroutineDispatcher,
+        callback: (Result<T>) -> Unit,
+        code: String,
+        block: suspend () -> T,
+    ) {
+        scope.launch(dispatcher) {
+            val result = try {
+                Result.success(block())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: FlutterError) {
+                Result.failure(e)
+            } catch (e: Exception) {
+                Log.w(TAG, "$code failed", e)
+                Result.failure(FlutterError(code, e.message ?: e.toString(), null))
+            }
+            safeCallback(callback, result)
+        }
+    }
+
+    // === 配置 / 校验 ==========================================================
 
     override fun validateConfig(
         req: ValidateConfigRequest,
         callback: (Result<ValidateConfigResult>) -> Unit,
     ) {
-        scope.launch(Dispatchers.IO) {
-            val errorMessage = KernelHost.parseConfig(req.path, req.tempPath, req.debug)
-            val payload = ValidateConfigResult(
-                error = errorMessage.takeIf { it.isNotEmpty() },
-            )
-            callback(Result.success(payload))
+        launchResponding(Dispatchers.IO, callback, "validateConfig") {
+            val errorMessage = LibboxKernelRuntime.parseConfig(req.path, req.tempPath, req.debug)
+            ValidateConfigResult(error = errorMessage.takeIf { it.isNotEmpty() })
         }
     }
-
-    // === migrated (continued) ================================================
 
     override fun initialize(callback: (Result<Unit>) -> Unit) = pending(callback)
 
@@ -81,146 +123,148 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         debug: Boolean,
         callback: (Result<Unit>) -> Unit,
     ) {
-        scope.launch(Dispatchers.IO) {
-            Mobile.setup()
-            callback(Result.success(Unit))
-        }
+        launchResponding(Dispatchers.IO, callback, "setup") { Mobile.setup() }
     }
 
     override fun changeConfigOptions(
         options: ConfigOptions,
         callback: (Result<Unit>) -> Unit,
     ) {
-        Prefs.Engine.configOptionsJson = options.jsonOptions
-        callback(Result.success(Unit))
+        respond(callback, "changeConfigOptions") {
+            Prefs.Engine.configOptionsJson = options.jsonOptions
+        }
     }
 
+    // === 旧生命周期入口：转发协调器（计划 P2④）===================================
+    //
+    // 旧 Dart 控制器仍按「changeConfigOptions → start(path)」的节奏调用；这里把它们翻译成
+    // 不带序号的协调器请求（不推进 appliedSeq）。结果不再「立即成功」后靠推送补——
+    // 启动成败由协调器快照 / 状态流如实反映。
+
     override fun start(req: StartRequest, callback: (Result<Unit>) -> Unit) {
-        scope.launch(Dispatchers.Main) {
-            Prefs.Profile.activeConfigPath = req.configPath
-            Prefs.Profile.activeName = req.profileName
-            val act = MainActivity.instance
-            if (act.serviceStatus.value != KernelStatus.Started) {
-                act.startService()
-            }
-            callback(Result.success(Unit))
+        respond(callback, "start") {
+            coordinator.legacyStart(legacySpec(req))
         }
     }
 
     override fun stop(callback: (Result<Unit>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
-            if (MainActivity.instance.serviceStatus.value == KernelStatus.Started) {
-                KernelHost.fireStop()
-            }
-            callback(Result.success(Unit))
-        }
+        respond(callback, "stop") { coordinator.legacyStop() }
     }
 
     override fun restart(req: StartRequest, callback: (Result<Unit>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
-            Prefs.Profile.activeConfigPath = req.configPath
-            Prefs.Profile.activeName = req.profileName
-            val act = MainActivity.instance
-            val isStarted = withContext(Dispatchers.Main) {
-                act.serviceStatus.value == KernelStatus.Started
-            }
-            if (!isStarted) {
-                callback(Result.success(Unit))
-                return@launch
-            }
-            if (Prefs.Engine.shouldRebuildService()) {
-                withContext(Dispatchers.Main) { act.reconnect() }
-                KernelHost.fireStop()
-                delay(1000L)
-                withContext(Dispatchers.Main) { act.startService() }
-            } else {
-                Libbox.newStandaloneCommandClient().serviceReload()
-            }
-            callback(Result.success(Unit))
+        respond(callback, "restart") {
+            coordinator.legacyRestart(legacySpec(req))
         }
     }
+
+    private fun legacySpec(req: StartRequest): LaunchSpec {
+        // 旧调用方的配置选项由 changeConfigOptions 预先写进 Prefs。
+        Prefs.Profile.activeConfigPath = req.configPath
+        Prefs.Profile.activeName = req.profileName
+        return LaunchSpec(
+            runtimeConfigPath = req.configPath,
+            optionsJson = Prefs.Engine.configOptionsJson,
+            profileName = req.profileName,
+            configRevision = legacyRevision.incrementAndGet(),
+        )
+    }
+
+    // === 出站选择 ============================================================
 
     override fun selectOutbound(
         req: SelectOutboundRequest,
         callback: (Result<Unit>) -> Unit,
     ) {
-        scope.launch(Dispatchers.IO) {
+        // attempt 校验放在主线程、与快照同一视角：重放属于哪次内核实例，由原生说了算（spec §10.7）。
+        val expected = req.expectedAttempt
+        if (expected != null && coordinator.snapshot.attempt != expected) {
+            safeCallback(
+                callback,
+                Result.failure(
+                    FlutterError(
+                        "stale",
+                        "attempt ${coordinator.snapshot.attempt} != expected $expected",
+                        null,
+                    ),
+                ),
+            )
+            return
+        }
+        launchResponding(Dispatchers.IO, callback, "selectOutbound") {
             val groupTag = req.groupTag.trim()
             val outboundTag = req.outboundTag.trim()
-
             if (groupTag.isBlank() || outboundTag.isBlank()) {
-                safeCallback(
-                    callback,
-                    Result.failure(
-                        IllegalArgumentException(
-                            "selectOutbound requires non-blank groupTag and outboundTag",
-                        ),
-                    ),
+                throw IllegalArgumentException(
+                    "selectOutbound requires non-blank groupTag and outboundTag",
                 )
-                return@launch
             }
-
-            kotlin.runCatching {
-                Libbox.newStandaloneCommandClient().selectOutbound(groupTag, outboundTag)
-            }.fold(
-                onSuccess = {
-                    safeCallback(callback, Result.success(Unit))
-                },
-                onFailure = { error ->
-                    Log.w(TAG, "selectOutbound($groupTag, $outboundTag) failed", error)
-                    safeCallback(
-                        callback,
-                        Result.failure(Exception(error.message ?: "selectOutbound failed")),
-                    )
-                },
-            )
+            Libbox.newStandaloneCommandClient().selectOutbound(groupTag, outboundTag)
         }
     }
 
-    // === 连接生命周期协议：B1 最小桩，B2 由 KernelCoordinator 真正实现 ==========
+    // === 连接生命周期协议（spec §2 / §10）====================================
 
-    override fun getSnapshot(callback: (Result<KernelSnapshotMsg>) -> Unit) = unimplemented(callback)
+    override fun getSnapshot(callback: (Result<KernelSnapshotMsg>) -> Unit) {
+        respond(callback, "getSnapshot") { coordinator.snapshot.toMsg() }
+    }
 
     override fun request(
         req: DesiredRequestMsg,
         callback: (Result<ReceiptMsg>) -> Unit,
-    ) = unimplemented(callback)
-
-    override fun acknowledgeReplay(attempt: Long, callback: (Result<Unit>) -> Unit) =
-        unimplemented(callback)
-
-    private fun <T> unimplemented(callback: (Result<T>) -> Unit) {
-        callback(Result.failure(FlutterError("unimplemented", "kernel coordinator not implemented yet", null)))
+    ) {
+        respond(callback, "request") {
+            val desired = when (req.desired) {
+                Desired.On.wire -> Desired.On
+                Desired.Off.wire -> Desired.Off
+                else -> throw FlutterError("invalid", "unknown desired '${req.desired}'", null)
+            }
+            val launch = req.launch?.let {
+                LaunchSpec(it.runtimeConfigPath, it.optionsJson, it.profileName, it.configRevision)
+            }
+            if (desired == Desired.On && launch == null) {
+                throw FlutterError("invalid", "desired=on requires launch", null)
+            }
+            val receipt = coordinator.request(req.epoch, req.seq, desired, launch, req.reason)
+            ReceiptMsg(
+                accepted = receipt.accepted,
+                reason = receipt.reason?.wire,
+                epoch = receipt.epoch,
+                appliedSeq = receipt.appliedSeq,
+            )
+        }
     }
 
+    override fun acknowledgeReplay(attempt: Long, callback: (Result<Unit>) -> Unit) {
+        respond(callback, "acknowledgeReplay") { coordinator.acknowledgeReplay(attempt) }
+    }
+
+    private fun KernelSnapshot.toMsg() = KernelSnapshotMsg(
+        epoch = epoch,
+        version = version,
+        status = status.name.lowercase(),
+        attempt = attempt,
+        desired = desired.wire,
+        source = source.wire,
+        appliedSeq = appliedSeq,
+        activeConfigRevision = activeConfigRevision,
+        lastFailure = lastFailure?.let {
+            KernelFailureMsg(
+                code = it.code.wire,
+                message = it.message,
+                attempt = it.attempt,
+                seq = it.seq,
+            )
+        },
+        selectionsReplayNeeded = selectionsReplayNeeded,
+    )
+
     override fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
+        launchResponding(Dispatchers.IO, callback, "urlTest") {
             val normalizedGroupTag = groupTag.trim()
             if (normalizedGroupTag.isBlank()) {
-                safeCallback(
-                    callback,
-                    Result.failure(
-                        IllegalArgumentException("urlTest requires non-blank groupTag"),
-                    ),
-                )
-                return@launch
+                throw IllegalArgumentException("urlTest requires non-blank groupTag")
             }
-
-            kotlin.runCatching {
-                Libbox.newStandaloneCommandClient().urlTest(normalizedGroupTag)
-            }.fold(
-                onSuccess = {
-                    safeCallback(callback, Result.success(Unit))
-                },
-                onFailure = { error ->
-                    Log.w(TAG, "urlTest($normalizedGroupTag) failed", error)
-                    // 使用标准 Exception 包装，避免异常对象直接穿透导致 Dart Native Host 崩溃。
-                    safeCallback(
-                        callback,
-                        Result.failure(Exception(error.message ?: "urlTest failed")),
-                    )
-                },
-            )
+            Libbox.newStandaloneCommandClient().urlTest(normalizedGroupTag)
         }
     }
 
@@ -228,21 +272,19 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         path: String,
         callback: (Result<String?>) -> Unit,
     ) {
-        scope.launch(Dispatchers.IO) {
+        launchResponding(Dispatchers.IO, callback, "generateFullConfig") {
             val options = Prefs.Engine.configOptionsJson
-            val result = if (options.isBlank() || path.isBlank()) null
-                         else KernelHost.buildConfig(path, options)
-            callback(Result.success(result))
+            if (options.isBlank() || path.isBlank()) null
+            else LibboxKernelRuntime.buildConfig(path, options)
         }
     }
 
     override fun clearLogs(callback: (Result<Unit>) -> Unit) {
-        MainActivity.instance.logBuffer.clear()
-        callback(Result.success(Unit))
+        respond(callback, "clearLogs") { coordinator.logs.clear() }
     }
 
     override fun getInstalledApps(callback: (Result<List<InstalledApp>>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
+        launchResponding(Dispatchers.IO, callback, "getInstalledApps") {
             val pm = Application.packageManager
             val self = Application.application.packageName
             val byPackage = LinkedHashMap<String, ApplicationInfo>()
@@ -285,14 +327,14 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
                 compareBy<InstalledApp> { it.isSystemApp }
                     .thenBy { it.appName.lowercase() },
             )
-            callback(Result.success(apps))
+            apps
         }
     }
 
     override fun getAppIconBase64(packageName: String, callback: (Result<String?>) -> Unit) {
-        scope.launch(Dispatchers.IO) {
+        launchResponding(Dispatchers.IO, callback, "getAppIconBase64") {
             try {
-                val pm = MainActivity.instance.packageManager
+                val pm = Application.packageManager
                 val drawable = pm.getApplicationIcon(packageName)
                 val bitmap = android.graphics.Bitmap.createBitmap(48, 48, android.graphics.Bitmap.Config.ARGB_8888)
                 val canvas = android.graphics.Canvas(bitmap)
@@ -300,10 +342,9 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
                 drawable.draw(canvas)
                 val stream = java.io.ByteArrayOutputStream()
                 bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, stream)
-                val b64 = android.util.Base64.encodeToString(stream.toByteArray(), android.util.Base64.NO_WRAP)
-                callback(Result.success(b64))
+                android.util.Base64.encodeToString(stream.toByteArray(), android.util.Base64.NO_WRAP)
             } catch (e: Exception) {
-                callback(Result.success(null))
+                null
             }
         }
     }

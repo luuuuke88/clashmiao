@@ -13,7 +13,6 @@ package com.clashmiao.clashmiao.core
  */
 
 object BroadcastIntents {
-    const val START = "com.clashmiao.app.SERVICE"
     const val SHUTDOWN = "com.clashmiao.app.SERVICE_CLOSE"
     const val RELOAD = "com.clashmiao.app.sfa.SERVICE_RELOAD"
 }
@@ -65,6 +64,7 @@ object PrefsKey {
     const val DISABLE_MEMORY_LIMIT = "${FLUTTER}disable_memory_limit"
     const val DYNAMIC_NOTIFICATION = "${FLUTTER}dynamic_notification"
     const val SYSTEM_PROXY_ENABLED = "${FLUTTER}system_proxy_enabled"
+    /** 旧版「用户启动过」标志；现在只在迁移到持久化 desired 时读取（见 KernelStore）。 */
     const val STARTED_BY_USER = "${FLUTTER}started_by_user"
 
     // 这个是 Kotlin 自己 cache 用的，不经 Dart shared_preferences，所以不加前缀。

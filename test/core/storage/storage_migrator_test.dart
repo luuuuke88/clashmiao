@@ -127,87 +127,141 @@ void main() {
     });
   });
 
-  // 真实 SharedPreferences 先改内存缓存再写底层：底层写失败时缓存里留着没落盘的值。
-  group('写入失败后缓存与磁盘对齐', () {
+  // 平台后端先改自己的内存缓存、再落盘：写盘失败后缓存里留着没落盘的值，
+  // `prefs.reload()` 也只会读回这份缓存——所以失败必须在进程内粘滞。
+  group('写入失败在本进程内粘滞（平台缓存先改、落盘失败）', () {
     for (final byThrowing in [false, true]) {
       final how = byThrowing ? '底层抛异常' : '底层返回 false';
 
-      test('写 schema 失败（$how）：缓存重载回磁盘状态，报告一致，不再有后续写入，重跑会真正迁移', () async {
+      test('写 schema 失败（$how）：报告失败、其后零写入、进程内重跑仍是失败；新进程重新迁移到正确状态', () async {
         final (store, prefs) = await FailingPrefsStore.install({'keep': 'v'});
         store
           ..failKeys = {kStorageSchemaKey}
           ..failByThrowing = byThrowing;
         final log = <int>[];
-
-        final report = await StorageMigrator(
+        final migrator = StorageMigrator(
           migrations: [_step(1, log), _step(2, log)],
-        ).run(prefs);
+        );
 
+        final report = await migrator.run(prefs);
+
+        // 独立断言各个可观察量。
         expect(report.outcome, MigrationOutcome.failed);
+        expect(report.failed, isTrue);
         expect(report.toSchema, 0);
         expect(report.failedStep, 1);
         expect(log, [1], reason: '失败后不再跑后面的步骤');
         expect(store.attempts, [kStorageSchemaKey], reason: '失败后没有任何别的写入');
-        // 缓存已与磁盘对齐：读不到没落盘的 schema。
-        expect(prefs.getInt(kStorageSchemaKey), isNull);
-        expect(
-          (await store.persisted()).containsKey(kStorageSchemaKey),
-          isFalse,
-        );
-        expect(prefs.getString('keep'), 'v');
+        expect(store.disk.containsKey(kStorageSchemaKey), isFalse);
+        // 场景本身：平台缓存「说」schema 已经是 1（这正是不能靠重读判断的原因）。
+        expect(prefs.getInt(kStorageSchemaKey), 1);
 
-        // 底层恢复后重跑：不是 upToDate，而是真的把步骤跑完并落盘。
-        store.failKeys = {};
-        final again = await StorageMigrator(
-          migrations: [_step(1, log), _step(2, log)],
-        ).run(prefs);
-        expect(again.outcome, MigrationOutcome.migrated);
-        expect(log, [1, 1, 2]);
-        expect((await store.persisted())[kStorageSchemaKey], 2);
-        expect(prefs.getInt(kStorageSchemaKey), 2);
+        // 同进程再来一次：同一份失败结果，绝不是 upToDate，且不读不写不跑。
+        final again = await migrator.run(prefs);
+        expect(again.outcome, MigrationOutcome.failed);
+        expect(again.outcome, isNot(MigrationOutcome.upToDate));
+        expect(again.failedStep, 1);
+        expect(again.toSchema, 0);
+        expect(log, [1], reason: '进程内不重跑步骤');
+        expect(store.attempts, [kStorageSchemaKey], reason: '进程内重跑也没有新写入');
+        expect(migrator.failure, isNotNull);
+
+        // 新进程：用磁盘内容重新装一份存储与迁移器，幂等重跑后状态正确。
+        final (store2, prefs2) = await FailingPrefsStore.install(store.disk);
+        expect(prefs2.getInt(kStorageSchemaKey), isNull, reason: '新进程读到的是磁盘');
+        final log2 = <int>[];
+        final fresh = await StorageMigrator(
+          migrations: [_step(1, log2), _step(2, log2)],
+        ).run(prefs2);
+        expect(fresh.outcome, MigrationOutcome.migrated);
+        expect(log2, [1, 2]);
+        expect(store2.disk[kStorageSchemaKey], 2);
+        expect(store2.disk['keep'], 'v');
       });
     }
 
-    test('步骤自己的写入失败：缓存里没落盘的值被清掉，停止，不推进 schema', () async {
+    test('步骤自己的写入失败：停止、其后零写入、进程内重跑仍失败；新进程幂等重跑到正确状态', () async {
       final (store, prefs) = await FailingPrefsStore.install({});
       store.failKeys = {'marker'};
-      final migration = Migration(
+      var runs = 0;
+      Migration build() => Migration(
         toVersion: 1,
         name: 'writes',
         run: (p) async {
+          runs++;
           if (!await p.setString('first', 'ok')) return false;
-          if (!await p.setString('marker', 'lost')) return false;
-          return p.setString('never', 'x'); // 不该走到这里
+          if (!await p.setString('marker', 'done')) return false;
+          return p.setString('never', 'x'); // 失败后不该走到这里
         },
       );
+      final migrator = StorageMigrator(migrations: [build()]);
 
-      final report = await StorageMigrator(migrations: [migration]).run(prefs);
-
+      final report = await migrator.run(prefs);
       expect(report.outcome, MigrationOutcome.failed);
       expect(store.attempts, ['first', 'marker']);
-      expect(prefs.getString('marker'), isNull, reason: '没落盘的值不能留在缓存里');
-      expect(prefs.getString('first'), 'ok');
+      expect(store.disk, {'first': 'ok'}, reason: '只有成功落盘的写入在磁盘上');
       expect(prefs.getInt(kStorageSchemaKey), isNull);
+
+      final again = await migrator.run(prefs);
+      expect(again.outcome, MigrationOutcome.failed);
+      expect(runs, 1);
+      expect(store.attempts, ['first', 'marker']);
+
+      final (store2, prefs2) = await FailingPrefsStore.install(store.disk);
+      final fresh = await StorageMigrator(migrations: [build()]).run(prefs2);
+      expect(fresh.outcome, MigrationOutcome.migrated);
+      expect(store2.disk, {
+        'first': 'ok',
+        'marker': 'done',
+        'never': 'x',
+        kStorageSchemaKey: 1,
+      });
     });
 
-    test('步骤抛出 PlatformException：同样重载、停止、不向外抛', () async {
+    test('步骤抛出 PlatformException：同样失败、粘滞、不向外抛', () async {
       final (store, prefs) = await FailingPrefsStore.install({});
       store
         ..failKeys = {'marker'}
         ..failByThrowing = true;
-      final migration = Migration(
-        toVersion: 1,
-        name: 'throws',
-        run: (p) async {
-          await p.setString('marker', 'lost');
-          return true;
-        },
+      final migrator = StorageMigrator(
+        migrations: [
+          Migration(
+            toVersion: 1,
+            name: 'throws',
+            run: (p) async {
+              await p.setString('marker', 'lost');
+              return true;
+            },
+          ),
+        ],
       );
-      final report = await StorageMigrator(migrations: [migration]).run(prefs);
-      expect(report.outcome, MigrationOutcome.failed);
-      expect(prefs.getString('marker'), isNull);
-      expect(prefs.getInt(kStorageSchemaKey), isNull);
+      expect((await migrator.run(prefs)).outcome, MigrationOutcome.failed);
+      expect((await migrator.run(prefs)).outcome, MigrationOutcome.failed);
       expect(store.attempts, ['marker']);
+      expect(store.disk, isEmpty);
+    });
+
+    test('失败之前已成功的运行不受影响：成功后的再次运行是 upToDate', () async {
+      final (store, prefs) = await FailingPrefsStore.install({});
+      final migrator = StorageMigrator(migrations: [_step(1, [])]);
+      expect((await migrator.run(prefs)).outcome, MigrationOutcome.migrated);
+      expect((await migrator.run(prefs)).outcome, MigrationOutcome.upToDate);
+      expect(store.disk[kStorageSchemaKey], 1);
+    });
+
+    test('并发调用共享同一次运行：步骤只跑一次', () async {
+      final prefs = await _prefs();
+      final log = <int>[];
+      final migrator = StorageMigrator(migrations: [_step(1, log)]);
+      final results = await Future.wait([
+        migrator.run(prefs),
+        migrator.run(prefs),
+      ]);
+      expect(log, [1]);
+      expect(
+        results.map((r) => r.outcome),
+        everyElement(MigrationOutcome.migrated),
+      );
     });
   });
 }

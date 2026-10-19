@@ -46,8 +46,8 @@ Future<bool> migrateProfilesToV1(
       // 原值原样保存（偏好里的值都是可 JSON 编码的：字符串/数字/布尔/字符串数组），
       // 包括类型不对的脏值——这正是最需要留作取证的；`present` 区分「不存在」与「值为 null」。
       final backup = jsonEncode({
-        ProfileStore.profilesKey: rawProfiles,
-        ProfileStore.activeProfileKey: rawActive,
+        ProfileStore.profilesKey: _backupValue(rawProfiles),
+        ProfileStore.activeProfileKey: _backupValue(rawActive),
         'present': {
           ProfileStore.profilesKey: rawProfiles != null,
           ProfileStore.activeProfileKey: rawActive != null,
@@ -125,6 +125,30 @@ Future<bool> migrateProfilesToV1(
     debugPrint('[v1_profiles] 迁移异常: $e\n$st');
     return false;
   }
+}
+
+/// 备份用的值编码：字符串/整数/布尔/有限浮点/字符串数组原样；JSON 装不下的
+/// 非有限浮点（NaN、±Infinity）用带类型的对象 `{"t":"double","v":"NaN"}`，
+/// 以便无损还原（偏好里的值本身绝不会是 Map，所以不会与原值混淆）。
+/// 其余意料之外的类型退化为 `{"t":"unknown","v":"<toString>"}`——备份永远不能
+/// 因为某个脏值而失败，否则一个坏值就会让整步迁移每次启动都失败。
+Object? _backupValue(Object? value) {
+  if (value == null || value is String || value is int || value is bool) {
+    return value;
+  }
+  if (value is double) {
+    if (value.isFinite) return value;
+    return {
+      't': 'double',
+      'v': value.isNaN
+          ? 'NaN'
+          : value.isNegative
+          ? '-Infinity'
+          : 'Infinity',
+    };
+  }
+  if (value is List && value.every((e) => e is String)) return value;
+  return {'t': 'unknown', 'v': '$value'};
 }
 
 Object? _tryDecode(String raw) {

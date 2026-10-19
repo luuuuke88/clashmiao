@@ -221,6 +221,50 @@ void main() {
       expect(b2['present'], {_profiles: true, _active: false});
     });
 
+    test('备份遇到 NaN / ±Infinity 等脏值：带类型编码，迁移照常进行', () async {
+      for (final bad in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        // 订阅列表有效、激活键误存成非有限浮点：迁移必须继续并选出激活项。
+        final prefs = await _seed({
+          _profiles: jsonEncode([_p('a'), _p('b', active: true)]),
+          _active: bad,
+        });
+        final report = await _run(prefs);
+        expect(report.outcome, MigrationOutcome.migrated, reason: '$bad');
+        expect(prefs.getString(_active), 'b', reason: '$bad：脏值被正确的激活 id 取代');
+        final backup =
+            jsonDecode(prefs.getString(kMigrationBackupV0Key)!)
+                as Map<String, dynamic>;
+        final name = bad.isNaN
+            ? 'NaN'
+            : bad.isNegative
+            ? '-Infinity'
+            : 'Infinity';
+        expect(backup[_active], {'t': 'double', 'v': name});
+        expect(backup['present'], {_profiles: true, _active: true});
+      }
+
+      // 订阅键本身是非有限浮点：当作坏数据跳过订阅步骤，原值留在键上。
+      final onList = await _seed({_profiles: double.nan});
+      expect((await _run(onList)).outcome, MigrationOutcome.migrated);
+      expect(onList.getDouble(_profiles)!.isNaN, isTrue);
+      final b =
+          jsonDecode(onList.getString(kMigrationBackupV0Key)!)
+              as Map<String, dynamic>;
+      expect(b[_profiles], {'t': 'double', 'v': 'NaN'});
+
+      // 有限浮点原样保存。
+      final finite = await _seed({_active: 1.5});
+      await _run(finite);
+      final fb =
+          jsonDecode(finite.getString(kMigrationBackupV0Key)!)
+              as Map<String, dynamic>;
+      expect(fb[_active], 1.5);
+    });
+
     test('备份键已存在：不覆盖', () async {
       final prefs = await _seed({
         ..._v0(list: [_p('a')]),

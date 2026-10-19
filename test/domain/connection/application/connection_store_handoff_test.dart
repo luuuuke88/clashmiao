@@ -23,10 +23,13 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import '../../../_fakes/fake_kernel_port.dart';
 import '../../../support/restore_harness.dart';
 
-/// 订阅存储（子项目 C）→ 连接控制器（子项目 B）的交接，spec §10.4：
+/// 订阅存储（子项目 C）→ 连接控制器（子项目 B）的交接，spec §10.4 / §10.6：
 /// **真实**控制器 + 真实 launcher + 真实 ProfileStore / ProfileRepository /
 /// BackupEngine，只有内核换成 [FakeKernelPort]（受理请求后像真内核一样推快照）。
 ///
+/// - 已连接时删掉最后一条订阅 → 断开；
+/// - 已连接时删掉激活订阅、还有别的 → 以新的激活订阅 applyConfig；
+/// - 已连接时导入空备份 → 断开；
 /// - 恢复期间配置变更不在中间态上重载，结束后按最终状态只应用一次。
 
 class _QuietHaptic extends HapticService {
@@ -199,12 +202,79 @@ void main() {
     await h.dispose();
   });
 
+  group('§10.6 删除订阅时的连接状态', () {
+    test('已连接时删掉最后一条订阅 → 控制器发起断开，最终 disconnected', () async {
+      await setUpWith(['a'], active: 'a');
+      await connected();
+      final base = requests().length;
+
+      await repo.delete('a');
+      await until(() => phase() == ConnectionPhase.disconnected, '断开');
+      await quiet();
+
+      final sent = requests().sublist(base);
+      expect(sent.map((r) => r.desired), [Desired.off]);
+      expect(sent.single.reason, RequestReason.userDisconnect);
+      expect(phase(), ConnectionPhase.disconnected);
+    });
+
+    test('已连接时删掉激活订阅、还有别的 → 自动切到剩下的，并以新订阅 applyConfig 一次', () async {
+      await setUpWith(['a', 'b'], active: 'a');
+      await connected();
+      expect(requests().single.launch!.profileName, 'name-a');
+      final base = requests().length;
+
+      await repo.delete('a');
+      await until(() => requests().length > base, '重新应用');
+      await until(() => phase() == ConnectionPhase.connected, '新配置连上');
+      await quiet();
+
+      final sent = requests().sublist(base);
+      expect(sent, hasLength(1));
+      expect(sent.single.desired, Desired.on);
+      expect(sent.single.reason, RequestReason.applyConfig);
+      expect(
+        sent.single.launch!.profileName,
+        'name-b',
+        reason: '必须用删除后自动切换到的新激活订阅，而不是被删掉的那条',
+      );
+      expect((await container.read(activeProfileProvider.future))!.id, 'b');
+    });
+
+    test('删掉的不是激活订阅 → 连接不受影响，不发任何请求', () async {
+      await setUpWith(['a', 'b'], active: 'a');
+      await connected();
+      final base = requests().length;
+
+      await repo.delete('b');
+      await quiet();
+
+      expect(requests().length, base);
+      expect(phase(), ConnectionPhase.connected);
+    });
+  });
+
   group('备份恢复与连接', () {
     RestoreRefresher refresher() => RestoreRefresher(
       container: container,
       // 补拉不走网络；重连与暂停用默认接线（真实控制器）。
       fetchProfile: (_) async {},
     );
+
+    test('已连接时导入空备份 → 断开，最终 disconnected', () async {
+      await setUpWith(['a'], active: 'a');
+      await connected();
+      final base = requests().length;
+
+      final plan = h.engine.prepare(_backup());
+      final outcome = await refresher().restore(h.engine, plan);
+      await outcome.backfill;
+      await until(() => phase() == ConnectionPhase.disconnected, '断开');
+      await quiet();
+
+      expect(await container.read(activeProfileProvider.future), isNull);
+      expect(requests().sublist(base).map((r) => r.desired), [Desired.off]);
+    });
 
     test('已连接时恢复（激活订阅与网络设置都变）：期间不重载，结束后以最终配置只应用一次', () async {
       await setUpWith(['a'], active: 'a');

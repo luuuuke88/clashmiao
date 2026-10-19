@@ -12,6 +12,7 @@ import 'package:clashmiao/domain/config/application/warp_config_service.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
 import 'package:clashmiao/features/config/data/backup_service.dart';
+import 'package:clashmiao/features/config/presentation/backup_messages.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:clashmiao/shared/components/agreement_modal.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -1447,12 +1448,17 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                   icon: FluentIcons.arrow_upload_20_regular,
                   label: '导出备份',
                   onTap: () async {
+                    final container = ProviderScope.containerOf(context);
+                    final navContext = Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).context;
                     Navigator.pop(context);
                     try {
-                      await BackupService.export(ref);
+                      await BackupService.export(container);
                     } catch (e) {
-                      if (context.mounted) {
-                        AppToast.error(context, '导出失败: $e');
+                      if (navContext.mounted) {
+                        AppToast.error(navContext, '导出失败: $e');
                       }
                     }
                   },
@@ -1461,19 +1467,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 _ActionTile(
                   icon: FluentIcons.arrow_download_20_regular,
                   label: '导入备份',
-                  onTap: () async {
-                    Navigator.pop(context);
-                    try {
-                      final msg = await BackupService.import(ref);
-                      if (msg != null && context.mounted) {
-                        AppToast.success(context, msg);
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        AppToast.error(context, '导入失败: $e');
-                      }
-                    }
-                  },
+                  onTap: () => _importBackup(context, ref),
                 ),
                 const SizedBox(height: 4),
                 _ActionTile(
@@ -1518,6 +1512,49 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// 导入备份：选文件并完整校验 → 弹确认（含「本机不在备份中的订阅会被移除」）→
+/// 应用 → 提示结果。选文件与确认都在底部菜单还开着时做，确认之后才关菜单；
+/// 之后的提示用根导航器的 context，不依赖已销毁的菜单。
+Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+  final container = ProviderScope.containerOf(context);
+  final navContext = Navigator.of(context, rootNavigator: true).context;
+  final t = ref.read(translationsProvider);
+
+  final PreparedImport? prepared;
+  try {
+    prepared = await BackupService.pickAndPrepare(container);
+  } catch (e) {
+    if (context.mounted) Navigator.pop(context);
+    if (navContext.mounted) {
+      AppToast.error(navContext, BackupMessages.error(t, e));
+    }
+    return;
+  }
+  if (prepared == null) {
+    if (context.mounted) Navigator.pop(context);
+    return;
+  }
+  if (!context.mounted) return;
+  final confirmed = await showConfirmationDialog(
+    context,
+    title: t.settings.backup.importConfirmTitle,
+    message: BackupMessages.confirm(t, prepared),
+  );
+  if (context.mounted) Navigator.pop(context);
+  if (!confirmed) return;
+
+  try {
+    final outcome = await BackupService.apply(container, prepared);
+    if (navContext.mounted) {
+      AppToast.success(navContext, BackupMessages.report(t, outcome.report));
+    }
+  } catch (e) {
+    if (navContext.mounted) {
+      AppToast.error(navContext, BackupMessages.error(t, e));
+    }
   }
 }
 

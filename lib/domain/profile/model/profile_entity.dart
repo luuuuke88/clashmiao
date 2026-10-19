@@ -13,11 +13,17 @@ class ProfileEntity {
     this.updateInterval = const Duration(hours: 1),
     this.customUserAgent,
     this.advancedConfig,
+    this.rev = 1,
+    this.inc = '',
+    this.extra = const {},
   });
 
   final String id;
   final String name;
   final String url;
+
+  /// 是否为当前激活订阅。**不持久化**：激活状态只有 `clashmiao_active_profile`
+  /// 一个真源，读取时由 `ProfileStore` 按 id 计算后填充。
   final bool active;
   final DateTime? lastUpdate;
   final SubscriptionInfo? subInfo;
@@ -25,7 +31,33 @@ class ProfileEntity {
   final String? customUserAgent;
   final AdvancedConfig? advancedConfig;
 
+  /// 修订号：从 1 起，每次被修改 +1。刷新请求落地前用它判断「请求发出之后
+  /// 这条订阅有没有被改过」。
+  final int rev;
+
+  /// 本机分配的对象代际（随机 64 位十六进制）：创建时生成；删除后同 id 恢复、
+  /// 备份导入都会换新的。旧版本数据没有这个字段，读作空串（仍是一个合法的
+  /// 「老一代」，只是不会与任何新分配的值相等）。**不进入备份。**
+  final String inc;
+
+  /// 本版本不认识的字段，原样保留、原样写回。
+  final Map<String, dynamic> extra;
+
   static const _sentinel = Object();
+
+  static const _knownKeys = {
+    'id',
+    'name',
+    'url',
+    'active',
+    'lastUpdate',
+    'updateInterval',
+    'subInfo',
+    'customUserAgent',
+    'advancedConfig',
+    'rev',
+    'inc',
+  };
 
   ProfileEntity copyWith({
     String? id,
@@ -37,6 +69,9 @@ class ProfileEntity {
     Duration? updateInterval,
     Object? customUserAgent = _sentinel,
     Object? advancedConfig = _sentinel,
+    int? rev,
+    String? inc,
+    Map<String, dynamic>? extra,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
@@ -52,19 +87,25 @@ class ProfileEntity {
       advancedConfig: advancedConfig == _sentinel
           ? this.advancedConfig
           : advancedConfig as AdvancedConfig?,
+      rev: rev ?? this.rev,
+      inc: inc ?? this.inc,
+      extra: extra ?? this.extra,
     );
   }
 
+  /// 序列化成存储格式。不含 `active`（见 [active]）；`inc` 为空时不写。
   Map<String, dynamic> toJson() => {
+    ...extra,
     'id': id,
     'name': name,
     'url': url,
-    'active': active,
     'lastUpdate': lastUpdate?.toIso8601String(),
     'updateInterval': updateInterval.inHours,
     'subInfo': subInfo?.toJson(),
     'customUserAgent': customUserAgent,
     if (advancedConfig != null) 'advancedConfig': advancedConfig!.toJson(),
+    'rev': rev,
+    if (inc.isNotEmpty) 'inc': inc,
   };
 
   factory ProfileEntity.fromJson(Map<String, dynamic> json) {
@@ -72,7 +113,7 @@ class ProfileEntity {
       id: json['id'] as String,
       name: json['name'] as String,
       url: json['url'] as String,
-      active: json['active'] as bool? ?? false,
+      // 旧版本写过 `active`，这里读取时忽略：激活只认 clashmiao_active_profile。
       lastUpdate: json['lastUpdate'] != null
           ? DateTime.parse(json['lastUpdate'] as String)
           : null,
@@ -86,7 +127,18 @@ class ProfileEntity {
               json['advancedConfig'] as Map<String, dynamic>,
             )
           : null,
+      rev: _readRev(json['rev']),
+      inc: json['inc'] as String? ?? '',
+      extra: Map.unmodifiable({
+        for (final e in json.entries)
+          if (!_knownKeys.contains(e.key)) e.key: e.value,
+      }),
     );
+  }
+
+  static int _readRev(Object? raw) {
+    final rev = raw as int? ?? 1;
+    return rev < 1 ? 1 : rev;
   }
 }
 
@@ -99,7 +151,20 @@ class SubscriptionInfo {
     this.expire,
     this.webPageUrl,
     this.supportUrl,
+    this.extra = const {},
   });
+
+  /// 本版本不认识的字段，原样保留、原样写回。
+  final Map<String, dynamic> extra;
+
+  static const _knownKeys = {
+    'upload',
+    'download',
+    'total',
+    'expire',
+    'webPageUrl',
+    'supportUrl',
+  };
 
   /// 已用上行流量 (bytes)
   final int upload;
@@ -159,10 +224,12 @@ class SubscriptionInfo {
       expire: expire ?? this.expire,
       webPageUrl: webPageUrl ?? this.webPageUrl,
       supportUrl: supportUrl ?? this.supportUrl,
+      extra: extra,
     );
   }
 
   Map<String, dynamic> toJson() => {
+    ...extra,
     'upload': upload,
     'download': download,
     'total': total,
@@ -181,6 +248,10 @@ class SubscriptionInfo {
           : null,
       webPageUrl: json['webPageUrl'] as String?,
       supportUrl: json['supportUrl'] as String?,
+      extra: Map.unmodifiable({
+        for (final e in json.entries)
+          if (!_knownKeys.contains(e.key)) e.key: e.value,
+      }),
     );
   }
 }

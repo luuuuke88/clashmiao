@@ -2,10 +2,9 @@ import 'dart:convert';
 
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-const _kProxySelectionPrefix = 'proxy_selection_';
 
 /// sing-box 的 selector outbound 只在运行中的 Box 实例内存里记住"当前选中项"，
 /// 每次 reconnect/restart 都会用 runtime-config.json 里的静态 `default` 重新起
@@ -17,22 +16,41 @@ final proxySelectionStoreProvider =
       ref,
     ) {
       final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-      final profileId = ref.watch(activeProfileProvider).valueOrNull?.id;
-      return ProxySelectionStoreNotifier(prefs: prefs, profileId: profileId);
+      final store = ref.watch(profileStoreProvider).valueOrNull;
+      // 只关心「哪一代的哪个订阅」：订阅元数据变化（刷新、改名）不该重建 notifier。
+      final active = ref.watch(
+        activeProfileProvider.select((value) {
+          final profile = value.valueOrNull;
+          return profile == null ? null : (profile.id, profile.inc);
+        }),
+      );
+      return ProxySelectionStoreNotifier(
+        prefs: prefs,
+        store: store,
+        profileId: active?.$1,
+        profileInc: active?.$2,
+      );
     });
 
 class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   ProxySelectionStoreNotifier({
     required SharedPreferences prefs,
+    required ProfileStore? store,
     required String? profileId,
-  }) : _prefs = prefs,
+    required String? profileInc,
+  }) : _store = store,
        _profileId = profileId,
+       _profileInc = profileInc,
        super(_read(prefs, profileId));
 
-  final SharedPreferences _prefs;
+  final ProfileStore? _store;
   final String? _profileId;
 
-  static String _key(String profileId) => '$_kProxySelectionPrefix$profileId';
+  /// 创建时订阅的代际。写入经 `ProfileStore.writeAux` 校验：订阅已删除或
+  /// 同 id 换代（删除后恢复）后，旧 notifier 的写入会被丢弃，不会复活孤儿键。
+  final String? _profileInc;
+
+  static String _key(String profileId) => ProfileStore.selectionKey(profileId);
 
   static Map<String, String> _read(SharedPreferences prefs, String? profileId) {
     if (profileId == null || profileId.isEmpty) return const {};
@@ -54,11 +72,18 @@ class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   /// 覆盖同一 group 之前的选择。
   Future<void> persist(String groupTag, String outboundTag) async {
     final profileId = _profileId;
+    final store = _store;
     if (profileId == null || profileId.isEmpty) return;
+    if (store == null) return;
     if (state[groupTag] == outboundTag) return;
 
     final next = {...state, groupTag: outboundTag};
     state = Map.unmodifiable(next);
-    await _prefs.setString(_key(profileId), jsonEncode(next));
+    await store.writeAux(
+      profileId,
+      _profileInc ?? '',
+      _key(profileId),
+      jsonEncode(next),
+    );
   }
 }

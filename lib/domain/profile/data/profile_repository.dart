@@ -5,22 +5,32 @@ import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/domain/profile/data/profile_parser.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/data/subscription_fetch.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/domain/profile/model/profile_patch.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 /// 订阅仓库 - 管理订阅的增删改查和配置文件下载
+///
+/// 所有对订阅列表的写入都经 [ProfileStore.commit] 串行提交；慢操作（网络、
+/// 归一化）在锁外完成，落地前由 plan 校验输入是否仍然成立。
 class ProfileRepository {
   ProfileRepository({
     required this.dio,
     required this.configDir,
     required this.prefs,
     required this.boxService,
-  });
+    ProfileStore? store,
+    DateTime Function()? clock,
+  }) : store = store ?? ProfileStore(prefs: prefs, configDir: configDir),
+       _now = clock ?? DateTime.now;
+
+  /// 取当前时间；测试注入固定时钟，避免靠真实等待制造「更晚的时间」。
+  final DateTime Function() _now;
 
   final Dio dio;
 
@@ -33,52 +43,35 @@ class ProfileRepository {
   /// 归一化成 sing-box JSON。native 的 `parse` 入口会原地覆盖文件。
   final BoxService boxService;
 
-  static const _profilesKey = 'clashmiao_profiles';
-  static const _activeProfileKey = 'clashmiao_active_profile';
+  /// 订阅存储（进程级单例，锁与 in-flight 表都在它身上）。
+  final ProfileStore store;
+
   static Map<String, String>? _userAgentHeaders(String? customUserAgent) {
     if (customUserAgent == null || customUserAgent.trim().isEmpty) return null;
 
     return {'User-Agent': customUserAgent.trim()};
   }
 
-  /// 获取所有订阅
-  List<ProfileEntity> getAll() {
-    final raw = prefs.getString(_profilesKey);
-    if (raw == null || raw.isEmpty) return [];
-    final list = jsonDecode(raw) as List;
-    return list
-        .map((e) => ProfileEntity.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  /// 保存所有订阅
-  Future<void> _saveAll(List<ProfileEntity> profiles) async {
-    await prefs.setString(
-      _profilesKey,
-      jsonEncode(profiles.map((e) => e.toJson()).toList()),
-    );
-  }
+  /// 获取所有订阅（容错读取：坏条目被隔离，永不抛出）。
+  List<ProfileEntity> getAll() => store.read();
 
   /// 获取当前激活的订阅
   ProfileEntity? getActive() {
-    final activeId = prefs.getString(_activeProfileKey);
-    if (activeId == null) return null;
-    final profiles = getAll();
-    try {
-      return profiles.firstWhere((p) => p.id == activeId);
-    } catch (_) {
-      return profiles.isNotEmpty ? profiles.first : null;
-    }
+    final view = store.view();
+    final id = view.activeId;
+    return id == null ? null : view.find(id);
   }
 
-  /// 设置激活的订阅
+  /// 设置激活的订阅。订阅不存在则忽略。
   Future<void> setActive(String profileId) async {
-    await prefs.setString(_activeProfileKey, profileId);
-    final profiles = getAll();
-    final updated = profiles.map((p) {
-      return p.copyWith(active: p.id == profileId);
-    }).toList();
-    await _saveAll(updated);
+    final result = await store.commit<void>((view) {
+      if (view.find(profileId) == null) return const Plan<void>.unchanged();
+      if (view.activeId == profileId && view.storedActiveId == profileId) {
+        return const Plan<void>.unchanged();
+      }
+      return Plan<void>(activeId: Patch<String>.set(profileId));
+    });
+    _throwIfFailed(result);
   }
 
   /// 直接导入单节点 / 内嵌订阅内容（ss:// vless:// trojan:// hysteria2:// vmess://
@@ -91,34 +84,50 @@ class ProfileRepository {
     required String name,
   }) async {
     final id = const Uuid().v4();
-    final configFile = File(configFilePath(id));
-    await configFile.parent.create(recursive: true);
-    await _normalizeAndWrite(rawBody: content, output: configFile);
+    final staging = await store.createStagingFile(id);
+    try {
+      await _normalizeAndWrite(rawBody: content, output: staging);
 
-    // 补齐 parse/raw JSON 输出中的配置结构：
-    // ss:// / vless:// 单 URI 解析出来通常只有一个代理 outbound，没有 direct、
-    // 没有 selector group、没有 route.final。RuntimeConfigBuilder 智能模式
-    // 注入的 `outbound: 'direct'` 规则会找不到 direct outbound，整条路由失效，
-    // 流量绕过 TUN 走系统默认链路。
-    if (await configFile.exists()) {
-      await _ensureMinimalProfileStructure(configFile);
+      // 补齐 parse/raw JSON 输出中的配置结构：
+      // ss:// / vless:// 单 URI 解析出来通常只有一个代理 outbound，没有 direct、
+      // 没有 selector group、没有 route.final。RuntimeConfigBuilder 智能模式
+      // 注入的 `outbound: 'direct'` 规则会找不到 direct outbound，整条路由失效，
+      // 流量绕过 TUN 走系统默认链路。
+      if (await staging.exists()) {
+        await _ensureMinimalProfileStructure(staging);
+      }
+
+      final entity = ProfileEntity(
+        id: id,
+        // 不存完整 URI 到 url（可能含敏感凭据 / 密码）
+        name: name.trim().isEmpty ? '本地导入' : name.trim(),
+        url: 'content://${_truncate(content, 24)}',
+        lastUpdate: _now(),
+        inc: store.newInc(),
+      );
+      final result = await store.commit<ProfileEntity>(
+        (view) => _planAdd(view, entity, staging),
+      );
+      _throwIfFailed(result);
+      return result.value!;
+    } finally {
+      await _deleteQuietly(staging);
     }
+  }
 
-    final isFirst = getAll().isEmpty;
-    final entity = ProfileEntity(
-      id: id,
-      // 不存完整 URI 到 url（可能含敏感凭据 / 密码）
-      name: name.trim().isEmpty ? '本地导入' : name.trim(),
-      url: 'content://${_truncate(content, 24)}',
-      active: isFirst,
-      lastUpdate: DateTime.now(),
+  /// 新增订阅的 plan：首条（当前没有激活订阅）自动激活，判断发生在锁内。
+  Plan<ProfileEntity> _planAdd(
+    ProfileListView view,
+    ProfileEntity entity,
+    File staging,
+  ) {
+    final isFirst = view.activeId == null;
+    return Plan<ProfileEntity>(
+      value: entity.copyWith(active: isFirst),
+      profiles: [...view.profiles, entity],
+      activeId: isFirst ? Patch<String>.set(entity.id) : const Patch.unset(),
+      staged: [StagedConfig(entity.id, staging)],
     );
-
-    final profiles = getAll();
-    profiles.add(entity);
-    await _saveAll(profiles);
-    if (isFirst) await setActive(id);
-    return entity;
   }
 
   /// 给 native parse 出的精简 profile 补齐：
@@ -467,21 +476,14 @@ class ProfileRepository {
   ///
   /// 去重：同一 URL（trim 后比较）重复添加不会产生第二条记录——
   /// 找到已有的那条，直接复用 [update] 触发一次真实的重新拉取（并按需
-  /// 更新名称），不新建 profile / 不新建配置文件。
+  /// 更新名称），不新建 profile / 不新建配置文件。去重判断在提交的 plan 内
+  /// 再做一次，所以拉取期间别处新增了同 URL 订阅也不会产生重复。
   Future<ProfileEntity> addByUrl(String url, {String? customName}) async {
     final normalizedUrl = url.trim();
-    ProfileEntity? existing;
-    for (final p in getAll()) {
-      if (p.url.trim() == normalizedUrl) {
-        existing = p;
-        break;
+    for (final existing in store.read()) {
+      if (existing.url.trim() == normalizedUrl) {
+        return _refreshExisting(existing.id, customName);
       }
-    }
-    if (existing != null) {
-      if (customName != null && customName.trim().isNotEmpty) {
-        await editProfile(existing.id, newName: customName.trim());
-      }
-      return update(existing.id);
     }
 
     // 先用自己的 UA 请求；只有当响应明显不可用（网页 / 零节点）时才依次换用
@@ -524,46 +526,93 @@ class ProfileRepository {
     if (fetched.userAgent != kDefaultUserAgent) {
       profile = profile.copyWith(customUserAgent: fetched.userAgent);
     }
+    profile = profile.copyWith(inc: store.newInc(), rev: 1, lastUpdate: _now());
 
     // 归一化：先把原始响应写到 tempFile（输入），让 native parse 读它、
-    // 解析（Clash YAML / base64 / sing-box JSON）后**写到** configFile（输出）。
-    final configFile = File(configFilePath(profile.id));
-    await configFile.parent.create(recursive: true);
-    final needsStructureRepair = await _normalizeAndWrite(
-      rawBody: fetched.response.body,
-      output: configFile,
-    );
-    if (needsStructureRepair) {
-      await _ensureMinimalProfileStructure(configFile);
+    // 解析（Clash YAML / base64 / sing-box JSON）后**写到**暂存文件（输出）。
+    final staging = await store.createStagingFile(profile.id);
+    String? duplicateId;
+    try {
+      final needsStructureRepair = await _normalizeAndWrite(
+        rawBody: fetched.response.body,
+        output: staging,
+      );
+      if (needsStructureRepair) {
+        await _ensureMinimalProfileStructure(staging);
+      }
+
+      final entity = profile;
+      final result = await store.commit<ProfileEntity>((view) {
+        for (final existing in view.profiles) {
+          if (existing.url.trim() == normalizedUrl) {
+            duplicateId = existing.id;
+            return const Plan<ProfileEntity>.unchanged();
+          }
+        }
+        return _planAdd(view, entity, staging);
+      });
+      _throwIfFailed(result);
+      if (duplicateId == null) return result.value!;
+    } finally {
+      await _deleteQuietly(staging);
     }
-
-    // 添加到列表
-    final profiles = getAll();
-    final isFirst = profiles.isEmpty;
-    final entity = profile.copyWith(active: isFirst);
-    profiles.add(entity);
-    await _saveAll(profiles);
-
-    if (isFirst) {
-      await setActive(entity.id);
-    }
-
-    return entity;
+    // 拉取期间别处已经加了同 URL 的订阅：本次结果作废，退回「刷新已有那条」。
+    return _refreshExisting(duplicateId!, customName);
   }
 
-  /// 更新指定订阅
-  Future<ProfileEntity> update(String profileId) async {
-    final profiles = getAll();
-    final index = profiles.indexWhere((p) => p.id == profileId);
-    if (index < 0) throw Exception('Profile not found/订阅不存在');
+  Future<ProfileEntity> _refreshExisting(
+    String profileId,
+    String? customName,
+  ) async {
+    if (customName != null && customName.trim().isNotEmpty) {
+      await editProfile(profileId, newName: customName.trim());
+    }
+    try {
+      return await update(profileId);
+    } on ProfileUpdateStaleException {
+      // 刷新途中这条订阅又被改动（或被删）：本次「再拉一次」作废，但「导入」这个
+      // 动作的目的——这条订阅存在——已经达成，不能把预期内的取消报成导入失败。
+      final existing = store.find(profileId);
+      if (existing == null) rethrow;
+      return existing;
+    }
+  }
 
-    final current = profiles[index];
+  /// 更新指定订阅。
+  ///
+  /// 两段式：①锁外读取请求输入 `(id, inc, rev, url, ua)`、发请求、归一化到
+  /// 暂存文件；②锁内 [ProfileStore.commit] 校验输入仍然成立才落地。相同输入的
+  /// 并发调用共享同一个 Future；输入不同（比如期间改了 URL）互不共享。
+  ///
+  /// 期间订阅被删除 / 编辑 / 换代时结果被丢弃，抛 [ProfileUpdateStaleException]。
+  /// 这是**预期内的取消**而不是失败：调用方应静默跳过（或按「订阅仍存在」处理），
+  /// 不要提示刷新失败。可用 `isStaleRefresh`（profile_failures.dart）判断。
+  Future<ProfileEntity> update(String profileId) async {
+    final current = store.find(profileId);
+    if (current == null) throw Exception('Profile not found/订阅不存在');
+    return store.dedupe<ProfileEntity>(
+      _refreshKey(current),
+      () => _refresh(current),
+    );
+  }
+
+  static String _refreshKey(ProfileEntity e) =>
+      [e.id, e.inc, '${e.rev}', e.url, e.customUserAgent ?? ''].join('\u0000');
+
+  static bool _sameRefreshInput(ProfileEntity a, ProfileEntity b) =>
+      a.id == b.id &&
+      a.inc == b.inc &&
+      a.rev == b.rev &&
+      a.url == b.url &&
+      (a.customUserAgent ?? '') == (b.customUserAgent ?? '');
+
+  Future<ProfileEntity> _refresh(ProfileEntity request) async {
     final response = await dio.get<String>(
-      current.url,
+      request.url,
       options: Options(
         responseType: ResponseType.plain,
         followRedirects: true,
-        headers: _userAgentHeaders(current.customUserAgent),
+        headers: _userAgentHeaders(request.customUserAgent),
       ),
     );
 
@@ -573,101 +622,243 @@ class ProfileRepository {
     });
 
     // 更新订阅信息
-    final parsed = ProfileParser.parse(current.url, headers);
-    final subInfo = parsed.subInfo;
+    final parsed = ProfileParser.parse(request.url, headers);
 
-    // 重新归一化（参见 addByUrl 注释）
-    final configFile = File(configFilePath(profileId));
-    final needsStructureRepair = await _normalizeAndWrite(
-      rawBody: response.data ?? '',
-      output: configFile,
-    );
-    if (needsStructureRepair) {
-      await _ensureMinimalProfileStructure(configFile);
+    // 重新归一化（参见 addByUrl 注释）：写到暂存文件，落地前不碰正式文件。
+    final staging = await store.createStagingFile(request.id);
+    try {
+      final needsStructureRepair = await _normalizeAndWrite(
+        rawBody: response.data ?? '',
+        output: staging,
+      );
+      if (needsStructureRepair) {
+        await _ensureMinimalProfileStructure(staging);
+      }
+
+      final result = await store.commit<ProfileEntity>((view) {
+        final cur = view.find(request.id);
+        if (cur == null || !_sameRefreshInput(cur, request)) {
+          return const Plan<ProfileEntity>.stale();
+        }
+        final updated = cur.copyWith(
+          name: cur.name.trim().isEmpty ? parsed.name : cur.name,
+          lastUpdate: _now(),
+          subInfo: _mergeSubInfo(cur.subInfo, parsed.subInfo),
+          rev: cur.rev + 1,
+        );
+        return Plan<ProfileEntity>(
+          value: updated,
+          profiles: _replaced(view.profiles, updated),
+          staged: [StagedConfig(cur.id, staging)],
+        );
+      });
+      if (result.isStale) throw ProfileUpdateStaleException(request.id);
+      _throwIfFailed(result);
+      return result.value!;
+    } finally {
+      await _deleteQuietly(staging);
     }
+  }
 
-    final updated = current.copyWith(
-      lastUpdate: DateTime.now(),
-      subInfo: subInfo ?? current.subInfo,
+  /// 响应头没带流量信息就保留旧的；带了就用新的已知字段，**但保留旧对象里的
+  /// 未知字段**（`extra`）——整体替换会让新版本写入的字段在一次刷新后消失。
+  static SubscriptionInfo? _mergeSubInfo(
+    SubscriptionInfo? current,
+    SubscriptionInfo? refreshed,
+  ) {
+    if (refreshed == null) return current;
+    if (current == null) return refreshed;
+    return SubscriptionInfo(
+      upload: refreshed.upload,
+      download: refreshed.download,
+      total: refreshed.total,
+      expire: refreshed.expire,
+      webPageUrl: refreshed.webPageUrl,
+      supportUrl: refreshed.supportUrl,
+      extra: current.extra,
     );
-    profiles[index] = updated;
-    await _saveAll(profiles);
-
-    return updated;
   }
 
-  /// 替换整个订阅实体（按 id 匹配）
-  Future<void> updateProfile(ProfileEntity entity) async {
-    final profiles = getAll();
-    final index = profiles.indexWhere((p) => p.id == entity.id);
-    if (index < 0) return;
-    profiles[index] = entity;
-    await _saveAll(profiles);
+  static List<ProfileEntity> _replaced(
+    List<ProfileEntity> profiles,
+    ProfileEntity updated,
+  ) => [for (final e in profiles) e.id == updated.id ? updated : e];
+
+  /// 把 [entity] 里**用户可编辑的字段**（名称、URL、更新间隔、自定义 UA、
+  /// 高级配置）应用到同 id 的订阅上；`lastUpdate` / `subInfo` / `rev` / `inc` /
+  /// 未知字段一律以存储中的最新值为准，不受 [entity] 影响。
+  ///
+  /// 旧实现是整实体替换：调用方手里的旧快照会把刷新期间写入的 `lastUpdate` /
+  /// `subInfo` 写回去覆盖掉。现在这个方法只是补丁的一种便捷写法；新代码请直接
+  /// 用 [editProfile] 的 `patch`，只带真正要改的字段。
+  Future<void> updateProfile(ProfileEntity entity) {
+    final advanced = entity.advancedConfig;
+    return editProfile(
+      entity.id,
+      patch: ProfilePatch(
+        name: Patch<String>.set(entity.name),
+        url: Patch<String>.set(entity.url),
+        updateInterval: Patch<Duration>.set(entity.updateInterval),
+        customUserAgent: entity.customUserAgent == null
+            ? const Patch<String>.clear()
+            : Patch<String>.set(entity.customUserAgent!),
+        advancedConfig: advanced == null
+            ? const Patch<AdvancedConfigPatch>.clear()
+            : Patch<AdvancedConfigPatch>.set(
+                AdvancedConfigPatch(
+                  remoteDnsOverride: advanced.remoteDnsOverride == null
+                      ? const Patch<String>.clear()
+                      : Patch<String>.set(advanced.remoteDnsOverride!),
+                  muxEnabled: Patch<bool>.set(advanced.muxEnabled),
+                  muxProtocol: Patch<String>.set(advanced.muxProtocol),
+                  muxConcurrency: Patch<int>.set(advanced.muxConcurrency),
+                  fragmentEnabled: Patch<bool>.set(advanced.fragmentEnabled),
+                  fragmentRange: advanced.fragmentRange == null
+                      ? const Patch<String>.clear()
+                      : Patch<String>.set(advanced.fragmentRange!),
+                ),
+              ),
+      ),
+    );
   }
 
-  /// 编辑订阅信息（名称、URL）
+  /// 编辑订阅。
+  ///
+  /// 推荐传 [patch]：每个字段三态（不动 / 设置 / 清除），一次提交完成，
+  /// 只改被指定的字段。[newName] / [newUrl] 是旧调用方式的快捷写法，trim 后
+  /// 为空则跳过；与 [patch] 同时给出时以 [patch] 中显式指定的字段为准。
+  /// 订阅不存在或补丁没有造成任何变化则不写入（不增加 `rev`）。
   Future<void> editProfile(
     String profileId, {
     String? newName,
     String? newUrl,
+    ProfilePatch? patch,
   }) async {
-    final profiles = getAll();
-    final index = profiles.indexWhere((p) => p.id == profileId);
-    if (index < 0) return;
-    final current = profiles[index];
-    profiles[index] = current.copyWith(
-      name: (newName != null && newName.trim().isNotEmpty)
-          ? newName.trim()
-          : current.name,
-      url: (newUrl != null && newUrl.trim().isNotEmpty)
-          ? newUrl.trim()
-          : current.url,
+    final effective = ProfilePatch(
+      name: (patch != null && !patch.name.isUnset)
+          ? patch.name
+          : (newName != null
+                ? Patch<String>.set(newName)
+                : const Patch.unset()),
+      url: (patch != null && !patch.url.isUnset)
+          ? patch.url
+          : (newUrl != null ? Patch<String>.set(newUrl) : const Patch.unset()),
+      updateInterval: patch?.updateInterval ?? const Patch.unset(),
+      customUserAgent: patch?.customUserAgent ?? const Patch.unset(),
+      advancedConfig: patch?.advancedConfig ?? const Patch.unset(),
     );
-    await _saveAll(profiles);
+    final result = await store.commit<void>((view) {
+      final cur = view.find(profileId);
+      if (cur == null) return const Plan<void>.unchanged();
+      final next = _applyPatch(cur, effective);
+      if (jsonEncode(next.toJson()) == jsonEncode(cur.toJson())) {
+        return const Plan<void>.unchanged();
+      }
+      return Plan<void>(
+        profiles: _replaced(view.profiles, next.copyWith(rev: cur.rev + 1)),
+      );
+    });
+    _throwIfFailed(result);
   }
 
-  /// 插入或更新订阅（按 id 匹配；备份恢复时使用）
+  static ProfileEntity _applyPatch(ProfileEntity cur, ProfilePatch patch) {
+    String? trimmed(Patch<String> field) {
+      if (!field.isSet) return null;
+      final value = field.value.trim();
+      return value.isEmpty ? null : value;
+    }
+
+    final advanced = patch.advancedConfig;
+    return cur.copyWith(
+      name: trimmed(patch.name),
+      url: trimmed(patch.url),
+      updateInterval: patch.updateInterval.isSet
+          ? patch.updateInterval.value
+          : null,
+      customUserAgent: patch.customUserAgent.isUnset
+          ? cur.customUserAgent
+          : patch.customUserAgent.resolve(null),
+      advancedConfig: advanced.isUnset
+          ? cur.advancedConfig
+          : advanced.isClear
+          ? null
+          : advanced.value.applyTo(cur.advancedConfig),
+    );
+  }
+
+  /// 插入或更新订阅（按 id 匹配；备份恢复时使用）。
+  ///
+  /// 这是一次「新的订阅对象」：无论备份里带了什么，`inc` 一律重新生成（备份
+  /// 不携带本机代际），使恢复前发出的旧刷新、旧附属数据写入全部失效。`active`
+  /// 字段被忽略——激活用 [setActive]。id 不合法抛 [ArgumentError]。
   Future<void> upsert(Map<String, dynamic> json) async {
     final entity = ProfileEntity.fromJson(json);
-    final profiles = getAll();
-    final idx = profiles.indexWhere((p) => p.id == entity.id);
-    if (idx >= 0) {
-      profiles[idx] = entity;
-    } else {
-      profiles.add(entity);
+    if (!ProfileStore.isValidId(entity.id)) {
+      throw ArgumentError.value(entity.id, 'id', '订阅 id 不合法');
     }
-    await _saveAll(profiles);
+    final result = await store.commit<void>((view) {
+      final existing = view.find(entity.id);
+      final next = entity.copyWith(
+        inc: store.newInc(),
+        rev: existing == null ? entity.rev : existing.rev + 1,
+      );
+      return Plan<void>(
+        profiles: existing == null
+            ? [...view.profiles, next]
+            : _replaced(view.profiles, next),
+      );
+    });
+    _throwIfFailed(result);
   }
 
-  /// 删除订阅
+  /// 删除订阅：同一次提交里移除条目、必要时切换激活、清理配置文件与附属键
+  /// （`proxy_selection_<id>` / `proxy_delays_<id>`）。
   Future<void> delete(String profileId) async {
-    final profiles = getAll();
-    profiles.removeWhere((p) => p.id == profileId);
-    await _saveAll(profiles);
-
-    // 删除配置文件
-    final configFile = File(configFilePath(profileId));
-    if (await configFile.exists()) {
-      await configFile.delete();
-    }
-
-    // 如果删掉的是激活的，切换到第一个
-    final activeId = prefs.getString(_activeProfileKey);
-    if (activeId == profileId && profiles.isNotEmpty) {
-      await setActive(profiles.first.id);
-    }
+    final result = await store.commit<void>((view) {
+      if (view.find(profileId) == null) return const Plan<void>.unchanged();
+      final remaining = [
+        for (final e in view.profiles)
+          if (e.id != profileId) e,
+      ];
+      var active = const Patch<String>.unset();
+      if (view.activeId == profileId) {
+        // 删掉的是激活的：切到剩下的第一条；一条不剩则清空激活。
+        active = remaining.isEmpty
+            ? const Patch<String>.clear()
+            : Patch<String>.set(remaining.first.id);
+      }
+      return Plan<void>(
+        profiles: remaining,
+        activeId: active,
+        removedProfileIds: [profileId],
+      );
+    });
+    _throwIfFailed(result);
   }
 
   /// 更新全部订阅
   Future<void> updateAll() async {
-    final profiles = getAll();
-    for (final profile in profiles) {
+    for (final profile in store.read()) {
       try {
         await update(profile.id);
+      } on StoreReadOnlyException {
+        rethrow; // 只读模式下每一条都会失败，别装作更新成功了
       } catch (_) {
-        // 单个更新失败不影响其他
+        // 单个更新失败（含期间被改动而作废）不影响其他
       }
     }
+  }
+
+  void _throwIfFailed(CommitResult<Object?> result) {
+    if (result.isFailed) {
+      throw ProfileStorageException(result.error ?? 'unknown');
+    }
+  }
+
+  static Future<void> _deleteQuietly(File file) async {
+    try {
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
   }
 
   /// 把订阅原始 body 归一化成 sing-box JSON 并写到 [output]。
@@ -757,10 +948,29 @@ class ProfileRepository {
     await staging.rename(output.path);
   }
 
-  /// 配置文件路径
-  String configFilePath(String profileId) {
-    return p.join(configDir.path, 'profiles', '$profileId.json');
-  }
+  /// 配置文件路径。id 不合法（可能逃出 profiles 目录）抛 [ArgumentError]。
+  String configFilePath(String profileId) => store.configFilePath(profileId);
+}
+
+/// 刷新期间订阅被删除 / 编辑 / 换代，本次结果已丢弃。
+class ProfileUpdateStaleException implements Exception {
+  const ProfileUpdateStaleException(this.profileId);
+
+  final String profileId;
+
+  @override
+  String toString() =>
+      'ProfileUpdateStaleException: 订阅 $profileId 在刷新期间已被修改或删除，本次结果已丢弃';
+}
+
+/// 订阅存储提交失败（磁盘 / 偏好写入失败，已还原）。
+class ProfileStorageException implements Exception {
+  const ProfileStorageException(this.cause);
+
+  final Object cause;
+
+  @override
+  String toString() => 'ProfileStorageException: $cause';
 }
 
 class ProfileValidationException implements Exception {

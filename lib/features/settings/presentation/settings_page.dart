@@ -1,8 +1,8 @@
 import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/settings/application/setting_toggles.dart';
 import 'package:clashmiao/features/settings/presentation/per_app_proxy_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -18,29 +18,6 @@ import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
-final _boolPreferenceProvider = StateNotifierProvider.autoDispose
-    .family<_BoolPreferenceNotifier, bool, ({bool defaultValue, String key})>((
-      ref,
-      spec,
-    ) {
-      final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-      return _BoolPreferenceNotifier(prefs, spec.key, spec.defaultValue);
-    });
-
-class _BoolPreferenceNotifier extends StateNotifier<bool> {
-  _BoolPreferenceNotifier(this._prefs, this._key, bool defaultValue)
-    : super(_prefs.getBool(_key) ?? defaultValue);
-
-  final SharedPreferences _prefs;
-  final String _key;
-
-  Future<void> update(bool value) async {
-    state = value;
-    await _prefs.setBool(_key, value);
-  }
-}
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key, this.debugIsAndroid, this.debugIsIOS});
@@ -380,13 +357,13 @@ class _BoolPreferenceTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final spec = (key: prefKey, defaultValue: defaultValue);
-    final value = ref.watch(_boolPreferenceProvider(spec));
+    final value = ref.watch(boolPreferenceProvider(spec));
     return _SwitchSettingsTile(
       icon: icon,
       label: label,
       value: value,
       onChanged: (next) =>
-          ref.read(_boolPreferenceProvider(spec).notifier).update(next),
+          ref.read(boolPreferenceProvider(spec).notifier).update(next),
     );
   }
 }
@@ -397,7 +374,7 @@ class _BoolPreferenceTile extends ConsumerWidget {
 /// 重新查询一次豁免状态以刷新 tile 上的状态文案。这两个原生方法没有走
 /// Pigeon，走的是裸 `MethodChannel('com.clashmiao.app/platform')`
 /// （见 [BatteryOptimizationService]），此处只负责 UI 展示与刷新时机。
-/// Analytics 开关：读写逻辑跟改动前完全一致（同一个 `_boolPreferenceProvider`
+/// Analytics 开关：读写逻辑跟改动前完全一致（同一个 `boolPreferenceProvider`
 /// family、同一个 `clashmiao_analytics_enabled` key、同一个默认值 false），只是
 /// 渲染使用共享的 [AnalyticsToggleTile]。
 class _AnalyticsToggle extends ConsumerWidget {
@@ -412,12 +389,12 @@ class _AnalyticsToggle extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final value = ref.watch(_boolPreferenceProvider(_spec));
+    final value = ref.watch(boolPreferenceProvider(_spec));
     return AnalyticsToggleTile(
       label: label,
       value: value,
       onChanged: (next) =>
-          ref.read(_boolPreferenceProvider(_spec).notifier).update(next),
+          ref.read(boolPreferenceProvider(_spec).notifier).update(next),
     );
   }
 }

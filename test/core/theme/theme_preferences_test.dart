@@ -29,6 +29,16 @@ void main() {
       expect(c.read(themePreferencesProvider), AppThemeMode.dark);
     });
 
+    test('未知枚举值回落 system，不抛', () async {
+      final c = await _container({'theme_mode': 'rainbow'});
+      expect(c.read(themePreferencesProvider), AppThemeMode.system);
+    });
+
+    test('键里存了错误类型（降级/脏数据）同样回落 system，不抛', () async {
+      final c = await _container({'theme_mode': 42});
+      expect(c.read(themePreferencesProvider), AppThemeMode.system);
+    });
+
     test('changeThemeMode 更新 state + prefs', () async {
       final c = await _container({});
       await c

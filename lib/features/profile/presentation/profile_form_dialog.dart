@@ -18,6 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// 订阅表单弹窗（新增 / 编辑 共用）
 ///
@@ -138,7 +139,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                             const SizedBox(height: 16),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(4),
-                              child: const LinearProgressIndicator(
+                              // 减少动画时停成静态条，语义仍是「加载中」。
+                              child: const MotionProgress.linear(
                                 minHeight: 6,
                                 backgroundColor: Colors.transparent,
                               ),

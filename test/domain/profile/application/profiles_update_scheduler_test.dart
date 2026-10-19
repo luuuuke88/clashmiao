@@ -256,6 +256,91 @@ void main() {
     });
   });
 
+  group('ProfileUpdateScheduler 暂停（备份恢复期间让路）', () {
+    late Directory tmpDir;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      HttpOverrides.global = null;
+      tmpDir = await Directory.systemTemp.createTemp('scheduler_pause_');
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: prefs,
+        boxService: const StubBoxService(),
+      );
+    });
+
+    tearDown(() async => deleteTempDirBestEffort(tmpDir));
+
+    Future<List<ProfileEntity>> addDue(
+      List<HttpServer> servers,
+      int count,
+    ) async {
+      final out = <ProfileEntity>[];
+      for (var i = 0; i < count; i++) {
+        final server = servers[i];
+        final profile = await repo.addByUrl(
+          'http://localhost:${server.port}/p$i',
+          customName: 'p$i',
+        );
+        await _setTiming(
+          repo,
+          profile.id,
+          updateInterval: const Duration(hours: 1),
+          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
+        );
+        out.add(profile);
+      }
+      return out;
+    }
+
+    test('暂停期间既不扫描也不发起刷新；恢复后照常工作', () async {
+      var requests = 0;
+      final server = await _countingServer(() => requests++);
+      addTearDown(() => server.close(force: true));
+      await addDue([server], 1);
+      requests = 0;
+
+      var paused = true;
+      final scheduler = ProfileUpdateScheduler(
+        repositoryProvider: () async => repo,
+        isPaused: () => paused,
+      );
+
+      expect(await scheduler.checkAndRefreshDue(), isEmpty);
+      expect(requests, 0);
+
+      paused = false;
+      expect(await scheduler.checkAndRefreshDue(), hasLength(1));
+      expect(requests, 1);
+    });
+
+    test('扫描途中恢复开始：已发出的那条跑完，剩下的不再发起', () async {
+      var requests = 0;
+      var paused = false;
+      final first = await _countingServer(() {
+        requests++;
+        paused = true; // 第一条刷新期间，恢复开始了
+      });
+      final second = await _countingServer(() => requests++);
+      addTearDown(() => first.close(force: true));
+      addTearDown(() => second.close(force: true));
+      await addDue([first, second], 2);
+      requests = 0;
+      paused = false;
+
+      final scheduler = ProfileUpdateScheduler(
+        repositoryProvider: () async => repo,
+        isPaused: () => paused,
+      );
+      await scheduler.checkAndRefreshDue();
+      expect(requests, 1);
+    });
+  });
+
   group('ProfileUpdateScheduler 生命周期触发（不需要 WidgetsBinding）', () {
     // 这两个测试用普通 test()（不是 testWidgets()）：`didChangeAppLifecycleState`
     // 只是 WidgetsBindingObserver mixin 提供的一个普通方法覆写，直接调用它

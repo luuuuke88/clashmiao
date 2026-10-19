@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3920 (392 per locale)
+/// Strings: 4090 (409 per locale)
 ///
-/// Built on 2026-10-19 at 16:24 UTC
+/// Built on 2026-10-19 at 16:59 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -344,6 +344,8 @@ class TranslationsSettingsEn {
   String get importOptions => 'Import Options From Clipboard';
   String get importOptionsMsg =>
       'This will rewrite all config options with provided values. Are you sure?';
+  late final TranslationsSettingsBackupEn backup =
+      TranslationsSettingsBackupEn._(_root);
   late final TranslationsSettingsGeneralEn general =
       TranslationsSettingsGeneralEn._(_root);
   late final TranslationsSettingsAdvancedEn advanced =
@@ -794,6 +796,45 @@ class TranslationsProxiesIpInfoSemanticsEn {
   // Translations
   String get address => 'IP Address';
   String get country => 'Country';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get importConfirmTitle => 'Import Backup';
+  String get importConfirmMsg =>
+      'This replaces your subscriptions with the ones in the backup and applies the backup\'s settings. A snapshot of the current data is saved first and restored automatically if the import fails.';
+  String importRemovesMsg({required Object count}) =>
+      '${count} subscription(s) on this device are not in the backup and will be removed.';
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Imported ${profiles} subscription(s) and ${settings} setting(s).';
+  String reportDropped({required Object count}) =>
+      '${count} subscription(s) in the backup were skipped because their data was invalid.';
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} setting(s) were skipped; your current values are kept.';
+  String get reportWarpOff =>
+      'WARP was turned off by the import. Re-enable it on this device.';
+  String reportBackfill({required Object count}) =>
+      '${count} subscription(s) will be downloaded in the background.';
+  String get errInvalidFile => 'This is not a valid ClashMiao backup file.';
+  String get errUnsupportedVersion => 'This backup format is not supported.';
+  String get errNewerSchema =>
+      'This backup was created by a newer version of the app. Please upgrade the app first.';
+  String get errNoUsableProfiles =>
+      'None of the subscriptions in this backup can be imported.';
+  String get errSnapshotFailed =>
+      'Could not save a snapshot of the current data, so nothing was changed.';
+  String get errUnresolvedPrevious =>
+      'A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.';
+  String get errRolledBack =>
+      'Import failed. Your previous data has been restored.';
+  String errNotRolledBack({required Object path}) =>
+      'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
+  String get errFailed => 'Import failed.';
 }
 
 // Path: settings.general
@@ -1562,6 +1603,9 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'سيؤدي هذا إلى إعادة كتابة جميع خيارات التكوين بالقيم المحددة. هل أنت متأكد؟';
   @override
+  late final TranslationsSettingsBackupAr backup =
+      TranslationsSettingsBackupAr._(_root);
+  @override
   late final TranslationsSettingsGeneralAr general =
       TranslationsSettingsGeneralAr._(_root);
   @override
@@ -2277,6 +2321,64 @@ class TranslationsProxiesIpInfoSemanticsAr
   String get address => 'عنوان IP';
   @override
   String get country => 'الدولة';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupAr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'استيراد نسخة احتياطية';
+  @override
+  String get importConfirmMsg =>
+      'سيؤدي هذا إلى استبدال اشتراكاتك بالاشتراكات الموجودة في النسخة الاحتياطية وتطبيق إعداداتها. يتم أولًا حفظ لقطة من البيانات الحالية وتُستعاد تلقائيًا إذا فشل الاستيراد.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'يوجد ${count} اشتراك على هذا الجهاز غير موجود في النسخة الاحتياطية وسيتم حذفه.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'تم استيراد ${profiles} اشتراك و${settings} إعداد.';
+  @override
+  String reportDropped({required Object count}) =>
+      'تم تخطي ${count} اشتراك في النسخة الاحتياطية لأن بياناته غير صالحة.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'تم تخطي ${count} إعداد، وتم الاحتفاظ بقيمك الحالية.';
+  @override
+  String get reportWarpOff =>
+      'أدى الاستيراد إلى إيقاف WARP. أعد تفعيله على هذا الجهاز.';
+  @override
+  String reportBackfill({required Object count}) =>
+      'سيتم تنزيل ${count} اشتراك في الخلفية.';
+  @override
+  String get errInvalidFile => 'هذا ليس ملف نسخة احتياطية صالحًا لـ ClashMiao.';
+  @override
+  String get errUnsupportedVersion => 'صيغة هذه النسخة الاحتياطية غير مدعومة.';
+  @override
+  String get errNewerSchema =>
+      'تم إنشاء هذه النسخة الاحتياطية بإصدار أحدث من التطبيق. يرجى تحديث التطبيق أولًا.';
+  @override
+  String get errNoUsableProfiles =>
+      'لا يمكن استيراد أي من الاشتراكات في هذه النسخة الاحتياطية.';
+  @override
+  String get errSnapshotFailed =>
+      'تعذر حفظ لقطة من البيانات الحالية، لذلك لم يتم تغيير أي شيء.';
+  @override
+  String get errUnresolvedPrevious =>
+      'توقف استيراد سابق ولم يتم التراجع عنه بعد. لم يتم تغيير أي شيء. أعد تشغيل التطبيق وحاول مرة أخرى.';
+  @override
+  String get errRolledBack => 'فشل الاستيراد. تمت استعادة بياناتك السابقة.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
+  @override
+  String get errFailed => 'فشل الاستيراد.';
 }
 
 // Path: settings.general
@@ -3236,6 +3338,9 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
   @override
+  late final TranslationsSettingsBackupEs backup =
+      TranslationsSettingsBackupEs._(_root);
+  @override
   String get systemProxyEnabled => 'Proxy del sistema activado';
   @override
   String get systemProxyDisabled =>
@@ -4131,6 +4236,67 @@ class TranslationsSettingsGeoAssetsEs extends TranslationsSettingsGeoAssetsEn {
       'Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupEs extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Importar copia de seguridad';
+  @override
+  String get importConfirmMsg =>
+      'Esto reemplaza tus suscripciones por las de la copia de seguridad y aplica sus ajustes. Antes se guarda una instantánea de los datos actuales, que se restaura automáticamente si la importación falla.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} suscripción(es) de este dispositivo no están en la copia de seguridad y se eliminarán.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Se importaron ${profiles} suscripción(es) y ${settings} ajuste(s).';
+  @override
+  String reportDropped({required Object count}) =>
+      'Se omitieron ${count} suscripción(es) de la copia de seguridad porque sus datos no eran válidos.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'Se omitieron ${count} ajuste(s); se conservan tus valores actuales.';
+  @override
+  String get reportWarpOff =>
+      'La importación desactivó WARP. Vuelve a activarlo en este dispositivo.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} suscripción(es) se descargarán en segundo plano.';
+  @override
+  String get errInvalidFile =>
+      'Este no es un archivo de copia de seguridad de ClashMiao válido.';
+  @override
+  String get errUnsupportedVersion =>
+      'Este formato de copia de seguridad no es compatible.';
+  @override
+  String get errNewerSchema =>
+      'Esta copia de seguridad fue creada por una versión más reciente de la aplicación. Actualiza la aplicación primero.';
+  @override
+  String get errNoUsableProfiles =>
+      'Ninguna de las suscripciones de esta copia de seguridad se puede importar.';
+  @override
+  String get errSnapshotFailed =>
+      'No se pudo guardar una instantánea de los datos actuales, así que no se cambió nada.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Una importación anterior se interrumpió y aún no se pudo deshacer. No se cambió nada. Reinicia la aplicación e inténtalo de nuevo.';
+  @override
+  String get errRolledBack =>
+      'La importación falló. Se han restaurado tus datos anteriores.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
+  @override
+  String get errFailed => 'La importación falló.';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusEs extends TranslationsTrayStatusEn {
   TranslationsTrayStatusEs._(TranslationsEs root)
@@ -4959,6 +5125,9 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'این اقدام همه‌ی تنظیمات پیکربندی را با مقادیر اولیه بازنویسی می‌کند. آیا مطمئن هستید؟';
   @override
+  late final TranslationsSettingsBackupFa backup =
+      TranslationsSettingsBackupFa._(_root);
+  @override
   late final TranslationsSettingsGeneralFa general =
       TranslationsSettingsGeneralFa._(_root);
   @override
@@ -5678,6 +5847,65 @@ class TranslationsProxiesIpInfoSemanticsFa
   String get address => 'آدرس آی‌پی';
   @override
   String get country => 'کشور';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupFa extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'درون‌ریزی پشتیبان';
+  @override
+  String get importConfirmMsg =>
+      'این کار اشتراک‌های شما را با اشتراک‌های موجود در پشتیبان جایگزین می‌کند و تنظیمات آن را اعمال می‌کند. ابتدا یک نسخهٔ لحظه‌ای از داده‌های فعلی ذخیره می‌شود و اگر درون‌ریزی ناموفق باشد، خودکار بازیابی می‌شود.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} اشتراک روی این دستگاه در پشتیبان نیست و حذف خواهد شد.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} اشتراک و ${settings} تنظیم درون‌ریزی شد.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} اشتراک در پشتیبان به دلیل نامعتبر بودن داده‌ها نادیده گرفته شد.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} تنظیم نادیده گرفته شد؛ مقدارهای فعلی شما حفظ شدند.';
+  @override
+  String get reportWarpOff =>
+      'درون‌ریزی WARP را خاموش کرد. آن را دوباره روی این دستگاه فعال کنید.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} اشتراک در پس‌زمینه دانلود خواهد شد.';
+  @override
+  String get errInvalidFile => 'این یک فایل پشتیبان معتبر ClashMiao نیست.';
+  @override
+  String get errUnsupportedVersion => 'این قالب پشتیبان پشتیبانی نمی‌شود.';
+  @override
+  String get errNewerSchema =>
+      'این پشتیبان با نسخهٔ جدیدتری از برنامه ساخته شده است. لطفاً ابتدا برنامه را به‌روزرسانی کنید.';
+  @override
+  String get errNoUsableProfiles =>
+      'هیچ‌یک از اشتراک‌های این پشتیبان قابل درون‌ریزی نیست.';
+  @override
+  String get errSnapshotFailed =>
+      'ذخیرهٔ نسخهٔ لحظه‌ای داده‌های فعلی ممکن نشد، بنابراین چیزی تغییر نکرد.';
+  @override
+  String get errUnresolvedPrevious =>
+      'درون‌ریزی قبلی نیمه‌کاره ماند و هنوز بازگردانی نشده است. چیزی تغییر نکرد. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید.';
+  @override
+  String get errRolledBack =>
+      'درون‌ریزی ناموفق بود. داده‌های قبلی شما بازیابی شد.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
+  @override
+  String get errFailed => 'درون‌ریزی ناموفق بود.';
 }
 
 // Path: settings.general
@@ -6666,6 +6894,9 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
   @override
+  late final TranslationsSettingsBackupId backup =
+      TranslationsSettingsBackupId._(_root);
+  @override
   String get systemProxyEnabled => 'Proxy sistem diaktifkan';
   @override
   String get systemProxyDisabled =>
@@ -7522,6 +7753,65 @@ class TranslationsSettingsGeoAssetsId extends TranslationsSettingsGeoAssetsEn {
       'Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupId extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Impor Cadangan';
+  @override
+  String get importConfirmMsg =>
+      'Ini mengganti langganan Anda dengan langganan dari cadangan dan menerapkan pengaturannya. Snapshot data saat ini disimpan terlebih dahulu dan dipulihkan otomatis jika impor gagal.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} langganan di perangkat ini tidak ada di cadangan dan akan dihapus.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} langganan dan ${settings} pengaturan diimpor.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} langganan dalam cadangan dilewati karena datanya tidak valid.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} pengaturan dilewati; nilai Anda saat ini dipertahankan.';
+  @override
+  String get reportWarpOff =>
+      'Impor mematikan WARP. Aktifkan kembali di perangkat ini.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} langganan akan diunduh di latar belakang.';
+  @override
+  String get errInvalidFile => 'Ini bukan file cadangan ClashMiao yang valid.';
+  @override
+  String get errUnsupportedVersion => 'Format cadangan ini tidak didukung.';
+  @override
+  String get errNewerSchema =>
+      'Cadangan ini dibuat oleh aplikasi versi yang lebih baru. Perbarui aplikasi terlebih dahulu.';
+  @override
+  String get errNoUsableProfiles =>
+      'Tidak ada langganan dalam cadangan ini yang dapat diimpor.';
+  @override
+  String get errSnapshotFailed =>
+      'Snapshot data saat ini tidak dapat disimpan, sehingga tidak ada yang diubah.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.';
+  @override
+  String get errRolledBack =>
+      'Impor gagal. Data Anda sebelumnya telah dipulihkan.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
+  @override
+  String get errFailed => 'Impor gagal.';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusId extends TranslationsTrayStatusEn {
   TranslationsTrayStatusId._(TranslationsId root)
@@ -8366,6 +8656,9 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   String get importOptionsMsg =>
       'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
+  @override
+  late final TranslationsSettingsBackupPtBr backup =
+      TranslationsSettingsBackupPtBr._(_root);
   @override
   String get systemProxyEnabled => 'Proxy do sistema ativado';
   @override
@@ -9238,6 +9531,67 @@ class TranslationsSettingsGeoAssetsPtBr
       'Os arquivos dos ativos de roteamento selecionados estão ausentes. Baixe-os ou escolha os existentes.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupPtBr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Importar backup';
+  @override
+  String get importConfirmMsg =>
+      'Isto substitui suas assinaturas pelas do backup e aplica as configurações dele. Antes, um instantâneo dos dados atuais é salvo e restaurado automaticamente se a importação falhar.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} assinatura(s) deste dispositivo não estão no backup e serão removidas.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} assinatura(s) e ${settings} configuração(ões) importadas.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} assinatura(s) do backup foram ignoradas porque os dados eram inválidos.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} configuração(ões) foram ignoradas; seus valores atuais foram mantidos.';
+  @override
+  String get reportWarpOff =>
+      'A importação desativou o WARP. Ative-o novamente neste dispositivo.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} assinatura(s) serão baixadas em segundo plano.';
+  @override
+  String get errInvalidFile =>
+      'Este não é um arquivo de backup válido do ClashMiao.';
+  @override
+  String get errUnsupportedVersion =>
+      'Este formato de backup não é compatível.';
+  @override
+  String get errNewerSchema =>
+      'Este backup foi criado por uma versão mais recente do app. Atualize o app primeiro.';
+  @override
+  String get errNoUsableProfiles =>
+      'Nenhuma das assinaturas deste backup pode ser importada.';
+  @override
+  String get errSnapshotFailed =>
+      'Não foi possível salvar um instantâneo dos dados atuais, então nada foi alterado.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.';
+  @override
+  String get errRolledBack =>
+      'A importação falhou. Seus dados anteriores foram restaurados.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
+  @override
+  String get errFailed => 'A importação falhou.';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusPtBr extends TranslationsTrayStatusEn {
   TranslationsTrayStatusPtBr._(TranslationsPtBr root)
@@ -10064,6 +10418,9 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Это перезапишет все параметры конфига предоставленными значениями. Вы уверены?';
   @override
+  late final TranslationsSettingsBackupRu backup =
+      TranslationsSettingsBackupRu._(_root);
+  @override
   late final TranslationsSettingsGeneralRu general =
       TranslationsSettingsGeneralRu._(_root);
   @override
@@ -10789,6 +11146,66 @@ class TranslationsProxiesIpInfoSemanticsRu
   String get address => 'IP адрес';
   @override
   String get country => 'Страна';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupRu extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Импорт резервной копии';
+  @override
+  String get importConfirmMsg =>
+      'Ваши подписки будут заменены подписками из резервной копии, а настройки из неё применены. Сначала сохраняется снимок текущих данных, который автоматически восстанавливается, если импорт не удастся.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'Подписок на этом устройстве, которых нет в резервной копии, будет удалено: ${count}.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Импортировано подписок: ${profiles}, настроек: ${settings}.';
+  @override
+  String reportDropped({required Object count}) =>
+      'Пропущено подписок из резервной копии из-за недопустимых данных: ${count}.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'Пропущено настроек: ${count}; текущие значения сохранены.';
+  @override
+  String get reportWarpOff =>
+      'При импорте WARP был выключен. Включите его заново на этом устройстве.';
+  @override
+  String reportBackfill({required Object count}) =>
+      'Подписок, которые будут загружены в фоне: ${count}.';
+  @override
+  String get errInvalidFile => 'Это не файл резервной копии ClashMiao.';
+  @override
+  String get errUnsupportedVersion =>
+      'Этот формат резервной копии не поддерживается.';
+  @override
+  String get errNewerSchema =>
+      'Эта резервная копия создана более новой версией приложения. Сначала обновите приложение.';
+  @override
+  String get errNoUsableProfiles =>
+      'Ни одну подписку из этой резервной копии нельзя импортировать.';
+  @override
+  String get errSnapshotFailed =>
+      'Не удалось сохранить снимок текущих данных, поэтому ничего не изменено.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Предыдущий импорт был прерван и пока не отменён. Ничего не изменено. Перезапустите приложение и повторите попытку.';
+  @override
+  String get errRolledBack =>
+      'Не удалось импортировать. Прежние данные восстановлены.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
+  @override
+  String get errFailed => 'Не удалось импортировать.';
 }
 
 // Path: settings.general
@@ -11781,6 +12198,9 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
   @override
+  late final TranslationsSettingsBackupTr backup =
+      TranslationsSettingsBackupTr._(_root);
+  @override
   String get systemProxyEnabled => 'Sistem proxy’si etkin';
   @override
   String get systemProxyDisabled =>
@@ -12642,6 +13062,65 @@ class TranslationsSettingsGeoAssetsTr extends TranslationsSettingsGeoAssetsEn {
       'Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupTr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Yedeği İçe Aktar';
+  @override
+  String get importConfirmMsg =>
+      'Bu işlem aboneliklerinizi yedekteki aboneliklerle değiştirir ve yedekteki ayarları uygular. Önce mevcut verilerin bir anlık görüntüsü kaydedilir; içe aktarma başarısız olursa otomatik olarak geri yüklenir.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'Bu cihazdaki ${count} abonelik yedekte yok ve kaldırılacak.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} abonelik ve ${settings} ayar içe aktarıldı.';
+  @override
+  String reportDropped({required Object count}) =>
+      'Yedekteki ${count} abonelik, verileri geçersiz olduğu için atlandı.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} ayar atlandı; mevcut değerleriniz korundu.';
+  @override
+  String get reportWarpOff =>
+      'İçe aktarma WARP\'ı kapattı. Bu cihazda yeniden etkinleştirin.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} abonelik arka planda indirilecek.';
+  @override
+  String get errInvalidFile => 'Bu geçerli bir ClashMiao yedek dosyası değil.';
+  @override
+  String get errUnsupportedVersion => 'Bu yedek biçimi desteklenmiyor.';
+  @override
+  String get errNewerSchema =>
+      'Bu yedek uygulamanın daha yeni bir sürümüyle oluşturulmuş. Lütfen önce uygulamayı güncelleyin.';
+  @override
+  String get errNoUsableProfiles =>
+      'Bu yedekteki aboneliklerin hiçbiri içe aktarılamıyor.';
+  @override
+  String get errSnapshotFailed =>
+      'Mevcut verilerin anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey değiştirilmedi.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.';
+  @override
+  String get errRolledBack =>
+      'İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
+  @override
+  String get errFailed => 'İçe aktarma başarısız oldu.';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusTr extends TranslationsTrayStatusEn {
   TranslationsTrayStatusTr._(TranslationsTr root)
@@ -13464,6 +13943,9 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   @override
   String get importOptionsMsg => '这将使用提供的值重写所有配置选项。您确定吗？';
   @override
+  late final TranslationsSettingsBackupZhCn backup =
+      TranslationsSettingsBackupZhCn._(_root);
+  @override
   late final TranslationsSettingsGeneralZhCn general =
       TranslationsSettingsGeneralZhCn._(_root);
   @override
@@ -14175,6 +14657,57 @@ class TranslationsProxiesIpInfoSemanticsZhCn
   String get address => 'IP 地址';
   @override
   String get country => '国家';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupZhCn extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => '导入备份';
+  @override
+  String get importConfirmMsg =>
+      '这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '本机有 ${count} 个订阅不在备份中，导入后将被移除。';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '已导入 ${profiles} 个订阅、${settings} 项设置。';
+  @override
+  String reportDropped({required Object count}) => '备份中有 ${count} 个订阅因数据无效被跳过。';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '有 ${count} 项设置被跳过，保留了当前值。';
+  @override
+  String get reportWarpOff => '导入时已关闭 WARP，请在本机重新启用。';
+  @override
+  String reportBackfill({required Object count}) => '有 ${count} 个订阅将在后台下载。';
+  @override
+  String get errInvalidFile => '这不是有效的 ClashMiao 备份文件。';
+  @override
+  String get errUnsupportedVersion => '不支持这种备份格式。';
+  @override
+  String get errNewerSchema => '此备份由更新版本的应用生成，请先升级应用。';
+  @override
+  String get errNoUsableProfiles => '此备份中没有可以导入的订阅。';
+  @override
+  String get errSnapshotFailed => '无法保存当前数据的快照，所以没有做任何改动。';
+  @override
+  String get errUnresolvedPrevious => '上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。';
+  @override
+  String get errRolledBack => '导入失败，已恢复到导入之前的数据。';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
+  @override
+  String get errFailed => '导入失败。';
 }
 
 // Path: settings.general
@@ -15143,6 +15676,9 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   @override
   String get importOptionsMsg => '這將使用提供的值複寫所有配置選項。您確定嗎？';
   @override
+  late final TranslationsSettingsBackupZhTw backup =
+      TranslationsSettingsBackupZhTw._(_root);
+  @override
   late final TranslationsSettingsGeneralZhTw general =
       TranslationsSettingsGeneralZhTw._(_root);
   @override
@@ -15855,6 +16391,58 @@ class TranslationsProxiesIpInfoSemanticsZhTw
   String get address => 'IP 地址';
   @override
   String get country => '國家';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupZhTw extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => '匯入備份';
+  @override
+  String get importConfirmMsg =>
+      '這會用備份中的訂閱取代目前的訂閱，並套用備份中的設定。匯入前會先儲存目前資料的快照，匯入失敗時自動還原。';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '本機有 ${count} 個訂閱不在備份中，匯入後將被移除。';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '已匯入 ${profiles} 個訂閱、${settings} 項設定。';
+  @override
+  String reportDropped({required Object count}) =>
+      '備份中有 ${count} 個訂閱因資料無效而被略過。';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '有 ${count} 項設定被略過，保留了目前的值。';
+  @override
+  String get reportWarpOff => '匯入時已關閉 WARP，請在本機重新啟用。';
+  @override
+  String reportBackfill({required Object count}) => '有 ${count} 個訂閱將在背景下載。';
+  @override
+  String get errInvalidFile => '這不是有效的 ClashMiao 備份檔案。';
+  @override
+  String get errUnsupportedVersion => '不支援這種備份格式。';
+  @override
+  String get errNewerSchema => '此備份由較新版本的應用程式建立，請先升級應用程式。';
+  @override
+  String get errNoUsableProfiles => '此備份中沒有可以匯入的訂閱。';
+  @override
+  String get errSnapshotFailed => '無法儲存目前資料的快照，因此沒有做任何變更。';
+  @override
+  String get errUnresolvedPrevious => '上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。';
+  @override
+  String get errRolledBack => '匯入失敗，已還原到匯入之前的資料。';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
+  @override
+  String get errFailed => '匯入失敗。';
 }
 
 // Path: settings.general
@@ -16787,6 +17375,46 @@ extension on Translations {
         return 'Import Options From Clipboard';
       case 'settings.importOptionsMsg':
         return 'This will rewrite all config options with provided values. Are you sure?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Import Backup';
+      case 'settings.backup.importConfirmMsg':
+        return 'This replaces your subscriptions with the ones in the backup and applies the backup\'s settings. A snapshot of the current data is saved first and restored automatically if the import fails.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} subscription(s) on this device are not in the backup and will be removed.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Imported ${profiles} subscription(s) and ${settings} setting(s).';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} subscription(s) in the backup were skipped because their data was invalid.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} setting(s) were skipped; your current values are kept.';
+      case 'settings.backup.reportWarpOff':
+        return 'WARP was turned off by the import. Re-enable it on this device.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} subscription(s) will be downloaded in the background.';
+      case 'settings.backup.errInvalidFile':
+        return 'This is not a valid ClashMiao backup file.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'This backup format is not supported.';
+      case 'settings.backup.errNewerSchema':
+        return 'This backup was created by a newer version of the app. Please upgrade the app first.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'None of the subscriptions in this backup can be imported.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Could not save a snapshot of the current data, so nothing was changed.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.';
+      case 'settings.backup.errRolledBack':
+        return 'Import failed. Your previous data has been restored.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Import failed.';
       case 'settings.general.sectionTitle':
         return 'General';
       case 'settings.general.locale':
@@ -17600,6 +18228,46 @@ extension on TranslationsAr {
         return 'استيراد الخيارات من الحافظة';
       case 'settings.importOptionsMsg':
         return 'سيؤدي هذا إلى إعادة كتابة جميع خيارات التكوين بالقيم المحددة. هل أنت متأكد؟';
+      case 'settings.backup.importConfirmTitle':
+        return 'استيراد نسخة احتياطية';
+      case 'settings.backup.importConfirmMsg':
+        return 'سيؤدي هذا إلى استبدال اشتراكاتك بالاشتراكات الموجودة في النسخة الاحتياطية وتطبيق إعداداتها. يتم أولًا حفظ لقطة من البيانات الحالية وتُستعاد تلقائيًا إذا فشل الاستيراد.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'يوجد ${count} اشتراك على هذا الجهاز غير موجود في النسخة الاحتياطية وسيتم حذفه.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'تم استيراد ${profiles} اشتراك و${settings} إعداد.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'تم تخطي ${count} اشتراك في النسخة الاحتياطية لأن بياناته غير صالحة.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'تم تخطي ${count} إعداد، وتم الاحتفاظ بقيمك الحالية.';
+      case 'settings.backup.reportWarpOff':
+        return 'أدى الاستيراد إلى إيقاف WARP. أعد تفعيله على هذا الجهاز.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            'سيتم تنزيل ${count} اشتراك في الخلفية.';
+      case 'settings.backup.errInvalidFile':
+        return 'هذا ليس ملف نسخة احتياطية صالحًا لـ ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'صيغة هذه النسخة الاحتياطية غير مدعومة.';
+      case 'settings.backup.errNewerSchema':
+        return 'تم إنشاء هذه النسخة الاحتياطية بإصدار أحدث من التطبيق. يرجى تحديث التطبيق أولًا.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'لا يمكن استيراد أي من الاشتراكات في هذه النسخة الاحتياطية.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'تعذر حفظ لقطة من البيانات الحالية، لذلك لم يتم تغيير أي شيء.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'توقف استيراد سابق ولم يتم التراجع عنه بعد. لم يتم تغيير أي شيء. أعد تشغيل التطبيق وحاول مرة أخرى.';
+      case 'settings.backup.errRolledBack':
+        return 'فشل الاستيراد. تمت استعادة بياناتك السابقة.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
+      case 'settings.backup.errFailed':
+        return 'فشل الاستيراد.';
       case 'settings.general.sectionTitle':
         return 'عام';
       case 'settings.general.locale':
@@ -18517,6 +19185,46 @@ extension on TranslationsEs {
         return 'Importar opciones desde el portapapeles';
       case 'settings.importOptionsMsg':
         return 'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Importar copia de seguridad';
+      case 'settings.backup.importConfirmMsg':
+        return 'Esto reemplaza tus suscripciones por las de la copia de seguridad y aplica sus ajustes. Antes se guarda una instantánea de los datos actuales, que se restaura automáticamente si la importación falla.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} suscripción(es) de este dispositivo no están en la copia de seguridad y se eliminarán.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Se importaron ${profiles} suscripción(es) y ${settings} ajuste(s).';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Se omitieron ${count} suscripción(es) de la copia de seguridad porque sus datos no eran válidos.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'Se omitieron ${count} ajuste(s); se conservan tus valores actuales.';
+      case 'settings.backup.reportWarpOff':
+        return 'La importación desactivó WARP. Vuelve a activarlo en este dispositivo.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} suscripción(es) se descargarán en segundo plano.';
+      case 'settings.backup.errInvalidFile':
+        return 'Este no es un archivo de copia de seguridad de ClashMiao válido.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Este formato de copia de seguridad no es compatible.';
+      case 'settings.backup.errNewerSchema':
+        return 'Esta copia de seguridad fue creada por una versión más reciente de la aplicación. Actualiza la aplicación primero.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Ninguna de las suscripciones de esta copia de seguridad se puede importar.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'No se pudo guardar una instantánea de los datos actuales, así que no se cambió nada.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Una importación anterior se interrumpió y aún no se pudo deshacer. No se cambió nada. Reinicia la aplicación e inténtalo de nuevo.';
+      case 'settings.backup.errRolledBack':
+        return 'La importación falló. Se han restaurado tus datos anteriores.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
+      case 'settings.backup.errFailed':
+        return 'La importación falló.';
       case 'settings.systemProxyEnabled':
         return 'Proxy del sistema activado';
       case 'settings.systemProxyDisabled':
@@ -19233,6 +19941,46 @@ extension on TranslationsFa {
         return 'وارد کردن تنظیمات از کلیپ‌بورد';
       case 'settings.importOptionsMsg':
         return 'این اقدام همه‌ی تنظیمات پیکربندی را با مقادیر اولیه بازنویسی می‌کند. آیا مطمئن هستید؟';
+      case 'settings.backup.importConfirmTitle':
+        return 'درون‌ریزی پشتیبان';
+      case 'settings.backup.importConfirmMsg':
+        return 'این کار اشتراک‌های شما را با اشتراک‌های موجود در پشتیبان جایگزین می‌کند و تنظیمات آن را اعمال می‌کند. ابتدا یک نسخهٔ لحظه‌ای از داده‌های فعلی ذخیره می‌شود و اگر درون‌ریزی ناموفق باشد، خودکار بازیابی می‌شود.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} اشتراک روی این دستگاه در پشتیبان نیست و حذف خواهد شد.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} اشتراک و ${settings} تنظیم درون‌ریزی شد.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} اشتراک در پشتیبان به دلیل نامعتبر بودن داده‌ها نادیده گرفته شد.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} تنظیم نادیده گرفته شد؛ مقدارهای فعلی شما حفظ شدند.';
+      case 'settings.backup.reportWarpOff':
+        return 'درون‌ریزی WARP را خاموش کرد. آن را دوباره روی این دستگاه فعال کنید.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} اشتراک در پس‌زمینه دانلود خواهد شد.';
+      case 'settings.backup.errInvalidFile':
+        return 'این یک فایل پشتیبان معتبر ClashMiao نیست.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'این قالب پشتیبان پشتیبانی نمی‌شود.';
+      case 'settings.backup.errNewerSchema':
+        return 'این پشتیبان با نسخهٔ جدیدتری از برنامه ساخته شده است. لطفاً ابتدا برنامه را به‌روزرسانی کنید.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'هیچ‌یک از اشتراک‌های این پشتیبان قابل درون‌ریزی نیست.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'ذخیرهٔ نسخهٔ لحظه‌ای داده‌های فعلی ممکن نشد، بنابراین چیزی تغییر نکرد.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'درون‌ریزی قبلی نیمه‌کاره ماند و هنوز بازگردانی نشده است. چیزی تغییر نکرد. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید.';
+      case 'settings.backup.errRolledBack':
+        return 'درون‌ریزی ناموفق بود. داده‌های قبلی شما بازیابی شد.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
+      case 'settings.backup.errFailed':
+        return 'درون‌ریزی ناموفق بود.';
       case 'settings.general.sectionTitle':
         return 'عمومی';
       case 'settings.general.locale':
@@ -20168,6 +20916,46 @@ extension on TranslationsId {
         return 'Impor Opsi dari Papan Klip';
       case 'settings.importOptionsMsg':
         return 'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Impor Cadangan';
+      case 'settings.backup.importConfirmMsg':
+        return 'Ini mengganti langganan Anda dengan langganan dari cadangan dan menerapkan pengaturannya. Snapshot data saat ini disimpan terlebih dahulu dan dipulihkan otomatis jika impor gagal.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} langganan di perangkat ini tidak ada di cadangan dan akan dihapus.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} langganan dan ${settings} pengaturan diimpor.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} langganan dalam cadangan dilewati karena datanya tidak valid.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} pengaturan dilewati; nilai Anda saat ini dipertahankan.';
+      case 'settings.backup.reportWarpOff':
+        return 'Impor mematikan WARP. Aktifkan kembali di perangkat ini.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} langganan akan diunduh di latar belakang.';
+      case 'settings.backup.errInvalidFile':
+        return 'Ini bukan file cadangan ClashMiao yang valid.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Format cadangan ini tidak didukung.';
+      case 'settings.backup.errNewerSchema':
+        return 'Cadangan ini dibuat oleh aplikasi versi yang lebih baru. Perbarui aplikasi terlebih dahulu.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Tidak ada langganan dalam cadangan ini yang dapat diimpor.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Snapshot data saat ini tidak dapat disimpan, sehingga tidak ada yang diubah.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.';
+      case 'settings.backup.errRolledBack':
+        return 'Impor gagal. Data Anda sebelumnya telah dipulihkan.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Impor gagal.';
       case 'settings.systemProxyEnabled':
         return 'Proxy sistem diaktifkan';
       case 'settings.systemProxyDisabled':
@@ -20984,6 +21772,46 @@ extension on TranslationsPtBr {
         return 'Importar opções da área de transferência';
       case 'settings.importOptionsMsg':
         return 'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Importar backup';
+      case 'settings.backup.importConfirmMsg':
+        return 'Isto substitui suas assinaturas pelas do backup e aplica as configurações dele. Antes, um instantâneo dos dados atuais é salvo e restaurado automaticamente se a importação falhar.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} assinatura(s) deste dispositivo não estão no backup e serão removidas.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} assinatura(s) e ${settings} configuração(ões) importadas.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} assinatura(s) do backup foram ignoradas porque os dados eram inválidos.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} configuração(ões) foram ignoradas; seus valores atuais foram mantidos.';
+      case 'settings.backup.reportWarpOff':
+        return 'A importação desativou o WARP. Ative-o novamente neste dispositivo.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} assinatura(s) serão baixadas em segundo plano.';
+      case 'settings.backup.errInvalidFile':
+        return 'Este não é um arquivo de backup válido do ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Este formato de backup não é compatível.';
+      case 'settings.backup.errNewerSchema':
+        return 'Este backup foi criado por uma versão mais recente do app. Atualize o app primeiro.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Nenhuma das assinaturas deste backup pode ser importada.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Não foi possível salvar um instantâneo dos dados atuais, então nada foi alterado.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.';
+      case 'settings.backup.errRolledBack':
+        return 'A importação falhou. Seus dados anteriores foram restaurados.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
+      case 'settings.backup.errFailed':
+        return 'A importação falhou.';
       case 'settings.systemProxyEnabled':
         return 'Proxy do sistema ativado';
       case 'settings.systemProxyDisabled':
@@ -21676,6 +22504,46 @@ extension on TranslationsRu {
         return 'Импорт параметров из буфера обмена';
       case 'settings.importOptionsMsg':
         return 'Это перезапишет все параметры конфига предоставленными значениями. Вы уверены?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Импорт резервной копии';
+      case 'settings.backup.importConfirmMsg':
+        return 'Ваши подписки будут заменены подписками из резервной копии, а настройки из неё применены. Сначала сохраняется снимок текущих данных, который автоматически восстанавливается, если импорт не удастся.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'Подписок на этом устройстве, которых нет в резервной копии, будет удалено: ${count}.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Импортировано подписок: ${profiles}, настроек: ${settings}.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Пропущено подписок из резервной копии из-за недопустимых данных: ${count}.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'Пропущено настроек: ${count}; текущие значения сохранены.';
+      case 'settings.backup.reportWarpOff':
+        return 'При импорте WARP был выключен. Включите его заново на этом устройстве.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            'Подписок, которые будут загружены в фоне: ${count}.';
+      case 'settings.backup.errInvalidFile':
+        return 'Это не файл резервной копии ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Этот формат резервной копии не поддерживается.';
+      case 'settings.backup.errNewerSchema':
+        return 'Эта резервная копия создана более новой версией приложения. Сначала обновите приложение.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Ни одну подписку из этой резервной копии нельзя импортировать.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Не удалось сохранить снимок текущих данных, поэтому ничего не изменено.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Предыдущий импорт был прерван и пока не отменён. Ничего не изменено. Перезапустите приложение и повторите попытку.';
+      case 'settings.backup.errRolledBack':
+        return 'Не удалось импортировать. Прежние данные восстановлены.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Не удалось импортировать.';
       case 'settings.general.sectionTitle':
         return 'Основные';
       case 'settings.general.locale':
@@ -22616,6 +23484,46 @@ extension on TranslationsTr {
         return 'Seçenekleri Panodan İçe Aktar';
       case 'settings.importOptionsMsg':
         return 'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Yedeği İçe Aktar';
+      case 'settings.backup.importConfirmMsg':
+        return 'Bu işlem aboneliklerinizi yedekteki aboneliklerle değiştirir ve yedekteki ayarları uygular. Önce mevcut verilerin bir anlık görüntüsü kaydedilir; içe aktarma başarısız olursa otomatik olarak geri yüklenir.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'Bu cihazdaki ${count} abonelik yedekte yok ve kaldırılacak.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} abonelik ve ${settings} ayar içe aktarıldı.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Yedekteki ${count} abonelik, verileri geçersiz olduğu için atlandı.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} ayar atlandı; mevcut değerleriniz korundu.';
+      case 'settings.backup.reportWarpOff':
+        return 'İçe aktarma WARP\'ı kapattı. Bu cihazda yeniden etkinleştirin.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} abonelik arka planda indirilecek.';
+      case 'settings.backup.errInvalidFile':
+        return 'Bu geçerli bir ClashMiao yedek dosyası değil.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Bu yedek biçimi desteklenmiyor.';
+      case 'settings.backup.errNewerSchema':
+        return 'Bu yedek uygulamanın daha yeni bir sürümüyle oluşturulmuş. Lütfen önce uygulamayı güncelleyin.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Bu yedekteki aboneliklerin hiçbiri içe aktarılamıyor.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Mevcut verilerin anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey değiştirilmedi.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.';
+      case 'settings.backup.errRolledBack':
+        return 'İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
+      case 'settings.backup.errFailed':
+        return 'İçe aktarma başarısız oldu.';
       case 'settings.systemProxyEnabled':
         return 'Sistem proxy’si etkin';
       case 'settings.systemProxyDisabled':
@@ -23309,6 +24217,42 @@ extension on TranslationsZhCn {
         return '从剪贴板导入选项';
       case 'settings.importOptionsMsg':
         return '这将使用提供的值重写所有配置选项。您确定吗？';
+      case 'settings.backup.importConfirmTitle':
+        return '导入备份';
+      case 'settings.backup.importConfirmMsg':
+        return '这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) => '本机有 ${count} 个订阅不在备份中，导入后将被移除。';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '已导入 ${profiles} 个订阅、${settings} 项设置。';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) => '备份中有 ${count} 个订阅因数据无效被跳过。';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) => '有 ${count} 项设置被跳过，保留了当前值。';
+      case 'settings.backup.reportWarpOff':
+        return '导入时已关闭 WARP，请在本机重新启用。';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) => '有 ${count} 个订阅将在后台下载。';
+      case 'settings.backup.errInvalidFile':
+        return '这不是有效的 ClashMiao 备份文件。';
+      case 'settings.backup.errUnsupportedVersion':
+        return '不支持这种备份格式。';
+      case 'settings.backup.errNewerSchema':
+        return '此备份由更新版本的应用生成，请先升级应用。';
+      case 'settings.backup.errNoUsableProfiles':
+        return '此备份中没有可以导入的订阅。';
+      case 'settings.backup.errSnapshotFailed':
+        return '无法保存当前数据的快照，所以没有做任何改动。';
+      case 'settings.backup.errUnresolvedPrevious':
+        return '上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。';
+      case 'settings.backup.errRolledBack':
+        return '导入失败，已恢复到导入之前的数据。';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
+      case 'settings.backup.errFailed':
+        return '导入失败。';
       case 'settings.general.sectionTitle':
         return '一般选项';
       case 'settings.general.locale':
@@ -24121,6 +25065,42 @@ extension on TranslationsZhTw {
         return '從剪貼簿匯入選項';
       case 'settings.importOptionsMsg':
         return '這將使用提供的值複寫所有配置選項。您確定嗎？';
+      case 'settings.backup.importConfirmTitle':
+        return '匯入備份';
+      case 'settings.backup.importConfirmMsg':
+        return '這會用備份中的訂閱取代目前的訂閱，並套用備份中的設定。匯入前會先儲存目前資料的快照，匯入失敗時自動還原。';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) => '本機有 ${count} 個訂閱不在備份中，匯入後將被移除。';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '已匯入 ${profiles} 個訂閱、${settings} 項設定。';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) => '備份中有 ${count} 個訂閱因資料無效而被略過。';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) => '有 ${count} 項設定被略過，保留了目前的值。';
+      case 'settings.backup.reportWarpOff':
+        return '匯入時已關閉 WARP，請在本機重新啟用。';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) => '有 ${count} 個訂閱將在背景下載。';
+      case 'settings.backup.errInvalidFile':
+        return '這不是有效的 ClashMiao 備份檔案。';
+      case 'settings.backup.errUnsupportedVersion':
+        return '不支援這種備份格式。';
+      case 'settings.backup.errNewerSchema':
+        return '此備份由較新版本的應用程式建立，請先升級應用程式。';
+      case 'settings.backup.errNoUsableProfiles':
+        return '此備份中沒有可以匯入的訂閱。';
+      case 'settings.backup.errSnapshotFailed':
+        return '無法儲存目前資料的快照，因此沒有做任何變更。';
+      case 'settings.backup.errUnresolvedPrevious':
+        return '上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。';
+      case 'settings.backup.errRolledBack':
+        return '匯入失敗，已還原到匯入之前的資料。';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
+      case 'settings.backup.errFailed':
+        return '匯入失敗。';
       case 'settings.general.sectionTitle':
         return '一般';
       case 'settings.general.locale':

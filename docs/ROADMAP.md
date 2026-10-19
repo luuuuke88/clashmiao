@@ -9,7 +9,7 @@
 **结果**：模拟器点连接 → 系统 VPN 权限弹窗 → tun0 接管全部 TCP/UDP → UI「已连接」+ 节点延迟。`bin/test-e2e.sh` 跑 `integration_test/android_smart_mode_test.dart` 断言出口 IP 真实变化。
 
 **关键决策点**（已写入 [docs/ARCHITECTURE.md](ARCHITECTURE.md)）：
-- 进程模型：`engine.TunnelService` 与主 App 同进程（Manifest 无 `android:process`），通过 bindService / AIDL 与 Activity 交互
+- 进程模型：`engine.TunnelService` 与主 App 同进程（Manifest 无 `android:process`）；状态由进程级 `KernelCoordinator` 直接提供，不再 bindService / AIDL
 - `startForeground` 必须传 `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`（Android 14+）
 - onStartCommand 入口同步挂 placeholder 通知，避免 IO 线程启动 sing-box 超过 5s 超时被杀
 - Kotlin 端 2026-05 完成 clean-room 重写（Phase 1-7），17 个 host JVM 单测守 wire-format

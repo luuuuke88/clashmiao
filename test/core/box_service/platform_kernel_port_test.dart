@@ -132,6 +132,47 @@ void main() {
       await port.dispose();
     });
 
+    test('getSnapshot / 事件通道都带 retainedConfigPaths；事件缺该字段为未知', () async {
+      _mockHost(
+        'getSnapshot',
+        (_) async => pigeon.KernelSnapshotMsg(
+          epoch: 'e1',
+          version: 3,
+          status: 'stopped',
+          attempt: 1,
+          desired: 'off',
+          source: 'app',
+          appliedSeq: 2,
+          selectionsReplayNeeded: false,
+          retainedConfigPaths: ['/w/runtime-9.json'],
+        ),
+      );
+      final events = _Events();
+      final port = PlatformKernelPort(eventStream: events.call);
+      final s = await port.current();
+      expect(s.retainedConfigPaths, ['/w/runtime-9.json']);
+
+      final seen = <KernelSnapshot>[];
+      final sub = port.watch().listen(seen.add);
+      await pumpEventQueue();
+      events.last
+        ..add({
+          ..._event(version: 4, status: 'stopped', desired: 'off'),
+          'retainedConfigPaths': ['/w/runtime-9.json', '/w/runtime-10.json'],
+        })
+        ..add(_event(version: 5, status: 'stopped', desired: 'off'));
+      await pumpEventQueue();
+      final byVersion = {for (final x in seen) x.version: x};
+      expect(byVersion[4]?.retainedConfigPaths, [
+        '/w/runtime-9.json',
+        '/w/runtime-10.json',
+      ]);
+      expect(byVersion[5]?.retainedConfigPaths, isNull, reason: '更早的原生没有该字段');
+      await sub.cancel();
+      await port.dispose();
+      await events.closeAll();
+    });
+
     test('request 编码请求字段，回执解码（受理 / stale / wrongEpoch）', () async {
       pigeon.DesiredRequestMsg? sent;
       var reply = pigeon.ReceiptMsg(accepted: true, epoch: 'e1', appliedSeq: 3);

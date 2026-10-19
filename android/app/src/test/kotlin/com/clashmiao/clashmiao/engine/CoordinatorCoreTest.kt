@@ -449,6 +449,43 @@ class CoordinatorCoreTest {
     }
 
     @Test
+    fun `引用集合 在途启动任务读的文件在任务返回前一直被声明 即使意图已换`() {
+        val h = CoreHarness()
+        h.on(1, rev = 1)
+        assertEquals(listOf("/cfg/runtime-1.json"), h.snap.retainedConfigPaths)
+        h.on(2, rev = 2) // 旧任务已打取消标，但仍在阻塞调用里，随时可能读文件
+        assertEquals(listOf("/cfg/runtime-1.json", "/cfg/runtime-2.json"), h.snap.retainedConfigPaths)
+        h.off(3)
+        assertEquals(
+            "停止也一样：任务没返回，它的文件不能放",
+            listOf("/cfg/runtime-1.json", "/cfg/runtime-2.json"),
+            h.snap.retainedConfigPaths,
+        )
+        h.finishJob(JobResult.Cancelled)
+        h.finishTeardown()
+        h.assertSnap(status = KernelStatus.Stopped)
+        assertEquals(
+            "任务返回后只剩当前意图的 spec（本用例未模拟持久化回读）",
+            listOf("/cfg/runtime-2.json"),
+            h.snap.retainedConfigPaths,
+        )
+        assertTrue(h.snapshots.all { it.retainedConfigPaths != null })
+    }
+
+    @Test
+    fun `引用集合 构造时的持久化路径进首份快照 回读结果按存储更新`() {
+        val core = CoordinatorCore("e", { ServiceType.Vpn }, storedSpecPath = "/w/runtime-9.json")
+        assertEquals(1L, core.snapshot.version)
+        assertEquals(listOf("/w/runtime-9.json"), core.snapshot.retainedConfigPaths)
+        core.onSpecStored("/w/runtime-10.json")
+        assertEquals(listOf("/w/runtime-10.json"), core.snapshot.retainedConfigPaths)
+        core.onSpecStored(null, known = false)
+        assertNull(core.snapshot.retainedConfigPaths)
+        core.onSpecStored(null)
+        assertEquals(emptyList<String>(), core.snapshot.retainedConfigPaths)
+    }
+
+    @Test
     fun `旧执行启动成功但意图已变 不发布过时的 started 直接重载到新 revision`() {
         val h = CoreHarness()
         h.on(1, rev = 1)

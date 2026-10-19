@@ -136,6 +136,9 @@ class KernelCoordinatorTest {
         @Volatile var maxConcurrent = 0
         @Volatile var failWith: JobResult.Failed? = null
 
+        /** 每次 start 读取的运行时配置文件路径（执行层线程写入）。 */
+        val reads: MutableList<String> = java.util.Collections.synchronizedList(ArrayList<String>())
+
         private fun enter() {
             val n = concurrent.incrementAndGet()
             if (n > maxConcurrent) maxConcurrent = n
@@ -144,6 +147,7 @@ class KernelCoordinatorTest {
         override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext): JobResult {
             enter()
             try {
+                reads += spec.runtimeConfigPath
                 ctx.step("newService")
                 resources.incrementAndGet() // 尚未移交的局部实例
                 entered.countDown()
@@ -169,8 +173,19 @@ class KernelCoordinatorTest {
 
     private class MemoryKv : KeyValueStore {
         val m = HashMap<String, Any?>()
-        override fun getString(key: String) = m[key] as String?
+
+        /** 非空时对该键的写入抛异常（模拟持久化失败）。 */
+        var failPutFor: String? = null
+
+        /** 为真时所有读取抛异常（模拟存储不可读）。 */
+        var failReads = false
+        override fun getString(key: String): String? {
+            if (failReads) error("kv unreadable")
+            return m[key] as String?
+        }
+
         override fun putString(key: String, value: String) {
+            if (key == failPutFor) error("kv write failed")
             m[key] = value
         }
 
@@ -803,5 +818,167 @@ class KernelCoordinatorTest {
         platform.pump { snap.status == KernelStatus.Started }
         assertEquals(newestSeq, snap.appliedSeq)
         assertNull(snap.lastFailure)
+    }
+
+    // --- 原生声明的配置文件引用（快照 retainedConfigPaths）-------------------
+
+    private fun newProcess(): Triple<KernelCoordinator, FakePlatform, KernelExecutor> {
+        val p2 = FakePlatform()
+        val e2 = KernelExecutor(postToMain = p2::post)
+        val c2 = KernelCoordinator(p2, e2, KernelStore(kv), LogBuffer(5), "epoch-2")
+        p2.coordinator = c2
+        return Triple(c2, p2, e2)
+    }
+
+    @Test
+    fun `引用集合 持久化 spec 停止后仍在 stopped 快照里 新进程首份快照也列出 磁贴启动读的正是它`() {
+        coordinator.request(epoch, 1, Desired.On, spec(9))
+        platform.pump { snap.status == KernelStatus.Started }
+        assertEquals(listOf("/cfg/9.json"), snap.retainedConfigPaths)
+
+        coordinator.request(epoch, 2, Desired.Off, null)
+        platform.pump { snap.status == KernelStatus.Stopped }
+        assertNull(snap.activeConfigRevision)
+        assertEquals("停止后原生仍持久化着这份 spec", listOf("/cfg/9.json"), snap.retainedConfigPaths)
+        assertEquals("/cfg/9.json", KernelStore(kv).loadSpec()?.runtimeConfigPath)
+
+        // 新进程（Dart 尚未发任何请求）：attach 后的首份快照就是 stopped + 持久化路径。
+        val (c2, p2, e2) = newProcess()
+        try {
+            val seen = ArrayList<KernelSnapshot>()
+            c2.observeSnapshot { seen += it }
+            assertEquals(KernelStatus.Stopped, seen.first().status)
+            assertNull(seen.first().activeConfigRevision)
+            assertEquals(listOf("/cfg/9.json"), seen.first().retainedConfigPaths)
+            // 与意图无关的事件重新推导快照之后也一样（不是只有构造时的初值带着它）。
+            c2.onNetworkResolved(42)
+            c2.acknowledgeReplay(99)
+            p2.drain()
+            assertEquals(listOf("/cfg/9.json"), c2.snapshot.retainedConfigPaths)
+
+            // 磁贴启动：读的就是快照里声明的那份文件。
+            c2.toggleExternal(Source.Tile)
+            p2.pump { c2.snapshot.status == KernelStatus.Started }
+            assertEquals(listOf("/cfg/9.json"), p2.runtimes.single().reads)
+            assertEquals(listOf("/cfg/9.json"), c2.snapshot.retainedConfigPaths)
+
+            c2.toggleExternal(Source.Tile)
+            p2.pump { c2.snapshot.status == KernelStatus.Stopped }
+            assertEquals(listOf("/cfg/9.json"), c2.snapshot.retainedConfigPaths)
+            assertTrue(
+                "每一份快照都带引用集合，且都包含持久化路径",
+                seen.all { it.retainedConfigPaths?.contains("/cfg/9.json") == true },
+            )
+        } finally {
+            e2.shutdown()
+        }
+    }
+
+    @Test
+    fun `引用集合 换配置重载后跟随持久化 旧文件不再被引用`() {
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        platform.pump { snap.status == KernelStatus.Started }
+        coordinator.request(epoch, 2, Desired.On, spec(2))
+        platform.pump { snap.status == KernelStatus.Started && snap.activeConfigRevision == 2L }
+        assertEquals(listOf("/cfg/2.json"), snap.retainedConfigPaths)
+        assertEquals("/cfg/2.json", KernelStore(kv).loadSpec()?.runtimeConfigPath)
+
+        // libbox / 网络触发的重载读的是当前意图的 spec，引用集合不变。
+        val attempt = snap.attempt
+        coordinator.onReloadRequested(Source.System)
+        platform.pump { snap.status == KernelStatus.Started && snap.attempt == attempt + 1 }
+        assertEquals(
+            listOf("/cfg/1.json", "/cfg/2.json", "/cfg/2.json"),
+            platform.runtimes.flatMap { it.reads },
+        )
+        assertEquals(listOf("/cfg/2.json"), snap.retainedConfigPaths)
+    }
+
+    @Test
+    fun `引用集合 同 revision 换了路径 运行中的旧路径保留到内核停止`() {
+        val legacy = LaunchSpec("/cfg/runtime-config-5.json", "{}", "p", 5)
+        val renamed = LaunchSpec("/cfg/runtime-5.json", "{}", "p", 5)
+        coordinator.request(epoch, 1, Desired.On, legacy)
+        platform.pump { snap.status == KernelStatus.Started }
+        coordinator.request(epoch, 2, Desired.On, renamed)
+        platform.drain()
+        assertEquals(KernelStatus.Started, snap.status)
+        assertEquals("同 revision 不重载", 1, platform.runtimes.flatMap { it.reads }.size)
+        assertEquals(
+            "运行中的内核读的是旧路径，意图 / 持久化已是新路径",
+            listOf("/cfg/runtime-5.json", "/cfg/runtime-config-5.json"),
+            snap.retainedConfigPaths,
+        )
+
+        coordinator.request(epoch, 3, Desired.Off, null)
+        platform.pump { snap.status == KernelStatus.Stopped }
+        assertEquals(listOf("/cfg/runtime-5.json"), snap.retainedConfigPaths)
+    }
+
+    @Test
+    fun `引用集合 持久化写入失败时以存储里仍在的旧路径为准`() {
+        coordinator.request(epoch, 1, Desired.On, spec(1))
+        platform.pump { snap.status == KernelStatus.Started }
+        kv.failPutFor = KernelStore.KEY_SPEC
+        coordinator.request(epoch, 2, Desired.On, spec(2))
+        platform.pump { snap.status == KernelStatus.Started && snap.activeConfigRevision == 2L }
+        assertEquals("/cfg/1.json", KernelStore(kv).loadSpec()?.runtimeConfigPath)
+        assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), snap.retainedConfigPaths)
+
+        coordinator.request(epoch, 3, Desired.Off, null)
+        platform.pump { snap.status == KernelStatus.Stopped }
+        assertEquals(listOf("/cfg/1.json", "/cfg/2.json"), snap.retainedConfigPaths)
+
+        // 新进程的外部入口读的是存储里的旧路径：它必须一直被声明。
+        val (c2, p2, e2) = newProcess()
+        try {
+            assertEquals(listOf("/cfg/1.json"), c2.snapshot.retainedConfigPaths)
+            c2.external(Source.Boot, Desired.On)
+            p2.pump { c2.snapshot.status == KernelStatus.Started }
+            assertEquals(listOf("/cfg/1.json"), p2.runtimes.single().reads)
+        } finally {
+            e2.shutdown()
+        }
+    }
+
+    @Test
+    fun `引用集合 启动失败清掉运行 revision 后持久化路径仍在 存储为空时为空列表`() {
+        assertEquals(emptyList<String>(), snap.retainedConfigPaths)
+        platform.nextRuntime = {
+            FakeRuntime().also { it.failWith = JobResult.Failed(FailureCode.StartService, "x") }
+        }
+        coordinator.request(epoch, 1, Desired.On, spec(4))
+        platform.pump { snap.desired == Desired.Off && snap.status == KernelStatus.Stopped }
+        assertEquals(FailureCode.StartService, snap.lastFailure?.code)
+        assertNull(snap.activeConfigRevision)
+        assertEquals(listOf("/cfg/4.json"), snap.retainedConfigPaths)
+    }
+
+    @Test
+    fun `引用集合 存储读不出来时报未知 回读成功后恢复`() {
+        kv.m[KernelStore.KEY_SPEC] = KernelStore(MemoryKv()).encode(spec(7))
+        kv.failReads = true
+        val (c2, p2, e2) = newProcess()
+        try {
+            assertNull("不知道持久化了什么：Dart 一个都不能删", c2.snapshot.retainedConfigPaths)
+            kv.failReads = false
+            c2.request("epoch-2", 1, Desired.On, spec(8))
+            p2.pump { c2.snapshot.status == KernelStatus.Started }
+            assertEquals(listOf("/cfg/8.json"), c2.snapshot.retainedConfigPaths)
+        } finally {
+            e2.shutdown()
+        }
+    }
+
+    @Test
+    fun `引用集合 迁移来的旧版持久化 spec 也被声明`() {
+        kv.m[KernelStore.LEGACY_ACTIVE_CONFIG_PATH] = "/old/runtime-config-3.json"
+        kv.m[KernelStore.LEGACY_CONFIG_OPTIONS] = "{}"
+        val (c2, _, e2) = newProcess()
+        try {
+            assertEquals(listOf("/old/runtime-config-3.json"), c2.snapshot.retainedConfigPaths)
+        } finally {
+            e2.shutdown()
+        }
     }
 }

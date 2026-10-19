@@ -74,7 +74,9 @@ class KernelCoordinator(
     config: CoordinatorCore.Config = CoordinatorCore.Config(),
     private val selector: OutboundSelector = OutboundSelector { _, _ -> error("no outbound selector") },
 ) {
-    private val core = CoordinatorCore(epoch, platform::currentMode, config)
+    private val core: CoordinatorCore = readStoredSpecPath().let { (path, known) ->
+        CoordinatorCore(epoch, platform::currentMode, config, storedSpecPath = path, storedSpecKnown = known)
+    }
 
     /**
      * 选择栅栏：已就绪（started）的内核实例的 attempt，否则为空。主线程在**执行任何动作之前**
@@ -335,11 +337,18 @@ class KernelCoordinator(
                 }
                 is Effect.CancelTimer -> platform.cancel(e.key.slot)
 
-                is Effect.Persist -> try {
-                    store.saveDesired(e.desired)
-                    e.spec?.let(store::saveSpec)
-                } catch (t: Throwable) {
-                    platform.log("persist failed: $t")
+                is Effect.Persist -> {
+                    try {
+                        store.saveDesired(e.desired)
+                        e.spec?.let(store::saveSpec)
+                    } catch (t: Throwable) {
+                        platform.log("persist failed: $t")
+                    }
+                    // 引用集合以存储的真实内容为准（写入失败时旧 spec 仍在存储里）。
+                    if (e.spec != null) {
+                        val (path, known) = readStoredSpecPath()
+                        queue.addLast { core.onSpecStored(path, known) }
+                    }
                 }
 
                 is Effect.NoticeStarting -> handles[e.inst]?.noticeStarting(e.profileName)
@@ -347,6 +356,14 @@ class KernelCoordinator(
                 is Effect.NoticeStopUpdates -> handles[e.inst]?.noticeStopUpdates()
             }
         }
+    }
+
+    /** 存储里持久化 spec 的路径（外部入口在冷进程里读的就是它）；读取失败 = 未知。 */
+    private fun readStoredSpecPath(): Pair<String?, Boolean> = try {
+        store.loadSpec()?.runtimeConfigPath to true
+    } catch (t: Throwable) {
+        platform.log("load stored spec failed: $t")
+        null to false
     }
 
     // 执行层回调（已经在主线程）。

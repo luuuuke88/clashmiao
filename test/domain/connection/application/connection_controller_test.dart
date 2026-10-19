@@ -1328,7 +1328,21 @@ void main() {
         e.kernelStarted(on2, attempt: 2);
 
         expect(off1.single, const RequestSucceeded());
-        expect(off2, isNotEmpty);
+        // off2 的请求确实发出过（seq=4，先于仍在等标记落盘的 on2=3），且就是那条
+        // RPC 失败的 off；它唯一的终结结果是这次 RPC 失败。
+        expect(e.requests.map((r) => (r.seq, r.desired)).toList(), [
+          (off1Req.seq - 1, Desired.on),
+          (off1Req.seq, Desired.off),
+          (off1Req.seq + 2, Desired.off),
+          (off1Req.seq + 1, Desired.on),
+        ]);
+        final off2Req = e.requests[2];
+        expect(off2Req.seq, 4);
+        expect(off2Req.desired, Desired.off);
+        expect(on2.seq, 3);
+        expect(off2, [
+          const RequestFailed(UnexpectedFailure('Bad state: off2 rpc failed')),
+        ]);
         expect(
           store.log.where((l) => l.startsWith('clear')),
           isEmpty,

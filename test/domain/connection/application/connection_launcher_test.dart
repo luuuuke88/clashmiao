@@ -452,8 +452,8 @@ void main() {
     });
   });
 
-  // 删除只依据权威快照与本进程已知的引用，绝不看修改时间。
-  group('清理：受保护集合 = 快照运行的 ∪ 未终结请求的 ∪ 最近 3 个 revision', () {
+  // 删除只依据原生声明的引用与本进程已知的引用，绝不看修改时间、不做推断。
+  group('清理：快照声明的 ∪ 未终结请求的 ∪ 最近 3 个 revision 之外才删', () {
     late ConnectionLauncher l;
     setUp(() async {
       await addProfile('p1');
@@ -461,11 +461,14 @@ void main() {
       l = launcher();
     });
 
+    String at(String name) => '${workDir.path}/$name';
+
     KernelSnapshot kernel({
       int? active,
       KernelStatus status = KernelStatus.started,
       int appliedSeq = 0,
       int attempt = 1,
+      List<String>? retained = const [],
     }) => FakeKernelPort.snap(
       status: status,
       attempt: attempt,
@@ -473,14 +476,18 @@ void main() {
       source: DesiredSource.app,
       appliedSeq: appliedSeq,
       activeConfigRevision: active,
+      retainedConfigPaths: retained,
     );
 
-    File leftover(String name, {Duration age = Duration.zero}) =>
-        File('${workDir.path}/$name')
-          ..writeAsStringSync('{}')
-          ..setLastModifiedSync(DateTime.now().subtract(age));
+    File leftover(String name, {Duration age = Duration.zero}) => File(at(name))
+      ..writeAsStringSync('{}')
+      ..setLastModifiedSync(DateTime.now().subtract(age));
 
-    Future<LaunchSpec> prepareRevision(int id, int variant) async {
+    Future<LaunchSpec> prepareRevision(
+      ConnectionLauncher l,
+      int id,
+      int variant,
+    ) async {
       await writeConfig('p1', {
         'outbounds': [
           {'type': 'selector', 'tag': 'proxy$variant', 'outbounds': <String>[]},
@@ -489,14 +496,14 @@ void main() {
       return l.prepare(id);
     }
 
-    Future<void> finish(int id) async {
+    Future<void> finish(ConnectionLauncher l, int id) async {
       await l.bindSeq(id, await _noopSpec(), id);
       await l.discard(id);
       l.sendFinished(id);
       await l.idle;
     }
 
-    test('冷启动：首个快照之前什么都不删；之后只留运行中的（原生持久化引用）', () async {
+    test('冷启动：首个快照之前什么都不删；之后只留快照声明的与本进程最近准备的', () async {
       final f111 = leftover('runtime-111.json');
       final f222 = leftover('runtime-222.json', age: const Duration(days: 30));
       final legacy = leftover('runtime-config-5.json');
@@ -505,77 +512,234 @@ void main() {
 
       // 本进程准备过一次并释放：触发清理的时机，但还没有快照。
       final spec = await l.prepare(1);
-      await l.discard(1);
-      l.sendFinished(1);
-      await l.idle;
+      await finish(l, 1);
       for (final f in [f111, f222, legacy, legacyPrep, prep]) {
         expect(f.existsSync(), isTrue, reason: '${f.path} 首个快照之前不能删');
       }
 
-      // 首个权威快照：原生运行的是 222。
-      await l.observe(kernel(active: 222));
+      // 首个权威快照：原生声明它还会读 222。
+      await l.observe(kernel(active: 222, retained: [f222.path]));
 
-      expect(f222.existsSync(), isTrue, reason: '快照里运行 / 持久化引用的文件');
+      expect(f222.existsSync(), isTrue, reason: '原生声明的引用');
       expect(
         File(spec.runtimeConfigPath).existsSync(),
         isTrue,
         reason: '本进程最近准备的',
       );
-      expect(f111.existsSync(), isFalse, reason: '受保护集合之外');
+      expect(f111.existsSync(), isFalse, reason: '没有任何一方引用');
       expect(prep.existsSync(), isFalse);
       expect(legacyPrep.existsSync(), isFalse);
-      expect(
-        legacy.existsSync(),
-        isFalse,
-        reason: '运行中的 222 对应的新命名文件存在，说明旧版 seq 文件不是运行中的',
-      );
+      expect(legacy.existsSync(), isFalse, reason: '旧版 seq 文件同一规则：没被声明就删');
     });
 
-    test('冷启动挂上的运行实例引用的是旧版 seq 命名的文件：保守保留，不因新命名规则误删', () async {
+    test('持久化 spec → 停止 → Dart 重建 → stopped 首快照声明该路径：文件保留，磁贴启动读取成功', () async {
+      // 进程 1：连接、原生持久化这份 spec，随后断开。
+      await l.observe(kernel(status: KernelStatus.stopped));
+      final persisted = await l.prepare(1);
+      final content = File(persisted.runtimeConfigPath).readAsStringSync();
+      await l.bindSeq(1, persisted, 1);
+      await l.observe(
+        kernel(
+          active: persisted.configRevision,
+          appliedSeq: 1,
+          retained: [persisted.runtimeConfigPath],
+        ),
+      );
+      await l.discard(1);
+      l.sendFinished(1);
+      await l.observe(
+        kernel(
+          status: KernelStatus.stopped,
+          appliedSeq: 2,
+          retained: [persisted.runtimeConfigPath],
+        ),
+      );
+      await l.idle;
+
+      // Dart 重建（新进程 / 新 launcher：没有任何本进程引用）。
+      final l2 = launcher();
+      await l2.observe(
+        kernel(
+          status: KernelStatus.stopped,
+          appliedSeq: 2,
+          retained: [persisted.runtimeConfigPath],
+        ),
+      );
+      await l2.idle;
+      expect(File(persisted.runtimeConfigPath).existsSync(), isTrue);
+
+      // 本进程又准备并释放了 4 个别的 revision：最近 3 个里早已没有它。
+      for (var i = 1; i <= 4; i++) {
+        await prepareRevision(l2, i, 100 + i);
+        await finish(l2, i);
+      }
+      await l2.observe(
+        kernel(
+          status: KernelStatus.stopped,
+          appliedSeq: 2,
+          attempt: 2,
+          retained: [persisted.runtimeConfigPath],
+        ),
+      );
+      await l2.idle;
+
+      // 磁贴启动（原生，没有 Dart 参与）读取持久化的路径：文件完整可解析。
+      final read = File(persisted.runtimeConfigPath).readAsStringSync();
+      expect(read, content);
+      expect(jsonDecode(read), isA<Map<String, Object?>>());
+    });
+
+    test('同 revision 新文件已生成，但请求失败、原生仍引用旧版 seq 路径：旧文件保留', () async {
       final legacy = leftover('runtime-config-5.json');
-      final stray = leftover('runtime-111.json');
+      // 原生以旧路径运行（同一份配置内容）。
+      await l.observe(kernel(appliedSeq: 5, retained: [legacy.path]));
 
-      await l.observe(kernel(active: 999)); // runtime-999.json 并不存在
+      final spec = await l.prepare(1);
+      expect(File(spec.runtimeConfigPath).existsSync(), isTrue);
+      await l.observe(
+        kernel(
+          active: spec.configRevision,
+          appliedSeq: 5,
+          retained: [legacy.path],
+        ),
+      );
+      // 请求 RPC 失败：从未送达原生，原生的引用不变。
+      await l.bindSeq(1, spec, 6);
+      await l.discard(1);
+      l.sendFinished(1);
+      await l.idle;
 
-      expect(legacy.existsSync(), isTrue);
+      expect(legacy.existsSync(), isTrue, reason: '新文件存在不能证明原生放弃了旧路径');
+      expect(
+        File(spec.runtimeConfigPath).existsSync(),
+        isTrue,
+        reason: '最近准备的',
+      );
+
+      // 只有原生不再声明它之后才删。
+      await l.observe(
+        kernel(
+          active: spec.configRevision,
+          appliedSeq: 7,
+          retained: [spec.runtimeConfigPath],
+        ),
+      );
+      expect(legacy.existsSync(), isFalse);
+      expect(File(spec.runtimeConfigPath).existsSync(), isTrue);
+    });
+
+    test('快照没有 retainedConfigPaths 字段（更早的原生）：一个都不删', () async {
+      final stray = leftover(
+        'runtime-111.json',
+        age: const Duration(days: 400),
+      );
+      final legacy = leftover('runtime-config-5.json');
+      final prep = leftover('runtime-prep-old.json');
+      final old = KernelSnapshot.fromJson({
+        'epoch': 'e-old',
+        'version': 3,
+        'status': 'stopped',
+        'attempt': 1,
+        'desired': 'off',
+        'source': 'app',
+        'appliedSeq': 0,
+        'activeConfigRevision': null,
+        'selectionsReplayNeeded': false,
+        'lastFailure': null,
+      });
+      expect(old.retainedConfigPaths, isNull);
+      await l.observe(old);
+
+      // 准备并释放 5 个 revision：最近 3 个之外的照样不删。
+      final specs = <LaunchSpec>[];
+      for (var i = 1; i <= 5; i++) {
+        specs.add(await prepareRevision(l, i, i));
+        await finish(l, i);
+      }
+      await l.observe(old.copyWith(version: 4, status: KernelStatus.stopped));
+      await l.idle;
+
+      for (final f in [stray, legacy, prep]) {
+        expect(f.existsSync(), isTrue, reason: f.path);
+      }
+      for (final s in specs) {
+        expect(File(s.runtimeConfigPath).existsSync(), isTrue);
+      }
+
+      // 之后的快照带上了字段：恢复正常清理。
+      await l.observe(kernel(status: KernelStatus.stopped));
+      expect(stray.existsSync(), isFalse);
+      expect(File(specs[0].runtimeConfigPath).existsSync(), isFalse);
+      expect(File(specs[4].runtimeConfigPath).existsSync(), isTrue);
+    });
+
+    test('引用按规范化的绝对路径比较：多余的 ./.. 与符号链接前缀都能对上', () async {
+      final legacy = leftover('runtime-config-5.json');
+      final viaDots = leftover('runtime-config-6.json');
+      final stray = leftover('runtime-config-7.json');
+      final link = Link('${tmp.path}/alias')..createSync(workDir.path);
+
+      await l.observe(
+        kernel(
+          status: KernelStatus.stopped,
+          retained: [
+            '${link.path}/runtime-config-5.json',
+            '${workDir.path}/./sub/../runtime-config-6.json',
+          ],
+        ),
+      );
+
+      expect(legacy.existsSync(), isTrue, reason: '经符号链接前缀声明');
+      expect(viaDots.existsSync(), isTrue, reason: '未规范化的路径');
       expect(stray.existsSync(), isFalse);
     });
 
-    test('不看文件年龄：很旧但受保护的保留，刚写的但不受保护的照删', () async {
+    test('不看文件年龄：很旧但被声明的保留，刚写的但没人引用的照删', () async {
       final ancientActive = leftover(
         'runtime-7.json',
         age: const Duration(days: 400),
       );
       final freshStray = leftover('runtime-8.json');
 
-      await l.observe(kernel(active: 7));
+      await l.observe(kernel(active: 7, retained: [ancientActive.path]));
 
       expect(ancientActive.existsSync(), isTrue);
       expect(freshStray.existsSync(), isFalse);
     });
 
-    test('revision 变更循环：只留运行中的与最近 3 个，其余回收', () async {
+    test('revision 变更循环：只留声明的与最近 3 个，其余回收', () async {
       await l.observe(kernel(status: KernelStatus.stopped));
       final specs = <LaunchSpec>[];
       for (var i = 1; i <= 6; i++) {
-        final spec = await prepareRevision(i, i);
+        final spec = await prepareRevision(l, i, i);
         specs.add(spec);
         if (i == 1) {
-          // 第 1 份启动并运行着。
-          await l.observe(kernel(active: spec.configRevision, appliedSeq: 1));
+          // 第 1 份启动并运行着（原生声明它）。
+          await l.observe(
+            kernel(
+              active: spec.configRevision,
+              appliedSeq: 1,
+              retained: [spec.runtimeConfigPath],
+            ),
+          );
         }
-        await finish(i);
+        await finish(l, i);
       }
       bool ex(int i) => File(specs[i].runtimeConfigPath).existsSync();
 
-      expect(ex(0), isTrue, reason: '运行中的，即使早已不在最近 3 个里');
+      expect(ex(0), isTrue, reason: '原生声明的，即使早已不在最近 3 个里');
       expect(ex(1), isFalse);
       expect(ex(2), isFalse);
       expect(ex(3) && ex(4) && ex(5), isTrue, reason: '最近 3 个');
 
-      // 运行中的换成第 6 份：第 1 份释放。
+      // 原生的引用换成第 6 份：第 1 份释放。
       await l.observe(
-        kernel(active: specs[5].configRevision, appliedSeq: 6, attempt: 2),
+        kernel(
+          active: specs[5].configRevision,
+          appliedSeq: 6,
+          attempt: 2,
+          retained: [specs[5].runtimeConfigPath],
+        ),
       );
       expect(ex(0), isFalse);
       expect(ex(3) && ex(4) && ex(5), isTrue);
@@ -590,7 +754,7 @@ void main() {
       file.setLastModifiedSync(past);
       final before = file.readAsStringSync();
 
-      // 执行层还没来得及读文件：快照 starting（尚无运行中的 revision）。
+      // 执行层还没来得及读文件：快照 starting。
       await l.observe(kernel(status: KernelStatus.starting, appliedSeq: 1));
       // 同 revision 的请求 2 被受理（沿用在途的启动），随后终结。
       final second = await l.prepare(2);

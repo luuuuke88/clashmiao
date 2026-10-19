@@ -281,6 +281,9 @@ struct KernelSnapshotMsg: Hashable {
   var activeConfigRevision: Int64? = nil
   var lastFailure: KernelFailureMsg? = nil
   var selectionsReplayNeeded: Bool
+  /// 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+  /// 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+  var retainedConfigPaths: [String]? = nil
 
 
   // swift-format-ignore: AlwaysUseLowerCamelCase
@@ -295,6 +298,7 @@ struct KernelSnapshotMsg: Hashable {
     let activeConfigRevision: Int64? = nilOrValue(pigeonVar_list[7])
     let lastFailure: KernelFailureMsg? = nilOrValue(pigeonVar_list[8])
     let selectionsReplayNeeded = pigeonVar_list[9] as! Bool
+    let retainedConfigPaths: [String]? = nilOrValue(pigeonVar_list[10])
 
     return KernelSnapshotMsg(
       epoch: epoch,
@@ -306,7 +310,8 @@ struct KernelSnapshotMsg: Hashable {
       appliedSeq: appliedSeq,
       activeConfigRevision: activeConfigRevision,
       lastFailure: lastFailure,
-      selectionsReplayNeeded: selectionsReplayNeeded
+      selectionsReplayNeeded: selectionsReplayNeeded,
+      retainedConfigPaths: retainedConfigPaths
     )
   }
   func toList() -> [Any?] {
@@ -321,6 +326,7 @@ struct KernelSnapshotMsg: Hashable {
       activeConfigRevision,
       lastFailure,
       selectionsReplayNeeded,
+      retainedConfigPaths,
     ]
   }
   static func == (lhs: KernelSnapshotMsg, rhs: KernelSnapshotMsg) -> Bool {

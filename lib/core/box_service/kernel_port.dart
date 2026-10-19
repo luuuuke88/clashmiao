@@ -186,6 +186,7 @@ class KernelFailure {
 ///  "desired":"on","source":"app","appliedSeq":7,
 ///  "activeConfigRevision":5 | null,
 ///  "selectionsReplayNeeded":false,
+///  "retainedConfigPaths":["/…/runtime-5.json", …] | null | （缺省）,
 ///  "lastFailure":{"code":"startTimeout","message":"","attempt":2,"seq":6|null} | null}
 /// ```
 class KernelSnapshot {
@@ -200,6 +201,7 @@ class KernelSnapshot {
     required this.selectionsReplayNeeded,
     this.activeConfigRevision,
     this.lastFailure,
+    this.retainedConfigPaths,
   });
 
   /// 进程纪元：原生进程（或模拟端口实例）启动时生成的随机 id。变化 = 重启，
@@ -229,6 +231,12 @@ class KernelSnapshot {
 
   /// 当前 attempt 是全新内核实例，尚未被 Dart 确认重放手选。
   final bool selectionsReplayNeeded;
+
+  /// 内核（原生协调器 / 模拟端口）之后**可能还会读取**的运行时配置文件路径：
+  /// 持久化 spec（磁贴、开机等外部入口用）、当前意图、运行中、在途启动。
+  /// 为 null = 未知（载荷没有该字段——更早的原生——或无法确定）：调用方不得
+  /// 据此删除任何运行时配置文件。
+  final List<String>? retainedConfigPaths;
 
   /// 解析事件通道载荷。结构非法（缺字段、必填 bool 类型不对、未知 status/desired）抛
   /// [FormatException]；调用方应丢弃该条并记日志，不得合成默认值。
@@ -261,6 +269,7 @@ class KernelSnapshot {
       activeConfigRevision: rev is num ? rev.toInt() : null,
       lastFailure: KernelFailure.tryFromJson(json['lastFailure']),
       selectionsReplayNeeded: json['selectionsReplayNeeded'] as bool,
+      retainedConfigPaths: _parsePaths(json['retainedConfigPaths']),
     );
   }
 
@@ -274,8 +283,29 @@ class KernelSnapshot {
     'appliedSeq': appliedSeq,
     'activeConfigRevision': activeConfigRevision,
     'selectionsReplayNeeded': selectionsReplayNeeded,
+    'retainedConfigPaths': retainedConfigPaths,
     'lastFailure': lastFailure?.toJson(),
   };
+
+  /// 引用路径列表；不是全为字符串的列表就当作未知（null），宁可不删也不猜。
+  static List<String>? _parsePaths(Object? raw) {
+    if (raw is! List) return null;
+    final out = <String>[];
+    for (final p in raw) {
+      if (p is! String) return null;
+      out.add(p);
+    }
+    return List.unmodifiable(out);
+  }
+
+  static bool _samePaths(List<String>? a, List<String>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
 
   /// 复制并覆盖字段。`clearFailure` 用于把 lastFailure 置空（与「不传」区分）。
   KernelSnapshot copyWith({
@@ -290,6 +320,8 @@ class KernelSnapshot {
     KernelFailure? lastFailure,
     bool clearFailure = false,
     bool? selectionsReplayNeeded,
+    List<String>? retainedConfigPaths,
+    bool clearRetainedConfigPaths = false,
   }) {
     return KernelSnapshot(
       epoch: epoch,
@@ -305,6 +337,9 @@ class KernelSnapshot {
       lastFailure: clearFailure ? null : (lastFailure ?? this.lastFailure),
       selectionsReplayNeeded:
           selectionsReplayNeeded ?? this.selectionsReplayNeeded,
+      retainedConfigPaths: clearRetainedConfigPaths
+          ? null
+          : (retainedConfigPaths ?? this.retainedConfigPaths),
     );
   }
 
@@ -320,7 +355,8 @@ class KernelSnapshot {
       other.appliedSeq == appliedSeq &&
       other.activeConfigRevision == activeConfigRevision &&
       other.lastFailure == lastFailure &&
-      other.selectionsReplayNeeded == selectionsReplayNeeded;
+      other.selectionsReplayNeeded == selectionsReplayNeeded &&
+      _samePaths(other.retainedConfigPaths, retainedConfigPaths);
 
   @override
   int get hashCode => Object.hash(
@@ -334,6 +370,7 @@ class KernelSnapshot {
     activeConfigRevision,
     lastFailure,
     selectionsReplayNeeded,
+    retainedConfigPaths == null ? null : Object.hashAll(retainedConfigPaths!),
   );
 
   @override
@@ -341,6 +378,7 @@ class KernelSnapshot {
       'KernelSnapshot($epoch v$version ${status.name} attempt=$attempt '
       'desired=${desired.name}/${source.name} appliedSeq=$appliedSeq '
       'rev=$activeConfigRevision replay=$selectionsReplayNeeded '
+      'retained=${retainedConfigPaths?.length ?? 'unknown'} '
       'failure=$lastFailure)';
 }
 

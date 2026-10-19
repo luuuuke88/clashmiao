@@ -29,6 +29,28 @@ Future<HttpServer> _countingServer(void Function() onRequest) async {
   return server;
 }
 
+/// 直接改存储里的 `lastUpdate` / `updateInterval`，让订阅「到期」或「未到期」。
+///
+/// 这两个字段属于刷新流程（`lastUpdate`）与用户编辑流程（间隔），`updateProfile`
+/// 不再允许调用方用旧快照改写 `lastUpdate`，所以测试直接改偏好里的 JSON——
+/// 与「应用上次运行时写下的状态」是同一回事。
+Future<void> _setTiming(
+  ProfileRepository repo,
+  String id, {
+  required Duration updateInterval,
+  required DateTime lastUpdate,
+}) async {
+  final list = (jsonDecode(repo.prefs.getString('clashmiao_profiles')!) as List)
+      .cast<Map<String, dynamic>>();
+  for (final json in list) {
+    if (json['id'] == id) {
+      json['updateInterval'] = updateInterval.inHours;
+      json['lastUpdate'] = lastUpdate.toIso8601String();
+    }
+  }
+  await repo.prefs.setString('clashmiao_profiles', jsonEncode(list));
+}
+
 void main() {
   group('isProfileDue（纯函数）', () {
     final now = DateTime(2026, 7, 19, 12);
@@ -137,17 +159,17 @@ void main() {
 
       // 手动把 due 的 lastUpdate 拨回很久以前（超过 updateInterval），
       // fresh 的 lastUpdate 保持刚刚（未到期）。
-      await repo.updateProfile(
-        dueProfile.copyWith(
-          updateInterval: const Duration(hours: 1),
-          lastUpdate: now.subtract(const Duration(hours: 2)),
-        ),
+      await _setTiming(
+        repo,
+        dueProfile.id,
+        updateInterval: const Duration(hours: 1),
+        lastUpdate: now.subtract(const Duration(hours: 2)),
       );
-      await repo.updateProfile(
-        freshProfile.copyWith(
-          updateInterval: const Duration(hours: 6),
-          lastUpdate: now,
-        ),
+      await _setTiming(
+        repo,
+        freshProfile.id,
+        updateInterval: const Duration(hours: 6),
+        lastUpdate: now,
       );
       // addByUrl 已经各打了一次 server，重新清零方便下面精确断言。
       dueCallCount = 0;
@@ -172,11 +194,11 @@ void main() {
       final profile = await repo.addByUrl(
         'http://localhost:${server.port}/due',
       );
-      await repo.updateProfile(
-        profile.copyWith(
-          updateInterval: const Duration(hours: 1),
-          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
+      await _setTiming(
+        repo,
+        profile.id,
+        updateInterval: const Duration(hours: 1),
+        lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
       );
       callCount = 0;
 
@@ -215,11 +237,11 @@ void main() {
         'http://localhost:${okServer.port}/ok',
         customName: 'ok',
       );
-      await repo.updateProfile(
-        okProfile.copyWith(
-          updateInterval: const Duration(hours: 1),
-          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
+      await _setTiming(
+        repo,
+        okProfile.id,
+        updateInterval: const Duration(hours: 1),
+        lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
       );
 
       final scheduler = ProfileUpdateScheduler(
@@ -267,11 +289,11 @@ void main() {
       final profile = await repo.addByUrl(
         'http://localhost:${server.port}/due',
       );
-      await repo.updateProfile(
-        profile.copyWith(
-          updateInterval: const Duration(hours: 1),
-          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
+      await _setTiming(
+        repo,
+        profile.id,
+        updateInterval: const Duration(hours: 1),
+        lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
       );
       callCount = 0;
 
@@ -298,11 +320,11 @@ void main() {
       final profile = await repo.addByUrl(
         'http://localhost:${server.port}/due',
       );
-      await repo.updateProfile(
-        profile.copyWith(
-          updateInterval: const Duration(hours: 1),
-          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
+      await _setTiming(
+        repo,
+        profile.id,
+        updateInterval: const Duration(hours: 1),
+        lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
       );
       callCount = 0;
 
@@ -353,11 +375,11 @@ void main() {
         final profile = await repo.addByUrl(
           'http://localhost:${server.port}/due',
         );
-        await repo.updateProfile(
-          profile.copyWith(
-            updateInterval: const Duration(hours: 1),
-            lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
-          ),
+        await _setTiming(
+          repo,
+          profile.id,
+          updateInterval: const Duration(hours: 1),
+          lastUpdate: DateTime.now().subtract(const Duration(hours: 2)),
         );
         callCount = 0;
 

@@ -4,7 +4,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/domain/profile/model/profile_patch.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
@@ -304,24 +304,21 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
     setState(() => _busy = true);
     try {
       final repo = await ref.read(profileRepositoryProvider.future);
+      // 一次补丁提交：只改本页能编辑的字段，不会把页面持有的旧快照整体写回，
+      // 也就不会覆盖刷新期间写入的 lastUpdate / subInfo。
       await repo.editProfile(
         profile.id,
-        newName: name,
-        newUrl: _isRemoteProfile(profile) ? url : null,
-      );
-      await repo.updateProfile(
-        profile.copyWith(
-          name: name,
-          url: _isRemoteProfile(profile) ? url : profile.url,
-          updateInterval: _updateInterval ?? profile.updateInterval,
-          customUserAgent: _customUserAgent,
-          advancedConfig: AdvancedConfig(
-            remoteDnsOverride: profile.advancedConfig?.remoteDnsOverride,
-            muxEnabled: _muxEnabled,
-            muxProtocol: profile.advancedConfig?.muxProtocol ?? 'h2mux',
-            muxConcurrency: profile.advancedConfig?.muxConcurrency ?? 4,
-            fragmentEnabled: profile.advancedConfig?.fragmentEnabled ?? false,
-            fragmentRange: profile.advancedConfig?.fragmentRange,
+        patch: ProfilePatch(
+          name: Patch.set(name),
+          url: _isRemoteProfile(profile) ? Patch.set(url) : const Patch.unset(),
+          updateInterval: _updateInterval == null
+              ? const Patch.unset()
+              : Patch.set(_updateInterval!),
+          customUserAgent: _customUserAgent == null
+              ? const Patch.clear()
+              : Patch.set(_customUserAgent!),
+          advancedConfig: Patch.set(
+            AdvancedConfigPatch(muxEnabled: Patch.set(_muxEnabled)),
           ),
         ),
       );

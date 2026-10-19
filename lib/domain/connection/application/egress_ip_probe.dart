@@ -10,10 +10,16 @@
 // - 节奏：串行最多 4 次，单次 4 s，失败后间隔 1 s，首次成功即停（总上限约
 //   20 s）；
 // - 作废：`(epoch, attempt)` 变化、离开 connected、手动查询都会使在途探测作废，
-//   旧结果被丢弃。
+//   旧结果被丢弃；
+// - 生效节点变化：同一 attempt 内，实时分组解析出的生效节点变了（用户手选、
+//   自动选择组按测速结果换了节点、旧手选记录被迁移到运行时分组），出口随之
+//   改变——重新探测（自动检测关闭时把卡片退回「点击检测」），不让卡片停在旧
+//   节点的出口上（真机验收 BUG-2：磁贴重启后卡片 HK、实际 SG）。
 
 import 'dart:async';
 
+import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
@@ -108,10 +114,19 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       (_, next) => _onConnection(next),
       fireImmediately: true,
     );
+    _groupsSub = _ref.listen<AsyncValue<List<OutboundGroup>>>(
+      outboundGroupsProvider,
+      (_, next) => _onGroups(next.valueOrNull ?? const []),
+      fireImmediately: true,
+    );
   }
 
   final Ref _ref;
   ProviderSubscription<_ConnView>? _sub;
+  ProviderSubscription<AsyncValue<List<OutboundGroup>>>? _groupsSub;
+
+  /// 本段连接里实时分组最近解析出的生效节点（null = 还没见过实时分组）。
+  String? _activeNode;
 
   /// 作废令牌：每次状态切换 / 新查询 +1；在途探测完成时比对，不符即丢弃。
   int _generation = 0;
@@ -144,6 +159,7 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       _generation++;
       _session = key;
       _autoStarted = false;
+      _activeNode = null;
       _dropQueuedManual();
       state = const EgressIpState(EgressIpStatus.idle);
     }
@@ -157,6 +173,30 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
     } else if (!_autoStarted && _autoCheckEnabled) {
       _autoStarted = true;
       unawaited(_run());
+    }
+  }
+
+  /// 实时分组变化：生效节点变了就重新探测。第一次看到实时分组只记基线——
+  /// 连接后的那次探测已经（或即将）在重放确认之后发起。
+  void _onGroups(List<OutboundGroup> groups) {
+    if (_session == null) return;
+    if (!groups.any((g) => g.items.isNotEmpty)) return;
+    final node = resolveActiveProxy(groups)?.tag;
+    if (node == null) return;
+    final previous = _activeNode;
+    _activeNode = node;
+    if (previous == null || previous == node) return;
+    if (_replayPending) return; // 重放确认后的那次探测会看到最终节点
+    if (_queuedManual != null) return;
+    if (_autoCheckEnabled) {
+      _autoStarted = true;
+      unawaited(_run());
+    } else if (state.status == EgressIpStatus.success ||
+        state.status == EgressIpStatus.checking ||
+        state.status == EgressIpStatus.failed) {
+      // 不自动查：旧节点的结果已经不对了，退回「点击检测」，在途的作废。
+      _generation++;
+      state = const EgressIpState(EgressIpStatus.idle);
     }
   }
 
@@ -209,6 +249,7 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
   @override
   void dispose() {
     _sub?.close();
+    _groupsSub?.close();
     _generation++;
     _dropQueuedManual();
     super.dispose();

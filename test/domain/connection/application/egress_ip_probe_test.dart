@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
@@ -44,6 +46,25 @@ ConnectionSnapshot _conn({
   replayPending: replayPending,
 );
 
+/// 实时分组流的替身（测试里手动推送）。
+final _groupsBus = <StreamController<List<OutboundGroup>>>[];
+
+/// 推一份实时分组：主选择器选中 [node]。
+void _pushActive(FakeAsync fa, String node) {
+  _groupsBus.last.add([
+    OutboundGroup(
+      tag: 'select',
+      type: 'selector',
+      selected: node,
+      items: const [
+        OutboundProxy(tag: 'hk', type: 'vless'),
+        OutboundProxy(tag: 'sg', type: 'vless'),
+      ],
+    ),
+  ]);
+  fa.flushMicrotasks();
+}
+
 void _sim(
   String name,
   void Function(
@@ -64,10 +85,13 @@ void _sim(
     final prefs = await SharedPreferences.getInstance();
     fakeAsync((fa) {
       final script = _Script(fa, results);
+      final groups = StreamController<List<OutboundGroup>>.broadcast();
+      _groupsBus.add(groups);
       final c = ProviderContainer(
         overrides: [
           sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
           egressProbeFetchProvider.overrideWithValue(script.call),
+          outboundGroupsProvider.overrideWith((_) => groups.stream),
           connectionControllerProvider.overrideWith(
             (ref) => FakeConnectionController(
               ref,
@@ -90,6 +114,7 @@ void _sim(
         );
       } finally {
         c.dispose();
+        unawaited(groups.close());
         fa.flushMicrotasks();
       }
     });
@@ -393,6 +418,80 @@ void main() {
       fa.elapse(const Duration(seconds: 5));
 
       expect(s.callTimes, isEmpty);
+    }, results: [() => _ok]);
+  });
+
+  // 真机验收 BUG-2：磁贴重启后卡片停在旧出口（HK），真实出口已是 SG。一次性
+  // 探测之后内核的生效节点还会变（自动选择组按测速结果换节点、手选、旧手选迁
+  // 移到运行时分组），卡片必须跟着重新探测。
+  group('生效节点变化重新探测', () {
+    _sim(
+      '同一 attempt 内生效节点变化 → 重新探测，卡片显示新出口',
+      (fa, c, ctl, s) {
+        ctl.set(_conn());
+        fa.flushMicrotasks();
+        expect(s.callTimes, hasLength(1));
+        expect(_state(c).result, _ok);
+
+        _pushActive(fa, 'hk'); // 第一次看到实时分组：只记基线
+        expect(s.callTimes, hasLength(1));
+
+        _pushActive(fa, 'hk'); // 没变：不查
+        expect(s.callTimes, hasLength(1));
+
+        _pushActive(fa, 'sg'); // 变了：重新查
+        expect(s.callTimes, hasLength(2));
+        expect(_state(c).status, EgressIpStatus.success);
+        expect(
+          _state(c).result,
+          const EgressIpResult(ip: '198.51.100.9', countryCode: 'SG'),
+        );
+      },
+      results: [
+        () => _ok,
+        () => const EgressIpResult(ip: '198.51.100.9', countryCode: 'SG'),
+      ],
+    );
+
+    _sim(
+      '自动检测关闭：生效节点变化后旧结果作废，卡片回到「点击检测」',
+      (fa, c, ctl, s) {
+        ctl.set(_conn());
+        fa.flushMicrotasks();
+        unawaited(c.read(egressIpProbeProvider.notifier).checkNow());
+        fa.flushMicrotasks();
+        expect(_state(c).status, EgressIpStatus.success);
+
+        _pushActive(fa, 'hk');
+        _pushActive(fa, 'sg');
+        expect(s.callTimes, hasLength(1), reason: '自动检测关闭时不自己查');
+        expect(_state(c).status, EgressIpStatus.idle, reason: '旧节点的出口不能继续挂着');
+      },
+      results: [() => _ok],
+      autoCheck: false,
+    );
+
+    _sim('手选重放确认前的节点变化不触发额外探测（确认后那次已看到最终节点）', (fa, c, ctl, s) {
+      ctl.set(_conn(replayPending: true));
+      fa.flushMicrotasks();
+      _pushActive(fa, 'hk');
+      _pushActive(fa, 'sg');
+      expect(s.callTimes, isEmpty);
+
+      ctl.set(_conn(replayPending: false));
+      fa.flushMicrotasks();
+      expect(s.callTimes, hasLength(1));
+    }, results: [() => _ok]);
+
+    _sim('新的 attempt：基线重置，第一次看到的分组不触发探测', (fa, c, ctl, s) {
+      ctl.set(_conn());
+      fa.flushMicrotasks();
+      _pushActive(fa, 'hk');
+      ctl.set(_conn(attempt: 2));
+      fa.flushMicrotasks();
+      expect(s.callTimes, hasLength(2), reason: '新 attempt 本身探测一次');
+      _pushActive(fa, 'sg');
+      expect(s.callTimes, hasLength(2), reason: '新 attempt 的第一份分组只是基线');
     }, results: [() => _ok]);
   });
 }

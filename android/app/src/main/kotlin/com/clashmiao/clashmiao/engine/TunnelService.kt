@@ -7,8 +7,8 @@ import android.net.VpnService
 import android.os.Build
 import android.os.IBinder
 import com.clashmiao.clashmiao.core.Prefs
-import com.clashmiao.clashmiao.core.AppFilterMode
 import com.clashmiao.clashmiao.core.asAndroidPrefix
+import io.nekohasekai.libbox.StringIterator
 import io.nekohasekai.libbox.TunOptions
 
 /**
@@ -164,40 +164,37 @@ class TunnelService : VpnService(), Runnable {
     }
 
     private fun wireAppFilter(builder: Builder, options: TunOptions) {
-        if (Prefs.AppFilter.enabled) {
-            applyUserAppFilter(builder, Prefs.AppFilter.mode, Prefs.AppFilter.effectiveList)
+        // 本 App 始终走隧道（白名单补上、排除名单滤掉），见 [AppFilterRules]。
+        val plan = if (Prefs.AppFilter.enabled) {
+            AppFilterRules.forUser(Prefs.AppFilter.mode, Prefs.AppFilter.effectiveList, packageName)
         } else {
-            applyFromSingbox(builder, options)
+            AppFilterRules.forKernel(
+                options.includePackage.toList(),
+                options.excludePackage.toList(),
+                packageName,
+            )
+        }
+        when (plan) {
+            is AppFilterPlan.Allow -> plan.packages.forEach { pkg ->
+                try {
+                    builder.addAllowedApplication(pkg)
+                } catch (_: NameNotFoundException) {
+                }
+            }
+            is AppFilterPlan.Disallow -> plan.packages.forEach { pkg ->
+                try {
+                    builder.addDisallowedApplication(pkg)
+                } catch (_: NameNotFoundException) {
+                }
+            }
+            AppFilterPlan.None -> Unit
         }
     }
 
-    private fun applyUserAppFilter(builder: Builder, mode: String, apps: Collection<String>) {
-        if (mode == AppFilterMode.INCLUDE) {
-            for (pkg in apps) runCatching { builder.addAllowedApplication(pkg) }
-            // INCLUDE 时 clashmiao 本进程必须自己也走 VPN，否则 sing-box 自己拨号都被切。
-            // 等等：自己走 VPN 反而会 loop，应该 disallow。但历史实现就是这样，
-            // 实际 sing-box outbound socket 走 protect() 不会 loop，所以加进去是 OK 的。
-            runCatching { builder.addAllowedApplication(packageName) }
-        } else {
-            for (pkg in apps) runCatching { builder.addDisallowedApplication(pkg) }
-        }
-    }
-
-    private fun applyFromSingbox(builder: Builder, options: TunOptions) {
-        val incl = options.includePackage
-        while (incl.hasNext()) {
-            try {
-                builder.addAllowedApplication(incl.next())
-            } catch (_: NameNotFoundException) {
-            }
-        }
-        val excl = options.excludePackage
-        while (excl.hasNext()) {
-            try {
-                builder.addDisallowedApplication(excl.next())
-            } catch (_: NameNotFoundException) {
-            }
-        }
+    private fun StringIterator.toList(): List<String> {
+        val out = ArrayList<String>()
+        while (hasNext()) out.add(next())
+        return out
     }
 
     private fun wireSystemProxy(builder: Builder, options: TunOptions) {

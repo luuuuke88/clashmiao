@@ -270,6 +270,7 @@ const _kEnableFakeDns = 'clashmiao_enable_fake_dns';
 const _kIndependentDnsCache = 'clashmiao_independent_dns_cache';
 const _kRemoteDnsAddress = 'clashmiao_remote_dns_address';
 const _kRemoteDnsDomainStrategy = 'clashmiao_remote_dns_domain_strategy';
+// 与 dns_defaults.dart 的 kDirectDnsAddressPrefKey 同值（存储迁移 v2 用它）。
 const _kDirectDnsAddress = 'clashmiao_direct_dns_address';
 const _kDirectDnsDomainStrategy = 'clashmiao_direct_dns_domain_strategy';
 const _kTunImplementation = 'clashmiao_tun_implementation';

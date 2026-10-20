@@ -276,6 +276,11 @@ class PrefRegistry {
     const PrefSpec('clashmiao_profiles_corrupt', PrefType.string, _exc),
     const PrefSpec('clashmiao_storage_schema', PrefType.integer, _exc),
     const PrefSpec('clashmiao_migration_backup_v0', PrefType.string, _exc),
+    const PrefSpec(
+      'clashmiao_migration_backup_v1_direct_dns',
+      PrefType.string,
+      _exc,
+    ),
     const PrefSpec(kRestoreMarkerKey, PrefType.string, _exc),
     const PrefSpec('clashmiao_system_proxy_dirty', PrefType.boolean, _exc),
     const PrefSpec('clashmiao_store_review_requested', PrefType.boolean, _exc),

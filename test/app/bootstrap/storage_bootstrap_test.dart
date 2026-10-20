@@ -19,6 +19,15 @@ void main() {
         '[{"id":"a","name":"n","url":"http://x/a","active":true}]',
   };
 
+  test('迁移步骤从 1 起连续，最后一步就是代码当前的存储版本', () {
+    final steps = storageMigrations();
+    expect(
+      [for (final m in steps) m.toVersion],
+      [for (var v = 1; v <= steps.length; v++) v],
+    );
+    expect(steps.last.toVersion, kCurrentStorageSchema);
+  });
+
   test('启动屏障：先做恢复标记检查，再迁移', () async {
     final prefs = await _prefs(v0);
     int? schemaSeenByCheck = -1;

@@ -61,8 +61,8 @@ Map<String, Object> _v0({
 };
 
 void main() {
-  test('迁移器的目标版本与代码当前版本一致', () {
-    expect(profilesV1Migration().toVersion, kCurrentStorageSchema);
+  test('订阅迁移是第 1 步', () {
+    expect(profilesV1Migration().toVersion, 1);
   });
 
   group('v0 → v1 夹具', () {
@@ -479,7 +479,7 @@ void main() {
       });
     }
 
-    test('迁移完成（schema 1）后恢复现行行为：悬空激活键回落第一条，写回不再带 active', () async {
+    test('迁移完成（schema ≥ 1）后恢复现行行为：悬空激活键回落第一条，写回不再带 active', () async {
       final h = await ProfileHarness.create(
         initialPrefs: _v0(
           list: [_p('a'), _p('b', active: true)],
@@ -487,7 +487,7 @@ void main() {
         ),
       );
       addTearDown(h.dispose);
-      expect(h.prefs.getInt(kStorageSchemaKey), 1);
+      expect(h.prefs.getInt(kStorageSchemaKey), kCurrentStorageSchema);
       expect(h.repo.getActive()?.id, 'a', reason: 'schema 1 起旧标记不再参与');
       await h.repo.editProfile('a', newName: 'x');
       expect(h.storedJson.every((e) => !e.containsKey('active')), isTrue);

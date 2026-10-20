@@ -50,6 +50,44 @@ String Function() _counter() {
 }
 
 void main() {
+  group('直连 DNS 的旧默认值（与存储迁移 v2 同口径）', () {
+    const key = 'clashmiao_direct_dns_address';
+
+    test('schema 1 的备份带 1.1.1.1：不写回（本机现值保留）', () {
+      final plan = _parse(
+        _v2(prefs: {key: '1.1.1.1', 'clashmiao_mixed_port': 3000}),
+      );
+      expect(plan.prefs, {'clashmiao_mixed_port': 3000});
+      expect(plan.skippedPrefKeys, isEmpty, reason: '不是校验失败，是旧默认值');
+    });
+
+    test('旧格式 1.0 的备份同样不写回 1.1.1.1', () {
+      final plan = _parse(
+        jsonEncode({
+          'version': BackupBundle.legacyVersion,
+          'profiles': [_profile('a')],
+          'settings': {
+            'profileConfigs': {'a': sampleConfig('a')},
+            'preferences': {key: '1.1.1.1'},
+          },
+        }),
+      );
+      expect(plan.prefs.containsKey(key), isFalse);
+    });
+
+    test('schema 1 的备份里的自定义值照常写回', () {
+      for (final custom in ['8.8.8.8', 'https://1.1.1.1/dns-query']) {
+        final plan = _parse(_v2(prefs: {key: custom}));
+        expect(plan.prefs[key], custom);
+      }
+    });
+
+    test('schema 2 起的备份：1.1.1.1 是迁移之后用户自己选的，照常写回', () {
+      final plan = _parse(_v2(schema: 2, prefs: {key: '1.1.1.1'}));
+      expect(plan.prefs[key], '1.1.1.1');
+    });
+  });
+
   group('版本与整体形状', () {
     test('导入 v2：订阅、激活、配置、偏好齐全，且换发新的本机代际', () {
       final plan = _parse(

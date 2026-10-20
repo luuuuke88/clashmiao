@@ -46,17 +46,14 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// sentry_flutter sets languageVersion="1.6" which Kotlin 2.2+ rejects (min is 1.7).
-// Use gradle.projectsEvaluated{} so we run after every subproject is evaluated
-// (afterEvaluate inside subprojects{} throws in Gradle 8.8+ for already-evaluated projects).
-gradle.projectsEvaluated {
-    rootProject.subprojects.forEach { p ->
-        p.tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            compilerOptions {
-                val floor = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_9
-                val cur = languageVersion.orNull
-                if (cur != null && cur < floor) languageVersion.set(floor)
-            }
+// Gradle 9 起，模块里有测试源码却一个测试都没发现时，test 任务直接失败
+// （failOnNoDiscoveredTests 默认 true）。第三方插件模块（如 in_app_review）自带
+// 一个发现不到测试的测试目录，不归我们管，只对插件子项目关掉；:app 仍保持严格，
+// 我们自己的测试要是一个都没跑起来照样会失败。
+subprojects {
+    if (name != "app") {
+        tasks.withType<Test>().configureEach {
+            failOnNoDiscoveredTests = false
         }
     }
 }

@@ -27,7 +27,7 @@ Future<Directory> _mockPathProvider() async {
   return tmp;
 }
 
-Future<Widget> _host({bool? debugShowShareMenu}) async {
+Future<Widget> _host({bool? debugShowShareMenu, double bottomInset = 0}) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
   final container = ProviderContainer(
@@ -52,12 +52,44 @@ Future<Widget> _host({bool? debugShowShareMenu}) async {
       theme: ThemeData.light().copyWith(
         extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
       ),
+      builder: (context, child) => MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(padding: EdgeInsets.only(bottom: bottomInset)),
+        child: child!,
+      ),
       home: LogsPage(debugShowShareMenu: debugShowShareMenu),
     ),
   );
 }
 
 void main() {
+  testWidgets('底部有手势条 inset 时，列表底端那一行（反向列表的第 0 项）停在 inset 之上', (tester) async {
+    const inset = 34.0;
+    await tester.pumpWidget(
+      await _host(debugShowShareMenu: false, bottomInset: inset),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final newest = find.textContaining('service started');
+    expect(newest, findsOneWidget);
+    expect(
+      tester.getBottomLeft(newest).dy,
+      lessThanOrEqualTo(screenHeight - inset),
+      reason: '底端那一行不能进入手势条区域',
+    );
+  });
+
+  testWidgets('没有 inset 时底端那一行贴着视口底边（对照）', (tester) async {
+    await tester.pumpWidget(await _host(debugShowShareMenu: false));
+    await tester.pump(const Duration(milliseconds: 250));
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final newest = tester.getBottomLeft(find.textContaining('service started'));
+    expect(newest.dy, greaterThan(screenHeight - 34));
+  });
+
   testWidgets('LogsPage renders log controls and rows', (tester) async {
     await tester.pumpWidget(await _host(debugShowShareMenu: false));
     await tester.pump(const Duration(milliseconds: 250));

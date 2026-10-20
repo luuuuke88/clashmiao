@@ -24,7 +24,7 @@ permissions:
   contents: write
 
 env:
-  FLUTTER_VERSION: '3.44.2'
+  FLUTTER_VERSION: '3.47.7'
   LIBCORE_TAG: libcore-v1.11.0
   LIBCORE_REPO: luuuuke88/clashmiao
   RELEASE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}

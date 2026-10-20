@@ -354,7 +354,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 - `integration_test/` — 真机 / 模拟器上的集成测试（Android 智能模式、iOS 首页连接信息与快捷设置）；
 - `android/app/src/test/` — Android 原生层的 JVM 单测（`cd android && ./gradlew :app:testDebugUnitTest`，CI 里是 `test-android-unit`）。
 
-跑法：`flutter test`（全量）；提交前还要过 `flutter analyze --fatal-warnings` 和 `dart format --set-exit-if-changed lib test integration_test`（格式化器版本与 CI 的 Flutter 3.44.2 保持一致，版本不同会改动无关行）。
+跑法：`flutter test`（全量）；提交前还要过 `flutter analyze --fatal-warnings` 和 `dart format --set-exit-if-changed lib test integration_test`（格式化器版本与 CI 的 Flutter 3.47.7 保持一致，版本不同会改动无关行）。
 
 写测试的两个惯例：
 

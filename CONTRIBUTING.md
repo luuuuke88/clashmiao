@@ -32,7 +32,7 @@ clashmiao-client/
 
 ## 环境准备
 
-- Flutter **3.44.2**（CI 使用的版本；pubspec 要求 Dart SDK `^3.11.0`，更旧的版本 pub get 会失败。格式化请用同版本，不同版本的格式化器会改动无关行）
+- Flutter **3.47.7**（CI 使用的版本；pubspec 要求 Dart SDK `^3.13.0`，更旧的版本 pub get 会失败。格式化请用同版本，不同版本的格式化器会改动无关行）
 - Android Studio + SDK + 至少一个 AVD
 - Xcode（iOS / macOS）
 - Go 1.21+（编 libcore，可选）

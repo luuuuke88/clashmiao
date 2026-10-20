@@ -169,4 +169,38 @@ void main() {
     expect(spy.selectCalls, [('proxy', 'auto')]);
     await _drainToasts(tester);
   });
+
+  // 真机验收 BUG-C：默认选中自动选择组时（主选择组 select 的 selected 为 auto，
+  // 内核不推自动选择组本身），自动选择卡必须是选中态，单节点不是。
+  for (final connected in [true, false]) {
+    testWidgets('默认选中自动选择组：自动选择卡是选中态（${connected ? '实时' : '离线'}分组）', (
+      tester,
+    ) async {
+      await _pumpPage(
+        tester,
+        connected: connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: 'auto',
+            items: [
+              OutboundProxy(tag: 'auto', type: 'urltest'),
+              OutboundProxy(tag: 'shadowsocks § 0', type: 'shadowsocks'),
+            ],
+          ),
+        ],
+      );
+
+      final selected = find.bySemanticsLabel(RegExp('自动选择'));
+      expect(selected, findsWidgets);
+      expect(
+        tester.getSemantics(selected.first),
+        isSemantics(isSelected: true),
+      );
+      final node = find.bySemanticsLabel(RegExp('shadowsocks'));
+      expect(tester.getSemantics(node.first), isSemantics(isSelected: false));
+      if (connected) await _drainToasts(tester);
+    });
+  }
 }

@@ -797,12 +797,31 @@ class _ConnectionInfo extends ConsumerWidget {
             ref.watch(proxySelectionStoreProvider),
           );
     final t = ref.watch(translationsProvider);
-    final activeItem = resolveActiveProxy(groups);
+    final route = resolveActiveRoute(groups);
+    // 经过自动选择组（主选择组默认就选它）：显示本地化的「自动选择」，自动选择
+    // 组报了它选中的节点就一并显示；没报（内核没推这个分组 / 还没选出）就只显示
+    // 「自动选择」，不把原始 tag「auto」当节点名，也不拿兜底首项冒充（真机验收
+    // BUG-C）。延迟只对真正生效的节点显示。
+    final OutboundProxy? activeItem = route == null
+        ? null
+        : route.viaAuto
+        ? route.autoNode
+        : route.item;
     // 展示名与代理页同一套逻辑（node_display）：去掉 `§` 后缀，旗帜放在名称前。
     // 原始 tag 只用于选择与缓存。
-    final String nodeName = activeItem == null
-        ? t.general.unknown
-        : NodeDisplay.parse(activeItem.tag).capsuleName ?? t.general.unknown;
+    String displayName(OutboundProxy item) =>
+        NodeDisplay.parse(item.tag).capsuleName ?? t.general.unknown;
+    final String nodeName;
+    if (route == null) {
+      nodeName = t.general.unknown;
+    } else if (route.viaAuto) {
+      final node = route.autoNode;
+      nodeName = node == null
+          ? t.proxies.autoSelect
+          : '${t.proxies.autoSelect} · ${displayName(node)}';
+    } else {
+      nodeName = displayName(route.item);
+    }
     // 延迟展示与代理页同一套：同一个缓存、同一个协调器状态、同一个解析函数，
     // 两处不会出现一个有数字一个是破折号的分歧。
     final latencyState = ref.watch(latencyTestCoordinatorProvider);

@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/glass_icon_button.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -116,5 +117,37 @@ void main() {
         .map((d) => d.color)
         .whereType<Color>();
     expect(fill, contains(scheme.primary));
+  });
+
+  testWidgets('按下有反馈：圆片缩小变淡，松手回弹；没有 onTap 时不动', (tester) async {
+    double scale() => tester
+        .widget<Transform>(
+          find.descendant(
+            of: find.byType(GlassIconButton),
+            matching: find.byType(Transform),
+          ),
+        )
+        .transform
+        .entry(0, 0);
+
+    await _pump(tester, onTap: () {});
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byType(GlassIconButton)),
+    );
+    await tester.pump(kPressTimeout + const Duration(milliseconds: 10));
+    await tester.pump(const Duration(milliseconds: 200)); // 走完 150 ms 的缓动
+    expect(scale(), lessThan(1));
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(scale(), 1);
+
+    await _pump(tester, onTap: null);
+    final idle = await tester.startGesture(
+      tester.getCenter(find.byType(GlassIconButton)),
+    );
+    await tester.pump(kPressTimeout + const Duration(milliseconds: 10));
+    await tester.pump(const Duration(milliseconds: 200)); // 走完 150 ms 的缓动
+    expect(scale(), 1);
+    await idle.up();
   });
 }

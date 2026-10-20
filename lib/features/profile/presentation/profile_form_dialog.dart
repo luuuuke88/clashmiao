@@ -23,6 +23,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 /// 订阅表单弹窗（新增 / 编辑 共用）
 ///
@@ -606,7 +607,7 @@ class _Button extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressFeedback(
       onTap: onTap,
       child: Container(
         width: size,
@@ -664,7 +665,7 @@ class _LongButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return PressFeedback(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),

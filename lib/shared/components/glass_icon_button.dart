@@ -1,6 +1,7 @@
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 /// 全 App 的圆形图标按钮：磨砂玻璃圆片。
 ///
@@ -89,7 +90,8 @@ class GlassIconButton extends StatelessWidget {
     // 视觉直径仍是 [size]（默认 40），交互区放大到至少 48×48（Material 与
     // Android 无障碍的最小触控目标）。热区放在 GestureDetector 里、圆本身
     // 居中，所以点圆外那一圈 4 dp 也算点中。
-    final Widget tappable = GestureDetector(
+    final Widget tappable = PressFeedback(
+      pressedScale: PressFeedback.iconPressedScale,
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: ConstrainedBox(

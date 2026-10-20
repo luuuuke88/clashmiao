@@ -15,6 +15,7 @@ import 'package:clashmiao/features/home/presentation/sleeping_cat_aura.dart';
 import 'package:clashmiao/features/home/presentation/speed_cat_connection_mark.dart';
 import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 /// 连接按钮 - 渐变圆形按钮，带涟漪动画。
 ///
@@ -83,7 +84,7 @@ class ConnectionButton extends HookConsumerWidget {
     );
     final startedAt = ref.watch(connectionStartedAtProvider);
 
-    return GestureDetector(
+    return PressFeedback(
       onTap: () => _handleConnectionTap(context, ref, onTap),
       child: Column(
         mainAxisSize: MainAxisSize.min,

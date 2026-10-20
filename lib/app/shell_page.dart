@@ -35,6 +35,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/app/restore_recovery_notice.dart';
 import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
@@ -526,7 +527,8 @@ class _GlassBottomNav extends ConsumerWidget {
                           : Colors.white.withValues(alpha: 0.55));
 
                 return Expanded(
-                  child: GestureDetector(
+                  child: PressFeedback(
+                    pressedScale: PressFeedback.iconPressedScale,
                     key: ValueKey('bottom_nav_$i'),
                     onTap: () => onTap(i),
                     behavior: HitTestBehavior.opaque,

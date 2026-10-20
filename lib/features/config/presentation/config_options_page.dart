@@ -2,7 +2,6 @@ import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
-import 'dart:convert';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
@@ -1609,60 +1608,8 @@ Future<void> _importNetworkSettingsFromClipboard(
   AppToast.success(context, message);
 }
 
-String _networkSettingsJson(WidgetRef ref) {
-  final settings = ref.read(networkSettingsProvider);
-  return const JsonEncoder.withIndent('  ').convert({
-    'mixedPort': settings.mixedPort,
-    'region': settings.region,
-    'blockAds': settings.blockAds,
-    'logLevel': settings.logLevel,
-    'bypassLan': settings.bypassLan,
-    'resolveDestination': settings.resolveDestination,
-    'ipv6Mode': settings.ipv6Mode,
-    'setSystemProxy': settings.setSystemProxy,
-    'enableTun': settings.enableTun,
-    'allowConnectionFromLan': settings.allowConnectionFromLan,
-    'enableDnsRouting': settings.enableDnsRouting,
-    'remoteDnsAddress': settings.remoteDnsAddress,
-    'remoteDnsDomainStrategy': settings.remoteDnsDomainStrategy,
-    'directDnsAddress': settings.directDnsAddress,
-    'directDnsDomainStrategy': settings.directDnsDomainStrategy,
-    'tunImplementation': settings.tunImplementation,
-    'strictRoute': settings.strictRoute,
-    'enableTlsFragment': settings.enableTlsFragment,
-    'tlsFragmentSize': settings.tlsFragmentSize,
-    'enableTlsPadding': settings.enableTlsPadding,
-    'connectionTestUrl': settings.connectionTestUrl,
-    'urlTestIntervalSeconds': settings.urlTestIntervalSeconds,
-    // wave3：此前只在 default_config_options.dart 里硬编码、现在已经是
-    // NetworkSettings 一等字段的高级配置项——导出/导入两侧字段集合保持对称，
-    // 否则"导入配置选项 JSON"的入口对这批字段就是摆设。
-    'mtu': settings.mtu,
-    'clashApiPort': settings.clashApiPort,
-    'tproxyPort': settings.tproxyPort,
-    'localDnsPort': settings.localDnsPort,
-    'enableFakeDns': settings.enableFakeDns,
-    'independentDnsCache': settings.independentDnsCache,
-    'tlsFragmentSleep': settings.tlsFragmentSleep,
-    'enableTlsMixedSniCase': settings.enableTlsMixedSniCase,
-    'tlsPaddingSize': settings.tlsPaddingSize,
-    'muxPadding': settings.muxPadding,
-    // WARP 用户可调设置——故意不含 warpAccountId/warpAccessToken/
-    // warpWireguardConfig：这 3 个是 generateWarpConfig 生成写入的运行时凭证
-    // （设备/注册绑定的状态，不是用户设置），跟着"配置选项"备份走一是没意义
-    // （换设备/重装后大概率失效），二是会把半机密的生成态凭证摊平进剪贴板 JSON。
-    'enableWarp': settings.enableWarp,
-    'warpConsentGiven': settings.warpConsentGiven,
-    'warpDetourMode': settings.warpDetourMode,
-    'warpLicenseKey': settings.warpLicenseKey,
-    'warpCleanIp': settings.warpCleanIp,
-    'warpPort': settings.warpPort,
-    'warpNoise': settings.warpNoise,
-    'warpNoiseSize': settings.warpNoiseSize,
-    'warpNoiseMode': settings.warpNoiseMode,
-    'warpNoiseDelay': settings.warpNoiseDelay,
-  });
-}
+String _networkSettingsJson(WidgetRef ref) =>
+    ref.read(networkSettingsProvider.notifier).exportJson();
 
 class _ActionTile extends StatelessWidget {
   const _ActionTile({

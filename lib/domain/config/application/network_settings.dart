@@ -386,6 +386,12 @@ String _stringChoice(
   return value;
 }
 
+/// 「配置选项 JSON」里的格式版本字段。没有它的是旧格式。
+const String kNetworkSettingsJsonVersionKey = 'formatVersion';
+
+/// 当前导出的格式版本。
+const int kNetworkSettingsJsonVersion = 1;
+
 /// [NetworkSettingsNotifier.importJson] 的结果。
 ///
 /// 设计取舍：导入按"字段"为单位、逐个尝试——JSON 里没有的 key 直接跳过
@@ -795,7 +801,67 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     await prefs.setInt(_kUrlTestIntervalSeconds, seconds);
   }
 
-  /// 解析 [raw]（"配置选项 JSON"，与 `_networkSettingsJson` 导出的格式一致），
+  /// 导出「配置选项 JSON」（剪贴板复制用），与 [importJson] 字段集合对称。
+  ///
+  /// 带格式版本 [kNetworkSettingsJsonVersionKey]：导入时据此区分旧格式（无版本，
+  /// 导出于存储迁移 v2 之前，其中的直连 DNS 可能是旧版本自动写入的默认值）。
+  String exportJson() {
+    final settings = state;
+    return const JsonEncoder.withIndent('  ').convert({
+      kNetworkSettingsJsonVersionKey: kNetworkSettingsJsonVersion,
+      'mixedPort': settings.mixedPort,
+      'region': settings.region,
+      'blockAds': settings.blockAds,
+      'logLevel': settings.logLevel,
+      'bypassLan': settings.bypassLan,
+      'resolveDestination': settings.resolveDestination,
+      'ipv6Mode': settings.ipv6Mode,
+      'setSystemProxy': settings.setSystemProxy,
+      'enableTun': settings.enableTun,
+      'allowConnectionFromLan': settings.allowConnectionFromLan,
+      'enableDnsRouting': settings.enableDnsRouting,
+      'remoteDnsAddress': settings.remoteDnsAddress,
+      'remoteDnsDomainStrategy': settings.remoteDnsDomainStrategy,
+      'directDnsAddress': settings.directDnsAddress,
+      'directDnsDomainStrategy': settings.directDnsDomainStrategy,
+      'tunImplementation': settings.tunImplementation,
+      'strictRoute': settings.strictRoute,
+      'enableTlsFragment': settings.enableTlsFragment,
+      'tlsFragmentSize': settings.tlsFragmentSize,
+      'enableTlsPadding': settings.enableTlsPadding,
+      'connectionTestUrl': settings.connectionTestUrl,
+      'urlTestIntervalSeconds': settings.urlTestIntervalSeconds,
+      // wave3：此前只在 default_config_options.dart 里硬编码、现在已经是
+      // NetworkSettings 一等字段的高级配置项——导出/导入两侧字段集合保持对称，
+      // 否则"导入配置选项 JSON"的入口对这批字段就是摆设。
+      'mtu': settings.mtu,
+      'clashApiPort': settings.clashApiPort,
+      'tproxyPort': settings.tproxyPort,
+      'localDnsPort': settings.localDnsPort,
+      'enableFakeDns': settings.enableFakeDns,
+      'independentDnsCache': settings.independentDnsCache,
+      'tlsFragmentSleep': settings.tlsFragmentSleep,
+      'enableTlsMixedSniCase': settings.enableTlsMixedSniCase,
+      'tlsPaddingSize': settings.tlsPaddingSize,
+      'muxPadding': settings.muxPadding,
+      // WARP 用户可调设置——故意不含 warpAccountId/warpAccessToken/
+      // warpWireguardConfig：这 3 个是 generateWarpConfig 生成写入的运行时凭证
+      // （设备/注册绑定的状态，不是用户设置），跟着"配置选项"备份走一是没意义
+      // （换设备/重装后大概率失效），二是会把半机密的生成态凭证摊平进剪贴板 JSON。
+      'enableWarp': settings.enableWarp,
+      'warpConsentGiven': settings.warpConsentGiven,
+      'warpDetourMode': settings.warpDetourMode,
+      'warpLicenseKey': settings.warpLicenseKey,
+      'warpCleanIp': settings.warpCleanIp,
+      'warpPort': settings.warpPort,
+      'warpNoise': settings.warpNoise,
+      'warpNoiseSize': settings.warpNoiseSize,
+      'warpNoiseMode': settings.warpNoiseMode,
+      'warpNoiseDelay': settings.warpNoiseDelay,
+    });
+  }
+
+  /// 解析 [raw]（"配置选项 JSON"，与 [exportJson] 导出的格式一致），
   /// 把其中能识别的字段写回 NetworkSettings + SharedPreferences。
   ///
   /// 逐字段处理，见 [NetworkSettingsImportResult] 的设计说明。
@@ -818,6 +884,15 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         skippedKeys: [],
         parseError: NetworkSettingsParseError.invalidJson,
       );
+    }
+
+    // 旧格式（没有格式版本，导出于存储迁移 v2 之前）：里面的直连 DNS 若恰好是
+    // 旧版本自动写入的默认值写法，与迁移、旧备份恢复同口径视为「没动过」——
+    // 不写入，本机现值（跟随默认或用户自定义）保留。带版本的新格式是用户当时
+    // 的明确设置，原样导入。见 v2_direct_dns.dart。
+    if (!map.containsKey(kNetworkSettingsJsonVersionKey) &&
+        isLegacyDirectDnsDefault(map['directDnsAddress'])) {
+      map.remove('directDnsAddress');
     }
 
     final applied = <String>[];
@@ -901,7 +976,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     // WARP 用户可调设置——跟其余字段走同一条导入通道，否则备份/迁移会丢失
     // WARP 配置。故意不含 warpAccountId/warpAccessToken/warpWireguardConfig：
     // 这 3 个是 generateWarpConfig 生成写入的运行时凭证，不是用户设置，见
-    // _networkSettingsJson 的同款说明。
+    // exportJson 的同款说明。
     await applyBool('enableWarp', setEnableWarp);
     await applyBool('warpConsentGiven', setWarpConsentGiven);
     await applyString('warpDetourMode', setWarpDetourMode);

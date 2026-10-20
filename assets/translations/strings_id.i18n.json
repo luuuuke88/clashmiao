@@ -24,7 +24,12 @@
     "openAppSettings": "Buka Pengaturan Aplikasi",
     "grantPermission": "Berikan Izin",
     "underDevelopment": "Dalam Pengembangan",
-    "confirm": "Konfirmasi"
+    "confirm": "Konfirmasi",
+    "close": "Tutup",
+    "cancel": "Batal",
+    "clipboardEmpty": "Papan klip kosong",
+    "clipboardReadFailed": "Gagal membaca papan klip",
+    "moreOptions": "Opsi lainnya"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "lanjut berarti setuju dengan ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "Aplikasi tidak dapat memuat inti jaringannya. Koneksi tidak tersedia. Pasang ulang aplikasi, atau pastikan berkas pustaka inti berada di samping berkas eksekusi.",
     "degradedTitle": "Tersambung, tetapi tidak ada akses internet",
     "degradedMsg": "Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.",
-    "degradedRetry": "Periksa Lagi"
+    "degradedRetry": "Periksa Lagi",
+    "egressIp": {
+      "label": "IP keluar",
+      "notConnected": "Hubungkan untuk melihat IP keluar",
+      "tapToCheck": "Ketuk untuk memeriksa IP keluar",
+      "checking": "Memeriksa…",
+      "failedRetry": "Pemeriksaan gagal, ketuk untuk mencoba lagi"
+    },
+    "emptyProfilesHint": "Ketuk tombol di bawah untuk memulai",
+    "noActiveProfileTitle": "Belum ada profil yang dipilih"
   },
   "stats": {
     "traffic": "Trafik Langsung",
@@ -56,7 +70,9 @@
     "trafficUsage": "Penggunaan Lalu Lintas",
     "liveSpeed": "Kecepatan Langsung",
     "speed": "Kecepatan",
-    "totalTransferred": "Total Ditransfer"
+    "totalTransferred": "Total Ditransfer",
+    "sessionTraffic": "Lalu lintas sesi ini",
+    "downloadSpeed": "Kecepatan unduh"
   },
   "profile": {
     "overviewPageTitle": "Beberapa Profil",
@@ -99,7 +115,12 @@
       "manuallyDescription": "Masukkan konfigurasi server secara manual",
       "addWarp": "Tambah WARP",
       "warpDescription": "Akselerasi gratis dengan Cloudflare WARP",
-      "addingWarpMsg": "Mohon tunggu, kami sedang mendaftarkan WARP."
+      "addingWarpMsg": "Mohon tunggu, kami sedang mendaftarkan WARP.",
+      "importedNamed": "Langganan diimpor: ${name}",
+      "clipboardEmpty": "Papan klip kosong, tidak ada yang bisa diimpor",
+      "deepLinkMissingUrl": "Tautan tidak berisi alamat langganan",
+      "successMsg": "Profil ditambahkan",
+      "nameAutoHint": "Terdeteksi otomatis (opsional)"
     },
     "update": {
       "buttonTxt": "Perbarui",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "Hapus",
       "confirmationMsg": "Hapus profil permanen?",
-      "successMsg": "Sukses hapus profil"
+      "successMsg": "Sukses hapus profil",
+      "confirmTitle": "Hapus profil",
+      "namedConfirmMsg": "Hapus \"${name}\"? Tindakan ini tidak dapat dibatalkan."
     },
     "save": {
       "buttonText": "Simpan",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Mati",
+      "updateIntervalHours": "${hours} jam",
+      "updateIntervalDays": "${days} hari"
     },
     "actionButtons": {
       "add": "Tambah",
@@ -171,7 +197,10 @@
       "currentlyUsing": "Sedang Digunakan",
       "remainingDays": "Sisa ${days} hari"
     },
-    "remoteProfile": "Profil Jarak Jauh"
+    "remoteProfile": "Profil Jarak Jauh",
+    "defaultLocalName": "Impor lokal",
+    "defaultDeepLinkName": "Impor dari tautan",
+    "switchFailedMsg": "Gagal mengganti profil"
   },
   "proxies": {
     "pageTitle": "Proxy",
@@ -192,7 +221,9 @@
     "delaySemantics": {
       "result": "Jeda: ${delay}ms",
       "timeout": "Waktu Uji Jeda Habis",
-      "testing": "Jeda: Menguji..."
+      "testing": "Jeda: Menguji...",
+      "untested": "Jeda: Belum diuji",
+      "stale": "Jeda: ${delay}ms (hasil sebelumnya)"
     },
     "ipInfoSemantics": {
       "address": "Alamat IP",
@@ -200,10 +231,14 @@
     },
     "testingDelayInfo": "Menguji jeda untuk: ${name}",
     "switchedTo": "Beralih ke ${name}",
-    "switchToFailed": "Gagal beralih: ${error}",
+    "switchFailed": "Gagal mengganti server. Silakan coba lagi.",
+    "testFailed": "Uji latensi gagal. Silakan coba lagi.",
+    "groupsLoading": "Daftar server masih dimuat. Silakan coba lagi sebentar lagi.",
     "connectBeforeSwitch": "Sambungkan terlebih dahulu sebelum mengganti jalur",
     "startDelayTestForGroups": "Uji jeda dimulai untuk ${count} jalur",
     "delayTestBtn": "Jeda",
+    "delayTimeout": "Habis waktu",
+    "connectBeforeTest": "Sambungkan dulu untuk menguji jeda",
     "lineCount": "${count} jalur",
     "manualSelect": "Pilih Manual",
     "autoTest": "Tes Otomatis"
@@ -220,7 +255,10 @@
     "logsCleared": "Log dihapus",
     "logsCopied": "Log disalin",
     "logsUnderDevelopment": "Fitur log sedang dikembangkan",
-    "noLogsWhenDisconnected": "Tidak tersambung, tidak ada log"
+    "noLogsWhenDisconnected": "Tidak tersambung, tidak ada log",
+    "loadFailed": "Gagal memuat log",
+    "empty": "Belum ada log",
+    "clearFailed": "Gagal menghapus log"
   },
   "settings": {
     "pageTitle": "Setting",
@@ -307,10 +345,50 @@
     "exportAllOptions": "Salin Semua Opsi ke Papan Klip",
     "importOptions": "Impor Opsi dari Papan Klip",
     "importOptionsMsg": "Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?",
+    "backup": {
+      "importConfirmTitle": "Impor Cadangan",
+      "importConfirmMsg": "Ini mengganti langganan Anda dengan langganan dari cadangan dan menerapkan pengaturannya. Snapshot data saat ini disimpan terlebih dahulu dan dipulihkan otomatis jika impor gagal.",
+      "importRemovesMsg": "${count} langganan di perangkat ini tidak ada di cadangan dan akan dihapus.",
+      "reportImported": "${profiles} langganan dan ${settings} pengaturan diimpor.",
+      "reportDropped": "${count} langganan dalam cadangan dilewati karena datanya tidak valid.",
+      "reportSettingsSkipped": "${count} pengaturan dilewati; nilai Anda saat ini dipertahankan.",
+      "reportWarpOff": "Impor mematikan WARP. Aktifkan kembali di perangkat ini.",
+      "reportBackfill": "${count} langganan akan diunduh di latar belakang.",
+      "errInvalidFile": "Ini bukan file cadangan ClashMiao yang valid.",
+      "errUnsupportedVersion": "Format cadangan ini tidak didukung.",
+      "errNewerSchema": "Cadangan ini dibuat oleh aplikasi versi yang lebih baru. Perbarui aplikasi terlebih dahulu.",
+      "errNoUsableProfiles": "Tidak ada langganan dalam cadangan ini yang dapat diimpor.",
+      "errSnapshotFailed": "Snapshot data saat ini tidak dapat disimpan, sehingga tidak ada yang diubah.",
+      "errUnresolvedPrevious": "Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.",
+      "errRolledBack": "Impor gagal. Data Anda sebelumnya telah dipulihkan.",
+      "errNotRolledBack": "Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.",
+      "errFailed": "Impor gagal.",
+      "errBusy": "Impor lain sedang berjalan. Tunggu sampai selesai.",
+      "recoveryFailedTitle": "Pemulihan otomatis belum selesai",
+      "recoveryFailedMsg": "Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.",
+      "recoveryUnrecoverableTitle": "Impor yang terhenti tidak dapat dibatalkan",
+      "recoveryUnrecoverableMsg": "Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.",
+      "recoveryRetry": "Coba lagi",
+      "recoveryClose": "Tutup",
+      "recoveryRetried": "Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.",
+      "exportAction": "Ekspor cadangan",
+      "importAction": "Impor cadangan",
+      "exportFailed": "Gagal mengekspor cadangan",
+      "shareText": "Cadangan ClashMiao"
+    },
     "systemProxyEnabled": "Proxy sistem diaktifkan",
     "systemProxyDisabled": "Proxy sistem dinonaktifkan (sambung ulang untuk menerapkan)",
     "adminPrivilegesRequired": "Memerlukan hak administrator di macOS",
-    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku"
+    "portChangeNotice": "Perubahan port memerlukan sambung ulang agar berlaku",
+    "groups": {
+      "general": "Umum",
+      "connection": "Koneksi",
+      "privacy": "Privasi"
+    },
+    "importOptionsInvalid": "Papan klip tidak berisi JSON pengaturan yang valid",
+    "importOptionsNothing": "Tidak ada pengaturan yang dapat diimpor",
+    "importOptionsDone": "${count} pengaturan diimpor",
+    "importOptionsPartial": "${applied} pengaturan diimpor; ${skipped} dilewati karena tidak valid"
   },
   "about": {
     "pageTitle": "Tentang",
@@ -320,7 +398,8 @@
     "checkForUpdate": "Periksa perbaruan",
     "privacyPolicy": "Kebijakan Privasi",
     "termsAndConditions": "Syarat dan Ketentuan Umum",
-    "appDescription": "Klien proxy lintas platform berbasis inti sing-box"
+    "appDescription": "Klien proxy lintas platform berbasis inti sing-box",
+    "openSourceLicenses": "Lisensi sumber terbuka"
   },
   "appUpdate": {
     "notAvailableMsg": "Sudah menggunakan versi terakhir",
@@ -330,7 +409,8 @@
     "newVersionLbl": "Versi Baru",
     "updateNowBtnTxt": "Perbarui Sekarang",
     "laterBtnTxt": "Nanti",
-    "ignoreBtnTxt": "Lewati"
+    "ignoreBtnTxt": "Lewati",
+    "checkFailedMsg": "Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi."
   },
   "tray": {
     "dashboard": "Dashboard",
@@ -342,7 +422,8 @@
       "disconnect": "Putus",
       "disconnecting": "Memutuskan"
     },
-    "hide": "Sembunyikan"
+    "hide": "Sembunyikan",
+    "proxyModeMenu": "Mode Proksi"
   },
   "failure": {
     "unexpected": "Error Tidak Terduga",
@@ -362,21 +443,25 @@
       "create": "Pembuatan Servis Error",
       "start": "Jalankan Servis Error",
       "coreLibraryMissing": "Pustaka Inti Belum Terpasang",
-      "startTimeout": "Waktu Mulai Layanan Habis"
+      "startTimeout": "Waktu Mulai Layanan Habis",
+      "kernelUnresponsive": "Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.",
+      "kernelExited": "Inti berhenti secara tak terduga"
     },
     "connectivity": {
       "unexpected": "Kegagalan tidak terduga",
       "missingVpnPermission": "Izin VPN Hilang",
       "missingNotificationPermission": "Izin Notifikasi Hilang",
       "core": "Error Inti",
-      "networkUnavailable": "Jaringan Tidak Tersedia"
+      "networkUnavailable": "Jaringan Tidak Tersedia",
+      "nativeUnresponsive": "Kehilangan kontak dengan layanan latar belakang. Coba lagi."
     },
     "profiles": {
       "unexpected": "Error Tidak Terduga",
       "notFound": "Profil tidak ditemukan",
       "invalidConfig": "Konfigurasi tidak valid",
       "invalidUrl": "URL tidak valid",
-      "noActive": "Tidak Ada Profil Aktif"
+      "noActive": "Tidak Ada Profil Aktif",
+      "readOnlyUpgrade": "Perbarui aplikasi sebelum mengubah langganan"
     },
     "connection": {
       "unexpected": "Sambungan error tidak terduga",
@@ -389,7 +474,8 @@
       "unexpected": "Error Tidak Terduga",
       "notUpdate": "Perbaruan tidak tersedia",
       "activeNotFound": "Geo Aset Aktif tidak ditemukan"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Ketuk untuk Sambung",
@@ -400,7 +486,7 @@
     "experimentalNoticeMsg": "Kamu telah mengaktifkan fitur experimental yang mungkin mempengaruhi kualitas sambungan dan error tidak terduga. Kamu tetap bisa merubah atau set ulang opsi dari Halaman Konfigurasi",
     "disableExperimentalNotice": "Jangan tampil lagi",
     "reconnect": "Sambungkan Ulang",
-    "connectAnyWay": "Sambungkan",
+    "connectAnyWay": "Tetap sambungkan",
     "reconnectMsg": "Menyambungkan ulang untuk menerapkan perubahan...",
     "staleSystemProxyCleaned": "Pengaturan proxy sistem yang tertinggal dari keluar tidak normal telah dibersihkan"
   },
@@ -466,6 +552,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Siapkan WARP",
+    "warpNotConfigured": "Belum dikonfigurasi",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",
@@ -496,6 +584,14 @@
     "warpNoiseSize": "Ukuran Noise",
     "warpNoiseMode": "Mode Noise",
     "warpNoiseDelay": "Penundaan Noise",
-    "desktopProxyScopeNotice": "Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda."
+    "desktopProxyScopeNotice": "Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.",
+    "serviceModeIosVpnOnly": "iOS hanya mendukung mode VPN",
+    "warpGenerating": "Membuat konfigurasi WARP…",
+    "warpConfigFailed": "Gagal membuat konfigurasi WARP. Coba lagi nanti.",
+    "portRangeError": "Port harus antara 1024 dan 65535",
+    "dnsEmptyError": "Alamat DNS tidak boleh kosong",
+    "rangeFormatError": "Masukkan angka atau rentang, mis. 10-30",
+    "urlSchemeError": "URL harus diawali http:// atau https://",
+    "manageRuleAssets": "Kelola set aturan"
   }
 }

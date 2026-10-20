@@ -2,6 +2,10 @@ import 'dart:async';
 
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart' show Desired;
+import 'package:clashmiao/domain/connection/application/connection_timing.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
@@ -13,115 +17,192 @@ import 'package:clashmiao/shared/components/frosted_disc.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 连接按钮 - 渐变圆形按钮，带涟漪动画。
+///
+/// 交互与状态语言（UI 设计 §2、连接状态机设计 §10.9）：
+/// - 状态文字与可点击性**立即**跟随 [phase]，没有最短展示时长，过渡期也可点
+///   （语义见 `toggleTarget`：连接中点 = 取消并断开，断开中点 = 重新连接）；
+/// - 加载指示（圆盘外的细环）延迟 [ConnectionTiming.loadingIndicatorDelay]
+///   才出现，防止快速成功 / 失败时一闪而过；成功或失败时立即消失；
+/// - 只有猫与圆盘随 [scale] 缩放；状态文字固定 16 sp、计时 13 sp、等宽数字，
+///   放不下时换行而不是缩小；
+/// - 未连接的「点击连接」用 `onSurface`，圆盘保留低饱和品牌色，与禁用态区分。
 class ConnectionButton extends HookConsumerWidget {
   const ConnectionButton({
     super.key,
-    required this.status,
+    required this.phase,
     required this.onTap,
+    this.scale = 1,
   });
 
-  final BoxStatus status;
+  final ConnectionPhase phase;
   final VoidCallback onTap;
+
+  /// 猫与圆盘相对设计尺寸（280 宽）的缩放；文字不缩放。
+  final double scale;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider);
     final theme = Theme.of(context);
 
-    final isSwitching = status is BoxStarting || status is BoxStopping;
-    // 只有真正连上了才"通电"：满饱和的品牌蓝留给 BoxStarted，其余状态（未连接、
+    final isBusy =
+        phase != ConnectionPhase.connected &&
+        phase != ConnectionPhase.disconnected;
+    // 尚无内核快照（resolving）时按「未连接」呈现：按钮可点，意图先被记录。
+    final isIdle =
+        phase == ConnectionPhase.disconnected ||
+        phase == ConnectionPhase.resolving;
+    // 只有真正连上了才"通电"：满饱和的品牌蓝留给已连接，其余状态（未连接、
     // 正在连接/断开）都是待机——用跟空态那只睡觉的猫同一块磨砂玻璃，让"亮起来"
     // 这件事只发生一次、且只在连上的那一刻。
-    final isConnected = status is BoxStarted;
+    final isConnected = phase == ConnectionPhase.connected;
 
-    final statusText = switch (status) {
-      BoxStarted() => t.connection.connected,
-      BoxStarting() => t.connection.connecting,
-      BoxStopping() => t.connection.disconnecting,
-      BoxStopped() => t.connection.tapToConnect,
+    final statusText = switch (phase) {
+      ConnectionPhase.connected => t.connection.connected,
+      ConnectionPhase.connecting ||
+      ConnectionPhase.reconnecting => t.connection.connecting,
+      ConnectionPhase.disconnecting => t.connection.disconnecting,
+      ConnectionPhase.disconnected ||
+      ConnectionPhase.resolving => t.connection.tapToConnect,
     };
 
-    // 连接状态是整个 App 最重要的一条信息。首页会把整颗按钮缩到约 0.73 倍
-    // （FittedBox 300 → 220），这里的 22 落到屏幕上大约 16pt——原来的 16 只剩
-    // 不到 12pt，是全屏最不起眼的字之一。
     final label = Text(
       statusText.toUpperCase(),
+      key: const ValueKey('connection-status-text'),
+      textAlign: TextAlign.center,
       style: TextStyle(
         color: isConnected
             ? BrandColors.connected
+            : isIdle
+            ? theme.colorScheme.onSurface
             : theme.aiUi.secondaryTextColor,
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.5,
+        fontSize: 16,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 1.2,
       ),
     );
     final startedAt = ref.watch(connectionStartedAtProvider);
 
     return GestureDetector(
-      onTap: isSwitching
-          ? null
-          : () => _handleConnectionTap(context, ref, status, onTap),
-      child: Center(
-        child: SizedBox(
-          width: 280,
-          height: 300,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 未连接 = 跟空态那只猫**完全一样**地睡着（同一个 SleepingCatAura：
-              // 呼吸、z、柔光）；只有连上之后才分叉成通电的样子。
-              SleepingCatAura(
-                discSize: _discSize,
-                asleep: status is BoxStopped,
-                child: Stack(
-                  alignment: Alignment.center,
-                  // Logo 比底盘大一圈，不能被 Stack 裁掉。
-                  clipBehavior: Clip.none,
-                  children: [
-                    if (isConnected)
-                      const _ConnectedDisc()
-                    else
-                      const FrostedDisc(
-                        key: ValueKey('connection-idle-disc'),
-                        size: _discSize,
+      onTap: () => _handleConnectionTap(context, ref, onTap),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: _designWidth * scale,
+            height: _designHeight * scale,
+            child: FittedBox(
+              fit: BoxFit.contain,
+              child: SizedBox(
+                width: _designWidth,
+                height: _designHeight,
+                // 未连接 = 跟空态那只猫**完全一样**地睡着（同一个 SleepingCatAura：
+                // 呼吸、z、柔光）；只有连上之后才分叉成通电的样子。
+                child: SleepingCatAura(
+                  discSize: _discSize,
+                  asleep: isIdle,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    // Logo 比底盘大一圈，不能被 Stack 裁掉。
+                    clipBehavior: Clip.none,
+                    children: [
+                      if (isConnected)
+                        const _ConnectedDisc()
+                      else
+                        const FrostedDisc(
+                          key: ValueKey('connection-idle-disc'),
+                          size: _discSize,
+                        ),
+                      // 猫压在底盘**上面**而不是塞进底盘里：标记图自带 47% 的
+                      // 留白，尺寸得比底盘大一圈，猫脸才跟空态那只一样占满六成。
+                      SpeedCatConnectionMark(
+                        status: _markStatus(phase),
+                        size: _discSize * 1.13,
                       ),
-                    // 猫压在底盘**上面**而不是塞进底盘里：标记图自带 47% 的留白，
-                    // 尺寸得比底盘大一圈，猫脸才跟空态那只一样占满六成——作为
-                    // 子节点会被底盘的紧约束压回 190，比例就跟外面对不上了。
-                    SpeedCatConnectionMark(
-                      status: status,
-                      size: _discSize * 1.13,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              // 时长跟状态字放同一行：按钮是固定 280×300 再整体缩放的，另起一行
-              // 会撑破高度；加高的话首页的 FittedBox 又会把整颗按钮缩得更小。
-              // 最长的译文（俄语"点击连接"有 23 个字母）放大到 22 号会超出按钮
-              // 宽度，放不下时整行等比缩小，而不是撑破或截断。
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
-                  children: [
-                    label,
-                    if (isConnected && startedAt != null) ...[
-                      const SizedBox(width: 10),
-                      _ConnectedDuration(
-                        key: const ValueKey('connection-duration'),
-                        startedAt: startedAt,
-                        color: theme.aiUi.secondaryTextColor,
-                      ),
+                      if (isBusy) const _DelayedLoadingRing(),
                     ],
-                  ],
+                  ),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+          const SizedBox(height: 8),
+          // 状态文字与计时独立于缩放布局：放不下时换行，不缩小字号。
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: _designWidth),
+            child: Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 10,
+              runSpacing: 2,
+              children: [
+                label,
+                if (isConnected && startedAt != null)
+                  _ConnectedDuration(
+                    key: const ValueKey('connection-duration'),
+                    startedAt: startedAt,
+                    color: theme.aiUi.secondaryTextColor,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 猫标记图只认「待机 / 激活中 / 已连接 / 停止中」四种展示态；由 phase 派生，
+/// 不读任何内核状态。
+BoxStatus _markStatus(ConnectionPhase phase) => switch (phase) {
+  ConnectionPhase.connected => const BoxStarted(),
+  ConnectionPhase.connecting ||
+  ConnectionPhase.reconnecting => const BoxStarting(),
+  ConnectionPhase.disconnecting => const BoxStopping(),
+  ConnectionPhase.disconnected ||
+  ConnectionPhase.resolving => const BoxStopped(),
+};
+
+/// 设计尺寸：猫 + 圆盘 + 柔光所占的方框（SleepingCatAura 占位 1.35 倍圆盘）。
+const double _designWidth = 280;
+const double _designHeight = 257;
+
+/// 延迟出现的加载环（围在圆盘外）。每次进入过渡期重新计时；过渡结束时随着
+/// 父级一起被移除，成功 / 失败立即消失。
+class _DelayedLoadingRing extends StatefulWidget {
+  const _DelayedLoadingRing();
+
+  @override
+  State<_DelayedLoadingRing> createState() => _DelayedLoadingRingState();
+}
+
+class _DelayedLoadingRingState extends State<_DelayedLoadingRing> {
+  Timer? _timer;
+  var _visible = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer(ConnectionTiming.loadingIndicatorDelay, () {
+      if (mounted) setState(() => _visible = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_visible) return const SizedBox.shrink();
+    return SizedBox.square(
+      dimension: _discSize + 18,
+      child: CircularProgressIndicator(
+        key: const ValueKey('connection-loading-indicator'),
+        strokeWidth: 2.5,
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
       ),
     );
   }
@@ -172,8 +253,8 @@ class _ConnectedDurationState extends State<_ConnectedDuration> {
       formatConnectedDuration(elapsed.isNegative ? Duration.zero : elapsed),
       style: TextStyle(
         color: widget.color,
-        fontSize: 16,
-        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        fontWeight: FontWeight.w400,
         fontFeatures: const [FontFeature.tabularFigures()],
       ),
     );
@@ -225,17 +306,16 @@ class _ConnectedDisc extends StatelessWidget {
   }
 }
 
-/// 连接前的门禁：只在"即将发起连接"（当前是 BoxStopped）时才检查是否要先弹
-/// 实验性功能确认框；断开 / 切换中点击不受影响，直接透传 [onTap]。
-/// 判断字段 + 弹窗 UI 见 experimental_feature_notice_dialog.dart，这里只加
-/// 这一层门禁，不改动 [onTap] 本身的调用逻辑。
+/// 连接前的门禁：只在"即将发起连接"时才检查是否要先弹实验性功能确认框；
+/// 断开 / 取消连接不受影响，直接透传 [onTap]。"即将发起连接"与控制器 `toggle`
+/// 的语义同源（`toggleTarget`），不在这里另算一遍。
+/// 判断字段 + 弹窗 UI 见 experimental_feature_notice_dialog.dart。
 Future<void> _handleConnectionTap(
   BuildContext context,
   WidgetRef ref,
-  BoxStatus status,
   VoidCallback onTap,
 ) async {
-  if (status is BoxStopped) {
+  if (toggleTarget(ref.read(connectionControllerProvider)) == Desired.on) {
     final proceed = await maybeConfirmExperimentalFeatures(
       context: context,
       ref: ref,

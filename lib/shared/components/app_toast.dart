@@ -16,6 +16,16 @@ class AppToast {
   /// 防止同一条文本在短时间内重复冒泡（避免 toast 堆叠把点击吃掉）。
   static const _dedupeWindow = Duration(milliseconds: 800);
 
+  /// 清掉去重状态。去重用的是进程级静态变量加真实时钟，不同测试用例之间会
+  /// 互相影响（上一例刚弹过的同文案，会让下一例的提示被当成重复吞掉），
+  /// 测试在 `setUp` 里调用它来保证与执行顺序无关。
+  @visibleForTesting
+  static void resetForTest() {
+    _lastShowAt = null;
+    _lastMessage = null;
+    _lastItem = null;
+  }
+
   static ToastificationItem show({
     required BuildContext context,
     required String message,

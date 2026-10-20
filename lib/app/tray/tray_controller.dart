@@ -1,9 +1,13 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -26,17 +30,15 @@ typedef TrayMenuLabels = ({
 /// `tray.status.connect/connecting/disconnect/disconnecting`、`tray.open`、
 /// `tray.hide`（新增）、`tray.quit`。
 @visibleForTesting
-TrayMenuLabels buildTrayMenuLabels(BoxStatus status, Translations t) {
-  final String toggle;
-  if (status is BoxStarted) {
-    toggle = t.tray.status.disconnect;
-  } else if (status is BoxStarting) {
-    toggle = t.tray.status.connecting;
-  } else if (status is BoxStopping) {
-    toggle = t.tray.status.disconnecting;
-  } else {
-    toggle = t.tray.status.connect;
-  }
+TrayMenuLabels buildTrayMenuLabels(ConnectionPhase phase, Translations t) {
+  final String toggle = switch (phase) {
+    ConnectionPhase.connected => t.tray.status.disconnect,
+    ConnectionPhase.connecting ||
+    ConnectionPhase.reconnecting => t.tray.status.connecting,
+    ConnectionPhase.disconnecting => t.tray.status.disconnecting,
+    ConnectionPhase.disconnected ||
+    ConnectionPhase.resolving => t.tray.status.connect,
+  };
   return (
     toggle: toggle,
     show: t.tray.open,
@@ -45,22 +47,12 @@ TrayMenuLabels buildTrayMenuLabels(BoxStatus status, Translations t) {
   );
 }
 
-/// "服务模式"子菜单自身的标题（不是子菜单里"智能/全局"两个选项的文案，那两个走
-/// 正规 i18n：`t.home.routingMode.global` / `t.home.routingMode.smart`）。
+/// 「代理模式」（智能分流 / 全局代理）子菜单自身的标题，走 `tray.proxyModeMenu`。
 ///
-/// 现有 `translations.g.dart` 里找不到一个不会引起歧义的现成 key 给这个子菜单
-/// 标题用：`config.serviceMode`（"服务模式"）名字本身很贴切，但在这个 App 里已经
-/// 被"仅线路 / 系统线路 / VPN"这个完全不同的概念占用了（见
-/// `quick_settings_modal.dart` 的 `_QuickServiceMode`：那是决定客户端本身怎么接入
-/// 网络的选项，不是这里的"智能分流 / 全局代理"路由模式），复用会造成同名不同义。
-/// 本任务的约束又只允许改这一个文件，没法去 `assets/translations` 加新 key。
-/// 这里退而求其次，手动按当前 locale 二选一，只用于这一个子菜单的容器标题；
-/// 其它语言一律回退英文——跟 [buildTrayMenuLabels] 里 `hide` 字段既有的回退策略
-/// 一致（`fallback_strategy: base_locale`），不是新发明的处理方式。
+/// 不复用 `config.serviceMode`（「服务模式」）：那是「仅线路 / 系统线路 / VPN」
+/// 这个完全不同的概念（客户端怎么接入网络），同名不同义会误导。
 @visibleForTesting
-String proxyModeSubmenuLabel(Translations t) {
-  return t.$meta.locale == AppLocale.zhCn ? '服务模式' : 'Service Mode';
-}
+String proxyModeSubmenuLabel(Translations t) => t.tray.proxyModeMenu;
 
 /// 根据当前连接状态 + 当前语言 + 当前生效的代理模式（[proxyMode]，对齐
 /// `proxyModeProvider`：0 = 全局，1 = 智能），构建完整的托盘右键菜单结构。
@@ -89,15 +81,15 @@ String proxyModeSubmenuLabel(Translations t) {
 ///   和 `home_page.dart` 里的 `_ModeSelector`）。当前生效的模式用
 ///   `MenuItem.checkbox` 打勾。
 Menu buildTrayMenu({
-  required BoxStatus status,
+  required ConnectionPhase phase,
   required Translations t,
   required int proxyMode,
 }) {
-  final isTransitioning = status is BoxStarting || status is BoxStopping;
-  final labels = buildTrayMenuLabels(status, t);
+  final labels = buildTrayMenuLabels(phase, t);
   return Menu(
     items: [
-      MenuItem(key: 'toggle', label: labels.toggle, disabled: isTransitioning),
+      // 过渡期也可点（spec §10.9）：连接中点 = 取消并断开，断开中点 = 重新连接。
+      MenuItem(key: 'toggle', label: labels.toggle),
       MenuItem.separator(),
       MenuItem(key: 'show', label: labels.show),
       MenuItem(key: 'hide', label: labels.hide),
@@ -168,7 +160,8 @@ TrayIconSpec trayIconSpec({required bool isMacOS}) {
 /// ——`assets/images/tray_on/off/pending.png` 这几个资源文件目前并不存在，
 /// 每次 setIcon 都会失败，而且这个失败被完全吞掉，连 debugPrint 都没有，
 /// 排障时无从得知。这个函数统一收敛 setup() 里最初那次调用和状态变化时那次
-/// 调用的失败处理，保证至少有日志。
+/// 调用的失败处理，保证至少有日志：写进应用日志（app.log），同一错误只记一次，
+/// 不会随每次状态变化刷屏。
 @visibleForTesting
 Future<void> setTrayIconWithLogging(
   Future<void> Function(String path, {bool isTemplate}) setIcon,
@@ -177,12 +170,15 @@ Future<void> setTrayIconWithLogging(
 }) async {
   try {
     await setIcon(path, isTemplate: isTemplate);
-  } catch (e) {
-    if (kDebugMode) debugPrint('[Tray] setIcon failed: $e');
+  } catch (e, st) {
+    logAppFailureOnce('tray.setIcon', e, st);
   }
 }
 
 /// 托盘菜单“退出”那一项的完整退出序列：断开连接 → 清理托盘 → 销毁窗口。
+///
+/// [disconnect] 返回该次断开请求的 [RequestOutcome]，见 [performShutdownCleanup]
+/// 对各结果的处理。
 ///
 /// 抽成纯函数（三个动作都以回调注入）是为了可测——真实的
 /// [TrayController.onTrayMenuItemClick] 里这三步分别是
@@ -205,7 +201,7 @@ Future<void> setTrayIconWithLogging(
 /// （`lib/app/shortcuts/desktop_shortcuts.dart` 的 `defaultQuitApp`）需要
 /// 复用同一条退出序列，不应该另外维护一份重复逻辑。
 Future<void> performQuitSequence({
-  required Future<void> Function() disconnect,
+  required Future<RequestOutcome> Function() disconnect,
   required Future<void> Function() disposeTray,
   required Future<void> Function() destroyWindow,
 }) async {
@@ -215,6 +211,18 @@ Future<void> performQuitSequence({
   );
   await destroyWindow();
 }
+
+/// 退出清理的**总期限**：托盘菜单「退出」、全局快捷键、操作系统退出守卫三条
+/// 路径共用这一个值（见 [performShutdownCleanup]），所有步骤（含托盘清理）共享
+/// 这一个截止时间，没有额外的宽限。
+const kQuitCleanupDeadline = Duration(seconds: 5);
+
+/// 断开被取代后重发之前让出事件循环的间隔：既不空转，也让期限计时器有机会触发。
+const kQuitResubmitGap = Duration(milliseconds: 20);
+
+/// 从总期限里预留给托盘清理的时间：停内核最多用 `deadline - 预留`，托盘清理
+/// 用到截止时间为止（停内核提前完成时可以更多）。预留不超过总期限的十分之一。
+const kQuitTrayReserve = Duration(milliseconds: 500);
 
 /// 退出前的清理部分：停内核（**这一步负责还原系统代理**）+ 清托盘。
 ///
@@ -240,26 +248,72 @@ Future<void> performQuitSequence({
 ///
 /// 残留风险说明：崩溃、强制退出、断电这类路径谁都拦不住，本函数只覆盖"操作
 /// 系统给了我们清理机会"的情形。
+///
+/// ## 按 [RequestOutcome] 处理断开结果，整体受 [deadline] 约束
+///
+/// 三条退出路径（托盘、快捷键、OS 守卫）共用同一个总期限 [kQuitCleanupDeadline]
+/// （5 s）。期限内：
+/// - `RequestSucceeded`：内核确认已停止，系统代理已还原（脏标记由
+///   `ConnectionController` 在此时清除）；
+/// - `RequestSuperseded`：这次断开被更新的请求取代（例如退出途中又点了连接）。
+///   最新的意图未必是断开，所以**持续重发最新的断开**并等它的结果，直到得到
+///   成功或失败，不设轮数上限——期限就是上限；
+/// - `RequestFailed` / `RequestInterrupted`：内核没能确认停止。**不清**系统
+///   代理脏标记（残留交给下次启动的自愈），照常继续退出。
+///
+/// 期限用尽：放弃等待，**保留**脏标记（没确认停止就不清），完成剩下的退出清理
+/// （清托盘）。
 Future<void> performShutdownCleanup({
-  required Future<void> Function() disconnect,
+  required Future<RequestOutcome> Function() disconnect,
   required Future<void> Function() disposeTray,
+  Duration deadline = kQuitCleanupDeadline,
 }) async {
   // 这两行日志**不加 kDebugMode 判断**，正式包里也要留。当用户报"退出之后
   // 上不了网了"，唯一能立刻定性的信息就是"退出时这段清理到底跑没跑完"——
   // 每次退出仅一行，没有噪音成本。
   debugPrint('[Quit] 开始退出清理（停内核 → 还原系统代理 → 清托盘）');
+
+  // 总截止时间：所有步骤共享，只用计时器（可被 fake_async 精确控制）。
+  final overall = Completer<void>();
+  final overallTimer = Timer(deadline, () {
+    if (!overall.isCompleted) overall.complete();
+  });
+  final reserve = kQuitTrayReserve < deadline ~/ 10
+      ? kQuitTrayReserve
+      : deadline ~/ 10;
+
+  var abandoned = false;
+  Future<void> disconnectUntilSettled() async {
+    var rounds = 0;
+    while (!abandoned) {
+      rounds++;
+      final outcome = await disconnect();
+      if (outcome is! RequestSuperseded) {
+        debugPrint('[Quit] 断开结果（第 $rounds 轮）: $outcome');
+        return;
+      }
+      await Future<void>.delayed(kQuitResubmitGap);
+    }
+  }
+
   // 两步都不能因为前一步失败就中止——disconnect 失败照样要继续清托盘，
   // 更不能让用户点了"退出"卡住退不出去。
   try {
-    await disconnect();
-  } catch (e) {
-    if (kDebugMode) debugPrint('[Quit] disconnect failed during quit: $e');
+    await disconnectUntilSettled().timeout(deadline - reserve);
+  } on TimeoutException catch (e, st) {
+    abandoned = true; // 之后不再提交任何断开请求
+    logAppFailure('quit.disconnectTimeout', e, st);
+  } catch (e, st) {
+    abandoned = true;
+    logAppFailure('quit.disconnect', e, st);
   }
   try {
-    await disposeTray();
-  } catch (e) {
-    if (kDebugMode) debugPrint('[Tray] dispose failed during quit: $e');
+    // 托盘清理只用剩下的预算：到总截止时间为止。
+    await Future.any<void>([disposeTray(), overall.future]);
+  } catch (e, st) {
+    logAppFailure('quit.disposeTray', e, st);
   }
+  overallTimer.cancel();
   debugPrint('[Quit] 退出清理完成');
 }
 
@@ -286,20 +340,19 @@ Future<void> performOpenPage({
 }
 
 /// "服务模式"子菜单里点某个模式项之后的实际动作：切模式 + （如果当前已连接）
-/// 立刻 reconnect 让新模式生效。
+/// 立刻重新应用配置让新模式生效。
 ///
 /// 抽成纯函数（依赖全部以回调注入）是为了可测——真实调用点里 `currentMode`/
-/// `updateMode` 挂在 `proxyModeProvider`，`isConnected`/`reconnect` 挂在
+/// `updateMode` 挂在 `proxyModeProvider`，`isConnected`/`applyConfig` 挂在
 /// `connectionControllerProvider`，都是真实 Riverpod container 上的读写，没法在
 /// 纯 Dart 测试里直接跑。
 ///
 /// 不需要在这里重新拼一遍 `home_page.dart` 的 `_ModeSelector._onModeTap` 那一整套
 /// `getDefaultConfigOptions` + `changeConfigOptions` 推送逻辑——
-/// `connectionControllerProvider` 的 `connect()`/`reconnect()` 本来就会在每次调用
-/// 时现读 `proxyModeProvider` 的最新值去决定 `executeConfigAsIs`/`isSmart`（见
-/// `connection_controller.dart` 里 `reconnect()` 的实现），所以：
+/// `ConnectionLauncher` 在每次准备启动产物时现读 `proxyModeProvider` 的最新值
+/// 去决定 `executeConfigAsIs`/`isSmart`（见 `connection_launcher.dart`），所以：
 /// - 没连接时，只要模式状态更新 + 持久化了，下次用户点连接自然用的是新模式；
-/// - 已连接时，reconnect 一次就会用新模式重新生效，不需要在这里手动去拼
+/// - 已连接时，重新应用一次配置就会用新模式生效，不需要在这里手动去拼
 ///   fork-side options 再推一遍。
 /// 这样避免了在托盘这一层重复一份跟 box service 强耦合的业务逻辑。
 @visibleForTesting
@@ -308,12 +361,12 @@ Future<void> performProxyModeSwitch({
   required int Function() currentMode,
   required Future<void> Function(int mode) updateMode,
   required bool Function() isConnected,
-  required Future<void> Function() reconnect,
+  required Future<void> Function() applyConfig,
 }) async {
   if (currentMode() == targetMode) return;
   await updateMode(targetMode);
   if (isConnected()) {
-    await reconnect();
+    await applyConfig();
   }
 }
 
@@ -326,7 +379,7 @@ class TrayController extends TrayListener {
   static final instance = TrayController._();
 
   ProviderContainer? _container;
-  ProviderSubscription<AsyncValue<BoxStatus>>? _statusSub;
+  ProviderSubscription<ConnectionPhase>? _statusSub;
   bool _initialized = false;
 
   Future<void> setup(ProviderContainer container) async {
@@ -336,17 +389,16 @@ class TrayController extends TrayListener {
     _container = container;
 
     await _setTrayIcon();
-    await _rebuildMenu(const BoxStopped());
+    await _rebuildMenu(container.read(connectionPhaseProvider));
     trayManager.addListener(this);
 
-    _statusSub = container.listen<AsyncValue<BoxStatus>>(
-      connectionControllerProvider,
-      (_, next) {
-        final status = next.valueOrNull ?? const BoxStopped();
-        _rebuildMenu(status);
-        _setTrayIcon();
-      },
-    );
+    _statusSub = container.listen<ConnectionPhase>(connectionPhaseProvider, (
+      _,
+      next,
+    ) {
+      _rebuildMenu(next);
+      _setTrayIcon();
+    });
   }
 
   Future<void> dispose() async {
@@ -368,18 +420,18 @@ class TrayController extends TrayListener {
     );
   }
 
-  Future<void> _rebuildMenu(BoxStatus status) async {
+  Future<void> _rebuildMenu(ConnectionPhase phase) async {
     final container = _container;
     if (container == null) return;
     final menu = buildTrayMenu(
-      status: status,
+      phase: phase,
       t: container.read(translationsProvider),
       proxyMode: container.read(proxyModeProvider),
     );
     try {
       await trayManager.setContextMenu(menu);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Tray] setContextMenu failed: $e');
+    } catch (e, st) {
+      logAppFailureOnce('tray.setContextMenu', e, st);
     }
   }
 
@@ -464,16 +516,18 @@ class TrayController extends TrayListener {
         currentMode: () => c.read(proxyModeProvider),
         updateMode: (mode) =>
             c.read(proxyModeProvider.notifier).updateMode(mode),
-        isConnected: () =>
-            c.read(connectionControllerProvider).valueOrNull is BoxStarted,
-        reconnect: () =>
-            c.read(connectionControllerProvider.notifier).reconnect(),
+        isConnected: () => switch (c.read(connectionPhaseProvider)) {
+          ConnectionPhase.connected ||
+          ConnectionPhase.connecting ||
+          ConnectionPhase.reconnecting => true,
+          _ => false,
+        },
+        applyConfig: () =>
+            c.read(connectionControllerProvider.notifier).applyConfig(),
       );
-    } catch (e) {
-      if (kDebugMode) debugPrint('[Tray] switch proxy mode failed: $e');
+    } catch (e, st) {
+      logAppFailure('tray.switchProxyMode', e, st);
     }
-    final status =
-        c.read(connectionControllerProvider).valueOrNull ?? const BoxStopped();
-    await _rebuildMenu(status);
+    await _rebuildMenu(c.read(connectionPhaseProvider));
   }
 }

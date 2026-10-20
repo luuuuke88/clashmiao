@@ -24,7 +24,12 @@
     "clipboardExportSuccessMsg": "Panoya kopyalandı",
     "openAppSettings": "Uygulama Ayarlarını Aç",
     "underDevelopment": "Geliştirme Aşamasında",
-    "confirm": "Onayla"
+    "confirm": "Onayla",
+    "close": "Kapat",
+    "cancel": "İptal",
+    "clipboardEmpty": "Pano boş",
+    "clipboardReadFailed": "Pano okunamadı",
+    "moreOptions": "Diğer seçenekler"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "devam ederek ${tap(@:about.termsAndConditions)} kabul etmiş olursunuz",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "Uygulama ağ çekirdeğini yükleyemedi. Bağlantı kullanılamıyor. Uygulamayı yeniden kurun ya da çekirdek kitaplık dosyasının çalıştırılabilir dosyanın yanında olduğundan emin olun.",
     "degradedTitle": "Bağlandı, ancak internet erişimi yok",
     "degradedMsg": "Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.",
-    "degradedRetry": "Yeniden Denetle"
+    "degradedRetry": "Yeniden Denetle",
+    "egressIp": {
+      "label": "Çıkış IP'si",
+      "notConnected": "Çıkış IP'sini görmek için bağlanın",
+      "tapToCheck": "Çıkış IP'sini denetlemek için dokunun",
+      "checking": "Denetleniyor…",
+      "failedRetry": "Denetim başarısız, yeniden denemek için dokunun"
+    },
+    "emptyProfilesHint": "Başlamak için aşağıdaki düğmeye dokunun",
+    "noActiveProfileTitle": "Profil seçilmedi"
   },
   "stats": {
     "trafficLive": "Canlı Trafik",
@@ -56,7 +70,9 @@
     "liveSpeed": "Anlık Hız",
     "connection": "Bağlantı",
     "speed": "Hız",
-    "totalTransferred": "Toplam Aktarılan"
+    "totalTransferred": "Toplam Aktarılan",
+    "sessionTraffic": "Bu oturumun trafiği",
+    "downloadSpeed": "İndirme hızı"
   },
   "profile": {
     "overviewPageTitle": "Profiller",
@@ -99,7 +115,12 @@
       "manuallyDescription": "Sunucu yapılandırmasını elle girin",
       "addWarp": "WARP Ekle",
       "warpDescription": "Cloudflare WARP ile ücretsiz hızlandırma",
-      "addingWarpMsg": "WARP kaydedilirken lütfen bekleyin."
+      "addingWarpMsg": "WARP kaydedilirken lütfen bekleyin.",
+      "importedNamed": "Abonelik içe aktarıldı: ${name}",
+      "clipboardEmpty": "Pano boş, içe aktarılacak bir şey yok",
+      "deepLinkMissingUrl": "Bağlantıda abonelik adresi yok",
+      "successMsg": "Profil eklendi",
+      "nameAutoHint": "Otomatik algılanır (isteğe bağlı)"
     },
     "update": {
       "buttonTxt": "Güncelle",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "Sil",
       "confirmationMsg": "Profil kalıcı olarak silinsin mi?",
-      "successMsg": "Profil başarıyla silindi"
+      "successMsg": "Profil başarıyla silindi",
+      "confirmTitle": "Profili sil",
+      "namedConfirmMsg": "\"${name}\" silinsin mi? Bu işlem geri alınamaz."
     },
     "save": {
       "buttonText": "Kaydet",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Kapalı",
+      "updateIntervalHours": "${hours} sa",
+      "updateIntervalDays": "${days} gün"
     },
     "actionButtons": {
       "add": "Ekle",
@@ -171,7 +197,10 @@
       "currentlyUsing": "Şu Anda Kullanılıyor",
       "remainingDays": "${days} gün kaldı"
     },
-    "remoteProfile": "Uzak Profil"
+    "remoteProfile": "Uzak Profil",
+    "defaultLocalName": "Yerel içe aktarma",
+    "defaultDeepLinkName": "Bağlantıdan içe aktarma",
+    "switchFailedMsg": "Profil değiştirilemedi"
   },
   "proxies": {
     "pageTitle": "Proxyler",
@@ -192,7 +221,9 @@
     "delaySemantics": {
       "result": "Gecikme: ${delay} ms",
       "timeout": "Gecikme Testi Zaman Aşımı",
-      "testing": "Gecikme: Test ediliyor..."
+      "testing": "Gecikme: Test ediliyor...",
+      "untested": "Gecikme: Test edilmedi",
+      "stale": "Gecikme: ${delay} ms (önceki sonuç)"
     },
     "ipInfoSemantics": {
       "address": "IP Adresi",
@@ -200,10 +231,14 @@
     },
     "testingDelayInfo": "Gecikme test ediliyor: ${name}",
     "switchedTo": "${name} olarak değiştirildi",
-    "switchToFailed": "Geçiş başarısız: ${error}",
+    "switchFailed": "Sunucu değiştirilemedi. Lütfen tekrar deneyin.",
+    "testFailed": "Gecikme testi başarısız oldu. Lütfen tekrar deneyin.",
+    "groupsLoading": "Sunucu listesi hâlâ yükleniyor. Lütfen birazdan tekrar deneyin.",
     "connectBeforeSwitch": "Hat değiştirmeden önce bağlanın",
     "startDelayTestForGroups": "${count} hat için gecikme testi başlatıldı",
     "delayTestBtn": "Gecikme",
+    "delayTimeout": "Zaman aşımı",
+    "connectBeforeTest": "Gecikmeyi test etmek için önce bağlanın",
     "lineCount": "${count} hat",
     "manualSelect": "Elle Seçim",
     "autoTest": "Otomatik Test"
@@ -220,7 +255,10 @@
     "logsCleared": "Günlükler temizlendi",
     "logsCopied": "Günlükler kopyalandı",
     "logsUnderDevelopment": "Günlük özelliği geliştirme aşamasında",
-    "noLogsWhenDisconnected": "Bağlı değil, günlük yok"
+    "noLogsWhenDisconnected": "Bağlı değil, günlük yok",
+    "loadFailed": "Günlükler yüklenemedi",
+    "empty": "Henüz günlük yok",
+    "clearFailed": "Günlükler temizlenemedi"
   },
   "settings": {
     "pageTitle": "Ayarlar",
@@ -307,10 +345,50 @@
     "exportAllOptions": "Tüm Seçenekleri Panoya Kopyala",
     "importOptions": "Seçenekleri Panodan İçe Aktar",
     "importOptionsMsg": "Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?",
+    "backup": {
+      "importConfirmTitle": "Yedeği İçe Aktar",
+      "importConfirmMsg": "Bu işlem aboneliklerinizi yedekteki aboneliklerle değiştirir ve yedekteki ayarları uygular. Önce mevcut verilerin bir anlık görüntüsü kaydedilir; içe aktarma başarısız olursa otomatik olarak geri yüklenir.",
+      "importRemovesMsg": "Bu cihazdaki ${count} abonelik yedekte yok ve kaldırılacak.",
+      "reportImported": "${profiles} abonelik ve ${settings} ayar içe aktarıldı.",
+      "reportDropped": "Yedekteki ${count} abonelik, verileri geçersiz olduğu için atlandı.",
+      "reportSettingsSkipped": "${count} ayar atlandı; mevcut değerleriniz korundu.",
+      "reportWarpOff": "İçe aktarma WARP'ı kapattı. Bu cihazda yeniden etkinleştirin.",
+      "reportBackfill": "${count} abonelik arka planda indirilecek.",
+      "errInvalidFile": "Bu geçerli bir ClashMiao yedek dosyası değil.",
+      "errUnsupportedVersion": "Bu yedek biçimi desteklenmiyor.",
+      "errNewerSchema": "Bu yedek uygulamanın daha yeni bir sürümüyle oluşturulmuş. Lütfen önce uygulamayı güncelleyin.",
+      "errNoUsableProfiles": "Bu yedekteki aboneliklerin hiçbiri içe aktarılamıyor.",
+      "errSnapshotFailed": "Mevcut verilerin anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey değiştirilmedi.",
+      "errUnresolvedPrevious": "Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.",
+      "errRolledBack": "İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.",
+      "errNotRolledBack": "İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.",
+      "errFailed": "İçe aktarma başarısız oldu.",
+      "errBusy": "Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.",
+      "recoveryFailedTitle": "Otomatik geri yükleme tamamlanmadı",
+      "recoveryFailedMsg": "Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.",
+      "recoveryUnrecoverableTitle": "Yarıda kalan içe aktarma geri alınamadı",
+      "recoveryUnrecoverableMsg": "Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.",
+      "recoveryRetry": "Yeniden dene",
+      "recoveryClose": "Kapat",
+      "recoveryRetried": "Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.",
+      "exportAction": "Yedeği dışa aktar",
+      "importAction": "Yedeği içe aktar",
+      "exportFailed": "Yedek dışa aktarılamadı",
+      "shareText": "ClashMiao yedeği"
+    },
     "systemProxyEnabled": "Sistem proxy’si etkin",
     "systemProxyDisabled": "Sistem proxy’si devre dışı (uygulamak için yeniden bağlanın)",
     "adminPrivilegesRequired": "macOS'ta yönetici ayrıcalıkları gerekir",
-    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir"
+    "portChangeNotice": "Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir",
+    "groups": {
+      "general": "Genel",
+      "connection": "Bağlantı",
+      "privacy": "Gizlilik"
+    },
+    "importOptionsInvalid": "Pano geçerli bir ayar JSON'u içermiyor",
+    "importOptionsNothing": "İçe aktarılabilir ayar bulunamadı",
+    "importOptionsDone": "${count} ayar içe aktarıldı",
+    "importOptionsPartial": "${applied} ayar içe aktarıldı; ${skipped} ayar geçersiz olduğu için atlandı"
   },
   "about": {
     "pageTitle": "Hakkında",
@@ -320,7 +398,8 @@
     "checkForUpdate": "Güncellemeleri kontrol et",
     "privacyPolicy": "Gizlilik Politikası",
     "termsAndConditions": "Şartlar ve koşullar",
-    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi"
+    "appDescription": "sing-box çekirdeğine dayalı çok platformlu proxy istemcisi",
+    "openSourceLicenses": "Açık kaynak lisansları"
   },
   "appUpdate": {
     "notAvailableMsg": " En son sürümü kullanıyorsunuz",
@@ -330,7 +409,8 @@
     "newVersionLbl": "Yeni versiyon",
     "updateNowBtnTxt": "Şimdi güncelle",
     "laterBtnTxt": "Daha sonra",
-    "ignoreBtnTxt": "Görmezden gel"
+    "ignoreBtnTxt": "Görmezden gel",
+    "checkFailedMsg": "Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin."
   },
   "tray": {
     "dashboard": "Gösterge Paneli",
@@ -342,7 +422,8 @@
       "disconnect": "Bağlantıyı kes",
       "disconnecting": "Bağlantı kesiliyor"
     },
-    "hide": "Gizle"
+    "hide": "Gizle",
+    "proxyModeMenu": "Proxy Modu"
   },
   "failure": {
     "unexpected": "Beklenmeyen hata",
@@ -362,21 +443,25 @@
       "create": "Servis oluşturma hatası",
       "start": "Servis başlatma hatası",
       "coreLibraryMissing": "Çekirdek Kitaplığı Yüklü Değil",
-      "startTimeout": "Servis Başlatma Zaman Aşımı"
+      "startTimeout": "Servis Başlatma Zaman Aşımı",
+      "kernelUnresponsive": "Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.",
+      "kernelExited": "Çekirdek beklenmedik şekilde kapandı"
     },
     "connectivity": {
       "unexpected": "Beklenmedik Hata",
       "missingVpnPermission": "Eksik VPN İzni",
       "missingNotificationPermission": "Eksik Bildirim İzni",
       "core": "Temel Hata",
-      "networkUnavailable": "Ağ Kullanılamıyor"
+      "networkUnavailable": "Ağ Kullanılamıyor",
+      "nativeUnresponsive": "Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin."
     },
     "profiles": {
       "unexpected": "Beklenmedik hata",
       "notFound": "Profil bulunamadı",
       "invalidConfig": "Geçersiz Yapılandırmalar",
       "invalidUrl": "Geçersiz URL",
-      "noActive": "Etkin Profil Yok"
+      "noActive": "Etkin Profil Yok",
+      "readOnlyUpgrade": "Abonelikleri değiştirmeden önce uygulamayı güncelleyin"
     },
     "connection": {
       "unexpected": "Beklenmeyen bağlantı hatası",
@@ -389,7 +474,8 @@
       "unexpected": "Beklenmeyen hata",
       "notUpdate": "Güncelleme mevcut değil",
       "activeNotFound": "Etkin Coğrafi Varlık Bulunamadı"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Bağlanmak için dokunun",
@@ -400,7 +486,7 @@
     "experimentalNoticeMsg": "Bağlantı kalitesini etkileyebilecek ve beklenmeyen hatalara neden olabilecek bazı deneysel özellikleri etkinleştirdiniz. Bu seçenekleri istediğiniz zaman Yapılandırma seçenekleri sayfasından değiştirebilir veya sıfırlayabilirsiniz.",
     "disableExperimentalNotice": "Bir daha gösterme",
     "reconnect": "Yeniden Bağlan",
-    "connectAnyWay": "Bağlan",
+    "connectAnyWay": "Yine de bağlan",
     "reconnectMsg": "Değişiklikleri uygulamak için yeniden bağlanılıyor...",
     "staleSystemProxyCleaned": "Önceki anormal çıkıştan kalan sistem proxy ayarları temizlendi"
   },
@@ -466,6 +552,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "WARP'ı ayarla",
+    "warpNotConfigured": "Yapılandırılmadı",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "inbound": "Detour WARP through proxies",
@@ -496,6 +584,14 @@
     "warpNoiseSize": "Gürültü Boyutu",
     "warpNoiseMode": "Gürültü Modu",
     "warpNoiseDelay": "Gürültü Gecikmesi",
-    "desktopProxyScopeNotice": "Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır."
+    "desktopProxyScopeNotice": "Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.",
+    "serviceModeIosVpnOnly": "iOS yalnızca VPN modunu destekler",
+    "warpGenerating": "WARP yapılandırması oluşturuluyor…",
+    "warpConfigFailed": "WARP yapılandırması oluşturulamadı. Lütfen daha sonra tekrar deneyin.",
+    "portRangeError": "Port 1024 ile 65535 arasında olmalıdır",
+    "dnsEmptyError": "DNS adresi boş olamaz",
+    "rangeFormatError": "Bir sayı veya aralık girin, örn. 10-30",
+    "urlSchemeError": "URL http:// veya https:// ile başlamalıdır",
+    "manageRuleAssets": "Kural setlerini yönet"
   }
 }

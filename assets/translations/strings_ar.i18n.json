@@ -24,7 +24,12 @@
     "openAppSettings": "فتح إعدادات التطبيق",
     "grantPermission": "منح الإذن",
     "underDevelopment": "قيد التطوير",
-    "confirm": "تأكيد"
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "cancel": "إلغاء",
+    "clipboardEmpty": "الحافظة فارغة",
+    "clipboardReadFailed": "تعذّرت قراءة الحافظة",
+    "moreOptions": "خيارات إضافية"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بمواصلة استخدامك، فإنك توافق على ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "تعذّر على التطبيق تحميل نواة الشبكة. الاتصال غير متاح. أعد تثبيت التطبيق أو تأكد من وجود ملف مكتبة النواة بجوار الملف التنفيذي.",
     "degradedTitle": "متصل، لكن لا يوجد وصول إلى الإنترنت",
     "degradedMsg": "النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.",
-    "degradedRetry": "إعادة الفحص"
+    "degradedRetry": "إعادة الفحص",
+    "egressIp": {
+      "label": "عنوان IP الخارجي",
+      "notConnected": "اتصل لعرض عنوان IP الخارجي",
+      "tapToCheck": "اضغط للتحقق من عنوان IP الخارجي",
+      "checking": "جارٍ التحقق…",
+      "failedRetry": "فشل التحقق، اضغط لإعادة المحاولة"
+    },
+    "emptyProfilesHint": "اضغط على الزر أدناه للبدء",
+    "noActiveProfileTitle": "لم يتم اختيار ملف تعريف"
   },
   "stats": {
     "traffic": "حركة المرور",
@@ -56,7 +70,9 @@
     "speed": "السرعة",
     "totalTransferred": "إجمالي البيانات المنقولة",
     "trafficUsage": "استخدام البيانات",
-    "liveSpeed": "السرعة الحالية"
+    "liveSpeed": "السرعة الحالية",
+    "sessionTraffic": "حركة البيانات في هذه الجلسة",
+    "downloadSpeed": "سرعة التنزيل"
   },
   "profile": {
     "overviewPageTitle": "الملفات الشخصية",
@@ -99,7 +115,12 @@
       "manuallyDescription": "أدخل إعداد الخادم يدوياً",
       "addWarp": "إضافة WARP",
       "warpDescription": "تسريع مجاني عبر Cloudflare WARP",
-      "addingWarpMsg": "يرجى الانتظار أثناء تسجيل WARP."
+      "addingWarpMsg": "يرجى الانتظار أثناء تسجيل WARP.",
+      "importedNamed": "تم استيراد الاشتراك: ${name}",
+      "clipboardEmpty": "الحافظة فارغة، لا يوجد ما يمكن استيراده",
+      "deepLinkMissingUrl": "لا يحتوي الرابط على عنوان اشتراك",
+      "successMsg": "تمت إضافة ملف التعريف",
+      "nameAutoHint": "يُكتشف تلقائيًا (اختياري)"
     },
     "update": {
       "buttonTxt": "تحديث",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "حذف",
       "confirmationMsg": "حذف ملف التعريف نهائياً؟",
-      "successMsg": "تم حذف ملف التعريف بنجاح"
+      "successMsg": "تم حذف ملف التعريف بنجاح",
+      "confirmTitle": "حذف ملف التعريف",
+      "namedConfirmMsg": "هل تريد حذف \"${name}\"؟ لا يمكن التراجع عن ذلك."
     },
     "save": {
       "buttonText": "حفظ",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "إيقاف",
+      "updateIntervalHours": "${hours} ساعة",
+      "updateIntervalDays": "${days} يوم"
     },
     "actionButtons": {
       "add": "إضافة",
@@ -171,7 +197,10 @@
       "currentlyUsing": "قيد الاستخدام حالياً",
       "remainingDays": "متبقٍ ${days} يوماً"
     },
-    "remoteProfile": "اشتراك بعيد"
+    "remoteProfile": "اشتراك بعيد",
+    "defaultLocalName": "استيراد محلي",
+    "defaultDeepLinkName": "استيراد من رابط",
+    "switchFailedMsg": "تعذّر تبديل ملف التعريف"
   },
   "proxies": {
     "pageTitle": "الخوادم الوكيلية",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "التأخير: ${delay} مللي ثانية",
       "timeout": "انتهاء الوقت في اختبار التأخير",
-      "testing": "التأخير: قيد الاختبار..."
+      "testing": "التأخير: قيد الاختبار...",
+      "untested": "التأخير: لم يُختبر بعد",
+      "stale": "التأخير: ${delay} مللي ثانية (نتيجة سابقة)"
     },
     "ipInfoSemantics": {
       "address": "عنوان IP",
@@ -200,10 +231,14 @@
     "sortModalTitle": "اختر طريقة الترتيب",
     "testingDelayInfo": "جارٍ اختبار التأخير لـ: ${name}",
     "switchedTo": "تم التبديل إلى ${name}",
-    "switchToFailed": "فشل التبديل: ${error}",
+    "switchFailed": "تعذّر تبديل الخادم. يُرجى المحاولة مرة أخرى.",
+    "testFailed": "فشل اختبار زمن الاستجابة. يُرجى المحاولة مرة أخرى.",
+    "groupsLoading": "لا تزال قائمة الخوادم قيد التحميل. يُرجى المحاولة بعد قليل.",
     "connectBeforeSwitch": "يرجى الاتصال قبل تبديل الخطوط",
     "startDelayTestForGroups": "بدأ اختبار التأخير لـ ${count} خط",
     "delayTestBtn": "التأخير",
+    "delayTimeout": "انتهت المهلة",
+    "connectBeforeTest": "اتصل أولاً لاختبار التأخير",
     "lineCount": "${count} خط",
     "manualSelect": "اختيار يدوي",
     "autoTest": "اختبار تلقائي"
@@ -220,7 +255,10 @@
     "logsCleared": "تم مسح السجلات",
     "logsCopied": "تم نسخ السجلات",
     "logsUnderDevelopment": "ميزة السجلات قيد التطوير",
-    "noLogsWhenDisconnected": "غير متصل، لا توجد سجلات"
+    "noLogsWhenDisconnected": "غير متصل، لا توجد سجلات",
+    "loadFailed": "تعذّر تحميل السجلات",
+    "empty": "لا توجد سجلات بعد",
+    "clearFailed": "تعذّر مسح السجلات"
   },
   "settings": {
     "pageTitle": "الإعدادات",
@@ -231,6 +269,37 @@
     "exportAllOptions": "تصدير جميع الخيارات إلى الحافظة (تصحيح الأخطاء)",
     "importOptions": "استيراد الخيارات من الحافظة",
     "importOptionsMsg": "سيؤدي هذا إلى إعادة كتابة جميع خيارات التكوين بالقيم المحددة. هل أنت متأكد؟",
+    "backup": {
+      "importConfirmTitle": "استيراد نسخة احتياطية",
+      "importConfirmMsg": "سيؤدي هذا إلى استبدال اشتراكاتك بالاشتراكات الموجودة في النسخة الاحتياطية وتطبيق إعداداتها. يتم أولًا حفظ لقطة من البيانات الحالية وتُستعاد تلقائيًا إذا فشل الاستيراد.",
+      "importRemovesMsg": "يوجد ${count} اشتراك على هذا الجهاز غير موجود في النسخة الاحتياطية وسيتم حذفه.",
+      "reportImported": "تم استيراد ${profiles} اشتراك و${settings} إعداد.",
+      "reportDropped": "تم تخطي ${count} اشتراك في النسخة الاحتياطية لأن بياناته غير صالحة.",
+      "reportSettingsSkipped": "تم تخطي ${count} إعداد، وتم الاحتفاظ بقيمك الحالية.",
+      "reportWarpOff": "أدى الاستيراد إلى إيقاف WARP. أعد تفعيله على هذا الجهاز.",
+      "reportBackfill": "سيتم تنزيل ${count} اشتراك في الخلفية.",
+      "errInvalidFile": "هذا ليس ملف نسخة احتياطية صالحًا لـ ClashMiao.",
+      "errUnsupportedVersion": "صيغة هذه النسخة الاحتياطية غير مدعومة.",
+      "errNewerSchema": "تم إنشاء هذه النسخة الاحتياطية بإصدار أحدث من التطبيق. يرجى تحديث التطبيق أولًا.",
+      "errNoUsableProfiles": "لا يمكن استيراد أي من الاشتراكات في هذه النسخة الاحتياطية.",
+      "errSnapshotFailed": "تعذر حفظ لقطة من البيانات الحالية، لذلك لم يتم تغيير أي شيء.",
+      "errUnresolvedPrevious": "توقف استيراد سابق ولم يتم التراجع عنه بعد. لم يتم تغيير أي شيء. أعد تشغيل التطبيق وحاول مرة أخرى.",
+      "errRolledBack": "فشل الاستيراد. تمت استعادة بياناتك السابقة.",
+      "errNotRolledBack": "فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.",
+      "errFailed": "فشل الاستيراد.",
+      "errBusy": "هناك استيراد آخر قيد التنفيذ. يرجى الانتظار حتى ينتهي.",
+      "recoveryFailedTitle": "لم تكتمل الاستعادة التلقائية",
+      "recoveryFailedMsg": "توقف آخر استيراد للنسخة الاحتياطية ولم يتمكن التطبيق من إعادة بياناتك إلى حالتها السابقة. قد تكون بعض البيانات قد استُوردت جزئيًا. أعد محاولة الاستعادة التلقائية الآن.",
+      "recoveryUnrecoverableTitle": "تعذر التراجع عن الاستيراد المتوقف",
+      "recoveryUnrecoverableMsg": "توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.",
+      "recoveryRetry": "إعادة المحاولة",
+      "recoveryClose": "إغلاق",
+      "recoveryRetried": "تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.",
+      "exportAction": "تصدير نسخة احتياطية",
+      "importAction": "استيراد نسخة احتياطية",
+      "exportFailed": "تعذّر تصدير النسخة الاحتياطية",
+      "shareText": "نسخة ClashMiao الاحتياطية"
+    },
     "general": {
       "sectionTitle": "عام",
       "locale": "اللغة",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "تم تفعيل بروكسي النظام",
     "systemProxyDisabled": "تم تعطيل بروكسي النظام (أعد الاتصال للتطبيق)",
     "adminPrivilegesRequired": "يتطلب صلاحيات المسؤول على macOS",
-    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها"
+    "portChangeNotice": "تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها",
+    "groups": {
+      "general": "عام",
+      "connection": "الاتصال",
+      "privacy": "الخصوصية"
+    },
+    "importOptionsInvalid": "لا تحتوي الحافظة على JSON إعدادات صالح",
+    "importOptionsNothing": "لم يتم العثور على إعدادات قابلة للاستيراد",
+    "importOptionsDone": "تم استيراد ${count} من الإعدادات",
+    "importOptionsPartial": "تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة"
   },
   "about": {
     "pageTitle": "حول\nتعريب:م. ابراهيم قاسم",
@@ -320,7 +398,8 @@
     "checkForUpdate": "التحقق من وجود تحديث",
     "privacyPolicy": "سياسة الخصوصية",
     "termsAndConditions": "الشروط والأحكام",
-    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box"
+    "appDescription": "عميل بروكسي متعدد المنصات يعتمد على نواة sing-box",
+    "openSourceLicenses": "تراخيص المصدر المفتوح"
   },
   "appUpdate": {
     "notAvailableMsg": "أنت تستخدم أحدث إصدار بالفعل",
@@ -330,7 +409,8 @@
     "newVersionLbl": "الإصدار الجديد",
     "updateNowBtnTxt": "تحديث الآن",
     "laterBtnTxt": "لاحقًا",
-    "ignoreBtnTxt": "تجاهل"
+    "ignoreBtnTxt": "تجاهل",
+    "checkFailedMsg": "تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى."
   },
   "tray": {
     "dashboard": "لوحة التحكم",
@@ -342,7 +422,8 @@
       "disconnect": "فصم الاتصال",
       "disconnecting": "جار فصم الاتصال"
     },
-    "hide": "إخفاء"
+    "hide": "إخفاء",
+    "proxyModeMenu": "وضع الوكيل"
   },
   "failure": {
     "unexpected": "خطأ غير متوقع",
@@ -362,21 +443,25 @@
       "create": "خطأ في إنشاء الخدمة",
       "start": "خطأ في بدء تشغيل الخدمة",
       "coreLibraryMissing": "مكتبة النواة غير مثبتة",
-      "startTimeout": "انتهت مهلة بدء الخدمة"
+      "startTimeout": "انتهت مهلة بدء الخدمة",
+      "kernelUnresponsive": "النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.",
+      "kernelExited": "توقفت النواة بشكل غير متوقع"
     },
     "connectivity": {
       "unexpected": "فشل غير متوقع",
       "missingVpnPermission": "غياب إذن VPN",
       "missingNotificationPermission": "غياب إذن الإشعارات",
       "core": "خطأ في النواة",
-      "networkUnavailable": "الشبكة غير متاحة"
+      "networkUnavailable": "الشبكة غير متاحة",
+      "nativeUnresponsive": "فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى."
     },
     "profiles": {
       "unexpected": "خطأ غير متوقع",
       "notFound": "لم يتم العثور على ملف التعريف",
       "invalidConfig": "تكوينات غير صحيحة",
       "invalidUrl": "عنوان URL غير صالح",
-      "noActive": "لا يوجد اشتراك مفعّل"
+      "noActive": "لا يوجد اشتراك مفعّل",
+      "readOnlyUpgrade": "يرجى ترقية التطبيق قبل تعديل الاشتراكات"
     },
     "connection": {
       "unexpected": "خطأ في الاتصال غير متوقع",
@@ -389,7 +474,8 @@
       "unexpected": "خطأ غير متوقع",
       "notUpdate": "لا يوجد تحديث متاح",
       "activeNotFound": "لم يتم العثور على أصل Geo النشط"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "انقر للاتصال",
@@ -397,7 +483,7 @@
     "disconnecting": "جار فصم الاتصال",
     "connected": "متصل",
     "reconnect": "أعد الاتصال",
-    "connectAnyWay": "اتصل",
+    "connectAnyWay": "اتصل على أي حال",
     "experimentalNotice": "ميزات تجريبية قيد الاستخدام",
     "experimentalNoticeMsg": "لقد قمت بتمكين بعض الميزات التجريبية التي قد تؤثر على جودة الاتصال وتسبب أخطاء غير متوقعة. يمكنك دائمًا تغيير هذه الخيارات أو إعادة تعيينها من صفحة خيارات التكوين.",
     "disableExperimentalNotice": "لا تعرض مرة أخرى",
@@ -479,6 +565,8 @@
     "muxProtocol": "بروتوكول Mux",
     "muxMaxStreams": "أقصى عدد من التدفقات المتزامنة",
     "enableWarp": "تمكين WARP",
+    "setUpWarp": "إعداد WARP",
+    "warpNotConfigured": "غير مهيأ",
     "warpDetourMode": "وضع التفاف",
     "warpDetourModes": {
       "proxyOverWarp": "لف الخوادم الوكيلية عبر WARP",
@@ -496,6 +584,14 @@
     "blockAds": "حظر الإعلانات",
     "warpNoiseSize": "حجم الضجيج",
     "warpNoiseMode": "وضع الضجيج",
-    "desktopProxyScopeNotice": "على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي."
+    "desktopProxyScopeNotice": "على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.",
+    "serviceModeIosVpnOnly": "يدعم iOS وضع VPN فقط",
+    "warpGenerating": "جارٍ إنشاء إعدادات WARP…",
+    "warpConfigFailed": "تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.",
+    "portRangeError": "يجب أن يكون المنفذ بين 1024 و65535",
+    "dnsEmptyError": "لا يمكن أن يكون عنوان DNS فارغًا",
+    "rangeFormatError": "أدخل رقمًا أو نطاقًا، مثل 10-30",
+    "urlSchemeError": "يجب أن يبدأ الرابط بـ http:// أو https://",
+    "manageRuleAssets": "إدارة مجموعات القواعد"
   }
 }

@@ -144,24 +144,282 @@ data class ConfigOptions (
 /** Generated class from Pigeon that represents data sent in messages. */
 data class SelectOutboundRequest (
   val groupTag: String,
-  val outboundTag: String
+  val outboundTag: String,
+  /**
+   * 手选重放时传入目标 attempt（连接生命周期 spec §10.7）。非空且与协调器
+   * 当前 attempt 不一致时，原生**不写入**并以 `FlutterError("stale")` 回调；
+   * 为空则维持旧行为（不校验）。
+   */
+  val expectedAttempt: Long? = null
 )
  {
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): SelectOutboundRequest {
       val groupTag = pigeonVar_list[0] as String
       val outboundTag = pigeonVar_list[1] as String
-      return SelectOutboundRequest(groupTag, outboundTag)
+      val expectedAttempt = pigeonVar_list[2] as Long?
+      return SelectOutboundRequest(groupTag, outboundTag, expectedAttempt)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       groupTag,
       outboundTag,
+      expectedAttempt,
     )
   }
   override fun equals(other: Any?): Boolean {
     if (other !is SelectOutboundRequest) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/**
+ * `KernelSnapshotMsg.lastFailure`：协调器把 desired 置 off 时附带的失败。
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class KernelFailureMsg (
+  /** 失败码（字符串，见 Dart `KernelFailureCode`；未知码按 unexpected 处理）。 */
+  val code: String,
+  val message: String,
+  val attempt: Long,
+  /** 触发该失败的请求序号；与 Dart 请求无关的失败（内核意外退出等）为空。 */
+  val seq: Long? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): KernelFailureMsg {
+      val code = pigeonVar_list[0] as String
+      val message = pigeonVar_list[1] as String
+      val attempt = pigeonVar_list[2] as Long
+      val seq = pigeonVar_list[3] as Long?
+      return KernelFailureMsg(code, message, attempt, seq)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      code,
+      message,
+      attempt,
+      seq,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is KernelFailureMsg) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/**
+ * 内核权威快照（连接生命周期 spec §2 + §10.5）。
+ *
+ * 枚举字段用小写字符串，与事件通道 `com.clashmiao.app/kernel.snapshot` 的
+ * JSON map 载荷逐字段一致：
+ *   - `status`: stopped | starting | started | stopping
+ *   - `desired`: on | off
+ *   - `source`: app | tile | shortcut | boot | system
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class KernelSnapshotMsg (
+  val epoch: String,
+  val version: Long,
+  val status: String,
+  val attempt: Long,
+  val desired: String,
+  val source: String,
+  val appliedSeq: Long,
+  val activeConfigRevision: Long? = null,
+  val lastFailure: KernelFailureMsg? = null,
+  val selectionsReplayNeeded: Boolean,
+  /**
+   * 原生之后可能还会读取的运行时配置文件路径（持久化 spec、当前意图、运行中、
+   * 在途启动）。为空 = 未知：Dart 不得删除任何运行时配置文件。
+   * 原生与 Dart 总在同一个二进制里发布，所以 Pigeon 查询响应必然带这个尾字段
+   * （不存在「旧原生 + 新 Dart」的组合，生成的解码不做缺字段兼容）。
+   */
+  val retainedConfigPaths: List<String>? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): KernelSnapshotMsg {
+      val epoch = pigeonVar_list[0] as String
+      val version = pigeonVar_list[1] as Long
+      val status = pigeonVar_list[2] as String
+      val attempt = pigeonVar_list[3] as Long
+      val desired = pigeonVar_list[4] as String
+      val source = pigeonVar_list[5] as String
+      val appliedSeq = pigeonVar_list[6] as Long
+      val activeConfigRevision = pigeonVar_list[7] as Long?
+      val lastFailure = pigeonVar_list[8] as KernelFailureMsg?
+      val selectionsReplayNeeded = pigeonVar_list[9] as Boolean
+      val retainedConfigPaths = pigeonVar_list[10] as List<String>?
+      return KernelSnapshotMsg(epoch, version, status, attempt, desired, source, appliedSeq, activeConfigRevision, lastFailure, selectionsReplayNeeded, retainedConfigPaths)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      epoch,
+      version,
+      status,
+      attempt,
+      desired,
+      source,
+      appliedSeq,
+      activeConfigRevision,
+      lastFailure,
+      selectionsReplayNeeded,
+      retainedConfigPaths,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is KernelSnapshotMsg) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/**
+ * 启动/重载所需的不可变产物（每请求独立）。
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class LaunchSpecMsg (
+  val runtimeConfigPath: String,
+  val optionsJson: String,
+  val profileName: String,
+  val configRevision: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): LaunchSpecMsg {
+      val runtimeConfigPath = pigeonVar_list[0] as String
+      val optionsJson = pigeonVar_list[1] as String
+      val profileName = pigeonVar_list[2] as String
+      val configRevision = pigeonVar_list[3] as Long
+      return LaunchSpecMsg(runtimeConfigPath, optionsJson, profileName, configRevision)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      runtimeConfigPath,
+      optionsJson,
+      profileName,
+      configRevision,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is LaunchSpecMsg) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/**
+ * Dart → 协调器的带序号期望请求。
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class DesiredRequestMsg (
+  /** Dart 据以分配 seq 的纪元；与协调器当前纪元不符时回执 `wrongEpoch`。 */
+  val epoch: String,
+  val seq: Long,
+  /** `on` | `off` */
+  val desired: String,
+  /** `userConnect` | `userDisconnect` | `applyConfig` | `retry` */
+  val reason: String,
+  /** `desired == on` 时必填。 */
+  val launch: LaunchSpecMsg? = null
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): DesiredRequestMsg {
+      val epoch = pigeonVar_list[0] as String
+      val seq = pigeonVar_list[1] as Long
+      val desired = pigeonVar_list[2] as String
+      val reason = pigeonVar_list[3] as String
+      val launch = pigeonVar_list[4] as LaunchSpecMsg?
+      return DesiredRequestMsg(epoch, seq, desired, reason, launch)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      epoch,
+      seq,
+      desired,
+      reason,
+      launch,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is DesiredRequestMsg) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    return BoxApiPigeonUtils.deepEquals(toList(), other.toList())  }
+
+  override fun hashCode(): Int = toList().hashCode()
+}
+
+/**
+ * 请求回执：只表示「已入队/被拒绝」，不表示完成。
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class ReceiptMsg (
+  val accepted: Boolean,
+  /** 被拒绝时：`stale`（seq ≤ appliedSeq）| `wrongEpoch`；受理时为空。 */
+  val reason: String? = null,
+  /** 协调器当前纪元。 */
+  val epoch: String,
+  /** 处理本请求之后的 appliedSeq（拒绝时即现值，供 Dart 重设基线）。 */
+  val appliedSeq: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): ReceiptMsg {
+      val accepted = pigeonVar_list[0] as Boolean
+      val reason = pigeonVar_list[1] as String?
+      val epoch = pigeonVar_list[2] as String
+      val appliedSeq = pigeonVar_list[3] as Long
+      return ReceiptMsg(accepted, reason, epoch, appliedSeq)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      accepted,
+      reason,
+      epoch,
+      appliedSeq,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other !is ReceiptMsg) {
       return false
     }
     if (this === other) {
@@ -288,15 +546,40 @@ private open class BoxApiPigeonCodec : StandardMessageCodec() {
       }
       132.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ValidateConfigRequest.fromList(it)
+          KernelFailureMsg.fromList(it)
         }
       }
       133.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          ValidateConfigResult.fromList(it)
+          KernelSnapshotMsg.fromList(it)
         }
       }
       134.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          LaunchSpecMsg.fromList(it)
+        }
+      }
+      135.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          DesiredRequestMsg.fromList(it)
+        }
+      }
+      136.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ReceiptMsg.fromList(it)
+        }
+      }
+      137.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ValidateConfigRequest.fromList(it)
+        }
+      }
+      138.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          ValidateConfigResult.fromList(it)
+        }
+      }
+      139.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           InstalledApp.fromList(it)
         }
@@ -318,16 +601,36 @@ private open class BoxApiPigeonCodec : StandardMessageCodec() {
         stream.write(131)
         writeValue(stream, value.toList())
       }
-      is ValidateConfigRequest -> {
+      is KernelFailureMsg -> {
         stream.write(132)
         writeValue(stream, value.toList())
       }
-      is ValidateConfigResult -> {
+      is KernelSnapshotMsg -> {
         stream.write(133)
         writeValue(stream, value.toList())
       }
-      is InstalledApp -> {
+      is LaunchSpecMsg -> {
         stream.write(134)
+        writeValue(stream, value.toList())
+      }
+      is DesiredRequestMsg -> {
+        stream.write(135)
+        writeValue(stream, value.toList())
+      }
+      is ReceiptMsg -> {
+        stream.write(136)
+        writeValue(stream, value.toList())
+      }
+      is ValidateConfigRequest -> {
+        stream.write(137)
+        writeValue(stream, value.toList())
+      }
+      is ValidateConfigResult -> {
+        stream.write(138)
+        writeValue(stream, value.toList())
+      }
+      is InstalledApp -> {
+        stream.write(139)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -350,6 +653,18 @@ interface BoxHostApi {
   fun stop(callback: (Result<Unit>) -> Unit)
   fun restart(req: StartRequest, callback: (Result<Unit>) -> Unit)
   fun selectOutbound(req: SelectOutboundRequest, callback: (Result<Unit>) -> Unit)
+  /**
+   * 当前权威快照（连接生命周期 spec §2）。Android 由进程级协调器提供；
+   * iOS 无原生实现，Dart 使用 `EmulatedKernelPort`。
+   */
+  fun getSnapshot(callback: (Result<KernelSnapshotMsg>) -> Unit)
+  /**
+   * 提交带序号的期望请求。回调只表示入队/被拒绝（见 [ReceiptMsg]）；
+   * 失败一律 `Result.failure(FlutterError)`，不 throw。
+   */
+  fun request(req: DesiredRequestMsg, callback: (Result<ReceiptMsg>) -> Unit)
+  /** 确认 [attempt] 的手选重放已完成。幂等：attempt 不是当前值时忽略。 */
+  fun acknowledgeReplay(attempt: Long, callback: (Result<Unit>) -> Unit)
   fun urlTest(groupTag: String, callback: (Result<Unit>) -> Unit)
   fun generateFullConfig(path: String, callback: (Result<String?>) -> Unit)
   fun clearLogs(callback: (Result<Unit>) -> Unit)
@@ -522,6 +837,63 @@ interface BoxHostApi {
             val args = message as List<Any?>
             val reqArg = args[0] as SelectOutboundRequest
             api.selectOutbound(reqArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(BoxApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.getSnapshot$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.getSnapshot{ result: Result<KernelSnapshotMsg> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(BoxApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.request$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val reqArg = args[0] as DesiredRequestMsg
+            api.request(reqArg) { result: Result<ReceiptMsg> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(BoxApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(BoxApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.clashmiao.BoxHostApi.acknowledgeReplay$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val attemptArg = args[0] as Long
+            api.acknowledgeReplay(attemptArg) { result: Result<Unit> ->
               val error = result.exceptionOrNull()
               if (error != null) {
                 reply.reply(BoxApiPigeonUtils.wrapError(error))

@@ -1,10 +1,12 @@
 import 'dart:async';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/domain/profile/model/profile_patch.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
@@ -13,6 +15,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 class ProfileDetailsPage extends ConsumerStatefulWidget {
   const ProfileDetailsPage(
@@ -95,8 +98,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                         padding: const EdgeInsets.only(right: 16),
                         child: FilledButton(
                           onPressed: _busy ? null : () => _save(profile, t),
+                          // 前景用 FilledButton 默认的 onPrimary，与 primary 底配对。
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -157,6 +160,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                                   _SwitchTile(
                                     title: t.profile.detailsForm.updateInterval,
                                     subtitle: _formatInterval(
+                                      t,
                                       _updateInterval ?? profile.updateInterval,
                                     ),
                                     icon: FluentIcons.arrow_sync_24_regular,
@@ -262,14 +266,16 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
               if (_busy)
                 Container(
                   color: Colors.black.withValues(alpha: 0.3),
-                  child: const Center(child: CircularProgressIndicator()),
+                  child: const Center(child: MotionProgress(strokeWidth: 4)),
                 ),
             ],
           );
         },
-        error: (error, _) =>
-            Center(child: Text('${t.failure.unexpected}: $error')),
-        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, st) {
+          logAppFailureOnce('profileDetails.load', error, st);
+          return Center(child: Text(t.failure.unexpected));
+        },
+        loading: () => const Center(child: MotionProgress(strokeWidth: 4)),
       ),
     );
   }
@@ -304,24 +310,21 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
     setState(() => _busy = true);
     try {
       final repo = await ref.read(profileRepositoryProvider.future);
+      // 一次补丁提交：只改本页能编辑的字段，不会把页面持有的旧快照整体写回，
+      // 也就不会覆盖刷新期间写入的 lastUpdate / subInfo。
       await repo.editProfile(
         profile.id,
-        newName: name,
-        newUrl: _isRemoteProfile(profile) ? url : null,
-      );
-      await repo.updateProfile(
-        profile.copyWith(
-          name: name,
-          url: _isRemoteProfile(profile) ? url : profile.url,
-          updateInterval: _updateInterval ?? profile.updateInterval,
-          customUserAgent: _customUserAgent,
-          advancedConfig: AdvancedConfig(
-            remoteDnsOverride: profile.advancedConfig?.remoteDnsOverride,
-            muxEnabled: _muxEnabled,
-            muxProtocol: profile.advancedConfig?.muxProtocol ?? 'h2mux',
-            muxConcurrency: profile.advancedConfig?.muxConcurrency ?? 4,
-            fragmentEnabled: profile.advancedConfig?.fragmentEnabled ?? false,
-            fragmentRange: profile.advancedConfig?.fragmentRange,
+        patch: ProfilePatch(
+          name: Patch.set(name),
+          url: _isRemoteProfile(profile) ? Patch.set(url) : const Patch.unset(),
+          updateInterval: _updateInterval == null
+              ? const Patch.unset()
+              : Patch.set(_updateInterval!),
+          customUserAgent: _customUserAgent == null
+              ? const Patch.clear()
+              : Patch.set(_customUserAgent!),
+          advancedConfig: Patch.set(
+            AdvancedConfigPatch(muxEnabled: Patch.set(_muxEnabled)),
           ),
         ),
       );
@@ -331,7 +334,14 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         // 否则用户会以为保存了新地址、实际连接用的还是旧配置。拉取失败会被
         // 下面的 catch 捕获并明确提示，不静默吞掉——旧配置文件保持不变，
         // 用户至少还能用旧的。
-        await repo.update(profile.id);
+        //
+        // 拉取途中订阅又被改动（stale）是预期内的取消：保存本身已经成功，
+        // 不提示失败。
+        try {
+          await repo.update(profile.id);
+        } catch (e) {
+          if (!isStaleRefresh(e)) rethrow;
+        }
       }
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
@@ -339,9 +349,13 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         AppToast.success(context, t.profile.save.successMsg);
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (error) {
+    } catch (error, st) {
+      logAppFailure('profileDetails.save', error, st);
       if (mounted) {
-        AppToast.error(context, '${t.profile.save.failureMsg}: $error');
+        AppToast.error(
+          context,
+          profileFailureMessage(error, t, failed: t.profile.save.failureMsg),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -356,9 +370,17 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(profileListProvider);
       ref.invalidate(activeProfileProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (error) {
-      if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $error');
+    } catch (error, st) {
+      logAppFailure('profileDetails.update', error, st);
+      if (isStaleRefresh(error)) {
+        // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
+        // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
+        // 让两个 provider 重新计算；而页面此时可能已销毁，销毁后碰 ref 会抛异常。
+      } else if (mounted) {
+        AppToast.error(
+          context,
+          profileFailureMessage(error, t, failed: t.profile.update.failureMsg),
+        );
       }
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -385,8 +407,14 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         AppToast.success(context, t.profile.delete.successMsg);
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (error) {
-      if (mounted) AppToast.error(context, '${t.failure.unexpected}: $error');
+    } catch (error, st) {
+      logAppFailure('profileDetails.delete', error, st);
+      if (mounted) {
+        AppToast.error(
+          context,
+          profileFailureMessage(error, t, failed: t.failure.unexpected),
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -470,7 +498,7 @@ class _SubscriptionStatusCard extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '流量使用',
+                t.stats.trafficUsage,
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -614,10 +642,9 @@ class _StyledTextField extends StatelessWidget {
             maxLines: maxLines,
             decoration: InputDecoration(
               hintText: hint,
+              // 占位提示同样是小字：用不透明的 onSurfaceVariant，不叠 alpha。
               hintStyle: TextStyle(
-                color: Theme.of(
-                  context,
-                ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -796,11 +823,12 @@ bool _isValidHttpUrl(String input) {
       (uri.scheme == 'http' || uri.scheme == 'https');
 }
 
-String _formatInterval(Duration duration) {
+String _formatInterval(TranslationsEn t, Duration duration) {
+  final form = t.profile.detailsForm;
   final hours = duration.inHours;
-  if (hours <= 0) return '关闭';
-  if (hours < 24) return '$hours 小时';
-  final days = hours / 24;
-  if (hours % 24 == 0) return '${days.toStringAsFixed(0)} 天';
-  return '$hours 小时';
+  if (hours <= 0) return form.updateIntervalOff;
+  if (hours >= 24 && hours % 24 == 0) {
+    return form.updateIntervalDays(days: hours ~/ 24);
+  }
+  return form.updateIntervalHours(hours: hours);
 }

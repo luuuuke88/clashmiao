@@ -106,9 +106,15 @@ class EgressIpResult {
 /// 保证不管传输层细节如何都有一个硬上限，也让单测能精确、快速地触发超时
 /// 分支。
 class EgressIpService {
-  EgressIpService(this._ref, {Dio? dio, Duration? timeout})
-    : _dio = dio ?? _buildDefaultDio(_ref),
-      _timeout = timeout ?? _defaultFetchTimeout;
+  /// [proxyOnly] 为 `true` 时只走本地 mixed 代理端口、没有 DIRECT 回退，也不做
+  /// 传输层重试（重试节奏由调用方 [EgressIpProbe] 掌握）。
+  EgressIpService(
+    this._ref, {
+    Dio? dio,
+    Duration? timeout,
+    bool proxyOnly = false,
+  }) : _dio = dio ?? _buildDefaultDio(_ref, proxyOnly: proxyOnly),
+       _timeout = timeout ?? _defaultFetchTimeout;
 
   final Ref _ref;
   final Dio _dio;
@@ -116,7 +122,7 @@ class EgressIpService {
 
   static const _endpoint = 'https://ipwho.is/';
 
-  static Dio _buildDefaultDio(Ref ref) {
+  static Dio _buildDefaultDio(Ref ref, {required bool proxyOnly}) {
     // 故意不像 ProfileRepository（profile_providers.dart 的
     // profileRepositoryProvider，此前）那样强制 `findProxy = (_) => 'DIRECT'`
     // 跳过系统代理——这里恰恰相反：要查的就是"经过 sing-box 隧道之后"外界
@@ -127,9 +133,11 @@ class EgressIpService {
     final mixedPort = ref.read(networkSettingsProvider).mixedPort;
     return createAppHttpClient(
       preferTunnel: true,
+      allowDirectFallback: !proxyOnly,
       mixedPort: mixedPort,
       connectTimeout: const Duration(seconds: 8),
       receiveTimeout: const Duration(seconds: 8),
+      maxRetries: proxyOnly ? 0 : kDefaultMaxRetries,
     );
   }
 
@@ -161,7 +169,7 @@ class EgressIpService {
           .timeout(
             _timeout,
             onTimeout: () {
-              cancelToken.cancel('EgressIpService: 应用层超时');
+              cancelToken.cancel('EgressIpService: application-level timeout');
               throw TimeoutException(
                 'EgressIpService: 查询超过 $_timeout',
                 _timeout,

@@ -24,7 +24,12 @@
     "openAppSettings": "باز کردن تنظیمات برنامه",
     "grantPermission": "اجازه دادن",
     "underDevelopment": "در حال توسعه",
-    "confirm": "تأیید"
+    "confirm": "تأیید",
+    "close": "بستن",
+    "cancel": "لغو",
+    "clipboardEmpty": "کلیپ‌بورد خالی است",
+    "clipboardReadFailed": "خواندن کلیپ‌بورد ناموفق بود",
+    "moreOptions": "گزینه‌های بیشتر"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "در صورت ادامه با ${tap(@:about.termsAndConditions)} موافقت می‌کنید",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "برنامه نتوانست هستهٔ شبکهٔ خود را بارگذاری کند. اتصال در دسترس نیست. برنامه را دوباره نصب کنید یا مطمئن شوید فایل کتابخانهٔ هسته کنار فایل اجرایی قرار دارد.",
     "degradedTitle": "متصل است، اما دسترسی به اینترنت وجود ندارد",
     "degradedMsg": "تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.",
-    "degradedRetry": "بررسی مجدد"
+    "degradedRetry": "بررسی مجدد",
+    "egressIp": {
+      "label": "آی‌پی خروجی",
+      "notConnected": "برای نمایش آی‌پی خروجی متصل شوید",
+      "tapToCheck": "برای بررسی آی‌پی خروجی ضربه بزنید",
+      "checking": "در حال بررسی…",
+      "failedRetry": "بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید"
+    },
+    "emptyProfilesHint": "برای شروع، دکمهٔ زیر را بزنید",
+    "noActiveProfileTitle": "هیچ پروفایلی انتخاب نشده است"
   },
   "stats": {
     "traffic": "مصرف",
@@ -56,7 +70,9 @@
     "speed": "سرعت",
     "totalTransferred": "کل تبادل",
     "trafficUsage": "مصرف ترافیک",
-    "liveSpeed": "سرعت لحظه‌ای"
+    "liveSpeed": "سرعت لحظه‌ای",
+    "sessionTraffic": "ترافیک این نشست",
+    "downloadSpeed": "سرعت دانلود"
   },
   "profile": {
     "overviewPageTitle": "پروفایل‌ها",
@@ -99,7 +115,12 @@
       "failureMsg": "افزودن پروفایل ناموفق بود",
       "modalSubtitle": "نحوهٔ افزودن فایل پیکربندی را انتخاب کنید",
       "manuallyDescription": "پیکربندی سرور را دستی وارد کنید",
-      "warpDescription": "شتاب‌دهی رایگان با Cloudflare WARP"
+      "warpDescription": "شتاب‌دهی رایگان با Cloudflare WARP",
+      "importedNamed": "اشتراک درون‌ریزی شد: ${name}",
+      "clipboardEmpty": "کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد",
+      "deepLinkMissingUrl": "پیوند نشانی اشتراک ندارد",
+      "successMsg": "پروفایل افزوده شد",
+      "nameAutoHint": "به‌طور خودکار تشخیص داده می‌شود (اختیاری)"
     },
     "update": {
       "buttonTxt": "به‌روزرسانی",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "حذف",
       "confirmationMsg": "پروفایل برای همیشه حذف شود؟",
-      "successMsg": "پروفایل با موفقیت حذف شد"
+      "successMsg": "پروفایل با موفقیت حذف شد",
+      "confirmTitle": "حذف پروفایل",
+      "namedConfirmMsg": "«${name}» حذف شود؟ این کار برگشت‌پذیر نیست."
     },
     "save": {
       "buttonText": "ذخیره",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "خاموش",
+      "updateIntervalHours": "${hours} ساعت",
+      "updateIntervalDays": "${days} روز"
     },
     "actionButtons": {
       "add": "افزودن",
@@ -171,7 +197,10 @@
       "currentlyUsing": "در حال استفاده",
       "remainingDays": "${days} روز باقی مانده"
     },
-    "remoteProfile": "پروفایل راه دور"
+    "remoteProfile": "پروفایل راه دور",
+    "defaultLocalName": "درون‌ریزی محلی",
+    "defaultDeepLinkName": "درون‌ریزی از پیوند",
+    "switchFailedMsg": "تغییر پروفایل ناموفق بود"
   },
   "proxies": {
     "pageTitle": "پروکسی‌ها",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "تأخیر: ${delay}ms",
       "timeout": "مهلت تست تأخیر به اتمام رسید",
-      "testing": "تأخیر: در حال آزمایش..."
+      "testing": "تأخیر: در حال آزمایش...",
+      "untested": "تأخیر: آزمایش نشده",
+      "stale": "تأخیر: ${delay}ms (نتیجه قبلی)"
     },
     "ipInfoSemantics": {
       "address": "آدرس آی‌پی",
@@ -200,10 +231,14 @@
     "sortModalTitle": "روش مرتب‌سازی را انتخاب کنید",
     "testingDelayInfo": "در حال آزمایش تأخیر: ${name}",
     "switchedTo": "به ${name} تغییر یافت",
-    "switchToFailed": "تعویض ناموفق بود: ${error}",
+    "switchFailed": "تغییر سرور انجام نشد. لطفاً دوباره تلاش کنید.",
+    "testFailed": "آزمون تأخیر ناموفق بود. لطفاً دوباره تلاش کنید.",
+    "groupsLoading": "فهرست سرورها هنوز در حال بارگذاری است. لطفاً کمی بعد دوباره تلاش کنید.",
     "connectBeforeSwitch": "پیش از تعویض خط، متصل شوید",
     "startDelayTestForGroups": "آزمایش تأخیر برای ${count} خط آغاز شد",
     "delayTestBtn": "تأخیر",
+    "delayTimeout": "مهلت تمام",
+    "connectBeforeTest": "برای تست تأخیر ابتدا متصل شوید",
     "lineCount": "${count} خط",
     "manualSelect": "انتخاب دستی",
     "autoTest": "تست خودکار"
@@ -220,7 +255,10 @@
     "logsCleared": "گزارش‌ها پاک شد",
     "logsCopied": "گزارش‌ها کپی شد",
     "logsUnderDevelopment": "قابلیت گزارش‌گیری در حال توسعه است",
-    "noLogsWhenDisconnected": "متصل نیست، گزارشی وجود ندارد"
+    "noLogsWhenDisconnected": "متصل نیست، گزارشی وجود ندارد",
+    "loadFailed": "بارگیری گزارش‌ها ناموفق بود",
+    "empty": "هنوز گزارشی وجود ندارد",
+    "clearFailed": "پاک کردن گزارش‌ها ناموفق بود"
   },
   "settings": {
     "pageTitle": "تنظیمات",
@@ -231,6 +269,37 @@
     "exportAllOptions": "کپی همه تنظیمات به کلیپ‌بورد",
     "importOptions": "وارد کردن تنظیمات از کلیپ‌بورد",
     "importOptionsMsg": "این اقدام همه‌ی تنظیمات پیکربندی را با مقادیر اولیه بازنویسی می‌کند. آیا مطمئن هستید؟",
+    "backup": {
+      "importConfirmTitle": "درون‌ریزی پشتیبان",
+      "importConfirmMsg": "این کار اشتراک‌های شما را با اشتراک‌های موجود در پشتیبان جایگزین می‌کند و تنظیمات آن را اعمال می‌کند. ابتدا یک نسخهٔ لحظه‌ای از داده‌های فعلی ذخیره می‌شود و اگر درون‌ریزی ناموفق باشد، خودکار بازیابی می‌شود.",
+      "importRemovesMsg": "${count} اشتراک روی این دستگاه در پشتیبان نیست و حذف خواهد شد.",
+      "reportImported": "${profiles} اشتراک و ${settings} تنظیم درون‌ریزی شد.",
+      "reportDropped": "${count} اشتراک در پشتیبان به دلیل نامعتبر بودن داده‌ها نادیده گرفته شد.",
+      "reportSettingsSkipped": "${count} تنظیم نادیده گرفته شد؛ مقدارهای فعلی شما حفظ شدند.",
+      "reportWarpOff": "درون‌ریزی WARP را خاموش کرد. آن را دوباره روی این دستگاه فعال کنید.",
+      "reportBackfill": "${count} اشتراک در پس‌زمینه دانلود خواهد شد.",
+      "errInvalidFile": "این یک فایل پشتیبان معتبر ClashMiao نیست.",
+      "errUnsupportedVersion": "این قالب پشتیبان پشتیبانی نمی‌شود.",
+      "errNewerSchema": "این پشتیبان با نسخهٔ جدیدتری از برنامه ساخته شده است. لطفاً ابتدا برنامه را به‌روزرسانی کنید.",
+      "errNoUsableProfiles": "هیچ‌یک از اشتراک‌های این پشتیبان قابل درون‌ریزی نیست.",
+      "errSnapshotFailed": "ذخیرهٔ نسخهٔ لحظه‌ای داده‌های فعلی ممکن نشد، بنابراین چیزی تغییر نکرد.",
+      "errUnresolvedPrevious": "درون‌ریزی قبلی نیمه‌کاره ماند و هنوز بازگردانی نشده است. چیزی تغییر نکرد. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید.",
+      "errRolledBack": "درون‌ریزی ناموفق بود. داده‌های قبلی شما بازیابی شد.",
+      "errNotRolledBack": "درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.",
+      "errFailed": "درون‌ریزی ناموفق بود.",
+      "errBusy": "درون‌ریزی دیگری در حال اجراست. لطفاً تا پایان آن صبر کنید.",
+      "recoveryFailedTitle": "بازیابی خودکار کامل نشد",
+      "recoveryFailedMsg": "آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند و برنامه نتوانست داده‌های شما را به حالت قبل برگرداند. ممکن است بخشی از داده‌ها نیمه‌کاره درون‌ریزی شده باشد. اکنون بازیابی خودکار را دوباره امتحان کنید.",
+      "recoveryUnrecoverableTitle": "بازگردانی درون‌ریزی نیمه‌کاره ممکن نشد",
+      "recoveryUnrecoverableMsg": "آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.",
+      "recoveryRetry": "تلاش دوباره",
+      "recoveryClose": "بستن",
+      "recoveryRetried": "داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.",
+      "exportAction": "برون‌بری پشتیبان",
+      "importAction": "درون‌ریزی پشتیبان",
+      "exportFailed": "برون‌بری پشتیبان ناموفق بود",
+      "shareText": "پشتیبان ClashMiao"
+    },
     "general": {
       "sectionTitle": "عمومی",
       "locale": "زبان",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "پروکسی سیستم فعال شد",
     "systemProxyDisabled": "پروکسی سیستم غیرفعال شد (برای اعمال، دوباره وصل شوید)",
     "adminPrivilegesRequired": "در macOS به دسترسی مدیر نیاز است",
-    "portChangeNotice": "تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد"
+    "portChangeNotice": "تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد",
+    "groups": {
+      "general": "عمومی",
+      "connection": "اتصال",
+      "privacy": "حریم خصوصی"
+    },
+    "importOptionsInvalid": "محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست",
+    "importOptionsNothing": "هیچ تنظیم قابل درون‌ریزی پیدا نشد",
+    "importOptionsDone": "${count} تنظیم درون‌ریزی شد",
+    "importOptionsPartial": "${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد"
   },
   "about": {
     "pageTitle": "درباره",
@@ -320,7 +398,8 @@
     "checkForUpdate": "بررسی برای به‌روزرسانی",
     "privacyPolicy": "سیاست‌های حفظ حریم خصوصی",
     "termsAndConditions": "شرایط و ضوابط استفاده",
-    "appDescription": "یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box"
+    "appDescription": "یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box",
+    "openSourceLicenses": "مجوزهای متن‌باز"
   },
   "appUpdate": {
     "notAvailableMsg": "در حال استفاده از آخرین نسخه هستید",
@@ -330,7 +409,8 @@
     "newVersionLbl": "نسخه‌ی جدید",
     "updateNowBtnTxt": "هم‌اکنون به‌روزرسانی شود",
     "laterBtnTxt": "بعداً",
-    "ignoreBtnTxt": "نادیده‌گرفتن"
+    "ignoreBtnTxt": "نادیده‌گرفتن",
+    "checkFailedMsg": "بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید."
   },
   "tray": {
     "dashboard": "داشبورد",
@@ -342,7 +422,8 @@
       "disconnect": "قطع اتصال",
       "disconnecting": "در حال قطع اتصال"
     },
-    "hide": "پنهان کردن"
+    "hide": "پنهان کردن",
+    "proxyModeMenu": "حالت پروکسی"
   },
   "failure": {
     "unexpected": "خطای غیرمنتظره",
@@ -362,21 +443,25 @@
       "create": "خطای ایجاد سرویس",
       "start": "خطای راه‌اندازی سرویس",
       "coreLibraryMissing": "کتابخانهٔ هسته نصب نشده است",
-      "startTimeout": "زمان راه‌اندازی سرویس به پایان رسید"
+      "startTimeout": "زمان راه‌اندازی سرویس به پایان رسید",
+      "kernelUnresponsive": "هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.",
+      "kernelExited": "هسته به‌طور غیرمنتظره متوقف شد"
     },
     "connectivity": {
       "unexpected": "خطای غیرمنتظره",
       "missingVpnPermission": "مجوز VPN وجود ندارد",
       "missingNotificationPermission": "مجوز اعلان وجود ندارد",
       "core": "خطای هسته",
-      "networkUnavailable": "شبکه در دسترس نیست"
+      "networkUnavailable": "شبکه در دسترس نیست",
+      "nativeUnresponsive": "ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید."
     },
     "profiles": {
       "unexpected": "خطای غیرمنتظره",
       "notFound": "پروفایل یافت نشد",
       "invalidConfig": "پیکربندی‌ها نامعتبر هستند",
       "invalidUrl": "لینک نامعتبر است",
-      "noActive": "هیچ پروفایل فعالی وجود ندارد"
+      "noActive": "هیچ پروفایل فعالی وجود ندارد",
+      "readOnlyUpgrade": "لطفاً پیش از تغییر اشتراک‌ها برنامه را به‌روزرسانی کنید"
     },
     "connection": {
       "unexpected": " خطای غیرمنتظره در اتصال",
@@ -389,7 +474,8 @@
       "unexpected": "خطای غیرمنتظره",
       "notUpdate": "هیچ به‌روزرسانی موجود نیست",
       "activeNotFound": "فایل جغرافیایی فعال یافت نشد"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "برای اتصال ضربه بزنید",
@@ -397,7 +483,7 @@
     "disconnecting": "در حال قطع اتصال",
     "connected": "متصل شد",
     "reconnect": "اتصال دوباره",
-    "connectAnyWay": "متصل کردن",
+    "connectAnyWay": "در هر صورت متصل شو",
     "experimentalNotice": "ویژگی‌های آزمایشی در حال استفاده",
     "experimentalNoticeMsg": "شما برخی از ویژگی‌های آزمایشی را فعال کرده‌اید که ممکن است بر کیفیت اتصال تأثیر گذاشته و باعث بروز خطاهای غیرمنتظره شود. شما همیشه می‌توانید این گزینه‌ها را از صفحه‌ی تنظیمات پیکربندی تغییر دهید یا بازنشانی کنید.",
     "disableExperimentalNotice": "دیگر نشان نده",
@@ -480,6 +566,8 @@
     "muxProtocol": "پروتکل Mux",
     "muxMaxStreams": "حداکثر جریان‌های هم‌زمان",
     "enableWarp": "فعال‌سازی WARP",
+    "setUpWarp": "راه‌اندازی WARP",
+    "warpNotConfigured": "پیکربندی نشده",
     "warpDetourMode": "حالت وارپ",
     "warpDetourModes": {
       "proxyOverWarp": "عبور پروکسی‌ها از طریق WARP",
@@ -496,6 +584,14 @@
     "warpNoiseDelay": "تأخیر نویز",
     "quickSettingsSubtitle": "تجربهٔ اتصال خود را سفارشی کنید",
     "allAdvancedOptions": "همهٔ گزینه‌های پیشرفته",
-    "desktopProxyScopeNotice": "در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند."
+    "desktopProxyScopeNotice": "در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.",
+    "serviceModeIosVpnOnly": "iOS فقط از حالت VPN پشتیبانی می‌کند",
+    "warpGenerating": "در حال ساخت پیکربندی WARP…",
+    "warpConfigFailed": "ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.",
+    "portRangeError": "پورت باید بین 1024 و 65535 باشد",
+    "dnsEmptyError": "نشانی DNS نمی‌تواند خالی باشد",
+    "rangeFormatError": "یک عدد یا بازه وارد کنید، مثلاً 10-30",
+    "urlSchemeError": "نشانی باید با http:// یا https:// شروع شود",
+    "manageRuleAssets": "مدیریت مجموعه‌قواعد"
   }
 }

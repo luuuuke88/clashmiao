@@ -1,817 +1,923 @@
-// 连接控制器及其配套 provider：Fatal Alert 上报、连接/重连/断开状态机、
-// 连接错误、配置变更重连提示、连接起始时间。
+// 连接控制器：把用户意图交给 [ConnectionMachine]，执行它产出的动作（准备启动
+// 产物、发送带序号的期望请求、重新同步、副作用），并把内核快照与链路状态喂回
+// 去。界面看到的一切连接状态都来自 [ConnectionSnapshot]——控制器自己不推断、
+// 不合成任何终态。
+//
+// 设计见 docs/superpowers/specs/2026-10-19-connection-state-machine-design.md
+// §5 与 §10。
 
 import 'dart:async';
-import 'dart:convert';
+import 'dart:collection';
 import 'dart:io';
 
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
 import 'package:clashmiao/core/env/build_config.dart';
-import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/core/box_service/box_service.dart';
-import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
-import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/core/box_service/model/box_alert.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
-import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
-import 'package:clashmiao/core/box_service/model/directories.dart';
-import 'package:clashmiao/domain/profile/data/profile_repository.dart';
-import 'package:clashmiao/domain/config/data/default_config_options.dart';
-import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/store_review/store_review_service.dart';
-import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
-import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
+import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
+import 'package:clashmiao/domain/connection/application/connection_machine.dart';
+import 'package:clashmiao/domain/connection/application/selection_replay_pipeline.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+import 'package:clashmiao/domain/connection/model/request_outcome.dart';
+import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-// ============ Fatal Alert 上报 ============
+// ============ 致命失败上报 ============
 
-/// Fatal [BoxAlert] 的上报回调类型。抽成可覆盖的 provider 是为了在纯 Dart
-/// 测试环境里能注入一个记录调用次数的 fake，绕开"直接 mock 静态方法
-/// `Sentry.captureMessage`"在这套测试框架里不可行的限制。
-typedef FatalAlertReporter = void Function(BoxAlert alert);
+/// 致命 [ConnectionFailure] 的上报回调类型。抽成可覆盖的 provider 是为了在纯
+/// Dart 测试环境里能注入一个记录调用次数的 fake，绕开「直接 mock 静态方法
+/// `Sentry.captureMessage`」在这套测试框架里不可行的限制。
+typedef FatalFailureReporter = void Function(ConnectionFailure failure);
 
 /// 默认实现：真的调用 Sentry。是否发送仍然只由编译期 `SENTRY_DSN` 决定
-/// （SDK 是否存在是启动期一次性决定，见 main.dart 里 `_sentryDsn` 的判断，
-/// 这里不重复决定"要不要 init"，只决定"SDK 存在时这一条要不要发"）。
-/// 运行时"数据分析"开关的判断在调用方
-/// [ConnectionController._shouldReportAnalytics] 完成，这里不重复读取。
-final fatalAlertReporterProvider = Provider<FatalAlertReporter>((ref) {
-  return (alert) {
+/// （SDK 是否存在是启动期一次性决定，见 main.dart）。运行时「数据分析」开关
+/// 的判断在 [ConnectionController] 里完成，这里不重复读取。
+final fatalFailureReporterProvider = Provider<FatalFailureReporter>((ref) {
+  return (failure) {
     const dsn = sentryDsn;
     if (dsn.isEmpty) return;
     unawaited(
       Sentry.captureMessage(
-        'BoxAlert fatal: ${alert.type.name}',
+        'Connection fatal: ${failure.runtimeType}',
         level: SentryLevel.error,
       ),
     );
   };
 });
 
+/// 控制器与状态机共用的时钟。生产用系统时间；fake_async 测试注入
+/// `fakeAsync.getClock(...).now`（`DateTime.now()` 不受 FakeAsync 控制）。
+final connectionClockProvider = Provider<DateTime Function()>(
+  (ref) => DateTime.now,
+);
+
+/// 是否桌面平台（macOS / Windows / Linux）：只有桌面端会改系统代理，需要脏标记
+/// 保护。可覆盖，让测试不依赖宿主平台。
+final isDesktopPlatformProvider = Provider<bool>(
+  (ref) => Platform.isMacOS || Platform.isWindows || Platform.isLinux,
+);
+
+/// 点一下连接按钮（`toggle`）将要发出的目标。UI 据此决定是否要先过「实验性
+/// 功能」确认门禁。语义见 spec §5：
+/// - 连接中 / 已连接 / 重新连接中 → 断开；
+/// - 未连接、尚无快照 → 连接；
+/// - 断开中 → 带失败（内核无响应）则重发断开，否则改为连接。
+/// 与原生失联（nativeUnresponsive）时：重发最新意图，由控制器内部处理。
+Desired toggleTarget(ConnectionSnapshot s) {
+  switch (s.phase) {
+    case ConnectionPhase.connected:
+    case ConnectionPhase.connecting:
+    case ConnectionPhase.reconnecting:
+      return Desired.off;
+    case ConnectionPhase.disconnected:
+    case ConnectionPhase.resolving:
+      return Desired.on;
+    case ConnectionPhase.disconnecting:
+      return s.failure != null ? Desired.off : Desired.on;
+  }
+}
+
+// ============ 系统代理脏标记存储 ============
+
+/// 「系统代理由我们设着」脏标记的持久化。抽成可覆盖的 provider：生产写
+/// SharedPreferences；测试里换成可悬停的替身，才能在「持久化尚未完成」的窗口
+/// 里构造交错。
+abstract class SystemProxyDirtyStore {
+  Future<void> mark();
+  Future<void> clear();
+}
+
+class _PrefsDirtyStore implements SystemProxyDirtyStore {
+  _PrefsDirtyStore(this._ref);
+
+  final Ref _ref;
+
+  @override
+  Future<void> mark() async {
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await markSystemProxyDirty(prefs);
+  }
+
+  @override
+  Future<void> clear() async {
+    final prefs = await _ref.read(sharedPreferencesProvider.future);
+    await clearSystemProxyDirty(prefs);
+  }
+}
+
+final systemProxyDirtyStoreProvider = Provider<SystemProxyDirtyStore>(
+  _PrefsDirtyStore.new,
+);
+
 // ============ Connection Controller ============
 
-class ConnectionController extends StateNotifier<AsyncValue<BoxStatus>> {
-  ConnectionController(this._ref) : super(const AsyncData(BoxStopped())) {
-    // 监听核心层的实时状态推送
-    final service = _ref.read(boxServiceProvider);
-    if (service is! StubBoxService) {
-      _statusSub = service.watchStatus().listen(
-        (status) {
-          if (!mounted) return;
-          // 过渡动画期间允许 final state（BoxStarted / BoxStopped）穿透，
-          // 但忽略中间态（BoxStarting / BoxStopping），避免抖动 UI。
-          // 之前的 `if (_transitioning) return` 把真实 BoxStarted 也拦了，
-          // 导致 connect() 1.5s 后手动写 BoxStarted —— 但 native sing-box
-          // 实际可能还没起来，状态就成了"假已连接"。
-          if (_transitioning &&
-              (status is BoxStarting || status is BoxStopping)) {
-            return;
-          }
-          // connect() 出于同样的原因故意不手动写 BoxStarted（见上方注释），
-          // 真正的"连接成功"只会从这里、拿到 native 确认的状态时发生，
-          // 所以触觉反馈也只能挂在这个点，且只在真正"进入" Started 时触发一次
-          // （wasStarted 守卫），避免同一状态重复推送时反复震动。
-          final wasStarted = state.valueOrNull is BoxStarted;
-          state = AsyncData(status);
-          _syncStartedAt(status);
-          if (!wasStarted && status is BoxStarted) {
-            unawaited(_ref.read(hapticServiceProvider).heavyImpact());
-            // 首次成功连接后请求一次商店评分弹窗。"这辈子只弹一次"的持久化
-            // 保护在 StoreReviewService 内部完成，这里跟触觉反馈一样，每次
-            // 真正"进入" BoxStarted 都调用，不在这一层重复判断。
-            unawaited(
-              _ref.read(storeReviewServiceProvider).maybeRequestReview(),
-            );
-            // sing-box 的 selector 只在运行中的实例内存里记住"当前选中项"，
-            // 每次重连/切换分流模式都会用 runtime-config 的静态 default 重新起
-            // 一个全新实例——这里必须重放用户手选的结果，否则会静默回退到默认值。
-            unawaited(_reapplyPersistedSelections());
-          }
-        },
-        onError: (Object e) {
-          debugPrint('watchStatus 错误: $e');
-        },
-      );
+class ConnectionController extends StateNotifier<ConnectionSnapshot> {
+  ConnectionController(this._ref) : super(ConnectionSnapshot.initial) {
+    _now = _ref.read(connectionClockProvider);
+    _port = _ref.read(kernelPortProvider);
+    _mstate = MachineState.initial(_now());
 
-      // sing-box 启动 / 创建 service 失败时核心会推 alert，
-      // 但 watchStatus 在 _transitioning 期间被忽略 → state 还停留在
-      // delayed BoxStarted，UI 显示"已连接"但其实没在跑。
-      // 收到这类启动失败 alert 时强制回到 BoxStopped + 解锁 transition。
-      _alertSub = service.watchAlerts().listen((alert) {
-        if (!mounted) return;
-        if (!alert.type.isFatal) return;
-        // 设置页"数据分析"开关关闭时（默认即关闭）不应该真的上报，
-        // 哪怕 Sentry SDK 已经编译进来（SENTRY_DSN 非空）。
-        if (_shouldReportAnalytics()) {
-          _ref.read(fatalAlertReporterProvider)(alert);
-        }
-        _transitioning = false;
-        state = const AsyncData(BoxStopped());
-        // 幂等纵深兜底：既然报了 BoxStopped，就必须真的要求内核收尾，而不只是
-        // 掰 UI。即便原生某个终结路径又漏了清理（拆 tun / stopSelf），Dart 也
-        // 主动发一次 stop()，避免复现"UI 显示已断开、设备仍被黑洞"。若原生已
-        // 清理干净，这一次 stop() 是幂等空操作。与 disconnect() 里"绝不谎报
-        // BoxStopped"的既有原则一致。
-        unawaited(_boxService.stop());
-        // 故意不写 connectionErrorProvider：致命 alert 的用户提示由
-        // ShellPage 的 boxAlertsProvider 监听器负责（阻断式弹窗，见
-        // shell_page.dart）。这里如果再写一份，home_page 的 toast 监听会
-        // 跟弹窗同时冒出来，同一个错误双重提示。connectionErrorProvider
-        // 保留给 connect()/disconnect() 的异常路径——那些没有 alert 流经过，
-        // toast 是唯一出口。
-      });
+    _snapshotSub = _port.watch().listen(
+      (s) => _dispatch(SnapshotReceived(s, now: _now())),
+      onError: (Object e) => debugPrint('内核快照流错误: $e'),
+    );
+    _linkSub = _port.watchLink().listen(
+      (l) => _dispatch(LinkChanged(l, now: _now())),
+      onError: (Object e) => debugPrint('内核链路流错误: $e'),
+    );
+    // 立即推进一次，让状态机报出「无首个快照 10 s」等截止时间。
+    _dispatch(Tick(now: _now()));
+  }
 
-      _networkSub = service.watchNetworkChanged().listen((_) {
-        if (!mounted) return;
-        if (_manualDisconnect) return; // 用户已手动断开，网络恢复不该触发自动重连
-        if (state.valueOrNull is BoxStarted) {
-          unawaited(_autoReconnect());
-        }
-      });
+  /// 只给 UI 测试用：直接以 [snapshot] 为状态，不接内核端口、不启动状态机。
+  /// 调用方（测试里的假控制器）必须覆盖会用到端口的方法。
+  @visibleForTesting
+  ConnectionController.preset(this._ref, ConnectionSnapshot snapshot)
+    : super(snapshot) {
+    _now = DateTime.now;
+    _mstate = MachineState.initial(_now());
+  }
+
+  final Ref _ref;
+  late final DateTime Function() _now;
+  late final KernelPort _port;
+  late MachineState _mstate;
+  static const _machine = ConnectionMachine();
+
+  StreamSubscription<KernelSnapshot>? _snapshotSub;
+  StreamSubscription<KernelLink>? _linkSub;
+  Timer? _wake;
+
+  /// 事件队列：处理事件期间产生的新事件（监听器里再次调用控制器）排队，按序
+  /// 处理，保证 [_mstate] 总是「上一个事件处理完」之后的值。
+  final Queue<MachineEvent> _events = Queue();
+  bool _draining = false;
+
+  int _nextId = 0;
+  final Map<int, Completer<RequestOutcome>> _completers = {};
+
+  /// 已终结的意图 id（最近 64 个）：准备在它终结之后才完成的，丢弃结果并删文件。
+  final List<int> _settled = [];
+
+  /// 上一个用户意图（用于原生失联时「重发最新意图」）。
+  Desired? _lastIntent;
+
+  /// 系统代理脏标记的所有读写操作按序串行（mark / clear 一条队列）。发送 on
+  /// 请求前要等它排空，保证标记先落盘。
+  Future<void> _dirtyChain = Future<void>.value();
+
+  /// 「连接意图」代际：每提交一个 on 意图 +1（发送之前就算，不等标记落盘）。
+  int _onGen = 0;
+
+  /// 每个断开意图（按意图 id）提交时的 [_onGen]：这次断开产生的清标记归它所有。
+  final Map<int, int> _offGenById = {};
+
+  /// 已发出的断开请求（`epoch/seq`）→ 它提交时的 [_onGen]。停止快照用自己的
+  /// `appliedSeq` 在这里查它到底属于哪一次断开，而不是「最近一次」断开——否则
+  /// `on1 → off1 → on2 → off2` 里旧快照会被记到 off2 名下。之后若有新的 on 意图，
+  /// 代际前进，旧的清标记作废（哪怕新 on 的 mark 还没排上队）。
+  final Map<String, int> _offGenBySeq = {};
+
+  /// 已经为哪一代安排过清理：同一代只清一次（效果清理与 `disconnect` 收尾共用
+  /// 同一个入口，后到的那次直接并入）。
+  int _clearedForGen = -1;
+
+  ConnectionLauncher get _launcher => _ref.read(connectionLauncherProvider);
+
+  /// 网络设置变更的防抖定时器（见 [onNetworkSettingsChanged]）。
+  Timer? _settingsDebounce;
+
+  /// 未释放的 [pauseConfigChanges] 数。大于 0 时配置变更只记下、不触发请求。
+  int _configPauses = 0;
+
+  /// 暂停期间是否有过网络设置变更。
+  bool _deferredSettings = false;
+
+  /// 暂停期间激活订阅的变化：第一次变化前的 id 与最新的 id。
+  bool _deferredActive = false;
+  String? _deferredActiveFrom;
+  String? _deferredActiveTo;
+
+  // ── 对外 API ─────────────────────────────────────────────────────
+
+  /// 连接。Future 在该请求终结时完成（见 [RequestOutcome]）；从不抛。
+  Future<RequestOutcome> connect() =>
+      _submit(Desired.on, RequestReason.userConnect);
+
+  /// 断开。成功（内核确认已停止）时清系统代理脏标记；失败/被中断时不清，让
+  /// 下次启动的自愈去处理残留。
+  Future<RequestOutcome> disconnect() async {
+    // 这次断开「看到的」脏标记代际：清标记只对它有效，之后若有新的连接置了
+    // 标记，迟到的清理必须让位（见 [_clearSystemProxyDirty]）。
+    final gen = _onGen;
+    final outcome = await _submit(Desired.off, RequestReason.userDisconnect);
+    if (outcome is RequestSucceeded) await _clearSystemProxyDirty(gen);
+    return outcome;
+  }
+
+  /// 设置 / 模式 / 订阅变化：已经在连接或已连接时，以新配置重新发一次 on（协
+  /// 调器按 revision 合并为一次重载，revision 没变则无操作）。未连接时没有
+  /// 副作用——下次连接自然使用最新配置。
+  Future<RequestOutcome> applyConfig() async {
+    if (!_wantsConnection) return const RequestSucceeded();
+    return _submit(Desired.on, RequestReason.applyConfig);
+  }
+
+  /// 切换连接状态（首页按钮、托盘、dev 自动连接）。语义见 [toggleTarget]。
+  Future<RequestOutcome> toggle() {
+    final s = state;
+    // 与原生失联时按钮可点：点击 = 立即重新同步后重发最新意图。
+    if (s.failure is NativeUnresponsive && _lastIntent != null) {
+      return _submit(_lastIntent!, RequestReason.retry);
     }
-    // 内部 state setter 也走 _syncStartedAt（addListener 监听本 notifier）
-    addListener((value) {
-      final s = value.valueOrNull;
-      if (s != null) _syncStartedAt(s);
+    if (s.phase == ConnectionPhase.disconnecting && s.failure != null) {
+      return _submit(Desired.off, RequestReason.retry);
+    }
+    return toggleTarget(s) == Desired.off ? disconnect() : connect();
+  }
+
+  /// 当前连接阶段（供 provider 体内的监听器读取）。
+  ConnectionPhase get phase => state.phase;
+
+  /// 当前是否「想保持连接」。以状态机里**最新的未终结意图**为准——包括首个
+  /// 快照到达前（resolving）已经记录、甚至已经准备好的连接意图；没有未终结
+  /// 意图时，才看快照派生的阶段（connected / connecting / reconnecting）。
+  bool get _wantsConnection {
+    final pending = _mstate.latestRequest;
+    if (pending != null) return pending.desired == Desired.on;
+    return switch (state.phase) {
+      ConnectionPhase.connected ||
+      ConnectionPhase.connecting ||
+      ConnectionPhase.reconnecting => true,
+      _ => false,
+    };
+  }
+
+  /// 激活订阅变化（由 [connectionControllerProvider] 的监听器调用）。
+  /// - 连接中/已连接时激活订阅被删光（变为 null）→ 断开；
+  /// - 从一个订阅切到另一个 → 以新订阅重新发一次 on。
+  void onActiveProfileChanged(String? previousId, String? nextId) {
+    if (previousId == nextId) return;
+    if (_configPauses > 0) {
+      if (!_deferredActive) _deferredActiveFrom = previousId;
+      _deferredActive = true;
+      _deferredActiveTo = nextId;
+      return;
+    }
+    if (!_wantsConnection) return;
+    if (nextId == null) {
+      unawaited(disconnect());
+    } else if (previousId != null) {
+      unawaited(applyConfig());
+    }
+  }
+
+  /// 网络设置（端口 / TUN / LAN / DNS）变更（由 [connectionControllerProvider]
+  /// 的监听器调用）。正在跑的内核仍用旧值，必须重新应用配置才生效。
+  ///
+  /// 防抖：把一串密集的设置变更合并成**一次**请求 + 一条提示
+  /// （`NetworkSettingsNotifier.importJson` 会逐字段更新，滑杆拖动同理）。
+  /// 400 ms 用户无感，而且「等用户改完再应用」本来就更合理。
+  void onNetworkSettingsChanged() {
+    if (_configPauses > 0) {
+      _deferredSettings = true;
+      return;
+    }
+    if (!_wantsConnection) return;
+    _settingsDebounce?.cancel();
+    _settingsDebounce = _ref.read(configChangeDebounceTimerProvider)(
+      kConfigChangeReconnectDebounce,
+      () {
+        _settingsDebounce = null;
+        // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
+        if (!_wantsConnection) return;
+        _applyWithNotice();
+      },
+    );
+  }
+
+  /// 暂停「配置变更 → 重新应用」（备份恢复期间用）。
+  ///
+  /// 恢复会逐项改写偏好与订阅，期间的网络设置 / 激活订阅变化如果各自触发
+  /// 重新应用，内核会在半新半旧的中间态上重载。暂停期间：已排队的防抖重新
+  /// 应用立即取消；新的变化只记下。最后一个暂停被释放时，按最终状态**至多**
+  /// 处理一次：已连接（或想连接）而激活订阅没了 → 断开；激活订阅换了或设置
+  /// 变了 → 重新应用一次（已连接时推进提示 nonce）。
+  ///
+  /// 可嵌套；返回的 [ConfigChangePause.release] 幂等。
+  ConfigChangePause pauseConfigChanges() {
+    _configPauses++;
+    if (_settingsDebounce != null) {
+      _settingsDebounce!.cancel();
+      _settingsDebounce = null;
+      // 已排队、但还没发出的那一次：并入释放时的统一处理，不丢。
+      _deferredSettings = true;
+    }
+    return ConfigChangePause._(this);
+  }
+
+  /// 当前是否处于 [pauseConfigChanges] 之内。
+  bool get configChangesPaused => _configPauses > 0;
+
+  void _releaseConfigPause() {
+    if (_configPauses == 0) return;
+    if (--_configPauses > 0 || !mounted) return;
+    final settings = _deferredSettings;
+    final active = _deferredActive;
+    final from = _deferredActiveFrom;
+    final to = _deferredActiveTo;
+    _deferredSettings = false;
+    _deferredActive = false;
+    _deferredActiveFrom = null;
+    _deferredActiveTo = null;
+
+    // 先定最终配置意图（断开 / 重新应用 / 什么都不做），再按最终归属重新评估
+    // 暂停期间欠下的重放：重新应用发出后要等它落定才会调度（见
+    // [_maybeRescheduleReplay]）。
+    _resolveDeferredConfig(
+      settings: settings,
+      activeChanged: active && from != to,
+      from: from,
+      to: to,
+    );
+    _maybeRescheduleReplay();
+  }
+
+  void _resolveDeferredConfig({
+    required bool settings,
+    required bool activeChanged,
+    required String? from,
+    required String? to,
+  }) {
+    if (!_wantsConnection) return;
+    if (activeChanged && to == null) {
+      unawaited(disconnect());
+      return;
+    }
+    // 与 [onActiveProfileChanged] 一致：首次读到订阅（from == null）不算切换。
+    if (settings || (activeChanged && from != null)) _applyWithNotice();
+  }
+
+  /// 重新应用配置；已连接时递增提示 nonce，让首页弹一条轻提示，免得用户把
+  /// 这次重新应用误当成网络抖动。
+  void _applyWithNotice() {
+    if (phase == ConnectionPhase.connected) {
+      _ref.read(configChangeReconnectNoticeProvider.notifier).state++;
+    }
+    unawaited(applyConfig());
+  }
+
+  Future<RequestOutcome> _submit(Desired desired, RequestReason reason) {
+    final id = ++_nextId;
+    if (desired == Desired.on) {
+      _onGen++;
+    } else {
+      _offGenById[id] = _onGen;
+      while (_offGenById.length > 64) {
+        _offGenById.remove(_offGenById.keys.first);
+      }
+    }
+    final completer = Completer<RequestOutcome>();
+    _completers[id] = completer;
+    _lastIntent = desired;
+    _dispatch(
+      UserIntent(id: id, desired: desired, reason: reason, now: _now()),
+    );
+    return completer.future;
+  }
+
+  // ── 事件循环 ─────────────────────────────────────────────────────
+
+  void _dispatch(MachineEvent e) {
+    if (!mounted) return;
+    _events.add(e);
+    if (_draining) return;
+    _draining = true;
+    try {
+      while (_events.isNotEmpty && mounted) {
+        _step(_events.removeFirst());
+      }
+    } finally {
+      _draining = false;
+    }
+    _maybeRescheduleReplay();
+  }
+
+  void _step(MachineEvent e) {
+    final t = _machine.reduce(_mstate, e);
+    _mstate = t.state;
+    state = t.snapshot;
+    _rearm(t.nextWake);
+    if (e is SnapshotReceived) {
+      final accepted = _mstate.snapshot;
+      if (accepted != null) unawaited(_launcher.observe(accepted));
+    }
+    _execute(t.actions);
+  }
+
+  /// 按 [Transition.nextWake] 安排下一个 [Tick]。
+  void _rearm(DateTime? wake) {
+    _wake?.cancel();
+    _wake = null;
+    if (wake == null) return;
+    var delay = wake.difference(_now());
+    // 防御：截止时间已过却仍被再次报出时，不要空转。
+    if (delay < const Duration(milliseconds: 10)) {
+      delay = const Duration(milliseconds: 10);
+    }
+    _wake = Timer(delay, () {
+      _wake = null;
+      _dispatch(Tick(now: _now()));
     });
   }
 
-  /// 上一次同步到 [connectionStartedAtProvider] 时看到的状态。
-  BoxStatus? _lastSyncedStatus;
-
-  /// 跟 connectionStartedAtProvider 同步：从 Starting 进入 Started 时记录时间，
-  /// 断开时清零。
-  ///
-  /// 只认"连接中 → 已连接"这一步：App 重启后挂上一条早就在跑的隧道，状态是
-  /// 直接以 Started 出现的，那时真实的起点无从知道——记成"现在"会让首页的
-  /// 已连接时长从 0 开始，显示的是错的。宁可不显示。
-  void _syncStartedAt(BoxStatus status) {
-    final previous = _lastSyncedStatus;
-    _lastSyncedStatus = status;
-    final prov = _ref.read(connectionStartedAtProvider.notifier);
-    if (status is BoxStarted) {
-      // 已有时间戳就不覆盖（避免重复 listener 重置）
-      if (prov.state == null && previous is BoxStarting) {
-        prov.state = DateTime.now();
+  void _execute(List<MachineAction> actions) {
+    // 同一批动作里的副作用要在随后的 SettleRequest 之前完成（例如退出时先清脏
+    // 标记再放行）。
+    final pendingEffects = <Future<void>>[];
+    for (final a in actions) {
+      switch (a) {
+        case PrepareLaunch(:final id):
+          _track(_prepare(id));
+        case SendRequest(:final id, :final request):
+          if (request.desired == Desired.off) {
+            _recordOffSend(id, request);
+          }
+          _track(_send(id, request));
+        case Resync():
+          _track(_resync());
+        case RunEffect(:final effect):
+          final f = _runEffect(effect);
+          // 只有系统代理脏标记必须在放行之前落盘；触觉、评分、手选重放、上报
+          // 不能拖慢请求的终结。
+          if (effect.kind == SideEffectKind.markSystemProxyDirty ||
+              effect.kind == SideEffectKind.clearSystemProxyDirty) {
+            pendingEffects.add(f);
+          } else {
+            unawaited(f);
+          }
+        case SettleRequest(:final id, :final outcome):
+          _settle(id, outcome, List.of(pendingEffects));
       }
-    } else if (status is BoxStopped) {
-      if (prov.state != null) prov.state = null;
     }
   }
 
-  /// 运行时读取设置页"数据分析"开关，决定 fatal alert 是否真的上报给
-  /// Sentry。默认值需要和 settings_page.dart 里的
-  /// `_AnalyticsToggle` 保持一致，都是默认不上报。
+  /// 在途的准备 / 发送 / 重同步任务（它们自己捕获所有错误，结果以事件喂回）。
+  final Set<Future<void>> _tasks = {};
+
+  void _track(Future<void> task) {
+    _tasks.add(task);
+    unawaited(task.whenComplete(() => _tasks.remove(task)));
+  }
+
+  /// 只给测试用：等当前在途的准备 / 发送 / 重同步任务全部结束（含它们结束时新派生
+  /// 的任务）。返回是否等到过任务。测试据此在断言请求数之前确定性地等完真实文件
+  /// IO，而不是靠真实时间轮询。
+  @visibleForTesting
+  Future<bool> debugDrainTasks() async {
+    var waited = false;
+    while (_tasks.isNotEmpty) {
+      waited = true;
+      await Future.wait(List.of(_tasks));
+    }
+    return waited;
+  }
+
+  void _settle(int id, RequestOutcome outcome, List<Future<void>> after) {
+    _settled.add(id);
+    if (_settled.length > 64) _settled.removeAt(0);
+    unawaited(_launcher.discard(id));
+    final c = _completers.remove(id);
+    if (c == null || c.isCompleted) return;
+    if (after.isEmpty) {
+      c.complete(outcome);
+    } else {
+      unawaited(
+        Future.wait(after).whenComplete(() {
+          if (!c.isCompleted) c.complete(outcome);
+        }),
+      );
+    }
+  }
+
+  // ── 动作执行 ─────────────────────────────────────────────────────
+
+  Future<void> _prepare(int id) async {
+    ConnectionFailure? failure;
+    LaunchSpec? spec;
+    try {
+      spec = await _launcher.prepare(id);
+    } on LaunchPreparationException catch (e) {
+      failure = e.failure;
+    } catch (e) {
+      failure = failureFromError(e);
+    }
+    if (!mounted) return;
+    // 准备期间意图已被取代（状态机已立即终结它）：丢弃结果与文件，不占 seq。
+    if (_settled.contains(id)) {
+      if (spec != null) unawaited(_launcher.discard(id));
+      return;
+    }
+    if (spec != null) {
+      _dispatch(LaunchPrepared(id: id, launch: spec, now: _now()));
+    } else {
+      _dispatch(
+        LaunchPrepareFailed(
+          id: id,
+          failure: failure ?? const UnexpectedFailure(),
+          now: _now(),
+        ),
+      );
+    }
+  }
+
+  void _recordOffSend(int id, DesiredRequest request) {
+    final gen = _offGenById.remove(id);
+    if (gen == null) return;
+    _offGenBySeq['${request.epoch}/${request.seq}'] = gen;
+    while (_offGenBySeq.length > 64) {
+      _offGenBySeq.remove(_offGenBySeq.keys.first);
+    }
+  }
+
+  Future<void> _send(int id, DesiredRequest request) async {
+    try {
+      await _sendRequest(id, request);
+    } finally {
+      // 发送路径（含回执处理）走完：发送元数据（绑定 seq 时内核的 attempt）才可
+      // 以丢弃。意图可能早已因快照先到而终结，那不是丢弃它的理由。
+      if (mounted) _launcher.sendFinished(id);
+    }
+  }
+
+  Future<void> _sendRequest(int id, DesiredRequest request) async {
+    // 先等系统代理脏标记落盘：一旦请求启动，内核就可能已经改了系统代理。
+    // （循环：等待期间排进来的新操作也要一并等完。）
+    Future<void> tail;
+    do {
+      tail = _dirtyChain;
+      await tail;
+    } while (!identical(tail, _dirtyChain));
+
+    var req = request;
+    final launch = request.launch;
+    if (launch != null) {
+      try {
+        final bound = await _launcher.bindSeq(id, launch, request.seq);
+        req = DesiredRequest(
+          epoch: request.epoch,
+          seq: request.seq,
+          desired: request.desired,
+          reason: request.reason,
+          launch: bound,
+        );
+      } catch (e) {
+        _dispatch(
+          SendFailed(id: id, failure: failureFromError(e), now: _now()),
+        );
+        return;
+      }
+    }
+
+    final RequestReceipt receipt;
+    try {
+      receipt = await _port.request(req);
+    } catch (e) {
+      _dispatch(SendFailed(id: id, failure: failureFromError(e), now: _now()));
+      return;
+    }
+    _dispatch(ReceiptReceived(id: id, receipt: receipt, now: _now()));
+  }
+
+  Future<void> _resync() async {
+    try {
+      final s = await _port.current();
+      _dispatch(SnapshotReceived(s, now: _now(), fromResync: true));
+    } catch (e) {
+      debugPrint('重新同步失败: $e');
+      _dispatch(ResyncFailed(now: _now()));
+    }
+  }
+
+  Future<void> _runEffect(SideEffect effect) async {
+    try {
+      switch (effect.kind) {
+        case SideEffectKind.hapticHeavy:
+          await _ref.read(hapticServiceProvider).heavyImpact();
+        case SideEffectKind.requestReview:
+          await _ref.read(storeReviewServiceProvider).maybeRequestReview();
+        case SideEffectKind.hapticMedium:
+          await _ref.read(hapticServiceProvider).mediumImpact();
+        case SideEffectKind.replaySelections:
+          await _replaySelections(effect.epoch!, effect.attempt!);
+        case SideEffectKind.markSystemProxyDirty:
+          await _markSystemProxyDirty();
+        case SideEffectKind.clearSystemProxyDirty:
+          // 这份停止快照对应哪一次断开：看它的 appliedSeq 指向的请求。
+          final snap = _mstate.snapshot;
+          final gen = snap == null
+              ? null
+              : _offGenBySeq['${snap.epoch}/${snap.appliedSeq}'];
+          if (gen == null) {
+            debugPrint('停止快照对应的断开请求未知，不清系统代理脏标记');
+          } else {
+            await _clearSystemProxyDirty(gen);
+          }
+        case SideEffectKind.reportFailure:
+          if (_shouldReportAnalytics() && effect.failure != null) {
+            _ref.read(fatalFailureReporterProvider)(effect.failure!);
+          }
+      }
+    } catch (e) {
+      debugPrint('连接副作用 ${effect.kind.name} 失败（忽略）: $e');
+    }
+  }
+
+  /// 重放用户手选的节点（spec §10.7），经 [SelectionReplayPipeline] 统一编排：
+  /// 有界等待这个实例的实时分组 → 用运行时分组校验 → 迁移运行时不存在的分组
+  /// 记录（先写后删）→ 只重放运行时存在的分组 → 确认。每一步都核对归属，过期
+  /// 即丢弃。出口探测在确认之后才开始。
   ///
-  /// [sharedPreferencesProvider] 是 FutureProvider，这里是 watchAlerts
-  /// 回调的同步上下文，只能读已经 resolve 的值（`valueOrNull`）；prefs
-  /// 还没就绪时保守起见按"不上报"处理，不等待 / 不阻塞。
+  /// 内核实例上的手选必须与**当前**激活订阅一致。流水线确认后记下「这个实例
+  /// 已按哪个归属 (profileId, inc) 应用过」（[_applied]）；之后归属变了而实例
+  /// 没变（切到运行时配置 revision 相同的订阅不会产生新 attempt；无论重放是
+  /// 否已确认），由 [_maybeRescheduleReplay] 按新归属对同一 epoch/attempt 重跑
+  /// 一遍（确认是幂等的：同一 attempt 再确认一次是无操作，见
+  /// `KernelPort.acknowledgeReplay`）。归属变化同时带来新 attempt 时只由新
+  /// attempt 自己的重放处理一次。
+  Future<void> _replaySelections(String epoch, int attempt) async {
+    if (!mounted) return;
+    final key = (epoch: epoch, attempt: attempt);
+    if (_replayRunning == key) return;
+    _replayRunning = key;
+    final pipeline = SelectionReplayPipeline(
+      ref: _ref,
+      port: _port,
+      isCurrentInstance: (e, a) => mounted && _isCurrentTarget(e, a),
+      // 配置变更暂停期间（备份恢复）激活订阅随时可能再变：不按任何订阅重放、
+      // 确认，记成欠账，释放后再按最终归属评估。
+      ownerUnsettled: () => _configPauses > 0,
+      // 写内核之前先作废「已应用」记录：这条流水线中途被丢弃时，内核上可能
+      // 已经是它（另一个归属）的部分选择，不能再假定任何归属已应用。
+      beforeKernelWrite: () => _applied = null,
+      // 这个实例所跑的运行时配置（按 revision）的选择组默认值：没有手选记录的
+      // 选择组回到它。
+      selectorDefaults: () {
+        final snap = _mstate.snapshot;
+        final revision =
+            snap != null && snap.epoch == epoch && snap.attempt == attempt
+            ? snap.activeConfigRevision
+            : null;
+        return _launcher.selectorDefaults(revision);
+      },
+      groupsWait: _ref.read(replayGroupsWaitProvider),
+    );
+    ReplayPipelineOutcome? outcome;
+    try {
+      outcome = await pipeline.run(epoch, attempt);
+      debugPrint('手选编排 [$epoch/$attempt]：${outcome.name}');
+    } finally {
+      if (_replayRunning == key) _replayRunning = null;
+      if (mounted) {
+        // 只有这条流水线完整走完（未被丢弃）才记「已按它的归属应用」。
+        if (outcome == ReplayPipelineOutcome.acknowledged ||
+            outcome == ReplayPipelineOutcome.acknowledgedWithoutGroups) {
+          final owner = pipeline.owner;
+          if (owner != null) _applied = owner;
+        }
+        // 任一出口（成功、丢弃、延后、超时、异常）都对账：实例仍在运行而当前
+        // 归属不是已应用的归属，就按当前归属补齐。异常出口、以及内核已判定
+        // 本实例过期（stale）的出口只记账、不立即重跑——等下一个事件（新快照、
+        // 请求终结）再评估，避免确认持续失败或内核已换实例时原地空转。
+        _replayOwed = key;
+        if (outcome != null && outcome != ReplayPipelineOutcome.dropped) {
+          _maybeRescheduleReplay();
+        }
+      }
+    }
+  }
+
+  /// 激活订阅的归属 (id, inc) 变了（由 [connectionControllerProvider] 的监听器
+  /// 在处理完 [onActiveProfileChanged] 之后调用——那里可能已经发出重新应用）：
+  /// 内核正在运行就记为欠账，交给 [_maybeRescheduleReplay] 决定是否按新归属
+  /// 重放这个实例。
+  void onActiveOwnerChanged() {
+    if (!mounted) return;
+    final s = _mstate.snapshot;
+    if (s == null || s.status != KernelStatus.started) return;
+    _replayOwed = (epoch: s.epoch, attempt: s.attempt);
+    _maybeRescheduleReplay();
+  }
+
+  /// 可能需要（重新）按当前归属重放的实例：流水线因订阅切换被丢弃 / 因配置
+  /// 暂停而延后，或者确认之后归属又变了。
+  ({String epoch, int attempt})? _replayOwed;
+
+  /// 正在跑流水线的实例（同一实例不并发跑两条）。
+  ({String epoch, int attempt})? _replayRunning;
+
+  /// 最近一次确认时，手选是按哪个归属应用到哪个实例的。
+  ReplayOwner? _applied;
+
+  /// 当前实例上的手选是否已按当前激活订阅应用过。
+  bool _appliedForCurrentOwner(String epoch, int attempt) {
+    final applied = _applied;
+    if (applied == null ||
+        applied.epoch != epoch ||
+        applied.attempt != attempt) {
+      return false;
+    }
+    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    return applied.profileId == profile?.id &&
+        applied.profileInc == profile?.inc;
+  }
+
+  /// 欠账的实例若仍是当前实例、且还没有按当前归属完整应用过（[_applied]），
+  /// 并且没有未终结的请求（订阅切换引发的重新应用已经落定：要么产生了新
+  /// attempt——它有自己的流水线，欠账作废；要么 revision 相同、实例不变），就
+  /// 按当前归属重新跑一遍流水线。
+  ///
+  /// 配置变更暂停期间只记账、不调度：最终归属要等最后一次释放、先处理完最终
+  /// 配置意图（[_releaseConfigPause]）之后才确定。
+  ///
+  /// 重新调度与原始入口一样经 [_runEffect]，异常（确认超时、通道错误、销毁
+  /// 后的读取）统一捕获记录，不会成为未处理异常。
+  void _maybeRescheduleReplay() {
+    final owed = _replayOwed;
+    if (owed == null || !mounted || _replayRunning != null) return;
+    if (_configPauses > 0) return;
+    final s = _mstate.snapshot;
+    if (s == null) return;
+    if (s.epoch != owed.epoch || s.attempt != owed.attempt) {
+      _replayOwed = null; // 新实例：由它自己的重放副作用负责
+      return;
+    }
+    if (s.status != KernelStatus.started) return;
+    if (_mstate.latestRequest != null) return; // 等订阅切换引发的请求落定
+    // 只看「是否已按当前归属完整应用」，不看快照的 replayNeeded：确认之后
+    // replay=false 的快照是异步到的，在它到达之前按 replayNeeded 判断会把刚
+    // 确认的实例再跑一遍。
+    if (_appliedForCurrentOwner(owed.epoch, owed.attempt)) {
+      _replayOwed = null; // 已按当前归属应用过
+      return;
+    }
+    _replayOwed = null;
+    debugPrint('手选编排 [${owed.epoch}/${owed.attempt}]：激活订阅已变，按新归属重新调度');
+    unawaited(
+      _runEffect(
+        SideEffect(
+          SideEffectKind.replaySelections,
+          epoch: owed.epoch,
+          attempt: owed.attempt,
+        ),
+      ),
+    );
+  }
+
+  /// 状态机当前接受的内核快照是否仍是 [epoch] / [attempt] 且已启动。
+  bool _isCurrentTarget(String epoch, int attempt) {
+    final s = _mstate.snapshot;
+    return s != null &&
+        s.epoch == epoch &&
+        s.attempt == attempt &&
+        s.status == KernelStatus.started;
+  }
+
+  /// 置「系统代理由我们设着」的脏标记——仅在这次连接**真的会去改系统代理**时。
+  /// 判定条件跟 `getDefaultConfigOptions` 里 `setSystemProxyFinal` 保持一致：
+  /// 移动端不设系统代理（走 TUN），桌面端才看用户开关。多标的代价是下次启动
+  /// 多跑几条只读命令，漏标则是真残留没人清。
+  ///
+  /// 写入排进串行队列。
+  Future<void> _markSystemProxyDirty() {
+    if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
+    if (!_ref.read(networkSettingsProvider).setSystemProxy) {
+      return Future<void>.value();
+    }
+    return _enqueueDirty(() async {
+      try {
+        await _ref.read(systemProxyDirtyStoreProvider).mark();
+      } catch (e) {
+        debugPrint('置系统代理脏标记失败: $e');
+      }
+    });
+  }
+
+  /// 清除脏标记的**唯一入口**。只在内核确认已停止之后调用——那时 sing-box 已经
+  /// 走完 listener 的 Close、还原了系统代理。[decidedGen] 是产生这次清理的断开
+  /// 意图提交时的连接意图代际；执行时代际已前进说明之后又有了新的连接意图，
+  /// 这次清理属于旧断开，作废。
+  Future<void> _clearSystemProxyDirty(int decidedGen) {
+    if (!_ref.read(isDesktopPlatformProvider)) return Future<void>.value();
+    if (_clearedForGen == decidedGen) return _dirtyChain;
+    _clearedForGen = decidedGen;
+    return _enqueueDirty(() async {
+      if (decidedGen != _onGen) return;
+      try {
+        await _ref.read(systemProxyDirtyStoreProvider).clear();
+      } catch (e) {
+        debugPrint('清除系统代理脏标记失败: $e');
+      }
+    });
+  }
+
+  Future<void> _enqueueDirty(Future<void> Function() op) {
+    final run = _dirtyChain.then((_) => op());
+    _dirtyChain = run;
+    return run;
+  }
+
+  /// 设置页「数据分析」开关；prefs 还没就绪时保守按「不上报」处理。
   bool _shouldReportAnalytics() {
     final prefs = _ref.read(sharedPreferencesProvider).valueOrNull;
     if (prefs == null) return false;
     return prefs.getBool('clashmiao_analytics_enabled') ?? false;
   }
 
-  /// 重放当前订阅所有已持久化的手选代理（见 [ProxySelectionStoreNotifier]）。
-  /// 单条重放失败（比如订阅更新后 tag 已不存在）只记日志，不影响其它条
-  /// 继续重放，也不影响连接本身可用性。
-  Future<void> _reapplyPersistedSelections() async {
-    final selections = _ref.read(proxySelectionStoreProvider);
-    if (selections.isEmpty) return;
-    for (final entry in selections.entries) {
-      try {
-        await _boxService.selectOutbound(entry.key, entry.value);
-      } catch (e) {
-        debugPrint('重放手选代理失败 [${entry.key} -> ${entry.value}]: $e');
-      }
-    }
-  }
-
-  final Ref _ref;
-  StreamSubscription<BoxStatus>? _statusSub;
-  StreamSubscription<BoxAlert>? _alertSub;
-  StreamSubscription<void>? _networkSub;
-  bool _transitioning = false;
-
-  /// 操作代际。connect()/disconnect()/reconnect() 每次发起时自增并快照，
-  /// 操作内部所有 **await 之后**的 state 写入都必须先确认自己仍是最新代际，
-  /// 否则放弃写入（已有更新的操作接管）。
-  ///
-  /// 真机实锤过的竞态（不加这个守卫时）：disconnect() 的 stop() 完成后还有
-  /// 1.5s 展示动画；用户在这个窗口内点了重连，connect() 已把 state 推进到
-  /// BoxStarted（native 推送穿透），随后 disconnect 那句迟到的
-  /// `state = BoxStopped` 把它覆盖——UI 显示"已断开"而 native 实际在跑，
-  /// 用户再点连接被 native 的重复启动 guard 静默忽略、等不到任何推送，
-  /// state 永卡 BoxStarting，此后所有点击都被 toggle 的中间态检查拦下，
-  /// 永久卡死在"正在连接"。
-  int _opEpoch = 0;
-
-  /// disconnect() 里「至少展示 1.5s 断开中动画」那段延时的可注入接缝。
-  ///
-  /// 生产行为完全不变（默认就是 `Future.delayed`）。它存在**只**为了让上面
-  /// 那条竞态的回归测试能确定性地控制时序：该测试必须让 connect() 的接管发生
-  /// 在这个窗口**之内**，否则测的就不是这个竞态。
-  ///
-  /// 原来测试是靠真实墙钟睡眠去对齐这 1.5s，CI runner 负载一高就随机失败
-  /// （在发版门禁上真炸过一次：睡了 200ms，connect() 还没走到 start()，因为
-  /// 它前面有真实的文件 I/O 和运行时配置构建）。
-  ///
-  /// 而只把睡眠换成"轮询等条件"并不够：机器再慢一点，1.5s 窗口会在接管之前
-  /// 就到期，于是测试**空转通过**——最终断言照样成立，但根本没经过竞态。
-  /// 把随机失败换成静默假绿是更糟的交易，所以这里给出真正的时序控制点。
-  @visibleForTesting
-  Future<void> Function(Duration) disconnectSettleDelay = Future<void>.delayed;
-
-  /// start()/restart() 发出后的收尾：先给 BoxStarting 动画一个最短展示窗口，
-  /// 然后**不**手动写 BoxStarted——真实状态由 watchStatus 推送穿透写入
-  /// （native 实际起来才算数，见 connect() 内注释）。但有一种真实存在的例外：
-  /// native 已经在运行、这次 start() 被它的重复启动 guard 静默忽略，状态
-  /// 无变化也就**永远不会有新的推送**。已知会命中这个例外的具体场景（不是
-  /// 假设）：Android `KernelBinder.registerCallback()` 只把新 IPC 回调加进
-  /// 广播列表、不会把"当前状态"立即回放给它——冷启动 Activity 重建、但
-  /// native TunnelService 组件仍存活（VPN 作为独立前台 service，生命周期
-  /// 不跟 Activity 绑定）时，新 Activity 绑定后第一次收不到任何状态直到
-  /// 下一次真实变化。这个缺口已经在原生层直接修了（补发当前状态），但这里
-  /// 保留一层平台无关的 Dart 侧兜底——iOS/macOS/Windows/Linux 各自独立的
-  /// native 绑定层是否也有同类"新订阅者不补发当前值"的缺口未逐一验证过，
-  /// 这层兜底代价极低（只在真卡在 BoxStarting 时才会读一次），不该只信任
-  /// 单一平台的单点修复。窗口结束后若仍停在 BoxStarting，主动读一次
-  /// watchStatus 的当前缓存值（PlatformBoxService/FFIBoxService 都是
-  /// ValueStream 语义，`.first` 立即返回最新值）对齐真实终态。
-  Future<void> _settleAfterStart(int epoch) async {
-    await Future<void>.delayed(const Duration(milliseconds: 1500));
-    if (epoch != _opEpoch || state.valueOrNull is! BoxStarting) return;
-    final BoxStatus actual;
-    try {
-      // timeout 兜底：万一某个 BoxService 实现的流没有缓存值语义，
-      // 不能让 connect() 挂死在这里。
-      actual = await _boxService.watchStatus().first.timeout(
-        const Duration(seconds: 2),
-        onTimeout: () => const BoxStarting(),
-      );
-    } catch (_) {
-      return; // 流异常时保持现状，等推送/alert 兜底
-    }
-    if (epoch != _opEpoch || state.valueOrNull is! BoxStarting) return;
-    if (actual is BoxStarted || actual is BoxStopped) {
-      state = AsyncData(actual);
-    }
-  }
-
-  /// 用户主动断开的意图标志。disconnect() 置 true，connect() 置 false。
-  /// 用于阻止 _autoReconnect 退避循环在网络切换重连窗口期内把用户刚断开的
-  /// 连接顶回去——网络恢复和用户没断开是两件独立的事，不能只用
-  /// state is BoxStarted 一个谓词表达。
-  bool _manualDisconnect = false;
-
-  bool get isStarted => state.valueOrNull is BoxStarted;
-
-  BoxService get _boxService => _ref.read(boxServiceProvider);
-  bool get _isStub => _boxService is StubBoxService;
-
   @override
   void dispose() {
-    _statusSub?.cancel();
-    _alertSub?.cancel();
-    _networkSub?.cancel();
+    _wake?.cancel();
+    _settingsDebounce?.cancel();
+    unawaited(_snapshotSub?.cancel());
+    unawaited(_linkSub?.cancel());
+    for (final c in _completers.values) {
+      if (!c.isCompleted) c.complete(const RequestInterrupted());
+    }
+    _completers.clear();
     super.dispose();
-  }
-
-  /// 切换连接状态
-  Future<void> toggle() async {
-    final currentStatus = state.valueOrNull;
-    debugPrint('toggle 当前状态: $currentStatus');
-
-    if (currentStatus is BoxStarting || currentStatus is BoxStopping) {
-      debugPrint('正在切换中，忽略');
-      return;
-    }
-
-    try {
-      if (currentStatus is BoxStarted) {
-        await disconnect();
-      } else {
-        await connect();
-      }
-    } catch (e) {
-      // 兜底不能省。toggle() 是「连接/断开」的唯一入口（首页大按钮、桌面托盘
-      // 菜单、dev 自动启动），而**首页那处是 fire-and-forget**：
-      // `onTap: () { ref.read(...).toggle(); }` 把 Future 丢掉了。异常一旦从
-      // connect()/disconnect() 逃出来就没人接，用户点了按钮**什么都不发生、
-      // 也看不到任何提示**——一个死按钮。这正是 _failPrecheck 当初要解决的
-      // 形态，只是来源从"前置校验分支"换成了"意外异常"。
-      //
-      // 异常真的能逃出来：connect() 的 try 只包住 start() 之后那段，前面读
-      // 配置/读 provider 的十几行在 try 之外。实测过一次——provider 容器已被
-      // dispose 时 `_ref.read()` 抛 StateError，堆栈停在 connect() 里。
-      //
-      // 这里**只报错、不改 state**：disconnect 失败时内核可能还在跑，谎报
-      // BoxStopped 是本 App 最不能犯的错（见 disconnect() 内的注释）。
-      // connect()/disconnect() 各自的 catch 已经把自己的状态处理好了。
-      //
-      // 也**不吞异常**：`rethrow` 让全局错误处理（Sentry / zone handler）照样
-      // 收到这条。catch 掉不往外抛的话，换来一条用户可见的提示、代价是崩溃
-      // 上报里从此看不到这个故障——那是拿可观测性换体面。
-      // 报错这件事本身也要保护起来。异常的起因可能正是"provider 容器已被
-      // dispose"，那么下面这两个 `_ref.read()` 会**同样抛出**——新异常顶掉原
-      // 异常、`rethrow` 根本执行不到，结果比不加这个 catch 更糟（原始故障
-      // 彻底消失）。所以：报不出来就只记日志，绝不让它盖掉原异常。
-      try {
-        _ref.read(connectionErrorProvider.notifier).state =
-            classifyExceptionMessage(e, _ref.read(translationsProvider));
-      } catch (secondary) {
-        debugPrint('toggle 兜底提示也失败了（容器可能已 dispose）: $secondary');
-      }
-      debugPrint('toggle 未捕获异常: $e');
-      rethrow;
-    }
-  }
-
-  /// 置"系统代理由我们设着"的脏标记——仅在这次连接**真的会去改系统代理**时。
-  ///
-  /// 判定条件跟 `getDefaultConfigOptions` 里 `setSystemProxyFinal` 保持一致：
-  /// 移动端不设系统代理（走 TUN），桌面端才看用户开关。条件写错的后果是两头
-  /// 的：多标只是下次启动多跑几条只读命令，漏标则是真残留没人清。
-  ///
-  /// 失败只记日志：连接本身不该因为写不进一个标记而失败。代价是那次异常退出
-  /// 的残留没人清，但让连接直接失败明显更糟。
-  Future<void> _markSystemProxyDirtyIfApplicable() async {
-    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
-    if (!_ref.read(networkSettingsProvider).setSystemProxy) return;
-    try {
-      final prefs = await _ref.read(sharedPreferencesProvider.future);
-      await markSystemProxyDirty(prefs);
-    } catch (e) {
-      debugPrint('置系统代理脏标记失败: $e');
-    }
-  }
-
-  /// 清除脏标记。只在 `stop()` 成功之后调用——那时 sing-box 已经走完 listener
-  /// 的 Close、还原了系统代理。
-  Future<void> _clearSystemProxyDirty() async {
-    if (!(Platform.isMacOS || Platform.isWindows || Platform.isLinux)) return;
-    try {
-      final prefs = await _ref.read(sharedPreferencesProvider.future);
-      await clearSystemProxyDirty(prefs);
-    } catch (e) {
-      debugPrint('清除系统代理脏标记失败: $e');
-    }
-  }
-
-  /// 把一条连接前置校验的失败原因写给用户看。
-  ///
-  /// 这些分支以前**只 `debugPrint` 就 return**——用户点了"连接"什么都不会
-  /// 发生、也看不到任何提示，就是一个死按钮。而且桌面托盘的"连接"菜单项
-  /// （`tray_controller.dart`）不经过首页 `_EmptyHomeBody` 那层空态守卫，
-  /// 会直接命中这些分支。所以每条失败路径都必须给出可见的分类文案。
-  void _failPrecheck(String message) {
-    _ref.read(connectionErrorProvider.notifier).state = message;
-    state = const AsyncData(BoxStopped());
-  }
-
-  /// 连接
-  Future<void> connect() async {
-    final t = _ref.read(translationsProvider);
-
-    if (_isStub) {
-      // 桌面端加载 libcore 失败会静默降级成 StubBoxService（见
-      // `BoxService` 工厂的 catch），界面一切正常但什么都不工作——
-      // 这是用户完全无法从界面上察觉的状态，必须明确告知。
-      _failPrecheck(t.failure.singbox.coreLibraryMissing);
-      return;
-    }
-    _manualDisconnect = false; // 用户发起连接，清除手动断开意图
-
-    // 获取 ProfileRepository。
-    // 这里**等**它就绪，而不是像以前那样"没就绪就报错返回"——仓库未就绪纯粹是
-    // 启动期的短暂竞态（用户在 provider 解析完成前就点了连接），等一下就有了，
-    // 报错反而是把一个能自然消解的时序问题变成用户可见的失败。
-    final ProfileRepository repo;
-    try {
-      repo = await _ref.read(profileRepositoryProvider.future);
-    } catch (e) {
-      _failPrecheck(classifyExceptionMessage(e, t));
-      return;
-    }
-
-    // 获取激活订阅
-    final active = repo.getActive();
-    if (active == null) {
-      _failPrecheck(t.failure.profiles.noActive);
-      return;
-    }
-
-    // 检查配置文件存在。
-    // 缺失是真实会发生的：订阅更新中途失败、备份恢复之后，都可能让记录还在
-    // 但磁盘上的配置文件没了。这种情况下用户唯一能自救的动作就是"重新拉一次
-    // 订阅"——那就别让他去菜单里找，直接替他做一次，成功就照常连上去。
-    final configPath = repo.configFilePath(active.id);
-    var configFile = File(configPath);
-    if (!await configFile.exists()) {
-      debugPrint('配置文件不存在，尝试重新拉取订阅自愈: $configPath');
-      try {
-        await repo.update(active.id);
-      } catch (e) {
-        debugPrint('自愈重新拉取订阅失败: $e');
-      }
-      configFile = File(configPath);
-      if (!await configFile.exists()) {
-        _failPrecheck(t.failure.profiles.notFound);
-        return;
-      }
-    }
-
-    final epoch = ++_opEpoch;
-    _transitioning = true;
-    state = const AsyncData(BoxStarting());
-    try {
-      // 读用户当前选的 mode（0=全局，1=智能），决定要不要走分流
-      final modeIndex = _ref.read(proxyModeProvider);
-      final isGlobal = modeIndex == 0;
-
-      // 连接前推送 fork-side options：智能/全局分流真正生效的口子在这里的
-      // isSmart（driven configOptions.rules），不是下面 RuntimeConfigBuilder
-      // 写的 runtime-config.json（那份 route 块会被 native 无条件丢弃重建，
-      // 见 getDefaultConfigOptions 文档）。
-      await _boxService.changeConfigOptions(
-        jsonEncode(
-          getDefaultConfigOptions(
-            executeConfigAsIs: isGlobal,
-            isSmart: !isGlobal,
-            settings: _ref.read(networkSettingsProvider),
-            advancedConfig: active.advancedConfig,
-          ),
-        ),
-      );
-
-      // 现场组装 runtime-config.json（剥离冲突 inbound / 补齐 DNS / 注入
-      // mux），native 加载这个。iOS 上必须落在 App Group 共享容器，见
-      // resolveSingBoxWorkingDirectory 文档。
-      final workingDir = await resolveSingBoxWorkingDirectory();
-      final settings = _ref.read(networkSettingsProvider);
-      final runtimeConfig = await RuntimeConfigBuilder().build(
-        baseProfile: configFile,
-        workingDir: workingDir,
-        remoteDnsAddress: settings.remoteDnsAddress,
-        advancedConfig: active.advancedConfig,
-      );
-
-      // 置"系统代理脏标记"。放在 start() **之前**：一旦请求启动，sing-box 就
-      // 可能已经把系统代理写进去了，start() 抛异常也不代表没写成。方向上宁可
-      // 多标——多标的代价是下次启动多跑几条只读命令（发现没残留就什么都不做），
-      // 漏标的代价是真残留没人清，用户整机断网（见 system_proxy_guard.dart）。
-      await _markSystemProxyDirtyIfApplicable();
-
-      await _boxService.start(runtimeConfig.path, name: active.name);
-      // 让 BoxStarting 动画至少展示 1.5s，期间锁住 _transitioning。
-      // 之后**不**手动写 BoxStarted —— 真实 BoxStarted 由 watchStatus
-      // 在 native sing-box 实际起来（VpnService 接管流量、TUN 建好）后推送。
-      // 这之前如果 user 没点 VPN dialog / sing-box 启动失败，会停在 BoxStarting，
-      // 由 watchAlerts 的 fatal alert 强制回到 BoxStopped。
-      // 例外兜底见 _settleAfterStart：native 已在跑、重复启动被静默忽略、
-      // 没有任何推送时，主动对齐真实终态，避免永卡"正在连接"。
-      await _settleAfterStart(epoch);
-    } catch (e) {
-      final errMsg = e.toString();
-      if (errMsg.contains('instance not stopped')) {
-        try {
-          await _boxService.stop();
-          await Future<void>.delayed(const Duration(milliseconds: 500));
-          // 重试也用 runtime-config（避免 fallback 到 profile 原文丢失 inbound/DNS 处理）
-          final workingDir = await resolveSingBoxWorkingDirectory();
-          final settings = _ref.read(networkSettingsProvider);
-          final runtimeConfig = await RuntimeConfigBuilder().build(
-            baseProfile: configFile,
-            workingDir: workingDir,
-            remoteDnsAddress: settings.remoteDnsAddress,
-            advancedConfig: active.advancedConfig,
-          );
-          await _boxService.start(runtimeConfig.path, name: active.name);
-          // 同上：不手动写 BoxStarted，让 watchStatus 推真实状态；
-          // 同样的自愈兜底也要给这条重试路径，逻辑同 _settleAfterStart。
-          await _settleAfterStart(epoch);
-          return;
-        } catch (retryErr) {
-          if (epoch == _opEpoch) {
-            _ref
-                .read(connectionErrorProvider.notifier)
-                .state = classifyExceptionMessage(
-              retryErr,
-              _ref.read(translationsProvider),
-            );
-          }
-        }
-      } else {
-        if (epoch == _opEpoch) {
-          _ref.read(connectionErrorProvider.notifier).state =
-              classifyExceptionMessage(e, _ref.read(translationsProvider));
-        }
-      }
-      if (epoch == _opEpoch) state = const AsyncData(BoxStopped());
-    } finally {
-      if (epoch == _opEpoch) _transitioning = false;
-    }
-  }
-
-  /// 断开连接
-  Future<void> disconnect() async {
-    if (_isStub) return;
-
-    final epoch = ++_opEpoch;
-    _manualDisconnect = true; // 用户主动断开：阻止 autoReconnect 把连接顶回去
-    _transitioning = true;
-    state = const AsyncData(BoxStopping());
-    try {
-      await _boxService.stop();
-      // stop 成功 ⇒ sing-box 已经走完 listener 的 Close、还原了系统代理，
-      // 这时才能清脏标记。stop 失败的分支**故意不清**——那种情况下代理很可能
-      // 还挂着，标记要留到下次启动去自愈。
-      await _clearSystemProxyDirty();
-      // 至少展示 1.5秒 断开中动画（延时走可注入接缝，见 disconnectSettleDelay）
-      await disconnectSettleDelay(const Duration(milliseconds: 1500));
-      // 代际守卫：这 1.5s 窗口内用户可能已经点了重连——真机实锤过的竞态
-      // （见 connect() 里 _opEpoch 的文档）。如果 connect() 已经接管（更新的
-      // 代际），这句迟到的 BoxStopped 绝不能把它的 BoxStarted 覆盖掉，
-      // 否则 UI 显示"已断开"、native 实际在跑，用户再点连接会被 native 的
-      // 重复启动 guard 静默忽略，永卡"正在连接"。
-      if (epoch == _opEpoch) {
-        state = const AsyncData(BoxStopped());
-        unawaited(_ref.read(hapticServiceProvider).mediumImpact());
-      }
-    } catch (e) {
-      // stop 失败时内核可能还在跑：绝不能谎报 BoxStopped——那是本 App 最不能
-      // 接受的故障形态（界面显示已断开，流量还在走）。错误必须可见（之前静默
-      // 吞掉导致这类问题无法排查），同时做一次"强制清理"重试：disconnect()
-      // 会在退出流程里被调用（见 tray_controller.dart quit 分支），那个调用点
-      // 已经 try/catch 吞掉异常直接销毁窗口/退出，用户没有"再点一次断开"的
-      // 机会，所以不能只依赖用户手动重试，这里自己再兜底试一次 stop()。
-      debugPrint('disconnect 失败: $e');
-      if (epoch == _opEpoch) {
-        _ref.read(connectionErrorProvider.notifier).state =
-            classifyExceptionMessage(e, _ref.read(translationsProvider));
-      }
-      try {
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-        await _boxService.stop();
-        // 重试确认停掉了，这时候设 BoxStopped 才是诚实的（同上，代际守卫）。
-        if (epoch == _opEpoch) {
-          state = const AsyncData(BoxStopped());
-          unawaited(_ref.read(hapticServiceProvider).mediumImpact());
-        }
-      } catch (retryErr) {
-        debugPrint('disconnect 重试仍失败: $retryErr');
-        if (epoch == _opEpoch) {
-          _ref
-              .read(connectionErrorProvider.notifier)
-              .state = classifyExceptionMessage(
-            retryErr,
-            _ref.read(translationsProvider),
-          );
-          // 重试也失败：仍然不能报 BoxStopped。诚实地倾向认为还连着，UI 会
-          // 显示"仍连接 + 错误"，用户可以再点一次断开重试（disconnect 本身
-          // 可重入，toggle() 里 currentStatus is BoxStarted 会再次走
-          // disconnect 分支）。如果 native 其实已经停了，watchStatus 之后
-          // 会推真实的 BoxStopped 自动纠正（_transitioning 在 finally 解锁
-          // 后，终态可以穿透 _statusSub 对中间态的过滤）。
-          state = const AsyncData(BoxStarted());
-        }
-      }
-    } finally {
-      if (epoch == _opEpoch) _transitioning = false;
-    }
-  }
-
-  /// 重连（用 restart 原子操作，避免 stop+start 竞态）
-  ///
-  /// 必须用 RuntimeConfigBuilder 现场拼好的 runtime-config.json，
-  /// 否则切换"全局/智能"时分流配置不生效（restart 直接拿原始 profile
-  /// 等于退回到 profile 自带的 rule-set 引用，可能 fetch 远端 GFW-blocked
-  /// 资源、或者全局模式下没剥离旧配置里的兜底 default，效果不可预期）。
-  Future<void> reconnect() async {
-    if (_isStub) return;
-    _ref.read(connectionErrorProvider.notifier).state = null;
-    final repoAsync = _ref.read(profileRepositoryProvider);
-    if (!repoAsync.hasValue) return;
-    final repo = repoAsync.requireValue;
-    final active = repo.getActive();
-    if (active == null) return;
-
-    final configFile = File(repo.configFilePath(active.id));
-    if (!await configFile.exists()) {
-      debugPrint('重连: 配置文件不存在 ${configFile.path}');
-      return;
-    }
-
-    final epoch = ++_opEpoch;
-    state = const AsyncData(BoxStarting());
-    try {
-      final modeIndex = _ref.read(proxyModeProvider);
-      final isGlobal = modeIndex == 0;
-      // mode 可能在两次 connect 之间变了；先把 options 重推一遍
-      await _boxService.changeConfigOptions(
-        jsonEncode(
-          getDefaultConfigOptions(
-            executeConfigAsIs: isGlobal,
-            isSmart: !isGlobal,
-            settings: _ref.read(networkSettingsProvider),
-            advancedConfig: active.advancedConfig,
-          ),
-        ),
-      );
-      final workingDir = await resolveSingBoxWorkingDirectory();
-      final settings = _ref.read(networkSettingsProvider);
-      final runtimeConfig = await RuntimeConfigBuilder().build(
-        baseProfile: configFile,
-        workingDir: workingDir,
-        remoteDnsAddress: settings.remoteDnsAddress,
-        advancedConfig: active.advancedConfig,
-      );
-      debugPrint('重连: restart ${runtimeConfig.path}');
-      await _boxService.restart(runtimeConfig.path, name: active.name);
-      debugPrint('restart 完成');
-      // 不手动写 BoxStarted（跟 connect 同一原则）：restart 调用返回只代表
-      // 命令送达，native sing-box 是否真起来由 watchStatus 推送决定。之前
-      // "2s 后仍 Starting 就标 Started" 会在启动实际失败时伪装成功，
-      // 让 _autoReconnect 误判恢复而停止退避。这里等一个观察窗口即可，
-      // 真实失败由 watchAlerts 的 fatal alert 拉回 BoxStopped。
-      await Future<void>.delayed(const Duration(seconds: 2));
-    } catch (e) {
-      debugPrint('重连失败: $e');
-      // 代际守卫同 connect()/disconnect()：这 2s 观察窗口内用户可能已经
-      // 手动断开或发起了新连接，不能让这句迟到的 BoxStopped 覆盖更新的
-      // 操作已经写入的状态。故意不在这里自愈成 BoxStarted（即使 native
-      // 可能其实起来了）——_autoReconnect 依赖 reconnect() 返回后检查
-      // state 是否为 BoxStarted 来判断"已恢复"，这里提前假装成功会让它
-      // 误判、过早放弃退避重试，见本函数上方注释。
-      if (epoch == _opEpoch) state = const AsyncData(BoxStopped());
-    }
-  }
-
-  bool _modeApplyInFlight = false;
-  bool _modeApplyPending = false;
-
-  /// 把 [proxyModeProvider] 的当前值应用到运行中的内核：推 fork-side options
-  /// + （已连接/连接中则）reconnect 让新的 runtime-config 生效。UI 层
-  /// （`_ModeSelector`）在**同步**更新完 `proxyModeProvider`（保证点击零延迟
-  /// 高亮）之后调这个方法，不需要自己传 index——执行时永远读 provider 的
-  /// 最新值。
-  ///
-  /// 真机实锤过的静默错位 bug（不是理论推演）：旧实现直接写在
-  /// `_ModeSelector._onModeTap` 里，判断"要不要 reconnect"用
-  /// `connStatus is BoxStarted`。连续快速切换（第二次点击落在第一次
-  /// reconnect() 还没跑完的 BoxStarting 窗口内）时，第二次读到的
-  /// state 是 BoxStarting 不是 BoxStarted，判断为 false，整次点击被
-  /// 静默吞掉——UI 显示用户最后选的模式，但内核实际还在跑第一次点击
-  /// （过时）那个模式的 runtime-config。真机拉取 `runtime-config.json`
-  /// 核实过：`route.final`/规则数对应的确实是旧模式，不是 UI 显示的那个。
-  ///
-  /// 修复用"忙时合并 + 收敛到最新值"的排队，而不是单纯放宽判断条件——放宽
-  /// 成"BoxStarting 也算"会导致两次点击各自独立调用 `reconnect()`，两个
-  /// `_boxService.restart()` 请求几乎同时发给 native，谁先谁后不确定，
-  /// 依然可能不是用户最后选择的模式生效，还多引入了一次没必要的 restart。
-  /// 这里保证任意时刻只有一个 `_applyProxyModeOnce` 在跑，且跑完后如果
-  /// 期间又有新请求到达，会再跑一轮直到没有新请求——最终必然收敛到调用
-  /// 这个方法时 `proxyModeProvider` 的最新值，且只在真正需要变化时才
-  /// 触发 reconnect。
-  Future<void> applyProxyMode() async {
-    if (_modeApplyInFlight) {
-      _modeApplyPending = true;
-      return;
-    }
-    _modeApplyInFlight = true;
-    try {
-      do {
-        _modeApplyPending = false;
-        await _applyProxyModeOnce();
-      } while (_modeApplyPending);
-    } finally {
-      _modeApplyInFlight = false;
-    }
-  }
-
-  Future<void> _applyProxyModeOnce() async {
-    if (_isStub) return;
-    final repoAsync = _ref.read(profileRepositoryProvider);
-    final active = repoAsync.valueOrNull?.getActive();
-    final modeIndex = _ref.read(proxyModeProvider);
-    final isGlobal = modeIndex == 0;
-    try {
-      await _boxService.changeConfigOptions(
-        jsonEncode(
-          getDefaultConfigOptions(
-            executeConfigAsIs: isGlobal,
-            isSmart: !isGlobal,
-            settings: _ref.read(networkSettingsProvider),
-            advancedConfig: active?.advancedConfig,
-          ),
-        ),
-      );
-      // 只要不是彻底断开/正在断开，都应该让新模式的 runtime-config 生效——
-      // 不能像旧实现那样严格要求"此刻精确是 BoxStarted"，那正是静默错位
-      // bug 的根源（见上方类文档注释）。BoxStopped/BoxStopping 时确实不该
-      // reconnect：还没连接或正在断开，下次真正 connect() 会自然用上
-      // 当时最新的模式。
-      final s = state.valueOrNull;
-      if (s is BoxStarted || s is BoxStarting) {
-        await reconnect();
-      }
-    } catch (e) {
-      final t = _ref.read(translationsProvider);
-      debugPrint(t.home.failedToSwitchMode(error: e.toString()));
-    }
-  }
-
-  bool _autoReconnecting = false;
-
-  Future<void> _autoReconnect() async {
-    // 网络抖动（WiFi↔蜂窝快速切换）会连发多个 network_changed 事件，
-    // 不加闸门会并发跑多个退避循环、reconnect/restart 互相竞态。
-    if (_autoReconnecting) return;
-    _autoReconnecting = true;
-    try {
-      const delays = [1, 2, 4, 8];
-      for (final d in delays) {
-        await Future<void>.delayed(Duration(seconds: d));
-        if (!mounted) return;
-        if (_manualDisconnect) return; // 退避窗口内用户已手动断开，停止重试
-        if (state.valueOrNull is BoxStarted) return; // already recovered
-        try {
-          await reconnect();
-          if (state.valueOrNull is BoxStarted) return;
-        } catch (e) {
-          debugPrint('[AutoReconnect] attempt failed: $e');
-        }
-      }
-      debugPrint('[AutoReconnect] exhausted all 4 attempts');
-    } finally {
-      _autoReconnecting = false;
-    }
   }
 }
 
 final connectionControllerProvider =
-    StateNotifierProvider<ConnectionController, AsyncValue<BoxStatus>>((ref) {
+    StateNotifierProvider<ConnectionController, ConnectionSnapshot>((ref) {
       final controller = ConnectionController(ref);
-      // 网络设置（端口 / TUN / LAN / DNS）变更后，正在跑的 sing-box 仍用旧值，
-      // 必须 reconnect 才生效——之前要求用户手动断开重连，跟设置页
-      // "改完即生效"的预期不符。listen 放 provider 体内（StateNotifier 内部
-      // 拿不到 ref.listen），连接中才触发，未连接时改设置无副作用。
-      // 防抖：把一串密集的设置变更合并成**一次**重连 + 一条提示。
-      //
-      // 不防抖的话，`NetworkSettingsNotifier.importJson`（剪贴板导入配置）会
-      // 逐字段 `await setter(...)`，一份完整导出有约 30 个字段，就是 30 次
-      // 状态变更 → 30 次 reconnect() 互相踩踏 + 30 条 toast 连响。滑杆拖动
-      // 同理（每动一格触发一次重连）。
-      //
-      // 副作用是单次改设置要多等一个防抖窗口才重连，但 400ms 用户无感，
-      // 而且"等用户改完再重连"本来就比"边改边重连"更合理。
-      Timer? settingsDebounce;
-      ref.onDispose(() => settingsDebounce?.cancel());
+
+      // 网络设置变更：防抖后重新应用（见 onNetworkSettingsChanged）。
       ref.listen(networkSettingsProvider, (prev, next) {
         if (prev == null || identical(prev, next)) return;
-        if (!controller.isStarted) return;
-        settingsDebounce?.cancel();
-        settingsDebounce = Timer(kConfigChangeReconnectDebounce, () {
-          // 防抖窗口内用户可能已经断开了，那就别把连接顶回去。
-          if (!controller.isStarted) return;
-          // 静默重连之前完全没有提示，用户容易把这次自动重连误当成网络抖动。
-          // 递增这个 nonce 让 UI（HomePage）能感知到"这次重连是配置变更触发
-          // 的"，从而弹一条轻提示，而不是阻断式弹窗。
-          ref.read(configChangeReconnectNoticeProvider.notifier).state++;
-          unawaited(controller.reconnect());
-        });
+        controller.onNetworkSettingsChanged();
       });
+
+      // 激活订阅变化：连接中最后一个订阅被删 → 断开；切到另一个订阅 → 应用新
+      // 配置。只看已稳定的值（刷新中的 loading 不算变化）。
+      //
+      // 同一个监听器里先处理配置（可能发出重新应用），再通知归属 (id, inc)
+      // 变化——手选重放据此判断要不要等这次重新应用落定。
+      String? lastActiveId;
+      String? lastActiveInc;
+      var activeKnown = false;
+      ref.listen<AsyncValue<ProfileEntity?>>(activeProfileProvider, (_, next) {
+        if (!next.hasValue || next.isLoading) return;
+        final id = next.valueOrNull?.id;
+        final inc = next.valueOrNull?.inc;
+        final ownerChanged =
+            activeKnown && (id != lastActiveId || inc != lastActiveInc);
+        if (activeKnown && id != lastActiveId) {
+          controller.onActiveProfileChanged(lastActiveId, id);
+        }
+        lastActiveId = id;
+        lastActiveInc = inc;
+        activeKnown = true;
+        if (ownerChanged) controller.onActiveOwnerChanged();
+      }, fireImmediately: true);
+
       return controller;
     });
 
-/// 配置变更触发自动重连前的防抖窗口，见 [connectionControllerProvider] 里的用法。
+/// 配置变更触发自动应用前的防抖窗口，见 [connectionControllerProvider]。
 const kConfigChangeReconnectDebounce = Duration(milliseconds: 400);
 
-/// 最近一次 connect/reconnect 失败的错误信息（人类可读 string）。
-///
-/// 用 string 而不是 Exception 是为了能从 `valueOrNull == null` 区分"没失败过"
-/// 和"刚失败"两种状态。UI 通过 listen 拿到变化弹 toast 之后应该
-/// `.state = null` 把它清空。
-final connectionErrorProvider = StateProvider<String?>((_) => null);
+/// 建防抖定时器的工厂。测试替换成可控调度器，不用真实时间等防抖窗口。
+final configChangeDebounceTimerProvider =
+    Provider<Timer Function(Duration, void Function())>((ref) => Timer.new);
 
-/// 配置（网络设置）变更触发自动重连的通知 nonce。
+/// 配置（网络设置）变更触发重新应用的通知 nonce。
 ///
-/// [connectionControllerProvider] 监听 [networkSettingsProvider] 变化，已连接
-/// 时会静默调用 [ConnectionController.reconnect]——用户如果毫无提示，可能会把
-/// 这次重连误当成网络抖动故障。这里用单调递增的 int 而不是 bool/文本，是因为
-/// UI（[HomePage]）要用 `ref.listen` 监听变化去弹一条轻量 toast；如果用不变
-/// 的 bool/字符串，连续两次配置变更之间取值相同，Riverpod 不会重新触发
-/// listen 回调，第二次提示就会被吃掉。
+/// 用单调递增的 int 而不是 bool/文本：UI（`HomePage`）用 `ref.listen` 监听变
+/// 化弹 toast；取值不变的话连续两次变更之间 Riverpod 不会重新触发回调。
 final configChangeReconnectNoticeProvider = StateProvider<int>((_) => 0);
 
-/// 进入 BoxStarted 时记录的时间戳（用来算"已连接 N 分钟"）。
-/// 由 ConnectionController 在 Starting → Started 时设置，断开时清零。
-/// 为 null 也可能是"已连接但不知道从什么时候开始"（挂上了已在运行的隧道），
-/// 这时 UI 不显示时长。
-final connectionStartedAtProvider = StateProvider<DateTime?>((_) => null);
+/// [ConnectionController.pauseConfigChanges] 的句柄。
+class ConfigChangePause {
+  ConfigChangePause._(this._controller);
+
+  final ConnectionController _controller;
+  bool _released = false;
+
+  /// 释放这次暂停（幂等）。最后一个暂停释放时按最终状态至多处理一次。
+  void release() {
+    if (_released) return;
+    _released = true;
+    _controller._releaseConfigPause();
+  }
+}

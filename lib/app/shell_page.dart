@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'dart:math' as math;
-import 'dart:ui';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/domain/connection/application/connection_error_classifier.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
@@ -31,6 +31,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
+import 'package:clashmiao/app/restore_recovery_notice.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
@@ -43,6 +45,17 @@ class _ShellPageState extends ConsumerState<ShellPage> {
   bool _debugAddProfileOpened = false;
   bool _deepLinkResultChecked = false;
   bool _staleProxyNoticeChecked = false;
+  bool _restoreRecoveryNoticeChecked = false;
+
+  /// 已经提示过的连接失败序号。初值取挂载时的当前序号：挂载之前就已存在的失败
+  /// 不重复弹窗。
+  late int _shownFailureSeq;
+
+  @override
+  void initState() {
+    super.initState();
+    _shownFailureSeq = ref.read(connectionFailureProvider).seq;
+  }
 
   static const _pages = [
     HomePage(),
@@ -117,10 +130,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        showAiUiModal<void>(
-          context: context,
-          builder: (_) => const QuickSettingsModal(),
-        );
+        QuickSettingsModal.show(context);
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_LOGS') &&
@@ -209,17 +219,17 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       });
     }
 
-    // sing-box 核心层推过来的 alert：内核压根没起来（isFatal）用阻断式弹窗
-    // ——必须点确认，不能被用户划走错过；其余（权限请求等，用户仍可重试/
-    // 手动处理）维持非阻断 toast。文案统一走 classifyBoxAlertMessage，跟
-    // ConnectionController 写 connectionErrorProvider 用的是同一份分类器，
-    // 不再各自维护一份（此前这里是硬编码中文 _alertLabel，跟分类器脱节）。
-    ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
-      final alert = next.valueOrNull;
-      if (alert == null) return;
+    // 连接失败（spec §10 / 计划 P4 ③）：由连接状态机从内核快照与本地失败派生，
+    // 按 failureSeq 去重。致命类（内核没起来 / 内核无响应）用阻断式弹窗——必须
+    // 点确认，不能被用户划走错过；其余（未授权、超时、无订阅……用户仍可重试）
+    // 维持非阻断 toast。文案统一走 connectionFailureMessage。
+    ref.listen<ConnectionFailureView>(connectionFailureProvider, (_, next) {
+      final failure = next.failure;
+      if (failure == null || next.seq == _shownFailureSeq) return;
+      _shownFailureSeq = next.seq;
       final t = ref.read(translationsProvider);
-      final message = classifyBoxAlertMessage(alert, t);
-      if (alert.type.isFatal) {
+      final message = connectionFailureMessage(failure, t);
+      if (failure.isFatal) {
         showBlockingAlert(
           context,
           title: t.home.connectionFailedTitle,
@@ -229,6 +239,16 @@ class _ShellPageState extends ConsumerState<ShellPage> {
         return;
       }
       AppToast.error(context, message);
+    });
+
+    // alerts 通道只剩与连接生命周期无关的提示（例如通知权限请求）：照旧 toast。
+    // 致命 alert 属于生命周期失败，已经由上面的连接失败监听统一弹窗，这里跳过，
+    // 避免同一个故障提示两次。
+    ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
+      final alert = next.valueOrNull;
+      if (alert == null || alert.type.isFatal) return;
+      final t = ref.read(translationsProvider);
+      AppToast.error(context, classifyBoxAlertMessage(alert, t));
     });
 
     // 深链导入结果（DeepLinkService 解析 URI 并调用 addByUrl/addByContent
@@ -274,6 +294,17 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _showStaleProxyNotice(context, ref);
     });
 
+    // 上次备份恢复被中断、启动时自动回滚没成功（或快照没了）：首帧后明确告诉用户。
+    // 启动屏障早于 ShellPage 挂载，结果只会在启动时写入一次，所以只需要首帧检查。
+    if (!_restoreRecoveryNoticeChecked) {
+      _restoreRecoveryNoticeChecked = true;
+      if (needsStartupRestoreNotice(ref.read(startupRestoreRecoveryProvider))) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) showRestoreRecoveryNotice(context, ref);
+        });
+      }
+    }
+
     // 桌面端预留窗口装饰（macOS 红绿灯/Win+Linux 标题栏间距），移动端交给各页面 SafeArea
     final double topPad;
     if (Platform.isMacOS) {
@@ -308,7 +339,20 @@ class _ShellPageState extends ConsumerState<ShellPage> {
               children: [
                 if (topPad > 0) SizedBox(height: topPad),
                 Expanded(
-                  child: IndexedStack(index: selectedIndex, children: _pages),
+                  // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
+                  // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
+                  // 把它们静音；切回来时自动恢复。
+                  child: IndexedStack(
+                    index: selectedIndex,
+                    children: [
+                      for (var i = 0; i < _pages.length; i++)
+                        TickerMode(
+                          key: ValueKey('tab_ticker_$i'),
+                          enabled: i == selectedIndex,
+                          child: _pages[i],
+                        ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -346,9 +390,17 @@ void _handleDeepLinkResult(
 ) {
   switch (result) {
     case DeepLinkImportSuccess(:final profileName):
-      AppToast.success(context, '已导入订阅：$profileName');
+      AppToast.success(
+        context,
+        ref
+            .read(translationsProvider)
+            .profile
+            .add
+            .importedNamed(name: profileName),
+      );
     case DeepLinkImportFailure(:final message):
-      AppToast.error(context, '导入订阅失败：$message');
+      // message 已是本地化文案（见 DeepLinkImportFailure）。
+      AppToast.error(context, message);
   }
   ref.read(deepLinkImportResultProvider.notifier).state = null;
 }
@@ -416,69 +468,66 @@ class _GlassBottomNav extends ConsumerWidget {
         ),
         child: ClipRRect(
           borderRadius: radius,
-          child: BackdropFilter(
-            // 真磨砂：模糊半径要压过底色的透明度，否则底下的内容只是"透过去"
-            // 而不是"被磨掉"。
-            filter: ImageFilter.blur(sigmaX: 32, sigmaY: 32),
-            child: Container(
-              key: const ValueKey('bottom_nav_bar'),
-              height: barHeight,
-              decoration: BoxDecoration(
-                // 用接近卡片的实色底把页面内容压住，避免亮色背景从导航后面
-                // 透出来吃掉图标；边缘高光仍保留一点轻盈感。
+          // 不再套 BackdropFilter：底色是不透明实色，模糊压根看不见，却要
+          // 每帧对导航条背后的整块内容做一次离屏模糊。
+          child: Container(
+            key: const ValueKey('bottom_nav_bar'),
+            height: barHeight,
+            decoration: BoxDecoration(
+              // 用接近卡片的实色底把页面内容压住，避免亮色背景从导航后面
+              // 透出来吃掉图标；边缘高光仍保留一点轻盈感。
+              color: isLight
+                  ? const Color(0xFFEEF1F7)
+                  : const Color(0xFF1B1D24),
+              borderRadius: radius,
+              // 玻璃边：亮面用高光白描边，暗面用极淡的白，让边缘从背景里"起片"。
+              border: Border.all(
                 color: isLight
-                    ? const Color(0xFFEEF1F7)
-                    : const Color(0xFF1B1D24),
-                borderRadius: radius,
-                // 玻璃边：亮面用高光白描边，暗面用极淡的白，让边缘从背景里"起片"。
-                border: Border.all(
-                  color: isLight
-                      ? Colors.white.withValues(alpha: 0.6)
-                      : const Color(0x1FFFFFFF),
-                ),
+                    ? Colors.white.withValues(alpha: 0.6)
+                    : const Color(0x1FFFFFFF),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: items.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final (icon, selectedIcon, label) = entry.value;
-                  final isSelected = i == selectedIndex;
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: items.asMap().entries.map((entry) {
+                final i = entry.key;
+                final (icon, selectedIcon, label) = entry.value;
+                final isSelected = i == selectedIndex;
 
-                  final color = isSelected
-                      ? theme.colorScheme.primary
-                      // 未选中在半透明玻璃上要比原来实一点，否则底下的内容
-                      // 一流过去就把图标"吃"掉了。
-                      : (isLight
-                            ? aiUi.secondaryTextColor.withValues(alpha: 0.75)
-                            : Colors.white.withValues(alpha: 0.55));
+                final color = isSelected
+                    ? theme.colorScheme.primary
+                    // 未选中在半透明玻璃上要比原来实一点，否则底下的内容
+                    // 一流过去就把图标"吃"掉了。
+                    : (isLight
+                          ? aiUi.secondaryTextColor.withValues(alpha: 0.75)
+                          : Colors.white.withValues(alpha: 0.55));
 
-                  return Expanded(
-                    child: GestureDetector(
-                      key: ValueKey('bottom_nav_$i'),
-                      onTap: () => onTap(i),
-                      behavior: HitTestBehavior.opaque,
-                      // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
-                      // tab，图标本身对读屏是空的。
-                      child: Semantics(
-                        label: label,
-                        button: true,
-                        selected: isSelected,
-                        child: Center(
-                          // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
-                          // 一块色块——整条已经是个胶囊，里面再套一个小方块是
-                          // 两层容器打架。
-                          child: Icon(
-                            isSelected ? selectedIcon : icon,
-                            color: color,
-                            size: 28,
-                          ),
+                return Expanded(
+                  child: GestureDetector(
+                    key: ValueKey('bottom_nav_$i'),
+                    onTap: () => onTap(i),
+                    behavior: HitTestBehavior.opaque,
+                    // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
+                    // tab，图标本身对读屏是空的。
+                    child: Semantics(
+                      label: label,
+                      button: true,
+                      selected: isSelected,
+                      child: Center(
+                        // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
+                        // 一块色块——整条已经是个胶囊，里面再套一个小方块是
+                        // 两层容器打架。
+                        child: Icon(
+                          isSelected ? selectedIcon : icon,
+                          color: color,
+                          size: 28,
                         ),
                       ),
                     ),
-                  );
-                }).toList(),
-              ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ),

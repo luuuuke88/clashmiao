@@ -7,6 +7,11 @@ abstract final class BrandColors {
   static const Color indigo = Color(0xFF6A64F8);
   static const Color indigoDeep = Color(0xFF3956DC);
 
+  /// 浅色主题里 `ColorScheme.primary` 用的靛蓝：比 [indigo] 略深一点，
+  /// 让压在它上面的 `onPrimary`（白）小字对比度 ≥ 4.5:1（[indigo] 只有 4.38:1）。
+  /// 肉眼上仍是同一个蓝。深色主题的 primary 由种子色生成，不用它。
+  static const Color indigoOnLight = Color(0xFF645DF2);
+
   /// 猫脸上那道闪电的黄，品牌里唯一的暖色。
   static const Color gold = Color(0xFFFCD13C);
 

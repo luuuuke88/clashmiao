@@ -1,6 +1,12 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -9,23 +15,32 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/application/optimistic_proxy_selections_notifier.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/domain/routing/model/cached_delay.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
+import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../_fakes/fake_kernel_port.dart';
 import '../../../support/fake_box_service.dart';
+import '../../../support/fake_connection_controller.dart';
+import '../../../support/profile_store_support.dart';
 
 /// Toastification 的 auto-close 走 Timer（info=3s / error=5s），widget dispose 后
 /// timer 还活着会让 flutter_test 报 "A Timer is still pending"。
 /// pump 一段足够长的假时钟把 timer 烧完，再 dismiss + 再 pump 一帧让动画收尾。
 Future<void> _drainToasts(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 6));
+  // 已连接时协调器有 2 s 预热定时器与 10 s 测速超时定时器；容器由测试自己持有、
+  // 要到 tearDown 才销毁，所以这里把假时钟推过去，让它们自然跑完。
+  await tester.pump(const Duration(seconds: 13));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -38,6 +53,7 @@ Future<void> _drainToasts(WidgetTester tester) async {
 class _SpyBoxService extends FakeBoxService {
   int selectOutboundCalls = 0;
   String? lastGroupTag;
+  int? lastExpectedAttempt;
   String? lastOutboundTag;
   final List<String> urlTestCalls = [];
   Future<void>? selectOutboundOverride;
@@ -52,21 +68,15 @@ class _SpyBoxService extends FakeBoxService {
   // `.then().catchError()` 能在同一轮里接住，不会被 zone 误判。
   Object? selectOutboundError;
 
-  @override
-  Future<void> selectOutbound(String groupTag, String outboundTag) async {
-    selectOutboundCalls++;
-    lastGroupTag = groupTag;
-    lastOutboundTag = outboundTag;
-    final error = selectOutboundError;
-    if (error != null) throw error;
-    final override = selectOutboundOverride;
-    if (override != null) await override;
-  }
-
   // 其余方法最小实现 —— 这条测试不会触发它们。
+  /// 非空时 urlTest 抛它（模拟原生 PlatformException）。
+  Object? urlTestError;
+
   @override
   Future<void> urlTest(String g) async {
     urlTestCalls.add(g);
+    final err = urlTestError;
+    if (err != null) throw err;
     final override = urlTestOverride;
     if (override != null) await override;
   }
@@ -75,6 +85,31 @@ class _SpyBoxService extends FakeBoxService {
   Stream<List<OutboundGroup>> watchGroups() => const Stream.empty();
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
+}
+
+/// 手选现在走 [KernelPort.selectOutbound]（带 expectedAttempt）而不是 BoxService：
+/// 这个替身把调用折回 [_SpyBoxService] 的计数 / 失败注入字段，保持各用例的断言不变。
+class _SpyPort extends FakeKernelPort {
+  _SpyPort(this.box);
+
+  final _SpyBoxService box;
+
+  @override
+  Future<SelectOutcome> selectOutbound(
+    String groupTag,
+    String outboundTag, {
+    int? expectedAttempt,
+  }) async {
+    box.selectOutboundCalls++;
+    box.lastExpectedAttempt = expectedAttempt;
+    box.lastGroupTag = groupTag;
+    box.lastOutboundTag = outboundTag;
+    final error = box.selectOutboundError;
+    if (error != null) return SelectFailed('exception', '$error');
+    final override = box.selectOutboundOverride;
+    if (override != null) await override;
+    return const SelectOk();
+  }
 }
 
 const _ssNode = OutboundProxy(tag: 'ss-node', type: 'shadowsocks');
@@ -109,19 +144,29 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _host({
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
+  final store = await seededProfileStore(prefs, [_activeProfile]);
   final spy = _SpyBoxService();
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+      profileStoreProvider.overrideWith((_) => Future.value(store)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
+      kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       // 离线 group 直接给一个：proxy / ss-node
       offlineProxyGroupsProvider.overrideWith((_) async => [_proxyGroup()]),
+      // 已连接时内核推送同一份实时分组：选择 / 测速只对实时分组发起。
+      if (connected)
+        outboundGroupsProvider.overrideWith(
+          (_) => Stream.value([_proxyGroup()]),
+        ),
       // isConnected 用 Provider override
       isConnectedProvider.overrideWith((_) => connected),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
+  await container.read(profileStoreProvider.future);
   await container.read(activeProfileProvider.future);
   return (
     UncontrolledProviderScope(
@@ -265,6 +310,32 @@ void main() {
     await _drainToasts(tester);
   });
 
+  testWidgets('手选带上界面看到的当前 attempt（expectedAttempt），原生据此拒绝过期写入', (
+    tester,
+  ) async {
+    final (widget, container, spy) = await _host(connected: true);
+    // 把控制器状态换成「已连接，attempt = 4」。
+    (container.read(connectionControllerProvider.notifier)
+            as FakeConnectionController)
+        .set(
+          const ConnectionSnapshot(
+            phase: ConnectionPhase.connected,
+            epoch: 'e1',
+            attempt: 4,
+          ),
+        );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('ss-node'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(spy.lastExpectedAttempt, 4);
+    await _drainToasts(tester);
+  });
+
   testWidgets('已连接时 selectOutbound 失败 → 不持久化这次失败的选择', (tester) async {
     final (widget, container, spy) = await _hostWithGroups(
       connected: true,
@@ -288,6 +359,118 @@ void main() {
     await _drainToasts(tester);
   });
 
+  // 真机验收 BUG-1 / BUG-5：已连接但实时分组还没到时，页面展示的是配置文件里
+  // 解析出的分组，tag 不保证存在于运行时——绝不能拿它调内核；内核报错的原文
+  // （PlatformException、selector not found）只进日志，界面是本地化文案。
+  group('只对实时分组发起内核操作 / 错误文案类型化', () {
+    // 同文案 800 ms 去重用的是真实时钟：用例之间清掉，免得上一条的提示把这条吞掉。
+    setUp(AppToast.resetForTest);
+
+    testWidgets('已连接但只有离线分组：点节点不调内核，提示线路加载中', (tester) async {
+      final (widget, container, spy) = await _hostWithGroups(
+        connected: true,
+        groups: [_twoNodeGroup(selected: 'node-a')],
+        liveGroups: false,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.text('node-b'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(spy.selectOutboundCalls, 0, reason: '离线分组的 tag 不能用来调内核');
+      expect(container.read(proxySelectionStoreProvider), isEmpty);
+      expect(container.read(optimisticProxySelectionsProvider), isEmpty);
+      expect(find.text('线路信息加载中，请稍候再试'), findsOneWidget);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('已连接但只有离线分组：测速按钮不调 urlTest，提示线路加载中', (tester) async {
+      final (widget, _, spy) = await _hostWithGroups(
+        connected: true,
+        groups: [_twoNodeGroup(selected: 'node-a')],
+        liveGroups: false,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(spy.urlTestCalls, isEmpty);
+      expect(find.text('线路信息加载中，请稍候再试'), findsOneWidget);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('切换失败：提示本地化文案，不展示内核错误原文', (tester) async {
+      final (widget, _, spy) = await _hostWithGroups(
+        connected: true,
+        groups: [_twoNodeGroup(selected: 'node-a')],
+      );
+      spy.selectOutboundError = Exception('selector not found: proxy');
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.text('node-b'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(spy.selectOutboundCalls, 1);
+      expect(find.text('切换线路失败，请稍后重试'), findsOneWidget);
+      expect(find.textContaining('selector not found'), findsNothing);
+      expect(find.textContaining('Exception'), findsNothing);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('测速失败：提示本地化文案，不展示 PlatformException 原文', (tester) async {
+      final (widget, _, spy) = await _hostWithGroups(
+        connected: true,
+        groups: [_twoNodeGroup(selected: 'node-a')],
+      );
+      spy.urlTestError = PlatformException(
+        code: 'urlTest',
+        message: 'outbound group not found: proxy',
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(spy.urlTestCalls, isNotEmpty);
+      expect(find.text('测速失败，请稍后重试'), findsOneWidget);
+      expect(find.textContaining('PlatformException'), findsNothing);
+      expect(find.textContaining('not found'), findsNothing);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('未连接时离线分组显示存储里的手选（下次重放的就是它），不是配置默认值', (tester) async {
+      final (widget, _, _) = await _hostWithGroups(
+        connected: false,
+        groups: [_twoNodeGroup(selected: 'node-a')],
+        initialPrefs: {
+          'locale': 'zhCn',
+          ProfileStore.selectionKey('profile-1'): '{"proxy":"node-b"}',
+        },
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final checked = find.descendant(
+        of: find.ancestor(
+          of: find.text('node-b'),
+          matching: find.byType(InkWell),
+        ),
+        matching: find.byIcon(FluentIcons.checkmark_24_filled),
+      );
+      expect(checked, findsOneWidget);
+    });
+  });
+
   // empty state / reserved group filter / urlTest header 的覆盖在底下追加。
   _addProxiesPageExtraTests();
 }
@@ -300,6 +483,7 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
   required bool connected,
   required List<OutboundGroup> groups,
   Map<String, Object> initialPrefs = const {'locale': 'zhCn'},
+  bool liveGroups = true,
 }) async {
   SharedPreferences.setMockInitialValues(initialPrefs);
   final prefs = await SharedPreferences.getInstance();
@@ -309,7 +493,11 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       activeProfileProvider.overrideWith((_) async => _activeProfile),
       boxServiceProvider.overrideWithValue(spy),
+      kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       offlineProxyGroupsProvider.overrideWith((_) async => groups),
+      if (connected && liveGroups)
+        outboundGroupsProvider.overrideWith((_) => Stream.value(groups)),
       isConnectedProvider.overrideWith((_) => connected),
     ],
   );
@@ -414,6 +602,8 @@ void _addProxiesPageExtraTests() {
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
         boxServiceProvider.overrideWithValue(spy),
+        kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+        connectionControllerProvider.overrideWith(FakeConnectionController.new),
         isConnectedProvider.overrideWith((_) => true),
         outboundGroupsProvider.overrideWith(
           (_) => Stream.value([
@@ -450,9 +640,10 @@ void _addProxiesPageExtraTests() {
 
     expect(find.text('proxy'), findsNothing);
     expect(find.text('ss-node'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
-  testWidgets('delay 为 0 的节点显示 -- 而不是未测速/超时', (tester) async {
+  testWidgets('delay 为 0 的节点显示 — 占位而不是超时', (tester) async {
     final (widget, _, _) = await _hostWithGroups(
       connected: false,
       groups: [_proxyGroup()],
@@ -462,7 +653,7 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ss-node'), findsOneWidget);
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
     expect(find.text('未测速'), findsNothing);
     expect(find.text('超时'), findsNothing);
   });
@@ -481,8 +672,9 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(find.text('ss-node'), findsOneWidget);
+    // 旧格式（裸 int）的缓存读出来是「历史值」：数字照常显示，不透明度降低。
     expect(find.text('123ms'), findsOneWidget);
-    expect(find.text('--'), findsNothing);
+    expect(find.text('—'), findsNothing);
   });
 
   testWidgets('已连接且拿到真实实时分组时（延迟未测出=0），不该用缓存的旧延迟顶替显示', (tester) async {
@@ -500,6 +692,8 @@ void _addProxiesPageExtraTests() {
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
         boxServiceProvider.overrideWithValue(spy),
+        kernelPortProvider.overrideWithValue(_SpyPort(spy)),
+        connectionControllerProvider.overrideWith(FakeConnectionController.new),
         isConnectedProvider.overrideWith((_) => true),
         // 真实的实时分组：ss-node 存在但还没测出延迟（默认 delay: 0）。
         outboundGroupsProvider.overrideWith(
@@ -534,7 +728,8 @@ void _addProxiesPageExtraTests() {
       findsNothing,
       reason: '已连接且实时分组数据非空时应该信任实时数据本身，不该拿离线缓存覆盖',
     );
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    await _drainToasts(tester);
   });
 
   testWidgets('未连接时点 flash header button → 显示提示文案，不触发 urlTest', (tester) async {
@@ -606,7 +801,7 @@ void _addProxiesPageExtraTests() {
     await _drainToasts(tester);
   });
 
-  testWidgets('测速进行中节点卡片显示加载动画区域', (tester) async {
+  testWidgets('测速进行中：顶部按钮变 18 dp 指示器，没有旧值的行保持占位；一轮结束后恢复', (tester) async {
     final (widget, _, spy) = await _hostWithGroups(
       connected: true,
       groups: [_proxyGroup()],
@@ -618,22 +813,30 @@ void _addProxiesPageExtraTests() {
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));
 
-    expect(find.text('--'), findsOneWidget);
+    expect(find.text('—'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
 
     await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(spy.urlTestCalls, equals(['proxy']));
-    expect(find.text('--'), findsNothing);
+    final indicator = find.byType(CircularProgressIndicator);
+    expect(indicator, findsOneWidget);
+    expect(
+      tester.getSize(
+        find.ancestor(of: indicator, matching: find.byType(SizedBox)).first,
+      ),
+      const Size(18, 18),
+    );
+    expect(find.byIcon(FluentIcons.flash_24_regular), findsNothing);
+    expect(find.text('—'), findsOneWidget, reason: '没有旧值的行保持占位，不闪烁');
 
     completer.complete();
-    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(seconds: 10));
 
-    expect(find.text('--'), findsNothing);
-
-    await tester.pump(const Duration(milliseconds: 1300));
-
-    expect(find.text('--'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byIcon(FluentIcons.flash_24_regular), findsOneWidget);
+    await _drainToasts(tester);
   });
 
   testWidgets('长按节点卡片弹出节点名称确认面板', (tester) async {
@@ -693,19 +896,23 @@ void _addProxiesPageExtraTests() {
 
     expect(find.text('香港 01'), findsNWidgets(2));
     expect(find.text(taggedNode), findsNothing);
+    await _drainToasts(tester);
   });
 
   testWidgets('测速结果缓存只写入当前订阅下的正数延迟', (tester) async {
     SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
     final prefs = await SharedPreferences.getInstance();
+    final store = await seededProfileStore(prefs, [_activeProfile]);
     final container = ProviderContainer(
       overrides: [
         sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+        profileStoreProvider.overrideWith((_) => Future.value(store)),
         activeProfileProvider.overrideWith((_) async => _activeProfile),
       ],
     );
     addTearDown(container.dispose);
     await container.read(sharedPreferencesProvider.future);
+    await container.read(profileStoreProvider.future);
     await container.read(activeProfileProvider.future);
 
     container.read(proxyDelayCacheProvider.notifier).persistFromGroups(const [
@@ -720,7 +927,13 @@ void _addProxiesPageExtraTests() {
       ),
     ]);
 
-    expect(prefs.getString('proxy_delays_profile-1'), '{"good":88}');
+    // 写入经 ProfileStore 的锁排队，等它落盘再断言。
+    await store.commit<void>((_) => const Plan<void>.unchanged());
+    // 新格式：{ms, measuredAt}；0 延迟的节点不写。
+    final stored = decodeDelayCache(prefs.getString('proxy_delays_profile-1'));
+    expect(stored.keys, ['good']);
+    expect(stored['good']!.ms, 88);
+    expect(stored['good']!.measuredAt, isNotNull);
   });
 
   testWidgets('name 排序时嵌套代理组排在普通节点前面（不管字母序）', (tester) async {

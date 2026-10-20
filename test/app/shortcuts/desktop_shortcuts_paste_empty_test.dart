@@ -28,7 +28,7 @@ void main() {
       addTearDown(() async {
         await deleteTempDirBestEffort(tmpDir);
       });
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();
       final repo = ProfileRepository(
         dio: Dio(),

@@ -24,7 +24,12 @@
     "openAppSettings": "打开应用设置",
     "grantPermission": "授予权限",
     "underDevelopment": "功能开发中",
-    "confirm": "确认"
+    "confirm": "确认",
+    "close": "关闭",
+    "cancel": "取消",
+    "clipboardEmpty": "剪贴板为空",
+    "clipboardReadFailed": "读取剪贴板失败",
+    "moreOptions": "更多选项"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "继续即表示您同意 ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "应用没能加载网络核心库，无法建立连接。请重新安装应用，或确认核心库文件与主程序在同一目录下。",
     "degradedTitle": "已连接，但无法访问网络",
     "degradedMsg": "隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。",
-    "degradedRetry": "重新检测"
+    "degradedRetry": "重新检测",
+    "egressIp": {
+      "label": "出口 IP",
+      "notConnected": "连接后显示出口 IP",
+      "tapToCheck": "点击检测出口 IP",
+      "checking": "正在检测…",
+      "failedRetry": "检测失败，点击重试"
+    },
+    "emptyProfilesHint": "点击下方按钮开始探索",
+    "noActiveProfileTitle": "未选择配置文件"
   },
   "stats": {
     "traffic": "流量",
@@ -56,7 +70,9 @@
     "downlink": "下行",
     "connection": "连接",
     "speed": "速度",
-    "totalTransferred": "总传输量"
+    "totalTransferred": "总传输量",
+    "sessionTraffic": "本次流量",
+    "downloadSpeed": "下载速度"
   },
   "profile": {
     "overviewPageTitle": "配置文件",
@@ -106,7 +122,12 @@
       "warpDescription": "使用 Cloudflare WARP 免费加速",
       "addingWarpMsg": "我们正在注册 WARP，请稍候。",
       "addingProfileMsg": "添加配置文件",
-      "failureMsg": "添加配置文件失败"
+      "failureMsg": "添加配置文件失败",
+      "importedNamed": "已导入订阅：${name}",
+      "clipboardEmpty": "剪贴板为空，无法导入订阅",
+      "deepLinkMissingUrl": "链接中缺少订阅地址",
+      "successMsg": "添加成功",
+      "nameAutoHint": "自动识别（可选）"
     },
     "details": {
       "basicInfo": "基础信息",
@@ -149,7 +170,9 @@
     "delete": {
       "buttonTxt": "删除",
       "confirmationMsg": "要永久删除配置文件吗？",
-      "successMsg": "配置文件删除成功"
+      "successMsg": "配置文件删除成功",
+      "confirmTitle": "删除配置文件",
+      "namedConfirmMsg": "确定要删除\"${name}\"吗？此操作不可撤销。"
     },
     "save": {
       "buttonText": "保存",
@@ -169,9 +192,15 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "未设置",
       "mux": "Mux 多路复用",
-      "muxDescription": "复用出站连接以减少握手开销"
+      "muxDescription": "复用出站连接以减少握手开销",
+      "updateIntervalOff": "关闭",
+      "updateIntervalHours": "${hours} 小时",
+      "updateIntervalDays": "${days} 天"
     },
-    "remoteProfile": "远程订阅"
+    "remoteProfile": "远程订阅",
+    "defaultLocalName": "本地导入",
+    "defaultDeepLinkName": "深链导入",
+    "switchFailedMsg": "切换配置文件失败"
   },
   "proxies": {
     "pageTitle": "线路",
@@ -192,7 +221,9 @@
     "delaySemantics": {
       "result": "延迟: ${delay}ms",
       "timeout": "延迟测试超时",
-      "testing": "正在测试延迟"
+      "testing": "正在测试延迟",
+      "untested": "延迟: 未测试",
+      "stale": "延迟: ${delay}ms（历史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -200,10 +231,14 @@
     },
     "testingDelayInfo": "正在测速: ${name}",
     "switchedTo": "已切换到 ${name}",
-    "switchToFailed": "切换失败: ${error}",
+    "switchFailed": "切换线路失败，请稍后重试",
+    "testFailed": "测速失败，请稍后重试",
+    "groupsLoading": "线路信息加载中，请稍候再试",
     "connectBeforeSwitch": "请先连接后再切换节点",
     "startDelayTestForGroups": "已开始测试当前订阅的 ${count} 个节点",
     "delayTestBtn": "测速",
+    "delayTimeout": "超时",
+    "connectBeforeTest": "请连接后测速",
     "lineCount": "${count} 个节点",
     "manualSelect": "手动选择",
     "autoTest": "自动测速"
@@ -220,7 +255,10 @@
     "logsCleared": "日志已清空",
     "logsCopied": "日志已复制",
     "logsUnderDevelopment": "日志功能开发中",
-    "noLogsWhenDisconnected": "未连接，无日志"
+    "noLogsWhenDisconnected": "未连接，无日志",
+    "loadFailed": "日志读取失败",
+    "empty": "暂无日志",
+    "clearFailed": "清除日志失败"
   },
   "settings": {
     "pageTitle": "设置",
@@ -231,6 +269,37 @@
     "exportAllOptions": "将所有选项导出到剪贴板（用于调试）",
     "importOptions": "从剪贴板导入选项",
     "importOptionsMsg": "这将使用提供的值重写所有配置选项。您确定吗？",
+    "backup": {
+      "importConfirmTitle": "导入备份",
+      "importConfirmMsg": "这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。",
+      "importRemovesMsg": "本机有 ${count} 个订阅不在备份中，导入后将被移除。",
+      "reportImported": "已导入 ${profiles} 个订阅、${settings} 项设置。",
+      "reportDropped": "备份中有 ${count} 个订阅因数据无效被跳过。",
+      "reportSettingsSkipped": "有 ${count} 项设置被跳过，保留了当前值。",
+      "reportWarpOff": "导入时已关闭 WARP，请在本机重新启用。",
+      "reportBackfill": "有 ${count} 个订阅将在后台下载。",
+      "errInvalidFile": "这不是有效的 ClashMiao 备份文件。",
+      "errUnsupportedVersion": "不支持这种备份格式。",
+      "errNewerSchema": "此备份由更新版本的应用生成，请先升级应用。",
+      "errNoUsableProfiles": "此备份中没有可以导入的订阅。",
+      "errSnapshotFailed": "无法保存当前数据的快照，所以没有做任何改动。",
+      "errUnresolvedPrevious": "上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。",
+      "errRolledBack": "导入失败，已恢复到导入之前的数据。",
+      "errNotRolledBack": "导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。",
+      "errFailed": "导入失败。",
+      "errBusy": "已有另一个导入正在进行，请等它结束后再试。",
+      "recoveryFailedTitle": "自动恢复没有完成",
+      "recoveryFailedMsg": "上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。",
+      "recoveryUnrecoverableTitle": "无法撤销被中断的导入",
+      "recoveryUnrecoverableMsg": "上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。",
+      "recoveryRetry": "重试",
+      "recoveryClose": "关闭",
+      "recoveryRetried": "已把数据恢复到被中断的导入之前。",
+      "exportAction": "导出备份",
+      "importAction": "导入备份",
+      "exportFailed": "导出失败",
+      "shareText": "ClashMiao 备份"
+    },
     "general": {
       "sectionTitle": "一般选项",
       "locale": "语言",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "已开启系统代理",
     "systemProxyDisabled": "已关闭系统代理（需重连生效）",
     "adminPrivilegesRequired": "macOS 需要管理员权限",
-    "portChangeNotice": "端口修改需要重启连接生效"
+    "portChangeNotice": "端口修改需要重启连接生效",
+    "groups": {
+      "general": "通用",
+      "connection": "连接",
+      "privacy": "隐私"
+    },
+    "importOptionsInvalid": "剪贴板内容不是有效的配置 JSON",
+    "importOptionsNothing": "未识别到可导入的配置项",
+    "importOptionsDone": "已导入 ${count} 项配置",
+    "importOptionsPartial": "已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过"
   },
   "about": {
     "pageTitle": "关于",
@@ -320,7 +398,8 @@
     "checkForUpdate": "检查更新",
     "privacyPolicy": "隐私政策",
     "termsAndConditions": "条款和条件",
-    "appDescription": "基于 sing-box 核心的跨平台代理客户端"
+    "appDescription": "基于 sing-box 核心的跨平台代理客户端",
+    "openSourceLicenses": "开源许可"
   },
   "appUpdate": {
     "notAvailableMsg": "已是最新版本",
@@ -330,7 +409,8 @@
     "newVersionLbl": "新版本",
     "updateNowBtnTxt": "现在更新",
     "laterBtnTxt": "以后再说",
-    "ignoreBtnTxt": "忽略"
+    "ignoreBtnTxt": "忽略",
+    "checkFailedMsg": "检查更新失败，请检查网络后重试"
   },
   "tray": {
     "dashboard": "仪表板",
@@ -342,7 +422,8 @@
       "connecting": "正在连接",
       "disconnect": "断开连接",
       "disconnecting": "正在断开连接"
-    }
+    },
+    "proxyModeMenu": "代理模式"
   },
   "failure": {
     "unexpected": "意外错误",
@@ -362,21 +443,25 @@
       "invalidConfig": "无效配置",
       "create": "服务创建错误",
       "start": "服务启动错误",
-      "startTimeout": "服务启动超时"
+      "startTimeout": "服务启动超时",
+      "kernelUnresponsive": "内核无响应，请重试或重启应用",
+      "kernelExited": "内核意外退出"
     },
     "connectivity": {
       "unexpected": "意外失败",
       "missingVpnPermission": "缺少 VPN 权限",
       "missingNotificationPermission": "缺少通知权限",
       "networkUnavailable": "网络不可用",
-      "core": "核心错误"
+      "core": "核心错误",
+      "nativeUnresponsive": "与后台服务失去联系，请重试"
     },
     "profiles": {
       "unexpected": "意外错误",
       "notFound": "未找到配置文件",
       "noActive": "没有激活的订阅",
       "invalidConfig": "无效配置",
-      "invalidUrl": "网址无效"
+      "invalidUrl": "网址无效",
+      "readOnlyUpgrade": "请升级 App 后再修改订阅"
     },
     "connection": {
       "unexpected": "意外连接错误",
@@ -389,7 +474,8 @@
       "unexpected": "意外错误",
       "notUpdate": "无可用更新",
       "activeNotFound": "未找到激活的 GEO 资源文件"
-    }
+    },
+    "withReason": "${message}：${reason}"
   },
   "connection": {
     "tapToConnect": "点击连接",
@@ -397,10 +483,10 @@
     "disconnecting": "正在断开连接",
     "connected": "已连接",
     "reconnect": "重新连接",
-    "connectAnyWay": "连接",
-    "experimentalNotice": "使用中的实验功能",
-    "experimentalNoticeMsg": "您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。",
-    "disableExperimentalNotice": "不再显示",
+    "connectAnyWay": "仍然连接",
+    "experimentalNotice": "实验性功能提醒",
+    "experimentalNoticeMsg": "当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。",
+    "disableExperimentalNotice": "不再提示",
     "reconnectMsg": "重新连接以使更改生效",
     "staleSystemProxyCleaned": "已清理上次异常退出残留的系统代理设置"
   },
@@ -482,6 +568,8 @@
     "muxProtocol": "Mux 协议",
     "muxMaxStreams": "Mux 最大并发数",
     "enableWarp": "启用 WARP",
+    "setUpWarp": "设置 WARP",
+    "warpNotConfigured": "未配置",
     "warpDetourMode": "链式线路",
     "warpDetourModes": {
       "proxyOverWarp": "通过 WARP 连接线路",
@@ -493,9 +581,17 @@
     "warpCleanIp": "清理 IP",
     "warpPort": "端口",
     "warpNoise": "噪音计数",
-    "warpNoiseDelay": "噪音延延迟",
+    "warpNoiseDelay": "噪音延迟",
     "desktopProxyScopeNotice": "桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。",
     "warpNoiseSize": "噪音大小",
-    "warpNoiseMode": "噪音模式"
+    "warpNoiseMode": "噪音模式",
+    "serviceModeIosVpnOnly": "iOS 仅支持 VPN 模式",
+    "warpGenerating": "正在生成 WARP 配置…",
+    "warpConfigFailed": "WARP 配置生成失败，请稍后重试",
+    "portRangeError": "端口范围 1024-65535",
+    "dnsEmptyError": "DNS 地址不能为空",
+    "rangeFormatError": "请输入数字或范围，例如 10-30",
+    "urlSchemeError": "URL 必须以 http:// 或 https:// 开头",
+    "manageRuleAssets": "规则库管理"
   }
 }

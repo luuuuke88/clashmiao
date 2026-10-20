@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:flutter/material.dart';
@@ -96,7 +97,7 @@ class _SettingsInputDialogState<T>
                     ),
                   ],
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 200.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
             const SizedBox(height: 20),
@@ -107,7 +108,7 @@ class _SettingsInputDialogState<T>
                   digitsOnly: widget.digitsOnly,
                   keyboardType: widget.keyboardType,
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 250.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
             const SizedBox(height: 24),
@@ -153,7 +154,7 @@ class _SettingsInputDialogState<T>
                     ),
                   ],
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 300.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
             if (widget.optionalAction != null) ...[
@@ -168,7 +169,7 @@ class _SettingsInputDialogState<T>
                       child: Text(widget.optionalAction!.$1.toUpperCase()),
                     ),
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 350.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 350.ms),
             ],
@@ -302,7 +303,7 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                     letterSpacing: -0.5,
                   ),
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 200.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
             if (label != null) ...[
@@ -326,7 +327,7 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                   onChanged: (value) => setState(() => _value = value),
                   label: label,
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 250.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
             const SizedBox(height: 24),
@@ -374,7 +375,7 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                     ),
                   ],
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 300.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
             const SizedBox(height: 16),

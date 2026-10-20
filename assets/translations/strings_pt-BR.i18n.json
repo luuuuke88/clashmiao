@@ -24,7 +24,12 @@
     "clipboardExportSuccessMsg": "Copiado para a área de transferência",
     "openAppSettings": "Abrir configurações do app",
     "underDevelopment": "Em desenvolvimento",
-    "confirm": "Confirmar"
+    "confirm": "Confirmar",
+    "close": "Fechar",
+    "cancel": "Cancelar",
+    "clipboardEmpty": "A área de transferência está vazia",
+    "clipboardReadFailed": "Não foi possível ler a área de transferência",
+    "moreOptions": "Mais opções"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "ao continuar você concorda com ${tap( @:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "O aplicativo não conseguiu carregar seu núcleo de rede. A conexão não está disponível. Reinstale o aplicativo ou verifique se o arquivo da biblioteca do núcleo está junto do executável.",
     "degradedTitle": "Conectado, mas sem acesso à internet",
     "degradedMsg": "O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.",
-    "degradedRetry": "Verificar novamente"
+    "degradedRetry": "Verificar novamente",
+    "egressIp": {
+      "label": "IP de saída",
+      "notConnected": "Conecte para ver o IP de saída",
+      "tapToCheck": "Toque para verificar o IP de saída",
+      "checking": "Verificando…",
+      "failedRetry": "Falha na verificação, toque para tentar novamente"
+    },
+    "emptyProfilesHint": "Toque no botão abaixo para começar",
+    "noActiveProfileTitle": "Nenhum perfil selecionado"
   },
   "stats": {
     "trafficLive": "Tráfego ao vivo",
@@ -56,7 +70,9 @@
     "totalTransferred": "Total Transferido",
     "traffic": "Tráfego",
     "trafficUsage": "Uso de tráfego",
-    "liveSpeed": "Velocidade ao vivo"
+    "liveSpeed": "Velocidade ao vivo",
+    "sessionTraffic": "Tráfego da sessão",
+    "downloadSpeed": "Velocidade de download"
   },
   "profile": {
     "overviewPageTitle": "Perfis",
@@ -99,7 +115,12 @@
       "manuallyDescription": "Insira a configuração do servidor manualmente",
       "addWarp": "Adicionar WARP",
       "warpDescription": "Aceleração gratuita com Cloudflare WARP",
-      "addingWarpMsg": "Aguarde enquanto registramos o WARP."
+      "addingWarpMsg": "Aguarde enquanto registramos o WARP.",
+      "importedNamed": "Assinatura importada: ${name}",
+      "clipboardEmpty": "A área de transferência está vazia; não há nada para importar",
+      "deepLinkMissingUrl": "O link não contém um endereço de assinatura",
+      "successMsg": "Perfil adicionado",
+      "nameAutoHint": "Detectado automaticamente (opcional)"
     },
     "update": {
       "buttonTxt": "Atualizar",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "Deletar",
       "confirmationMsg": "Deletar perfil permanentemente?",
-      "successMsg": "Perfil deletado com sucesso"
+      "successMsg": "Perfil deletado com sucesso",
+      "confirmTitle": "Excluir perfil",
+      "namedConfirmMsg": "Excluir \"${name}\"? Essa ação não pode ser desfeita."
     },
     "save": {
       "buttonText": "Salvar",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Desativado",
+      "updateIntervalHours": "${hours} h",
+      "updateIntervalDays": "${days} d"
     },
     "actionButtons": {
       "add": "Adicionar",
@@ -171,7 +197,10 @@
       "currentlyUsing": "Em uso",
       "remainingDays": "Restam ${days} dias"
     },
-    "remoteProfile": "Perfil remoto"
+    "remoteProfile": "Perfil remoto",
+    "defaultLocalName": "Importação local",
+    "defaultDeepLinkName": "Importado por link",
+    "switchFailedMsg": "Não foi possível trocar de perfil"
   },
   "proxies": {
     "pageTitle": "Proxies",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "atraso: ${delay}ms",
       "timeout": "atrasar o tempo limite do teste",
-      "testing": "atraso: testando..."
+      "testing": "atraso: testando...",
+      "untested": "atraso: não testado",
+      "stale": "atraso: ${delay}ms (resultado anterior)"
     },
     "ipInfoSemantics": {
       "address": "Endereço de IP",
@@ -200,10 +231,14 @@
     "sortModalTitle": "Escolha o método de ordenação",
     "testingDelayInfo": "Testando latência de: ${name}",
     "switchedTo": "Alterado para ${name}",
-    "switchToFailed": "Falha ao trocar: ${error}",
+    "switchFailed": "Não foi possível trocar de servidor. Tente novamente.",
+    "testFailed": "O teste de latência falhou. Tente novamente.",
+    "groupsLoading": "A lista de servidores ainda está carregando. Tente novamente em instantes.",
     "connectBeforeSwitch": "Conecte-se antes de trocar de linha",
     "startDelayTestForGroups": "Teste de latência iniciado para ${count} linhas",
     "delayTestBtn": "Latência",
+    "delayTimeout": "Esgotado",
+    "connectBeforeTest": "Conecte primeiro para testar o atraso",
     "lineCount": "${count} linhas",
     "manualSelect": "Seleção manual",
     "autoTest": "Teste automático"
@@ -220,7 +255,10 @@
     "logsCleared": "Registros limpos",
     "logsCopied": "Registros copiados",
     "logsUnderDevelopment": "O recurso de registros está em desenvolvimento",
-    "noLogsWhenDisconnected": "Desconectado, sem registros"
+    "noLogsWhenDisconnected": "Desconectado, sem registros",
+    "loadFailed": "Não foi possível carregar os logs",
+    "empty": "Ainda não há logs",
+    "clearFailed": "Não foi possível limpar os logs"
   },
   "settings": {
     "pageTitle": "Configurações",
@@ -307,10 +345,50 @@
     "exportAllOptions": "Copiar todas as opções para a área de transferência",
     "importOptions": "Importar opções da área de transferência",
     "importOptionsMsg": "Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?",
+    "backup": {
+      "importConfirmTitle": "Importar backup",
+      "importConfirmMsg": "Isto substitui suas assinaturas pelas do backup e aplica as configurações dele. Antes, um instantâneo dos dados atuais é salvo e restaurado automaticamente se a importação falhar.",
+      "importRemovesMsg": "${count} assinatura(s) deste dispositivo não estão no backup e serão removidas.",
+      "reportImported": "${profiles} assinatura(s) e ${settings} configuração(ões) importadas.",
+      "reportDropped": "${count} assinatura(s) do backup foram ignoradas porque os dados eram inválidos.",
+      "reportSettingsSkipped": "${count} configuração(ões) foram ignoradas; seus valores atuais foram mantidos.",
+      "reportWarpOff": "A importação desativou o WARP. Ative-o novamente neste dispositivo.",
+      "reportBackfill": "${count} assinatura(s) serão baixadas em segundo plano.",
+      "errInvalidFile": "Este não é um arquivo de backup válido do ClashMiao.",
+      "errUnsupportedVersion": "Este formato de backup não é compatível.",
+      "errNewerSchema": "Este backup foi criado por uma versão mais recente do app. Atualize o app primeiro.",
+      "errNoUsableProfiles": "Nenhuma das assinaturas deste backup pode ser importada.",
+      "errSnapshotFailed": "Não foi possível salvar um instantâneo dos dados atuais, então nada foi alterado.",
+      "errUnresolvedPrevious": "Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.",
+      "errRolledBack": "A importação falhou. Seus dados anteriores foram restaurados.",
+      "errNotRolledBack": "A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.",
+      "errFailed": "A importação falhou.",
+      "errBusy": "Já há outra importação em andamento. Aguarde ela terminar.",
+      "recoveryFailedTitle": "A restauração automática não terminou",
+      "recoveryFailedMsg": "A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.",
+      "recoveryUnrecoverableTitle": "Não foi possível desfazer a importação interrompida",
+      "recoveryUnrecoverableMsg": "A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.",
+      "recoveryRetry": "Tentar novamente",
+      "recoveryClose": "Fechar",
+      "recoveryRetried": "Seus dados foram restaurados ao estado anterior à importação interrompida.",
+      "exportAction": "Exportar backup",
+      "importAction": "Importar backup",
+      "exportFailed": "Não foi possível exportar o backup",
+      "shareText": "Backup do ClashMiao"
+    },
     "systemProxyEnabled": "Proxy do sistema ativado",
     "systemProxyDisabled": "Proxy do sistema desativado (reconecte para aplicar)",
     "adminPrivilegesRequired": "Requer privilégios de administrador no macOS",
-    "portChangeNotice": "Alterações de porta exigem reconexão para serem aplicadas"
+    "portChangeNotice": "Alterações de porta exigem reconexão para serem aplicadas",
+    "groups": {
+      "general": "Geral",
+      "connection": "Conexão",
+      "privacy": "Privacidade"
+    },
+    "importOptionsInvalid": "A área de transferência não contém um JSON de configurações válido",
+    "importOptionsNothing": "Nenhuma configuração importável encontrada",
+    "importOptionsDone": "${count} configurações importadas",
+    "importOptionsPartial": "${applied} configurações importadas; ${skipped} ignoradas por serem inválidas"
   },
   "about": {
     "pageTitle": "Sobre",
@@ -320,7 +398,8 @@
     "checkForUpdate": "Verifique atualizações",
     "privacyPolicy": "Política de Privacidade",
     "termsAndConditions": "Termos e Condições",
-    "appDescription": "Um cliente proxy multiplataforma baseado no núcleo sing-box"
+    "appDescription": "Um cliente proxy multiplataforma baseado no núcleo sing-box",
+    "openSourceLicenses": "Licenças de código aberto"
   },
   "appUpdate": {
     "notAvailableMsg": "Já usando a versão mais recente",
@@ -330,7 +409,8 @@
     "newVersionLbl": "Nova versão",
     "updateNowBtnTxt": "Atualizar agora",
     "laterBtnTxt": "Mais tarde",
-    "ignoreBtnTxt": "Ignorar"
+    "ignoreBtnTxt": "Ignorar",
+    "checkFailedMsg": "Não foi possível verificar atualizações. Verifique sua rede e tente novamente."
   },
   "tray": {
     "dashboard": "Painel",
@@ -342,7 +422,8 @@
       "disconnect": "desconectar",
       "disconnecting": "Desconectando"
     },
-    "hide": "Ocultar"
+    "hide": "Ocultar",
+    "proxyModeMenu": "Modo de proxy"
   },
   "failure": {
     "unexpected": "Erro inesperado",
@@ -362,21 +443,25 @@
       "create": "Erro ao criar serviço",
       "start": "Erro de inicialização do serviço",
       "coreLibraryMissing": "Biblioteca do núcleo não instalada",
-      "startTimeout": "Tempo de inicialização do serviço esgotado"
+      "startTimeout": "Tempo de inicialização do serviço esgotado",
+      "kernelUnresponsive": "O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.",
+      "kernelExited": "O núcleo foi encerrado inesperadamente"
     },
     "connectivity": {
       "unexpected": "Falha inesperada",
       "missingVpnPermission": "Permissão VPN ausente",
       "missingNotificationPermission": "Permissão de notificação ausente",
       "core": "Erro central",
-      "networkUnavailable": "Rede indisponível"
+      "networkUnavailable": "Rede indisponível",
+      "nativeUnresponsive": "Perdeu-se o contato com o serviço em segundo plano. Tente novamente."
     },
     "profiles": {
       "unexpected": "Erro inesperado",
       "notFound": "Perfil Não Encontrado",
       "invalidConfig": "Configurações inválidas",
       "invalidUrl": "URL inválida",
-      "noActive": "Nenhum perfil ativo"
+      "noActive": "Nenhum perfil ativo",
+      "readOnlyUpgrade": "Atualize o app antes de alterar as assinaturas"
     },
     "connection": {
       "unexpected": "Erro de conexão inesperado",
@@ -389,7 +474,8 @@
       "unexpected": "Erro inesperado",
       "notUpdate": "Nenhuma atualização disponível",
       "activeNotFound": "Recurso geográfico ativo não encontrado"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Toque para conectar",
@@ -400,7 +486,7 @@
     "experimentalNoticeMsg": "Você ativou alguns recursos experimentais que podem afetar a qualidade da conexão e causar erros inesperados. Você sempre pode alterar ou redefinir essas opções na página de opções de configuração.",
     "disableExperimentalNotice": "Não mostrar novamente",
     "reconnect": "Reconectar",
-    "connectAnyWay": "Conectar",
+    "connectAnyWay": "Conectar mesmo assim",
     "reconnectMsg": "Reconectando para aplicar as alterações...",
     "staleSystemProxyCleaned": "Configurações de proxy do sistema deixadas por um encerramento anormal foram limpas"
   },
@@ -469,6 +555,8 @@
     "muxProtocol": "Protocolo Mux",
     "muxMaxStreams": "Máximo de fluxos simultâneos",
     "enableWarp": "Habilitar WARP",
+    "setUpWarp": "Configurar WARP",
+    "warpNotConfigured": "Não configurado",
     "warpDetourMode": "Modo de desvio",
     "warpDetourModes": {
       "inbound": "Desvie o WARP através de proxies",
@@ -496,6 +584,14 @@
     "tproxyPort": "Porta de linha transparente",
     "warpNoiseSize": "Tamanho do ruído",
     "warpNoiseMode": "Modo de ruído",
-    "desktopProxyScopeNotice": "No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real."
+    "desktopProxyScopeNotice": "No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.",
+    "serviceModeIosVpnOnly": "O iOS só oferece suporte ao modo VPN",
+    "warpGenerating": "Gerando a configuração do WARP…",
+    "warpConfigFailed": "Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.",
+    "portRangeError": "A porta deve estar entre 1024 e 65535",
+    "dnsEmptyError": "O endereço DNS não pode ficar vazio",
+    "rangeFormatError": "Digite um número ou um intervalo, por exemplo 10-30",
+    "urlSchemeError": "A URL deve começar com http:// ou https://",
+    "manageRuleAssets": "Gerenciar conjuntos de regras"
   }
 }

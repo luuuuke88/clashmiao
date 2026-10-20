@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -52,7 +53,7 @@ void main() {
 
   setUp(() async {
     tmpDir = await Directory.systemTemp.createTemp('deep_link_service_test_');
-    SharedPreferences.setMockInitialValues({});
+    SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
     final prefs = await SharedPreferences.getInstance();
     final repo = ProfileRepository(
       dio: Dio(),
@@ -62,9 +63,12 @@ void main() {
     );
     container = ProviderContainer(
       overrides: [
+        // 失败文案要读当前语言（与 App 一样，偏好在任何深链处理之前已就绪）。
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
         profileRepositoryProvider.overrideWith((_) => Future.value(repo)),
       ],
     );
+    await container.read(sharedPreferencesProvider.future);
   });
 
   tearDown(() async {
@@ -123,6 +127,7 @@ void main() {
 
     final result = container.read(deepLinkImportResultProvider);
     expect(result, isA<DeepLinkImportFailure>());
+    expect((result! as DeepLinkImportFailure).message, '添加配置文件失败：链接中缺少订阅地址');
 
     final profiles = await container.read(profileListProvider.future);
     expect(profiles, isEmpty);
@@ -140,6 +145,11 @@ void main() {
 
     final result = container.read(deepLinkImportResultProvider);
     expect(result, isA<DeepLinkImportFailure>());
+    // 类型化的本地化原因；异常原文（DioException / refused）只进日志。
+    final message = (result! as DeepLinkImportFailure).message;
+    expect(message, '添加配置文件失败：连接错误');
+    expect(message, isNot(contains('Exception')));
+    expect(message, isNot(contains('refused')));
     final profiles = await container.read(profileListProvider.future);
     expect(profiles, isEmpty);
   });

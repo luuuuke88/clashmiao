@@ -85,4 +85,48 @@ void main() {
       reason: '封顶必须写在 wrapper 里，否则绕过 showAiUiModal 的调用点全都漏掉',
     );
   });
+
+  testWidgets('routeProvidesSurface：加上系统拖拽柄之后整张弹层仍不越过顶部留白', (tester) async {
+    tester.view.physicalSize = const Size(430, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showModalBottomSheet<void>(
+                  context: context,
+                  isScrollControlled: true,
+                  showDragHandle: true,
+                  builder: (_) => AiUiModalWrapper(
+                    routeProvidesSurface: true,
+                    child: Column(
+                      children: List.generate(
+                        40,
+                        (i) => SizedBox(height: 56, child: Text('$i')),
+                      ),
+                    ),
+                  ),
+                ),
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.byType(BottomSheet)).top,
+      greaterThanOrEqualTo(90.0),
+      reason: '含拖拽柄的整张弹层不能盖住页面标题',
+    );
+  });
 }

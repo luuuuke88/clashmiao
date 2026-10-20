@@ -44,7 +44,7 @@ class StubBoxService implements BoxService {
     String path,
     String tempPath, {
     bool debug = false,
-  }) async => '核心库未加载';
+  }) async => 'core library not loaded';
 
   @override
   Future<void> start(String configPath, {String name = ''}) async {}

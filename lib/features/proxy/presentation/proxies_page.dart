@@ -20,6 +20,7 @@ import 'package:clashmiao/domain/routing/application/proxy_selection_store_notif
 import 'package:clashmiao/domain/routing/model/node_display.dart';
 import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
+import 'package:clashmiao/features/proxy/application/row_order.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
@@ -30,6 +31,8 @@ import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:collection/collection.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -45,6 +48,28 @@ class ProxiesPage extends ConsumerStatefulWidget {
 
 class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   bool _debugProxyNameModalOpened = false;
+
+  /// 每个分组上一次实际展示的行顺序（节点 tag）。测速进行中或手指按着列表时，
+  /// 行顺序冻结在它上面，见 [stableRowOrder]。
+  final Map<String, List<String>> _shownOrder = {};
+
+  /// 上一次展示时的排序方式：用户换了排序方式就立即按新方式排，不冻结。
+  ProxiesSort? _shownSort;
+
+  /// 正按在列表上的手指数。
+  int _pointersDown = 0;
+
+  /// 冻结期间有一次被推迟的重排：最后一根手指抬起时重建一次把它补上。
+  bool _reorderDeferred = false;
+
+  void _onPointerDown(PointerDownEvent _) => _pointersDown++;
+
+  void _onPointerRelease(PointerEvent _) {
+    _pointersDown = math.max(0, _pointersDown - 1);
+    if (_pointersDown == 0 && _reorderDeferred && mounted) {
+      setState(() => _reorderDeferred = false);
+    }
+  }
 
   @override
   void initState() {
@@ -201,6 +226,28 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         });
       }
 
+      // 测速进行中、或手指按在列表上时，行顺序冻结在上一次展示的样子：结果
+      // 一条条回来时列表不跟着跳，手指按下时指着的节点也不会被换走。测速结束
+      // 且没有手指按着时才按排序规则重排一次（带位移动画）。用户刚换了排序
+      // 方式则立即生效。
+      final frozen =
+          _shownSort == sortBy &&
+          (_pointersDown > 0 || latencyState.isGroupTesting(group.tag));
+      final orderedItems = stableRowOrder(
+        sorted: sortedItems,
+        keyOf: (item) => item.tag,
+        shown: _shownOrder[group.tag],
+        frozen: frozen,
+      );
+      if (frozen &&
+          !const ListEquality<String>().equals(
+            [for (final item in orderedItems) item.tag],
+            [for (final item in sortedItems) item.tag],
+          )) {
+        _reorderDeferred = true;
+      }
+      _shownOrder[group.tag] = [for (final item in orderedItems) item.tag];
+
       final currentSelected = optimisticSelections[group.tag] ?? group.selected;
 
       groups.add(
@@ -208,10 +255,11 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           tag: group.tag,
           type: group.type,
           selected: currentSelected,
-          items: sortedItems,
+          items: orderedItems,
         ),
       );
     }
+    _shownSort = sortBy;
 
     final primaryGroup = groups.firstOrNull;
 
@@ -291,43 +339,73 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                           // 占列表第 0 位，其余节点下标整体后移一位。
                           final autoCardCount = autoProxy == null ? 0 : 1;
 
-                          return ListView.builder(
-                            padding: const EdgeInsets.only(bottom: 120),
-                            itemCount: otherProxies.length + autoCardCount,
-                            itemBuilder: (ctx, index) {
-                              if (autoProxy != null && index == 0) {
-                                return _AutoSelectCard(
-                                  isSelected: group.selected == autoProxy.tag,
-                                  onTap: () => _selectProxy(
-                                    context,
-                                    ref,
-                                    group.tag,
-                                    autoProxy.tag,
-                                    isConnected,
-                                    canOperateKernel,
+                          // 每行用节点 tag 作 key，并告诉列表 key 现在在第几行：
+                          // 重排时行的 element 跟着节点走，而不是留在原位置换成
+                          // 别的节点。这样按下时指着 A，即使之后 A 挪了位置，
+                          // 抬起时选中的仍是 A；位移动画也靠它认出「同一行」。
+                          final indexByKey = <String, int>{
+                            if (autoProxy != null) _kAutoCardKey: 0,
+                            for (var i = 0; i < otherProxies.length; i++)
+                              _nodeRowKey(otherProxies[i].tag):
+                                  i + autoCardCount,
+                          };
+
+                          return Listener(
+                            onPointerDown: _onPointerDown,
+                            onPointerUp: _onPointerRelease,
+                            onPointerCancel: _onPointerRelease,
+                            child: ListView.builder(
+                              padding: const EdgeInsets.only(bottom: 120),
+                              itemCount: otherProxies.length + autoCardCount,
+                              // 位移动画在行自己的 paint 里按它在列表中的位置算
+                              // 位移；有重绘边界时行只是挪动、不会重绘，动画就
+                              // 起不来。
+                              addRepaintBoundaries: false,
+                              findChildIndexCallback: (key) =>
+                                  key is ValueKey<String>
+                                  ? indexByKey[key.value]
+                                  : null,
+                              itemBuilder: (ctx, index) {
+                                if (autoProxy != null && index == 0) {
+                                  return _AutoSelectCard(
+                                    key: const ValueKey(_kAutoCardKey),
+                                    isSelected: group.selected == autoProxy.tag,
+                                    onTap: () => _selectProxy(
+                                      context,
+                                      ref,
+                                      group.tag,
+                                      autoProxy.tag,
+                                      isConnected,
+                                      canOperateKernel,
+                                    ),
+                                  );
+                                }
+                                final proxy =
+                                    otherProxies[index - autoCardCount];
+                                final isSelected = group.selected == proxy.tag;
+                                return _ReorderSlide(
+                                  key: ValueKey(_nodeRowKey(proxy.tag)),
+                                  child: _ProxyTile(
+                                    proxy: proxy,
+                                    isSelected: isSelected,
+                                    latency:
+                                        latenciesByGroup[group.tag]?[proxy
+                                            .tag] ??
+                                        const NodeLatency(
+                                          LatencyDisplayState.untested,
+                                        ),
+                                    onTap: () => _selectProxy(
+                                      context,
+                                      ref,
+                                      group.tag,
+                                      proxy.tag,
+                                      isConnected,
+                                      canOperateKernel,
+                                    ),
                                   ),
                                 );
-                              }
-                              final proxy = otherProxies[index - autoCardCount];
-                              final isSelected = group.selected == proxy.tag;
-                              return _ProxyTile(
-                                proxy: proxy,
-                                isSelected: isSelected,
-                                latency:
-                                    latenciesByGroup[group.tag]?[proxy.tag] ??
-                                    const NodeLatency(
-                                      LatencyDisplayState.untested,
-                                    ),
-                                onTap: () => _selectProxy(
-                                  context,
-                                  ref,
-                                  group.tag,
-                                  proxy.tag,
-                                  isConnected,
-                                  canOperateKernel,
-                                ),
-                              );
-                            },
+                              },
+                            ),
                           );
                         },
                       ),
@@ -525,8 +603,179 @@ class _HeaderButton extends StatelessWidget {
   }
 }
 
+/// 自动选择卡在线路列表里的 key。
+const String _kAutoCardKey = 'auto-card';
+
+/// 节点行在线路列表里的 key（带前缀，不与自动选择卡的 key 撞）。
+String _nodeRowKey(String tag) => 'node:$tag';
+
+/// 列表重排时让行从原位置滑到新位置（FLIP）：在 paint 里比较这一行在列表里的
+/// 位置与上一帧的位置，变了就先画在原位置，再用动画把位移收回到零。
+///
+/// 行必须带稳定的 key、列表要提供 `findChildIndexCallback`，重排后 element 才是
+/// 「同一行」；列表要关掉 `addRepaintBoundaries`，行挪动时才会重绘。系统开了
+/// 「减少动画」时不做位移，直接出现在新位置。
+class _ReorderSlide extends StatefulWidget {
+  const _ReorderSlide({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_ReorderSlide> createState() => _ReorderSlideState();
+}
+
+class _ReorderSlideState extends State<_ReorderSlide>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: Motion.medium,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => _SlideBox(
+    controller: _controller,
+    enabled: !Motion.reduced(context),
+    child: widget.child,
+  );
+}
+
+class _SlideBox extends SingleChildRenderObjectWidget {
+  const _SlideBox({
+    required this.controller,
+    required this.enabled,
+    required super.child,
+  });
+
+  final AnimationController controller;
+  final bool enabled;
+
+  @override
+  _RenderSlideBox createRenderObject(BuildContext context) =>
+      _RenderSlideBox(controller, enabled);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderSlideBox renderObject) {
+    renderObject
+      ..controller = controller
+      ..enabled = enabled;
+  }
+}
+
+class _RenderSlideBox extends RenderProxyBox {
+  _RenderSlideBox(this._controller, this._enabled);
+
+  AnimationController _controller;
+  set controller(AnimationController value) {
+    if (identical(value, _controller)) return;
+    if (attached) _controller.removeListener(markNeedsPaint);
+    _controller = value;
+    if (attached) _controller.addListener(markNeedsPaint);
+  }
+
+  bool _enabled;
+  set enabled(bool value) {
+    if (value == _enabled) return;
+    _enabled = value;
+    if (!value) {
+      _from = 0;
+      _controller.stop();
+    }
+    markNeedsPaint();
+  }
+
+  /// 上一次绘制时这一行在列表里的位置。
+  double? _lastOffset;
+
+  /// 动画起点的位移（原位置 − 新位置）；动画从它收回到 0。
+  double _from = 0;
+
+  /// 本帧刚发现位置变化、动画要到下一帧才启动：这一帧按完整位移绘制。
+  bool _startPending = false;
+
+  double get _dy => _startPending
+      ? _from
+      : _from * (1 - Motion.standard.transform(_controller.value));
+
+  /// 这一行在列表（sliver）里的布局位置：沿父链找到列表直接子节点的 parentData。
+  double? _layoutOffset() {
+    RenderObject? node = this;
+    while (node != null) {
+      final data = node.parentData;
+      if (data is SliverMultiBoxAdaptorParentData) return data.layoutOffset;
+      node = node.parent;
+    }
+    return null;
+  }
+
+  @override
+  void attach(PipelineOwner owner) {
+    super.attach(owner);
+    _controller.addListener(markNeedsPaint);
+  }
+
+  @override
+  void detach() {
+    _controller.removeListener(markNeedsPaint);
+    super.detach();
+  }
+
+  /// 当前实际绘制的位移（减少动画时为 0）。
+  double get _paintDy => _enabled ? _dy : 0;
+
+  // 绘制位移同样作用于坐标换算与命中测试：动画途中看到的、点到的是同一处。
+  @override
+  void applyPaintTransform(RenderBox child, Matrix4 transform) {
+    transform.translateByDouble(0, _paintDy, 0, 1);
+  }
+
+  @override
+  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
+    final child = this.child;
+    if (child == null) return false;
+    return result.addWithPaintOffset(
+      offset: Offset(0, _paintDy),
+      position: position,
+      hitTest: (result, transformed) =>
+          child.hitTest(result, position: transformed),
+    );
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    final current = _layoutOffset();
+    final last = _lastOffset;
+    if (_enabled &&
+        current != null &&
+        last != null &&
+        (current - last).abs() > 0.5) {
+      // 从「上一帧看到的位置」（原布局位置 + 当时的位移）滑到新位置。
+      _from = last + _dy - current;
+      _startPending = true;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (!attached || !_startPending) return;
+        _startPending = false;
+        _controller.forward(from: 0);
+      });
+    }
+    _lastOffset = current;
+    final child = this.child;
+    if (child == null) return;
+    context.paintChild(child, offset.translate(0, _paintDy));
+  }
+}
+
 class _AutoSelectCard extends HookConsumerWidget {
-  const _AutoSelectCard({required this.isSelected, required this.onTap});
+  const _AutoSelectCard({
+    super.key,
+    required this.isSelected,
+    required this.onTap,
+  });
 
   final bool isSelected;
   final VoidCallback onTap;

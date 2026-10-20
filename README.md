@@ -129,6 +129,7 @@ Android 15 起出现 16 KB 内存页设备，Google Play 也要求所有原生�
 tools/libcore/build-android.sh                       # 产物：build/libcore/libcore.aar + .sha256
 REFERENCE_AAR=android/app/libs/libcore.aar \
   tools/libcore/build-android.sh                     # 顺便与现有 aar 对比 Java 公共 API
+tools/libcore/build-android.sh --self-test           # 校验逻辑的故障注入自测（不联网、不构建）
 ```
 
 固定内容（都写在脚本顶部）：
@@ -136,16 +137,30 @@ REFERENCE_AAR=android/app/libs/libcore.aar \
 | 项 | 值 |
 | --- | --- |
 | 内核源码 | 内核上游仓库提交 `5098951`（sing-box 1.8.9 分支，go.mod / go.sum 锁定全部依赖） |
-| Go | 1.22.0（脚本自行下载并校验 sha256，`GOTOOLCHAIN=local`） |
+| Go | 1.22.12（1.22 系列最后一个补丁版：与原发布版 1.22.0 语言、运行时语义相同，另含标准库的安全修复；脚本自行下载并校验 sha256，`GOTOOLCHAIN=local`） |
 | gomobile / gobind | v0.1.1（绑定运行时 v0.1.3 由 go.mod 决定） |
 | NDK | r28c `28.2.13676358`，另加 `-extldflags=-Wl,-z,max-page-size=16384` |
 | JDK | 17（保证 `classes.jar` 与发布版逐字节一致） |
 | build tags | `with_gvisor,with_quic,with_wireguard,with_ech,with_utls,with_clash_api,with_grpc` |
 | 目标 | `-androidapi=21`，四个 ABI：arm64-v8a / armeabi-v7a / x86 / x86_64 |
 
-脚本在临时目录里完成克隆和构建，结束后自动校验：每个 ABI 的所有 LOAD 段对齐 ≥ `2**14`，
-`go version -m` 里的 Go 版本、build tags 和锁定依赖版本，以及 `classes.jar` 的 sha256。
+脚本在固定路径 `/tmp/clashmiao-libcore-build`（可用 `BUILD_ROOT` 改）里克隆和构建，每次开始前清空、结束后删除，
+然后自动校验，任何一项不符都会非零退出：
+
+- NDK 的 `source.properties` 里 `Pkg.Revision` 必须正好是 `28.2.13676358`；
+- 每个 ABI 的所有 LOAD 段对齐 ≥ `2**14`；
+- `go version -m` 里的 Go 版本、build tags 和锁定依赖版本；
+- `classes.jar` 的 sha256 必须与发布版一致。用别的 JDK 编出来字节码会不同，默认直接失败；
+  确需放行，须同时给 `REFERENCE_AAR` 并设 `ALLOW_JDK_MISMATCH=1`，且 `javap -public` 对比零差异才通过
+  （两侧的 `javap` 输出都要成功且非空）。
+
 依赖：Android SDK 中装好对应 NDK（`sdkmanager "ndk;28.2.13676358"`）、JDK 17、git、curl。
+macOS 自带的 Bash 3.2 可以直接运行（含 UTF-8 环境）。
+
+**可复现性**：构建路径会写进 Go 的 buildinfo，所以路径是固定的。同一台机器、同一套固定工具链下，
+两次全新构建得到的四个 `libbox.so`、`classes.jar` 以及整个 `libcore.aar` 都逐字节相同（Go 1.22.12 / NDK r28c / JDK 17 实测）。
+这个保证只在构建路径、主机平台和工具链都不变时成立；改 `BUILD_ROOT`、换 Go 补丁版或 NDK，哈希都会不同。
+不同主机平台（如 Linux 与 macOS）编出的 C 胶水部分是否逐字节一致，尚未验证。
 
 产物替换到 `android/app/libs/libcore.aar` 即可本地使用。正式分发时，把它和其余平台未变的二进制一起上传到新的
 `libcore-v*` Release，再同步修改 `bin/fetch-libcore.sh`、`.github/workflows/ci.yml`、

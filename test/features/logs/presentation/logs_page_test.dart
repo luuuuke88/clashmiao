@@ -5,6 +5,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -62,6 +63,10 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
 
     expect(find.text('日志'), findsOneWidget);
+    // 与配置页同一套页头，不再是默认 AppBar。
+    expect(find.byType(PageHeader), findsOneWidget);
+    expect(find.byType(AppBar), findsNothing);
+    expect(find.byIcon(FluentIcons.dismiss_24_regular), findsOneWidget);
     expect(find.byIcon(FluentIcons.pause_20_regular), findsOneWidget);
     expect(find.byIcon(FluentIcons.delete_lines_20_regular), findsOneWidget);
     expect(find.byIcon(FluentIcons.more_vertical_20_regular), findsNothing);

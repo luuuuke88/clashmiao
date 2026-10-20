@@ -7,6 +7,7 @@ import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart
 import 'package:clashmiao/features/logs/application/log_filter_notifier.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
+import 'package:clashmiao/shared/components/sub_page_scaffold.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -87,153 +88,111 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         widget.debugShowShareMenu ??
         (Platform.isMacOS || Platform.isWindows || Platform.isLinux);
 
-    return Scaffold(
-      body: NestedScrollView(
-        headerSliverBuilder: (context, innerBoxIsScrolled) {
-          return [
-            SliverOverlapAbsorber(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-              sliver: SliverMainAxisGroup(
-                slivers: [
-                  SliverAppBar(
-                    pinned: true,
-                    forceElevated: innerBoxIsScrolled,
-                    title: Text(t.logs.pageTitle),
-                    actions: [
-                      IconButton(
-                        onPressed: state.paused
-                            ? notifier.resume
-                            : notifier.pause,
-                        icon: Icon(
-                          state.paused
-                              ? FluentIcons.play_20_regular
-                              : FluentIcons.pause_20_regular,
-                        ),
-                        tooltip: state.paused
-                            ? t.logs.resumeTooltip
-                            : t.logs.pauseTooltip,
-                        iconSize: 20,
-                      ),
-                      IconButton(
-                        onPressed: () async {
-                          try {
-                            await notifier.clear();
-                          } catch (error, st) {
-                            logAppFailure('logs.clear', error, st);
-                            if (!context.mounted) return;
-                            AppToast.error(context, t.logs.clearFailed);
-                          }
-                        },
-                        icon: const Icon(FluentIcons.delete_lines_20_regular),
-                        tooltip: t.logs.clearTooltip,
-                        iconSize: 20,
-                      ),
-                      if (showShareMenu)
-                        PopupMenuButton<_LogAction>(
-                          icon: const AdaptiveIcon(
-                            apple: FluentIcons.more_horizontal_20_regular,
-                            other: FluentIcons.more_vertical_20_regular,
-                          ),
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: _LogAction.shareCoreLogs,
-                              child: Text(t.logs.shareCoreLogs),
-                            ),
-                            PopupMenuItem(
-                              value: _LogAction.shareAppLogs,
-                              child: Text(t.logs.shareAppLogs),
-                            ),
-                          ],
-                          onSelected: (action) async {
-                            switch (action) {
-                              case _LogAction.shareCoreLogs:
-                                // 分享当前屏幕上过滤后可见的行，不能用未过滤的
-                                // 原始流——用户特意用级别/关键词过滤日志（比如
-                                // 避免带出服务器地址），分享出去的必须是他们
-                                // 实际看到、以为在分享的那部分内容。
-                                await _shareCoreLogs(state.lines);
-                              case _LogAction.shareAppLogs:
-                                await _shareAppLogs();
-                            }
-                          },
-                        ),
-                    ],
-                  ),
-                  SliverPersistentHeader(
-                    pinned: true,
-                    delegate: _LogsFilterHeaderDelegate(
-                      child: _LogsFilterBar(
-                        controller: _filterController,
-                        level: state.level,
-                        onQueryChanged: notifier.setQuery,
-                        onLevelChanged: notifier.setLevel,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return SubPageScaffold(
+      title: t.logs.pageTitle,
+      closeLabel: t.general.close,
+      actions: [
+        HeaderPillButton(
+          onTap: state.paused ? notifier.resume : notifier.pause,
+          icon: state.paused
+              ? FluentIcons.play_20_regular
+              : FluentIcons.pause_20_regular,
+          label: state.paused ? t.logs.resumeTooltip : t.logs.pauseTooltip,
+        ),
+        HeaderPillButton(
+          onTap: () async {
+            try {
+              await notifier.clear();
+            } catch (error, st) {
+              logAppFailure('logs.clear', error, st);
+              if (!context.mounted) return;
+              AppToast.error(context, t.logs.clearFailed);
+            }
+          },
+          icon: FluentIcons.delete_lines_20_regular,
+          label: t.logs.clearTooltip,
+        ),
+        if (showShareMenu)
+          HeaderPillMenu<_LogAction>(
+            label: t.general.showMore,
+            icon: resolveAdaptiveIcon(
+              apple: FluentIcons.more_horizontal_20_regular,
+              other: FluentIcons.more_vertical_20_regular,
             ),
-          ];
-        },
-        body: Builder(
-          builder: (context) {
-            if (logsAsync.hasError) {
-              logAppFailureOnce(
-                'logs.load',
-                logsAsync.error!,
-                logsAsync.stackTrace,
-              );
-              return Center(child: Text(t.logs.loadFailed));
-            }
-            if (logsAsync.isLoading && state.lines.isEmpty) {
-              return const Center(child: MotionProgress(strokeWidth: 4));
-            }
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: _LogAction.shareCoreLogs,
+                child: Text(t.logs.shareCoreLogs),
+              ),
+              PopupMenuItem(
+                value: _LogAction.shareAppLogs,
+                child: Text(t.logs.shareAppLogs),
+              ),
+            ],
+            onSelected: (action) async {
+              switch (action) {
+                case _LogAction.shareCoreLogs:
+                  // 分享当前屏幕上过滤后可见的行，不能用未过滤的
+                  // 原始流——用户特意用级别/关键词过滤日志（比如
+                  // 避免带出服务器地址），分享出去的必须是他们
+                  // 实际看到、以为在分享的那部分内容。
+                  await _shareCoreLogs(state.lines);
+                case _LogAction.shareAppLogs:
+                  await _shareAppLogs();
+              }
+            },
+          ),
+      ],
+      body: Column(
+        children: [
+          _LogsFilterBar(
+            controller: _filterController,
+            level: state.level,
+            onQueryChanged: notifier.setQuery,
+            onLevelChanged: notifier.setLevel,
+          ),
+          Expanded(child: _buildBody(context, t, state, logsAsync, theme)),
+        ],
+      ),
+    );
+  }
 
-            if (state.lines.isEmpty) {
-              return CustomScrollView(
-                primary: false,
-                slivers: [
-                  SliverOverlapInjector(
-                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                      context,
-                    ),
-                  ),
-                  SliverFillRemaining(
-                    hasScrollBody: false,
-                    child: Center(
-                      child: Text(
-                        t.logs.empty,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            }
-
-            return CustomScrollView(
-              primary: false,
-              reverse: true,
-              slivers: [
-                SliverList.builder(
-                  itemCount: state.lines.length,
-                  itemBuilder: (context, index) {
-                    final log = _ParsedLog.fromLine(state.lines[index]);
-                    return _LogEntryTile(log: log, showDivider: index != 0);
-                  },
-                ),
-                SliverOverlapInjector(
-                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                    context,
-                  ),
-                ),
-              ],
-            );
+  Widget _buildBody(
+    BuildContext context,
+    Translations t,
+    LogFilterState state,
+    AsyncValue<void> logsAsync,
+    ThemeData theme,
+  ) {
+    if (logsAsync.hasError) {
+      logAppFailureOnce('logs.load', logsAsync.error!, logsAsync.stackTrace);
+      return Center(child: Text(t.logs.loadFailed));
+    }
+    if (logsAsync.isLoading && state.lines.isEmpty) {
+      return const Center(child: MotionProgress(strokeWidth: 4));
+    }
+    if (state.lines.isEmpty) {
+      return Center(
+        child: Text(
+          t.logs.empty,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+    return CustomScrollView(
+      primary: false,
+      reverse: true,
+      slivers: [
+        SliverList.builder(
+          itemCount: state.lines.length,
+          itemBuilder: (context, index) {
+            final log = _ParsedLog.fromLine(state.lines[index]);
+            return _LogEntryTile(log: log, showDivider: index != 0);
           },
         ),
-      ),
+      ],
     );
   }
 }
@@ -261,7 +220,7 @@ class _LogsFilterBar extends ConsumerWidget {
     return DecoratedBox(
       decoration: BoxDecoration(color: theme.scaffoldBackgroundColor),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
         child: Row(
           children: [
             Flexible(
@@ -302,46 +261,6 @@ class _LogsFilterBar extends ConsumerWidget {
         ),
       ),
     );
-  }
-}
-
-class _LogsFilterHeaderDelegate extends SliverPersistentHeaderDelegate {
-  const _LogsFilterHeaderDelegate({required this.child});
-
-  final Widget child;
-
-  @override
-  double get minExtent => 64;
-
-  @override
-  double get maxExtent => 64;
-
-  @override
-  Widget build(
-    BuildContext context,
-    double shrinkOffset,
-    bool overlapsContent,
-  ) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: overlapsContent
-            ? [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ]
-            : null,
-      ),
-      child: child,
-    );
-  }
-
-  @override
-  bool shouldRebuild(covariant _LogsFilterHeaderDelegate oldDelegate) {
-    return oldDelegate.child != child;
   }
 }
 

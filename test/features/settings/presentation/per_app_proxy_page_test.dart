@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/settings/presentation/per_app_proxy_page.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -75,9 +76,12 @@ void main() {
     await tester.pumpWidget(await _host());
     await tester.pump();
 
+    // 与配置页、日志页同一个页头（PageHeader），不是默认 AppBar。
+    expect(find.byType(PageHeader), findsOneWidget);
+    expect(find.byType(AppBar), findsNothing);
     expect(find.text('分应用线路'), findsOneWidget);
-    expect(find.byIcon(Icons.close), findsNothing);
-    expect(find.byIcon(Icons.search), findsNothing);
+    expect(find.byIcon(FluentIcons.dismiss_24_regular), findsOneWidget);
+    expect(find.byIcon(FluentIcons.search_24_regular), findsOneWidget);
     expect(find.text('代理所有应用程序'), findsOneWidget);
     expect(find.text('仅代理选定的应用程序'), findsOneWidget);
     expect(find.text('不代理选中的应用程序'), findsOneWidget);
@@ -85,8 +89,17 @@ void main() {
     await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.close), findsOneWidget);
+    // 搜索态：标题区换成输入框，胶囊里只剩「取消」。
     expect(find.byType(TextFormField), findsOneWidget);
+    expect(find.text('分应用线路'), findsNothing);
+    expect(find.byIcon(FluentIcons.search_24_regular), findsNothing);
+    expect(find.byIcon(FluentIcons.dismiss_24_regular), findsOneWidget);
+
+    // 取消只收起搜索，不退出页面。
+    await tester.tap(find.byTooltip('Cancel'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TextFormField), findsNothing);
+    expect(find.text('分应用线路'), findsOneWidget);
   });
 
   testWidgets('选择 off 模式后返回上一页', (tester) async {

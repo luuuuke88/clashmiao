@@ -7,7 +7,7 @@ import 'dart:typed_data';
 import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/settings/application/app_filter_notifier.dart';
-import 'package:clashmiao/shared/components/adaptive_icon.dart';
+import 'package:clashmiao/shared/components/sub_page_scaffold.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -109,73 +109,69 @@ class _State extends ConsumerState<PerAppProxyPage> {
 
     final apps = _filteredApps(_apps ?? []);
 
-    return Scaffold(
-      appBar: _isSearching
-          ? AppBar(
-              title: TextFormField(
-                autofocus: true,
-                onChanged: (value) => setState(() => _query = value),
-                decoration: InputDecoration(
-                  hintText: '${localizations.searchFieldLabel}...',
-                  isDense: true,
-                  filled: false,
-                  border: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  errorBorder: InputBorder.none,
-                  focusedErrorBorder: InputBorder.none,
-                  disabledBorder: InputBorder.none,
-                ),
-              ),
-              leading: IconButton(
-                onPressed: () {
-                  setState(() {
-                    _query = '';
-                    _isSearching = false;
-                  });
-                },
-                icon: const Icon(Icons.close),
-                tooltip: localizations.cancelButtonLabel,
+    return SubPageScaffold(
+      // 搜索态：标题区换成输入框，胶囊只剩一个「取消」（收起搜索，不是退出页面）。
+      title: _isSearching ? null : t.settings.network.perAppProxyPageTitle,
+      titleWidget: _isSearching
+          ? TextFormField(
+              autofocus: true,
+              onChanged: (value) => setState(() => _query = value),
+              decoration: InputDecoration(
+                hintText: '${localizations.searchFieldLabel}...',
+                isDense: true,
+                filled: false,
+                border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                focusedErrorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
               ),
             )
-          : AppBar(
-              title: Text(t.settings.network.perAppProxyPageTitle),
-              actions: [
-                IconButton(
-                  icon: const Icon(FluentIcons.search_24_regular),
-                  onPressed: () => setState(() => _isSearching = true),
-                  tooltip: localizations.searchFieldLabel,
-                ),
-                PopupMenuButton<_PerAppMenuAction>(
-                  icon: const AdaptiveIcon(
-                    apple: FluentIcons.more_horizontal_24_regular,
-                    other: FluentIcons.more_vertical_24_regular,
+          : null,
+      closeLabel: _isSearching
+          ? localizations.cancelButtonLabel
+          : t.general.close,
+      onClose: _isSearching
+          ? () => setState(() {
+              _query = '';
+              _isSearching = false;
+            })
+          : null,
+      actions: _isSearching
+          ? const []
+          : [
+              HeaderPillButton(
+                icon: FluentIcons.search_24_regular,
+                label: localizations.searchFieldLabel,
+                onTap: () => setState(() => _isSearching = true),
+              ),
+              HeaderPillMenu<_PerAppMenuAction>(
+                label: t.general.showMore,
+                onSelected: (action) {
+                  switch (action) {
+                    case _PerAppMenuAction.toggleSystemApps:
+                      setState(() => _showSystemApps = !_showSystemApps);
+                    case _PerAppMenuAction.clearSelection:
+                      notifier.clearSelection();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem(
+                    value: _PerAppMenuAction.toggleSystemApps,
+                    child: Text(
+                      _showSystemApps
+                          ? t.settings.network.hideSystemApps
+                          : t.settings.network.showSystemApps,
+                    ),
                   ),
-                  onSelected: (action) {
-                    switch (action) {
-                      case _PerAppMenuAction.toggleSystemApps:
-                        setState(() => _showSystemApps = !_showSystemApps);
-                      case _PerAppMenuAction.clearSelection:
-                        notifier.clearSelection();
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: _PerAppMenuAction.toggleSystemApps,
-                      child: Text(
-                        _showSystemApps
-                            ? t.settings.network.hideSystemApps
-                            : t.settings.network.showSystemApps,
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: _PerAppMenuAction.clearSelection,
-                      child: Text(t.settings.network.clearSelection),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                  PopupMenuItem(
+                    value: _PerAppMenuAction.clearSelection,
+                    child: Text(t.settings.network.clearSelection),
+                  ),
+                ],
+              ),
+            ],
       body: CustomScrollView(
         slivers: [
           SliverPersistentHeader(

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:ui' as ui;
 
 import 'package:clashmiao/core/box_service/pigeon/box_api.g.dart' as pigeon;
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -270,13 +271,65 @@ void main() {
     final imageFinder = find.byWidgetPredicate((w) => w is Image);
     expect(imageFinder, findsOneWidget);
     final image = tester.widget<Image>(imageFinder);
-    // 按显示尺寸解码（ResizeImage 包着 MemoryImage），不整张解码再缩小。
-    expect(image.image, isA<ResizeImage>());
-    final provider = (image.image as ResizeImage).imageProvider;
-    expect(provider, isA<MemoryImage>());
-    expect((provider as MemoryImage).bytes, base64Decode(_minimalPngBase64));
+    // 原生侧已经给到 48×48 px，不再包 ResizeImage（它不会放大，包了也没用）。
+    expect(image.image, isA<MemoryImage>());
+    expect((image.image as MemoryImage).bytes, base64Decode(_minimalPngBase64));
     expect(find.byIcon(FluentIcons.apps_24_regular), findsNothing);
   });
+
+  // 实际解码尺寸：原生给 48×48 px，不论设备像素比多大，都应原样解码为 48×48，
+  // 不被放大、也没有被 cacheWidth 之类的参数改成别的尺寸。
+  for (final dpr in [1.0, 2.0, 2.75, 3.0, 4.0]) {
+    testWidgets('图标按原生给的 48×48 px 解码，与 DPR 无关（DPR $dpr）', (tester) async {
+      tester.view.devicePixelRatio = dpr;
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      final png = await tester.runAsync(() async {
+        final recorder = ui.PictureRecorder();
+        Canvas(recorder).drawRect(
+          const Rect.fromLTWH(0, 0, 48, 48),
+          Paint()..color = const Color(0xFF3366FF),
+        );
+        final img = await recorder.endRecording().toImage(48, 48);
+        final data = await img.toByteData(format: ui.ImageByteFormat.png);
+        return base64Encode(data!.buffer.asUint8List());
+      });
+
+      await tester.pumpWidget(
+        await iconHost(
+          apps: [
+            pigeon.InstalledApp(
+              packageName: 'com.example.app',
+              appName: 'Example App',
+              isSystemApp: false,
+            ),
+          ],
+          iconLoader: (_) async => png,
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 200));
+
+      final image = tester.widget<Image>(
+        find.byWidgetPredicate((w) => w is Image),
+      );
+      expect(image.image, isA<MemoryImage>(), reason: '不包 ResizeImage');
+
+      final decoded = await tester.runAsync(() {
+        final done = Completer<ui.Image>();
+        image.image
+            .resolve(ImageConfiguration(devicePixelRatio: dpr))
+            .addListener(
+              ImageStreamListener((info, _) => done.complete(info.image)),
+            );
+        return done.future;
+      });
+      expect(decoded!.width, 48);
+      expect(decoded.height, 48);
+    });
+  }
 
   testWidgets('图标到达时通用图标与真图标交叉淡入淡出，不是硬换', (tester) async {
     final iconReady = Completer<String?>();

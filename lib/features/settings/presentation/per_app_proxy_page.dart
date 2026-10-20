@@ -108,7 +108,6 @@ class _State extends ConsumerState<PerAppProxyPage> {
     final localizations = MaterialLocalizations.of(context);
 
     final apps = _filteredApps(_apps ?? []);
-    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
 
     return Scaffold(
       appBar: _isSearching
@@ -283,10 +282,10 @@ class _State extends ConsumerState<PerAppProxyPage> {
                                   key: ValueKey('app-icon-${app.packageName}'),
                                   width: 48,
                                   height: 48,
-                                  // 按显示尺寸解码：应用图标原图可以很大，整张
-                                  // 解码再缩小，滚动时每一行都要多吃一次解码与
-                                  // 纹理上传。
-                                  cacheWidth: (48 * devicePixelRatio).round(),
+                                  // 不加 cacheWidth：原生侧（getAppIconBase64）已经
+                                  // 把图标画成 48×48 px 再传过来，已经比显示尺寸
+                                  // （48 dp × DPR）还小；ResizeImage 默认不放大，
+                                  // 在这里什么也不会改变，只会多一层包装。
                                   gaplessPlayback: true,
                                 )
                               // 加载中 / 加载失败 / 返回 null 统一降级为通用图标，

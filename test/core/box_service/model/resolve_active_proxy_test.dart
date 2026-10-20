@@ -100,7 +100,10 @@ void main() {
       expect(resolveActiveProxy(groups), isNull);
     });
 
-    test('空分组列表 → 返回 null', () {});
+    test('空分组列表 → 返回 null', () {
+      expect(resolveActiveProxy(const []), isNull);
+      expect(resolveActiveRoute(const []), isNull);
+    });
 
     test('成环的嵌套 selector 不死循环（深度上限兜底）', () {
       final groups = [

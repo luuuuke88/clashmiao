@@ -375,6 +375,31 @@ FAKE
   expect_ok "放行门：API 快照一致 → 写出产物" gate_ok g6 good good pg-ok good API_SNAPSHOT_CHECK="$t/api-ok"
   expect_ok "放行门：版本覆盖没生效 → 不写产物" gate_fail g7 good good pg-ok nover
 
+  # --- API 快照：假 javap + 只含类名的假 classes.jar（真实 javap 的输出由 bind 后的真实构建验证）
+  mkdir -p "$t/api/jar/com/clashmiao/libcore/core" "$t/api/jar/go" "$t/api/aar"
+  : >"$t/api/jar/com/clashmiao/libcore/core/Core.class"; : >"$t/api/jar/com/clashmiao/libcore/core/Engine.class"; : >"$t/api/jar/go/Seq.class"
+  (cd "$t/api/jar" && zip -q -r "$t/api/aar/classes.jar" .)
+  cat >"$t/api/javap" <<'FAKE'
+#!/bin/sh
+# 最后一个参数是类名；FAKE_EXTRA 非空时给 Core 多加一个方法
+for c; do :; done
+echo "public final class $c {"
+[ "$c" = com.clashmiao.libcore.core.Core ] && [ -n "${FAKE_EXTRA:-}" ] && echo "  public static native void extra();"
+echo "}"
+FAKE
+  chmod +x "$t/api/javap"
+  api_check() { JAVAP_BIN="$t/api/javap" API_SNAPSHOT="$t/api/snap.txt" REPO_ROOT="$REPO_ROOT" "$SCRIPT_DIR/check-java-api.sh" "$@"; }
+  api_gen()   { UPDATE_API=1 api_check "$t/api/aar"; }
+  expect_fail "API 快照：快照缺失 → 失败（不静默放行）" api_check "$t/api/aar"
+  expect_ok   "API 快照：UPDATE_API=1 生成快照" api_gen
+  expect_ok   "API 快照：生成后零差异" api_check "$t/api/aar"
+  expect_ok   "API 快照：快照只含门面包的类（不含 go.*）" bash -c "! grep -q 'go.Seq' '$t/api/snap.txt' && grep -q 'libcore.core.Engine' '$t/api/snap.txt'"
+  expect_fail "API 快照：公共 API 多了一个方法 → 失败" env FAKE_EXTRA=1 bash -c "$(declare -f api_check); t='$t'; SCRIPT_DIR='$SCRIPT_DIR'; REPO_ROOT='$REPO_ROOT'; api_check '$t/api/aar'"
+  mkdir -p "$t/api/empty" && (cd "$t/api/empty" && mkdir go && : >go/Seq.class && zip -q -r "$t/api/aar-empty.jar" .)
+  mkdir -p "$t/api/aar-nofacade" && cp "$t/api/aar-empty.jar" "$t/api/aar-nofacade/classes.jar"
+  expect_fail "API 快照：门面包没有类 → 失败" api_check "$t/api/aar-nofacade"
+  expect_fail "API 快照：aar 里没有 classes.jar → 失败" api_check "$t/api/empty"
+
   # --- BUILD_ROOT 规范化与目录锁（rm / chmod 全部换成只记日志的桩，不会真删任何东西）
   local rmlog="$t/rm.log"
   stubbed() {
@@ -577,11 +602,10 @@ rmdir "$REPO_ROOT/kernel/build/arm64" "$REPO_ROOT/kernel/build" 2>/dev/null || t
 log "校验产物"
 mkdir -p "$WORK/check"
 unzip -q -o "$WORK/out/libcore.aar" -d "$WORK/check" || die "产物 aar 解压失败"
-if [ -f "$REPO_ROOT/kernel/api/java-api.txt" ] || [ "${UPDATE_API:-}" = 1 ]; then
-  API_SNAPSHOT_CHECK="$SCRIPT_DIR/check-java-api.sh"
-  [ -x "$API_SNAPSHOT_CHECK" ] || die "缺少 ${API_SNAPSHOT_CHECK}"
-  export API_SNAPSHOT_CHECK REPO_ROOT JAVA_HOME
-fi
+# API 快照放行门是必选项（U12 起）：快照缺失同样失败，首次生成用 UPDATE_API=1。
+API_SNAPSHOT_CHECK="$SCRIPT_DIR/check-java-api.sh"
+[ -x "$API_SNAPSHOT_CHECK" ] || die "缺少 ${API_SNAPSHOT_CHECK}"
+export API_SNAPSHOT_CHECK REPO_ROOT JAVA_HOME UPDATE_API
 finalize_artifacts "$OBJDUMP" "$WORK/check" "$WORK/out/libcore.aar" "$OUT_DIR" \
   "$GO_VERSION" "$KERNEL_TAGS" "$SINGBOX_VERSION" "$GODEBUG_DEFAULT"
 

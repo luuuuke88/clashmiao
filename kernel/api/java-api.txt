@@ -1,0 +1,193 @@
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyEngineHandler implements go.Seq$Proxy,com.clashmiao.libcore.core.EngineHandler {
+  public final int refnum;
+  public final int incRefnum();
+  public native void onReloadRequested();
+  public native void onStopRequested();
+  public native void setSystemProxyEnabled(boolean);
+  public native boolean systemProxyAvailable();
+  public native boolean systemProxyEnabled();
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyFunc implements go.Seq$Proxy,com.clashmiao.libcore.core.Func {
+  public final int refnum;
+  public final int incRefnum();
+  public native void invoke() throws java.lang.Exception;
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyGroupsHandler implements go.Seq$Proxy,com.clashmiao.libcore.core.GroupsHandler {
+  public final int refnum;
+  public final int incRefnum();
+  public native void onDisconnected(java.lang.String);
+  public native void onGroups(java.lang.String);
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyInterfaceListener implements go.Seq$Proxy,com.clashmiao.libcore.core.InterfaceListener {
+  public final int refnum;
+  public final int incRefnum();
+  public native void update(java.lang.String, int, boolean, boolean);
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyLocalDNS implements go.Seq$Proxy,com.clashmiao.libcore.core.LocalDNS {
+  public final int refnum;
+  public final int incRefnum();
+  public native void exchange(com.clashmiao.libcore.core.DNSCall, byte[]) throws java.lang.Exception;
+  public native void lookup(com.clashmiao.libcore.core.DNSCall, java.lang.String, java.lang.String) throws java.lang.Exception;
+  public native boolean raw();
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyLogHandler implements go.Seq$Proxy,com.clashmiao.libcore.core.LogHandler {
+  public final int refnum;
+  public final int incRefnum();
+  public native void onDisconnected(java.lang.String);
+  public native void onLog(java.lang.String);
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyPlatform implements go.Seq$Proxy,com.clashmiao.libcore.core.Platform {
+  public final int refnum;
+  public final int incRefnum();
+  public native void clearDNSCache();
+  public native java.lang.String findOwner(int, java.lang.String, int, java.lang.String, int) throws java.lang.Exception;
+  public native java.lang.String interfacesJSON() throws java.lang.Exception;
+  public native com.clashmiao.libcore.core.LocalDNS localDNS();
+  public native int openTun(java.lang.String) throws java.lang.Exception;
+  public native void protect(int) throws java.lang.Exception;
+  public native void startInterfaceMonitor(com.clashmiao.libcore.core.InterfaceListener) throws java.lang.Exception;
+  public native void stopInterfaceMonitor() throws java.lang.Exception;
+  public native boolean useProcFS();
+  public native void writeLog(java.lang.String);
+}
+Compiled from "Core.java"
+final class com.clashmiao.libcore.core.Core$proxyStatsHandler implements go.Seq$Proxy,com.clashmiao.libcore.core.StatsHandler {
+  public final int refnum;
+  public final int incRefnum();
+  public native void onDisconnected(java.lang.String);
+  public native void onStats(java.lang.String);
+}
+Compiled from "Core.java"
+public abstract class com.clashmiao.libcore.core.Core {
+  public static void touch();
+  public static native java.lang.String buildConfig(java.lang.String, java.lang.String) throws java.lang.Exception;
+  public static native void checkConfig(java.lang.String) throws java.lang.Exception;
+  public static native java.lang.String generateWarpConfig(java.lang.String, java.lang.String, java.lang.String) throws java.lang.Exception;
+  public static native java.lang.String goVersion();
+  public static native com.clashmiao.libcore.core.Engine newEngine(com.clashmiao.libcore.core.Platform, com.clashmiao.libcore.core.EngineHandler) throws java.lang.Exception;
+  public static native void parse(java.lang.String, java.lang.String, boolean) throws java.lang.Exception;
+  public static native void setup(com.clashmiao.libcore.core.SetupOptions) throws java.lang.Exception;
+  public static native java.lang.String version();
+}
+Compiled from "DNSCall.java"
+public final class com.clashmiao.libcore.core.DNSCall implements go.Seq$Proxy {
+  public final int refnum;
+  public final int incRefnum();
+  public com.clashmiao.libcore.core.DNSCall();
+  public native void errnoCode(int);
+  public native void errorCode(int);
+  public native void onCancel(com.clashmiao.libcore.core.Func);
+  public native void rawSuccess(byte[]);
+  public native void success(java.lang.String);
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+Compiled from "Engine.java"
+public final class com.clashmiao.libcore.core.Engine implements go.Seq$Proxy {
+  public final int refnum;
+  public final int incRefnum();
+  public com.clashmiao.libcore.core.Engine(com.clashmiao.libcore.core.Platform, com.clashmiao.libcore.core.EngineHandler);
+  public native void close() throws java.lang.Exception;
+  public native void pause();
+  public native void resetNetwork();
+  public native void selectOutbound(java.lang.String, java.lang.String) throws java.lang.Exception;
+  public native void start(java.lang.String) throws java.lang.Exception;
+  public native void stop() throws java.lang.Exception;
+  public native com.clashmiao.libcore.core.Subscription subscribeGroups(com.clashmiao.libcore.core.GroupsHandler) throws java.lang.Exception;
+  public native com.clashmiao.libcore.core.Subscription subscribeLogs(com.clashmiao.libcore.core.LogHandler) throws java.lang.Exception;
+  public native com.clashmiao.libcore.core.Subscription subscribeStats(com.clashmiao.libcore.core.StatsHandler, long) throws java.lang.Exception;
+  public native void urlTest(java.lang.String) throws java.lang.Exception;
+  public native void wake();
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+Compiled from "EngineHandler.java"
+public interface com.clashmiao.libcore.core.EngineHandler {
+  public abstract void onReloadRequested();
+  public abstract void onStopRequested();
+  public abstract void setSystemProxyEnabled(boolean);
+  public abstract boolean systemProxyAvailable();
+  public abstract boolean systemProxyEnabled();
+}
+Compiled from "Func.java"
+public interface com.clashmiao.libcore.core.Func {
+  public abstract void invoke() throws java.lang.Exception;
+}
+Compiled from "GroupsHandler.java"
+public interface com.clashmiao.libcore.core.GroupsHandler {
+  public abstract void onDisconnected(java.lang.String);
+  public abstract void onGroups(java.lang.String);
+}
+Compiled from "InterfaceListener.java"
+public interface com.clashmiao.libcore.core.InterfaceListener {
+  public abstract void update(java.lang.String, int, boolean, boolean);
+}
+Compiled from "LocalDNS.java"
+public interface com.clashmiao.libcore.core.LocalDNS {
+  public abstract void exchange(com.clashmiao.libcore.core.DNSCall, byte[]) throws java.lang.Exception;
+  public abstract void lookup(com.clashmiao.libcore.core.DNSCall, java.lang.String, java.lang.String) throws java.lang.Exception;
+  public abstract boolean raw();
+}
+Compiled from "LogHandler.java"
+public interface com.clashmiao.libcore.core.LogHandler {
+  public abstract void onDisconnected(java.lang.String);
+  public abstract void onLog(java.lang.String);
+}
+Compiled from "Platform.java"
+public interface com.clashmiao.libcore.core.Platform {
+  public abstract void clearDNSCache();
+  public abstract java.lang.String findOwner(int, java.lang.String, int, java.lang.String, int) throws java.lang.Exception;
+  public abstract java.lang.String interfacesJSON() throws java.lang.Exception;
+  public abstract com.clashmiao.libcore.core.LocalDNS localDNS();
+  public abstract int openTun(java.lang.String) throws java.lang.Exception;
+  public abstract void protect(int) throws java.lang.Exception;
+  public abstract void startInterfaceMonitor(com.clashmiao.libcore.core.InterfaceListener) throws java.lang.Exception;
+  public abstract void stopInterfaceMonitor() throws java.lang.Exception;
+  public abstract boolean useProcFS();
+  public abstract void writeLog(java.lang.String);
+}
+Compiled from "SetupOptions.java"
+public final class com.clashmiao.libcore.core.SetupOptions implements go.Seq$Proxy {
+  public final int refnum;
+  public final int incRefnum();
+  public com.clashmiao.libcore.core.SetupOptions();
+  public final native java.lang.String getBasePath();
+  public final native void setBasePath(java.lang.String);
+  public final native java.lang.String getWorkingPath();
+  public final native void setWorkingPath(java.lang.String);
+  public final native java.lang.String getTempPath();
+  public final native void setTempPath(java.lang.String);
+  public final native boolean getDebug();
+  public final native void setDebug(boolean);
+  public final native int getLogMaxLines();
+  public final native void setLogMaxLines(int);
+  public final native boolean getMemoryLimited();
+  public final native void setMemoryLimited(boolean);
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}
+Compiled from "StatsHandler.java"
+public interface com.clashmiao.libcore.core.StatsHandler {
+  public abstract void onDisconnected(java.lang.String);
+  public abstract void onStats(java.lang.String);
+}
+Compiled from "Subscription.java"
+public final class com.clashmiao.libcore.core.Subscription implements go.Seq$Proxy {
+  public final int refnum;
+  public final int incRefnum();
+  public com.clashmiao.libcore.core.Subscription();
+  public native void close() throws java.lang.Exception;
+  public boolean equals(java.lang.Object);
+  public int hashCode();
+  public java.lang.String toString();
+}

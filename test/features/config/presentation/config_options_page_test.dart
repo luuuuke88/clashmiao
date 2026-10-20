@@ -135,7 +135,8 @@ void main() {
       expect(find.text('TLS 特性 (实验性选项)'), findsOneWidget);
       expect(find.text('日志级别'), findsOneWidget);
       expect(find.text('地区'), findsOneWidget);
-      expect(find.text('阻止广告 (实验性选项)'), findsOneWidget);
+      // 新内核没有广告规则集数据：入口隐藏（持久化值不动）。
+      expect(find.textContaining('阻止广告'), findsNothing);
       expect(find.text('绕过局域网 (实验性选项)'), findsOneWidget);
       expect(find.text('解析目标地址'), findsOneWidget);
       expect(find.text('IPv6 路由'), findsOneWidget);
@@ -153,6 +154,11 @@ void main() {
         Platform.isAndroid || Platform.isIOS ? findsOneWidget : findsNothing,
       );
       expect(find.text('启用 TLS 数据分段'), findsOneWidget);
+      // 新内核兑现不了的 TLS 项：入口隐藏（分片开关保留；大小 / 填充 / 混合 SNI 不展示）。
+      expect(find.text('TLS 分段大小'), findsNothing);
+      expect(find.text('TLS 分段休眠'), findsNothing);
+      expect(find.text('启用 TLS 填充'), findsNothing);
+      expect(find.text('启用 TLS 混合 SNI 情形'), findsNothing);
       expect(find.text('混合端口'), findsOneWidget);
       expect(find.text('2080'), findsOneWidget);
 
@@ -165,7 +171,14 @@ void main() {
       expect(find.text('链式线路'), findsOneWidget);
       expect(find.text('许可证密钥'), findsOneWidget);
       expect(find.text('清理 IP'), findsOneWidget);
-      expect(find.text('噪音计数'), findsOneWidget);
+      // WARP 噪声四项（假包）新内核没有：入口隐藏。滚到底再确认，免得「没渲染到」被当成「已隐藏」。
+      await tester.scrollUntilVisible(find.text('端口'), 600);
+      await tester.drag(find.byType(Scrollable).first, const Offset(0, -3000));
+      await tester.pumpAndSettle();
+      expect(find.text('噪音计数'), findsNothing);
+      expect(find.text('噪音模式'), findsNothing);
+      expect(find.text('噪音大小'), findsNothing);
+      expect(find.text('噪音延迟'), findsNothing);
     });
 
     testWidgets('service mode opens selection modal', (tester) async {

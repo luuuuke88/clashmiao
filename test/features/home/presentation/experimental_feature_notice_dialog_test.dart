@@ -26,9 +26,9 @@ void main() {
       expect(hasExperimentalFeatures(settings: settings), isTrue);
     });
 
-    test('enableTlsPadding 开启 → 实验性', () {
+    test('enableTlsPadding 不再算实验性：界面已无入口，存档里的值不会让连接前弹窗', () {
       final settings = const NetworkSettings().copyWith(enableTlsPadding: true);
-      expect(hasExperimentalFeatures(settings: settings), isTrue);
+      expect(hasExperimentalFeatures(settings: settings), isFalse);
     });
 
     test('enableWarp 开启 → 实验性', () {

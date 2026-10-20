@@ -280,7 +280,7 @@ func TestRouteCNDirectFullRulesPassCheckConfig(t *testing.T) {
 
 func cnDirectOptions(t testing.TB) *options.Options {
 	t.Helper()
-	b, err := os.ReadFile(filepath.Join(gate.TestdataDir(), "rules", "cn-direct.json"))
+	b, err := os.ReadFile(filepath.Join(gate.TestdataDir(), "..", "..", "..", "testdata", "rules", "cn-direct.json"))
 	if err != nil {
 		t.Fatal(err)
 	}

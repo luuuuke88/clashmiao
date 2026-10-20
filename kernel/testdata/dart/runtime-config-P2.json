@@ -1,0 +1,41 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P2：多节点，含订阅信息节点（剩余流量）。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "hk.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "pDt7ZmcA6DgEDa6f"
+    },
+    {
+      "type": "trojan",
+      "tag": "美国01",
+      "server": "us.example.net",
+      "server_port": 443,
+      "password": "lqEPHnZoFxtOwNms",
+      "tls": {
+        "enabled": true,
+        "server_name": "us.example.net"
+      }
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "日本01",
+      "server": "jp.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "QswtJCce+e+mDh20"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "剩余流量：100 GB §hide§",
+      "server": "192.0.2.1",
+      "server_port": 1,
+      "method": "aes-128-gcm",
+      "password": "DLzoQCtbvrgD3JaO"
+    }
+  ],
+  "inbounds": []
+}

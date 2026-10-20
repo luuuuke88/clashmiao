@@ -67,7 +67,7 @@ func TestDefaultMatchesDartDefaults(t *testing.T) {
 }
 
 func TestDecodeDefaultFixtureEqualsDefault(t *testing.T) {
-	raw, err := os.ReadFile("testdata/options/default.json")
+	raw, err := os.ReadFile("../../testdata/options/default.json")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -62,6 +62,44 @@ void main() {
     expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
   });
 
+  test('生产配置经真实 Hub：子 span 的描述 / data / tags 也脱敏，序列化后的信封里没有凭据', () async {
+    final options = _production();
+    final transport = _CapturingTransport(options);
+    options
+      // 只为让这一个事务必定被采样；其余（含 static 与脱敏回调）保持生产配置。
+      ..tracesSampleRate = 1
+      ..transport = transport;
+    final hub = Hub(options);
+    addTearDown(hub.close);
+
+    final root = hub.startTransaction('import', 'ui.action', bindToScope: true);
+    final child =
+        root.startChild(
+            'http.client',
+            description:
+                'GET https://sub.example.test/api/v1/sub?token=CHILD_SECRET',
+          )
+          ..setData('token', 'DATA_SECRET')
+          ..setData('http.method', 'GET')
+          ..setTag('password', 'TAG_SECRET')
+          ..setTag('region', 'hk');
+    await child.finish();
+    await root.finish();
+    await pumpEventQueue();
+
+    expect(transport.envelopes, hasLength(1), reason: '事务应当被发送一次');
+    final sent = transport.envelopes.single;
+    expect(sent, contains('"type":"transaction"'));
+    for (final secret in ['CHILD_SECRET', 'DATA_SECRET', 'TAG_SECRET']) {
+      expect(sent, isNot(contains(secret)), reason: '子 span 漏出了 $secret');
+    }
+    // 无害字段原样保留：脱敏不能把子 span 整个抹掉。
+    expect(sent, contains('"op":"http.client"'));
+    expect(sent, contains('sub.example.test'));
+    expect(sent, contains('"http.method":"GET"'));
+    expect(sent, contains('"region":"hk"'));
+  });
+
   test('对照：改成 stream 时事务根本不经过 beforeSendTransaction', () async {
     // 锁住「为什么必须是 static」：sentry 10 的默认值 stream 下，事务 API 不再
     // 产生经 beforeSendTransaction 的事务。哪天 SDK 行为变了，这条会提醒重新评估。
@@ -75,4 +113,22 @@ class _DiscardingTransport implements Transport {
   @override
   Future<SentryId?> send(SentryEnvelope envelope) async =>
       const SentryId.empty();
+}
+
+/// 把信封按 SDK 的线上格式完整序列化下来（不联网），供断言「最终发出去的内容」。
+class _CapturingTransport implements Transport {
+  _CapturingTransport(this._options);
+
+  final SentryOptions _options;
+  final envelopes = <String>[];
+
+  @override
+  Future<SentryId?> send(SentryEnvelope envelope) async {
+    final bytes = <int>[];
+    await for (final chunk in envelope.envelopeStream(_options)) {
+      bytes.addAll(chunk);
+    }
+    envelopes.add(utf8.decode(bytes));
+    return const SentryId.empty();
+  }
 }

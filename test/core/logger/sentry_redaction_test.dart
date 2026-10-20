@@ -1,6 +1,7 @@
 // `extra` 已弃用但仍会随事件发送，脱敏要覆盖它。
 // ignore_for_file: deprecated_member_use
 
+import 'dart:collection';
 import 'dart:convert';
 
 import 'package:clashmiao/core/logger/sentry_redaction.dart';
@@ -353,6 +354,75 @@ void main() {
     expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
   });
 
+  group('子 span 改写不了时的退路', () {
+    /// 经真实 Hub 拿一个**未脱敏**的事务（带一个正常子 span），交给测试往里塞
+    /// 改写不了的子 span，再直接调 [redactSentryTransaction]。
+    Future<SentryTransaction> rawTransaction() async {
+      SentryTransaction? raw;
+      final options = SentryOptions(dsn: 'https://public@example.test/1')
+        ..traceLifecycle = SentryTraceLifecycle.static
+        ..tracesSampleRate = 1
+        ..transport = _DiscardingTransport()
+        ..beforeSendTransaction = (transaction, hint) {
+          raw = transaction;
+          return null;
+        };
+      final hub = Hub(options);
+      addTearDown(hub.close);
+      final root = hub.startTransaction(
+        'import',
+        'ui.action',
+        bindToScope: true,
+      );
+      final fine = root.startChild('http.client', description: 'GET $subUrl')
+        ..setTag('region', 'hk');
+      await fine.finish();
+      await root.finish();
+      return raw!;
+    }
+
+    test('data 写不回去：描述 / data / tags 整块清空，兄弟 span 照常脱敏', () async {
+      final tx = await rawTransaction();
+      final stuck = _StandInSpan(
+        'db',
+        description: 'q?token=SECRET',
+        data: _NoWriteBackMap({'token': 'SECRET'}),
+        tags: {'password': 'SECRET'},
+      );
+      tx.spans.add(stuck);
+
+      final out = redactSentryTransaction(tx)!;
+
+      expect(out.spans, contains(stuck));
+      expect(stuck.context.description, isNull);
+      expect(stuck.data, isEmpty);
+      expect(stuck.tags, isEmpty);
+      final fine = out.spans.singleWhere(
+        (s) => s.context.operation == 'http.client',
+      );
+      expect(fine.context.description, isNot(contains('SECRET')));
+      expect(fine.tags['region'], 'hk');
+      expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
+    });
+
+    test('连清空都不行（只读 Map）：把这个 span 从事务里移除，其余照常', () async {
+      final tx = await rawTransaction();
+      final frozen = _StandInSpan(
+        'db',
+        description: 'q?token=SECRET',
+        data: Map.unmodifiable({'token': 'SECRET'}),
+        tags: const {},
+      );
+      tx.spans.add(frozen);
+
+      final out = redactSentryTransaction(tx)!;
+
+      expect(out.spans, isNot(contains(frozen)));
+      expect(out.spans.map((s) => s.context.operation), ['http.client']);
+      expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
+    });
+  });
+
   test('抛出物是 Map 时，异常 value 先按键名结构化脱敏', () {
     final thrown = {
       'server': 'h.example.test',
@@ -436,4 +506,58 @@ class _DiscardingTransport implements Transport {
   @override
   Future<SentryId?> send(SentryEnvelope envelope) async =>
       const SentryId.empty();
+}
+
+/// 只实现脱敏会碰到的成员（context / data / tags / toJson）的子 span 替身，
+/// 用来构造「改写不了」的 span。
+class _StandInSpan implements SentrySpan {
+  _StandInSpan(
+    String operation, {
+    String? description,
+    required this.data,
+    required this.tags,
+  }) : context = SentrySpanContext(
+         operation: operation,
+         description: description,
+       );
+
+  @override
+  final SentrySpanContext context;
+  @override
+  final Map<String, dynamic> data;
+  @override
+  final Map<String, String> tags;
+
+  @override
+  Map<String, dynamic> toJson() => {
+    ...context.toJson(),
+    if (data.isNotEmpty) 'data': data,
+    if (tags.isNotEmpty) 'tags': tags,
+  };
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// 能清空、但写不进新值的 Map：脱敏写回时抛异常，退路的「清空」能成功。
+class _NoWriteBackMap extends MapBase<String, dynamic> {
+  _NoWriteBackMap(Map<String, dynamic> initial) : _inner = Map.of(initial);
+
+  final Map<String, dynamic> _inner;
+
+  @override
+  dynamic operator [](Object? key) => _inner[key];
+
+  @override
+  void operator []=(String key, dynamic value) =>
+      throw UnsupportedError('read-only values');
+
+  @override
+  void clear() => _inner.clear();
+
+  @override
+  Iterable<String> get keys => _inner.keys;
+
+  @override
+  dynamic remove(Object? key) => _inner.remove(key);
 }

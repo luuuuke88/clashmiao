@@ -33,6 +33,25 @@ Set<String> subscriptionInfoExclusions(List<OutboundGroup> groups) =>
     });
 
 void main() {
+  group('primaryVisibleGroup', () {
+    test('只有隐藏条目的分组不当主组：与线路页展示的主组一致', () {
+      const infoOnly = OutboundGroup(
+        tag: 'info',
+        type: 'selector',
+        selected: '官网 §hide§',
+        items: [OutboundProxy(tag: '官网 §hide§', type: 'vless')],
+      );
+      const real = OutboundGroup(
+        tag: 'real',
+        type: 'selector',
+        selected: 'hk',
+        items: [OutboundProxy(tag: 'hk', type: 'vless')],
+      );
+      expect(primaryVisibleGroup([infoOnly, real])?.tag, 'real');
+      expect(primaryVisibleGroup([infoOnly])?.tag, 'info');
+    });
+  });
+
   group('primaryDisplayGroup', () {
     const empty = OutboundGroup(
       tag: 'info',

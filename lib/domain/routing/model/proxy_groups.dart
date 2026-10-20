@@ -66,11 +66,17 @@ OutboundGroup? primaryDisplayGroup(List<OutboundGroup> groups) =>
     groups.firstWhereOrNull((group) => group.items.isNotEmpty) ??
     groups.firstOrNull;
 
-/// 用户在代理页看到的第一个分组（主组）；没有则 `null`。
+/// 实时分组里用户在代理页看到的主组（自动测速、手选迁移的目标）；没有则
+/// `null`。与线路页同一口径：去掉带隐藏标记的条目后整组为空的分组（只有订阅
+/// 信息条目的分组）不当主组，见 [primaryDisplayGroup]。
 OutboundGroup? primaryVisibleGroup(List<OutboundGroup> groups) {
-  return collapseDuplicateGroups(
+  final visible = collapseDuplicateGroups(
     groups.where(isUserVisibleGroup).toList(),
-  ).firstOrNull;
+  );
+  return visible.firstWhereOrNull(
+        (group) => selectableGroupItems(group.items, const {}).isNotEmpty,
+      ) ??
+      visible.firstOrNull;
 }
 
 /// 这个分组能不能发起延迟测试。

@@ -16,6 +16,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/scripted_profile_repository.dart';
+import '../../../support/toast_pump.dart';
 
 /// 详情页保存 / 手动刷新对仓库异常的反馈（见 profiles_page_update_outcomes_test.dart
 /// 的说明：同一测试内先让 toast 出现、再断言「静默」）。
@@ -77,6 +78,7 @@ void main() {
     repo.editError = const StoreReadOnlyException(9);
     await tester.tap(find.text('保存'));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('请升级 App 后再修改订阅'), findsOneWidget);
     expect(repo.updateCalls, 0);
     await _drainToasts(tester);
@@ -86,6 +88,7 @@ void main() {
     repo.updateError = const ProfileUpdateStaleException('p1');
     await tester.tap(find.text('保存'));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(repo.updateCalls, 1);
     expect(find.text('配置文件保存成功'), findsOneWidget);
     expect(find.textContaining('失败'), findsNothing);
@@ -95,6 +98,7 @@ void main() {
     repo.updateError = Exception('network down');
     await tester.tap(find.text('保存'));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.textContaining('配置文件保存失败'), findsOneWidget);
     await _drainToasts(tester);
   });

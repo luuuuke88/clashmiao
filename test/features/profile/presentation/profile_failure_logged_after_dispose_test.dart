@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/scripted_profile_repository.dart';
+import '../../../support/toast_pump.dart';
 
 /// 页面销毁后操作才失败：界面反馈被 `mounted` 挡掉是对的，但技术详情不能跟着
 /// 丢——catch 里先无条件写应用日志，再看 `mounted`。
@@ -109,6 +110,7 @@ void main() {
     repo.updateError = Exception('boom while mounted');
     await tester.tap(refreshButton);
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(_updateFailed), findsOneWidget);
     expect(records.map((r) => r.where), ['profiles.update']);
     await _drainToasts(tester);
@@ -146,8 +148,10 @@ void main() {
     expect(record.stackTrace, isNotNull);
     expect(records, hasLength(1));
 
-    // 失败处理已结束；再给提示足够的出现时间，确认它没有出现。
+    // 失败处理已结束；再给提示足够的出现时间（toast 入列与渲染各要一帧，见
+    // pumpToast），确认它没有出现。
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(_updateFailed), findsNothing);
     expect(tester.takeException(), isNull);
   });

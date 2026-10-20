@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/scripted_profile_repository.dart';
+import '../../../support/toast_pump.dart';
 
 /// 订阅页面对仓库异常的反馈：
 /// - 刷新结果因订阅被改动而作废（stale）：预期内的取消，静默；
@@ -104,6 +105,7 @@ void main() {
     repo.updateError = const StoreReadOnlyException(9);
     await tester.tap(updateIcons.at(1));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(upgrade), findsOneWidget);
     await _drainToasts(tester);
 
@@ -111,6 +113,7 @@ void main() {
     repo.updateError = const ProfileUpdateStaleException('profile-a');
     await tester.tap(updateIcons.at(1));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.textContaining('失败'), findsNothing);
     expect(find.textContaining('成功'), findsNothing);
     expect(find.text(upgrade), findsNothing);
@@ -120,6 +123,7 @@ void main() {
     repo.updateError = Exception('network down');
     await tester.tap(updateIcons.at(1));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('更新配置文件失败'), findsOneWidget);
     expect(find.textContaining('network down'), findsNothing, reason: '原文只进日志');
     expect(find.text(upgrade), findsNothing);
@@ -130,12 +134,14 @@ void main() {
     repo.setActiveError = const StoreReadOnlyException(9);
     await tester.tap(find.text('订阅 B'));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(upgrade), findsOneWidget);
     await _drainToasts(tester);
 
     repo.setActiveError = Exception('disk full');
     await tester.tap(find.text('订阅 B'));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('切换配置文件失败'), findsOneWidget);
     expect(find.textContaining('disk full'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);
@@ -144,6 +150,7 @@ void main() {
     repo.updateAllError = const StoreReadOnlyException(9);
     await tester.tap(updateIcons.first);
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(upgrade), findsOneWidget);
     await _drainToasts(tester);
   });

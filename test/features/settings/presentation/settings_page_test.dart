@@ -17,6 +17,8 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/toast_pump.dart';
+
 Future<Widget> _host({
   bool? debugIsAndroid,
   bool? debugIsIOS,
@@ -515,6 +517,7 @@ void main() {
 
       await tester.tap(find.text('重置 VPN 配置文件'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.resetTunnelCalls, 1);
       // 成功也必须给反馈：重置是瞬时的，页面上没有任何可见状态跟着变，
@@ -536,6 +539,7 @@ void main() {
 
       await tester.tap(find.text('重置 VPN 配置文件'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.resetTunnelCalls, 1);
       // 提示是本地化文案，技术细节（异常原文）只进日志、不展示给用户。

@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/scripted_profile_repository.dart';
+import '../../../support/toast_pump.dart';
 
 Future<void> _drainToasts(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 6));
@@ -64,6 +65,7 @@ void main() {
     repo.addError = const StoreReadOnlyException(9);
     await add();
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(upgrade), findsOneWidget);
     expect(find.textContaining('添加配置文件失败'), findsNothing);
     await _drainToasts(tester);
@@ -71,6 +73,7 @@ void main() {
     repo.editError = Exception('disk full');
     await edit();
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('配置文件保存失败'), findsOneWidget);
     expect(find.textContaining('disk full'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);
@@ -78,12 +81,14 @@ void main() {
     repo.editError = const StoreReadOnlyException(9);
     await edit();
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text(upgrade), findsOneWidget);
     await _drainToasts(tester);
 
     repo.addError = Exception('boom');
     await add();
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('添加配置文件失败'), findsOneWidget);
     expect(find.textContaining('boom'), findsNothing, reason: '原文只进日志');
     await _drainToasts(tester);

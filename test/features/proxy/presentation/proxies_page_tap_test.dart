@@ -34,6 +34,7 @@ import '../../../_fakes/fake_kernel_port.dart';
 import '../../../support/fake_box_service.dart';
 import '../../../support/fake_connection_controller.dart';
 import '../../../support/profile_store_support.dart';
+import '../../../support/toast_pump.dart';
 
 /// Toastification 的 auto-close 走 Timer（info=3s / error=5s），widget dispose 后
 /// timer 还活着会让 flutter_test 报 "A Timer is still pending"。
@@ -379,6 +380,7 @@ void main() {
 
       await tester.tap(find.text('node-b'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.selectOutboundCalls, 0, reason: '离线分组的 tag 不能用来调内核');
       expect(container.read(proxySelectionStoreProvider), isEmpty);
@@ -399,6 +401,7 @@ void main() {
 
       await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.urlTestCalls, isEmpty);
       expect(find.text('线路信息加载中，请稍候再试'), findsOneWidget);
@@ -417,6 +420,7 @@ void main() {
 
       await tester.tap(find.text('node-b'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.selectOutboundCalls, 1);
       expect(find.text('切换线路失败，请稍后重试'), findsOneWidget);
@@ -440,6 +444,7 @@ void main() {
 
       await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(spy.urlTestCalls, isNotEmpty);
       expect(find.text('测速失败，请稍后重试'), findsOneWidget);
@@ -753,6 +758,7 @@ void _addProxiesPageExtraTests() {
 
     await tester.tap(find.byIcon(FluentIcons.flash_24_regular));
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
 
     expect(spy.urlTestCalls, isEmpty);
     expect(find.text('请连接后测速'), findsOneWidget);

@@ -73,7 +73,7 @@ dependencies:
   mobile_scanner: ^7.4.2
 
   # 通知
-  toastification: ^2.1.0
+  toastification: ^3.2.0
   slang: ^4.19.2
   slang_flutter: ^4.19.0
   intl: ^0.20.2

@@ -17,6 +17,8 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
+import '../../../support/toast_pump.dart';
+
 Future<Widget> _host({List<Override> extraOverrides = const []}) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
@@ -150,6 +152,7 @@ void main() {
 
       await tester.tap(find.text('检查更新'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(find.text('已是最新版本'), findsOneWidget);
       expect(find.text('现在更新'), findsNothing);
@@ -207,6 +210,7 @@ void main() {
 
       await tester.tap(find.text('检查更新'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(find.text('检查更新失败，请检查网络后重试'), findsOneWidget);
       expect(find.text('已是最新版本'), findsNothing);
@@ -238,6 +242,7 @@ void main() {
 
       await tester.tap(find.text('检查更新'));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       expect(find.text('检查更新失败，请检查网络后重试'), findsOneWidget);
       expect(find.byType(CircularProgressIndicator), findsNothing);

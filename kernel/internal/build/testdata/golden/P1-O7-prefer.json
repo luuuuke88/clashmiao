@@ -6,9 +6,10 @@
   "dns": {
     "servers": [
       {
-        "type": "udp",
+        "type": "https",
         "tag": "dns-remote",
         "server": "1.1.1.1",
+        "path": "/dns-query",
         "detour": "select"
       },
       {
@@ -19,6 +20,23 @@
       {
         "type": "local",
         "tag": "dns-local"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "hk.example.net"
+        ],
+        "action": "route",
+        "server": "dns-direct"
+      },
+      {
+        "domain": [
+          "cp.cloudflare.com"
+        ],
+        "action": "route",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
       }
     ],
     "final": "dns-remote",
@@ -101,6 +119,18 @@
       {
         "protocol": [
           "dns"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "port": [
+          53
         ],
         "action": "hijack-dns"
       }

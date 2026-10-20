@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/luuuuke88/clashmiao/kernel/internal/build"
+	"github.com/luuuuke88/clashmiao/kernel/internal/build/cfg"
 	"github.com/luuuuke88/clashmiao/kernel/internal/options"
 )
 
@@ -51,6 +52,7 @@ func CheckInvariants(raw []byte, o *options.Options, env build.Env) []string {
 	checkTags(v, g, c, o, env)
 	checkOrderAndFinals(v, g, c, o)
 	checkWarpMembership(v, g)
+	checkDNSDeps(v, raw)
 	return v.list
 }
 
@@ -569,5 +571,18 @@ func checkWarpMembership(v *violations, g *graph) {
 		if m, ok := g.nodes[grp]; ok && contains(strList(m["outbounds"]), "warp") {
 			v.addf("warp 不得是 %s 的成员", grp)
 		}
+	}
+}
+
+// checkDNSDeps 复用构建器自己的依赖环检查（同一份 CheckDNSDeps）：DNS 服务器 → domain_resolver / detour，
+// 出站 → default_domain_resolver 三类边无环，且 domain_resolver 链的终点是 IP 字面量服务器。
+func checkDNSDeps(v *violations, raw []byte) {
+	var c cfg.Config
+	if err := json.Unmarshal(raw, &c); err != nil {
+		v.addf("配置无法按 schema 类型解码: %v", err)
+		return
+	}
+	if err := build.CheckDNSDeps(&c); err != nil {
+		v.addf("DNS 依赖检查: %v", err)
 	}
 }

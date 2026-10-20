@@ -1,0 +1,188 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "tls",
+        "tag": "dns-remote",
+        "server": "dot.example.net",
+        "domain_resolver": "dns-bootstrap",
+        "detour": "select"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "local",
+        "tag": "dns-local"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-bootstrap",
+        "server": "223.5.5.5"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "hk.example.net",
+          "jp.example.net",
+          "us.example.net"
+        ],
+        "action": "route",
+        "server": "dns-direct"
+      },
+      {
+        "domain": [
+          "cp.cloudflare.com"
+        ],
+        "action": "route",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
+      }
+    ],
+    "final": "dns-remote",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/28"
+      ],
+      "mtu": 9000,
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "mixed",
+      "endpoint_independent_nat": true
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 2080
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "listen_port": 6450
+    }
+  ],
+  "outbounds": [
+    {
+      "default": "auto",
+      "outbounds": [
+        "auto",
+        "香港01",
+        "美国01",
+        "日本01",
+        "剩余流量：100 GB"
+      ],
+      "tag": "select",
+      "type": "selector"
+    },
+    {
+      "idle_timeout": "6000s",
+      "interval": "600s",
+      "outbounds": [
+        "香港01",
+        "美国01",
+        "日本01",
+        "剩余流量：100 GB"
+      ],
+      "tag": "auto",
+      "type": "urltest",
+      "url": "http://connectivitycheck.gstatic.com/generate_204"
+    },
+    {
+      "method": "aes-128-gcm",
+      "password": "pDt7ZmcA6DgEDa6f",
+      "server": "hk.example.net",
+      "server_port": 8388,
+      "tag": "香港01",
+      "type": "shadowsocks"
+    },
+    {
+      "password": "lqEPHnZoFxtOwNms",
+      "server": "us.example.net",
+      "server_port": 443,
+      "tag": "美国01",
+      "tls": {
+        "enabled": true,
+        "server_name": "us.example.net"
+      },
+      "type": "trojan"
+    },
+    {
+      "method": "aes-128-gcm",
+      "password": "QswtJCce+e+mDh20",
+      "server": "jp.example.net",
+      "server_port": 8388,
+      "tag": "日本01",
+      "type": "shadowsocks"
+    },
+    {
+      "method": "aes-128-gcm",
+      "password": "DLzoQCtbvrgD3JaO",
+      "server": "192.0.2.1",
+      "server_port": 1,
+      "tag": "剩余流量：100 GB",
+      "type": "shadowsocks"
+    },
+    {
+      "tag": "direct",
+      "type": "direct"
+    },
+    {
+      "tag": "direct-fragment",
+      "type": "direct",
+      "udp_fragment": true
+    },
+    {
+      "tag": "bypass",
+      "type": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": [
+          "dns"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "port": [
+          53
+        ],
+        "action": "hijack-dns"
+      }
+    ],
+    "final": "select",
+    "auto_detect_interface": true,
+    "override_android_vpn": true,
+    "default_domain_resolver": "dns-direct"
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "cache.db"
+    }
+  }
+}

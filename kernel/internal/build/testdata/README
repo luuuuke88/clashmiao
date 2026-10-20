@@ -46,5 +46,17 @@ O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽
 | P1-O8 | P1 | O8 | U4 |
 | P2-O1 | P2 | O1 | U4 |
 | P4b-O1 | P4b | O1 | U4 |
+| dns-O3 | P2 | O3（fake DNS + DNS 路由 + 绕过局域网） | U5 |
+| dns-O6-ip | P2 | O6-ip | U5 |
+| dns-O6-https-domain | P2 | O6-https-domain（远程 DNS 为域名型 DoH） | U5 |
+| dns-O6-https-ip | P2 | O6-https-ip | U5 |
+| dns-O6-h3 | P2 | O6-h3 | U5 |
+| dns-O6-tls | P2 | O6-tls | U5 |
+| dns-O6-quic | P2 | O6-quic | U5 |
+| dns-O6-tcp | P2 | O6-tcp | U5 |
+| dns-O6-udp | P2 | O6-udp | U5 |
+| dns-O6-local | P2 | O6-local | U5 |
+| dns-O6-direct-doh-domain | P2 | O6-direct-doh-domain（直连 DNS 为域名型 DoH） | U5 |
+| dns-O7-only | P2 | O7-only | U5 |
 
-后续任务往表里加格子（U5：O3 / O6-*；U6：O3 / O9；U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。
+后续任务往表里加格子（U6：O3 / O9；U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。

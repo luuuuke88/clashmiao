@@ -1,0 +1,1 @@
+[{"tag":"select","type":"selector","selected":"auto","items":[{"tag":"auto","type":"urltest","url-test-delay":0},{"tag":"a","type":"direct","url-test-delay":0},{"tag":"b","type":"direct","url-test-delay":0}]},{"tag":"auto","type":"urltest","selected":"a","items":[{"tag":"a","type":"direct","url-test-delay":0},{"tag":"b","type":"direct","url-test-delay":0}]}]

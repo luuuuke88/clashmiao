@@ -1,3 +1,7 @@
+// 与 lib/app/tray/tray_controller.dart 一样，暂时停在 tray_manager 的 legacy
+// 接口上（见那里的说明）。
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 
 import 'package:fake_async/fake_async.dart';
@@ -9,7 +13,7 @@ import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:tray_manager/legacy.dart';
 
 /// 回归测试几个点：
 ///

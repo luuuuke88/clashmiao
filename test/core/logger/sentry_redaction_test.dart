@@ -1,7 +1,6 @@
 // `extra` 已弃用但仍会随事件发送，脱敏要覆盖它。
 // ignore_for_file: deprecated_member_use
 
-import 'dart:collection';
 import 'dart:convert';
 
 import 'package:clashmiao/core/logger/sentry_redaction.dart';
@@ -354,7 +353,7 @@ void main() {
     expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
   });
 
-  group('子 span 改写不了时的退路', () {
+  group('子 span：移除未结束的、已结束的换成脱钩快照', () {
     /// 经真实 Hub 拿一个**未脱敏**的事务（带一个正常子 span），交给测试往里塞
     /// 改写不了的子 span，再直接调 [redactSentryTransaction]。
     Future<SentryTransaction> rawTransaction() async {
@@ -381,45 +380,68 @@ void main() {
       return raw!;
     }
 
-    test('data 写不回去：描述 / data / tags 整块清空，兄弟 span 照常脱敏', () async {
+    test('取不到 JSON 的子 span 只丢掉它，兄弟 span 照常脱敏后保留', () async {
       final tx = await rawTransaction();
-      final stuck = _StandInSpan(
+      final broken = _StandInSpan(
         'db',
         description: 'q?token=SECRET',
-        data: _NoWriteBackMap({'token': 'SECRET'}),
+        data: {'token': 'SECRET'},
         tags: {'password': 'SECRET'},
+        toJsonThrows: true,
       );
-      tx.spans.add(stuck);
+      tx.spans.add(broken);
 
       final out = redactSentryTransaction(tx)!;
 
-      expect(out.spans, contains(stuck));
-      expect(stuck.context.description, isNull);
-      expect(stuck.data, isEmpty);
-      expect(stuck.tags, isEmpty);
-      final fine = out.spans.singleWhere(
-        (s) => s.context.operation == 'http.client',
-      );
+      expect(out.spans.map((s) => s.context.operation), ['http.client']);
+      final fine = out.spans.single;
       expect(fine.context.description, isNot(contains('SECRET')));
       expect(fine.tags['region'], 'hk');
       expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
     });
 
-    test('连清空都不行（只读 Map）：把这个 span 从事务里移除，其余照常', () async {
+    test('还没结束的子 span 整个移除', () async {
       final tx = await rawTransaction();
-      final frozen = _StandInSpan(
+      final open = _StandInSpan(
         'db',
-        description: 'q?token=SECRET',
-        data: Map.unmodifiable({'token': 'SECRET'}),
-        tags: const {},
+        description: 'select',
+        data: {},
+        tags: {},
+        finished: false,
       );
-      tx.spans.add(frozen);
+      tx.spans.add(open);
 
       final out = redactSentryTransaction(tx)!;
 
-      expect(out.spans, isNot(contains(frozen)));
+      expect(out.spans, isNot(contains(open)));
       expect(out.spans.map((s) => s.context.operation), ['http.client']);
-      expect(jsonEncode(out.toJson()), isNot(contains('SECRET')));
+    });
+
+    test('脱敏之后再改原 span，发出去的内容不变（快照与原对象脱钩）', () async {
+      final tx = await rawTransaction();
+      final original = _StandInSpan(
+        'db',
+        description: 'select',
+        data: {'rows': 3},
+        tags: {'region': 'hk'},
+      );
+      tx.spans.add(original);
+
+      final out = redactSentryTransaction(tx)!;
+      final before = jsonEncode(out.toJson());
+      original.context.description = 'q?token=SECRET';
+      original.data['token'] = 'SECRET';
+      original.tags['password'] = 'SECRET';
+      // 快照对外给出的 data / tags 也改不动。
+      final snapshot = out.spans.singleWhere(
+        (s) => s.context.operation == 'db',
+      );
+      expect(() => snapshot.data['token'] = 'SECRET', throwsUnsupportedError);
+      snapshot.setTag('password', 'SECRET');
+
+      expect(jsonEncode(out.toJson()), before);
+      expect(before, isNot(contains('SECRET')));
+      expect(before, contains('"rows":3'));
     });
   });
 
@@ -508,18 +530,22 @@ class _DiscardingTransport implements Transport {
       const SentryId.empty();
 }
 
-/// 只实现脱敏会碰到的成员（context / data / tags / toJson）的子 span 替身，
-/// 用来构造「改写不了」的 span。
+/// 只实现脱敏会碰到的成员（context / data / tags / finished / toJson）的子 span
+/// 替身，用来构造取不到 JSON、尚未结束等情形。
 class _StandInSpan implements SentrySpan {
   _StandInSpan(
     String operation, {
     String? description,
     required this.data,
     required this.tags,
+    this.finished = true,
+    this.toJsonThrows = false,
   }) : context = SentrySpanContext(
          operation: operation,
          description: description,
        );
+
+  final bool toJsonThrows;
 
   @override
   final SentrySpanContext context;
@@ -527,37 +553,19 @@ class _StandInSpan implements SentrySpan {
   final Map<String, dynamic> data;
   @override
   final Map<String, String> tags;
+  @override
+  final bool finished;
 
   @override
-  Map<String, dynamic> toJson() => {
-    ...context.toJson(),
-    if (data.isNotEmpty) 'data': data,
-    if (tags.isNotEmpty) 'tags': tags,
-  };
+  Map<String, dynamic> toJson() {
+    if (toJsonThrows) throw StateError('cannot serialize');
+    return {
+      ...context.toJson(),
+      if (data.isNotEmpty) 'data': data,
+      if (tags.isNotEmpty) 'tags': tags,
+    };
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-/// 能清空、但写不进新值的 Map：脱敏写回时抛异常，退路的「清空」能成功。
-class _NoWriteBackMap extends MapBase<String, dynamic> {
-  _NoWriteBackMap(Map<String, dynamic> initial) : _inner = Map.of(initial);
-
-  final Map<String, dynamic> _inner;
-
-  @override
-  dynamic operator [](Object? key) => _inner[key];
-
-  @override
-  void operator []=(String key, dynamic value) =>
-      throw UnsupportedError('read-only values');
-
-  @override
-  void clear() => _inner.clear();
-
-  @override
-  Iterable<String> get keys => _inner.keys;
-
-  @override
-  dynamic remove(Object? key) => _inner.remove(key);
 }

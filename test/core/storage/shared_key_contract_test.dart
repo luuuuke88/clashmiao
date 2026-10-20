@@ -41,7 +41,7 @@ Map<String, String> _kotlinSharedKeys(String source) => {
     m.group(1)!: m.group(2)!,
 };
 
-/// `read(PrefsKey.NAME, <default>)` → {NAME: <default 源码片段>}
+/// `read(PrefsKey.NAME, <default>)` → `{NAME: <default 源码片段>}`
 Map<String, String> _kotlinDefaults(String source) => {
   for (final m in RegExp(
     r'read\(PrefsKey\.(\w+),\s*([^)]+?)\)',
@@ -50,7 +50,7 @@ Map<String, String> _kotlinDefaults(String source) => {
 };
 
 /// KernelStore 里迁移读取的旧键：`kv.getXxx(LEGACY_A, <default>)` 且
-/// `const val LEGACY_A = PrefsKey.NAME` → {NAME: <default 源码片段>}
+/// `const val LEGACY_A = PrefsKey.NAME` → `{NAME: <default 源码片段>}`
 Map<String, String> _kernelStoreLegacyDefaults(String source) {
   final alias = {
     for (final m in RegExp(
@@ -62,7 +62,7 @@ Map<String, String> _kernelStoreLegacyDefaults(String source) {
     for (final m in RegExp(
       r'kv\.get\w+\((\w+),\s*([^)]+?)\)',
     ).allMatches(source))
-      if (alias[m.group(1)!] case final name?) name: m.group(2)!.trim(),
+      ?alias[m.group(1)!]: m.group(2)!.trim(),
   };
 }
 

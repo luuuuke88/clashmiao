@@ -30,7 +30,7 @@ void main() {
 
     test('level=all returns all lines', () async {
       final container = _makeContainer(Stream.value(testLines));
-      final sub = container.listen(logFilterProvider, (_, __) {});
+      final sub = container.listen(logFilterProvider, (_, _) {});
       addTearDown(sub.close);
       await container.pump();
       await Future<void>.delayed(Duration.zero);
@@ -41,7 +41,7 @@ void main() {
     test('level=warn cascades to more severe levels (warn/error/fatal shown, '
         'debug/info hidden)', () async {
       final container = _makeContainer(Stream.value(testLines));
-      final sub = container.listen(logFilterProvider, (_, __) {});
+      final sub = container.listen(logFilterProvider, (_, _) {});
       addTearDown(sub.close);
       await container.pump();
       await Future<void>.delayed(Duration.zero);
@@ -59,7 +59,7 @@ void main() {
 
     test('level=error only cascades to error/fatal', () async {
       final container = _makeContainer(Stream.value(testLines));
-      final sub = container.listen(logFilterProvider, (_, __) {});
+      final sub = container.listen(logFilterProvider, (_, _) {});
       addTearDown(sub.close);
       await container.pump();
       await Future<void>.delayed(Duration.zero);
@@ -75,7 +75,7 @@ void main() {
 
     test('query filters case-insensitively', () async {
       final container = _makeContainer(Stream.value(testLines));
-      final sub = container.listen(logFilterProvider, (_, __) {});
+      final sub = container.listen(logFilterProvider, (_, _) {});
       addTearDown(sub.close);
       await container.pump();
       await Future<void>.delayed(Duration.zero);
@@ -87,7 +87,7 @@ void main() {
 
     test('combined level+query narrows result', () async {
       final container = _makeContainer(Stream.value(testLines));
-      final sub = container.listen(logFilterProvider, (_, __) {});
+      final sub = container.listen(logFilterProvider, (_, _) {});
       addTearDown(sub.close);
       await container.pump();
       await Future<void>.delayed(Duration.zero);
@@ -108,7 +108,7 @@ void main() {
         addTearDown(controller.close);
         final container = _makeContainer(controller.stream);
 
-        final sub = container.listen(logFilterProvider, (_, __) {});
+        final sub = container.listen(logFilterProvider, (_, _) {});
         final notifier = container.read(logFilterProvider.notifier);
 
         var updateCount = 0;

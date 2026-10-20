@@ -32,7 +32,7 @@ Map<String, Object> _v1({Object? direct = '1.1.1.1'}) => {
   kStorageSchemaKey: 1,
   'clashmiao_mixed_port': 2090,
   'clashmiao_region': 'other',
-  if (direct != null) _key: direct,
+  _key: ?direct,
 };
 
 void main() {

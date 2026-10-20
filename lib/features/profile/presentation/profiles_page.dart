@@ -95,7 +95,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       shrinkWrap: true,
                       itemCount: sortedProfiles.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      separatorBuilder: (_, _) => const SizedBox(height: 16),
                       itemBuilder: (context, index) {
                         final profile = sortedProfiles[index];
                         return _ProfileCard(
@@ -235,7 +235,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                     bottom: widget.embedInSheet ? 24 : 120,
                   ),
                   itemCount: sortedProfiles.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final profile = sortedProfiles[index];
                     return _ProfileCard(

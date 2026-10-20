@@ -1,0 +1,43 @@
+{
+  "outbounds": [
+    {
+      "detour": "direct",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "node-a",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "node-a",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "node-b",
+      "type": "shadowsocks"
+    }
+  ],
+  "endpoints": [
+    {
+      "address": [
+        "10.2.0.2/32"
+      ],
+      "detour": "direct",
+      "peers": [
+        {
+          "address": "192.0.2.8",
+          "allowed_ips": [
+            "0.0.0.0/0"
+          ],
+          "port": 51820,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
+        }
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "tag": "wg-d",
+      "type": "wireguard"
+    }
+  ]
+}

@@ -1,0 +1,195 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。 每行是一个出站对象；needsCleaning 表示它带旧形态（Go 的 legacy.Clean 会改动它，Dart 侧用同一口径判断）。订阅自带的 selector / urltest / direct 不在此列（它们由构建器按规则丢弃）。",
+  "shapes": [
+    {
+      "name": "wireguard 出站（1.8 写法）",
+      "json": {
+        "type": "wireguard",
+        "tag": "wg-1",
+        "server": "wg.example.net",
+        "server_port": 51820,
+        "local_address": [
+          "10.8.0.2/32"
+        ],
+        "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        "peer_public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "wireguard 出站（带全部旧字段）",
+      "json": {
+        "type": "wireguard",
+        "tag": "wg-2",
+        "server": "198.51.100.7",
+        "server_port": 2408,
+        "local_address": [
+          "10.9.0.2/32",
+          "fd00::2/128"
+        ],
+        "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+        "peer_public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+        "pre_shared_key": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8=",
+        "reserved": [
+          1,
+          2,
+          3
+        ],
+        "mtu": 1280,
+        "allowed_ips": [
+          "10.0.0.0/8"
+        ],
+        "system_interface": false,
+        "interface_name": "wg0",
+        "workers": 2,
+        "detour": "carrier",
+        "tcp_fast_open": true
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "dns 出站",
+      "json": {
+        "type": "dns",
+        "tag": "dns-out"
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "block 出站",
+      "json": {
+        "type": "block",
+        "tag": "block"
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "顶层 tls_fragment",
+      "json": {
+        "type": "trojan",
+        "tag": "t",
+        "server": "t.example.net",
+        "server_port": 443,
+        "password": "x",
+        "tls_fragment": {
+          "enabled": true,
+          "size": "10-30",
+          "sleep": "50-200"
+        },
+        "tls": {
+          "enabled": true,
+          "server_name": "t.example.net",
+          "tls_tricks": {
+            "mixed_case_sni": true,
+            "padding_mode": "random"
+          },
+          "tls_fragment": {
+            "enabled": true
+          }
+        }
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "tls 里的 tls_tricks",
+      "json": {
+        "type": "trojan",
+        "tag": "t2",
+        "server": "t.example.net",
+        "server_port": 443,
+        "password": "x",
+        "tls": {
+          "enabled": true,
+          "tls_tricks": {
+            "mixed_case_sni": true
+          }
+        }
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "出站上的 domain_strategy",
+      "json": {
+        "type": "shadowsocks",
+        "tag": "ds",
+        "server": "192.0.2.10",
+        "server_port": 8388,
+        "method": "aes-128-gcm",
+        "password": "x",
+        "domain_strategy": "prefer_ipv6"
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "出站上的 sniff 字段",
+      "json": {
+        "type": "shadowsocks",
+        "tag": "sn",
+        "server": "192.0.2.10",
+        "server_port": 8388,
+        "method": "aes-128-gcm",
+        "password": "x",
+        "sniff": true,
+        "sniff_override_destination": true
+      },
+      "needsCleaning": true
+    },
+    {
+      "name": "普通 shadowsocks",
+      "json": {
+        "type": "shadowsocks",
+        "tag": "plain",
+        "server": "192.0.2.10",
+        "server_port": 8388,
+        "method": "aes-128-gcm",
+        "password": "x"
+      },
+      "needsCleaning": false
+    },
+    {
+      "name": "带 tcp_fast_open / udp_fragment 的 shadowsocks",
+      "json": {
+        "type": "shadowsocks",
+        "tag": "tfo",
+        "server": "192.0.2.10",
+        "server_port": 8388,
+        "method": "aes-128-gcm",
+        "password": "x",
+        "tcp_fast_open": true,
+        "udp_fragment": true
+      },
+      "needsCleaning": false
+    },
+    {
+      "name": "带 multiplex 与未知字段的 vmess",
+      "json": {
+        "type": "vmess",
+        "tag": "vm",
+        "server": "192.0.2.2",
+        "server_port": 443,
+        "uuid": "11111111-2222-4333-8444-555555555555",
+        "multiplex": {
+          "enabled": true
+        },
+        "x_future": 1
+      },
+      "needsCleaning": false
+    },
+    {
+      "name": "已经是 1.14 形态的 trojan + tls",
+      "json": {
+        "type": "trojan",
+        "tag": "t3",
+        "server": "t.example.net",
+        "server_port": 443,
+        "password": "x",
+        "tls": {
+          "enabled": true,
+          "fragment": true,
+          "record_fragment": true
+        }
+      },
+      "needsCleaning": false
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "trojan",
+      "tag": "t",
+      "server": "t.example.net",
+      "server_port": 443,
+      "password": "x",
+      "tls_fragment": {
+        "enabled": true,
+        "size": "10-30",
+        "sleep": "50-200"
+      },
+      "tls": {
+        "enabled": true,
+        "server_name": "t.example.net",
+        "tls_tricks": {
+          "mixed_case_sni": true,
+          "padding_mode": "random"
+        },
+        "tls_fragment": {
+          "enabled": true
+        }
+      }
+    }
+  ]
+}

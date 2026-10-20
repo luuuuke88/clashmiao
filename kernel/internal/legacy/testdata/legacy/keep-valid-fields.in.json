@@ -1,0 +1,20 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "a",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "tcp_fast_open": true,
+      "udp_fragment": true,
+      "multiplex": {
+        "enabled": true,
+        "protocol": "smux"
+      },
+      "connect_timeout": "5s"
+    }
+  ]
+}

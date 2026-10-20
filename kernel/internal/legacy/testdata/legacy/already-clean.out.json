@@ -1,0 +1,33 @@
+{
+  "outbounds": [
+    {
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "a",
+      "tcp_fast_open": true,
+      "type": "shadowsocks"
+    }
+  ],
+  "endpoints": [
+    {
+      "address": [
+        "10.3.0.2/32"
+      ],
+      "peers": [
+        {
+          "address": "192.0.2.6",
+          "allowed_ips": [
+            "0.0.0.0/0"
+          ],
+          "port": 51820,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
+        }
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "tag": "wg-c",
+      "type": "wireguard"
+    }
+  ]
+}

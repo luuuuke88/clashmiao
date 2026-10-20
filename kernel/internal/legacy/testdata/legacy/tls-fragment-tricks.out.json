@@ -1,0 +1,15 @@
+{
+  "outbounds": [
+    {
+      "password": "x",
+      "server": "t.example.net",
+      "server_port": 443,
+      "tag": "t",
+      "tls": {
+        "enabled": true,
+        "server_name": "t.example.net"
+      },
+      "type": "trojan"
+    }
+  ]
+}

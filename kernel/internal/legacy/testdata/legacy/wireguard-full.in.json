@@ -1,0 +1,40 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "carrier",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x"
+    },
+    {
+      "type": "wireguard",
+      "tag": "wg-2",
+      "server": "198.51.100.7",
+      "server_port": 2408,
+      "local_address": [
+        "10.9.0.2/32",
+        "fd00::2/128"
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "peer_public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+      "pre_shared_key": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8=",
+      "reserved": [
+        1,
+        2,
+        3
+      ],
+      "mtu": 1280,
+      "allowed_ips": [
+        "10.0.0.0/8"
+      ],
+      "system_interface": false,
+      "interface_name": "wg0",
+      "workers": 2,
+      "detour": "carrier",
+      "tcp_fast_open": true
+    }
+  ]
+}

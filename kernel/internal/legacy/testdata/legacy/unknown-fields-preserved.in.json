@@ -1,0 +1,21 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "a",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "x_future_field": {
+        "nested": [
+          1,
+          2,
+          3
+        ]
+      },
+      "domain_strategy": "prefer_ipv4"
+    }
+  ]
+}

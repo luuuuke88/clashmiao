@@ -522,14 +522,15 @@ class _GlassBottomNav extends ConsumerWidget {
                 return Expanded(
                   child: PressFeedback(
                     pressedScale: PressFeedback.iconPressedScale,
+                    focusBorderRadius: BorderRadius.circular(24),
                     key: ValueKey('bottom_nav_$i'),
                     onTap: () => onTap(i),
                     behavior: HitTestBehavior.opaque,
                     // 文字去掉了，但标签不能跟着消失——读屏用户靠它区分四个
                     // tab，图标本身对读屏是空的。
                     child: Semantics(
+                      // 按钮语义由 PressFeedback 提供，这里只补标签与选中态。
                       label: label,
-                      button: true,
                       selected: isSelected,
                       child: Center(
                         // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫

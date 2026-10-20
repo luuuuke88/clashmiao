@@ -613,6 +613,7 @@ class _Button extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(24),
       onTap: onTap,
       child: Container(
         width: size,
@@ -671,6 +672,7 @@ class _LongButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),

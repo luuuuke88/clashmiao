@@ -30,6 +30,10 @@
 # 可复现性：
 #   构建一律在固定绝对路径 BUILD_ROOT（默认 /tmp/clashmiao-libcore-build）里进行，
 #   每次开始前清空，源码路径会写进 Go buildinfo，路径固定产物才稳定。
+#   BUILD_ROOT 会被递归清空，所以限制很严：必须是绝对路径、最后一级必须叫
+#   clashmiao-libcore-build、不能是符号链接，根目录与 $HOME 的各种写法一律拒绝；
+#   互斥锁是同级目录 <路径>.lock（不在构建目录里面），尾斜杠、重复斜杠、符号链接上级
+#   这些等价写法共用同一把锁。
 #   在同一台机器、同一套工具链下，两次全新构建的四个 libbox.so 与 classes.jar
 #   逐字节相同；是否连 aar 整体也相同，见 README 的说明。改了 BUILD_ROOT 就会得到
 #   不同的 buildinfo，也就是不同的哈希。
@@ -167,18 +171,116 @@ compare_public_api() {
   fi
 }
 
+# 放行门：hash 校验 -> （有参考 aar 时）公共 API 对比 -> 才写产物。
+# 任何一步失败都 die，此前不得往 OUT_DIR 写任何东西。
+finalize_artifacts() {
+  local javap="$1" expected="$2" reference="$3" check_dir="$4" built_aar="$5" out_dir="$6" work="$7"
+  check_classes_hash "$check_dir/classes.jar" "$expected" "$reference"
+  if [ -n "$reference" ]; then
+    log "与参考 aar 对比 Java 公共 API：${reference}"
+    mkdir -p "$work/ref" || die "建不了目录 ${work}/ref"
+    unzip -q -o "$reference" classes.jar -d "$work/ref" || die "参考 aar 里取不到 classes.jar"
+    compare_public_api "$javap" "$work/ref/classes.jar" "$check_dir/classes.jar" "$work/apicmp"
+    log "公共 API 零差异 ✓"
+  fi
+  mkdir -p "$out_dir" || die "建不了输出目录 ${out_dir}"
+  cp -f "$built_aar" "$out_dir/libcore.aar" || die "复制产物失败"
+  (cd "$out_dir" && sha256 libcore.aar | sed 's/$/  libcore.aar/' > libcore.aar.sha256) || die "写 sha256 失败"
+}
+
+# ---------------------------------------------------------------- 构建目录
+# 构建目录会被递归 chmod / rm，所以路径必须先规范化并严格限定：
+#   - 必须是绝对路径；折叠重复斜杠、去掉尾部斜杠；不允许 . 与 .. 分量；
+#   - 最后一级必须是专用目录名 BUILD_DIR_NAME（根目录及其各种写法、$HOME 因此都被拒绝）；
+#   - 上级目录必须存在，且目标本身不能是符号链接；
+#   - 锁是构建目录的“同级”目录 <规范路径>.lock，用 mkdir 原子创建，
+#     不在构建目录里面，清空构建目录时删不到它；等价写法（尾斜杠、符号链接上级）
+#     解析成同一把锁。
+# 构建时仍使用折叠后的“逻辑路径”（不解析符号链接），这样默认路径
+# /tmp/clashmiao-libcore-build 在 macOS 上不会被改写成 /private/tmp/…，
+# buildinfo 里的源码路径（也就是产物哈希）保持不变。
+BUILD_DIR_NAME="clashmiao-libcore-build"
+BUILD_ROOT_LOGICAL=""
+BUILD_ROOT_CANON=""
+LOCK_HELD=0
+
+resolve_build_root() {
+  local raw="$1" p base parent cparent canon hcanon
+  case "$raw" in
+    /*) ;;
+    *) die "BUILD_ROOT 必须是绝对路径：${raw}" ;;
+  esac
+  p="$(printf '%s' "$raw" | sed -e 's#//*#/#g' -e 's#/*$##')" || die "BUILD_ROOT 规范化失败"
+  [ -n "$p" ] || die "BUILD_ROOT 不能是根目录：${raw}"
+  case "${p}/" in
+    */./*|*/../*) die "BUILD_ROOT 不能含 . 或 .. 分量：${raw}" ;;
+  esac
+  base="${p##*/}"
+  parent="${p%/*}"
+  [ -n "$parent" ] || parent="/"
+  [ "$base" = "$BUILD_DIR_NAME" ] || die "BUILD_ROOT 的最后一级必须是专用目录名 ${BUILD_DIR_NAME}：${raw}"
+  [ -d "$parent" ] || die "BUILD_ROOT 的上级目录不存在：${parent}"
+  cparent="$(cd "$parent" && pwd -P)" || die "解析上级目录失败：${parent}"
+  [ -n "$cparent" ] || die "解析上级目录失败：${parent}"
+  if [ "$cparent" = "/" ]; then canon="/${base}"; else canon="${cparent}/${base}"; fi
+  if [ -n "${HOME:-}" ] && [ -d "$HOME" ]; then
+    hcanon="$(cd "$HOME" && pwd -P)" || die "解析 HOME 失败"
+    [ "$canon" != "$hcanon" ] || die "BUILD_ROOT 不能是 HOME：${raw}"
+  fi
+  [ ! -L "$p" ] || die "BUILD_ROOT 不能是符号链接：${raw}"
+  if [ -e "$canon" ] && [ ! -d "$canon" ]; then die "BUILD_ROOT 已存在但不是目录：${canon}"; fi
+  BUILD_ROOT_LOGICAL="$p"
+  BUILD_ROOT_CANON="$canon"
+}
+
+acquire_build_lock() {
+  local lock="${BUILD_ROOT_CANON}.lock"
+  mkdir "$lock" 2>/dev/null || die "已有构建在用 ${BUILD_ROOT_CANON}（或上次被强杀后残留）；确认没有别的构建后删除 ${lock} 再重试"
+  LOCK_HELD=1
+}
+
+wipe_dir() {
+  local d="$1"
+  case "$d" in
+    ''|/) die "拒绝清理：${d:-<空>}" ;;
+  esac
+  # Go 模块缓存是只读的，先放开写权限才删得掉
+  chmod -R u+w "$d" 2>/dev/null || true
+  rm -rf "$d"
+}
+
+cleanup() {
+  # 没拿到锁（比如被别的构建占着）就什么都不碰：既不清目录，也不删别人的锁
+  [ "$LOCK_HELD" = 1 ] || return 0
+  if [ "${KEEP_WORK:-}" = 1 ]; then log "保留构建目录：${BUILD_ROOT_LOGICAL}"
+  else wipe_dir "$BUILD_ROOT_LOGICAL"; fi
+  rmdir "${BUILD_ROOT_CANON}.lock" 2>/dev/null || true
+}
+prepare_build_dir() {
+  resolve_build_root "$1"
+  acquire_build_lock
+  wipe_dir "$BUILD_ROOT_LOGICAL"
+  mkdir -p "$BUILD_ROOT_LOGICAL" || die "建不了构建目录 ${BUILD_ROOT_LOGICAL}"
+}
+
 # ---------------------------------------------------------------- 自测
 # 对每条失败路径做故障注入，断言非零退出；每条配一个正向对照，防止自测空转。
+# shellcheck disable=SC2329  # 自测里的辅助函数都经 expect_ok / expect_fail 间接调用
 run_self_test() {
   local t pass=0 total=0
-  t="$(mktemp -d "${TMPDIR:-/tmp}/libcore-selftest.XXXXXX")"
+  local tmp_root="${TMPDIR:-/tmp}"   # macOS 的 TMPDIR 带尾斜杠，去掉免得路径里出现 //
+  t="$(mktemp -d "${tmp_root%/}/libcore-selftest.XXXXXX")"
   # shellcheck disable=SC2064  # 有意在此刻展开：函数返回后 $t 已不在作用域
   trap "rm -rf '$t'" EXIT
 
+  # SELFTEST_VERBOSE=1 时不吞子 shell 的输出，便于排查
+  run_quiet() {
+    if [ "${SELFTEST_VERBOSE:-}" = 1 ]; then ( "$@" ); else ( "$@" ) >/dev/null 2>&1; fi
+  }
   expect_fail() {
     local name="$1" rc=0
     shift
-    ( "$@" ) >/dev/null 2>&1 || rc=$?
+    run_quiet "$@" || rc=$?
     total=$((total + 1))
     if [ "$rc" -ne 0 ]; then pass=$((pass + 1)); log "自测 ✓ 应失败且已失败：${name}（exit ${rc}）"
     else warn "自测 ✗ 应失败却成功：${name}"; fi
@@ -186,7 +288,7 @@ run_self_test() {
   expect_ok() {
     local name="$1" rc=0
     shift
-    ( "$@" ) >/dev/null 2>&1 || rc=$?
+    run_quiet "$@" || rc=$?
     total=$((total + 1))
     if [ "$rc" -eq 0 ]; then pass=$((pass + 1)); log "自测 ✓ 应成功且已成功：${name}"
     else warn "自测 ✗ 应成功却失败：${name}（exit ${rc}）"; fi
@@ -228,15 +330,22 @@ EOF
   (cd "$t/j1" && zip -q -r ../ref.jar a)
   (cd "$t/j2" && zip -q -r ../same.jar a)
   (cd "$t/j3" && zip -q -r ../diff.jar a)
+  # 与 ref.jar 的 API 相同、但字节不同（多一个非类文件）：模拟“换了 JDK、字节码哈希变了，API 没变”
+  mkdir -p "$t/j4/a" && cp "$t/j1/a/A.class" "$t/j4/a/A.class" && echo "x" >"$t/j4/meta.txt"
+  (cd "$t/j4" && zip -q -r ../apisame.jar a meta.txt)
   printf 'x' >"$t/readme.txt" && (cd "$t" && zip -q noclass2.jar readme.txt)
   cat >"$t/javap" <<'EOF'
 #!/bin/sh
 # 用法同 javap -public -cp <jar> <class...>；输出取自 jar 里类文件的内容
+# FAKE_JAVAP=fail|empty：两侧都失败/为空；FAKE_FAIL_MATCH / FAKE_EMPTY_MATCH：
+# 只有 jar 路径含该子串的一侧失败/为空（用来单独打坏新侧）
 case "$FAKE_JAVAP" in
   fail)  exit 1 ;;
   empty) exit 0 ;;
 esac
 jar="$3"; shift 3
+if [ -n "$FAKE_FAIL_MATCH" ]; then case "$jar" in *"$FAKE_FAIL_MATCH"*) exit 1 ;; esac; fi
+if [ -n "$FAKE_EMPTY_MATCH" ]; then case "$jar" in *"$FAKE_EMPTY_MATCH"*) exit 0 ;; esac; fi
 for c in "$@"; do unzip -p "$jar" "$(echo "$c" | tr . /).class"; done
 EOF
   chmod +x "$t/javap"
@@ -254,6 +363,124 @@ EOF
   expect_fail "哈希不一致 + 仅设 ALLOW_JDK_MISMATCH（无 REFERENCE_AAR）" env ALLOW_JDK_MISMATCH=1 bash -c "$(declare -f die log warn sha256 check_classes_hash); check_classes_hash '$t/diff.jar' '$want' ''"
   expect_ok   "哈希不一致 + ALLOW_JDK_MISMATCH + REFERENCE_AAR（之后仍须过 API 对比）" env ALLOW_JDK_MISMATCH=1 bash -c "$(declare -f die log warn sha256 check_classes_hash); check_classes_hash '$t/diff.jar' '$want' 'ref.aar'"
 
+
+  # --- 放行门（真实的 finalize_artifacts，端到端）
+  # 目录布局：$t/<case>/new/classes.jar 是新产物；参考 jar 会被解到 $t/<case>/work/ref/；
+  # FAKE_*_MATCH=/new/ 只打坏新侧。输出目录 $t/<case>/out 里不得出现任何产物。
+  gate() { # gate <case> <new-jar> <expected-hash-of> <with-ref:0|1> <allow:0|1> [FAKE_VAR=value...]
+    local c="$1" newjar="$2" hashof="$3" withref="$4" allow="$5" ref="" expected
+    shift 5
+    local d="$t/gate-$c"
+    mkdir -p "$d/new" "$d/work"
+    cp "$t/$newjar" "$d/new/classes.jar"
+    (cd "$d/new" && zip -q -j ../built.aar classes.jar)
+    [ "$withref" = 1 ] && { cp "$t/ref.jar" "$d/classes.jar"; (cd "$d" && zip -q -j ref.aar classes.jar); ref="$d/ref.aar"; }
+    expected="$(sha256 "$t/$hashof")"
+    if [ "$allow" = 1 ]; then export ALLOW_JDK_MISMATCH=1; else unset ALLOW_JDK_MISMATCH; fi
+    local kv
+    for kv in "$@"; do export "${kv%%=*}=${kv#*=}"; done
+    finalize_artifacts "$t/javap" "$expected" "$ref" "$d/new" "$d/built.aar" "$d/out" "$d/work"
+  }
+  no_artifact() { [ ! -e "$t/gate-$1/out/libcore.aar" ] && [ ! -e "$t/gate-$1/out/libcore.aar.sha256" ]; }
+  has_artifact() { [ -s "$t/gate-$1/out/libcore.aar" ] && [ -s "$t/gate-$1/out/libcore.aar.sha256" ]; }
+  # 失败且没有产物 / 成功且有产物
+  gate_fail() { local c="$1" rc=0; shift; ( gate "$c" "$@" ) >/dev/null 2>&1 || rc=$?; [ "$rc" -ne 0 ] && no_artifact "$c"; }
+  gate_ok()   { local c="$1"; shift; ( gate "$c" "$@" ) >/dev/null 2>&1 && has_artifact "$c"; }
+
+  expect_ok   "放行门：哈希一致、无参考 aar → 写出产物" gate_ok g1 same.jar same.jar 0 0 FAKE_JAVAP=ok
+  expect_ok   "放行门：哈希一致、参考 aar API 相同 → 写出产物" gate_ok g2 same.jar same.jar 1 0 FAKE_JAVAP=ok
+  expect_ok "放行门：哈希不符、无开关 → 失败且不写产物" gate_fail g3 diff.jar ref.jar 0 0 FAKE_JAVAP=ok
+  expect_ok "放行门：给了 REFERENCE_AAR 但没设允许开关，哈希不符 → 失败且不写产物" gate_fail g4 apisame.jar ref.jar 1 0 FAKE_JAVAP=ok
+  expect_ok "放行门：哈希不符 + 开关但没有 REFERENCE_AAR → 失败且不写产物" gate_fail g5 diff.jar ref.jar 0 1 FAKE_JAVAP=ok
+  expect_ok "放行门：开关 + 参考 aar，但 API 有差异 → 失败且不写产物" gate_fail g6 diff.jar ref.jar 1 1 FAKE_JAVAP=ok
+  expect_ok   "放行门：开关 + 参考 aar，哈希不符但 API 相同 → 放行并写出产物" gate_ok g7 apisame.jar ref.jar 1 1 FAKE_JAVAP=ok
+  expect_ok "放行门：哈希一致但参考 aar API 有差异 → 失败且不写产物" gate_fail g8 diff.jar diff.jar 1 0 FAKE_JAVAP=ok
+  expect_ok "放行门：参考侧 javap 成功、新侧 javap 失败 → 失败且不写产物" gate_fail g9 same.jar same.jar 1 0 FAKE_JAVAP=ok FAKE_FAIL_MATCH=/new/
+  expect_ok "放行门：参考侧成功、新侧 javap 输出为空 → 失败且不写产物" gate_fail g10 same.jar same.jar 1 0 FAKE_JAVAP=ok FAKE_EMPTY_MATCH=/new/
+  expect_ok "放行门：开关 + 参考 aar，新侧 javap 失败 → 失败且不写产物" gate_fail g11 apisame.jar ref.jar 1 1 FAKE_JAVAP=ok FAKE_FAIL_MATCH=/new/
+
+  # --- BUILD_ROOT 规范化与目录锁（rm / chmod 全部换成只记日志的桩，不会真删任何东西）
+  local rmlog="$t/rm.log"
+  stubbed() { # 在子 shell 里把 rm/chmod 换成桩，再执行参数
+    rm() { printf 'rm %s\n' "$*" >>"$rmlog"; }
+    chmod() { printf 'chmod %s\n' "$*" >>"$rmlog"; }
+    "$@"
+  }
+  # 失败且桩没被调用过（说明没走到清理）
+  reject_root() {
+    local raw="$1" rc=0
+    : >"$rmlog"
+    ( stubbed prepare_build_dir "$raw" ) >/dev/null 2>&1 || rc=$?
+    [ "$rc" -ne 0 ] && [ ! -s "$rmlog" ]
+  }
+  mkdir -p "$t/p" "$t/home" "$t/other"
+  ln -s "$t/p" "$t/plink"
+  local dir="$t/p/$BUILD_DIR_NAME"
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：/"      reject_root "/"
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：//"     reject_root "//"
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：///"    reject_root "///"
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：/./"    reject_root "/./"
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：/."     reject_root "/."
+  expect_ok   "BUILD_ROOT 拒绝根目录写法：/.."    reject_root "/.."
+  expect_ok   "BUILD_ROOT 拒绝相对路径"            reject_root "clashmiao-libcore-build"
+  expect_ok   "BUILD_ROOT 拒绝空串"                reject_root ""
+  expect_ok   "BUILD_ROOT 拒绝非专用目录：随意目录" reject_root "$t/other"
+  expect_ok   "BUILD_ROOT 拒绝非专用目录：/tmp"    reject_root "/tmp"
+  expect_ok   "BUILD_ROOT 拒绝非专用目录：前缀相同的别名" reject_root "$t/p/${BUILD_DIR_NAME}-x"
+  expect_ok   "BUILD_ROOT 拒绝含 .. 的路径"        reject_root "$t/p/../p/$BUILD_DIR_NAME"
+  expect_ok   "BUILD_ROOT 拒绝含 . 的路径"         reject_root "$t/p/./$BUILD_DIR_NAME"
+  expect_ok   "BUILD_ROOT 拒绝 \$HOME（HOME 指向非专用目录）" env HOME="$t/home" bash -c "$(declare -f die log resolve_build_root); BUILD_DIR_NAME='$BUILD_DIR_NAME'; ! (resolve_build_root '$t/home') 2>/dev/null"
+  mkdir -p "$t/p2/$BUILD_DIR_NAME"
+  expect_ok   "BUILD_ROOT 拒绝 \$HOME（HOME 恰好就是专用名目录）" env HOME="$t/p2/$BUILD_DIR_NAME" bash -c "$(declare -f die log resolve_build_root); BUILD_DIR_NAME='$BUILD_DIR_NAME'; ! (resolve_build_root '$t/p2/$BUILD_DIR_NAME') 2>/dev/null"
+  mkdir -p "$t/q" && ln -s "$t/other" "$t/q/$BUILD_DIR_NAME"
+  expect_ok   "BUILD_ROOT 拒绝符号链接目标"        reject_root "$t/q/$BUILD_DIR_NAME"
+
+  # 尾斜杠：规范化后和不带斜杠一样；锁是同级目录，不在构建目录里面
+  lock_is_sibling() {
+    : >"$rmlog"
+    stubbed prepare_build_dir "$dir/" || return 1
+    [ "$BUILD_ROOT_LOGICAL" = "$dir" ] || return 1
+    [ -d "${BUILD_ROOT_CANON}.lock" ] || return 1
+    [ ! -e "$dir/.lock" ] || return 1
+    [ "${BUILD_ROOT_CANON}.lock" = "$(cd "$t/p" && pwd -P)/${BUILD_DIR_NAME}.lock" ] || return 1
+    # 桩只收到针对构建目录本身的清理
+    grep -qx "rm -rf $dir" "$rmlog" || return 1
+    [ "$(grep -c '^rm ' "$rmlog")" = 1 ]
+  }
+  expect_ok   "尾斜杠：规范化为同一路径，锁建在构建目录之外" lock_is_sibling
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+
+  # 等价写法争同一把锁：第二个进来的必须失败，且不调用任何清理
+  contend() {
+    local alt="$1" rc=0
+    : >"$rmlog"
+    stubbed prepare_build_dir "$dir" >/dev/null || return 1
+    local first
+    first="$(wc -l <"$rmlog" | tr -d ' ')"
+    ( stubbed prepare_build_dir "$alt" ) >/dev/null 2>&1 || rc=$?
+    [ "$rc" -ne 0 ] || return 1
+    [ "$(wc -l <"$rmlog" | tr -d ' ')" = "$first" ]
+  }
+  expect_ok   "锁：同一路径第二次进入被拒绝且不清理"             contend "$dir"
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+  expect_ok   "锁：尾斜杠写法与无斜杠写法互斥"                   contend "$dir/"
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+  expect_ok   "锁：重复斜杠写法与规范写法互斥"                   contend "$t/p//$BUILD_DIR_NAME"
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+  expect_ok   "锁：经符号链接上级的等价路径与规范路径互斥"       contend "$t/plink/$BUILD_DIR_NAME"
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+
+  # cleanup 在没拿到锁时不得碰别人的锁和目录
+  cleanup_without_lock() {
+    : >"$rmlog"
+    mkdir -p "$dir" "$dir.lock"
+    BUILD_ROOT_LOGICAL="$dir"; BUILD_ROOT_CANON="$dir"; LOCK_HELD=0
+    stubbed cleanup
+    [ -d "$dir.lock" ] && [ ! -s "$rmlog" ]
+  }
+  expect_ok   "清理：没拿到锁时不动别人的锁和目录" cleanup_without_lock
+  rmdir "$dir.lock" 2>/dev/null || true; rmdir "$dir" 2>/dev/null || true
+
   log "自测：${pass}/${total} 通过"
   [ "$pass" -eq "$total" ] || die "自测有 $((total - pass)) 项未达预期"
 }
@@ -267,13 +494,6 @@ fi
 # ---------------------------------------------------------------- 主流程
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 OUT_DIR="${OUT_DIR:-$REPO_ROOT/build/libcore}"
-# 固定的绝对构建路径：源码路径会进 buildinfo，所以不能随机
-BUILD_ROOT="${BUILD_ROOT:-/tmp/clashmiao-libcore-build}"
-case "$BUILD_ROOT" in
-  /?*) ;;
-  *) die "BUILD_ROOT 必须是非根目录的绝对路径：${BUILD_ROOT}" ;;
-esac
-
 host_os="$(uname -s)"
 host_arch="$(uname -m)"
 case "$host_os/$host_arch" in
@@ -316,22 +536,9 @@ if [ -n "${REFERENCE_AAR:-}" ]; then
 fi
 
 # ---------------------------------------------------------------- 构建目录（固定路径）
-WORK="$BUILD_ROOT"
-LOCK="${BUILD_ROOT}.lock"
-mkdir "$LOCK" 2>/dev/null || die "已有构建在用 ${BUILD_ROOT}（或上次被强杀后残留）；确认没有别的构建后删除 ${LOCK} 再重试"
-wipe_work() {
-  # Go 模块缓存是只读的，先放开写权限才删得掉
-  chmod -R u+w "$WORK" 2>/dev/null || true
-  rm -rf "$WORK"
-}
-cleanup() {
-  if [ "${KEEP_WORK:-}" = 1 ]; then log "保留构建目录：${WORK}"
-  else wipe_work; fi
-  rmdir "$LOCK" 2>/dev/null || true
-}
 trap cleanup EXIT
-wipe_work
-mkdir -p "$WORK"
+prepare_build_dir "${BUILD_ROOT:-/tmp/${BUILD_DIR_NAME}}"
+WORK="$BUILD_ROOT_LOGICAL"
 log "构建目录（固定路径）：${WORK}"
 
 # ---------------------------------------------------------------- Go 工具链
@@ -406,20 +613,9 @@ for abi in "${ABIS[@]}"; do
   log "${abi}：libbox.so sha256 $(sha256 "$so")"
 done
 
-check_classes_hash "$WORK/check/classes.jar" "$EXPECTED_CLASSES_JAR_SHA256" "${REFERENCE_AAR:-}"
-
-if [ -n "${REFERENCE_AAR:-}" ]; then
-  log "与参考 aar 对比 Java 公共 API：${REFERENCE_AAR}"
-  mkdir -p "$WORK/ref"
-  unzip -q -o "$REFERENCE_AAR" classes.jar -d "$WORK/ref" || die "参考 aar 里取不到 classes.jar"
-  compare_public_api "$JAVA_HOME/bin/javap" "$WORK/ref/classes.jar" "$WORK/check/classes.jar" "$WORK/apicmp"
-  log "公共 API 零差异 ✓"
-fi
-
-# ---------------------------------------------------------------- 输出
-mkdir -p "$OUT_DIR"
-cp -f "$WORK/out/libcore.aar" "$OUT_DIR/libcore.aar"
-(cd "$OUT_DIR" && sha256 libcore.aar | sed 's/$/  libcore.aar/' > libcore.aar.sha256)
+# 放行门：哈希、公共 API 对比都通过之后才写输出目录
+finalize_artifacts "$JAVA_HOME/bin/javap" "$EXPECTED_CLASSES_JAR_SHA256" "${REFERENCE_AAR:-}" \
+  "$WORK/check" "$WORK/out/libcore.aar" "$OUT_DIR" "$WORK"
 log "完成：${OUT_DIR}/libcore.aar"
 log "sha256：$(cut -d' ' -f1 "$OUT_DIR/libcore.aar.sha256")"
 log "本地使用：cp \"${OUT_DIR}/libcore.aar\" android/app/libs/libcore.aar"

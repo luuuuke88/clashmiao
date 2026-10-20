@@ -144,8 +144,10 @@ tools/libcore/build-android.sh --self-test           # 校验逻辑的故障注�
 | build tags | `with_gvisor,with_quic,with_wireguard,with_ech,with_utls,with_clash_api,with_grpc` |
 | 目标 | `-androidapi=21`，四个 ABI：arm64-v8a / armeabi-v7a / x86 / x86_64 |
 
-脚本在固定路径 `/tmp/clashmiao-libcore-build`（可用 `BUILD_ROOT` 改）里克隆和构建，每次开始前清空、结束后删除，
-然后自动校验，任何一项不符都会非零退出：
+脚本在固定路径 `/tmp/clashmiao-libcore-build` 里克隆和构建，每次开始前清空、结束后删除。
+`BUILD_ROOT` 可以改位置，但因为要递归清空，限制很严：必须是绝对路径、最后一级必须叫 `clashmiao-libcore-build`、不能是符号链接，
+根目录和 `$HOME` 的各种写法都会被拒绝；互斥锁是同级的 `<路径>.lock`，尾斜杠等等价写法共用同一把锁。
+构建完成后自动校验，任何一项不符都会非零退出，且在全部通过之前不会写输出目录：
 
 - NDK 的 `source.properties` 里 `Pkg.Revision` 必须正好是 `28.2.13676358`；
 - 每个 ABI 的所有 LOAD 段对齐 ≥ `2**14`；

@@ -116,26 +116,44 @@ Pure simulator runs work without any of this, but the VPN itself does
 "Permission denied" / state stays `.invalid`). Always test connections
 on a real device.
 
-## 7. Smoke test
+## 7. Adding Swift files to the Xcode project
 
-After everything is wired up:
+The project uses `objectVersion = 54` (no folder-synchronised groups), so a new `.swift` file on disk
+is **not** compiled until it is registered. Add it to the `MANIFEST` in `ios/scripts/sync_sources.rb`
+(path relative to `ios/`, plus the targets it belongs to) and run:
 
-1. Run the Runner target on a real iPhone.
-2. From the Dart side, invoke `BoxService.setup()` – iOS should pop the
-   "Add VPN Configuration?" sheet on first run.
-3. Invoke `BoxService.start(configPath, …)`. The status stream should
-   transition Stopped → Starting → Started.
-4. Confirm `BoxService.watchStats()` returns non-zero `uplink-total` /
-   `downlink-total` once you drive some traffic through the device.
+```
+GEM_HOME=/opt/homebrew/Cellar/cocoapods/<version>/libexec ruby ios/scripts/sync_sources.rb
+```
 
-## TODO follow-ups
+The script is idempotent. Test files are compiled only into `RunnerTests`, which reaches the app's
+symbols through `TEST_HOST` + `@testable import Runner`; do not also add app sources to the test target
+(duplicate symbols). Files shared with the extension (`ios/Shared/Kernel/*`) go into both `Runner` and
+`SingBoxPacketTunnel`.
 
-These were intentionally left as `// TODO` in code:
+## 8. Unit tests
 
-- `BoxAlertsStream` currently mirrors `TunnelManager.alert`, but
-  `TunnelManager` does not populate the alert publisher yet. Decide
-  whether to emit alerts on permission failures, kernel start failures,
-  etc., and wire `recordNonFatal` in `KernelProviderProxy` through to
-  it (likely via the App Group defaults).
-- Persisted error marker (`ProfilePathResolver.extensionErrorMarker`)
-  is written by the extension but not yet consumed by Runner on launch.
+```
+cd ios
+xcodebuild test -workspace Runner.xcworkspace -scheme Runner \
+  -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:RunnerTests \
+  CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO
+```
+
+Use ad-hoc signing, **not** `CODE_SIGNING_ALLOWED=NO`: the host app resolves the App Group container on
+launch, and an unsigned simulator build has no entitlements, so the host aborts and the test run hangs.
+Boot the simulator first (`xcrun simctl boot <id>`) if `xcodebuild` sits idle after "Resolve Package Graph".
+
+## 9. Smoke test (real device)
+
+The VPN does not work in the simulator. On a real iPhone:
+
+1. Run Runner. `initialize` loads the VPN preference and, on first run, iOS shows "Add VPN Configurations".
+2. Import a subscription and tap connect. The kernel snapshot (`com.clashmiao.app/kernel.snapshot`)
+   should go `stopped → starting → started`; the egress IP should change.
+3. Check `docs/superpowers/research/2026-10-20-ios-device-smoke.md` for the full list (background /
+   foreground, kill and relaunch, toggling the VPN in system Settings, Wi-Fi ↔ cellular, memory headroom).
+
+Diagnostics: every snapshot is logged as `snapshot epoch=… version=… status=… attempt=… desired=… source=…`;
+the extension logs `memory <stage>: available=… KB` at lifecycle steps and writes the lowest observed
+headroom into `extension-state.json`.

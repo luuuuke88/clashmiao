@@ -13,6 +13,8 @@
 //   的对象转成字符串后再过。
 // - 事件消息、异常 value、面包屑 message、transaction / culprit：过脱敏器。抛出
 //   的是 Map / List 时，异常 value 先按键名结构化脱敏再转文本。
+// - 性能事务的子 span：op / description 过脱敏器，data 结构化脱敏，tags 按键名
+//   遮盖；改写不了的清空或丢弃（见 [redactSentryTransaction]）。
 // - **不动**堆栈帧：排障要靠它，帧里只有代码位置。
 //
 // 只在用户主动开启「数据分析」时才会初始化 Sentry（见 main.dart 的门控）；
@@ -90,10 +92,76 @@ SentryEvent redactSentryEvent(SentryEvent event) {
 }
 
 /// `beforeSendTransaction`：性能事务也是一个事件（tags / extra / contexts /
-/// request 同样会发送），按同一套规则处理。
-SentryTransaction redactSentryTransaction(SentryTransaction transaction) {
+/// request 同样会发送），按同一套规则处理；事务里的每个子 span 也会随事务一起
+/// 序列化发送，同样逐个脱敏（见 [_redactSpanInPlace]）。
+///
+/// 某个子 span 改写失败时先把它的可变字段整块清空；连清空都失败就把它从事务
+/// 里移除；还移除不掉，整个事务都不发（返回 null）——宁可少一条性能数据，也不
+/// 发出没过滤的内容。
+SentryTransaction? redactSentryTransaction(SentryTransaction transaction) {
   redactSentryEvent(transaction);
+  final unsafe = <SentrySpan>[];
+  for (final span in transaction.spans) {
+    try {
+      _redactSpanInPlace(span);
+    } catch (_) {
+      if (!_wipeSpan(span)) unsafe.add(span);
+    }
+  }
+  if (unsafe.isNotEmpty) {
+    try {
+      transaction.spans.removeWhere(unsafe.contains);
+    } catch (_) {
+      return null;
+    }
+  }
   return transaction;
+}
+
+/// 子 span 会序列化出 op / description / data / tags（其余是 id、时间戳、状态、
+/// origin 这类 SDK 生成的值）。规则与事件相同：描述过脱敏器；data 按键名结构化
+/// 脱敏；tags 键名是秘密字段的整项遮盖，其余过脱敏器。
+///
+/// 事务回调拿到的子 span 都已结束，`setData` / `setTag` 在结束后是空操作，所以
+/// 直接改 `data` / `tags` 返回的底层 Map。
+void _redactSpanInPlace(SentrySpan span) {
+  final context = span.context;
+  context.operation = redactLogText(context.operation);
+  final description = context.description;
+  if (description != null) context.description = redactLogText(description);
+
+  final data = span.data;
+  if (data.isNotEmpty) {
+    final redacted = redactStructuredMap(Map.of(data));
+    data
+      ..clear()
+      ..addAll(redacted);
+  }
+
+  final tags = span.tags;
+  if (tags.isNotEmpty) {
+    final redacted = {
+      for (final entry in tags.entries)
+        entry.key: isSecretFieldName(entry.key)
+            ? kRedacted
+            : redactLogText(entry.value),
+    };
+    tags
+      ..clear()
+      ..addAll(redacted);
+  }
+}
+
+/// 改写失败时的退路：描述、data、tags 整块清掉。成功返回 true。
+bool _wipeSpan(SentrySpan span) {
+  try {
+    span.context.description = null;
+    span.data.clear();
+    span.tags.clear();
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 /// `beforeBreadcrumb`：原地脱敏后返回同一条面包屑。

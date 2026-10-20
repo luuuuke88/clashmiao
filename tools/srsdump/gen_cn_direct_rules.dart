@@ -13,8 +13,33 @@ import 'dart:io';
 
 import 'cn_direct_filter.dart';
 
-const _exclusionsPath = 'tools/srsdump/cn_direct_exclusions.txt';
+/// 排除表的默认位置（相对仓库根目录）。
+const kCnDirectExclusionsPath = 'tools/srsdump/cn_direct_exclusions.txt';
 const _outputPath = 'lib/domain/config/data/cn_direct_rules.dart';
+
+/// 一次生成的结果：应用排除表之后的清单，以及要写进生成文件的完整内容。
+typedef CnDirectGeneration = ({CnDirectLists lists, String rendered});
+
+/// 生成管线（不写文件）：读 srsdump 产物 [sitePath] / [ipPath] 和排除表文件
+/// [exclusionsPath]，应用排除表，渲染生成文件内容。[main] 与端到端测试共用。
+CnDirectGeneration generateCnDirectRules({
+  required String sitePath,
+  required String ipPath,
+  String exclusionsPath = kCnDirectExclusionsPath,
+}) {
+  final site = _readJson(sitePath);
+  final ip = _readJson(ipPath);
+  final exclusions = CnDirectExclusions.parse(
+    File(exclusionsPath).readAsStringSync(),
+  );
+  final lists = applyCnDirectExclusions(
+    cidrs: _stringList(ip, 'ip_cidr'),
+    domains: _stringList(site, 'domain'),
+    suffixes: _stringList(site, 'domain_suffix'),
+    exclusions: exclusions,
+  );
+  return (lists: lists, rendered: renderCnDirectRules(lists));
+}
 
 void main(List<String> args) {
   if (args.length != 2) {
@@ -23,20 +48,12 @@ void main(List<String> args) {
     );
     exit(2);
   }
-  final site = _readJson(args[0]);
-  final ip = _readJson(args[1]);
-  final exclusions = CnDirectExclusions.parse(
-    File(_exclusionsPath).readAsStringSync(),
+  final (:lists, :rendered) = generateCnDirectRules(
+    sitePath: args[0],
+    ipPath: args[1],
   );
 
-  final lists = applyCnDirectExclusions(
-    cidrs: _stringList(ip, 'ip_cidr'),
-    domains: _stringList(site, 'domain'),
-    suffixes: _stringList(site, 'domain_suffix'),
-    exclusions: exclusions,
-  );
-
-  File(_outputPath).writeAsStringSync(renderCnDirectRules(lists));
+  File(_outputPath).writeAsStringSync(rendered);
 
   stderr
     ..writeln('wrote $_outputPath')

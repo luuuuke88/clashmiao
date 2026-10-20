@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
@@ -16,6 +17,24 @@ class AppToast {
 
   /// 防止同一条文本在短时间内重复冒泡（避免 toast 堆叠把点击吃掉）。
   static const _dedupeWindow = Duration(milliseconds: 800);
+
+  /// 入退场时长：走 [Motion.medium]，系统开了「减少动画」时为零（toastification
+  /// 的默认值是 600 ms，不看这个开关）。全局配置（`app.dart`）与每次
+  /// `showCustom` 都要传，二者缺一都会回落到 600 ms。
+  static Duration animationDuration(BuildContext context) =>
+      Motion.duration(context, Motion.medium);
+
+  /// 入退场动画：淡入 + 滑入，入场 [Motion.emphasized]、退场 [Motion.exit]。
+  static Widget animationBuilder(
+    BuildContext context,
+    Animation<double> animation,
+    Alignment alignment,
+    Widget child,
+  ) => _ToastTransition(
+    animation: animation,
+    alignment: alignment,
+    child: child,
+  );
 
   /// 清掉去重状态。去重用的是进程级静态变量加真实时钟，不同测试用例之间会
   /// 互相影响（上一例刚弹过的同文案，会让下一例的提示被当成重复吞掉），
@@ -42,6 +61,8 @@ class AppToast {
           toastification.showCustom(
             context: context,
             autoCloseDuration: const Duration(seconds: 0),
+            animationDuration: animationDuration(context),
+            animationBuilder: animationBuilder,
             alignment: Alignment.bottomCenter,
             builder: (context, holder) => const SizedBox.shrink(),
           );
@@ -61,6 +82,8 @@ class AppToast {
     return _lastItem = toastification.showCustom(
       context: context,
       autoCloseDuration: duration,
+      animationDuration: animationDuration(context),
+      animationBuilder: animationBuilder,
       alignment: Alignment.bottomCenter,
       builder: (context, holder) {
         return IgnorePointer(
@@ -148,4 +171,54 @@ class AppToast {
 
   static ToastificationItem warning(BuildContext context, String msg) =>
       show(context: context, message: msg, type: ToastType.warning);
+}
+
+/// toast 的入退场转场：在 toastification 默认的淡入 + 滑入外面套上 Motion 的
+/// 曲线（入场 emphasized、退场 exit）。曲线动画要随组件释放，所以不能在 builder
+/// 里临时 new。
+class _ToastTransition extends StatefulWidget {
+  const _ToastTransition({
+    required this.animation,
+    required this.alignment,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final Alignment alignment;
+  final Widget child;
+
+  @override
+  State<_ToastTransition> createState() => _ToastTransitionState();
+}
+
+class _ToastTransitionState extends State<_ToastTransition> {
+  late CurvedAnimation _curved = _create();
+
+  CurvedAnimation _create() => CurvedAnimation(
+    parent: widget.animation,
+    curve: Motion.emphasized,
+    reverseCurve: Motion.exit,
+  );
+
+  @override
+  void didUpdateWidget(_ToastTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animation != widget.animation) {
+      _curved.dispose();
+      _curved = _create();
+    }
+  }
+
+  @override
+  void dispose() {
+    _curved.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => DefaultToastificationTransition(
+    animation: _curved,
+    alignment: widget.alignment,
+    child: widget.child,
+  );
 }

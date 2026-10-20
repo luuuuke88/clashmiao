@@ -24,7 +24,8 @@ void main() {
     'lib/app/tray/tray_controller.dart': '退出清理的业务时限',
     'lib/app/update/startup_update_check.dart': '启动后延迟检查，不是动画',
     'lib/features/home/presentation/connection_button.dart': '每秒刷新一次计时，不是动画',
-    'lib/shared/components/app_toast.dart': 'toast 停留时长与去重窗口，不是转场',
+    'lib/shared/components/app_toast.dart':
+        'toast 停留时长与去重窗口；入退场时长走 Motion（见 app_toast_test）',
   };
 
   final raw = RegExp(

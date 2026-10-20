@@ -54,10 +54,36 @@ func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, erro
 		Inbounds:     buildInbounds(o, env),
 		Experimental: buildExperimental(o),
 	}
-	if err := scaffold(c, profile, o, env, &warnings); err != nil {
+	// 业务出口：常态 select；warp_over_proxy 时是 warp（U13 在这里按选项算出）。
+	// dns-remote 的 detour、route.final、proxy 规则的目标都取这一个变量。
+	egress := TagSelect
+
+	asm, err := assembleOutbounds(profile, o, &warnings)
+	if err != nil {
+		return nil, nil, err
+	}
+	endpoints, err := PatchWarp(asm.Endpoints, o)
+	if err != nil {
+		return nil, nil, err
+	}
+	c.Outbounds, c.Endpoints = asm.Outbounds, endpoints
+
+	c.DNS, err = BuildDNS(dnsInput{
+		Options:       o,
+		Egress:        egress,
+		HasTun:        o.EnableTun,
+		DirectDomains: nodeHostnames(asm.Entities...),
+	}, &warnings)
+	if err != nil {
+		return nil, nil, err
+	}
+	if c.Route, err = BuildRoute(o, env, egress, &warnings); err != nil {
 		return nil, nil, err
 	}
 	if err := CheckDNSDeps(c); err != nil {
+		return nil, nil, err
+	}
+	if err := ValidateGraph(c); err != nil {
 		return nil, nil, err
 	}
 

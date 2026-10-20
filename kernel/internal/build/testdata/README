@@ -19,10 +19,10 @@ profile 夹具
 |------|------|
 | P1  | 单节点 |
 | P2  | 多节点，含订阅信息节点（剩余流量） |
-| P3  | 含 §default§ 标记的节点（U7 起有黄金文件） |
+| P3  | 含 §default§ 标记的节点 |
 | P4a | WireGuard 端点独占（outbounds 为空） |
 | P4b | 出站与 WireGuard 端点混合 |
-| P4c | 端点带 §default§ 标记（U7 起有黄金文件） |
+| P4c | 端点带 §default§ 标记 |
 | P5  | hysteria2 + tuic |
 | P6  | vless + reality |
 | P7  | 1.8 时代形态；是 Parse / legacy 的输入，不是构建器的输入（U8 / U9 起使用） |
@@ -61,8 +61,14 @@ O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽
 | route-O3 | P1 | O3（bypass / block / IP / proxy 四类用户规则 + bypass-lan） | U6 |
 | route-O9 | P1 | O9（block-ads：只给警告，不生成规则集） | U6 |
 | route-O10 | P1 | O10（resolve-destination：sniff 之后插入 resolve） | U6 |
+| outbounds-P2-O4 | P2 | O4（mux + 分片：trojan 有 tls 与 multiplex，ss 只有 multiplex） | U7 |
+| outbounds-P3-O1 | P3 | O1（§default§ 标记的节点作为 select 默认） | U7 |
+| outbounds-P4a-O1 | P4a | O1（端点独占：outbounds 为空仍产出 select / auto） | U7 |
+| outbounds-P4c-O1 | P4c | O1（端点带 §default§：默认值取端点的真实 tag） | U7 |
+| outbounds-P5-O4 | P5 | O4（hysteria2 / tuic 是 UDP 类：不加分片也不加 mux） | U7 |
+| outbounds-P6-O4 | P6 | O4（reality 出站跳过分片与 mux） | U7 |
 
-后续任务往表里加格子（U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。
+后续任务往表里加格子（U13：O5a / O5b）。
 
 rules/cn-direct.json：智能分流下 Dart 注入的 rules 全量（7.5k CIDR + 域名），由 lib/domain/config/data/cn_direct_rules.dart 导出；
 U17 的 Dart 测试负责让它与 Dart 侧保持一致（有差异测试失败）。route_test 用它验证「全量清单能过 CheckConfig 与真启动」，不产生黄金文件。

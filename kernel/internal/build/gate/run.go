@@ -59,8 +59,9 @@ type Group struct {
 	Type     string `json:"type"`
 	Selected string `json:"selected"`
 	Items    []struct {
-		Tag  string `json:"tag"`
-		Type string `json:"type"`
+		Tag   string `json:"tag"`
+		Type  string `json:"type"`
+		Delay int    `json:"url-test-delay"`
 	} `json:"items"`
 }
 
@@ -128,4 +129,88 @@ func Get(t testing.TB, c *http.Client, target string) (int, string) {
 	defer resp.Body.Close()
 	b, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, string(b)
+}
+
+// WaitGroups 订阅分组流，等到某一帧满足 pred 并返回它；30 s 内等不到就让测试失败（兜底，不是等待手段）。
+func WaitGroups(t testing.TB, e *engine.Engine, what string, pred func(Groups) bool) Groups {
+	t.Helper()
+	ch := make(groupsChan, 256)
+	sub, err := e.SubscribeGroups(ch)
+	if err != nil {
+		t.Fatalf("SubscribeGroups: %v", err)
+	}
+	defer sub.Close()
+	deadline := time.After(30 * time.Second)
+	for {
+		select {
+		case raw := <-ch:
+			var g Groups
+			if err := json.Unmarshal([]byte(raw), &g); err != nil {
+				t.Fatalf("分组帧不是预期的 JSON: %v\n%s", err, raw)
+			}
+			if pred(g) {
+				return g
+			}
+		case <-deadline:
+			t.Fatalf("等待分组流出现「%s」超时", what)
+			return nil
+		}
+	}
+}
+
+// ItemDelay 返回分组成员的测速延迟（毫秒，0 表示还没有结果）。
+func (g *Group) ItemDelay(tag string) int {
+	for _, it := range g.Items {
+		if it.Tag == tag {
+			return it.Delay
+		}
+	}
+	return -1
+}
+
+// GroupWatcher 持续订阅分组流并保留最新一帧：Wait 先看最新状态，再等后续的帧。
+// 在触发动作之前创建它，就不会漏掉动作引起的帧。
+type GroupWatcher struct {
+	t      testing.TB
+	ch     groupsChan
+	sub    interface{ Close() error }
+	latest Groups
+}
+
+// WatchGroups 开始订阅；测试结束自动取消。
+func WatchGroups(t testing.TB, e *engine.Engine) *GroupWatcher {
+	t.Helper()
+	w := &GroupWatcher{t: t, ch: make(groupsChan, 1024)}
+	sub, err := e.SubscribeGroups(w.ch)
+	if err != nil {
+		t.Fatalf("SubscribeGroups: %v", err)
+	}
+	w.sub = sub
+	t.Cleanup(func() { _ = sub.Close() })
+	return w
+}
+
+// Wait 等到最新状态或之后的某一帧满足 pred；30 s 内等不到就让测试失败（兜底，不是等待手段）。
+func (w *GroupWatcher) Wait(what string, pred func(Groups) bool) Groups {
+	w.t.Helper()
+	if w.latest != nil && pred(w.latest) {
+		return w.latest
+	}
+	deadline := time.After(30 * time.Second)
+	for {
+		select {
+		case raw := <-w.ch:
+			var g Groups
+			if err := json.Unmarshal([]byte(raw), &g); err != nil {
+				w.t.Fatalf("分组帧不是预期的 JSON: %v\n%s", err, raw)
+			}
+			w.latest = g
+			if pred(g) {
+				return g
+			}
+		case <-deadline:
+			w.t.Fatalf("等待分组流出现「%s」超时；最新状态 %+v", what, w.latest)
+			return nil
+		}
+	}
 }

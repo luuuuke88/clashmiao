@@ -1,0 +1,171 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "https",
+        "tag": "dns-remote",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
+        "detour": "select"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "local",
+        "tag": "dns-local"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "hy.example.net",
+          "tu.example.net"
+        ],
+        "action": "route",
+        "server": "dns-direct"
+      },
+      {
+        "domain": [
+          "cp.cloudflare.com"
+        ],
+        "action": "route",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
+      }
+    ],
+    "final": "dns-remote",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/28"
+      ],
+      "mtu": 9000,
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "mixed",
+      "endpoint_independent_nat": true
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 2080
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "listen_port": 6450
+    }
+  ],
+  "outbounds": [
+    {
+      "default": "auto",
+      "outbounds": [
+        "auto",
+        "hy2-01",
+        "tuic-01"
+      ],
+      "tag": "select",
+      "type": "selector"
+    },
+    {
+      "idle_timeout": "6000s",
+      "interval": "600s",
+      "outbounds": [
+        "hy2-01",
+        "tuic-01"
+      ],
+      "tag": "auto",
+      "type": "urltest",
+      "url": "http://connectivitycheck.gstatic.com/generate_204"
+    },
+    {
+      "password": "JnF7O5+R1VYdpyaP",
+      "server": "hy.example.net",
+      "server_port": 443,
+      "tag": "hy2-01",
+      "tls": {
+        "enabled": true,
+        "server_name": "hy.example.net"
+      },
+      "type": "hysteria2"
+    },
+    {
+      "congestion_control": "bbr",
+      "password": "o+B0PKZjW26aEia8",
+      "server": "tu.example.net",
+      "server_port": 443,
+      "tag": "tuic-01",
+      "tls": {
+        "enabled": true,
+        "server_name": "tu.example.net"
+      },
+      "type": "tuic",
+      "udp_relay_mode": "native",
+      "uuid": "15d22a46-531f-4e15-a6ee-f77d6e2eda20"
+    },
+    {
+      "tag": "direct",
+      "type": "direct"
+    },
+    {
+      "tag": "direct-fragment",
+      "type": "direct",
+      "udp_fragment": true
+    },
+    {
+      "tag": "bypass",
+      "type": "direct"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": [
+          "dns"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "port": [
+          53
+        ],
+        "action": "hijack-dns"
+      }
+    ],
+    "final": "select",
+    "auto_detect_interface": true,
+    "override_android_vpn": true,
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    }
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "cache.db"
+    }
+  }
+}

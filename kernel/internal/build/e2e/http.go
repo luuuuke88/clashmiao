@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 )
 
 // HTTPTarget 是本地 HTTP 目标：/generate_204 回 204，其它路径回 "ok"；每个请求都记录来源与 Host。
@@ -26,6 +27,9 @@ func newHTTP(t testing.TB, listen string) (*HTTPTarget, error) {
 	h.srv = httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h.Log.Add(Entry{Kind: "http", Source: r.RemoteAddr, Target: r.Host + r.URL.Path})
 		if r.URL.Path == "/generate_204" {
+			// 模拟 3 ms 的链路延迟：测速结果按毫秒取整，本机回环太快会记成 0，与「没有结果」同值（内核也按失败处理）。
+			// 这是人为注入的延迟，不是在等某件事发生。
+			<-time.After(3 * time.Millisecond)
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}

@@ -585,4 +585,7 @@ func checkDNSDeps(v *violations, raw []byte) {
 	if err := build.CheckDNSDeps(&c); err != nil {
 		v.addf("DNS 依赖检查: %v", err)
 	}
+	if err := build.ValidateGraph(&c); err != nil {
+		v.addf("标签图检查: %v", err)
+	}
 }

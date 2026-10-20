@@ -39,6 +39,13 @@ var Matrix = []Case{
 	{"route-O3", "P1", "O3"},
 	{"route-O9", "P1", "O9"},
 	{"route-O10", "P1", "O10"},
+	// U7：出站装配（mux / 分片、默认标记、端点三形态、QUIC 类与 reality 跳过分片 / mux）。
+	{"outbounds-P2-O4", "P2", "O4"},
+	{"outbounds-P3-O1", "P3", "O1"},
+	{"outbounds-P4a-O1", "P4a", "O1"},
+	{"outbounds-P4c-O1", "P4c", "O1"},
+	{"outbounds-P5-O4", "P5", "O4"},
+	{"outbounds-P6-O4", "P6", "O4"},
 }
 
 // BuildCase 构建一个矩阵格子的原始（Android）配置，并返回它用的选项。

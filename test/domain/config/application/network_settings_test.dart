@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -459,6 +460,87 @@ void main() {
   });
 
   group('NetworkSettingsNotifier.importJson', () {
+    group('直连 DNS 旧默认值（格式版本）', () {
+      test('导出带格式版本', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final exported =
+            jsonDecode(NetworkSettingsNotifier(prefs).exportJson())
+                as Map<String, dynamic>;
+        expect(
+          exported[kNetworkSettingsJsonVersionKey],
+          kNetworkSettingsJsonVersion,
+        );
+      });
+
+      test('无版本的旧格式：精确的 1.1.1.1 不写入，重新读取后仍跟随默认值', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = NetworkSettingsNotifier(prefs);
+
+        final result = await notifier.importJson(
+          jsonEncode({'directDnsAddress': '1.1.1.1', 'mtu': 1400}),
+        );
+
+        expect(result.appliedKeys, ['mtu']);
+        expect(result.skippedKeys, isEmpty);
+        expect(prefs.getString(kDirectDnsAddressPrefKey), isNull);
+        // 「重启」：用同一份持久化重新构造。
+        final reread = NetworkSettingsNotifier(prefs);
+        expect(reread.state.directDnsAddress, kDefaultDirectDnsAddress);
+        expect(reread.state.mtu, 1400);
+      });
+
+      test('无版本的旧格式：本机已有的自定义值不被旧默认值覆盖', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = NetworkSettingsNotifier(prefs);
+        await notifier.setDirectDnsAddress('8.8.8.8');
+
+        await notifier.importJson(jsonEncode({'directDnsAddress': '1.1.1.1'}));
+
+        expect(
+          NetworkSettingsNotifier(prefs).state.directDnsAddress,
+          '8.8.8.8',
+        );
+      });
+
+      test('无版本的旧格式：其他写法（不是精确旧值）照常导入', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final notifier = NetworkSettingsNotifier(prefs);
+
+        await notifier.importJson(
+          jsonEncode({'directDnsAddress': 'udp://1.1.1.1'}),
+        );
+
+        expect(
+          NetworkSettingsNotifier(prefs).state.directDnsAddress,
+          'udp://1.1.1.1',
+        );
+      });
+
+      test('带版本的新格式：明确设置的 1.1.1.1 原样保留（导出往返）', () async {
+        SharedPreferences.setMockInitialValues({});
+        final prefs = await SharedPreferences.getInstance();
+        final source = NetworkSettingsNotifier(prefs);
+        await source.setDirectDnsAddress('1.1.1.1');
+        final exported = source.exportJson();
+        await source.reset();
+
+        final result = await NetworkSettingsNotifier(
+          prefs,
+        ).importJson(exported);
+
+        expect(result.appliedKeys, contains('directDnsAddress'));
+        expect(prefs.getString(kDirectDnsAddressPrefKey), '1.1.1.1');
+        expect(
+          NetworkSettingsNotifier(prefs).state.directDnsAddress,
+          '1.1.1.1',
+        );
+      });
+    });
+
     test('包含全部高级字段的 JSON 导入后正确写入 NetworkSettings', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

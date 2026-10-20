@@ -26,6 +26,7 @@ import 'package:clashmiao/domain/routing/application/proxy_selection_store_notif
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../_fakes/fake_kernel_port.dart';
@@ -199,6 +200,10 @@ class _Env {
     container.read(storeReviewServiceProvider);
     // 保持实时分组 provider 常驻：推送发生在任何读取之前也不会丢。
     container.listen(liveGroupsProvider, (_, _) {});
+    // 与 main() 一致：控制器由容器级 listen 常驻。Riverpod 3 里没有活跃监听者
+    // 的 provider 处于暂停状态，内部 ref.listen（激活订阅 / 网络设置变化）
+    // 不再触发；只 read 的话测到的不是生产里的控制器。
+    container.listen(connectionControllerProvider, (_, _) {});
     ctl = container.read(connectionControllerProvider.notifier);
     if (analytics) prefs.setBool('clashmiao_analytics_enabled', true);
     fa.flushMicrotasks();
@@ -209,7 +214,7 @@ class _Env {
     if (id == null) return null;
     // 代际取自存储里的真实记录：手选写入经 writeAux 按 (id, inc) 校验。
     final inc =
-        ref.watch(profileStoreProvider).valueOrNull?.view().find(id)?.inc ?? '';
+        ref.watch(profileStoreProvider).value?.view().find(id)?.inc ?? '';
     return ProfileEntity(
       id: id,
       name: 'P-$id',

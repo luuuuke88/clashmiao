@@ -20,6 +20,7 @@ import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/misc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
@@ -37,6 +38,9 @@ import '../support/fake_connection_controller.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
+  // 单独成参：同一个容器里重复 override 同一个 provider 在 Riverpod 3 下是断言
+  // 失败，要换控制器替身就替换掉默认的那一个，而不是再追加一条。
+  Override? connectionControllerOverride,
   Brightness brightness = Brightness.light,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
@@ -60,7 +64,10 @@ Future<(Widget, ProviderContainer)> _host({
         (_) => Stream<List<OutboundGroup>>.value(const []),
       ),
       boxStatsProvider.overrideWith((_) => Stream.value(BoxStats.empty)),
-      connectionControllerProvider.overrideWith(FakeConnectionController.new),
+      connectionControllerOverride ??
+          connectionControllerProvider.overrideWith(
+            FakeConnectionController.new,
+          ),
       ...extraOverrides,
     ],
   );
@@ -574,14 +581,12 @@ void main() {
 
     testWidgets('挂载之前就已存在的失败不弹窗（冷启动不重复提示旧失败）', (tester) async {
       final (widget, container) = await _host(
-        extraOverrides: [
-          connectionControllerProvider.overrideWith(
-            (ref) => FakeConnectionController(
-              ref,
-              snapshot: failed(const KernelUnresponsive(), 3),
-            ),
+        connectionControllerOverride: connectionControllerProvider.overrideWith(
+          (ref) => FakeConnectionController(
+            ref,
+            snapshot: failed(const KernelUnresponsive(), 3),
           ),
-        ],
+        ),
       );
       addTearDown(container.dispose);
 

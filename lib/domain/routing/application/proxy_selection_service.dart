@@ -125,8 +125,7 @@ class ProxySelectionService {
     }
   }
 
-  String? _activeProfileId() =>
-      _ref.read(activeProfileProvider).valueOrNull?.id;
+  String? _activeProfileId() => _ref.read(activeProfileProvider).value?.id;
 
   Future<SelectOutcome> _select(
     KernelPort port,

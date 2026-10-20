@@ -1,3 +1,6 @@
+// 下面的 _Frames 要实现 Riverpod 内部的调度接口（Vsync），只能引内部库。
+// ignore_for_file: implementation_imports, invalid_use_of_internal_member
+
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -7,6 +10,8 @@ import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:riverpod/src/internals.dart'
+    show Task, Vsync, InternalProviderContainer;
 
 import '../../_fakes/fake_kernel_port.dart';
 
@@ -59,20 +64,55 @@ KernelSnapshot _started(int attempt) => FakeKernelPort.snap(
 KernelSnapshot _stopped(int attempt) =>
     FakeKernelPort.snap(version: attempt * 10 + 5, attempt: attempt);
 
-/// 与 Flutter 下的 `ProviderScope` 一致：provider 刷新排在「下一帧」执行；
-/// App 在后台时没有帧，只有被直接读到的 provider 会立即重建。
-class _Frames {
+/// 模拟 Flutter 下 `ProviderScope`（Riverpod 3）的调度：provider 刷新排到下一帧
+/// 执行；等不到帧时（App 在后台不出帧），scope 用两个零时长定时器兜底，照样
+/// 执行——与 flutter_riverpod `_UncontrolledProviderScopeState.scheduleRefresh`
+/// 一致。释放任务与真实 scope 一样走微任务。
+class _Frames implements Vsync {
   _Frames(ProviderContainer container) {
-    // ignore: invalid_use_of_internal_member
-    container.scheduler.flutterVsyncs.add((task) => _pending = task);
+    container.scheduler.flutterVsyncs.add(this);
   }
 
-  void Function()? _pending;
+  Task? _pending;
+  Timer? _fallback;
 
-  Future<void> frame() async {
+  @override
+  void Function()? scheduleRefresh(Task task) {
+    _pending = task;
+    _fallback?.cancel();
+    _fallback = Timer(Duration.zero, () {
+      _fallback = Timer(Duration.zero, () {
+        _fallback = null;
+        _run();
+      });
+    });
+    return () {
+      _fallback?.cancel();
+      _fallback = null;
+      if (identical(_pending, task)) _pending = null;
+    };
+  }
+
+  @override
+  void Function()? scheduleDispose(Task task) {
+    var canceled = false;
+    scheduleMicrotask(() {
+      if (!canceled) task.call();
+    });
+    return () => canceled = true;
+  }
+
+  void _run() {
     final task = _pending;
     _pending = null;
     task?.call();
+  }
+
+  /// 出一帧：执行排着的刷新。
+  Future<void> frame() async {
+    _fallback?.cancel();
+    _fallback = null;
+    _run();
     await pumpEventQueue();
   }
 }
@@ -96,19 +136,23 @@ void main() {
     for (var i = 0; i < 3; i++) {
       await frames.frame();
     }
-    expect(_sel(container.read(outboundGroupsProvider).valueOrNull), 'hk');
+    expect(_sel(container.read(outboundGroupsProvider).value), 'hk');
 
     // 后台：内核停止 → 新实例启动，期间没有帧。
     port.push(_stopped(1));
     await pumpEventQueue();
     service.current = _groups('sg');
     port.push(_started(2));
-    await pumpEventQueue();
+    // 只放行微任务（快照送达、刷新排上），不让 scope 的兜底定时器跑：手选重放
+    // 赶在界面一侧刷新之前读实时分组，这是两路订阅抢一次性推送的那个时间窗。
+    for (var i = 0; i < 10; i++) {
+      await Future<void>.value();
+    }
 
     // 手选重放在后台读实时分组：它先重新订阅、拿走这次推送。
     container.read(liveGroupsProvider);
     await pumpEventQueue();
-    final live = container.read(liveGroupsProvider).valueOrNull;
+    final live = container.read(liveGroupsProvider).value;
     expect(live?.instance.attempt, 2);
     expect(_sel(live?.groups), 'sg');
 
@@ -117,7 +161,7 @@ void main() {
       await frames.frame();
     }
     expect(
-      _sel(container.read(outboundGroupsProvider).valueOrNull),
+      _sel(container.read(outboundGroupsProvider).value),
       'sg',
       reason: '界面拿到的必须是新实例的分组，而不是一直等不到',
     );

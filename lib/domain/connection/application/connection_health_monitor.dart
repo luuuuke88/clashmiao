@@ -10,6 +10,7 @@ import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 这条连接实际能不能出网。
 ///

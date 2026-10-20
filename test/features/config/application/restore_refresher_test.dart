@@ -160,13 +160,13 @@ void main() {
       seenAtNetworkChange.add(
         [
           for (final e
-              in container.read(profileListProvider).valueOrNull ??
+              in container.read(profileListProvider).value ??
                   const <ProfileEntity>[])
             e.id,
         ].join(','),
       );
       seenAtNetworkChange.add(
-        container.read(activeProfileProvider).valueOrNull?.id ?? '-',
+        container.read(activeProfileProvider).value?.id ?? '-',
       );
     });
 

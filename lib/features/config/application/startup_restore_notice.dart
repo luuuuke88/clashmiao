@@ -2,6 +2,7 @@ import 'package:clashmiao/features/config/application/restore_refresher.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:clashmiao/features/config/data/backup_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 本次启动时「恢复标记检查」的结果，由 `main()` 在启动屏障之后写入。
 ///

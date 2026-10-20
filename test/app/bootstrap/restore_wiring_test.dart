@@ -41,10 +41,7 @@ void main() {
   test('main.dart 接了：恢复标记检查、feature 层失效清单、定时刷新暂停', () {
     final main = File('lib/main.dart').readAsStringSync();
     expect(main, contains('checkRestoreMarker: checkRestoreMarkerAtStartup'));
-    expect(
-      main,
-      contains('ProviderContainer(overrides: restoreWiringOverrides())'),
-    );
+    expect(main, contains('overrides: restoreWiringOverrides(),'));
     expect(
       main,
       contains('isPaused: () => container.read(restoreInProgressProvider)'),

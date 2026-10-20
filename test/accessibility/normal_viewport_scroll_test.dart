@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -14,6 +15,7 @@ import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/misc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
@@ -62,6 +64,9 @@ Future<Widget> _app({
   required TextDirection direction,
   required Widget home,
   List<Override> overrides = const [],
+  // 内核服务替身单独成参：Riverpod 3 下同一个容器里重复 override 同一个
+  // provider 是断言失败，要换替身就替换默认值，而不是再追加一条 override。
+  BoxService boxService = const StubBoxService(),
 }) async {
   SharedPreferences.setMockInitialValues({
     'locale': locale,
@@ -72,7 +77,7 @@ Future<Widget> _app({
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(const StubBoxService()),
+      boxServiceProvider.overrideWithValue(boxService),
       ...overrides,
     ],
   );
@@ -118,9 +123,9 @@ void main() {
             locale: locale,
             direction: direction,
             home: const ProxiesPage(),
+            boxService: const FakeBoxService(),
             overrides: [
               activeProfileProvider.overrideWith((_) async => _profile),
-              boxServiceProvider.overrideWithValue(const FakeBoxService()),
               isConnectedProvider.overrideWith((_) => false),
               offlineProxyGroupsProvider.overrideWith(
                 (_) async => [

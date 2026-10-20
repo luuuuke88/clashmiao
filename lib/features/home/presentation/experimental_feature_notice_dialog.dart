@@ -46,7 +46,7 @@ bool hasExperimentalFeatures({
 
 /// 用户是否已经勾选过"不再提示"。
 bool isExperimentalNoticeDismissed(WidgetRef ref) {
-  final prefs = ref.read(sharedPreferencesProvider).valueOrNull;
+  final prefs = ref.read(sharedPreferencesProvider).value;
   return prefs?.getBool(kExperimentalNoticeDismissedKey) ?? false;
 }
 
@@ -62,10 +62,7 @@ Future<bool> maybeConfirmExperimentalFeatures({
   required WidgetRef ref,
 }) async {
   final settings = ref.read(networkSettingsProvider);
-  final advancedConfig = ref
-      .read(activeProfileProvider)
-      .valueOrNull
-      ?.advancedConfig;
+  final advancedConfig = ref.read(activeProfileProvider).value?.advancedConfig;
 
   if (!hasExperimentalFeatures(
     settings: settings,
@@ -112,7 +109,7 @@ class _ExperimentalFeatureNoticeDialogState
 
   Future<void> _setDontShowAgain(bool value) async {
     setState(() => _dontShowAgain = value);
-    final prefs = ref.read(sharedPreferencesProvider).valueOrNull;
+    final prefs = ref.read(sharedPreferencesProvider).value;
     await prefs?.setBool(kExperimentalNoticeDismissedKey, value);
   }
 

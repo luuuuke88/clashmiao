@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 enum LogLevel { all, info, warn, error, debug }
 
@@ -75,7 +76,7 @@ class LogFilterNotifier extends StateNotifier<LogFilterState> {
     // ANSI 清洗、过滤逻辑就会随 notifier 一起被销毁，不再常驻内存消耗 CPU。
     _ref.listen(boxLogStreamProvider, (_, next) {
       if (state.paused) return;
-      final raw = next.valueOrNull ?? [];
+      final raw = next.value ?? [];
       _rawLines = _sanitizeLines(raw);
       state = state.copyWith(
         lines: _filter(_rawLines, state.level, state.query),
@@ -105,7 +106,7 @@ class LogFilterNotifier extends StateNotifier<LogFilterState> {
   }
 
   void resume() {
-    final raw = _ref.read(boxLogStreamProvider).valueOrNull ?? _rawLines;
+    final raw = _ref.read(boxLogStreamProvider).value ?? _rawLines;
     _rawLines = _sanitizeLines(raw);
     state = state.copyWith(
       paused: false,

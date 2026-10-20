@@ -30,6 +30,7 @@ import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 // ============ 致命失败上报 ============
@@ -737,7 +738,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
         applied.attempt != attempt) {
       return false;
     }
-    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    final profile = _ref.read(activeProfileProvider).value;
     return applied.profileId == profile?.id &&
         applied.profileInc == profile?.inc;
   }
@@ -839,7 +840,7 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
 
   /// 设置页「数据分析」开关；prefs 还没就绪时保守按「不上报」处理。
   bool _shouldReportAnalytics() {
-    final prefs = _ref.read(sharedPreferencesProvider).valueOrNull;
+    final prefs = _ref.read(sharedPreferencesProvider).value;
     if (prefs == null) return false;
     return prefs.getBool('clashmiao_analytics_enabled') ?? false;
   }
@@ -878,8 +879,8 @@ final connectionControllerProvider =
       var activeKnown = false;
       ref.listen<AsyncValue<ProfileEntity?>>(activeProfileProvider, (_, next) {
         if (!next.hasValue || next.isLoading) return;
-        final id = next.valueOrNull?.id;
-        final inc = next.valueOrNull?.inc;
+        final id = next.value?.id;
+        final inc = next.value?.inc;
         final ownerChanged =
             activeKnown && (id != lastActiveId || inc != lastActiveInc);
         if (activeKnown && id != lastActiveId) {

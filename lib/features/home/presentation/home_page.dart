@@ -485,7 +485,7 @@ class _FooterStats extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final t = ref.watch(translationsProvider);
-    final stats = ref.watch(boxStatsProvider).valueOrNull;
+    final stats = ref.watch(boxStatsProvider).value;
     final total = (stats?.downlinkTotal ?? 0) + (stats?.uplinkTotal ?? 0);
     final egressIp = ref.watch(egressIpProbeProvider);
 
@@ -786,9 +786,8 @@ class _ConnectionInfo extends ConsumerWidget {
     //   2. 解析：不再直接取 `groups.first.selected`（第一条可能是 GLOBAL 或
     //      selected 指向嵌套分组的选择器，解不到叶子），改用 resolveActiveProxy
     //      跳过伪分组、优先主选择器 proxy、下钻到叶子节点。
-    final liveGroups = ref.watch(outboundGroupsProvider).valueOrNull ?? [];
-    final offlineGroups =
-        ref.watch(offlineProxyGroupsProvider).valueOrNull ?? [];
+    final liveGroups = ref.watch(outboundGroupsProvider).value ?? [];
+    final offlineGroups = ref.watch(offlineProxyGroupsProvider).value ?? [];
     final isLiveData = liveGroups.any((g) => g.items.isNotEmpty);
     // 离线兜底叠加存储里的手选（与代理页同一口径）：重放的就是它。
     final groups = isLiveData

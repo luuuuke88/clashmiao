@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 设置页里按「键 + 默认值」读写布尔偏好的开关 provider family。

@@ -113,7 +113,9 @@ void _sim(
       try {
         c.read(sharedPreferencesProvider);
         fa.flushMicrotasks();
-        c.read(egressIpProbeProvider);
+        // 与 main() 一致：探测器由容器级 listen 常驻（Riverpod 3 下只 read 的
+        // provider 处于暂停状态，内部 ref.listen 不触发）。
+        c.listen(egressIpProbeProvider, (_, _) {});
         fa.flushMicrotasks();
         body(
           fa,

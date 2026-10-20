@@ -120,7 +120,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
       _,
       next,
     ) {
-      final groups = next.valueOrNull;
+      final groups = next.value;
       if (groups == null || groups.isEmpty) return;
       ref.read(proxyDelayCacheProvider.notifier).persistFromGroups(groups);
     });
@@ -136,8 +136,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 已连接时优先使用实时数据，否则用离线解析
     final liveGroups = ref.watch(outboundGroupsProvider);
     final offlineGroups = ref.watch(offlineProxyGroupsProvider);
-    final offlineFallback = offlineGroups.valueOrNull ?? [];
-    final currentLiveGroups = liveGroups.valueOrNull;
+    final offlineFallback = offlineGroups.value ?? [];
+    final currentLiveGroups = liveGroups.value;
     if (currentLiveGroups != null && currentLiveGroups.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
@@ -210,8 +210,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 配置，信息条目还在，用整份配置算出的排除集（与构建器同一口径）过滤。
     final infoExclusions = isLiveData
         ? const <String>{}
-        : ref.watch(offlineInfoExclusionsProvider).valueOrNull ??
-              const <String>{};
+        : ref.watch(offlineInfoExclusionsProvider).value ?? const <String>{};
     for (final group in displayGroups) {
       final sortedItems = selectableGroupItems(group.items, infoExclusions);
       final latencies = latenciesByGroup[group.tag] = {

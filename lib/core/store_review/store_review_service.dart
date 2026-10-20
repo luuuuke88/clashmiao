@@ -31,7 +31,7 @@ class StoreReviewService {
   /// 未安装、系统版本过低等一次性/环境性原因），则不写标记——下次连接时
   /// 环境可能已经变化，值得再判断一次。
   Future<void> maybeRequestReview() async {
-    final prefs = _ref.read(sharedPreferencesProvider).valueOrNull;
+    final prefs = _ref.read(sharedPreferencesProvider).value;
     if (prefs == null) return;
     if (prefs.getBool(_storeReviewRequestedPrefKey) ?? false) return;
 

@@ -9,6 +9,7 @@ import 'package:clashmiao/domain/routing/application/proxy_selection_service.dar
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../_fakes/fake_kernel_port.dart';

@@ -1,9 +1,13 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -34,17 +38,15 @@ enum ConnectionHealth {
 /// 之后，UI 就一直显示"已连接"，哪怕真实 egress 早已不通、整机流量被黑洞。
 /// 用户看到的是"VPN 连着呢"，实际上什么都打不开。
 ///
-/// ## 探测手段：复用已有的 [EgressIpService]，不新造轮子
+/// ## 探测手段：按连接形态选通路（见 [connectionHealthProbeProvider]）
 ///
-/// [EgressIpService] 本来就是**走隧道**（`preferTunnel: true`，经本地 mixed
-/// 代理端口发出）去查出口 IP 的。它其实已经是一个现成的、语义正确的
-/// "隧道通不通"探针，只是原来放错了位置、也没有把失败当回事：
+/// VPN 形态从本进程直连探测，流量由系统路由进 tun、经内核 tun 协议栈转发——
+/// 其他应用走的就是这条路；没有 tun 的形态经本地 mixed 代理端口
+/// （[EgressIpService]）。早先一律经代理端口探测，它绕过 tun：tun 转发全部被拒
+/// 时（真机验收 BUG-B）照样成功，「已连接」一直显示正常。
 ///
-/// - 挂在 `HomePage` widget 的生命周期里 → 用户不在首页 / App 在后台时不探测
-/// - 只在刚进入 `BoxStarted` 时打一次 → 没有周期性复查，连上之后节点挂掉
-///   永远发现不了
-/// - 失败被当成"锦上添花没查到"，返回 `EgressIpResult.unknown` 静默吞掉 →
-///   从不升级成"这条连接实际不通"
+/// 此前更早的问题（已修）：探测挂在 `HomePage` 生命周期里、只在刚连上时打
+/// 一次、失败被静默吞掉，从不升级成「这条连接实际不通」。
 ///
 /// 这个类把探测能力提到 App 生命周期级，并且给失败一个出口。
 ///
@@ -105,6 +107,10 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   /// 之后的探测间隔。
   static const probeInterval = Duration(seconds: 60);
 
+  /// 探测失败、还没到阈值时，下一次探测的间隔：尽快确认是不是真的不通，不让
+  /// 「已连接」在一条黑洞连接上挂好几分钟。
+  static const retryInterval = Duration(seconds: 10);
+
   /// 连续失败多少次才判定 [ConnectionHealth.degraded]。
   ///
   /// 取 3 而不是 1：单次失败太容易是网络抖动/对端限流，误报会让这个提示变成
@@ -123,10 +129,7 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
       if (_timer != null) return; // 已经在监控了，重复的 connected 不重启周期
       _consecutiveFailures = 0;
       state = ConnectionHealth.unknown;
-      _timer = Timer(firstProbeDelay, () {
-        unawaited(_probe());
-        _timer = Timer.periodic(probeInterval, (_) => unawaited(_probe()));
-      });
+      _schedule(firstProbeDelay);
     } else {
       // 断开 / 正在切换：停止探测并复位。不保留上一次的 degraded——那是上一条
       // 连接的结论，套到下一条连接上就是误报。
@@ -139,6 +142,19 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
     }
   }
 
+  /// 按 [delay] 安排下一次探测；探测完成后按结果安排再下一次（失败未到阈值
+  /// 用 [retryInterval]，否则 [probeInterval]）。
+  void _schedule(Duration delay) {
+    _timer?.cancel();
+    _timer = Timer(delay, () async {
+      await _probe();
+      if (!mounted || _timer == null) return; // 期间断开了：不再续排
+      final failing =
+          _consecutiveFailures > 0 && _consecutiveFailures < failureThreshold;
+      _schedule(failing ? retryInterval : probeInterval);
+    });
+  }
+
   /// 立即探测一次（供 UI 上的"重试"入口调用）。
   Future<void> probeNow() => _probe();
 
@@ -146,9 +162,9 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
     if (_probing) return;
     _probing = true;
     try {
-      final result = await _ref.read(egressIpServiceProvider).fetch();
+      final ok = await _ref.read(connectionHealthProbeProvider)();
       if (!mounted) return;
-      if (result.isUnknown) {
+      if (!ok) {
         _consecutiveFailures++;
         debugPrint(
           '[ConnectionHealth] 探测失败 '
@@ -166,6 +182,53 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
     }
   }
 }
+
+/// 隧道（tun）通路探测的目标：境外站点，智能分流下按规则走代理节点，与出口
+/// 探测同一取向（不用 gstatic：它在国内直连名单里，直连在国内不通）。
+const kTunnelProbeUrl = 'http://cp.cloudflare.com/generate_204';
+
+/// 一次健康探测：这条连接此刻能不能出网。
+///
+/// - VPN 形态（内核起 tun，[kernelEnableTun]）：从本进程**直连**（不设代理）
+///   请求 [kTunnelProbeUrl]。本 App 不在 VPN 的排除名单里，这条请求由系统路由
+///   进 tun、经内核的 tun 协议栈转发——验证的正是其他应用的流量走的那条路。
+///   只经本地 mixed 代理端口的探测（[EgressIpService]）绕过了 tun：tun 转发
+///   全部被拒（真机验收 BUG-B，TCP 约 2 ms 内 connection refused）时它照样
+///   成功，「已连接」会一直显示正常。
+/// - 仅线路 / 系统代理形态（没有 tun）：经本地代理端口（[EgressIpService]）。
+final connectionHealthProbeProvider = Provider<Future<bool> Function()>((ref) {
+  return () async {
+    final throughTunnel = kernelEnableTun(ref.read(networkSettingsProvider));
+    if (throughTunnel) return ref.read(tunnelProbeProvider)();
+    final result = await ref.read(egressIpServiceProvider).fetch();
+    return !result.isUnknown;
+  };
+});
+
+/// 经 tun 的一次直连探测（见 [connectionHealthProbeProvider]）。测试可替换。
+final tunnelProbeProvider = Provider<Future<bool> Function()>((ref) {
+  return () async {
+    final dio = createAppHttpClient(
+      preferTunnel: false,
+      connectTimeout: const Duration(seconds: 5),
+      receiveTimeout: const Duration(seconds: 5),
+      maxRetries: 0,
+    );
+    try {
+      final response = await dio.get<void>(
+        kTunnelProbeUrl,
+        options: Options(validateStatus: (_) => true),
+      );
+      final code = response.statusCode ?? 0;
+      return code >= 200 && code < 400;
+    } catch (e) {
+      debugPrint('[ConnectionHealth] 经 tun 探测失败: $e');
+      return false;
+    } finally {
+      dio.close(force: true);
+    }
+  };
+});
 
 /// 当前连接的健康度。
 ///

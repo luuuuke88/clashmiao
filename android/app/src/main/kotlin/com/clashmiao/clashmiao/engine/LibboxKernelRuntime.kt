@@ -69,9 +69,15 @@ class LibboxKernelRuntime(
             e.message ?: "invalid config"
         }
 
-        /** 拼最终运行用 config（profile + ConfigOptions JSON）。 */
-        fun buildConfig(path: String, options: String): String =
-            Mobile.buildConfig(path, options)
+        /**
+         * 拼最终运行用 config（profile + ConfigOptions JSON），并保证 tun inbound 至多一个
+         * （见 [TunInbounds]：旧版本持久化下来的运行配置里留着订阅自带的 tun）。
+         */
+        fun buildConfig(path: String, options: String): String {
+            val r = TunInbounds.keepLast(Mobile.buildConfig(path, options))
+            if (r.removed > 0) Log.w(TAG, "dropped ${r.removed} duplicate tun inbound(s) from $path")
+            return r.content
+        }
     }
 
     /** TunnelService.openTun 建好的 FD，被 sing-box 包到 TUN reader 里。 */
@@ -95,7 +101,7 @@ class LibboxKernelRuntime(
 
         override fun buildConfig(spec: LaunchSpec): String {
             val content = try {
-                Mobile.buildConfig(spec.runtimeConfigPath, spec.optionsJson)
+                LibboxKernelRuntime.buildConfig(spec.runtimeConfigPath, spec.optionsJson)
             } catch (e: Exception) {
                 Log.w(TAG, "buildConfig failed", e)
                 throw e

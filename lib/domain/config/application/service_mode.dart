@@ -120,14 +120,6 @@ bool tunSettingsTakeEffect(NetworkSettings settings) =>
 /// 选择控件，而是说明边界。
 bool get serviceModeIsFixed => serviceModePlatform == ServiceModePlatform.ios;
 
-/// 运行时配置是否保留订阅配置里的 tun inbound：桌面端一律剥——桌面的 TUN 只由
-/// 显式设置经 `enable-tun` 交给内核创建，不让订阅里自带的 tun inbound 绕过这个
-/// 开关；移动端与 [kernelEnableTun] 一致，Android「仅线路」跑在纯代理 Service
-/// 里，配置里留着 tun 内核启动即失败。
-bool runtimeKeepsTunInbound(NetworkSettings settings) =>
-    serviceModePlatform != ServiceModePlatform.desktop &&
-    kernelEnableTun(settings);
-
 /// 把 [mode] 写进网络设置（两个开关互斥）。
 Future<void> applyServiceMode(
   NetworkSettingsNotifier notifier,

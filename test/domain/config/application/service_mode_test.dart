@@ -92,16 +92,6 @@ void main() {
       expect(getDefaultConfigOptions(settings: _vpn)['enable-tun'], isTrue);
     });
 
-    test('运行时配置的 tun inbound 与之一致：Android 仅线路剥，桌面一律剥', () {
-      debugServiceModePlatformOverride = ServiceModePlatform.android;
-      expect(runtimeKeepsTunInbound(_proxyOnly), isFalse);
-      expect(runtimeKeepsTunInbound(_defaults), isTrue);
-      debugServiceModePlatformOverride = ServiceModePlatform.ios;
-      expect(runtimeKeepsTunInbound(_proxyOnly), isTrue);
-      debugServiceModePlatformOverride = ServiceModePlatform.desktop;
-      expect(runtimeKeepsTunInbound(_vpn), isFalse);
-    });
-
     test('iOS 恒为 true（Packet Tunnel 只能以 TUN 运行，行为不变）', () {
       debugServiceModePlatformOverride = ServiceModePlatform.ios;
       expect(kernelEnableTun(_proxyOnly), isTrue);
@@ -124,40 +114,36 @@ void main() {
       'tun=1 sys=0': NetworkSettings(setSystemProxy: false, enableTun: true),
       'tun=1 sys=1': NetworkSettings(setSystemProxy: true, enableTun: true),
     };
-    // 期望值：(enable-tun, 保留订阅里的 tun inbound)
-    const expected = <ServiceModePlatform, Map<String, (bool, bool)>>{
+    // 期望值：enable-tun（tun 只由它交给内核创建；运行时配置一律不保留订阅里的
+    // tun inbound，见 runtime_config_builder_test）。
+    const expected = <ServiceModePlatform, Map<String, bool>>{
       ServiceModePlatform.android: {
-        'tun=0 sys=0': (false, false),
-        'tun=0 sys=1': (true, true),
-        'tun=1 sys=0': (true, true),
-        'tun=1 sys=1': (true, true),
+        'tun=0 sys=0': false,
+        'tun=0 sys=1': true,
+        'tun=1 sys=0': true,
+        'tun=1 sys=1': true,
       },
       ServiceModePlatform.ios: {
-        'tun=0 sys=0': (true, true),
-        'tun=0 sys=1': (true, true),
-        'tun=1 sys=0': (true, true),
-        'tun=1 sys=1': (true, true),
+        'tun=0 sys=0': true,
+        'tun=0 sys=1': true,
+        'tun=1 sys=0': true,
+        'tun=1 sys=1': true,
       },
       ServiceModePlatform.desktop: {
-        'tun=0 sys=0': (false, false),
-        'tun=0 sys=1': (false, false),
-        'tun=1 sys=0': (true, false),
-        'tun=1 sys=1': (true, false),
+        'tun=0 sys=0': false,
+        'tun=0 sys=1': false,
+        'tun=1 sys=0': true,
+        'tun=1 sys=1': true,
       },
     };
     for (final platform in ServiceModePlatform.values) {
       for (final entry in combos.entries) {
         test('${platform.name} / ${entry.key}', () {
           debugServiceModePlatformOverride = platform;
-          final (tun, keepInbound) = expected[platform]![entry.key]!;
+          final tun = expected[platform]![entry.key]!;
           final options = getDefaultConfigOptions(settings: entry.value);
           expect(options['enable-tun'], tun, reason: 'enable-tun');
           expect(kernelEnableTun(entry.value), tun);
-          expect(
-            runtimeKeepsTunInbound(entry.value),
-            keepInbound,
-            reason: 'tun inbound',
-          );
           // 不变量：选中态一定在档位里；TUN 专属设置与 enable-tun 同口径。
           expect(
             serviceModeChoices(entry.value),

@@ -95,10 +95,10 @@ func BuildDNS(in dnsInput, warnings *[]string) (*cfg.DNS, error) {
 	}
 	// ③ DNS 路由：智能分流的 bypass 域名用直连 DNS 解析，block 域名直接回空答案。
 	if o.EnableDNSRouting {
-		for _, r := range o.Rules {
+		for i, r := range o.Rules {
 			m, err := r.Matchers()
 			if err != nil {
-				return nil, err
+				return nil, wrapRuleError(i, err)
 			}
 			if !onlyDomainMatchers(m) {
 				continue // 带 IP / 端口等条件的规则 DNS 规则表达不了，且放宽会误伤，跳过

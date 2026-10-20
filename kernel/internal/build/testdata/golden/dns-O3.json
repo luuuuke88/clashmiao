@@ -198,12 +198,50 @@
           53
         ],
         "action": "hijack-dns"
+      },
+      {
+        "ip_is_private": true,
+        "action": "route",
+        "outbound": "bypass"
+      },
+      {
+        "domain": [
+          "direct.example.net"
+        ],
+        "domain_suffix": [
+          "example.cn"
+        ],
+        "action": "route",
+        "outbound": "bypass"
+      },
+      {
+        "domain_keyword": [
+          "ads"
+        ],
+        "action": "reject"
+      },
+      {
+        "ip_cidr": [
+          "198.51.100.0/24"
+        ],
+        "action": "route",
+        "outbound": "bypass"
+      },
+      {
+        "domain_suffix": [
+          "proxy.example.com"
+        ],
+        "action": "route",
+        "outbound": "select"
       }
     ],
     "final": "select",
     "auto_detect_interface": true,
     "override_android_vpn": true,
-    "default_domain_resolver": "dns-direct"
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    }
   },
   "experimental": {
     "cache_file": {

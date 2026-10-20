@@ -20,7 +20,7 @@ func baseConfig() *cfg.Config {
 			{"type": "shadowsocks", "tag": "node", "server": "node.example.net", "server_port": 1},
 			{"type": "direct", "tag": "direct"},
 		},
-		Route: &cfg.Route{DefaultDomainResolver: "dns-direct"},
+		Route: &cfg.Route{DefaultDomainResolver: &cfg.DomainResolver{Server: "dns-direct"}},
 	}
 }
 
@@ -80,7 +80,7 @@ func TestCheckDNSDepsIndirectCycle(t *testing.T) {
 // 经 detour 与 default_domain_resolver 绕回自己：dns-remote 经 select 到域名节点，节点用 dns-remote 解析。
 func TestCheckDNSDepsCycleThroughDetourAndDefaultResolver(t *testing.T) {
 	c := baseConfig()
-	c.Route.DefaultDomainResolver = "dns-remote"
+	c.Route.DefaultDomainResolver = &cfg.DomainResolver{Server: "dns-remote"}
 	wantDepError(t, c, "dns dependency cycle: dns-remote -> select -> node -> dns-remote")
 }
 
@@ -107,7 +107,7 @@ func TestCheckDNSDepsResolverChainMustEndAtIP(t *testing.T) {
 
 func TestCheckDNSDepsMissingServers(t *testing.T) {
 	c := baseConfig()
-	c.Route.DefaultDomainResolver = "ghost"
+	c.Route.DefaultDomainResolver = &cfg.DomainResolver{Server: "ghost"}
 	wantDepError(t, c, "not a dns server")
 	c = baseConfig()
 	c.DNS.Servers[0].DomainResolver = "ghost"

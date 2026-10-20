@@ -9,8 +9,8 @@ import (
 )
 
 // 这个文件是 U4 的脚手架：让测试闸门有一份完整、能真启动的配置可以检查。
-// dns / route / outbounds 三块各有自己的任务（U5 / U6 / U7），到时分别换成 dns.go / route.go / outbounds.go
-// 并删除这里对应的函数；脚手架里写的东西不是最终行为。
+// 出站装配（outbounds）还没有自己的任务落地（U7）；dns（U5）与 route（U6）已经各自成文件，
+// 这里只剩把它们接起来与暂用的出站装配，U7 会整体替换成 outbounds.go。
 
 const (
 	TagSelect         = "select"
@@ -69,20 +69,10 @@ func scaffold(c *cfg.Config, p Profile, o *options.Options, env Env, warnings *[
 	}
 	c.DNS = dns
 
-	rules := []cfg.RouteRule{
-		{Action: "sniff"},
-		{Protocol: []string{"dns"}, Action: "hijack-dns"},
+	route, err := BuildRoute(o, env, TagSelect, warnings)
+	if err != nil {
+		return err
 	}
-	if o.LocalDNSPort != 0 {
-		rules = append(rules, cfg.RouteRule{Inbound: []string{TagDNSIn}, Action: "hijack-dns"})
-	}
-	rules = append(rules, cfg.RouteRule{Port: []uint16{53}, Action: "hijack-dns"})
-	c.Route = &cfg.Route{
-		Rules:                 rules,
-		Final:                 TagSelect,
-		AutoDetectInterface:   true,
-		OverrideAndroidVPN:    env.GOOS == "android",
-		DefaultDomainResolver: TagDNSDirect,
-	}
+	c.Route = route
 	return nil
 }

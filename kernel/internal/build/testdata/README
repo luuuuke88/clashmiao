@@ -31,7 +31,7 @@ profile 夹具
 ----------------------------
 O1 Android VPN 智能分流 / O2 仅线路 / O3 fake DNS + DNS 路由 + 绕过局域网 / O4 mux + 分片 /
 O5a、O5b WARP 两种模式 / O6-* 远程与直连 DNS 各地址形态（含直连 DNS 为域名型 DoH）/
-O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽广告。
+O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽广告 / O10 解析目标地址（resolve-destination）。
 
 矩阵（并非全笛卡尔积）
 ----------------------
@@ -58,5 +58,11 @@ O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽
 | dns-O6-local | P2 | O6-local | U5 |
 | dns-O6-direct-doh-domain | P2 | O6-direct-doh-domain（直连 DNS 为域名型 DoH） | U5 |
 | dns-O7-only | P2 | O7-only | U5 |
+| route-O3 | P1 | O3（bypass / block / IP / proxy 四类用户规则 + bypass-lan） | U6 |
+| route-O9 | P1 | O9（block-ads：只给警告，不生成规则集） | U6 |
+| route-O10 | P1 | O10（resolve-destination：sniff 之后插入 resolve） | U6 |
 
-后续任务往表里加格子（U6：O3 / O9；U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。
+后续任务往表里加格子（U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。
+
+rules/cn-direct.json：智能分流下 Dart 注入的 rules 全量（7.5k CIDR + 域名），由 lib/domain/config/data/cn_direct_rules.dart 导出；
+U17 的 Dart 测试负责让它与 Dart 侧保持一致（有差异测试失败）。route_test 用它验证「全量清单能过 CheckConfig 与真启动」，不产生黄金文件。

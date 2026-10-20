@@ -197,60 +197,60 @@ class InstalledApp {
 /// Dart 调原生：sing-box 生命周期 + 状态变更。
 @HostApi()
 abstract class BoxHostApi {
-  @async
+  @asyncCallback
   void initialize();
 
-  @async
+  @asyncCallback
   void setup(String baseDir, String workingDir, String tempDir, bool debug);
 
-  @async
+  @asyncCallback
   ValidateConfigResult validateConfig(ValidateConfigRequest req);
 
-  @async
+  @asyncCallback
   void changeConfigOptions(ConfigOptions options);
 
-  @async
+  @asyncCallback
   void start(StartRequest req);
 
-  @async
+  @asyncCallback
   void stop();
 
-  @async
+  @asyncCallback
   void restart(StartRequest req);
 
-  @async
+  @asyncCallback
   void selectOutbound(SelectOutboundRequest req);
 
   /// 当前权威快照（连接生命周期 spec §2）。Android 由进程级协调器提供；
   /// iOS 无原生实现，Dart 使用 `EmulatedKernelPort`。
-  @async
+  @asyncCallback
   KernelSnapshotMsg getSnapshot();
 
   /// 提交带序号的期望请求。回调只表示入队/被拒绝（见 [ReceiptMsg]）；
   /// 失败一律 `Result.failure(FlutterError)`，不 throw。
-  @async
+  @asyncCallback
   ReceiptMsg request(DesiredRequestMsg req);
 
   /// 确认 [attempt] 的手选重放已完成。幂等：attempt 不是当前值时忽略。
-  @async
+  @asyncCallback
   void acknowledgeReplay(int attempt);
 
-  @async
+  @asyncCallback
   void urlTest(String groupTag);
 
-  @async
+  @asyncCallback
   String? generateFullConfig(String path);
 
-  @async
+  @asyncCallback
   void clearLogs();
 
-  @async
+  @asyncCallback
   List<InstalledApp> getInstalledApps();
 
-  @async
+  @asyncCallback
   String? getAppIconBase64(String packageName);
 
-  @async
+  @asyncCallback
   void resetTunnel();
 
   /// iOS 专用：查询 App Group 共享容器内、sing-box 运行时文件（provisioned 的
@@ -266,6 +266,6 @@ abstract class BoxHostApi {
   /// `lib/core/box_service/model/directories.dart` 的 `resolveSingBoxWorkingDirectory`）；
   /// Android 走 `path_provider` 就够（单进程模型，没有这个问题），这里的
   /// Android 实现只是为了满足接口契约，返回值不会被 Dart 消费。
-  @async
+  @asyncCallback
   String getAppGroupWorkingDirectory();
 }

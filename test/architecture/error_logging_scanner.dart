@@ -54,16 +54,16 @@ class _Visitor extends RecursiveAstVisitor<void> {
   }
 
   @override
-  void visitNamedExpression(NamedExpression node) {
-    final label = node.name.label.name;
+  void visitNamedArgument(NamedArgument node) {
+    final label = node.name.lexeme;
     if ((label == 'error' || label == 'onError') &&
-        node.expression is FunctionExpression) {
+        node.argumentExpression is FunctionExpression) {
       _depth++;
-      super.visitNamedExpression(node);
+      super.visitNamedArgument(node);
       _depth--;
       return;
     }
-    super.visitNamedExpression(node);
+    super.visitNamedArgument(node);
   }
 
   @override

@@ -5,18 +5,18 @@ packages:
     dependency: transitive
     description:
       name: _fe_analyzer_shared
-      sha256: da0d9209ca76bde579f2da330aeb9df62b6319c834fa7baae052021b0462401f
+      sha256: "48e48f73a431eb269eec66d243a63a07ed90ef9417a74047a3b98d52338626ad"
       url: "https://pub.dev"
     source: hosted
-    version: "85.0.0"
+    version: "109.0.0"
   analyzer:
     dependency: "direct dev"
     description:
       name: analyzer
-      sha256: f4ad0fea5f102201015c9aae9d93bc02f75dd9491529a8c21f88d17a8523d44c
+      sha256: "6d377901d198536b648172974d9d4f277910502cad92193466869cac0ff34990"
       url: "https://pub.dev"
     source: hosted
-    version: "7.6.0"
+    version: "14.5.0"
   android_file_picker:
     dependency: transitive
     description:
@@ -165,10 +165,10 @@ packages:
     dependency: transitive
     description:
       name: dart_style
-      sha256: "8a0e5fba27e8ee025d2ffb4ee820b4e6e2cf5e4246a6b1a477eb66866947e0bb"
+      sha256: a0e4f65339b31eb6a9e6a12e14b4682a48d46fbc54a82f4a702396fbdbac63a7
       url: "https://pub.dev"
     source: hosted
-    version: "3.1.1"
+    version: "3.1.14"
   dbus:
     dependency: transitive
     description:
@@ -744,10 +744,10 @@ packages:
     dependency: "direct dev"
     description:
       name: pigeon
-      sha256: fe36bc5ad43ab7f4d8a9d974850aef1148f6d88a53bd14b3d87475ec403a3cdb
+      sha256: "9c4b979de1ed662c8f66a921b7b42ab31c366da5141f3996590c52a8a70baf74"
       url: "https://pub.dev"
     source: hosted
-    version: "26.1.0"
+    version: "29.0.11"
   platform:
     dependency: transitive
     description:

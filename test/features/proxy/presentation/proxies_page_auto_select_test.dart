@@ -7,6 +7,7 @@ import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
+import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -168,6 +169,41 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(spy.selectCalls, [('proxy', 'auto')]);
     await _drainToasts(tester);
+  });
+
+  testWidgets('自动选择卡选中与否一样高：点选时下面的列表不会跳 1 dp', (tester) async {
+    Future<double> cardHeight(String selected) async {
+      await _pumpPage(
+        tester,
+        groups: [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: selected,
+            items: const [
+              OutboundProxy(tag: 'auto', type: 'urltest'),
+              _nodeA,
+            ],
+          ),
+        ],
+      );
+      final height = tester
+          .getSize(
+            find
+                .ancestor(
+                  of: find.text('自动选择'),
+                  matching: find.byType(GlassCard),
+                )
+                .first,
+          )
+          .height;
+      await _drainToasts(tester);
+      return height;
+    }
+
+    final selectedHeight = await cardHeight('auto');
+    final unselectedHeight = await cardHeight('node-a');
+    expect(selectedHeight, unselectedHeight);
   });
 
   // 真机验收 BUG-C：默认选中自动选择组时（主选择组 select 的 selected 为 auto，

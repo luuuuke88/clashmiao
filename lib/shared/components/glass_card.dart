@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
 
@@ -49,28 +50,37 @@ class GlassCard extends StatelessWidget {
         ),
         child: ClipRRect(
           borderRadius: radius,
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              // 够实才压得住底下的晕染（卡片里的文字要读得清），又留了
-              // 快三成透明让颜色透上来。
-              color: isLight
-                  ? Colors.white.withValues(alpha: 0.72)
-                  : const Color(0xFF1C1C22).withValues(alpha: 0.62),
-              borderRadius: radius,
-              border: Border.all(
-                color:
-                    borderColor ??
-                    (isLight
-                        ? Colors.white.withValues(alpha: 0.75)
-                        : Colors.white.withValues(alpha: 0.10)),
-                width: borderWidth,
-              ),
+          // 描边颜色在选中 / 未选中、明暗主题之间切换时渐变，而不是一帧之内换掉；
+          // 描边**宽度**不渐变（调用方选中时会同步调整内边距来抵消宽度变化，
+          // 渐变宽度会让卡片在动画期间忽大忽小）。
+          child: TweenAnimationBuilder<Color?>(
+            tween: ColorTween(
+              end:
+                  borderColor ??
+                  (isLight
+                      ? Colors.white.withValues(alpha: 0.75)
+                      : Colors.white.withValues(alpha: 0.10)),
             ),
-            // 用一层透明 Material 兜住水波纹：InkWell 的墨水画在最近的
-            // Material 祖先上，那个祖先在卡片外面，所以点一下会冒出一个
-            // **直角**高亮，从圆角卡片的角上支出来。放进裁剪里面就规矩了。
+            duration: Motion.duration(context, Motion.short),
+            curve: Motion.standard,
+            // 用 Material 兜住水波纹的那层放在 child 里，边颜色变化时不重建内容。
             child: Material(type: MaterialType.transparency, child: child),
+            builder: (context, edge, inner) => Container(
+              padding: padding,
+              decoration: BoxDecoration(
+                // 够实才压得住底下的晕染（卡片里的文字要读得清），又留了
+                // 快三成透明让颜色透上来。
+                color: isLight
+                    ? Colors.white.withValues(alpha: 0.72)
+                    : const Color(0xFF1C1C22).withValues(alpha: 0.62),
+                borderRadius: radius,
+                border: Border.all(color: edge!, width: borderWidth),
+              ),
+              // 用一层透明 Material 兜住水波纹：InkWell 的墨水画在最近的
+              // Material 祖先上，那个祖先在卡片外面，所以点一下会冒出一个
+              // **直角**高亮，从圆角卡片的角上支出来。放进裁剪里面就规矩了。
+              child: inner,
+            ),
           ),
         ),
       ),

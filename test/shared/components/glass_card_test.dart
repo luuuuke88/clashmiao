@@ -68,4 +68,67 @@ void main() {
     expect(color.g, lessThan(0.3));
     expect(color.b, lessThan(0.3));
   });
+
+  group('描边颜色', () {
+    Future<void> pumpWith(
+      WidgetTester tester, {
+      required Color? borderColor,
+      bool disableAnimations = false,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark().copyWith(
+            extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
+          ),
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context)
+                .copyWith(disableAnimations: disableAnimations),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: Center(
+              child: GlassCard(
+                borderColor: borderColor,
+                borderWidth: borderColor == null ? 1 : 1.5,
+                child: const Text('内容'),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    Border border(WidgetTester tester) {
+      final container = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(GlassCard),
+          matching: find.byType(Container),
+        ),
+      );
+      return (container.decoration! as BoxDecoration).border! as Border;
+    }
+
+    testWidgets('选中时描边颜色渐变到品牌色，中途是两端之间的颜色', (tester) async {
+      await pumpWith(tester, borderColor: null);
+      final from = border(tester).top.color;
+
+      await pumpWith(tester, borderColor: Colors.red);
+      await tester.pump(const Duration(milliseconds: 60));
+      final mid = border(tester).top.color;
+      expect(mid, isNot(from));
+      expect(mid, isNot(Colors.red));
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(border(tester).top.color, Colors.red);
+      // 宽度不渐变：由调用方同步调整内边距来抵消，渐变会让卡片忽大忽小。
+      expect(border(tester).top.width, 1.5);
+    });
+
+    testWidgets('减少动画：描边颜色立刻到位', (tester) async {
+      await pumpWith(tester, borderColor: null, disableAnimations: true);
+      await pumpWith(tester, borderColor: Colors.red, disableAnimations: true);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(border(tester).top.color, Colors.red);
+    });
+  });
 }

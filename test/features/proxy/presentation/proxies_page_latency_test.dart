@@ -460,7 +460,7 @@ void main() {
       expect(other.borderColor, isNull);
       expect(other.borderWidth, 1);
 
-      // 底色：选中行有 8% 品牌色的 Ink，未选中行没有。
+      // 底色：选中行有 8% 品牌色的 Ink，未选中行是全透明的。
       Iterable<Ink> inks(String text) => tester.widgetList<Ink>(
         find.descendant(of: _tileOf(text), matching: find.byType(Ink)),
       );
@@ -472,7 +472,12 @@ void main() {
           primary.withValues(alpha: 0.08),
         ),
       );
-      expect(inks('other').single.decoration, isNull, reason: '未选中行没有品牌色底');
+      // 未选中行的底色是全透明的品牌色（为了能从透明渐变到 8%，不是没有这层）。
+      expect(
+        inks('other').single.decoration,
+        isA<BoxDecoration>().having((d) => d.color?.a, 'alpha', 0),
+        reason: '未选中行没有可见的品牌色底',
+      );
 
       final check = find.descendant(
         of: _tileOf('picked'),

@@ -82,7 +82,7 @@ dependencies:
   sentry_flutter: ^10.1.0
   share_plus: ^13.3.1
   file_picker: ^13.1.0
-  permission_handler: ^11.3.0
+  permission_handler: ^13.0.2
   crypto: ^3.0.3
 
   # 首连成功后请求 App Store / Play Store 内置评分弹窗

@@ -122,4 +122,54 @@ void main() {
       expect(hasHideMarker('x §default§'), isFalse);
     });
   });
+
+  group('candidateLeafTags：叶子视图，含端点', () {
+    test('出站里的叶子 + 端点，不含分组 / 直连 / 阻断 / DNS', () {
+      final tags = candidateLeafTags({
+        'outbounds': [
+          {'type': 'selector', 'tag': 'sel'},
+          {'type': 'vless', 'tag': 'v'},
+          {'type': 'direct', 'tag': 'direct'},
+          {'type': 'block', 'tag': 'block'},
+          {'type': 'dns', 'tag': 'dns-out'},
+          {'type': 'urltest', 'tag': 'auto'},
+        ],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg'},
+        ],
+      });
+      expect(tags, ['v', 'wg']);
+    });
+
+    test('只有端点的订阅：候选不为空', () {
+      expect(
+        candidateLeafTags({
+          'outbounds': <Object>[],
+          'endpoints': [
+            {'type': 'wireguard', 'tag': 'wg-hk'},
+          ],
+        }),
+        ['wg-hk'],
+      );
+    });
+
+    test('端点上的信息条目同样被排除，且订阅级保护照常（全是信息条目则不排除）', () {
+      final cfg = <String, dynamic>{
+        'outbounds': [
+          {'type': 'vless', 'tag': '剩余流量：100 GB'},
+        ],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg-hk'},
+        ],
+      };
+      expect(subscriptionInfoExclusionsForConfig(cfg), {'剩余流量：100 GB'});
+      final onlyInfo = <String, dynamic>{
+        'outbounds': <Object>[],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': '剩余流量：100 GB'},
+        ],
+      };
+      expect(subscriptionInfoExclusionsForConfig(onlyInfo), isEmpty);
+    });
+  });
 }

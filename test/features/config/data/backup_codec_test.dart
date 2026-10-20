@@ -232,7 +232,7 @@ void main() {
       expect(plan.configs.keys, {'a'});
     });
 
-    test('配置不是「含 outbounds 数组的对象」就不被采用', () {
+    test('配置不是「叶子视图非空的对象」就不被采用', () {
       final cases = <Object?>[
         '',
         '   ',
@@ -243,6 +243,12 @@ void main() {
         '{}',
         '{"outbounds": "x"}',
         '{"outbounds": {}}',
+        '{"outbounds": []}',
+        '{"outbounds": [], "endpoints": []}',
+        // 没有真实可连的节点：只有 direct / 只有分组，等同没有节点。
+        '{"outbounds": [{"type":"direct","tag":"direct"}]}',
+        '{"outbounds": [{"type":"selector","tag":"s","outbounds":["a"]},'
+            '{"type":"urltest","tag":"u","outbounds":["a"]}]}',
         123,
         null,
       ];
@@ -254,6 +260,29 @@ void main() {
         // 远程订阅：配置不可用 → 保留订阅，导入后后台补拉。
         expect(plan.profiles.single.id, 'a', reason: '$bad');
         expect(plan.needsFetch, ['a'], reason: '$bad');
+      }
+    });
+
+    test('配置可用：有节点，或只有端点；旧形态不拒绝（由读时清洗处理）', () {
+      final usable = <String, String>{
+        '出站节点': '{"outbounds":[{"type":"vless","tag":"v"}]}',
+        '端点独占':
+            '{"outbounds":[],"endpoints":[{"type":"wireguard","tag":"wg"}]}',
+        '没有 outbounds 数组的端点独占':
+            '{"endpoints":[{"type":"wireguard","tag":"wg"}]}',
+        '出站与端点混合':
+            '{"outbounds":[{"type":"vless","tag":"v"}],'
+            '"endpoints":[{"type":"wireguard","tag":"wg"}]}',
+        '1.8 的 wireguard 出站':
+            '{"outbounds":[{"type":"wireguard","tag":"wg","server":"x"}]}',
+        '带旧字段的节点': '{"outbounds":[{"type":"vless","tag":"v","domain_strategy":"ipv4_only"}]}',
+      };
+      for (final entry in usable.entries) {
+        final plan = _parse(
+          _v2(profiles: [_profile('a')], configs: {'a': entry.value}),
+        );
+        expect(plan.configs.keys, {'a'}, reason: entry.key);
+        expect(plan.needsFetch, isEmpty, reason: entry.key);
       }
     });
 

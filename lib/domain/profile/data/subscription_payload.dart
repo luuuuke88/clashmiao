@@ -17,6 +17,8 @@ library;
 
 import 'dart:convert';
 
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+
 enum SubscriptionPayloadKind {
   /// sing-box 原生 JSON 配置。
   singboxJson,
@@ -84,11 +86,13 @@ SubscriptionPayloadAnalysis analyzeSubscriptionPayload(
     try {
       final decoded = jsonDecode(trimmed);
       if (decoded is Map<String, dynamic>) {
-        final outbounds = decoded['outbounds'];
-        if (outbounds is List) {
+        // 节点数按**叶子视图**数（见 profile_nodes.dart）：`outbounds` 为空而
+        // `endpoints` 里有 WireGuard 端点不算空；分组、直连、阻断、DNS 不计入，
+        // 所以「只有 selector / direct」的 JSON 是确信的零节点。
+        if (decoded['outbounds'] is List || decoded['endpoints'] is List) {
           return SubscriptionPayloadAnalysis(
             kind: SubscriptionPayloadKind.singboxJson,
-            nodeCount: outbounds.length,
+            nodeCount: profileNodeCount(decoded),
           );
         }
       }

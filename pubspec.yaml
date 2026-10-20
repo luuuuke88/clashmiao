@@ -70,7 +70,7 @@ dependencies:
 
   # 二维码
   qr_flutter: ^4.1.0
-  mobile_scanner: ^5.1.0
+  mobile_scanner: ^7.4.2
 
   # 通知
   toastification: ^2.1.0

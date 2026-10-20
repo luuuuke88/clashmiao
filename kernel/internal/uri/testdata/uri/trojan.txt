@@ -1,0 +1,13 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 trojan 的表驱动测试生成（go test ./internal/uri -update）。
+trojan://pw1@t.example.net:443#t1
+trojan://pw2@t2.example.net:443?security=tls&sni=front.example.net&alpn=h2%2Chttp%2F1.1&fp=chrome#t2
+trojan://pw3@w.example.net:443?type=ws&host=cdn.example.net&path=%2Ftrojan#ws
+trojan://pw4@g.example.net:443?type=grpc&serviceName=tsvc&sni=g.example.net#grpc
+trojan://pw5@192.0.2.8:8080?security=none#plain
+trojan://pw6@i.example.net:443?allowInsecure=1#ins
+trojan://p%40ss%3Aword@e.example.net:443#enc
+trojan://pw7@[2001:db8::3]:443?sni=v6.example.net#v6
+trojan://pw8@n.example.net:8443
+trojan://pw9@r.example.net:443?security=reality&pbk=ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y&sid=ab#r
+trojan://pw10@h.example.net:443?type=httpupgrade&host=h.example.net&path=%2Fu#hu

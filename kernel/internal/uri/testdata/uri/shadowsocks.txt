@@ -1,0 +1,15 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 shadowsocks 的表驱动测试生成（go test ./internal/uri -update）。
+ss://YWVzLTEyOC1nY206cHcx@s1.example.net:8388#s1
+ss://Y2hhY2hhMjAtaWV0Zi1wb2x5MTMwNTpwdzI@s2.example.net:8388/#s2
+ss://YWVzLTI1Ni1nY206cD93Lysx@s3.example.net:8388#s3
+ss://2022-blake3-aes-128-gcm:Zm9vYmFyMTIzNDU2Nzg5MA%3D%3D@s4.example.net:8388#s4
+ss://YWVzLTEyOC1nY206cHc1QHM1LmV4YW1wbGUubmV0OjgzODg=#s5
+ss://YWVzLTEyOC1nY206cHc2QDE5Mi4wLjIuNjo5MDAw
+ss://YWVzLTEyOC1nY206cHc3@[2001:db8::5]:8388#v6
+ss://YWVzLTEyOC1nY206cHc4QFsyMDAxOmRiODo6Nl06ODM4OA==#v6b
+ss://YWVzLTEyOC1nY206cHc5@o.example.net:8388/?plugin=obfs-local%3Bobfs%3Dhttp%3Bobfs-host%3Dcdn.example.com#obfs
+ss://YWVzLTEyOC1nY206cHcxMA@o2.example.net:8388/?plugin=simple-obfs%3Bobfs%3Dtls#obfs2
+ss://YWVzLTEyOC1nY206cHcxMQ@v.example.net:443/?plugin=v2ray-plugin%3Btls%3Bhost%3Dv.example.net%3Bpath%3D%2Fws#v2
+ss://YWVzLTEyOC1nY206cHcxMg@n.example.net:8388#%E9%A6%99%E6%B8%AF%2001
+ss://YWVzLTEyOC1nY206YTpiOmM@c.example.net:8388#colon

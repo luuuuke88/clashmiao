@@ -1,0 +1,56 @@
+package uri
+
+import "testing"
+
+func TestVLess(t *testing.T) {
+	cases := []convCase{
+		{name: "reality + vision", in: "vless://" + testUUID + "@r.example.net:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.example.com&fp=chrome&pbk=" + testPK + "&sid=0123abcd&spx=%2F&type=tcp#reality",
+			want: m("type", "vless", "tag", "reality", "server", "r.example.net", "server_port", 443, "uuid", testUUID, "flow", "xtls-rprx-vision",
+				"tls", m("enabled", true, "server_name", "www.example.com", "utls", m("enabled", true, "fingerprint", "chrome"),
+					"reality", m("enabled", true, "public_key", testPK, "short_id", "0123abcd")))},
+		{name: "reality 缺 fp 时默认 chrome", in: "vless://" + testUUID + "@r2.example.net:443?security=reality&pbk=" + testPK + "&sid=ab#r2",
+			want: m("type", "vless", "tag", "r2", "server", "r2.example.net", "server_port", 443, "uuid", testUUID,
+				"tls", m("enabled", true, "server_name", "r2.example.net", "utls", m("enabled", true, "fingerprint", "chrome"),
+					"reality", m("enabled", true, "public_key", testPK, "short_id", "ab")))},
+		{name: "ws + tls", in: "vless://" + testUUID + "@w.example.net:443?encryption=none&security=tls&sni=w.example.net&type=ws&host=cdn.example.net&path=%2Fws%3Fed%3D2048&alpn=h2%2Chttp%2F1.1&fp=firefox#ws",
+			want: m("type", "vless", "tag", "ws", "server", "w.example.net", "server_port", 443, "uuid", testUUID,
+				"tls", m("enabled", true, "server_name", "w.example.net", "alpn", list("h2", "http/1.1"), "utls", m("enabled", true, "fingerprint", "firefox")),
+				"transport", m("type", "ws", "path", "/ws", "headers", m("Host", "cdn.example.net"), "max_early_data", 2048, "early_data_header_name", "Sec-WebSocket-Protocol"))},
+		{name: "grpc", in: "vless://" + testUUID + "@g.example.net:443?security=tls&type=grpc&serviceName=gsvc&mode=gun#grpc",
+			want: m("type", "vless", "tag", "grpc", "server", "g.example.net", "server_port", 443, "uuid", testUUID,
+				"tls", m("enabled", true, "server_name", "g.example.net"), "transport", m("type", "grpc", "service_name", "gsvc"))},
+		{name: "httpupgrade", in: "vless://" + testUUID + "@h.example.net:80?type=httpupgrade&host=h.example.net&path=%2Fup#hu",
+			want: m("type", "vless", "tag", "hu", "server", "h.example.net", "server_port", 80, "uuid", testUUID,
+				"transport", m("type", "httpupgrade", "path", "/up", "host", "h.example.net"))},
+		{name: "h2", in: "vless://" + testUUID + "@h2.example.net:443?security=tls&type=h2&host=h2.example.net&path=%2Fh#h2",
+			want: m("type", "vless", "tag", "h2", "server", "h2.example.net", "server_port", 443, "uuid", testUUID,
+				"tls", m("enabled", true, "server_name", "h2.example.net"), "transport", m("type", "http", "path", "/h", "host", list("h2.example.net")))},
+		{name: "tcp + http 伪装头", in: "vless://" + testUUID + "@t.example.net:80?type=tcp&headerType=http&host=a.example.com&path=%2F#th",
+			want: m("type", "vless", "tag", "th", "server", "t.example.net", "server_port", 80, "uuid", testUUID,
+				"transport", m("type", "http", "path", "/", "method", "GET", "host", list("a.example.com")))},
+		{name: "明文 tcp，无参数", in: "vless://" + testUUID + "@192.0.2.9:8443",
+			want: m("type", "vless", "tag", "192.0.2.9:8443", "server", "192.0.2.9", "server_port", 8443, "uuid", testUUID)},
+		{name: "IPv6 服务器", in: "vless://" + testUUID + "@[2001:db8::9]:443?security=tls&sni=v6.example.net#v6",
+			want: m("type", "vless", "tag", "v6", "server", "2001:db8::9", "server_port", 443, "uuid", testUUID, "tls", m("enabled", true, "server_name", "v6.example.net"))},
+		{name: "allowInsecure 与 packetEncoding", in: "vless://" + testUUID + "@i.example.net:443?security=tls&allowInsecure=1&packetEncoding=xudp#i",
+			want: m("type", "vless", "tag", "i", "server", "i.example.net", "server_port", 443, "uuid", testUUID, "packet_encoding", "xudp",
+				"tls", m("enabled", true, "server_name", "i.example.net", "insecure", true))},
+		{name: "名称百分号编码", in: "vless://" + testUUID + "@n.example.net:443?security=tls#%F0%9F%87%AD%F0%9F%87%B0%20%E9%A6%99%E6%B8%AF",
+			want: m("type", "vless", "tag", "🇭🇰 香港", "server", "n.example.net", "server_port", 443, "uuid", testUUID, "tls", m("enabled", true, "server_name", "n.example.net"))},
+		{name: "reality 的 sni 取 servername 参数", in: "vless://" + testUUID + "@s.example.net:443?security=reality&servername=sn.example.com&pbk=" + testPK + "#sn",
+			want: m("type", "vless", "tag", "sn", "server", "s.example.net", "server_port", 443, "uuid", testUUID,
+				"tls", m("enabled", true, "server_name", "sn.example.com", "utls", m("enabled", true, "fingerprint", "chrome"),
+					"reality", m("enabled", true, "public_key", testPK)))},
+
+		{name: "缺 uuid", in: "vless://@a.example.net:443", err: "missing uuid"},
+		{name: "缺端口", in: "vless://" + testUUID + "@a.example.net", err: "missing port"},
+		{name: "reality 缺公钥", in: "vless://" + testUUID + "@a.example.net:443?security=reality", err: "reality needs pbk"},
+		{name: "加密不是 none", in: "vless://" + testUUID + "@a.example.net:443?encryption=mlkem768x25519plus", err: "unsupported encryption"},
+		{name: "flow 却没有 tls", in: "vless://" + testUUID + "@a.example.net:443?flow=xtls-rprx-vision", err: "needs tls or reality"},
+		{name: "xtls 不支持", in: "vless://" + testUUID + "@a.example.net:443?security=xtls", err: `unsupported security "xtls"`},
+		{name: "xhttp 传输不支持", in: "vless://" + testUUID + "@a.example.net:443?security=tls&type=xhttp", err: `unsupported transport "xhttp"`},
+		{name: "kcp 传输不支持", in: "vless://" + testUUID + "@a.example.net:443?type=kcp", err: `unsupported transport "kcp"`},
+		{name: "端口非法", in: "vless://" + testUUID + "@a.example.net:99999", err: "bad port"},
+	}
+	runCases(t, "vless", cases)
+}

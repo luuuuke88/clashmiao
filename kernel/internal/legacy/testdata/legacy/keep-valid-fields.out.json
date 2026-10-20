@@ -1,0 +1,19 @@
+{
+  "outbounds": [
+    {
+      "connect_timeout": "5s",
+      "method": "aes-128-gcm",
+      "multiplex": {
+        "enabled": true,
+        "protocol": "smux"
+      },
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "a",
+      "tcp_fast_open": true,
+      "type": "shadowsocks",
+      "udp_fragment": true
+    }
+  ]
+}

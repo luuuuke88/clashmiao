@@ -1,0 +1,40 @@
+{
+  "outbounds": [
+    {
+      "detour": "grp",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "x",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "blk",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "y",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "never-existed",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "z",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "dns-out",
+      "method": "aes-128-gcm",
+      "password": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "tag": "w",
+      "type": "shadowsocks"
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，密钥与密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "grp",
+      "outbounds": [
+        "x"
+      ]
+    },
+    {
+      "type": "block",
+      "tag": "blk"
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "x",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "detour": "grp"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "y",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "detour": "blk"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "z",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "detour": "never-existed"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "w",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "x",
+      "detour": "dns-out"
+    }
+  ]
+}

@@ -14,7 +14,8 @@ import 'package:flutter/material.dart';
 ///   以前日志页与分应用线路页用默认 `AppBar`（返回箭头在左、20 sp 标题、滚动时
 ///   出投影），和配置页一进一出就像换了个 App。
 ///
-/// [body] 自己负责横向内边距；页头左右固定 24 dp。
+/// [body] 自己负责横向内边距与滚动末尾的底部 inset（`MediaQuery.paddingOf(context)
+/// .bottom`，手势条高度）；页头左右固定 24 dp。
 class SubPageScaffold extends StatelessWidget {
   const SubPageScaffold({
     super.key,
@@ -44,6 +45,9 @@ class SubPageScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
+        // 底部不让安全区把内容截断：edge-to-edge 下手势条那一圈要能看到滚动内容从
+        // 下面划过；滚动的 body 自己在末尾补 MediaQuery 的底部 inset。
+        bottom: false,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

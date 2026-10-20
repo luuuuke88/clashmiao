@@ -192,6 +192,12 @@ class _LogsPageState extends ConsumerState<LogsPage> {
             return _LogEntryTile(log: log, showDivider: index != 0);
           },
         ),
+        // reverse 列表：这里是最新一行所在的一端，留出手势条高度。
+        SliverPadding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.paddingOf(context).bottom,
+          ),
+        ),
       ],
     );
   }

@@ -247,7 +247,7 @@ class _State extends ConsumerState<PerAppProxyPage> {
                 ),
               ),
             )
-          else
+          else ...[
             SliverList.builder(
               itemCount: apps.length,
               itemBuilder: (context, index) {
@@ -297,6 +297,13 @@ class _State extends ConsumerState<PerAppProxyPage> {
                 );
               },
             ),
+            // 末尾留出手势条高度，最后一行不被它盖住。
+            SliverPadding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.paddingOf(context).bottom,
+              ),
+            ),
+          ],
         ],
       ),
     );

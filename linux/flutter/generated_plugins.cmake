@@ -6,7 +6,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   app_links_linux
   screen_retriever_linux
   sentry_flutter
-  tray_manager
   url_launcher_linux
   window_manager
 )

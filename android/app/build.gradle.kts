@@ -76,6 +76,18 @@ android {
         }
     }
 
+    packaging {
+        jniLibs {
+            // tray_manager 0.8 依赖的 cnativeapi 声明了 android 平台，Flutter 的
+            // native assets 构建会为 Android 也编译一份 libcnativeapi.so 打进包里
+            // （约 1.3 MB）。它只服务桌面托盘：Android 上没有任何代码会调用到它
+            // ——托盘只在 main.dart 的桌面分支里初始化，cnativeapi 的函数都是
+            // @Native 懒解析，不调用就不会加载，tray_manager 0.8 也不再是带
+            // Android 原生部分的插件。所以直接从 APK/AAB 里剔除。
+            excludes += "**/libcnativeapi.so"
+        }
+    }
+
     testOptions {
         unitTests {
             // host JVM 跑 Android stub 时遇到没实现的 framework call 直接返回默认值

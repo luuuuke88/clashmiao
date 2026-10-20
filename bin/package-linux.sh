@@ -83,7 +83,7 @@ Version: $VERSION
 Section: net
 Priority: optional
 Architecture: amd64
-Depends: libgtk-3-0, libayatana-appindicator3-1, libcurl4
+Depends: libgtk-3-0, libx11-6, libxi6, libcurl4
 Installed-Size: $INSTALLED_KB
 Maintainer: ClashMiao <noreply@clashmiao.invalid>
 Description: Cross-platform proxy client

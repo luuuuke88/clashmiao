@@ -1,3 +1,9 @@
+// tray_manager 0.7 起换成基于 nativeapi 的新 API，0.5.x 的接口整体移到
+// legacy.dart 并标记弃用。这里有意先停在 legacy 接口上：新 API 的点击/菜单事件
+// 语义不同，需要在三个桌面平台上实机验证后再迁移（单独一次改动）。弃用提示只
+// 针对本文件屏蔽，别处新增对 tray_manager 的使用仍会被提示。
+// ignore_for_file: deprecated_member_use
+
 import 'dart:async';
 import 'dart:io';
 
@@ -11,7 +17,7 @@ import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:tray_manager/tray_manager.dart';
+import 'package:tray_manager/legacy.dart';
 import 'package:window_manager/window_manager.dart';
 
 /// [buildTrayMenuLabels] 的返回值：托盘菜单四个条目当前该显示的文案。

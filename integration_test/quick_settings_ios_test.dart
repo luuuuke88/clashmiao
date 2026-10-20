@@ -14,54 +14,48 @@ import 'package:integration_test/integration_test.dart';
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets(
-    'iOS quick settings modal screenshot hold',
-    (tester) async {
-      if (!Platform.isIOS) {
-        markTestSkipped('ios-only UI screenshot helper');
-        return;
-      }
+  testWidgets('iOS quick settings modal screenshot hold', (tester) async {
+    if (!Platform.isIOS) {
+      markTestSkipped('ios-only UI screenshot helper');
+      return;
+    }
 
-      final container = ProviderContainer(
-        overrides: [
-          boxServiceProvider.overrideWithValue(const StubBoxService()),
-        ],
+    final container = ProviderContainer(
+      overrides: [boxServiceProvider.overrideWithValue(const StubBoxService())],
+    );
+    await container.read(sharedPreferencesProvider.future);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const ClashMiaoApp(),
+      ),
+    );
+    await tester.pump(const Duration(seconds: 3));
+
+    final quickSettingsButton = find.byIcon(FluentIcons.options_24_regular);
+    expect(quickSettingsButton, findsOneWidget);
+
+    await tester.tap(quickSettingsButton);
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(find.byType(QuickSettingsModal), findsOneWidget);
+    if (const bool.fromEnvironment(
+      'CLASHMIAO_EMIT_QUICK_SETTINGS_SCREENSHOT',
+    )) {
+      final screenshot = await binding.takeScreenshot(
+        'clashmiao-quick-settings',
       );
-      await container.read(sharedPreferencesProvider.future);
-
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: const ClashMiaoApp(),
-        ),
-      );
-      await tester.pump(const Duration(seconds: 3));
-
-      final quickSettingsButton = find.byIcon(FluentIcons.options_24_regular);
-      expect(quickSettingsButton, findsOneWidget);
-
-      await tester.tap(quickSettingsButton);
-      await tester.pump(const Duration(milliseconds: 800));
-      await tester.pump(const Duration(seconds: 2));
-
-      expect(find.byType(QuickSettingsModal), findsOneWidget);
-      if (const bool.fromEnvironment(
-        'CLASHMIAO_EMIT_QUICK_SETTINGS_SCREENSHOT',
-      )) {
-        final screenshot = await binding.takeScreenshot(
-          'clashmiao-quick-settings',
-        );
-        // Printed to a redirected host log and decoded after the test run.
-        // ignore: avoid_print
-        print('[quick-settings-ios-base64-begin]');
-        // ignore: avoid_print
-        print(base64Encode(screenshot));
-        // ignore: avoid_print
-        print('[quick-settings-ios-base64-end]');
-      }
-      // Keep the app in this state long enough for an external simctl screenshot.
-      await tester.pump(const Duration(seconds: 20));
-    },
-    timeout: const Timeout(Duration(seconds: 45)),
-  );
+      // Printed to a redirected host log and decoded after the test run.
+      // ignore: avoid_print
+      print('[quick-settings-ios-base64-begin]');
+      // ignore: avoid_print
+      print(base64Encode(screenshot));
+      // ignore: avoid_print
+      print('[quick-settings-ios-base64-end]');
+    }
+    // Keep the app in this state long enough for an external simctl screenshot.
+    await tester.pump(const Duration(seconds: 20));
+  }, timeout: const Timeout(Duration(seconds: 45)));
 }

@@ -23,9 +23,9 @@ Map<String, Object?> _snapshot(SharedPreferences p) => {
   for (final k in p.getKeys()) k: p.get(k),
 };
 
-Future<MigrationReport> _run(SharedPreferences prefs) => StorageMigrator(
-  migrations: [profilesV1Migration(), directDnsV2Migration()],
-).run(prefs);
+Future<MigrationReport> _run(SharedPreferences prefs) =>
+    StorageMigrator(migrations: [profilesV1Migration(), directDnsV2Migration()])
+        .run(prefs);
 
 /// 旧版本（schema 1）里地区选择顺带写下的直连 DNS，外加一个无关的网络设置。
 Map<String, Object> _v1({Object? direct = '1.1.1.1'}) => {

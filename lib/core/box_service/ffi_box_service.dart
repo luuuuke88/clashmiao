@@ -47,22 +47,20 @@ Future<String> startWithStopRetry({
 }
 
 /// FFI 函数签名定义
-typedef SetupNative =
-    Pointer<Char> Function(
-      Pointer<Char>,
-      Pointer<Char>,
-      Pointer<Char>,
-      Int64,
-      GoUint8,
-    );
-typedef SetupDart =
-    Pointer<Char> Function(
-      Pointer<Char>,
-      Pointer<Char>,
-      Pointer<Char>,
-      int,
-      int,
-    );
+typedef SetupNative = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+  Pointer<Char>,
+  Int64,
+  GoUint8,
+);
+typedef SetupDart = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+  Pointer<Char>,
+  int,
+  int,
+);
 
 typedef StartNative = Pointer<Char> Function(Pointer<Char>, GoUint8);
 typedef StartDart = Pointer<Char> Function(Pointer<Char>, int);
@@ -73,8 +71,11 @@ typedef StopDart = Pointer<Char> Function();
 typedef RestartNative = Pointer<Char> Function(Pointer<Char>, GoUint8);
 typedef RestartDart = Pointer<Char> Function(Pointer<Char>, int);
 
-typedef ParseNative =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, GoUint8);
+typedef ParseNative = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+  GoUint8,
+);
 typedef ParseDart = Pointer<Char> Function(Pointer<Char>, Pointer<Char>, int);
 
 typedef ChangeConfigOptionsNative = Pointer<Char> Function(Pointer<Char>);
@@ -83,15 +84,25 @@ typedef ChangeConfigOptionsDart = Pointer<Char> Function(Pointer<Char>);
 typedef GenerateConfigNative = Pointer<Char> Function(Pointer<Char>);
 typedef GenerateConfigDart = Pointer<Char> Function(Pointer<Char>);
 
-typedef GenerateWarpConfigNative =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, Pointer<Char>);
-typedef GenerateWarpConfigDart =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>, Pointer<Char>);
+typedef GenerateWarpConfigNative = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+  Pointer<Char>,
+);
+typedef GenerateWarpConfigDart = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+  Pointer<Char>,
+);
 
-typedef SelectOutboundNative =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>);
-typedef SelectOutboundDart =
-    Pointer<Char> Function(Pointer<Char>, Pointer<Char>);
+typedef SelectOutboundNative = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+);
+typedef SelectOutboundDart = Pointer<Char> Function(
+  Pointer<Char>,
+  Pointer<Char>,
+);
 
 typedef UrlTestNative = Pointer<Char> Function(Pointer<Char>);
 typedef UrlTestDart = Pointer<Char> Function(Pointer<Char>);
@@ -203,9 +214,9 @@ class FFIBoxService implements BoxService, DisposableBoxService {
 
   @override
   Future<void> changeConfigOptions(String jsonOptions) async {
-    final err = _changeConfigOptions(
-      jsonOptions.toNativeUtf8().cast(),
-    ).cast<Utf8>().toDartString();
+    final err = _changeConfigOptions(jsonOptions.toNativeUtf8().cast())
+        .cast<Utf8>()
+        .toDartString();
     if (err.isNotEmpty) throw Exception('changeConfigOptions failed: $err');
   }
 
@@ -298,9 +309,9 @@ class FFIBoxService implements BoxService, DisposableBoxService {
 
   @override
   Future<void> urlTest(String groupTag) async {
-    final err = _urlTest(
-      groupTag.toNativeUtf8().cast(),
-    ).cast<Utf8>().toDartString();
+    final err = _urlTest(groupTag.toNativeUtf8().cast())
+        .cast<Utf8>()
+        .toDartString();
     if (err.isNotEmpty) throw BoxServiceException('urlTest', err);
   }
 
@@ -378,9 +389,9 @@ class FFIBoxService implements BoxService, DisposableBoxService {
 
   @override
   Future<String?> generateFullConfig(String path) async {
-    final response = _generateConfig(
-      path.toNativeUtf8().cast(),
-    ).cast<Utf8>().toDartString();
+    final response = _generateConfig(path.toNativeUtf8().cast())
+        .cast<Utf8>()
+        .toDartString();
     if (response.startsWith('error')) {
       return null;
     }

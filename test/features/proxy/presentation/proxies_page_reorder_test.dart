@@ -506,9 +506,9 @@ void main() {
     await tester.pumpWidget(rig.widget);
     await _settle(tester);
     _layoutTop(tester, 'Alpha'); // 位移盒是列表的直接子节点
-    final slide =
-        tester.renderObject(find.byKey(const ValueKey('node:Alpha')).last)
-            as RenderProxyBox;
+    final slide = tester.renderObject(
+      find.byKey(const ValueKey('node:Alpha')).last,
+    ) as RenderProxyBox;
     final semantics = slide.child! as RenderIndexedSemantics;
     expect(semantics.child!.isRepaintBoundary, isTrue);
     await _teardown(tester, rig);

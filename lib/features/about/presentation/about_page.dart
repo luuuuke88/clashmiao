@@ -1,4 +1,5 @@
 import 'package:clashmiao/shared/components/motion_progress.dart';
+
 import 'dart:async';
 
 import 'package:clashmiao/core/env/build_config.dart';
@@ -92,9 +93,9 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontFamily: 'Monospace',
-                                color: Theme.of(
-                                  context,
-                                ).aiUi.secondaryTextColor,
+                                color: Theme.of(context)
+                                    .aiUi
+                                    .secondaryTextColor,
                                 letterSpacing: 1.5,
                               ),
                             );
@@ -120,9 +121,9 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                                     child: MotionProgress(),
                                   )
                                 : _Chevron(
-                                    color: Theme.of(
-                                      context,
-                                    ).aiUi.secondaryTextColor,
+                                    color: Theme.of(context)
+                                        .aiUi
+                                        .secondaryTextColor,
                                   ),
                             onTap: _checkingUpdate
                                 ? null
@@ -157,9 +158,9 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                               iconColor: brandIconColor,
                               label: t.about.telegramChannel,
                               trailing: _Chevron(
-                                color: Theme.of(
-                                  context,
-                                ).aiUi.secondaryTextColor,
+                                color: Theme.of(context)
+                                    .aiUi
+                                    .secondaryTextColor,
                               ),
                               onTap: () => _tryLaunch(telegramChannelUrl),
                             ),
@@ -171,9 +172,9 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                               iconColor: brandIconColor,
                               label: t.about.privacyPolicy,
                               trailing: _Chevron(
-                                color: Theme.of(
-                                  context,
-                                ).aiUi.secondaryTextColor,
+                                color: Theme.of(context)
+                                    .aiUi
+                                    .secondaryTextColor,
                               ),
                               onTap: () => _tryLaunch(privacyPolicyUrl),
                             ),

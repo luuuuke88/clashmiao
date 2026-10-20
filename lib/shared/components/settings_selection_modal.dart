@@ -111,9 +111,8 @@ class _SelectionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
             color: isSelected
-                ? Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: isLight ? 0.08 : 0.15)
+                ? Theme.of(context).colorScheme.primary
+                      .withValues(alpha: isLight ? 0.08 : 0.15)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(

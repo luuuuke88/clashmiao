@@ -282,9 +282,9 @@ void main() {
               await expectLater(tester, meetsGuideline(guideline));
             } else {
               final result = await guideline.evaluate(tester);
-              final offending = _violations(
-                result.reason,
-              ).where((v) => !_isKnownModeSegment(v)).toList();
+              final offending = _violations(result.reason)
+                  .where((v) => !_isKnownModeSegment(v))
+                  .toList();
               expect(
                 offending,
                 isEmpty,

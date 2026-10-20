@@ -76,8 +76,9 @@ class SubscriptionFetchException implements Exception {
       'SubscriptionFetchException(${reason.name}, tried: ${attemptedUserAgents.join(", ")})';
 }
 
-typedef SubscriptionFetcher =
-    Future<SubscriptionResponse> Function(String userAgent);
+typedef SubscriptionFetcher = Future<SubscriptionResponse> Function(
+  String userAgent,
+);
 
 Future<SubscriptionFetchResult> fetchSubscriptionWithUserAgentFallback({
   required String primaryUserAgent,

@@ -1202,8 +1202,7 @@ class TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP is a Free WireGuard VPN Provider. By enabling this option you are agreeing to the Cloudflare WARP\'s ',
+        text: 'Cloudflare WARP is a Free WireGuard VPN Provider. By enabling this option you are agreeing to the Cloudflare WARP\'s ',
       ),
       tos('Terms of Service'),
       const TextSpan(text: ' and '),
@@ -3087,8 +3086,7 @@ class TranslationsConfigWarpConsentAr extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP هو مزود VPN مجاني لـ WireGuard. بتمكين هذا الخيار، فإنك توافق على ',
+        text: 'Cloudflare WARP هو مزود VPN مجاني لـ WireGuard. بتمكين هذا الخيار، فإنك توافق على ',
       ),
       tos('Terms of Service'),
       const TextSpan(text: ' و '),
@@ -5032,8 +5030,7 @@ class TranslationsConfigWarpConsentEs extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP es un proveedor de VPN WireGuard gratuito. Al habilitar esta opción, acepta los ',
+        text: 'Cloudflare WARP es un proveedor de VPN WireGuard gratuito. Al habilitar esta opción, acepta los ',
       ),
       tos('Términos de servicio'),
       const TextSpan(text: ' y '),
@@ -7007,8 +7004,7 @@ class TranslationsConfigWarpConsentFa extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP یک ارائه‌دهنده‌ی رایگان WireGuard VPN است. با فعال کردن این گزینه، با ',
+        text: 'Cloudflare WARP یک ارائه‌دهنده‌ی رایگان WireGuard VPN است. با فعال کردن این گزینه، با ',
       ),
       tos('شرایط خدمات'),
       const TextSpan(text: ' و '),
@@ -8931,8 +8927,7 @@ class TranslationsConfigWarpConsentId extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP adalah WireGuard VPN Provider gratis. Dengan mengaktifkan opsi/pilihan ini berarti kamu setuju pada Cloudflare WARP\'s ',
+        text: 'Cloudflare WARP adalah WireGuard VPN Provider gratis. Dengan mengaktifkan opsi/pilihan ini berarti kamu setuju pada Cloudflare WARP\'s ',
       ),
       tos('Terms of Service'),
       const TextSpan(text: ' dan '),
@@ -10915,8 +10910,7 @@ class TranslationsConfigWarpConsentPtBr
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP é um provedor VPN WireGuard gratuito. Ao ativar esta opção, você concorda com os ',
+        text: 'Cloudflare WARP é um provedor VPN WireGuard gratuito. Ao ativar esta opção, você concorda com os ',
       ),
       tos('Termos de Serviço'),
       const TextSpan(text: ' e '),
@@ -12897,8 +12891,7 @@ class TranslationsConfigWarpConsentRu extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP — бесплатный провайдер WireGuard VPN. Включая эту опцию, вы соглашаетесь с ',
+        text: 'Cloudflare WARP — бесплатный провайдер WireGuard VPN. Включая эту опцию, вы соглашаетесь с ',
       ),
       tos('Условиями обслуживания'),
       const TextSpan(text: ' и '),
@@ -14832,8 +14825,7 @@ class TranslationsConfigWarpConsentTr extends TranslationsConfigWarpConsentEn {
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP ücretsiz bir WireGuard VPN sağlayıcısıdır. Bu seçeneği etkinleştirerek Cloudflare WARP\'ın ',
+        text: 'Cloudflare WARP ücretsiz bir WireGuard VPN sağlayıcısıdır. Bu seçeneği etkinleştirerek Cloudflare WARP\'ın ',
       ),
       tos('Hizmet Şartları'),
       const TextSpan(text: ' ve '),
@@ -16765,8 +16757,7 @@ class TranslationsConfigWarpConsentZhCn
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP 是一个免费的 WireGuard VPN 提供商。启用此选项即表示您同意 Cloudflare WARP 的 ',
+        text: 'Cloudflare WARP 是一个免费的 WireGuard VPN 提供商。启用此选项即表示您同意 Cloudflare WARP 的 ',
       ),
       tos('服務條款'),
       const TextSpan(text: ' 和 '),
@@ -18680,8 +18671,7 @@ class TranslationsConfigWarpConsentZhTw
   }) => TextSpan(
     children: [
       const TextSpan(
-        text:
-            'Cloudflare WARP 是一個免費的 WireGuard VPN 提供商。啟用此選項即表示您同意 Cloudflare WARP 的 ',
+        text: 'Cloudflare WARP 是一個免費的 WireGuard VPN 提供商。啟用此選項即表示您同意 Cloudflare WARP 的 ',
       ),
       tos('服務條款'),
       const TextSpan(text: ' 和 '),
@@ -19705,8 +19695,7 @@ extension on Translations {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP is a Free WireGuard VPN Provider. By enabling this option you are agreeing to the Cloudflare WARP\'s ',
+              text: 'Cloudflare WARP is a Free WireGuard VPN Provider. By enabling this option you are agreeing to the Cloudflare WARP\'s ',
             ),
             tos('Terms of Service'),
             const TextSpan(text: ' and '),
@@ -20702,8 +20691,7 @@ extension on TranslationsAr {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP هو مزود VPN مجاني لـ WireGuard. بتمكين هذا الخيار، فإنك توافق على ',
+              text: 'Cloudflare WARP هو مزود VPN مجاني لـ WireGuard. بتمكين هذا الخيار، فإنك توافق على ',
             ),
             tos('Terms of Service'),
             const TextSpan(text: ' و '),
@@ -21669,8 +21657,7 @@ extension on TranslationsEs {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP es un proveedor de VPN WireGuard gratuito. Al habilitar esta opción, acepta los ',
+              text: 'Cloudflare WARP es un proveedor de VPN WireGuard gratuito. Al habilitar esta opción, acepta los ',
             ),
             tos('Términos de servicio'),
             const TextSpan(text: ' y '),
@@ -22710,8 +22697,7 @@ extension on TranslationsFa {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP یک ارائه‌دهنده‌ی رایگان WireGuard VPN است. با فعال کردن این گزینه، با ',
+              text: 'Cloudflare WARP یک ارائه‌دهنده‌ی رایگان WireGuard VPN است. با فعال کردن این گزینه، با ',
             ),
             tos('شرایط خدمات'),
             const TextSpan(text: ' و '),
@@ -23699,8 +23685,7 @@ extension on TranslationsId {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP adalah WireGuard VPN Provider gratis. Dengan mengaktifkan opsi/pilihan ini berarti kamu setuju pada Cloudflare WARP\'s ',
+              text: 'Cloudflare WARP adalah WireGuard VPN Provider gratis. Dengan mengaktifkan opsi/pilihan ini berarti kamu setuju pada Cloudflare WARP\'s ',
             ),
             tos('Terms of Service'),
             const TextSpan(text: ' dan '),
@@ -24703,8 +24688,7 @@ extension on TranslationsPtBr {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP é um provedor VPN WireGuard gratuito. Ao ativar esta opção, você concorda com os ',
+              text: 'Cloudflare WARP é um provedor VPN WireGuard gratuito. Ao ativar esta opção, você concorda com os ',
             ),
             tos('Termos de Serviço'),
             const TextSpan(text: ' e '),
@@ -25721,8 +25705,7 @@ extension on TranslationsRu {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP — бесплатный провайдер WireGuard VPN. Включая эту опцию, вы соглашаетесь с ',
+              text: 'Cloudflare WARP — бесплатный провайдер WireGuard VPN. Включая эту опцию, вы соглашаетесь с ',
             ),
             tos('Условиями обслуживания'),
             const TextSpan(text: ' и '),
@@ -26711,8 +26694,7 @@ extension on TranslationsTr {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP ücretsiz bir WireGuard VPN sağlayıcısıdır. Bu seçeneği etkinleştirerek Cloudflare WARP\'ın ',
+              text: 'Cloudflare WARP ücretsiz bir WireGuard VPN sağlayıcısıdır. Bu seçeneği etkinleştirerek Cloudflare WARP\'ın ',
             ),
             tos('Hizmet Şartları'),
             const TextSpan(text: ' ve '),
@@ -27724,8 +27706,7 @@ extension on TranslationsZhCn {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP 是一个免费的 WireGuard VPN 提供商。启用此选项即表示您同意 Cloudflare WARP 的 ',
+              text: 'Cloudflare WARP 是一个免费的 WireGuard VPN 提供商。启用此选项即表示您同意 Cloudflare WARP 的 ',
             ),
             tos('服務條款'),
             const TextSpan(text: ' 和 '),
@@ -28714,8 +28695,7 @@ extension on TranslationsZhTw {
         }) => TextSpan(
           children: [
             const TextSpan(
-              text:
-                  'Cloudflare WARP 是一個免費的 WireGuard VPN 提供商。啟用此選項即表示您同意 Cloudflare WARP 的 ',
+              text: 'Cloudflare WARP 是一個免費的 WireGuard VPN 提供商。啟用此選項即表示您同意 Cloudflare WARP 的 ',
             ),
             tos('服務條款'),
             const TextSpan(text: ' 和 '),

@@ -72,9 +72,9 @@ void main() {
     // 状态 + 控制器调用双重断言
     expect(container.read(proxyModeProvider), 0);
     expect(
-      (container.read(connectionControllerProvider.notifier)
-              as FakeConnectionController)
-          .applyConfigCalls,
+      (container.read(
+        connectionControllerProvider.notifier,
+      ) as FakeConnectionController).applyConfigCalls,
       1,
     );
   });
@@ -142,9 +142,8 @@ void main() {
 
         final smart = t.home.routingMode.smart;
         final global = t.home.routingMode.global;
-        final scheme = Theme.of(
-          tester.element(find.byType(Scaffold)),
-        ).colorScheme;
+        final scheme = Theme.of(tester.element(find.byType(Scaffold)))
+            .colorScheme;
         expect(fillOf(smart).color, scheme.primaryContainer);
         expect(textColorOf(smart), scheme.onPrimaryContainer);
         expect(fillOf(global).color!.a, 0);

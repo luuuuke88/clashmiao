@@ -36,23 +36,20 @@ void main() {
       expect(args['previous-access-token'], 'token-1');
     });
 
-    test(
-      'previousAccountId / previousAccessToken 省略时用空字符串占位（native 端 as String 强转不接受 null）',
-      () async {
-        MethodCall? received;
-        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(_channel, (call) async {
-              received = call;
-              return '{"account-id":"a","access-token":"b","config":{}}';
-            });
+    test('previousAccountId / previousAccessToken 省略时用空字符串占位（native 端 as String 强转不接受 null）', () async {
+      MethodCall? received;
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(_channel, (call) async {
+            received = call;
+            return '{"account-id":"a","access-token":"b","config":{}}';
+          });
 
-        await PlatformBoxService().generateWarpConfig(licenseKey: '');
+      await PlatformBoxService().generateWarpConfig(licenseKey: '');
 
-        final args = received?.arguments as Map;
-        expect(args['previous-account-id'], '');
-        expect(args['previous-access-token'], '');
-      },
-    );
+      final args = received?.arguments as Map;
+      expect(args['previous-account-id'], '');
+      expect(args['previous-access-token'], '');
+    });
 
     test('透传 native 返回的原始 JSON 字符串', () async {
       const rawResponse =

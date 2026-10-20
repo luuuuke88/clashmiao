@@ -43,9 +43,8 @@ void main() {
     test('已经在目标版本：什么都不跑、不写任何键', () async {
       final prefs = CrashablePrefs(await _prefs({kStorageSchemaKey: 1}));
       final log = <int>[];
-      final report = await StorageMigrator(
-        migrations: [_step(1, log)],
-      ).run(prefs);
+      final report = await StorageMigrator(migrations: [_step(1, log)])
+          .run(prefs);
       expect(log, isEmpty);
       expect(report.outcome, MigrationOutcome.upToDate);
       expect(prefs.attempts, isEmpty);
@@ -54,9 +53,8 @@ void main() {
     test('只跑高于当前版本的步骤', () async {
       final prefs = await _prefs({kStorageSchemaKey: 1});
       final log = <int>[];
-      await StorageMigrator(
-        migrations: [_step(1, log), _step(2, log)],
-      ).run(prefs);
+      await StorageMigrator(migrations: [_step(1, log), _step(2, log)])
+          .run(prefs);
       expect(log, [2]);
       expect(prefs.getInt(kStorageSchemaKey), 2);
     });
@@ -65,9 +63,8 @@ void main() {
       final inner = await _prefs({kStorageSchemaKey: 7, 'k': 'v'});
       final prefs = CrashablePrefs(inner);
       final log = <int>[];
-      final report = await StorageMigrator(
-        migrations: [_step(1, log)],
-      ).run(prefs);
+      final report = await StorageMigrator(migrations: [_step(1, log)])
+          .run(prefs);
       expect(log, isEmpty);
       expect(report.outcome, MigrationOutcome.newerSchema);
       expect(prefs.attempts, isEmpty);
@@ -100,9 +97,8 @@ void main() {
     test('写 schema 本身失败：算失败，版本不推进', () async {
       final inner = await _prefs();
       final prefs = CrashablePrefs(inner, allowedWrites: 0);
-      final report = await StorageMigrator(
-        migrations: [_step(1, [])],
-      ).run(prefs);
+      final report = await StorageMigrator(migrations: [_step(1, [])])
+          .run(prefs);
       expect(report.outcome, MigrationOutcome.failed);
       expect(inner.getInt(kStorageSchemaKey), isNull);
     });

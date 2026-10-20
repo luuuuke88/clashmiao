@@ -464,9 +464,9 @@ void main() {
       test('导出带格式版本', () async {
         SharedPreferences.setMockInitialValues({});
         final prefs = await SharedPreferences.getInstance();
-        final exported =
-            jsonDecode(NetworkSettingsNotifier(prefs).exportJson())
-                as Map<String, dynamic>;
+        final exported = jsonDecode(
+          NetworkSettingsNotifier(prefs).exportJson(),
+        ) as Map<String, dynamic>;
         expect(
           exported[kNetworkSettingsJsonVersionKey],
           kNetworkSettingsJsonVersion,
@@ -528,9 +528,8 @@ void main() {
         final exported = source.exportJson();
         await source.reset();
 
-        final result = await NetworkSettingsNotifier(
-          prefs,
-        ).importJson(exported);
+        final result = await NetworkSettingsNotifier(prefs)
+            .importJson(exported);
 
         expect(result.appliedKeys, contains('directDnsAddress'));
         expect(prefs.getString(kDirectDnsAddressPrefKey), '1.1.1.1');

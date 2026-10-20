@@ -42,12 +42,8 @@ void main() {
       expect(e.active, isFalse);
       expect(e.rev, 1);
       expect(
-        ProfileEntity.fromJson({
-          'id': 'a',
-          'name': 'A',
-          'url': 'x',
-          'rev': -4,
-        }).rev,
+        ProfileEntity.fromJson({'id': 'a', 'name': 'A', 'url': 'x', 'rev': -4})
+            .rev,
         1,
       );
     });

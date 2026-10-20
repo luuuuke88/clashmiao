@@ -135,9 +135,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(
-        _hapticCalls(
-          calls,
-        ).where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
+        _hapticCalls(calls)
+            .where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
         hasLength(1),
       );
       await _drainToasts(tester);
@@ -178,9 +177,8 @@ void main() {
 
       expect(repo.updateCalls, 1);
       expect(
-        _hapticCalls(
-          calls,
-        ).where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
+        _hapticCalls(calls)
+            .where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
         hasLength(1),
       );
       await _drainToasts(tester);

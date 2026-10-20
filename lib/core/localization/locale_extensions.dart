@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 
 extension AppLocaleX on AppLocale {

@@ -12,8 +12,10 @@ const kSystemProxyDirtyKey = 'clashmiao_system_proxy_dirty';
 
 /// 执行外部命令。抽成可注入的函数只为测试——真实实现走 [Process.run]，
 /// 测试里换成返回固定输出的假实现，不去碰机器的网络设置。
-typedef ProcessRunner =
-    Future<ProcessResult> Function(String executable, List<String> arguments);
+typedef ProcessRunner = Future<ProcessResult> Function(
+  String executable,
+  List<String> arguments,
+);
 
 Future<ProcessResult> _defaultRunner(String exe, List<String> args) =>
     Process.run(exe, args);
@@ -294,9 +296,8 @@ Future<List<SystemProxyState>> _probeWindows(ProcessRunner runner) async {
 SystemProxyState? parseWindowsRegistry(Object? enableOut, Object? serverOut) {
   bool? enabled;
   for (final line in _lines(enableOut)) {
-    final m = RegExp(
-      r'ProxyEnable\s+REG_DWORD\s+0x([0-9a-fA-F]+)',
-    ).firstMatch(line);
+    final m = RegExp(r'ProxyEnable\s+REG_DWORD\s+0x([0-9a-fA-F]+)')
+        .firstMatch(line);
     if (m != null) enabled = int.parse(m.group(1)!, radix: 16) != 0;
   }
   if (enabled == null) return null;

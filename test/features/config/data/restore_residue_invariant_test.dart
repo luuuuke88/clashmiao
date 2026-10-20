@@ -53,9 +53,8 @@ void main() {
     },
     '.undo（替换：a 的旧文件已移走、新文件没装上）': (dir) {
       File(p.join(dir, 'a.json')).deleteSync();
-      File(
-        p.join(dir, 'a.json.cafe.undo'),
-      ).writeAsStringSync(sampleConfig('stale-a'));
+      File(p.join(dir, 'a.json.cafe.undo'))
+          .writeAsStringSync(sampleConfig('stale-a'));
     },
     '.undo（只删配置：b 仍在列表，b.json 移走后没能改名 .del / 删除）': (dir) {
       File(p.join(dir, 'b.json')).renameSync(p.join(dir, 'b.json.cafe.undo'));

@@ -107,11 +107,9 @@ void main() {
       await container2.read(profileStoreProvider.future);
       await container2.read(activeProfileProvider.future);
 
-      expect(
-        container2.read(proxySelectionStoreProvider),
-        {'proxy': 'US-node'},
-        reason: '同一 profileId 的手选结果应该能持久化并被下一次读取到',
-      );
+      expect(container2.read(proxySelectionStoreProvider), {
+        'proxy': 'US-node',
+      }, reason: '同一 profileId 的手选结果应该能持久化并被下一次读取到');
     });
 
     test('对同一个 group 重新选择会覆盖旧值，而不是两个都保留', () async {
@@ -142,11 +140,9 @@ void main() {
       await notifier.persist('proxy', 'JP-node');
       await notifier.persist('proxy', 'US-node');
 
-      expect(
-        container.read(proxySelectionStoreProvider),
-        {'proxy': 'US-node'},
-        reason: '用户后选的节点应该覆盖同一 group 之前的选择',
-      );
+      expect(container.read(proxySelectionStoreProvider), {
+        'proxy': 'US-node',
+      }, reason: '用户后选的节点应该覆盖同一 group 之前的选择');
     });
 
     group('写入经 ProfileStore.writeAux 校验：删除或换代后旧 notifier 的写入被丢弃', () {

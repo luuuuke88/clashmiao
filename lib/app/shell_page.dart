@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
+
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
@@ -138,9 +139,8 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const LogsPage()));
+        Navigator.of(context)
+            .push(MaterialPageRoute<void>(builder: (_) => const LogsPage()));
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_CONFIG_OPTIONS') &&
@@ -176,9 +176,8 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       _debugAddProfileOpened = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(
-          context,
-        ).push(MaterialPageRoute<void>(builder: (_) => const AssetsPage()));
+        Navigator.of(context)
+            .push(MaterialPageRoute<void>(builder: (_) => const AssetsPage()));
       });
     }
     if (const bool.fromEnvironment('CLASHMIAO_OPEN_PER_APP_PROXY') &&

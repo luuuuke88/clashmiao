@@ -520,9 +520,9 @@ void main() {
       expect(callCount, 2);
       expect(repo.getAll().first.name, 'A2');
 
-      final out =
-          jsonDecode(await File(repo.configFilePath(first.id)).readAsString())
-              as Map<String, dynamic>;
+      final out = jsonDecode(
+        await File(repo.configFilePath(first.id)).readAsString(),
+      ) as Map<String, dynamic>;
       final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
       final leaf = outbounds.firstWhere((o) => o['type'] == 'vless');
       expect(leaf['tag'], 'node-2');
@@ -629,13 +629,10 @@ void main() {
         final profile = await repoWithNativeOutput.addByUrl(
           'http://localhost:${server.port}/',
         );
-        final out =
-            jsonDecode(
-                  await File(
-                    repoWithNativeOutput.configFilePath(profile.id),
-                  ).readAsString(),
-                )
-                as Map<String, dynamic>;
+        final out = jsonDecode(
+          await File(repoWithNativeOutput.configFilePath(profile.id))
+              .readAsString(),
+        ) as Map<String, dynamic>;
         final outbounds = (out['outbounds'] as List)
             .cast<Map<String, dynamic>>();
         final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
@@ -670,13 +667,10 @@ void main() {
         final profile = await repoWithNativeOutput.addByUrl(
           'http://localhost:${server.port}/',
         );
-        final out =
-            jsonDecode(
-                  await File(
-                    repoWithNativeOutput.configFilePath(profile.id),
-                  ).readAsString(),
-                )
-                as Map<String, dynamic>;
+        final out = jsonDecode(
+          await File(repoWithNativeOutput.configFilePath(profile.id))
+              .readAsString(),
+        ) as Map<String, dynamic>;
         final outbounds = (out['outbounds'] as List)
             .cast<Map<String, dynamic>>();
         final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
@@ -725,13 +719,10 @@ void main() {
         final profile = await repoWithNativeOutput.addByUrl(
           'http://localhost:${server.port}/',
         );
-        final out =
-            jsonDecode(
-                  await File(
-                    repoWithNativeOutput.configFilePath(profile.id),
-                  ).readAsString(),
-                )
-                as Map<String, dynamic>;
+        final out = jsonDecode(
+          await File(repoWithNativeOutput.configFilePath(profile.id))
+              .readAsString(),
+        ) as Map<String, dynamic>;
         final outbounds = (out['outbounds'] as List)
             .cast<Map<String, dynamic>>();
         final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
@@ -784,13 +775,10 @@ void main() {
         final profile = await repoWithNativeOutput.addByUrl(
           'http://localhost:${server.port}/',
         );
-        final out =
-            jsonDecode(
-                  await File(
-                    repoWithNativeOutput.configFilePath(profile.id),
-                  ).readAsString(),
-                )
-                as Map<String, dynamic>;
+        final out = jsonDecode(
+          await File(repoWithNativeOutput.configFilePath(profile.id))
+              .readAsString(),
+        ) as Map<String, dynamic>;
         final outbounds = (out['outbounds'] as List)
             .cast<Map<String, dynamic>>();
         final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
@@ -826,13 +814,10 @@ void main() {
 
       await repoWithNativeOutput.update(profile.id);
 
-      final out =
-          jsonDecode(
-                await File(
-                  repoWithNativeOutput.configFilePath(profile.id),
-                ).readAsString(),
-              )
-              as Map<String, dynamic>;
+      final out = jsonDecode(
+        await File(repoWithNativeOutput.configFilePath(profile.id))
+            .readAsString(),
+      ) as Map<String, dynamic>;
       final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
       final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
       expect(selector['outbounds'], ['SG-1']);
@@ -886,9 +871,9 @@ void main() {
 
       final profile = await repo.addByUrl('http://localhost:${server.port}/');
 
-      final out =
-          jsonDecode(await File(repo.configFilePath(profile.id)).readAsString())
-              as Map<String, dynamic>;
+      final out = jsonDecode(
+        await File(repo.configFilePath(profile.id)).readAsString(),
+      ) as Map<String, dynamic>;
       // 注意：写盘时 _ensureMinimalProfileStructure 还会补上 selector / direct
       // 这些内置出站，所以这里断言"真实节点都在"，而不是写死总数。
       final tags = (out['outbounds'] as List)
@@ -940,9 +925,9 @@ void main() {
         contains('sing-box'),
         reason: '刷新的第一次请求就该用记住的 UA，而不是先撞一次空配置',
       );
-      final out =
-          jsonDecode(await File(repo.configFilePath(profile.id)).readAsString())
-              as Map<String, dynamic>;
+      final out = jsonDecode(
+        await File(repo.configFilePath(profile.id)).readAsString(),
+      ) as Map<String, dynamic>;
       final tags = (out['outbounds'] as List)
           .cast<Map<String, dynamic>>()
           .map((o) => o['tag'])

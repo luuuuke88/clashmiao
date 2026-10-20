@@ -170,99 +170,84 @@ void _sim(
 
 void main() {
   group('迁移：先写后删、失败保留来源、可重试、幂等（评审 Important 1）', () {
-    _sim(
-      '目标写入失败（真实存储层）：来源保留、不对旧 tag 重放；之后的 attempt 重试成功；再跑一遍什么都不变',
-      (e) {
-        e.platform.failKeys = {ProfileStore.selectionKey('p1')};
-        final first = e.run(1);
-        e.pushGroups(1);
-        expect(first, [ReplayPipelineOutcome.acknowledged]);
-        expect(
-          e.port.selectCalls,
-          isEmpty,
-          reason: 'proxy 在运行时不存在，select 没有记录',
-        );
-        expect(e.disk('p1'), '{"proxy":"hk"}', reason: '目标没落盘，来源不能删');
-        expect(e.memory, {'proxy': 'hk'}, reason: '仍属本次迁移的内存写入被撤回');
+    _sim('目标写入失败（真实存储层）：来源保留、不对旧 tag 重放；之后的 attempt 重试成功；再跑一遍什么都不变', (e) {
+      e.platform.failKeys = {ProfileStore.selectionKey('p1')};
+      final first = e.run(1);
+      e.pushGroups(1);
+      expect(first, [ReplayPipelineOutcome.acknowledged]);
+      expect(e.port.selectCalls, isEmpty, reason: 'proxy 在运行时不存在，select 没有记录');
+      expect(e.disk('p1'), '{"proxy":"hk"}', reason: '目标没落盘，来源不能删');
+      expect(e.memory, {'proxy': 'hk'}, reason: '仍属本次迁移的内存写入被撤回');
 
-        e.platform.failKeys = {};
-        final second = e.run(2);
-        e.pushGroups(2);
-        expect(second, [ReplayPipelineOutcome.acknowledged]);
-        expect(e.disk('p1'), '{"select":"hk"}');
-        expect(e.port.selectCalls, [
-          (group: 'select', tag: 'hk', expectedAttempt: 2),
-        ]);
+      e.platform.failKeys = {};
+      final second = e.run(2);
+      e.pushGroups(2);
+      expect(second, [ReplayPipelineOutcome.acknowledged]);
+      expect(e.disk('p1'), '{"select":"hk"}');
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 2),
+      ]);
 
-        final writes = e.writes('p1');
-        final third = e.run(3);
-        e.pushGroups(3);
-        expect(third, [ReplayPipelineOutcome.acknowledged]);
-        expect(e.writes('p1'), writes, reason: '已迁移：不再写');
-        expect(e.disk('p1'), '{"select":"hk"}');
-        expect(e.port.selectCalls.last, (
-          group: 'select',
-          tag: 'hk',
-          expectedAttempt: 3,
-        ));
-        expect(e.port.selectCalls.where((c) => c.group == 'proxy'), isEmpty);
-        expect(e.port.acknowledged, [1, 2, 3]);
-      },
-      p1: {'proxy': 'hk'},
-    );
+      final writes = e.writes('p1');
+      final third = e.run(3);
+      e.pushGroups(3);
+      expect(third, [ReplayPipelineOutcome.acknowledged]);
+      expect(e.writes('p1'), writes, reason: '已迁移：不再写');
+      expect(e.disk('p1'), '{"select":"hk"}');
+      expect(e.port.selectCalls.last, (
+        group: 'select',
+        tag: 'hk',
+        expectedAttempt: 3,
+      ));
+      expect(e.port.selectCalls.where((c) => c.group == 'proxy'), isEmpty);
+      expect(e.port.acknowledged, [1, 2, 3]);
+    }, p1: {'proxy': 'hk'});
 
-    _sim(
-      '目标写入在内存更新后悬停、最终失败，期间用户手选 sg：回滚只撤销仍属本次迁移的状态——内存、磁盘、下次重放都保留 sg',
-      (e) {
-        final hold = e.platform.holdNext = Completer<void>();
-        e.platform.holdKey = ProfileStore.selectionKey('p1');
-        e.platform.failHeld = true;
-        final first = e.run(1);
-        e.pushGroups(1);
-        expect(e.memory, {
-          'proxy': 'hk',
-          'select': 'hk',
-        }, reason: '迁移已改内存、落盘悬停');
+    _sim('目标写入在内存更新后悬停、最终失败，期间用户手选 sg：回滚只撤销仍属本次迁移的状态——内存、磁盘、下次重放都保留 sg', (e) {
+      final hold = e.platform.holdNext = Completer<void>();
+      e.platform.holdKey = ProfileStore.selectionKey('p1');
+      e.platform.failHeld = true;
+      final first = e.run(1);
+      e.pushGroups(1);
+      expect(e.memory, {'proxy': 'hk', 'select': 'hk'}, reason: '迁移已改内存、落盘悬停');
 
-        final picked = <SelectionResult>[];
-        e.container
-            .read(proxySelectionServiceProvider)
-            .select('select', 'sg', expectedAttempt: 1)
-            .then(picked.add);
-        e.fa.flushMicrotasks();
-        expect(e.memory, {'proxy': 'hk', 'select': 'sg'});
+      final picked = <SelectionResult>[];
+      e.container
+          .read(proxySelectionServiceProvider)
+          .select('select', 'sg', expectedAttempt: 1)
+          .then(picked.add);
+      e.fa.flushMicrotasks();
+      expect(e.memory, {'proxy': 'hk', 'select': 'sg'});
 
-        hold.complete(); // 迁移那次写入失败
-        e.fa.flushMicrotasks();
+      hold.complete(); // 迁移那次写入失败
+      e.fa.flushMicrotasks();
 
-        expect(first, [ReplayPipelineOutcome.acknowledged]);
-        expect(picked, [isA<SelectionApplied>()]);
-        expect(e.memory, {'proxy': 'hk', 'select': 'sg'}, reason: '用户的新选择不被回滚');
-        expect(
-          e.disk('p1'),
-          '{"proxy":"hk","select":"sg"}',
-          reason: '回滚没有排在用户写入之后覆盖磁盘',
-        );
-        expect(
-          e.port.selectCalls.where((c) => c.tag == 'hk'),
-          isEmpty,
-          reason: '本次重放发的是 sg',
-        );
+      expect(first, [ReplayPipelineOutcome.acknowledged]);
+      expect(picked, [isA<SelectionApplied>()]);
+      expect(e.memory, {'proxy': 'hk', 'select': 'sg'}, reason: '用户的新选择不被回滚');
+      expect(
+        e.disk('p1'),
+        '{"proxy":"hk","select":"sg"}',
+        reason: '回滚没有排在用户写入之后覆盖磁盘',
+      );
+      expect(
+        e.port.selectCalls.where((c) => c.tag == 'hk'),
+        isEmpty,
+        reason: '本次重放发的是 sg',
+      );
 
-        final second = e.run(2);
-        e.pushGroups(2);
-        expect(second, [ReplayPipelineOutcome.acknowledged]);
-        expect(e.memory, {'select': 'sg'});
-        expect(e.disk('p1'), '{"select":"sg"}', reason: '旧来源被 sg 取代后删除');
-        expect(e.port.selectCalls.last, (
-          group: 'select',
-          tag: 'sg',
-          expectedAttempt: 2,
-        ));
-        expect(e.port.selectCalls.where((c) => c.tag == 'hk'), isEmpty);
-      },
-      p1: {'proxy': 'hk'},
-    );
+      final second = e.run(2);
+      e.pushGroups(2);
+      expect(second, [ReplayPipelineOutcome.acknowledged]);
+      expect(e.memory, {'select': 'sg'});
+      expect(e.disk('p1'), '{"select":"sg"}', reason: '旧来源被 sg 取代后删除');
+      expect(e.port.selectCalls.last, (
+        group: 'select',
+        tag: 'sg',
+        expectedAttempt: 2,
+      ));
+      expect(e.port.selectCalls.where((c) => c.tag == 'hk'), isEmpty);
+    }, p1: {'proxy': 'hk'});
 
     _sim('运行时主组已有记录：来源被取代，删除；只重放主组', (e) {
       e.run(1);

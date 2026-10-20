@@ -1,4 +1,5 @@
 import 'dart:async';
+
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -172,9 +173,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                                     ),
                                     child: Divider(
                                       height: 1,
-                                      color: Theme.of(
-                                        context,
-                                      ).dividerColor.withValues(alpha: 0.1),
+                                      color: Theme.of(context).dividerColor
+                                          .withValues(alpha: 0.1),
                                     ),
                                   ),
                                   _SwitchTile(
@@ -192,9 +192,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                                     ),
                                     child: Divider(
                                       height: 1,
-                                      color: Theme.of(
-                                        context,
-                                      ).dividerColor.withValues(alpha: 0.1),
+                                      color: Theme.of(context).dividerColor
+                                          .withValues(alpha: 0.1),
                                     ),
                                   ),
                                   _SwitchTile(
@@ -213,9 +212,8 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
                                     ),
                                     child: Divider(
                                       height: 1,
-                                      color: Theme.of(
-                                        context,
-                                      ).dividerColor.withValues(alpha: 0.1),
+                                      color: Theme.of(context).dividerColor
+                                          .withValues(alpha: 0.1),
                                     ),
                                   ),
                                 ],
@@ -521,9 +519,8 @@ class _SubscriptionStatusCard extends ConsumerWidget {
             child: LinearProgressIndicator(
               value: subInfo.usageRatio.clamp(0.0, 1.0),
               minHeight: 12,
-              backgroundColor: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.1),
+              backgroundColor: Theme.of(context).colorScheme.primary
+                  .withValues(alpha: 0.1),
               color: Theme.of(context).colorScheme.primary,
             ),
           ),

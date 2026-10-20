@@ -169,9 +169,8 @@ void main() {
           final painter = TextPainter(
             text: TextSpan(
               text: text,
-              style: DefaultTextStyle.of(
-                context,
-              ).style.merge(LatencyLabel.baseStyle(13)),
+              style: DefaultTextStyle.of(context).style
+                  .merge(LatencyLabel.baseStyle(13)),
             ),
             textDirection: TextDirection.ltr,
             textScaler: MediaQuery.textScalerOf(context),

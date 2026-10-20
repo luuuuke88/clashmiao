@@ -20,7 +20,7 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.47.7'
-  LIBCORE_TAG: libcore-v1.11.0
+  LIBCORE_TAG: libcore-v1.8.9-16k
   LIBCORE_REPO: luuuuke88/clashmiao
 
 jobs:

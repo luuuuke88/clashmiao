@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:flutter/material.dart';
@@ -105,5 +106,93 @@ void main() {
 
     expect(find.text('selected=3'), findsOneWidget);
     await _drainToasts(tester);
+  });
+
+  group('toast 外观', () {
+    Future<void> showToast(
+      WidgetTester tester, {
+      required ThemeData theme,
+      required void Function(BuildContext) show,
+    }) async {
+      await tester.pumpWidget(
+        ToastificationWrapper(
+          child: MaterialApp(
+            theme: theme,
+            home: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: TextButton(
+                    key: const ValueKey('show'),
+                    onPressed: () => show(context),
+                    child: const Text('go'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.byKey(const ValueKey('show')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+    }
+
+    BoxDecoration toastDecoration(WidgetTester tester, String message) {
+      final container = tester.widget<Container>(
+        find
+            .ancestor(of: find.text(message), matching: find.byType(Container))
+            .first,
+      );
+      return container.decoration! as BoxDecoration;
+    }
+
+    for (final brightness in Brightness.values) {
+      testWidgets('底色不透明，卡片上的字不会透出来（$brightness）', (tester) async {
+        AppToast.resetForTest();
+        final theme =
+            (brightness == Brightness.light
+                    ? ThemeData.light()
+                    : ThemeData.dark())
+                .copyWith(
+                  extensions: <ThemeExtension<dynamic>>[
+                    brightness == Brightness.light
+                        ? AiUiTheme.light
+                        : AiUiTheme.dark,
+                  ],
+                );
+        await showToast(
+          tester,
+          theme: theme,
+          show: (context) => AppToast.success(context, '配置文件更新成功'),
+        );
+
+        final color = toastDecoration(tester, '配置文件更新成功').color!;
+        expect(color.a, 1.0, reason: '半透明底会让下面卡片的文字透出来');
+        expect(color, AppToast.surfaceColor(theme));
+        await _drainToasts(tester);
+      });
+    }
+
+    testWidgets('状态图标走 StatusColors，不再是不分明暗的原色', (tester) async {
+      AppToast.resetForTest();
+      final theme = ThemeData.dark().copyWith(
+        extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
+      );
+      await showToast(
+        tester,
+        theme: theme,
+        show: (context) => AppToast.error(context, '失败了'),
+      );
+      final icon = tester.widget<Icon>(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('失败了'),
+            matching: find.byType(Container),
+          ),
+          matching: find.byType(Icon),
+        ),
+      );
+      expect(icon.color, StatusColors.latencyTimeout(Brightness.dark));
+      await _drainToasts(tester);
+    });
   });
 }

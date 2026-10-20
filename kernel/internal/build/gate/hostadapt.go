@@ -17,13 +17,25 @@ type AdaptOptions struct {
 	CAPEM string
 }
 
+// freePort 挑一个 TCP 与 UDP 都空闲的回环端口（dns-in 同时监听两者；只看 TCP 会撞上别处的临时 UDP 端口）。
 func freePort() (int, error) {
-	l, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return 0, err
+	var lastErr error
+	for i := 0; i < 50; i++ {
+		l, err := net.Listen("tcp", "127.0.0.1:0")
+		if err != nil {
+			return 0, err
+		}
+		port := l.Addr().(*net.TCPAddr).Port
+		pc, err := net.ListenPacket("udp", fmt.Sprintf("127.0.0.1:%d", port))
+		_ = l.Close()
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		_ = pc.Close()
+		return port, nil
 	}
-	defer l.Close()
-	return l.Addr().(*net.TCPAddr).Port, nil
+	return 0, fmt.Errorf("gate: no port free for both tcp and udp: %w", lastErr)
 }
 
 // Resolve 把 0 端口换成真实的空闲端口。

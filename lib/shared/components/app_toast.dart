@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/status_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
@@ -55,6 +56,7 @@ class AppToast {
     final theme = Theme.of(context);
     final aiUi = theme.aiUi;
     final (icon, color) = _iconAndColor(theme, type);
+    final surface = surfaceColor(theme);
 
     return _lastItem = toastification.showCustom(
       context: context,
@@ -67,7 +69,7 @@ class AppToast {
               margin: const EdgeInsets.only(bottom: 24, left: 16, right: 16),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: aiUi.glassColor,
+                color: surface,
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(color: aiUi.borderColor),
                 boxShadow: aiUi.cardShadow,
@@ -96,14 +98,34 @@ class AppToast {
     );
   }
 
+  /// toast 的底色：**不透明**。
+  ///
+  /// 以前直接用半透明的 [AiUiTheme.glassColor]，而 toast 又恰好浮在页面底部
+  /// 的卡片上方，卡片上的字（出口 IP 之类）透过 toast 与它自己的文字叠在一起，
+  /// 读不清。这里把玻璃色压在不透明的容器底色上，仍保留玻璃的明暗倾向。
+  @visibleForTesting
+  static Color surfaceColor(ThemeData theme) => Color.alphaBlend(
+    theme.aiUi.glassColor,
+    theme.colorScheme.surfaceContainerHigh,
+  );
+
+  /// 图标色走 [StatusColors]（按明暗主题分别定义、压在面板上对比度达标），不用
+  /// `Colors.green` / `Colors.red` 这些不分明暗的原色。
   static (IconData, Color) _iconAndColor(ThemeData theme, ToastType type) {
+    final brightness = theme.brightness;
     return switch (type) {
       ToastType.success => (
         FluentIcons.checkmark_circle_24_regular,
-        Colors.green,
+        StatusColors.connected(brightness),
       ),
-      ToastType.error => (FluentIcons.dismiss_circle_24_regular, Colors.red),
-      ToastType.warning => (FluentIcons.warning_24_regular, Colors.orange),
+      ToastType.error => (
+        FluentIcons.dismiss_circle_24_regular,
+        StatusColors.latencyTimeout(brightness),
+      ),
+      ToastType.warning => (
+        FluentIcons.warning_24_regular,
+        StatusColors.latency(brightness, LatencyBand.medium),
+      ),
       ToastType.info => (
         FluentIcons.info_24_regular,
         theme.colorScheme.primary,

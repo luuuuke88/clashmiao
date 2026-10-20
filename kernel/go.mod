@@ -3,6 +3,7 @@ module github.com/luuuuke88/clashmiao/kernel
 go 1.25.5
 
 require (
+	github.com/miekg/dns v1.1.72
 	github.com/sagernet/gomobile v0.1.13
 	github.com/sagernet/sing-box v1.14.3
 	github.com/xmdhs/clash2singbox v0.2.1-0.20260907044029-b9cc86ef2299
@@ -77,7 +78,6 @@ require (
 	github.com/mdlayher/socket v0.6.0 // indirect
 	github.com/metacubex/utls v1.8.7 // indirect
 	github.com/mholt/acmez/v3 v3.1.6 // indirect
-	github.com/miekg/dns v1.1.72 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/openai/openai-go/v3 v3.26.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect

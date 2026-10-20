@@ -64,8 +64,8 @@
 
 ### 2.3 线上协议（Kotlin → Dart），升级后必须逐字节保持
 
-- **分组流，EventChannel 载荷类型是 `String`**：JSON 文本 `[{"tag","type","selected","items":[{"tag","type","url-test-delay"}]}]`（`engine/OutboundSnapshot.kt` `toWire`，键名是契约，不能靠反射；R8 混淆曾因此出过事）。Dart `platform_box_service.dart`（`_groups`）只接受 `String` 再 `jsonDecode`，别的类型一律当作「没有分组」。
-- **统计流，EventChannel 载荷类型是 `Map`**：键 `connections-in`、`connections-out`、`uplink`、`downlink`、`uplink-total`、`downlink-total`，值为整数（`StreamBridge.StatsSubscriber` 现在发的就是 Map）。Dart（`_stats`）**只接受 Map**，收到字符串或其它类型会静默回落成 `BoxStats.empty`（全零），界面不报错、只是速率永远是 0。所以升级后**两条流的类型各自保持**：Go 产出 JSON 文本，Kotlin 对分组原样透传 `String`，对统计**解析成数字 Map 再发**；不得对统计也透传字符串（§4.2）。
+- **分组流，EventChannel（默认 Standard codec）载荷类型是 `String`**：JSON 文本 `[{"tag","type","selected","items":[{"tag","type","url-test-delay"}]}]`（`engine/OutboundSnapshot.kt` `toWire`，键名是契约，不能靠反射；R8 混淆曾因此出过事）。Dart `platform_box_service.dart`（`_groups`）只接受 `String` 再 `jsonDecode`，别的类型一律当作「没有分组」。
+- **统计流，EventChannel（`JSONMethodCodec`，Kotlin `StreamBridge` 与 Dart `platform_box_service` 两端一致）载荷类型是 `Map`**：键 `connections-in`、`connections-out`、`uplink`、`downlink`、`uplink-total`、`downlink-total`，值为整数（`StreamBridge.StatsSubscriber` 现在发的就是 Map）。Dart（`_stats`）**只接受 Map**，收到字符串或其它类型会静默回落成 `BoxStats.empty`（全零），界面不报错、只是速率永远是 0。Dart 的 `is Map<String, dynamic>` 判断只对 JSON codec 解出的 Map 成立（Standard codec 解出的是 `Map<Object?, Object?>`，同样会回落成全零），所以**两条通道的 codec 也不得改动**，测试必须各走各自的真实 codec（§4.2）。升级后**两条流的类型各自保持**：Go 产出 JSON 文本，Kotlin 对分组原样透传 `String`，对统计**解析成数字 Map 再发**；不得对统计也透传字符串（§4.2）。
 - 日志流：`LogBuffer` 快照（行文本）。
 - 快照协议 / `KernelFailureCode`：`startCommandServer` / `createService` / `startService` 等失败码（`engine/KernelModel.kt`）。新门面要能区分「配置建不出服务」与「启动失败」，见 §4.2。
 
@@ -198,14 +198,14 @@ func NewEngine(host Platform, h EngineHandler) (*Engine, error)
 type Engine struct{}
 func (e *Engine) Start(configJSON string) error        // 阻塞；失败带分类前缀 "create-service:" / "start-service:"（见下）
 func (e *Engine) Stop() error                           // 会打断尚未完成的 Start
-func (e *Engine) Close()
+func (e *Engine) Close() error                          // 与 Stop 一样：清理分步执行，任一步出错继续后面的步骤，返回合并后的错误；重复调用返回 nil
 func (e *Engine) Pause()   func (e *Engine) Wake()   func (e *Engine) ResetNetwork()
 func (e *Engine) SelectOutbound(group, tag string) error
 func (e *Engine) URLTest(tag string) error
 func (e *Engine) SubscribeGroups(h GroupsHandler) (*Subscription, error)     // OnGroups(json)：线格式见 §2.3
 func (e *Engine) SubscribeStats(h StatsHandler, intervalMillis int64) (*Subscription, error) // OnStats(json)
 func (e *Engine) SubscribeLogs(h LogHandler) (*Subscription, error)         // OnLog(line)
-type Subscription struct{}   func (s *Subscription) Close()
+type Subscription struct{}   func (s *Subscription) Close() error
 
 // Kotlin 实现
 type Platform interface {
@@ -239,7 +239,7 @@ type EngineHandler interface {                   // = CommandServerHandler 的�
 要点
 - **错误分类**：libbox 的 `StartOrReloadService` 把「建服务」与「启动」的失败混在一个错误里。`Engine.Start` 失败时再调一次 `CheckConfig(content)`（只在失败路径，成本可忽略）：它也失败 → 前缀 `create-service:`，否则 `start-service:`。Kotlin 据此保持 `FailureCode.CreateService` / `StartService` 的现有语义。
 - **Go Engine 的并发停止能力，与现有协调器的实际行为，是两回事**：新 `Engine.Stop()` 内部调用 libbox 的 `CloseService`，会先 `interruptStart`，所以**在 Go 层**，另一个 goroutine 可以在 `Start` 阻塞期间把它打断（旧 libbox 的 `start()` 做不到）。但**当前 Kotlin 协调器不会这样用**：`KernelExecutor.cancel` 只置位取消标志，teardown 与 start 在同一工作线程上串行执行，所以 `startEngine` 阻塞期间不会有人调用 `Engine.stop()`；取消只在 `KernelStartSequence` 的检查点生效。本期**不改协调器**（它在冻结范围内），也**不承诺**「启动中取消会立即返回」：Go 侧的并发停止由 U2 的单测证明；Kotlin 侧只承诺「取消置位后，`startEngine` 一返回就走 teardown，并回收全部资源」，由 U14 的测试证明。把协调器改成可并发打断，是之后单独立项的优化。
-- **线格式在 Go 里产出，类型在 Kotlin 里按通道各自还原**：分组 / 统计 JSON 都由 Go 生成并经 `OnGroups` / `OnStats` 交给 Kotlin（`OutboundSnapshot.kt` 的 Gson 路径与 R8 风险随之消失，字段名由 Go 黄金测试锁定）。Kotlin 对**分组原样透传 `String`**；对**统计解析成数字 Map（`Map<String, Long>`）再发**——Dart 只认 Map（§2.3）。两条流各有一份**跨语言共享夹具**（`kernel/testdata/wire/groups-first.json`、`stats-frame.json`）：Go 测试断言产出与之一致，Kotlin 测试断言它被还原成 Dart 期望的类型并**经 `StandardMessageCodec` 真实编码解码一遍**，Dart 测试把同一份夹具走同样的编码解码、喂进 `platform_box_service`，断言得到非零的 `BoxStats` / 非空的分组（U2 / U15 / U17）。
+- **线格式在 Go 里产出，类型在 Kotlin 里按通道各自还原**：分组 / 统计 JSON 都由 Go 生成并经 `OnGroups` / `OnStats` 交给 Kotlin（`OutboundSnapshot.kt` 的 Gson 路径与 R8 风险随之消失，字段名由 Go 黄金测试锁定）。Kotlin 对**分组原样透传 `String`**；对**统计解析成数字 Map（`Map<String, Long>`）再发**——Dart 只认 Map（§2.3）。两条流各有**跨语言共享夹具**：Go 产出的 `groups-first.json` / `stats-frame.json`，以及 Kotlin 经真实通道编码出的**信封黄金文件**——统计走 `JSONMethodCodec`，信封是 JSON 文本 `stats-envelope.json`；分组走 Standard codec，信封是二进制，以 base64 存为 `groups-envelope.b64`。测试**必须驱动真实 codec 信封经 `BinaryMessenger`**，不得手工构造 Map：（1）Go 断言产出与 `*-first.json` / `*-frame.json` 一致；（2）Kotlin 把夹具喂给 `StreamBridge` 的真实 `EventChannel`（统计 `JSONMethodCodec.INSTANCE`、分组默认 codec），用记录型 `BinaryMessenger` 抓取 `sink.success` 发出的字节，断言与信封黄金文件逐字节一致；（3）Dart 用 `TestDefaultBinaryMessengerBinding` 为各自通道（统计 `JSONMethodCodec`、分组默认 codec）注册 `listen` 的 mock，再把**同一份信封黄金文件**作为事件消息投递，断言 `watchStats()` 得到非零 `BoxStats`、`watchGroups()` 得到非空分组；另有反例——统计被发成字符串信封时 Dart 回落 `BoxStats.empty`，测试必须能抓住（U2 / U15 / U17）。
 - **进程内通道**：Engine 内部用 libbox 的 `CommandClient` 连命令服务器的 unix socket（`BasePath/command.sock`，应用私有目录，不开 TCP，无需 secret）；`SelectOutbound` / `URLTest` 用独立的一次性客户端，与现状一致。
 - **Java 命名**：`gomobile bind -javapkg=com.clashmiao.libcore -libname=clashmiao`，生成类位于 `com.clashmiao.libcore.core`。包名特意**不是** `com.clashmiao`：gomobile 生成的 `proguard.txt` 会 `-keep class <javapkg>.** { *; }`，用 `com.clashmiao` 会把整个 App 包挡在 R8 之外。
 - **API 快照**：构建脚本把门面的 `javap -public` 输出与 `kernel/api/java-api.txt` 比对，任何公共 API 变化必须同时改快照（沿用 `tools/libcore` 的做法）。
@@ -338,12 +338,25 @@ Kotlin 的 `TunnelService.buildTunFd` 只换数据来源（从 `TunOptions` gett
 | 业务出口 `egress` / `route.final` | `select` | `warp` | `select` |
 | `select`、`auto` 成员 | `auto` + 订阅节点 | 同左（**不含** `warp`） | 同左（**不含** `warp`） |
 | `warp` 端点的拨号 | — | `detour: select`（WG 的外层 UDP 经用户所选节点；`select` 里没有 `warp`，所以无环） | 无 `detour`（直连，**拨号域名由 `dns-direct` 解析**） |
-| 订阅节点（含订阅端点）的拨号 | 直连 | 直连（它们就是载体） | 没有自带 `detour` 的节点 / 端点：`detour: warp`；自带 `detour` 的不覆盖；`direct` / `bypass` / `direct-fragment` 不加（直连规则仍直连） |
+| 订阅节点（含订阅端点）的拨号 | 直连 | 直连（它们就是载体） | **每个订阅节点 / 端点的拨号链终点必须是 `warp`**：无 `detour` → `detour: warp`；已有 `detour` 链按其终点改写（见表后「既有 detour 链」）；`direct` / `bypass` / `direct-fragment` 这几个预置出站本身不改（规则命中仍直连） |
 | `dns-remote.detour` | `select` | `warp`（DNS 与业务同出口；U13 先用真 `Start` 验证端点可作 DNS `detour`，不可则在附录补证据并把本格改写为 `select`，不得静默改路径） | `select` |
 | `urltest auto` 的测速路径 | 节点直连 | 节点直连（测的是载体） | 节点经 `warp`（测的是整条链） |
 | 受保护的性质 | — | 没有任何路径使「业务流量从 `select`/`auto` 的成员直接出去而不经 `warp`」；`warp.detour` 链以节点终止 | 没有任何路径使「`select`/`auto` 的成员绕过 `warp`」；`warp` 本身以直连终止 |
 
-验证分两层（都在 U13，不得只留其一）：（1）**图单元测试**：对每种模式，从 `route.final`、每条规则目标、`dns-remote.detour` 出发枚举全部 `detour` 路径，断言 ①无环 ②`warp` 不在 `select` / `auto` 成员里 ③`warp_over_proxy` 下所有业务路径都经过 `warp`、`proxy_over_warp` 下所有订阅节点路径都以 `warp` 开头 ④直连类出站（`direct` / `bypass` / `direct-fragment`）只能由规则显式选中；（2）**真流量验证**：用本地假节点与本地 WireGuard 对端（均为测试进程里再起的一个 sing-box 实例，带计数与请求记录）驱动整条链，断言路径：`warp_over_proxy` 时假节点收到 WG 外层 UDP 且目标 HTTP 服务的请求来自 WG 对端；`proxy_over_warp` 时假节点只通过 WG 隧道被访问（来源是隧道内地址），目标请求经假节点；直连规则命中的流量两处记录都为空（§7.1）。
+**`proxy_over_warp` 下既有 `detour` 链的处理**（保证「每个订阅节点的拨号路径终点是 `warp`」与装配规则一致，不留例外）：对每个订阅节点 / 端点，在**完整实体集合**（所有出站与端点，含分组）里沿 `detour` 走到末端，按末端类型改写：
+
+| 末端 | 改写 |
+|---|---|
+| 没有 `detour` 的节点本身（链长 0） | 该节点 `detour: warp` |
+| 代理类（`vmess` / `vless` / `trojan` / `shadowsocks` / `socks` / … 非直连类） | 把**最后那个代理**的 `detour` 设为 `warp` |
+| 直连类（类型为 `direct` 的出站，含预置 `direct` / `direct-fragment` / `bypass` 与订阅里自带的同类） | 把指向该末端的那一跳的 `detour` **替换**为 `warp`（分片在 WARP 隧道里没有意义）；**不修改**被引用的预置出站本身，别的规则 / 节点仍可直连 |
+| 成环（`a → b → a`） | 类型化错误 `ErrDetourCycle`，`BuildConfig` 返回 `build-failed: detour cycle: a -> b -> a`，不产出配置 |
+| 悬空（`detour` 指向不存在的 tag、或指向订阅里被丢弃的分组） | 类型化错误 `ErrDetourDangling` |
+| 末端已是 `warp` | 不变 |
+
+每条**被改写的既有链**记**一条** warning（含节点 tag、旧终点、新终点；直连类被替换时注明「分片被丢弃」）；没有既有 `detour` 的节点不产生 warning。被多个节点共享的代理末端只改一次（幂等）。`warp_over_proxy` 下既有 `detour` 一律不动（节点只是载体）。
+
+验证分两层（都在 U13，不得只留其一）：（1）**图单元测试**：对每种模式，从 `route.final`、每条规则目标、`dns-remote.detour` 出发枚举全部 `detour` 路径，断言 ①无环 ②`warp` 不在 `select` / `auto` 成员里 ③`warp_over_proxy` 下所有业务路径都经过 `warp`、`proxy_over_warp` 下所有订阅节点的拨号链最后一跳都是 `warp`（`warp` 自身直连终止） ④直连类出站（`direct` / `bypass` / `direct-fragment`）只能由规则显式选中；（2）**真流量验证**：用本地假节点与本地 WireGuard 对端（均为测试进程里再起的一个 sing-box 实例，带计数与请求记录）驱动整条链，断言路径：`warp_over_proxy` 时假节点收到 WG 外层 UDP 且目标 HTTP 服务的请求来自 WG 对端；`proxy_over_warp` 时假节点只通过 WG 隧道被访问（来源是隧道内地址），目标请求经假节点；直连规则命中的流量两处记录都为空（§7.1）。
 
 ### 5.3 智能分流数据
 
@@ -420,18 +433,21 @@ Android 与 `kernelEnableTun` 的关系不变：`enable-tun = false`（「仅线
 
 ### 6.5 端点贯通 Dart 消费链路
 
-Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outbounds` 的位置必须同步认端点，否则「只有端点的订阅」会被判空，默认选择与离线类型识别失效。统一口径：**节点 = `outbounds` 里的真实节点（排除 `selector` / `urltest` / `direct` / `block` / `dns`）∪ `endpoints`**。
+Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outbounds` 的位置必须同步认端点，否则「只有端点的订阅」会被判空，默认选择与离线类型识别失效。但「认端点」不等于「全都换成同一个节点列表」：**必须区分两个视图**，用错视图会丢分组或把成员认成 `unknown`。
+
+- **完整实体集合**（`profileEntities`）：所有 `outbounds`（含 `selector` / `urltest` / `direct` / `block` / `dns`）∪ 所有 `endpoints`，每项带 `tag` / `type` / 来源（出站或端点）。用于**分组遍历、tag → 类型的索引、引用重写**（改名后更新 `tag` / `detour` / `default` / 分组成员 / `route` 与 `dns` 里的引用）。
+- **叶子节点视图**（`profileLeafNodes`）：完整集合去掉 `selector` / `urltest` / `direct` / `block` / `dns`，即真实可连的节点（含端点）。用于**节点计数与候选筛选**。
 
 | 文件 | 现状（只看 `outbounds`） | 改为 |
 |---|---|---|
-| `lib/domain/profile/data/subscription_payload.dart`（L87） | 节点计数只数 `outbounds` | 计数含 `endpoints`；`outbounds: []` 且端点非空不判空 |
-| `lib/domain/config/data/runtime_config_builder.dart` | `runtimeSelectorDefaults` 扫 `§default§`、`hideSubscriptionInfoOutbounds` 只遍历出站 | 两处都遍历 `outbounds` ∪ `endpoints`；`§default§` 标在端点上也被识别，默认值取该端点的真实 tag |
-| `lib/domain/config/model/subscription_info_node.dart`（`candidateLeafTags`，L170） | 只列出站 tag | 含端点 tag |
-| `lib/domain/routing/data/config_parser.dart`（L15–L40） | 离线类型识别只读 `outbounds` | 同时读 `endpoints`（`wireguard` 等类型） |
-| `lib/domain/profile/data/profile_repository.dart` | `_normalizeAndWrite` 的 JSON 直通判据要求 `outbounds` 非空；`_ensureMinimalProfileStructure` 假定出站数组存在 | 判据改为「`outbounds` 或 `endpoints` 任一非空」，且直通前不含旧形态（`wireguard` 出站 / `dns` / `block`，含则走 `validateConfig` 清洗）；`_ensureMinimalProfileStructure` 不因 `outbounds: []` 而失败 |
+| `lib/domain/profile/data/subscription_payload.dart`（L87） | 节点计数只数 `outbounds` | **叶子视图**计数；`outbounds: []` 且端点非空不判空 |
+| `lib/domain/config/data/runtime_config_builder.dart` | `runtimeSelectorDefaults` 扫 `§default§`；`hideSubscriptionInfoOutbounds` 只遍历出站并改名 | `runtimeSelectorDefaults` 用**叶子视图**（`§default§` 标在端点上也识别，默认值取其真实 tag）；`hideSubscriptionInfoOutbounds` 用**完整集合**：遍历 `outbounds` ∪ `endpoints`，改名时更新 `tag` / `detour` / `default` / 分组成员，**唯一性集合 `allTags` 也包含端点 tag**，`route` / `dns` 引用照旧更新 |
+| `lib/domain/config/model/subscription_info_node.dart`（`candidateLeafTags`，L170） | 只列出站 tag | **叶子视图**（含端点 tag） |
+| `lib/domain/routing/data/config_parser.dart`（L15–L40） | 遍历 `outbounds` 取分组，并在 `outbounds` 里查成员类型 | **完整集合**：分组遍历与成员类型索引都用它（`select` 里的 `auto` 成员应识别为 `urltest`、WireGuard 端点成员识别为 `wireguard`，而不是 `unknown`）；**不能**用叶子视图——那会丢掉全部分组 |
+| `lib/domain/profile/data/profile_repository.dart` | `_normalizeAndWrite` 的 JSON 直通判据要求 `outbounds` 非空；`_ensureMinimalProfileStructure` 假定出站数组存在 | 判据改为「叶子视图非空」，旧形态检测（`wireguard` 出站 / `dns` / `block`）用**完整集合**，含则走 `validateConfig` 清洗；`_ensureMinimalProfileStructure` 不因 `outbounds: []` 而失败 |
 | `lib/features/config/data/backup_codec.dart`（L286） | 恢复时只校验「含 `outbounds` 数组」 | 「`outbounds` 或 `endpoints` 任一为非空数组」 |
 
-**端到端测试（U16，三种形态缺一不可）**：用 Go 侧产出并入库的共享夹具 `kernel/testdata/shared/profiles/{endpoint-only,mixed,endpoint-default}.json`（`outbounds: []` 只有端点 / 出站与端点混合 / `§default§` 标在端点上）：Dart 侧断言节点计数、`runtimeSelectorDefaults`、信息节点筛选、`config_parser` 类型识别、`_normalizeAndWrite` 落盘不被判空；同一批夹具在 Go 侧走 `BuildConfig` → `CheckConfig` → 真 `Start`，断言端点出现在 `select` / `auto` 成员里、默认值正确（U9 / U7）。
+**端到端测试（U16，下列形态缺一不可）**：用 Go 侧产出并入库的共享夹具 `kernel/testdata/shared/profiles/{endpoint-only,mixed,endpoint-default,groups-with-endpoint}.json`（`outbounds: []` 只有端点 / 出站与端点混合 / `§default§` 标在端点上 / **一个 `selector` 同时含 `auto`、一个 WireGuard 端点成员和一个会被隐藏的订阅信息节点引用**）：Dart 侧断言节点计数（叶子视图，分组不计入）、`runtimeSelectorDefaults`、信息节点筛选、`config_parser` 保留全部分组且成员类型正确（`auto` → `urltest`、端点 → `wireguard`）、`hideSubscriptionInfoOutbounds` 改名后分组成员与 `default` 的引用同步更新、`_normalizeAndWrite` 落盘不被判空；同一批夹具在 Go 侧走 `BuildConfig` → `CheckConfig` → 真 `Start`，断言端点出现在 `select` / `auto` 成员里、默认值正确（U9 / U7）。
 
 ## 7. 测试策略
 
@@ -444,7 +460,7 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 - **闸门的作用域：原始配置 vs 主机适配副本**。构建器产出的是 **Android 原始配置**（带 `override_android_vpn`、`tun-in` 等主机无法接受 / 无权限创建的东西）；`CheckConfig` 与真 `Start` 在主机上只能跑**适配副本**。两类断言分开、互不替代：
   - **原始配置上断言**（不启动，纯结构）：（1）与签入黄金文件逐字节相同（`-update` 重生成，diff 进评审）；（2）**不变量**——标签图自洽（引用均存在、selector `default` ∈ 成员、`detour` 无环、**无指向空 `direct` 的 `detour`**、DNS 依赖无环且 `domain_resolver` 终点是 IP 字面量、`warp` 不在 `select` / `auto` 成员里）、**禁用键扫描**（`sniff*`、入站 `domain_strategy`、`inet4_address` 等旧 TUN 字段、`geoip` / `geosite`、DNS 服务器 `address`、`outbound: dns-out`、`tls_tricks`、`tls_fragment`、`disable_color`、**`clash_api`**）、**必有 tag 与条件 tag**、规则顺序（`sniff` 在 `hijack-dns` 前）、`dns.final = dns-remote`、`route.final` = 业务出口（常态 `select`，`warp_over_proxy` 为 `warp`）。
   - **必有 / 条件 tag 的区分**：始终要有——`select` `auto` `direct` `bypass` `direct-fragment` `dns-remote` `dns-direct` `dns-local` `mixed-in`；**条件**——`tun-in` ⇔ `enable-tun`（「仅线路」必须没有，且不得有任何引用它的规则 / 服务器）、`dns-in` ⇔ `local-dns-port` 非 0、`dns-fake` ⇔ `enable-fake-dns` 且有 `tun-in`、`dns-bootstrap` ⇔ 有域名型 DNS 服务器、`warp` ⇔ WARP 启用、`override_android_vpn` ⇔ `Env.GOOS == android`。
-  - **主机适配副本上断言**：适配函数 `HostAdapt(cfg)` 只允许做白名单里的改动——删 `tun-in` 及引用它的规则、删 `override_android_vpn`、`mixed-in` / `dns-in` 换成 `127.0.0.1` 随机端口、（DoH 测试里）注入测试 CA；**白名单之外的差异一律使测试失败**（「适配副本与原始配置的差异」自己有一个测试，防止适配悄悄把真 bug 抹掉）。在副本上：`libbox.CheckConfig` 通过，**真 `Start`**（因为 `CheckConfig` 放行了「detour 指向空 direct」「selector 默认值非成员」这类启动期错误），查 `SubscribeGroups` 首帧、`SelectOutbound` / `URLTest` 不报错、`Stop`。
+  - **主机适配副本上断言**：适配函数 `HostAdapt(cfg)` 只允许做白名单里的改动——删 `tun-in` 及引用它的规则 / `dns-fake` 服务器、删 `override_android_vpn`、`mixed-in` / `dns-in` 换成 `127.0.0.1` 随机端口、（DoH 测试里）注入测试 CA；**白名单之外的差异一律使测试失败**（「适配副本与原始配置的差异」自己有一个测试，防止适配悄悄把真 bug 抹掉）。在副本上：`libbox.CheckConfig` 通过，**真 `Start`**（因为 `CheckConfig` 放行了「detour 指向空 direct」「selector 默认值非成员」这类启动期错误），查 `SubscribeGroups` 首帧、`SelectOutbound` / `URLTest` 不报错、`Stop`。
 - **真流量对等测试**（占位节点启动成功、命令不报错，**不能**证明 DNS 出口、分流、WARP、IPv6、分片真的生效，所以另设）：测试进程里起一组**本地可控目标**（`internal/build/e2e`）——本地 UDP / TCP DNS 服务器与本地 DoH（域名经 `dns-bootstrap` 解析到回环）、本地 HTTP 目标、假节点（本地 SOCKS 上游），**每个都带请求记录**（来源、目标域名、哪条链路）；构建配置的适配副本经 `engine` 真起，经 `mixed-in` 发请求，**断言实际路径**：
   - **DNS 出口**：`dns-remote` 的查询出现在假节点的记录里（走了代理）、`dns-direct` 的查询只出现在直连 DNS 的记录里；直连 DNS 配成域名型 DoH 时查询**真的完成**（不是只通过 `CheckConfig`）；远程 DNS 配成域名时同样。
   - **分流**：`bypass` 规则命中的目标，HTTP 记录的来源是本机、假节点记录为空；非命中走假节点；`block` 规则被拒；`bypass-lan` 开 / 关两态。
@@ -455,7 +471,7 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 - **取消与清理测试**：（1）Go：`Start` 在平台回调里阻塞时，另一个 goroutine 调 `Stop`，`Start` 返回取消错误，资源（tun fd、接口监视、订阅 goroutine、socket 文件）全部释放；（2）清理链路上**每一步依次注入错误**（接口监视关闭失败、命令服务器关闭失败、订阅关闭失败……）：`Stop` / `Close` 仍执行其余全部步骤、返回合并后的错误、且之后能再次 `Start`；（3）Kotlin：取消在每个 `KernelStartSequence` 检查点置位，以及 `startEngine` 返回后才发现取消，两种情形下 tun fd、网络监听、`Seq` 引用都被回收；`teardown` 的每一步抛错时其余步骤仍执行。
 - **同步靠事件，不靠延迟**：测试里**不得**用 `time.Sleep` / `Thread.sleep` / `delay` 来等「应该已经发生了」的事；一律用 channel / `CountDownLatch` / 回调通知等待，超时（≥ 30 s）只作为失败兜底。CI 里有一条 `grep` 检查（U1）：`kernel/**/*_test.go` 里除白名单文件外不得出现 `time.Sleep`。
 - **Dart 导出夹具 + 漂移检测**：Dart 侧测试把 `getDefaultConfigOptions` 在一组设置下的输出写进 `kernel/testdata/options/*.json`（签入；有差异测试失败）；Go 侧加载全部夹具，**Dart 产生的任何键 Go 不认识就失败**。反向：Go 的已知键集合导出成 `kernel/testdata/options/keys.txt`（go-only 的键单独标注），Dart 测试比对。
-- **线格式跨语言夹具**：`kernel/testdata/wire/{groups-first,stats-frame}.json` 同时被 Go（产出）、Kotlin（类型还原 + `StandardMessageCodec` 往返）、Dart（`platform_box_service` 解码到非零 `BoxStats` / 非空分组）三方测试消费（§4.2）。
+- **线格式跨语言夹具**：`kernel/testdata/wire/{groups-first,stats-frame}.json`（Go 产出）与 `{stats-envelope.json, groups-envelope.b64}`（Kotlin 经真实通道编码出的信封黄金文件）同时被 Go（产出）、Kotlin（经真实 `EventChannel` + 记录型 `BinaryMessenger` 逐字节比对）、Dart（把信封黄金文件经 `TestDefaultBinaryMessenger` 投递给真实 `EventChannel`，断言非零 `BoxStats` / 非空分组）三方测试消费（§4.2）；不允许任何一方手工构造 Map 绕过 codec。
 - **Dart 侧**：`runtime_config_builder_test.dart` / `default_config_options_test.dart` / `profile_repository_test.dart` 同步新契约（去掉旧格式 dns / inbounds 的断言，加入新夹具与端点三形态，§6.5）。
 
 ### 7.2 订阅解析：真实形态、纯合成数据
@@ -517,12 +533,12 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 ### 8.3 桌面与 iOS（本期不动）
 
 - 它们继续用旧库与旧 Pigeon / FFI 路径；Dart 的 `configOptions` 契约两边共用，所以同一套选项在两种内核下都有效。
-- **已知分叉**：（1）新 `Parse` 产出的订阅（含 WireGuard 端点）在旧桌面内核下读不了——只在跨平台恢复备份时才会碰到；（2）Dart 侧清理旧格式 dns / inbounds 的改动（U17）对旧内核同样安全（旧内核本来就丢弃它们）；（3）§5.6 里隐藏的界面项在桌面 / iOS 上也隐藏（旧内核能用，但保持三端一致，避免功能随平台漂移）。
+- **已知分叉**：（1）新 `Parse` 产出的订阅（含 WireGuard 端点）在旧桌面内核下读不了——只在跨平台恢复备份时才会碰到；（2）Dart 侧清理旧格式 dns / inbounds 的改动（U16）对旧内核同样安全（旧内核本来就丢弃它们）；（3）§5.6 里隐藏的界面项在桌面 / iOS 上也隐藏（旧内核能用，但保持三端一致，避免功能随平台漂移）。
 - 后续立项：给 `kernel/` 增加 `desktop`（cgo 导出，对齐 `FFIBoxService` 的 13 个符号）与 `apple`（`gomobile bind -target ios,macos`，对齐 `KernelProviderProxy` 用到的 libbox 面）两个门面，包内逻辑零重复。
 
 ## 9. 实施拆分
 
-18 个任务（U1–U18）见 `docs/superpowers/plans/2026-10-21-kernel-upgrade.md`。依赖顺序：U1 → U2（engine）→ U3（选项模型）→ U4（构建器骨架、测试闸门与本地目标夹具）→ {U5 DNS、U6 路由与规则、U7 出站装配、U8 旧 schema 清洗，彼此可并行} → U9（订阅解析管线，依赖 U8）→ {U10、U11 URI 转换，可并行} → U12（门面 + gomobile 绑定 + API 快照 + CI，依赖 U2 与 U4–U11）→ U13（WARP）；U14 → U15 两个 Kotlin 任务依赖 U12 产出的 aar；U16（Dart 端点贯通与订阅边界）与 U17（Dart 配置收口与跨语言契约）在 U9 之后即可开工，与 U14 / U15 并行（U16 用 U9 产出的共享夹具）；U18（真机验收、文档、发布）最后。Go 部分（U1–U13）全部能在主机上用 `tools/kernel/gotest.sh` 验证，Kotlin 与 Dart 部分才需要 aar。
+18 个任务（U1–U18）见 `docs/superpowers/plans/2026-10-21-kernel-upgrade.md`。依赖顺序：U1 → U2（engine）→ U3（选项模型）→ U4（构建器骨架、测试闸门与本地目标夹具）→ {U5 DNS、U6 路由与规则、U7 出站装配、U8 旧 schema 清洗，彼此可并行} → U9（订阅解析管线，依赖 U8）→ {U10、U11 URI 转换，可并行} → U12（门面 + gomobile 绑定 + API 快照 + CI，依赖 U2 与 U4–U11）→ U13（WARP）；U14 → U15 两个 Kotlin 任务依赖 U12 产出的 aar；U16（Dart 端点贯通与订阅边界）与 U17（Dart 配置收口与跨语言契约）在 U9 之后即可开工，与 U14 / U15 并行（U16 用 U9 产出的共享夹具；U17 里的线格式通道测试读取 U15 产出的信封黄金文件，在 U15 之后收口）；U18（真机验收、文档、发布）最后。Go 部分（U1–U13）全部能在主机上用 `tools/kernel/gotest.sh` 验证，Kotlin 与 Dart 部分才需要 aar。
 
 ## 10. 风险与未决
 

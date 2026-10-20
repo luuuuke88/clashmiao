@@ -35,12 +35,10 @@ final proxySelectionStoreProvider =
 class ProxySelectionStoreNotifier extends StateNotifier<Map<String, String>> {
   ProxySelectionStoreNotifier({
     required SharedPreferences prefs,
-    required ProfileStore? store,
+    required this._store,
     required String? profileId,
-    required String? profileInc,
-  }) : _store = store,
-       _profileId = profileId,
-       _profileInc = profileInc,
+    required this._profileInc,
+  }) : _profileId = profileId,
        super(_read(prefs, profileId));
 
   final ProfileStore? _store;

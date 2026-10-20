@@ -138,18 +138,12 @@ class _Round {
 /// fake_async 完整驱动。Riverpod 接线见 [latencyTestCoordinatorProvider]。
 class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   LatencyTestCoordinator({
-    required Future<void> Function(String groupTag) urlTest,
-    required List<OutboundGroup> Function() liveGroups,
-    required Map<String, CachedDelay> Function() cache,
-    required void Function(Map<String, int> msByTag, DateTime at)
-    recordMeasured,
-    required DateTime Function() now,
-  }) : _urlTest = urlTest,
-       _liveGroups = liveGroups,
-       _cache = cache,
-       _recordMeasured = recordMeasured,
-       _now = now,
-       super(const LatencyTestState());
+    required this._urlTest,
+    required this._liveGroups,
+    required this._cache,
+    required this._recordMeasured,
+    required this._now,
+  }) : super(const LatencyTestState());
 
   final Future<void> Function(String groupTag) _urlTest;
   final List<OutboundGroup> Function() _liveGroups;

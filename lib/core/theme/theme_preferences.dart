@@ -1,11 +1,15 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-part 'theme_preferences.g.dart';
+/// 主题偏好。常驻（不自动释放）：整个 App 生命周期都要读它。
+final themePreferencesProvider =
+    NotifierProvider<ThemePreferences, AppThemeMode>(
+      ThemePreferences.new,
+      name: 'themePreferencesProvider',
+    );
 
-@Riverpod(keepAlive: true)
-class ThemePreferences extends _$ThemePreferences {
+class ThemePreferences extends Notifier<AppThemeMode> {
   @override
   AppThemeMode build() {
     final prefs = ref.watch(sharedPreferencesProvider).requireValue;

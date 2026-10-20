@@ -1,0 +1,53 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "old-ss",
+      "server": "192.0.2.10",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "synthetic-pw",
+      "domain_strategy": "prefer_ipv4",
+      "tls_fragment": {
+        "enabled": true
+      }
+    },
+    {
+      "type": "wireguard",
+      "tag": "old-wg",
+      "server": "wg.example.net",
+      "server_port": 51820,
+      "local_address": [
+        "10.8.0.2/32"
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "peer_public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8="
+    },
+    {
+      "type": "trojan",
+      "tag": "old-trojan",
+      "server": "t.example.net",
+      "server_port": 443,
+      "password": "pw",
+      "tls": {
+        "enabled": true,
+        "tls_tricks": {
+          "mixed_case_sni": true
+        }
+      }
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    },
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ]
+}

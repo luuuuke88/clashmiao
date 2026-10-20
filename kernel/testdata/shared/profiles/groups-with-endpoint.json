@@ -1,0 +1,61 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 订阅自带的 selector 同时含 auto、一个 WireGuard 端点成员和一个会被隐藏的订阅信息节点引用；构建器丢弃订阅自带分组并重建，不因其悬空引用失败。",
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "手动选择",
+      "outbounds": [
+        "自动选择",
+        "香港01",
+        "wg-hk",
+        "剩余流量：100 GB"
+      ],
+      "default": "自动选择"
+    },
+    {
+      "type": "urltest",
+      "tag": "自动选择",
+      "outbounds": [
+        "香港01",
+        "wg-hk"
+      ]
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "192.0.2.57",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "synthetic-pw"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "剩余流量：100 GB",
+      "server": "192.0.2.1",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "synthetic-pw"
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-hk",
+      "address": [
+        "10.8.3.2/32"
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "peers": [
+        {
+          "address": "192.0.2.58",
+          "port": 51820,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ]
+        }
+      ]
+    }
+  ]
+}

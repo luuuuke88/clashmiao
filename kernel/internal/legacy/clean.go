@@ -221,30 +221,27 @@ func cloneValue(v any) any {
 	return v
 }
 
-// NeedsCleaning 判断一个出站是否带旧形态（wireguard 出站 / dns / block / 旧字段）。
-// 订阅自带的 selector / urltest / direct 不算旧形态——它们由构建器按规则丢弃。
-// Dart 侧与它共享夹具（testdata/shared/legacy-shapes.json）以保持同一口径。
+// NeedsCleaning 判断一个出站是否带「需要清洗的旧形态」，口径是 spec §6.5 的固定清单，与 Dart 的 JSON 直通判据共用：
+//
+//	type 为 wireguard / dns / block 的出站；
+//	出站顶层出现 tls_fragment / domain_strategy / sniff / sniff_override_destination，或 tls 里出现 tls_tricks。
+//
+// 订阅自带的 selector / urltest / direct 不在清单里（它们由构建器按规则丢弃，不阻止直通）。
+// Clean 实际删除的旧字段比这份清单多（如 sniff_timeout），清单只管「是否必须走 Parse」。
+// 共享夹具 testdata/shared/legacy-shapes.json 钉住两边的一致。
 func NeedsCleaning(o map[string]any) bool {
-	switch dropKind(str(o["type"])) {
-	case "dns", "block":
-		return true
-	case "":
-	default:
-		return false
-	}
-	if str(o["type"]) == "wireguard" {
+	switch str(o["type"]) {
+	case "wireguard", "dns", "block":
 		return true
 	}
-	for _, f := range legacyFields {
+	for _, f := range []string{"tls_fragment", "domain_strategy", "sniff", "sniff_override_destination"} {
 		if _, ok := o[f]; ok {
 			return true
 		}
 	}
 	if tls, ok := o["tls"].(map[string]any); ok {
-		for _, f := range legacyFields {
-			if _, ok := tls[f]; ok {
-				return true
-			}
+		if _, ok := tls["tls_tricks"]; ok {
+			return true
 		}
 	}
 	return false

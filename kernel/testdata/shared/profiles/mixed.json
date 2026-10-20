@@ -1,0 +1,45 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 出站与端点混合。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "192.0.2.52",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "synthetic-pw"
+    },
+    {
+      "type": "trojan",
+      "tag": "美国01",
+      "server": "192.0.2.53",
+      "server_port": 443,
+      "password": "synthetic-pw",
+      "tls": {
+        "enabled": true,
+        "server_name": "us.example.net"
+      }
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-jp",
+      "address": [
+        "10.8.1.2/32"
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "peers": [
+        {
+          "address": "192.0.2.54",
+          "port": 51820,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ]
+        }
+      ]
+    }
+  ]
+}

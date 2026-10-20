@@ -1,0 +1,16 @@
+{
+  "outbounds": [
+    {
+      "type": "selector",
+      "tag": "s",
+      "outbounds": [
+        "u"
+      ]
+    },
+    {
+      "type": "urltest",
+      "tag": "u",
+      "outbounds": []
+    }
+  ]
+}

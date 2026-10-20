@@ -28,6 +28,7 @@ import 'package:clashmiao/shared/components/brand_backdrop.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/foundation.dart' show defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -327,39 +328,61 @@ class _ShellPageState extends ConsumerState<ShellPage> {
           : Brightness.light,
     );
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: overlayStyle,
-      child: Scaffold(
-        extendBody: true,
-        body: Stack(
-          children: [
-            const Positioned.fill(child: BrandBackdrop()),
-            Column(
-              children: [
-                if (topPad > 0) SizedBox(height: topPad),
-                Expanded(
-                  // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
-                  // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
-                  // 把它们静音；切回来时自动恢复。
-                  child: IndexedStack(
-                    index: selectedIndex,
-                    children: [
-                      for (var i = 0; i < _pages.length; i++)
-                        TickerMode(
-                          key: ValueKey('tab_ticker_$i'),
-                          enabled: i == selectedIndex,
-                          child: _pages[i],
-                        ),
-                    ],
+    // Android 系统返回：停在非首页 tab 时先回首页，首页再按才退出。
+    //
+    // 用 PopScope 而不是在 onPopInvoked 里自己 SystemNavigator.pop / 拦截：
+    // canPop 随 tab 变化，Navigator 据此告诉系统"现在是不是框架在处理返回"，
+    // Android 13+ 的预测性返回动画才对得上——首页（canPop=true）交还系统，
+    // 播"回桌面"动画；非首页（canPop=false）由我们切 tab。
+    //
+    // 只管本路由：二级页面和弹层（sheet / dialog）都是压在它上面的路由，返回键
+    // 先落在它们身上，一次只关一层，轮不到这里。切 tab 走和点底部导航同一条
+    // 路径（改 selectedTabProvider），所以过渡也一样。iOS / 桌面没有系统返回键，
+    // 不启用，canPop 恒为 true。
+    final backToHomeFirst =
+        defaultTargetPlatform == TargetPlatform.android &&
+        selectedIndex != AppTab.home;
+
+    return PopScope(
+      canPop: !backToHomeFirst,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        ref.read(selectedTabProvider.notifier).state = AppTab.home;
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: overlayStyle,
+        child: Scaffold(
+          extendBody: true,
+          body: Stack(
+            children: [
+              const Positioned.fill(child: BrandBackdrop()),
+              Column(
+                children: [
+                  if (topPad > 0) SizedBox(height: topPad),
+                  Expanded(
+                    // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
+                    // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
+                    // 把它们静音；切回来时自动恢复。
+                    child: IndexedStack(
+                      index: selectedIndex,
+                      children: [
+                        for (var i = 0; i < _pages.length; i++)
+                          TickerMode(
+                            key: ValueKey('tab_ticker_$i'),
+                            enabled: i == selectedIndex,
+                            child: _pages[i],
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        bottomNavigationBar: _GlassBottomNav(
-          selectedIndex: selectedIndex,
-          onTap: (i) => ref.read(selectedTabProvider.notifier).state = i,
+                ],
+              ),
+            ],
+          ),
+          bottomNavigationBar: _GlassBottomNav(
+            selectedIndex: selectedIndex,
+            onTap: (i) => ref.read(selectedTabProvider.notifier).state = i,
+          ),
         ),
       ),
     );

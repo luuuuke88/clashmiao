@@ -54,5 +54,68 @@ void main() {
       final groups = ConfigParser.parseConfig(cfg);
       expect(groups.map((g) => g.tag), ['Manual', 'Auto']);
     });
+
+    test('成员是端点 / 分组时认得类型：端点 = wireguard，auto = urltest', () {
+      final cfg = jsonEncode({
+        'outbounds': [
+          {
+            'type': 'selector',
+            'tag': 'select',
+            'outbounds': ['auto', 'hk', 'wg-hk'],
+            'default': 'auto',
+          },
+          {
+            'type': 'urltest',
+            'tag': 'auto',
+            'outbounds': ['hk', 'wg-hk'],
+          },
+          {'type': 'shadowsocks', 'tag': 'hk'},
+        ],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg-hk'},
+        ],
+      });
+
+      final groups = ConfigParser.parseConfig(cfg);
+      expect(groups.map((g) => g.tag), ['select', 'auto']);
+      final select = groups.first;
+      expect(select.items.map((i) => i.tag), ['auto', 'hk', 'wg-hk']);
+      expect(select.items.map((i) => i.type), [
+        'urltest',
+        'shadowsocks',
+        'wireguard',
+      ]);
+      expect(select.items.any((i) => i.type == 'unknown'), isFalse);
+      expect(select.selected, 'auto');
+    });
+
+    test('只有端点、没有分组：返回空列表，不抛', () {
+      final cfg = jsonEncode({
+        'outbounds': <Object>[],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg-hk'},
+        ],
+      });
+      expect(ConfigParser.parseConfig(cfg), isEmpty);
+    });
+
+    test('分组本身放在 endpoints 数组里也会被遍历（完整集合，不是叶子视图）', () {
+      final cfg = jsonEncode({
+        'outbounds': [
+          {'type': 'vless', 'tag': 'v'},
+        ],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg'},
+          {
+            'type': 'selector',
+            'tag': 'g',
+            'outbounds': ['v', 'wg'],
+          },
+        ],
+      });
+      final groups = ConfigParser.parseConfig(cfg);
+      expect(groups.single.tag, 'g');
+      expect(groups.single.items.map((i) => i.type), ['vless', 'wireguard']);
+    });
   });
 }

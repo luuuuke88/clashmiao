@@ -38,7 +38,7 @@ final _refProvider = Provider<Ref>((ref) => ref);
 const _validSingBoxJsonBody = '''
 {
   "outbounds": [
-    {"type": "selector", "tag": "p", "outbounds": []}
+    {"type": "vless", "tag": "p"}
   ],
   "inbounds": [
     {"type": "mixed", "listen_port": 2080}

@@ -47,6 +47,58 @@ rules:
       expect(result.nodeCount, 0);
     });
 
+    test('节点数按叶子视图数：outbounds 为空而只有端点，不判空', () {
+      const body =
+          '{"outbounds":[],"endpoints":[{"type":"wireguard","tag":"wg-hk"}]}';
+
+      final result = analyzeSubscriptionPayload(body);
+
+      expect(result.kind, SubscriptionPayloadKind.singboxJson);
+      expect(result.nodeCount, 1);
+      expect(result.isDefinitelyEmpty, isFalse);
+      expect(result.looksUsable, isTrue);
+    });
+
+    test('没有 outbounds 数组、只有 endpoints 数组也是 sing-box JSON', () {
+      const body = '{"endpoints":[{"type":"wireguard","tag":"wg-hk"}]}';
+
+      final result = analyzeSubscriptionPayload(body);
+
+      expect(result.kind, SubscriptionPayloadKind.singboxJson);
+      expect(result.nodeCount, 1);
+    });
+
+    test('只有 direct / 只有分组 / 分组加 direct：确信的零节点（分组不计入）', () {
+      const bodies = {
+        '只有 direct': '{"outbounds":[{"type":"direct","tag":"direct"}]}',
+        '只有分组':
+            '{"outbounds":[{"type":"selector","tag":"s","outbounds":["a"]},'
+            '{"type":"urltest","tag":"u","outbounds":["a"]}]}',
+        '分组加 direct':
+            '{"outbounds":[{"type":"selector","tag":"s","outbounds":["a"]},'
+            '{"type":"direct","tag":"direct"},'
+            '{"type":"block","tag":"block"},{"type":"dns","tag":"d"}]}',
+      };
+      for (final entry in bodies.entries) {
+        final result = analyzeSubscriptionPayload(entry.value);
+        expect(
+          result.kind,
+          SubscriptionPayloadKind.singboxJson,
+          reason: entry.key,
+        );
+        expect(result.nodeCount, 0, reason: entry.key);
+        expect(result.isDefinitelyEmpty, isTrue, reason: entry.key);
+      }
+    });
+
+    test('分组不计入：一个节点加两个分组，节点数是 1', () {
+      const body =
+          '{"outbounds":[{"type":"selector","tag":"s","outbounds":["a"]},'
+          '{"type":"urltest","tag":"u","outbounds":["a"]},'
+          '{"type":"vless","tag":"a"}]}';
+      expect(analyzeSubscriptionPayload(body).nodeCount, 1);
+    });
+
     test('有节点的 clash YAML 不会被误判为空', () {
       // 防误判是这个分类器最重要的性质：判错一份好订阅，代价远高于漏判一份
       // 空订阅（漏判只是退回原来的 native parse 流程）。

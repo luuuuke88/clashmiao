@@ -16,6 +16,8 @@
 /// （订阅响应头）展示，节点名里的同一份信息不必再占一行。
 library;
 
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+
 /// 节点 tag 带这个标记时，内核不把它放进主选择组 / 自动选择组。
 const String kHideNodeMarker = '§hide§';
 
@@ -146,30 +148,17 @@ bool isSubscriptionInfoTag(String tag) {
 
 // ── 候选叶子节点：构建器、线路页、默认值推导共用同一个定义 ──
 
-/// 不是候选叶子节点的出站类型：分组、直连、阻断、DNS、内核自定义出站。与内核
-/// 重建主选择组 / 自动选择组时跳过的类型一致；其余（各种代理协议）都是候选。
-const Set<String> _kNonCandidateTypes = {
-  'direct',
-  'block',
-  'dns',
-  'selector',
-  'select',
-  'urltest',
-  'custom',
-};
-
-/// 出站类型 [type] 是不是候选叶子节点（大小写、`-` / `_` 不敏感：
-/// `url-test`、`url_test` 都是分组）。
-bool isCandidateLeafType(String type) => !_kNonCandidateTypes.contains(
-  type.trim().toLowerCase().replaceAll('-', '').replaceAll('_', ''),
-);
+/// 出站类型 [type] 是不是候选叶子节点（分组、直连、阻断、DNS、内核自定义出站
+/// 都不是；大小写、`-` / `_` 不敏感）。定义在 `profile_nodes.dart` 的叶子视图
+/// 里，这里只是沿用旧名字。
+bool isCandidateLeafType(String type) => isLeafType(type);
 
 /// 配置 [cfg]（sing-box JSON）里**全部**候选叶子节点的 tag，按出现顺序；包括
-/// 没被任何分组引用的叶子。
+/// 没被任何分组引用的叶子，也包括 `endpoints` 里的 WireGuard 端点（叶子视图，
+/// 见 `profile_nodes.dart`）。
 List<String> candidateLeafTags(Map<String, dynamic> cfg) => [
-  for (final o in (cfg['outbounds'] as List?) ?? const [])
-    if (o is Map && o['tag'] is String && o['type'] is String)
-      if (isCandidateLeafType(o['type'] as String)) o['tag'] as String,
+  for (final n in profileLeafNodes(cfg))
+    if (n.tag.isNotEmpty) n.tag,
 ];
 
 /// 一份订阅配置的信息条目排除集：在 [candidateLeafTags] 上算

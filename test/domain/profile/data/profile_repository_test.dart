@@ -8,6 +8,7 @@ import 'package:clashmiao/core/box_service/model/box_stats.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -89,6 +90,30 @@ class _ValidatingBoxService implements BoxService {
   Future<void> resetTunnel() async {}
 }
 
+/// 按新内核 `Parse` 的口径行事的假原生解析：叶子视图为空 → `no-outbounds:`，
+/// 否则把输入原样写出。记录被调用的次数，用来断言「直通」没有进原生。
+class _ParseLikeBoxService extends _ValidatingBoxService {
+  _ParseLikeBoxService();
+
+  int calls = 0;
+
+  @override
+  Future<String?> validateConfig(
+    String path,
+    String tempPath, {
+    bool debug = false,
+  }) async {
+    calls++;
+    final raw = await File(tempPath).readAsString();
+    final decoded = jsonDecode(raw);
+    if (decoded is Map && profileNodeCount(decoded) == 0) {
+      return 'no-outbounds: profile has no usable outbound';
+    }
+    await File(path).writeAsString(raw);
+    return null;
+  }
+}
+
 void main() {
   group('ProfileRepository normalize (StubBoxService 路径)', () {
     late Directory tmpDir;
@@ -110,10 +135,10 @@ void main() {
       await deleteTempDirBestEffort(tmpDir);
     });
 
-    test('sing-box JSON 原文带 outbounds → 直通保留 inbounds/route', () async {
+    test('sing-box JSON 原文带节点 → 直通保留 inbounds/route', () async {
       final body = jsonEncode({
         'outbounds': [
-          {'type': 'selector', 'tag': 'p', 'outbounds': <String>[]},
+          {'type': 'vless', 'tag': 'p'},
         ],
         'inbounds': [
           {'type': 'mixed', 'listen_port': 2080},
@@ -135,8 +160,8 @@ void main() {
       expect(out['outbounds'] as List, isNotEmpty);
     });
 
-    test('sing-box JSON 多级 selector 也会补出 flat proxy', () async {
-      final body = jsonEncode({
+    test('sing-box JSON 多级 selector 直通后原样保存：只补 direct，不写 1.8 形态的死数据', () async {
+      final input = <String, dynamic>{
         'outbounds': [
           {
             'type': 'selector',
@@ -180,48 +205,26 @@ void main() {
             {'clash_mode': 'global', 'outbound': '节点选择'},
             {'clash_mode': 'direct', 'outbound': 'direct'},
           ],
-          'rule_set': [
-            {
-              'tag': 'geosite-cn',
-              'type': 'remote',
-              'format': 'binary',
-              'url': 'https://example.test/geosite-cn.srs',
-              'download_detour': '自动选择',
-            },
-          ],
         },
-      });
-      final server = await _serveOnce(body, headers: {});
+      };
+      final server = await _serveOnce(jsonEncode(input), headers: {});
       addTearDown(() => server.close(force: true));
 
       final profile = await repo.addByUrl('http://localhost:${server.port}/');
-      final file = File(repo.configFilePath(profile.id));
-      final out = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
-      final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
+      final out = jsonDecode(
+        await File(repo.configFilePath(profile.id)).readAsString(),
+      ) as Map<String, dynamic>;
 
-      expect(proxy['outbounds'], ['HK-1', 'JP-1']);
-      expect(proxy['default'], 'HK-1');
-      expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
-      expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
-      expect(
-        (((out['route'] as Map<String, dynamic>)['rules'] as List).first
-            as Map<String, dynamic>)['outbound'],
-        'proxy',
-      );
-      expect(
-        (((out['route'] as Map<String, dynamic>)['rule_set'] as List).first
-            as Map<String, dynamic>)['download_detour'],
-        'proxy',
-      );
-      expect(
-        (((out['dns'] as Map<String, dynamic>)['servers'] as List).first
-            as Map<String, dynamic>)['detour'],
-        'proxy',
-      );
-      final inbounds = (out['inbounds'] as List).cast<Map<String, dynamic>>();
-      expect(inbounds.first.containsKey('address'), isFalse);
-      expect(inbounds.first['inet4_address'], ['172.19.0.1/28']);
+      // 内核配置构建器对 selector / urltest / dns / route / inbounds 一律丢弃重建，
+      // 落盘时不再改写它们：不补 proxy 选择组、不删 urltest、不改 route.final、
+      // 不改 dns detour、不换 inbounds。
+      expect(out['outbounds'], [
+        ...(input['outbounds'] as List),
+        {'type': 'direct', 'tag': 'direct'},
+      ]);
+      expect(out['route'], input['route']);
+      expect(out['dns'], input['dns']);
+      expect(out['inbounds'], input['inbounds']);
     });
 
     test('默认订阅请求不强制透传 User-Agent', () async {
@@ -242,12 +245,13 @@ void main() {
       addTearDown(() => server.close(force: true));
 
       final profile = await repo.addByUrl('http://localhost:${server.port}/');
-      final file = File(repo.configFilePath(profile.id));
-      final out = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
-      final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-
-      expect(proxy['outbounds'], ['HK-1']);
+      final out = jsonDecode(
+        await File(repo.configFilePath(profile.id)).readAsString(),
+      ) as Map<String, dynamic>;
+      final tags = [
+        for (final o in out['outbounds'] as List) (o as Map)['tag'],
+      ];
+      expect(tags, ['HK-1', 'direct']);
     });
 
     test('非 JSON body → StubBoxService 路径直接写原文', () async {
@@ -273,7 +277,7 @@ void main() {
     test('addByUrl 首条订阅自动 active', () async {
       final body = jsonEncode({
         'outbounds': [
-          {'type': 'selector', 'tag': 'p', 'outbounds': <String>[]},
+          {'type': 'vless', 'tag': 'p'},
         ],
       });
       final server = await _serveOnce(body, headers: {});
@@ -330,7 +334,7 @@ void main() {
     Future<String> addNamed(String name) async {
       final body = jsonEncode({
         'outbounds': [
-          {'type': 'selector', 'tag': name, 'outbounds': <String>[]},
+          {'type': 'vless', 'tag': name},
         ],
       });
       final server = await _serveOnce(body, headers: {});
@@ -578,7 +582,7 @@ void main() {
     test('update rejects invalid config and preserves previous file', () async {
       final validBody = jsonEncode({
         'outbounds': [
-          {'type': 'selector', 'tag': 'old', 'outbounds': <String>[]},
+          {'type': 'vless', 'tag': 'old'},
         ],
       });
       final validServer = await _serveOnce(validBody, headers: {});
@@ -606,205 +610,90 @@ void main() {
       expect(await configFile.readAsString(), before);
     });
 
-    test(
-      'addByUrl repairs native parsed node lists into selectable groups',
-      () async {
-        final repoWithNativeOutput = ProfileRepository(
-          dio: Dio(),
-          configDir: tmpDir,
-          prefs: await SharedPreferences.getInstance(),
-          boxService: _ValidatingBoxService(
-            normalize: (_) => jsonEncode({
-              'outbounds': [
-                {'type': 'urltest', 'tag': '测速', 'outbounds': <String>[]},
-                {'type': 'vless', 'tag': 'HK-1'},
-                {'type': 'vless', 'tag': 'JP-1'},
-              ],
-            }),
-          ),
-        );
-        final server = await _serveOnce('native-subscription', headers: {});
-        addTearDown(() => server.close(force: true));
-
-        final profile = await repoWithNativeOutput.addByUrl(
-          'http://localhost:${server.port}/',
-        );
-        final out = jsonDecode(
-          await File(repoWithNativeOutput.configFilePath(profile.id))
-              .readAsString(),
-        ) as Map<String, dynamic>;
-        final outbounds = (out['outbounds'] as List)
-            .cast<Map<String, dynamic>>();
-        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-
-        expect(selector['outbounds'], ['HK-1', 'JP-1']);
-        expect(selector['default'], 'HK-1');
-        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
-        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
-      },
-    );
-
-    test(
-      'informational proxy tags are not selected as the default outbound',
-      () async {
-        final repoWithNativeOutput = ProfileRepository(
-          dio: Dio(),
-          configDir: tmpDir,
-          prefs: await SharedPreferences.getInstance(),
-          boxService: _ValidatingBoxService(
-            normalize: (_) => jsonEncode({
-              'outbounds': [
-                {'type': 'vless', 'tag': '🌐 官网地址：ncink.cc'},
-                {'type': 'vless', 'tag': '🇭🇰 香港01-BGP|IEPL中继'},
-                {'type': 'vless', 'tag': '🇯🇵 日本01-BGP|IEPL中继'},
-              ],
-            }),
-          ),
-        );
-        final server = await _serveOnce('native-subscription', headers: {});
-        addTearDown(() => server.close(force: true));
-
-        final profile = await repoWithNativeOutput.addByUrl(
-          'http://localhost:${server.port}/',
-        );
-        final out = jsonDecode(
-          await File(repoWithNativeOutput.configFilePath(profile.id))
-              .readAsString(),
-        ) as Map<String, dynamic>;
-        final outbounds = (out['outbounds'] as List)
-            .cast<Map<String, dynamic>>();
-        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-
-        expect(selector['outbounds'], [
-          '🌐 官网地址：ncink.cc',
-          '🇭🇰 香港01-BGP|IEPL中继',
-          '🇯🇵 日本01-BGP|IEPL中继',
-        ]);
-        expect(selector['default'], '🇭🇰 香港01-BGP|IEPL中继');
-      },
-    );
-
-    test(
-      'native auto/urltest group is not used as the default route',
-      () async {
-        final repoWithNativeOutput = ProfileRepository(
-          dio: Dio(),
-          configDir: tmpDir,
-          prefs: await SharedPreferences.getInstance(),
-          boxService: _ValidatingBoxService(
-            normalize: (_) => jsonEncode({
-              'outbounds': [
-                {
-                  'type': 'selector',
-                  'tag': 'proxy',
-                  'outbounds': ['auto', 'HK-1'],
-                  'default': 'auto',
-                },
-                {
-                  'type': 'urltest',
-                  'tag': 'auto',
-                  'outbounds': ['HK-1', 'JP-1'],
-                  'default': 'JP-1',
-                },
-                {'type': 'vless', 'tag': 'HK-1'},
-                {'type': 'vless', 'tag': 'JP-1'},
-              ],
-              'route': {'final': 'auto'},
-            }),
-          ),
-        );
-        final server = await _serveOnce('native-subscription', headers: {});
-        addTearDown(() => server.close(force: true));
-
-        final profile = await repoWithNativeOutput.addByUrl(
-          'http://localhost:${server.port}/',
-        );
-        final out = jsonDecode(
-          await File(repoWithNativeOutput.configFilePath(profile.id))
-              .readAsString(),
-        ) as Map<String, dynamic>;
-        final outbounds = (out['outbounds'] as List)
-            .cast<Map<String, dynamic>>();
-        final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-
-        expect(selector['outbounds'], ['HK-1', 'JP-1']);
-        expect(selector['default'], 'HK-1');
-        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
-        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
-      },
-    );
-
-    test(
-      'native nested selectors still create a flat proxy selector',
-      () async {
-        final repoWithNativeOutput = ProfileRepository(
-          dio: Dio(),
-          configDir: tmpDir,
-          prefs: await SharedPreferences.getInstance(),
-          boxService: _ValidatingBoxService(
-            normalize: (_) => jsonEncode({
-              'outbounds': [
-                {
-                  'type': 'selector',
-                  'tag': '节点选择',
-                  'outbounds': ['手动选择', '自动选择'],
-                  'default': '手动选择',
-                },
-                {
-                  'type': 'selector',
-                  'tag': '手动选择',
-                  'outbounds': ['HK-1', 'JP-1'],
-                  'default': 'HK-1',
-                },
-                {
-                  'type': 'urltest',
-                  'tag': '自动选择',
-                  'outbounds': ['HK-1', 'JP-1'],
-                  'default': 'JP-1',
-                },
-                {'type': 'vless', 'tag': 'HK-1'},
-                {'type': 'vless', 'tag': 'JP-1'},
-              ],
-              'route': {'final': '节点选择'},
-            }),
-          ),
-        );
-        final server = await _serveOnce('native-subscription', headers: {});
-        addTearDown(() => server.close(force: true));
-
-        final profile = await repoWithNativeOutput.addByUrl(
-          'http://localhost:${server.port}/',
-        );
-        final out = jsonDecode(
-          await File(repoWithNativeOutput.configFilePath(profile.id))
-              .readAsString(),
-        ) as Map<String, dynamic>;
-        final outbounds = (out['outbounds'] as List)
-            .cast<Map<String, dynamic>>();
-        final proxy = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-        final manual = outbounds.firstWhere((o) => o['tag'] == '手动选择');
-
-        expect(proxy['outbounds'], ['HK-1', 'JP-1']);
-        expect(proxy['default'], 'HK-1');
-        expect(manual['outbounds'], ['HK-1', 'JP-1']);
-        expect(outbounds.any((o) => o['type'] == 'urltest'), isFalse);
-        expect((out['route'] as Map<String, dynamic>)['final'], 'proxy');
-      },
-    );
-
-    test('update repairs native parsed subscriptions too', () async {
+    /// 用 [normalize] 当作 native Parse 的输出建仓库，导入后返回落盘配置。
+    Future<Map<String, dynamic>> importNative(
+      Map<String, dynamic> parsed,
+    ) async {
       final repoWithNativeOutput = ProfileRepository(
         dio: Dio(),
         configDir: tmpDir,
         prefs: await SharedPreferences.getInstance(),
-        boxService: _ValidatingBoxService(
-          normalize: (_) => jsonEncode({
-            'outbounds': [
-              {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
-              {'type': 'trojan', 'tag': 'SG-1'},
-            ],
-          }),
-        ),
+        boxService: _ValidatingBoxService(normalize: (_) => jsonEncode(parsed)),
+      );
+      final server = await _serveOnce('native-subscription', headers: {});
+      addTearDown(() => server.close(force: true));
+      final profile = await repoWithNativeOutput.addByUrl(
+        'http://localhost:${server.port}/',
+      );
+      return jsonDecode(
+        await File(repoWithNativeOutput.configFilePath(profile.id))
+            .readAsString(),
+      ) as Map<String, dynamic>;
+    }
+
+    test('native Parse 的输出原样落盘：只补 direct，不造 proxy 选择组 / route.final', () async {
+      final parsed = <String, dynamic>{
+        'outbounds': [
+          {
+            'type': 'urltest',
+            'tag': '测速',
+            'outbounds': ['HK-1', 'JP-1'],
+          },
+          {'type': 'vless', 'tag': 'HK-1'},
+          {'type': 'vless', 'tag': 'JP-1'},
+        ],
+        'route': {'final': '测速'},
+      };
+      final out = await importNative(parsed);
+      expect(out['outbounds'], [
+        ...(parsed['outbounds'] as List),
+        {'type': 'direct', 'tag': 'direct'},
+      ]);
+      expect(out['route'], {'final': '测速'});
+      expect(out.containsKey('dns'), isFalse, reason: '不写 1.8 形态的 dns.servers');
+      expect(
+        out.containsKey('inbounds'),
+        isFalse,
+        reason: '不写带 inet4_address / sniff 的标准 inbounds',
+      );
+    });
+
+    test('native Parse 输出已有 direct：一个字节都不改', () async {
+      final parsed = <String, dynamic>{
+        'outbounds': [
+          {'type': 'trojan', 'tag': 'SG-1'},
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+      };
+      expect(await importNative(parsed), parsed);
+    });
+
+    test('只有端点的 Parse 输出合法：outbounds 为空数组也不失败，端点原样保留', () async {
+      final parsed = <String, dynamic>{
+        'outbounds': <Object>[],
+        'endpoints': [
+          {'type': 'wireguard', 'tag': 'wg-hk'},
+        ],
+      };
+      final out = await importNative(parsed);
+      expect(out['endpoints'], parsed['endpoints']);
+      expect(out['outbounds'], [
+        {'type': 'direct', 'tag': 'direct'},
+      ]);
+    });
+
+    test('update 同样原样保存 native Parse 的输出', () async {
+      final parsed = <String, dynamic>{
+        'outbounds': [
+          {'type': 'trojan', 'tag': 'SG-1'},
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+      };
+      final repoWithNativeOutput = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: await SharedPreferences.getInstance(),
+        boxService: _ValidatingBoxService(normalize: (_) => jsonEncode(parsed)),
       );
       final server = await _serveOnce('native-subscription', headers: {});
       addTearDown(() => server.close(force: true));
@@ -818,10 +707,176 @@ void main() {
         await File(repoWithNativeOutput.configFilePath(profile.id))
             .readAsString(),
       ) as Map<String, dynamic>;
-      final outbounds = (out['outbounds'] as List).cast<Map<String, dynamic>>();
-      final selector = outbounds.firstWhere((o) => o['tag'] == 'proxy');
-      expect(selector['outbounds'], ['SG-1']);
-      expect(selector['default'], 'SG-1');
+      expect(out, parsed);
+    });
+  });
+
+  group('JSON 直通判据 canPassThrough（所有入口共用的唯一口径）', () {
+    late Directory tmpDir;
+    late _ParseLikeBoxService box;
+    late ProfileRepository repo;
+
+    setUp(() async {
+      tmpDir = await Directory.systemTemp.createTemp('repo_passthrough_');
+      SharedPreferences.setMockInitialValues({});
+      box = _ParseLikeBoxService();
+      repo = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: await SharedPreferences.getInstance(),
+        boxService: box,
+      );
+    });
+
+    tearDown(() async {
+      await deleteTempDirBestEffort(tmpDir);
+    });
+
+    List<File> profileFiles() => [
+      for (final f in tmpDir.listSync(recursive: true))
+        if (f is File && f.path.endsWith('.json')) f,
+    ];
+
+    test('direct-only JSON：不直通，Parse 报 no-outbounds，抛带码异常，不落盘', () async {
+      const body = '{"outbounds":[{"type":"direct","tag":"direct"}]}';
+      expect(canPassThrough(jsonDecode(body) as Map), isFalse);
+
+      await expectLater(
+        repo.addByContent(body, name: 'x'),
+        throwsA(
+          isA<ProfileValidationException>().having(
+            (e) => e.code,
+            'code',
+            'no-outbounds',
+          ),
+        ),
+      );
+      expect(box.calls, 1, reason: '走了原生 Parse，没有直通');
+      expect(repo.store.read(), isEmpty);
+      expect(profileFiles(), isEmpty);
+    });
+
+    test('group-only JSON（只有 selector / urltest）：同上', () async {
+      const body =
+          '{"outbounds":[{"type":"selector","tag":"s","outbounds":["u"]},'
+          '{"type":"urltest","tag":"u","outbounds":[]}]}';
+      expect(canPassThrough(jsonDecode(body) as Map), isFalse);
+
+      await expectLater(
+        repo.addByContent(body, name: 'x'),
+        throwsA(
+          isA<ProfileValidationException>().having(
+            (e) => e.code,
+            'code',
+            'no-outbounds',
+          ),
+        ),
+      );
+      expect(box.calls, 1);
+      expect(repo.store.read(), isEmpty);
+      expect(profileFiles(), isEmpty);
+    });
+
+    test('endpoint-only JSON：直通被接受并落盘（不进原生）', () async {
+      const body =
+          '{"outbounds":[],"endpoints":[{"type":"wireguard","tag":"wg-hk"}]}';
+      expect(canPassThrough(jsonDecode(body) as Map), isTrue);
+
+      final profile = await repo.addByContent(body, name: 'wg');
+
+      expect(box.calls, 0, reason: '直通不调原生 Parse');
+      final out = jsonDecode(
+        await File(repo.configFilePath(profile.id)).readAsString(),
+      ) as Map<String, dynamic>;
+      expect(out['endpoints'], [
+        {'type': 'wireguard', 'tag': 'wg-hk'},
+      ]);
+      expect(profileNodeCount(out), 1, reason: '落盘后不被判空');
+    });
+
+    test('含旧形态的 JSON 不直通：走 Parse', () async {
+      const body =
+          '{"outbounds":[{"type":"wireguard","tag":"w","server":"x"}]}';
+      expect(canPassThrough(jsonDecode(body) as Map), isFalse);
+      await repo.addByContent(body, name: 'old');
+      expect(box.calls, 1);
+    });
+
+    test('canPassThrough 与共用夹具逐行一致：needsCleaning 的行不直通，其余直通', () {
+      final shapes =
+          (jsonDecode(
+                File('kernel/testdata/shared/legacy-shapes.json')
+                    .readAsStringSync(),
+              ) as Map<String, dynamic>)['shapes']
+              as List;
+      expect(shapes, isNotEmpty);
+      for (final row in shapes.cast<Map<String, dynamic>>()) {
+        // 每行配一个干净的真实节点，让「叶子视图非空」恒成立，只测旧形态这一维。
+        final profile = {
+          'outbounds': [
+            row['json'],
+            {'type': 'shadowsocks', 'tag': 'clean-node'},
+          ],
+        };
+        expect(
+          canPassThrough(profile),
+          !(row['needsCleaning'] as bool),
+          reason: '${row['name']}',
+        );
+      }
+    });
+
+    test('旧形态清单覆盖的每个字段：单独出现就不直通', () {
+      for (final field in [
+        'tls_fragment',
+        'domain_strategy',
+        'sniff',
+        'sniff_override_destination',
+      ]) {
+        expect(
+          canPassThrough({
+            'outbounds': [
+              {'type': 'vless', 'tag': 'v', field: 1},
+            ],
+          }),
+          isFalse,
+          reason: field,
+        );
+      }
+      expect(
+        canPassThrough({
+          'outbounds': [
+            {
+              'type': 'vless',
+              'tag': 'v',
+              'tls': {'tls_tricks': <String, dynamic>{}},
+            },
+          ],
+        }),
+        isFalse,
+      );
+    });
+
+    test('订阅自带的 selector / urltest / direct 不阻止直通', () {
+      expect(
+        canPassThrough({
+          'outbounds': [
+            {
+              'type': 'selector',
+              'tag': 's',
+              'outbounds': ['v'],
+            },
+            {
+              'type': 'urltest',
+              'tag': 'u',
+              'outbounds': ['v'],
+            },
+            {'type': 'direct', 'tag': 'direct'},
+            {'type': 'vless', 'tag': 'v'},
+          ],
+        }),
+        isTrue,
+      );
     });
   });
 

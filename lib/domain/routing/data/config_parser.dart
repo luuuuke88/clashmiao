@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
 
 /// 从 sing-box 配置文件解析代理分组和节点
 class ConfigParser {
@@ -12,17 +13,23 @@ class ConfigParser {
   static List<OutboundGroup> parseConfig(String configContent) {
     try {
       final config = jsonDecode(configContent) as Map<String, dynamic>;
-      final outbounds = (config['outbounds'] as List?) ?? [];
+      // 完整实体集合（出站 ∪ 端点）：分组遍历与成员类型索引都要认端点——
+      // `select` 里的 WireGuard 端点成员是 `wireguard`，`auto` 成员是
+      // `urltest`，不能认成 `unknown`。叶子视图会丢掉全部分组，不能用在这里。
+      final entities = profileEntities(config);
+      final typeByTag = <String, String>{};
+      for (final e in entities) {
+        typeByTag.putIfAbsent(e.tag, () => e.type);
+      }
 
       final groups = <OutboundGroup>[];
 
-      for (final outbound in outbounds) {
-        if (outbound is! Map<String, dynamic>) continue;
-
-        final type = (outbound['type'] as String?) ?? '';
+      for (final entity in entities) {
+        final outbound = entity.raw;
+        final type = entity.type;
         if (!_groupTypes.contains(type)) continue;
 
-        final tag = (outbound['tag'] as String?) ?? '';
+        final tag = entity.tag;
         final itemTags =
             (outbound['outbounds'] as List?)?.whereType<String>().toList() ??
             [];
@@ -35,12 +42,7 @@ class ConfigParser {
         // 为每个子节点查找类型
         final items = <OutboundProxy>[];
         for (final itemTag in itemTags) {
-          final itemOutbound = outbounds
-              .whereType<Map<String, dynamic>>()
-              .where((e) => e['tag'] == itemTag)
-              .firstOrNull;
-
-          final itemType = (itemOutbound?['type'] as String?) ?? 'unknown';
+          final itemType = typeByTag[itemTag] ?? 'unknown';
 
           items.add(
             OutboundProxy(

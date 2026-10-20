@@ -54,6 +54,10 @@ String profileFailureMessage(
 
 String? _profileFailureReason(Object error, TranslationsEn t) {
   return switch (error) {
+    // 内核 Parse 的稳定错误码（spec §6.4）：没有可用节点给可操作的提示，其余
+    // （格式未知 / 链接不合法 / 选项不合法 …）统一是「配置无效」。
+    ProfileValidationException(code: 'no-outbounds') =>
+      t.proxies.emptyProxiesMsg,
     ProfileValidationException() ||
     FormatException() => t.failure.profiles.invalidConfig,
     SubscriptionFetchException(reason: SubscriptionFetchFailure.notAConfig) =>

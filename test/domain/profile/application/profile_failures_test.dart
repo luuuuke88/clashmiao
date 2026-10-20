@@ -43,6 +43,41 @@ void main() {
     );
   });
 
+  test('Parse 错误码映射：no-outbounds → 没有可用线路，其余码 → 无效配置', () {
+    String fromParse(String err) =>
+        msg(ProfileValidationException.fromParseError(err));
+    expect(
+      fromParse('no-outbounds: profile has no usable outbound'),
+      '更新配置文件失败：无可用的线路',
+    );
+    for (final err in [
+      'format-unknown: not a subscription',
+      'uri-invalid: vless: bad uuid',
+      'option-invalid: mixed-port',
+      'build-failed: boom',
+      'something else entirely',
+      '',
+    ]) {
+      expect(fromParse(err), '更新配置文件失败：无效配置', reason: err);
+    }
+  });
+
+  test('错误码取自消息前缀：认得的才取，原文不进文案', () {
+    final known = ProfileValidationException.fromParseError(
+      'no-outbounds: secret detail',
+    );
+    expect(known.code, 'no-outbounds');
+    expect(msg(known), isNot(contains('secret')));
+    expect(
+      ProfileValidationException.fromParseError('uri-invalid: x').code,
+      'uri-invalid',
+    );
+    expect(ProfileValidationException.fromParseError('weird: x').code, isNull);
+    expect(ProfileValidationException.fromParseError('no colon').code, isNull);
+    expect(ProfileValidationException.fromParseError(': x').code, isNull);
+    expect(const ProfileValidationException('x').code, isNull);
+  });
+
   test('认不出的异常：只给操作失败文案，不附原文', () {
     final m = msg(Exception('disk full at /data/x'));
     expect(m, '更新配置文件失败');

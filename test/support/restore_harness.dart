@@ -13,10 +13,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'temp_dirs.dart';
 import 'write_fault_prefs.dart';
 
-/// 一份最小的合法订阅配置（含 `outbounds` 数组）。
+/// 一份最小的合法订阅配置：含一个真实可连的节点（叶子视图非空；只有 `direct`
+/// 的配置是「没有节点」，备份恢复校验会拒绝）。
 String sampleConfig(String tag) => jsonEncode({
   'outbounds': [
-    {'type': 'direct', 'tag': tag},
+    {'type': 'shadowsocks', 'tag': tag},
   ],
 });
 

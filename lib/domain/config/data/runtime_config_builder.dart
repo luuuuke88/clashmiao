@@ -2,23 +2,20 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
-import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:flutter/foundation.dart';
 
-/// Connect 时组装 runtime sing-box config：只处理 inbounds/dns/mux 这些
-/// 会真正生效的部分。
+/// Connect 时组装 runtime sing-box config：只处理 inbounds / mux 与信息条目
+/// 标记这些会真正生效的部分。
 ///
 /// 输入 = 订阅 profile（已被 ProfileRepository normalize 成 sing-box JSON）。
 /// 输出 = workingDir/runtime-config.json，由 native start 加载。
 ///
-/// 智能 / 全局分流**不在这里处理**——这个 sing-box fork 的
-/// `config.BuildConfig()`（libcore/config/config.go:383）会无条件丢弃/重建
-/// profile 自带的整个 `route` 块，不管 `enable-full-config`/
-/// `execute-config-as-is` 传的是什么。这里以前往 profile 的 `route` 块注入 cn
-/// 分流规则的做法（真机验证过）从未真正生效——智能/全局分流实际行为完全
-/// 一样。真正生效的分流机制在 `getDefaultConfigOptions` 的 `isSmart` 参数
-/// （对应 fork 真正认的 `configOptions.rules` 口子），见该函数文档。
+/// `dns` / `route` 块**不在这里处理**：内核配置构建器对订阅自带的这两块一律
+/// 丢弃重建，DNS 与智能 / 全局分流只由 `getDefaultConfigOptions` 的选项决定
+/// （`remote-dns-address` / `direct-dns-address`、`isSmart` 带来的直连规则）。
+/// 往 profile 里写 dns / route 对运行不起任何作用。
 class RuntimeConfigBuilder {
   RuntimeConfigBuilder();
 
@@ -30,9 +27,9 @@ class RuntimeConfigBuilder {
   /// 连接生命周期（子项目 B）里先写临时文件 `runtime-prep-<token>.json`，算出
   /// revision 后再定稿为 `runtime-<revision>.json`，所以文件名由调用方决定。
   ///
-  /// [remoteDnsAddress] 会覆盖 profile 里 `dns.servers[tag=remote]` 的 address。
-  /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）
-  /// 无法跟随 NetworkSettings 变更，所以每次 connect 都在这里现拼。
+  /// [remoteDnsAddress] 只为兼容调用方保留（连接启动器仍然传它）：它与
+  /// `getDefaultConfigOptions` 的 `remote-dns-address` 同源，由内核配置构建器
+  /// 消费；这里不再往配置里写 dns，所以传不传、传什么，输出都相同。
   ///
   Future<File> build({
     required File baseProfile,
@@ -65,19 +62,6 @@ class RuntimeConfigBuilder {
     // 所以在这里给信息条目打上标记。规则见 subscription_info_node.dart。
     hideSubscriptionInfoOutbounds(cfg);
 
-    final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
-        ? advancedConfig!.remoteDnsOverride!
-        : remoteDnsAddress;
-
-    // DNS 链自足兜底。订阅导入有三条路径（单 URI / 多节点订阅 / sing-box JSON
-    // 直通），只有单 URI 路径在 import 时补过 dns.servers；后两条产出的 profile
-    // 可能完全没有 dns 块，导致 sing-box 的 DNS 阶段无可用解析后端。
-    _ensureDnsSelfSufficient(cfg, effectiveDns);
-
-    if (effectiveDns != null && effectiveDns.isNotEmpty) {
-      _overrideRemoteDnsAddress(cfg, effectiveDns);
-    }
-
     if (advancedConfig?.muxEnabled == true) {
       _injectMux(cfg, advancedConfig!);
     }
@@ -107,66 +91,6 @@ class RuntimeConfigBuilder {
     cfg['inbounds'] = inbounds;
   }
 
-  /// 保证 runtime config 的 dns 块自足：remote（出口查询）/ direct / local
-  /// 三个 server 必须齐。tag 已存在的不动（尊重 profile 自带配置），缺的补上。
-  ///
-  /// 注意：Android / 桌面现用的内核配置构建器会丢弃这里的整个 dns 块、自己重建
-  /// （直连 DNS 取 `direct-dns-address`，见 default_config_options.dart），这里
-  /// 只保证文件本身自洽；默认地址与设置的默认值保持一致。
-  ///
-  /// remote 用 DoH（TCP，对不支持 UDP 转发的节点也能工作）且带
-  /// `detour: 'direct'` 的 address_resolver 自举不需要 —— 默认地址是裸 IP；
-  /// 若用户覆盖成域名 DoH，sing-box 需要先解析该域名，因此给 remote 挂
-  /// `address_resolver: 'direct'` 保证自举。
-  void _ensureDnsSelfSufficient(Map<String, dynamic> cfg, String? remoteAddr) {
-    final dns = (cfg['dns'] ??= <String, dynamic>{}) as Map<String, dynamic>;
-    final servers = ((dns['servers'] ??= <dynamic>[]) as List).cast<dynamic>();
-    final tags = servers
-        .whereType<Map<dynamic, dynamic>>()
-        .map((s) => s['tag'])
-        .whereType<String>()
-        .toSet();
-
-    if (!tags.contains('direct')) {
-      servers.add({
-        'tag': 'direct',
-        'address': kDefaultDirectDnsAddress,
-        'detour': 'direct',
-      });
-    }
-    if (!tags.contains('local')) {
-      servers.add({'tag': 'local', 'address': 'local', 'detour': 'direct'});
-    }
-    if (!tags.contains('remote')) {
-      servers.add({
-        'tag': 'remote',
-        'address': (remoteAddr != null && remoteAddr.isNotEmpty)
-            ? remoteAddr
-            : 'https://1.1.1.1/dns-query',
-        'address_resolver': 'direct',
-      });
-    }
-    dns['servers'] = servers;
-    dns['final'] = dns['final'] ?? 'remote';
-  }
-
-  /// 覆盖 profile.dns.servers 里 `tag=remote` 那条的 address。
-  /// 没 dns / 没 servers 就直接 return（fork 兜底会自己 append）。
-  void _overrideRemoteDnsAddress(Map<String, dynamic> cfg, String address) {
-    final dns = cfg['dns'];
-    if (dns is! Map<String, dynamic>) return;
-    final servers = dns['servers'];
-    if (servers is! List) return;
-    for (final s in servers) {
-      if (s is Map && s['tag'] == 'remote') {
-        s['address'] = address;
-        // 域名形式的 DoH（如 https://dns.google/dns-query）需要先解析域名
-        // 才能发查询；没有 resolver 会死锁在自举。裸 IP 带上也无害。
-        s['address_resolver'] ??= 'direct';
-      }
-    }
-  }
-
   /// 把 per-profile 的 Mux 设置注入到支持 multiplex 的代理 outbound。
   /// 只对 sing-box 原生支持 multiplex 的协议生效；profile 自带 multiplex
   /// 配置的 outbound 不覆盖（尊重订阅方的显式配置）。
@@ -194,7 +118,8 @@ const String kRuntimeMainSelectorTag = 'select';
 /// 内核配置构建器重建的自动选择（urltest）组 tag。
 const String kRuntimeAutoGroupTag = 'auto';
 
-/// 节点 tag 带这个标记时，内核把主选择组的默认值设成它（而不是自动选择组）。
+/// 节点（出站或端点）tag 带这个标记时，内核把主选择组的默认值设成**该节点的
+/// 真实 tag**（而不是自动选择组）。
 const String _kDefaultMarker = '§default§';
 
 /// 运行时配置 [cfg]（[RuntimeConfigBuilder.build] 写出的 JSON）对应的「运行时
@@ -204,9 +129,10 @@ const String _kDefaultMarker = '§default§';
 /// 规则（与内核选择组启动时的行为一致）：
 /// - 配置里每个 selector：写了 `default` 就用它；没写则是 `outbounds` 第一项；
 /// - 内核配置构建器会丢弃订阅自带的 selector / urltest，重建主选择组
-///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点（不含
-///   带隐藏标记的节点与订阅信息条目），默认
-///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记字面值）；
+///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点（叶子
+///   视图：含 `endpoints` 里的 WireGuard 端点，不含带隐藏标记的节点与订阅信息
+///   条目），默认是 [kRuntimeAutoGroupTag]；成员里有 tag 带 `§default§` 标记的
+///   （出站或端点，取第一个），默认就是**那个节点的真实 tag**；
 /// - 写明的默认值不是成员时，内核启动该组直接报错、不回退第一项：这种组的默认
 ///   值视为**未知**，不出现在结果里（调用方据此不做还原）。
 ///
@@ -214,34 +140,31 @@ const String _kDefaultMarker = '§default§';
 /// 结果里可能含运行时并不存在的 tag（订阅自带、被内核丢弃的 selector），调用方
 /// 只对运行时真实存在的分组生效。
 Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
-  final outbounds = (cfg['outbounds'] as List?) ?? const [];
   final result = <String, String>{};
-  final memberTags = <String>[];
-  for (final o in outbounds) {
-    if (o is! Map) continue;
-    final tag = o['tag'];
-    final type = o['type'];
-    if (tag is! String || type is! String) continue;
-    if (type == 'selector') {
-      final members = [
-        for (final m in (o['outbounds'] as List?) ?? const [])
-          if (m is String) m,
-      ];
-      final picked = _defaultOrFirst(o['default'], members);
-      if (picked != null) result[tag] = picked;
-    }
-    if (isCandidateLeafType(type) && !hasHideMarker(tag)) {
-      memberTags.add(tag);
-    }
+  // 分组遍历用完整集合（selector 只会出现在 outbounds，但成员引用的端点 tag
+  // 同样合法）；成员资格用叶子视图。
+  for (final e in profileEntities(cfg)) {
+    if (e.type != 'selector' || e.tag.isEmpty) continue;
+    final members = [
+      for (final m in (e.raw['outbounds'] as List?) ?? const [])
+        if (m is String) m,
+    ];
+    final picked = _defaultOrFirst(e.raw['default'], members);
+    if (picked != null) result[e.tag] = picked;
   }
+  final memberTags = [
+    for (final n in profileLeafNodes(cfg))
+      if (n.tag.isNotEmpty && !hasHideMarker(n.tag)) n.tag,
+  ];
   // 与 [RuntimeConfigBuilder.build] 同一口径：信息条目会被打上隐藏标记，不是
   // 主选择组成员。传进来的已经是构建后的配置时这里不会再排除任何东西。
   final infoTags = subscriptionInfoExclusionsForConfig(cfg);
   memberTags.removeWhere(infoTags.contains);
   final mainMembers = [kRuntimeAutoGroupTag, ...memberTags];
-  final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
-      ? _kDefaultMarker
-      : kRuntimeAutoGroupTag;
+  final marked = memberTags
+      .where((t) => t.contains(_kDefaultMarker))
+      .firstOrNull;
+  final mainDefault = marked ?? kRuntimeAutoGroupTag;
   // 主选择组由内核重建，订阅里同名的旧 selector 已被丢弃：它的默认值不能代表
   // 重建后的主组，推导不出时必须是「未知」，不能留着旧条目。
   final main = _defaultOrFirst(mainDefault, mainMembers);
@@ -262,7 +185,8 @@ String? _defaultOrFirst(Object? preferred, List<String> members) {
   return members.isEmpty ? null : members.first;
 }
 
-/// 给 [cfg] 里的订阅信息条目（[subscriptionInfoExclusionsForConfig]）的 tag 追加隐藏
+/// 给 [cfg] 里的订阅信息条目（[subscriptionInfoExclusionsForConfig]；出站与
+/// 端点都算）的 tag 追加隐藏
 /// 标记 [kHideNodeMarker]，并把配置里引用旧 tag 的地方（出站的 `detour`、分组的
 /// `outbounds` / `default`、路由规则的 `outbound`、`route.final`、DNS 服务器的
 /// `detour`）一并改名，配置自洽。返回旧 tag → 新 tag。
@@ -271,10 +195,12 @@ String? _defaultOrFirst(Object? preferred, List<String> members) {
 /// 列表里也没有。出站本身保留，订阅里别的出站拿它当前置代理时照常可用。
 @visibleForTesting
 Map<String, String> hideSubscriptionInfoOutbounds(Map<String, dynamic> cfg) {
-  final outbounds = (cfg['outbounds'] as List?) ?? const [];
+  // 完整集合：出站 ∪ 端点。唯一性集合要含端点 tag，改名时分组成员、`default`、
+  // 各实体的 `detour` 才能一并更新。
+  final entities = profileEntities(cfg);
   final allTags = <String>{
-    for (final o in outbounds)
-      if (o is Map && o['tag'] is String) o['tag'] as String,
+    for (final e in entities)
+      if (e.tag.isNotEmpty) e.tag,
   };
   final renames = <String, String>{};
   for (final tag in subscriptionInfoExclusionsForConfig(cfg)) {
@@ -293,8 +219,8 @@ Map<String, String> hideSubscriptionInfoOutbounds(Map<String, dynamic> cfg) {
     if (m.containsKey(key)) m[key] = rename(m[key]);
   }
 
-  for (final o in outbounds) {
-    if (o is! Map) continue;
+  for (final e in entities) {
+    final o = e.raw;
     renameKey(o, 'tag');
     renameKey(o, 'detour');
     renameKey(o, 'default');

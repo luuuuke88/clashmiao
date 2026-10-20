@@ -12,7 +12,9 @@ BackupBundle _bundle({Map<String, String> aux = const {}}) => BackupBundle(
     {'id': 'abc', 'name': 'test', 'url': 'https://example.com'},
   ],
   activeProfileId: 'abc',
-  profileConfigs: const {'abc': '{"outbounds":[]}'},
+  profileConfigs: const {
+    'abc': '{"outbounds":[{"type":"shadowsocks","tag":"hk"}]}',
+  },
   preferences: const {'clashmiao_mixed_port': 3000},
   auxPreferences: aux,
 );

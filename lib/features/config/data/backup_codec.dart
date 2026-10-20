@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/domain/config/data/migrations/v2_direct_dns.dart';
 import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:clashmiao/domain/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
@@ -278,12 +279,14 @@ class BackupCodec {
       !url.startsWith('content://') &&
       Uri.tryParse(url)?.hasScheme == true;
 
-  /// 订阅配置必须是含 `outbounds` 数组的 JSON 对象。
+  /// 订阅配置必须是 JSON 对象，且叶子视图非空（至少一个真实可连的节点；只有
+  /// 端点的订阅合法，只有 direct / 分组的不合法）。备份里是已落盘的订阅，旧形态
+  /// 由读时清洗处理，所以这里不要求没有旧形态。
   static bool _isUsableConfig(String text) {
     if (text.trim().isEmpty) return false;
     try {
       final decoded = jsonDecode(text);
-      return decoded is Map && decoded['outbounds'] is List;
+      return decoded is Map && profileNodeCount(decoded) > 0;
     } catch (_) {
       return false;
     }

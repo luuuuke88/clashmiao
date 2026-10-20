@@ -153,6 +153,52 @@ void main() {
       expect(await out.exists(), isTrue);
     });
 
+    test('不再往配置里写 dns：传不传 remoteDnsAddress、传什么值，输出字节相同', () async {
+      final profile = {
+        'outbounds': [
+          {'type': 'shadowsocks', 'tag': 'hk'},
+        ],
+      };
+      final base = await _writeProfile(tmp, profile);
+      Future<String> run(String? remote, String name) async {
+        final out = await RuntimeConfigBuilder().build(
+          baseProfile: base,
+          workingDir: tmp,
+          remoteDnsAddress: remote,
+          outputFileName: name,
+        );
+        return out.readAsString();
+      }
+
+      final none = await run(null, 'a.json');
+      expect(await run('', 'b.json'), none);
+      expect(await run('https://dns.google/dns-query', 'c.json'), none);
+      expect(await run('tls://1.1.1.1', 'd.json'), none);
+      final cfg = jsonDecode(none) as Map<String, dynamic>;
+      expect(cfg.containsKey('dns'), isFalse, reason: '内核重建 dns，写进去是死数据');
+    });
+
+    test('profile 自带的 dns 块原样保留，不补不改', () async {
+      final dns = {
+        'servers': [
+          {'tag': 'remote', 'address': 'udp://9.9.9.9'},
+        ],
+      };
+      final base = await _writeProfile(tmp, {
+        'outbounds': [
+          {'type': 'shadowsocks', 'tag': 'hk'},
+        ],
+        'dns': dns,
+      });
+      final out = await RuntimeConfigBuilder().build(
+        baseProfile: base,
+        workingDir: tmp,
+        remoteDnsAddress: 'https://1.1.1.1/dns-query',
+      );
+      final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
+      expect(cfg['dns'], dns);
+    });
+
     test('非法 JSON 抛 FormatException', () async {
       final base = File('${tmp.path}/profile.json');
       await base.writeAsString('not json at all');
@@ -211,17 +257,37 @@ void main() {
       expect(d.containsKey('empty'), isFalse);
     });
 
-    test('节点带默认标记但没有恰好叫这个标记的成员：主选择组默认值未知（内核启动报错，不回退）', () {
+    test('节点带默认标记：主选择组默认值是该节点的真实 tag（不是标记字面值）', () {
       final d = runtimeSelectorDefaults({
         'outbounds': [
-          {'type': 'vless', 'tag': 'hk §default§'},
-          {'type': 'vless', 'tag': 'sg §hide§'},
+          {'type': 'vless', 'tag': 'hk'},
+          {'type': 'vless', 'tag': 'sg §default§'},
         ],
       });
-      expect(d.containsKey(kRuntimeMainSelectorTag), isFalse);
+      expect(d[kRuntimeMainSelectorTag], 'sg §default§');
     });
 
-    test('订阅自带同名主选择组但重建后的默认值未知：不残留旧 selector 的默认值', () {
+    test('带默认标记的节点同时带隐藏标记：不是成员，默认回到 auto', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {'type': 'vless', 'tag': 'hk'},
+          {'type': 'vless', 'tag': 'sg §default§ §hide§'},
+        ],
+      });
+      expect(d[kRuntimeMainSelectorTag], kRuntimeAutoGroupTag);
+    });
+
+    test('多个节点带默认标记：取第一个（与内核同口径）', () {
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {'type': 'vless', 'tag': 'a §default§'},
+          {'type': 'vless', 'tag': 'b §default§'},
+        ],
+      });
+      expect(d[kRuntimeMainSelectorTag], 'a §default§');
+    });
+
+    test('订阅自带同名主选择组：重建后的默认值才算数，不残留旧 selector 的 default', () {
       final d = runtimeSelectorDefaults({
         'outbounds': [
           {
@@ -234,7 +300,11 @@ void main() {
           {'type': 'vless', 'tag': 'sg'},
         ],
       });
-      expect(d.containsKey(kRuntimeMainSelectorTag), isFalse);
+      expect(
+        d[kRuntimeMainSelectorTag],
+        'hk §default§',
+        reason: '内核重建主选择组，旧 selector 的 default: sg 不再代表它',
+      );
     });
 
     test('没有任何节点：主选择组只有 auto，默认 auto', () {

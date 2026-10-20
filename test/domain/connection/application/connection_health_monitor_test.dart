@@ -737,12 +737,15 @@ void main() {
       });
     });
 
+    // 激活接线在 main() 调用的 startResidentServices 里（main() 调用它由
+    // resident_services_test 钉住；那边也有「连上后按时探测」的行为用例）。
     test('启动流程必须激活周期探测（接线不能被悄悄删掉）', () {
-      final source = File('lib/main.dart').readAsStringSync();
+      final source = File('lib/app/bootstrap/resident_services.dart')
+          .readAsStringSync();
       expect(
         source.contains('connectionHealthProvider.notifier).start()'),
         isTrue,
-        reason: 'main.dart 里少了这行，黑洞检测就永远不会跑，且不会有任何测试报警',
+        reason: '启动接线里少了这行，黑洞检测就永远不会跑',
       );
     });
   });

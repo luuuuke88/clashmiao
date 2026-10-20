@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/shared/components/modal_tokens.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
@@ -470,8 +471,10 @@ void main() {
           container: container,
           child: ToastificationWrapper(
             child: MaterialApp(
-              theme: ThemeData.light().copyWith(
-                extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+              theme: ModalTokens.apply(
+                ThemeData.light().copyWith(
+                  extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+                ),
               ),
               home: const Scaffold(body: ProfilesPage(embedInSheet: true)),
             ),
@@ -491,7 +494,8 @@ void main() {
       expect(find.text('删除'), findsOneWidget);
       expect(
         find.byWidgetPredicate(
-          (widget) => widget is ModalBarrier && widget.color == Colors.black54,
+          (widget) =>
+              widget is ModalBarrier && widget.color == ModalTokens.scrim,
         ),
         findsOneWidget,
       );

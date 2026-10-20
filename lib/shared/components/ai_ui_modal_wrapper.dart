@@ -2,6 +2,7 @@ import 'package:clashmiao/core/theme/motion.dart';
 
 import 'dart:ui';
 
+import 'package:clashmiao/shared/components/modal_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -54,6 +55,7 @@ class AiUiModalWrapper extends StatelessWidget {
     if (routeProvidesSurface) return _buildBare(context);
     final isLight = Theme.of(context).brightness == Brightness.light;
     final media = MediaQuery.of(context);
+    final bottomInset = media.padding.bottom;
     // 封顶写在这里而不是 showAiUiModal 里：项目里有好几处直接调
     // `showModalBottomSheet`（设置页的语言/主题、配置项的单选…），封在弹出
     // 函数里的话那些就漏掉了——语言列表照样会顶到最上面盖住页面标题。
@@ -73,16 +75,10 @@ class AiUiModalWrapper extends StatelessWidget {
               offset: const Offset(0, -5),
             ),
           ],
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(32),
-            topRight: Radius.circular(32),
-          ),
+          borderRadius: ModalTokens.topRadius,
         ),
         child: ClipRRect(
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(32),
-            topRight: Radius.circular(32),
-          ),
+          borderRadius: ModalTokens.topRadius,
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child:
@@ -90,10 +86,7 @@ class AiUiModalWrapper extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 0),
                       decoration: BoxDecoration(
                         color: modalSurfaceColor(Theme.of(context)),
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(32),
-                          topRight: Radius.circular(32),
-                        ),
+                        borderRadius: ModalTokens.topRadius,
                         border: Border.all(
                           color: isLight
                               ? Colors.white.withValues(alpha: 0.5)
@@ -104,6 +97,10 @@ class AiUiModalWrapper extends StatelessWidget {
                       ),
                       child: SafeArea(
                         top: false,
+                        // 底部 inset（手势条）不交给 SafeArea：那样滚动内容会在手势条
+                        // 上沿被硬切掉，而弹层底色继续铺到屏幕底边；改为在内容末尾补
+                        // 同样高度的空白，内容可以滑过手势条那一圈。
+                        bottom: false,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -123,10 +120,18 @@ class AiUiModalWrapper extends StatelessWidget {
                             ],
                             if (scrollableContent)
                               Flexible(
-                                child: SingleChildScrollView(child: child),
+                                child: SingleChildScrollView(
+                                  padding: EdgeInsets.only(bottom: bottomInset),
+                                  child: child,
+                                ),
                               )
                             else
-                              Flexible(child: child),
+                              Flexible(
+                                child: Padding(
+                                  padding: EdgeInsets.only(bottom: bottomInset),
+                                  child: child,
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -159,7 +164,16 @@ class AiUiModalWrapper extends StatelessWidget {
       ),
       child: SafeArea(
         top: false,
-        child: scrollableContent ? SingleChildScrollView(child: child) : child,
+        bottom: false,
+        child: scrollableContent
+            ? SingleChildScrollView(
+                padding: EdgeInsets.only(bottom: media.padding.bottom),
+                child: child,
+              )
+            : Padding(
+                padding: EdgeInsets.only(bottom: media.padding.bottom),
+                child: child,
+              ),
       ),
     );
   }
@@ -176,7 +190,6 @@ Future<T?> showAiUiModal<T>({
   return showModalBottomSheet<T>(
     context: context,
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.transparent,
     isScrollControlled: isScrollControlled,
     useRootNavigator: useRootNavigator,
     sheetAnimationStyle: Motion.sheetAnimation(context),

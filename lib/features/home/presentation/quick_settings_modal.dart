@@ -9,6 +9,7 @@ import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/modal_tokens.dart';
 import 'package:clashmiao/shared/components/press_feedback.dart';
 
 // 档位、选中态与写入都走 service_mode.dart 的唯一口径（与配置选项页一致）：
@@ -38,10 +39,8 @@ class QuickSettingsModal extends ConsumerWidget {
       backgroundColor: isDark
           ? const Color(0xFF1C1C22)
           : theme.colorScheme.surfaceContainerLow,
-      barrierColor: Colors.black.withValues(alpha: 0.40),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
+      // 遮罩与圆角取自主题里的统一弹层 token（ModalTokens）。
+      shape: const RoundedRectangleBorder(borderRadius: ModalTokens.topRadius),
       clipBehavior: Clip.antiAlias,
       sheetAnimationStyle: Motion.sheetAnimation(context),
       builder: (_) => const QuickSettingsModal(),

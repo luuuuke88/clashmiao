@@ -1112,7 +1112,6 @@ class _ChoiceTile<T> extends StatelessWidget {
         final selection = await showModalBottomSheet<T>(
           context: context,
           backgroundColor: Colors.transparent,
-          barrierColor: Colors.transparent,
           useRootNavigator: true,
           isScrollControlled: true,
           sheetAnimationStyle: Motion.sheetAnimation(context),

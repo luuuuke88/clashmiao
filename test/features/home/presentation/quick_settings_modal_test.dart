@@ -5,6 +5,7 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
+import 'package:clashmiao/shared/components/modal_tokens.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -421,11 +422,13 @@ void main() {
     });
 
     group('作为底部弹层路由', () {
-      final darkTheme = ThemeData.dark().copyWith(
-        extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
+      final darkTheme = ModalTokens.apply(
+        ThemeData.dark().copyWith(
+          extensions: <ThemeExtension<dynamic>>[AiUiTheme.dark],
+        ),
       );
 
-      testWidgets('实色表面、遮罩 black@0.40、24dp 顶角、系统拖拽柄，且没有模糊和内部入场动画', (
+      testWidgets('实色表面、统一的弹层遮罩与圆角 token、系统拖拽柄、系统拖拽柄，且没有模糊和内部入场动画', (
         tester,
       ) async {
         final (widget, _) = await _host(viaRoute: true, theme: darkTheme);
@@ -460,15 +463,11 @@ void main() {
         final sheet = tester.widget<BottomSheet>(find.byType(BottomSheet));
         expect(sheet.backgroundColor, const Color(0xFF1C1C22));
         final shape = sheet.shape! as RoundedRectangleBorder;
-        expect(
-          shape.borderRadius,
-          const BorderRadius.vertical(top: Radius.circular(24)),
-        );
+        expect(shape.borderRadius, ModalTokens.topRadius);
         final barrier = tester.widget<ModalBarrier>(
           find.byType(ModalBarrier).last,
         );
-        expect(barrier.color!.a, closeTo(0.40, 0.01));
-        expect(barrier.color!.r, 0);
+        expect(barrier.color, ModalTokens.scrim);
       });
 
       testWidgets('浅色主题使用 surfaceContainerLow', (tester) async {

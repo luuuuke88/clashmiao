@@ -185,17 +185,18 @@ class _LogsPageState extends ConsumerState<LogsPage> {
       primary: false,
       reverse: true,
       slivers: [
-        SliverList.builder(
-          itemCount: state.lines.length,
-          itemBuilder: (context, index) {
-            final log = _ParsedLog.fromLine(state.lines[index]);
-            return _LogEntryTile(log: log, showDivider: index != 0);
-          },
-        ),
-        // reverse 列表：这里是最新一行所在的一端，留出手势条高度。
+        // reverse 列表从视口底边向上排：SliverPadding 的 bottom 在反向轴里就是视觉
+        // 上的底边（最新一行所在的一端），留出手势条高度。放在列表后面会落到另一头。
         SliverPadding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.paddingOf(context).bottom,
+          ),
+          sliver: SliverList.builder(
+            itemCount: state.lines.length,
+            itemBuilder: (context, index) {
+              final log = _ParsedLog.fromLine(state.lines[index]);
+              return _LogEntryTile(log: log, showDivider: index != 0);
+            },
           ),
         ),
       ],

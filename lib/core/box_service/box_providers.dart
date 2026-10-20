@@ -89,15 +89,6 @@ final runningKernelInstanceProvider = StreamProvider<KernelInstance?>((ref) {
       .distinct();
 });
 
-/// 代理分组 — 仅在内核实例运行时订阅 command client；每个新实例重新订阅
-/// （重新连接 command server，拿到的第一份就是新实例的分组）。
-final outboundGroupsProvider = StreamProvider<List<OutboundGroup>>((ref) {
-  final instance = ref.watch(runningKernelInstanceProvider).valueOrNull;
-  if (instance == null) return Stream.value([]);
-  final service = ref.read(boxServiceProvider);
-  return service.watchGroups();
-});
-
 /// 归属到某个内核实例的一份实时分组（只含至少有一个节点的分组列表）。
 @immutable
 class LiveGroups {
@@ -115,6 +106,16 @@ class LiveGroups {
 
 /// 当前内核实例的实时分组（带实例归属）；实例没在运行、或还没收到非空分组时为
 /// `null`。手选校验 / 重放与出口探测按实例归属判断「这份分组是不是这次启动的」。
+///
+/// **这是平台分组流在 Dart 侧唯一的订阅者**，其它地方（[outboundGroupsProvider]
+/// 等）一律从它派生。原因：原生只在 command client 连上新实例时推一次「当前
+/// 分组」，之后只在测速结果变化时才推；平台流是 broadcast、不回放。若有两个
+/// provider 各自订阅，内核在 App 后台期间重启时，被读到的那个（手选重放会读）
+/// 先重新订阅、拿走这次推送，只被界面监听的那个要等回到前台的下一帧才重建、
+/// 重新订阅——此时监听数不为 0、平台订阅不会重建，它永远收不到这份分组（真机
+/// 验收 BUG-A：后台重启内核后线路页一直「线路信息加载中」）。只有一个订阅者时，
+/// 每次换实例都是「取消（监听数归 0）→ 重新监听 → 原生重连、推当前分组」，最新
+/// 值由本 provider 的状态保存，后来者直接读到。
 final liveGroupsProvider = StreamProvider<LiveGroups?>((ref) {
   final instance = ref.watch(runningKernelInstanceProvider).valueOrNull;
   if (instance == null) return Stream.value(null);
@@ -123,6 +124,20 @@ final liveGroupsProvider = StreamProvider<LiveGroups?>((ref) {
       .watchGroups()
       .where((groups) => groups.any((g) => g.items.isNotEmpty))
       .map((groups) => LiveGroups(instance, groups));
+});
+
+/// 代理分组（不带实例归属的视图），从 [liveGroupsProvider] 派生、不另开平台
+/// 订阅；内核实例没在运行时为空列表。
+final outboundGroupsProvider = StreamProvider<List<OutboundGroup>>((ref) {
+  final live = ref.watch(liveGroupsProvider);
+  return switch (live) {
+    AsyncData(:final value) => Stream.value(value?.groups ?? const []),
+    AsyncError(:final error, :final stackTrace) => Stream.error(
+      error,
+      stackTrace,
+    ),
+    _ => const Stream<List<OutboundGroup>>.empty(),
+  };
 });
 
 /// 桌面端 libcore 加载失败、整个 App 实际是个空壳时为 true。

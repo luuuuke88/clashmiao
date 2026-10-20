@@ -7,6 +7,7 @@ import androidx.lifecycle.Observer
 import com.clashmiao.clashmiao.core.AlertCode
 import com.clashmiao.clashmiao.core.KernelStatus
 import com.clashmiao.clashmiao.engine.KernelCoordinator
+import com.clashmiao.clashmiao.engine.InstanceFollower
 import com.clashmiao.clashmiao.engine.KernelSnapshot
 import com.clashmiao.clashmiao.engine.LibboxCommandStream
 import com.clashmiao.clashmiao.engine.LogBuffer
@@ -30,7 +31,7 @@ import kotlinx.coroutines.CoroutineScope
  *     生命周期事实一律在快照的 lastFailure 里，不再另发 alert。
  *   - **LibboxCommandStream driven**（[CHANNEL_STATS] / [CHANNEL_GROUPS] /
  *     [CHANNEL_GROUPS_LITE]）：listen 时连一条对应 StreamKind 的 sing-box
- *     command client，cancel 时断开。
+ *     command client，cancel 时断开；监听期间每个新启动的内核实例都重连一次。
  *   - LogBuffer 直接订阅：[CHANNEL_LOGS] 观察协调器持有的进程级日志缓冲，主线程投递。
  *
  * 每个流的注册都走同一个 [SinkBinding] 抽象，[onAttachedToEngine] 一次性
@@ -111,32 +112,52 @@ class StreamBridge : FlutterPlugin {
     private fun standardStream(msg: BinaryMessenger, name: String, source: StreamSource) =
         SinkBinding(EventChannel(msg, name), source)
 
-    private inner class StatsSource : StreamSource {
-        private var stream: LibboxCommandStream? = null
-        override fun start(sink: EventChannel.EventSink) {
-            val coroutineScope = scope ?: return
-            stream = LibboxCommandStream(
-                coroutineScope,
-                LibboxCommandStream.StreamKind.STATS,
-                StatsSubscriber(sink),
-            ).also { it.connect() }
-        }
-
-        override fun stop() {
-            stream?.disconnect()
-            stream = null
-        }
+    private inner class StatsSource : FollowingCommandSource("stats") {
+        override fun open(scope: CoroutineScope, sink: EventChannel.EventSink) = LibboxCommandStream(
+            scope,
+            LibboxCommandStream.StreamKind.STATS,
+            StatsSubscriber(sink),
+        )
     }
 
-    private inner class GroupsSource(private val kind: LibboxCommandStream.StreamKind) : StreamSource {
+    private inner class GroupsSource(private val kind: LibboxCommandStream.StreamKind) :
+        FollowingCommandSource("groups/$kind") {
+        override fun open(scope: CoroutineScope, sink: EventChannel.EventSink) =
+            LibboxCommandStream(scope, kind, GroupsSubscriber(sink))
+    }
+
+    /**
+     * 由 libbox command client 驱动的流：Dart 监听期间，跟随当前内核实例——每出现一个新的已
+     * 启动实例（epoch / attempt 变化）就重连一次 command server，不依赖 Dart 侧何时取消、
+     * 重新监听（见 [InstanceFollower]）。连上新实例后 libbox 会先推一次当前值（分组 / 统计）。
+     */
+    private abstract inner class FollowingCommandSource(private val name: String) : StreamSource {
         private var stream: LibboxCommandStream? = null
+        private var observer: Observer<KernelSnapshot>? = null
+        private val follower = InstanceFollower()
+
+        abstract fun open(scope: CoroutineScope, sink: EventChannel.EventSink): LibboxCommandStream
+
         override fun start(sink: EventChannel.EventSink) {
+            stop()
             val coroutineScope = scope ?: return
-            stream = LibboxCommandStream(coroutineScope, kind, GroupsSubscriber(sink))
-                .also { it.connect() }
+            val live = KernelCoordinator.snapshotLive
+            follower.attach(live.value)
+            val opened = open(coroutineScope, sink).also { it.connect() }
+            stream = opened
+            val obs = Observer<KernelSnapshot> { snapshot ->
+                if (follower.onSnapshot(snapshot)) {
+                    Log.i(TAG, "$name: 内核实例 ${snapshot.epoch}/${snapshot.attempt} 已启动，重连 command server")
+                    opened.connect()
+                }
+            }
+            observer = obs
+            live.observeForever(obs)
         }
 
         override fun stop() {
+            observer?.let { KernelCoordinator.snapshotLive.removeObserver(it) }
+            observer = null
             stream?.disconnect()
             stream = null
         }

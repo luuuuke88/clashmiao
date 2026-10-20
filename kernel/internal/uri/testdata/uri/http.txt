@@ -1,0 +1,12 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 http 的表驱动测试生成（go test ./internal/uri -update）。
+http://user:pass@p1.example.net:8080#p1
+http://p2.example.net:3128#p2
+https://user:pass@p3.example.net:443#p3
+http://p4.example.net:8080/#p4
+http://u:p%40ss@p5.example.net:8080#p5
+http://[2001:db8::15]:8080#v6
+http://192.0.2.16:8080
+http://onlyuser@p8.example.net:8080#p8
+http://p9.example.net:8080#%E5%85%AC%E5%8F%B8
+https://p10.example.net:8443#p10

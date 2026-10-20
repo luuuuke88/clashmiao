@@ -1,11 +1,17 @@
 package gate
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
+	"encoding/pem"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+
+	"golang.org/x/crypto/ssh"
 
 	"github.com/luuuuke88/clashmiao/kernel/internal/build"
 	"github.com/luuuuke88/clashmiao/kernel/internal/subscription"
@@ -65,4 +71,50 @@ func TestURISampleLinesPassCheckConfig(t *testing.T) {
 		}
 	}
 	t.Logf("共校验 %d 行样例", total)
+}
+
+// ssh 的私钥与主机密钥不把真的密钥放进仓库：这里运行时生成一对合成密钥，拼成链接，走同样的 Parse → Build → CheckConfig。
+func TestSSHKeyLinksPassCheckConfig(t *testing.T) {
+	pub, priv, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	block, err := ssh.MarshalPrivateKey(priv, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pemText := string(pem.EncodeToMemory(block))
+	sshPub, err := ssh.NewPublicKey(pub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hostKey := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(sshPub)))
+
+	for name, link := range map[string]string{
+		"私钥":        "ssh://user@192.0.2.20:2222?private_key=" + url.PathEscape(pemText) + "#k1",
+		"私钥 + 主机密钥": "ssh://user@192.0.2.21:22?private_key=" + url.PathEscape(pemText) + "&host_key=" + url.PathEscape(hostKey) + "#k2",
+		"密码 + 主机密钥": "ssh://user:pw@192.0.2.22:22?host_key=" + url.PathEscape(hostKey) + "#k3",
+	} {
+		t.Run(name, func(t *testing.T) {
+			p, _, err := subscription.Parse([]byte(link))
+			if err != nil {
+				t.Fatalf("Parse: %v", err)
+			}
+			if got := p.Outbounds[0]["private_key"]; strings.Contains(link, "private_key=") && got != pemText {
+				t.Errorf("私钥应原样保留（含换行）")
+			}
+			o := Option("O1")
+			cfgRaw, _, err := build.Build(toBuildProfile(p), o, build.AndroidEnv())
+			if err != nil {
+				t.Fatal(err)
+			}
+			adapted, _, err := HostAdapt(cfgRaw, AdaptOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := CheckConfig(adapted); err != nil {
+				t.Fatalf("CheckConfig: %v", err)
+			}
+		})
+	}
 }

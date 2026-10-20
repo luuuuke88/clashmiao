@@ -3,7 +3,7 @@ import 'dart:math' as math;
 
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/app/system_ui.dart';
+import 'package:clashmiao/shared/components/system_ui.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';

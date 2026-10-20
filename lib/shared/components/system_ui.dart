@@ -59,3 +59,22 @@ class _SystemUiScopeState extends State<SystemUiScope> {
     );
   }
 }
+
+/// 固定暗色的页面（扫码页：黑底 + 相机画面）的系统栏覆盖：不管 App 主题明暗，状态栏与
+/// 导航栏图标都用**浅色**，否则浅色主题下全局的深色图标会落在黑色表面上看不清。
+///
+/// 只是挂在这一页的 `AnnotatedRegion`：页面退出后它随之消失，系统栏重新由
+/// [SystemUiScope] 的全局样式（按主题明暗）接管。
+class DarkSurfaceSystemUi extends StatelessWidget {
+  const DarkSurfaceSystemUi({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: appSystemUiOverlayStyle(Brightness.dark),
+      child: child,
+    );
+  }
+}

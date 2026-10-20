@@ -59,9 +59,12 @@ class BackupService {
     final date = DateTime.now().toIso8601String().substring(0, 10);
     final file = File('${dir.path}/clashmiao-backup-$date.json');
     await file.writeAsString(BackupCodec.encode(backup));
-    await Share.shareXFiles([
-      XFile(file.path),
-    ], text: container.read(translationsProvider).settings.backup.shareText);
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        text: container.read(translationsProvider).settings.backup.shareText,
+      ),
+    );
   }
 
   /// 让用户选一个备份文件并完整校验。用户取消返回 null；文件不可用抛
@@ -69,16 +72,13 @@ class BackupService {
   static Future<PreparedImport?> pickAndPrepare(
     ProviderContainer container,
   ) async {
-    final result = await FilePicker.platform.pickFiles(
+    final picked = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['json'],
     );
-    if (result == null ||
-        result.files.isEmpty ||
-        result.files.single.path == null) {
-      return null;
-    }
-    final raw = await File(result.files.single.path!).readAsString();
+    final path = picked?.path;
+    if (path == null) return null;
+    final raw = await File(path).readAsString();
     return prepare(container, raw);
   }
 

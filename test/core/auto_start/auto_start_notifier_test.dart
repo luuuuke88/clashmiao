@@ -7,10 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 const _channel = MethodChannel('com.clashmiao/auto_start');
 
 /// 假后端，让 Windows/宏观分发逻辑可以在任何宿主机（包括这台 macOS 开发机、
-/// CI 的 ubuntu-latest test-unit job）上测试，而不用真的碰
-/// `launch_at_startup` 背后的注册表 / LaunchAgents / autostart 文件——那些是
-/// 根据*运行测试的真实宿主机* dart:io Platform 分发的全局单例，在非 Windows
-/// 机器上调用会要么崩溃（win32_registry FFI）要么写脏宿主机真实文件。
+/// CI 的 ubuntu-latest test-unit job）上测试，而不用真的碰宿主机的注册表 /
+/// 原生自启设置——真实 Windows 实现走 win32_registry FFI，在非 Windows 机器上
+/// 调用会直接崩溃。
 class _FakeAutoStartBackend implements AutoStartBackend {
   bool enabled = false;
   int isEnabledCalls = 0;
@@ -33,8 +32,8 @@ class _FakeAutoStartBackend implements AutoStartBackend {
   }
 }
 
-/// 假 launch_at_startup API，验证 [WindowsAutoStartBackend] 真的把
-/// enable/disable/isEnabled 转发给 launch_at_startup（此前 Windows 分支
+/// 假 Windows 自启 API，验证 [WindowsAutoStartBackend] 真的把
+/// enable/disable/isEnabled 转发给注册表实现（此前 Windows 分支
 /// 完全没实现，`_init`/`toggle` 对非 macOS 直接 return，开关在 UI 上能点但
 /// 点了毫无效果——见 lib/features/settings/presentation/settings_page.dart:199
 /// 门禁条件包含 Windows，但通知器只服务 macOS 的历史 bug）。
@@ -108,7 +107,7 @@ void main() {
   });
 
   group('WindowsAutoStartBackend（真正的 Windows 开机自启动实现）', () {
-    test('构造时用 appName/appPath 调 launch_at_startup 的 setup', () {
+    test('构造时用 appName/appPath 调注册表实现的 setup', () {
       final api = _FakeWindowsLaunchAtStartupApi();
       WindowsAutoStartBackend(
         api: api,
@@ -119,7 +118,7 @@ void main() {
       expect(api.setupAppPath, 'C:\\x.exe');
     });
 
-    test('isEnabled 转发给 launch_at_startup.isEnabled', () async {
+    test('isEnabled 转发给注册表实现的 isEnabled', () async {
       final api = _FakeWindowsLaunchAtStartupApi()..enabled = true;
       final backend = WindowsAutoStartBackend(
         api: api,

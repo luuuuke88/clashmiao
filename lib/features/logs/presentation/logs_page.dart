@@ -61,7 +61,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// 分享核心（sing-box）日志：当前屏幕上看到的这些行，写到临时文件后分享。
   Future<void> _shareCoreLogs(List<String> lines) async {
     final path = await writeCoreLogsTempFile(lines);
-    await Share.shareXFiles([XFile(path)], text: 'ClashMiao Core Logs');
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(path)], text: 'ClashMiao Core Logs'),
+    );
   }
 
   /// 分享应用（Dart/Flutter）日志：AppLogger 落地的本地 app.log（脱敏副本），包含
@@ -69,7 +71,9 @@ class _LogsPageState extends ConsumerState<LogsPage> {
   /// 异常，和上面的核心日志是完全独立的数据源。
   Future<void> _shareAppLogs() async {
     final path = await resolveAppLogSharePath();
-    await Share.shareXFiles([XFile(path)], text: 'ClashMiao App Logs');
+    await SharePlus.instance.share(
+      ShareParams(files: [XFile(path)], text: 'ClashMiao App Logs'),
+    );
   }
 
   @override

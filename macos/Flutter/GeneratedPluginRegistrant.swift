@@ -6,7 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import app_links
-import file_picker
+import file_picker_darwin
 import in_app_review
 import mobile_scanner
 import package_info_plus

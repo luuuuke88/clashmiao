@@ -17,7 +17,9 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/misc.dart';
@@ -679,5 +681,239 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('bottom_nav_0')));
     await tester.pump(const Duration(milliseconds: 200));
     expect(tickerModes(), [true, false, false, false]);
+  });
+
+  group('Android 系统返回：非首页 tab 先回首页', () {
+    // flutter_test 默认就是 TargetPlatform.android；iOS / 桌面的用例显式覆盖。
+    late List<String> platformCalls;
+
+    /// 记下发往平台的调用：`SystemNavigator.pop` 是"退出到桌面"，
+    /// `SystemNavigator.setFrameworkHandlesBack` 是预测性返回要看的那个开关
+    /// （true = 框架自己处理返回，系统不播"回桌面"动画）。
+    void spyPlatform(WidgetTester tester) {
+      platformCalls = [];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          platformCalls.add(
+            call.method == 'SystemNavigator.setFrameworkHandlesBack'
+                ? '${call.method}:${call.arguments}'
+                : call.method,
+          );
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+    }
+
+    Future<ProviderContainer> pumpShell(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      spyPlatform(tester);
+      // 默认的 onNavigationNotification 只在应用生命周期已 resumed 时才通知平台。
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 300));
+      return container;
+    }
+
+    Future<void> tapTab(WidgetTester tester, int i) async {
+      await tester.tap(find.byKey(ValueKey('bottom_nav_$i')));
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    /// 路由动画在 push / pop 之后的**下一帧**才起跑，所以先 pump 一帧再走完时长。
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+    }
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.binding.handlePopRoute();
+      await settle(tester);
+    }
+
+    bool exited() => platformCalls.contains('SystemNavigator.pop');
+
+    for (final tab in [AppTab.proxies, AppTab.settings, AppTab.about]) {
+      testWidgets('第 $tab 个 tab 按返回 → 回首页，不退出', (tester) async {
+        final container = await pumpShell(tester);
+        await tapTab(tester, tab);
+        expect(container.read(selectedTabProvider), tab);
+
+        await back(tester);
+
+        expect(container.read(selectedTabProvider), AppTab.home);
+        expect(exited(), isFalse, reason: '这一下返回只负责回首页');
+        expect(find.byType(ShellPage), findsOneWidget);
+      });
+    }
+
+    testWidgets('首页按返回 → 允许退出（根路由无可弹，交给系统）', (tester) async {
+      final container = await pumpShell(tester);
+      expect(container.read(selectedTabProvider), AppTab.home);
+
+      await back(tester);
+
+      expect(exited(), isTrue);
+      expect(container.read(selectedTabProvider), AppTab.home);
+    });
+
+    testWidgets('首页上压了页面：返回先弹页面，再按一次才退出', (tester) async {
+      final container = await pumpShell(tester);
+      // ShellPage 之上没有别的东西，把它再压一层来观察 pop：
+      // 这里在它上面 push 一个页面，返回一次先关掉该页面，ShellPage 仍在。
+      final nav = Navigator.of(tester.element(find.byType(ShellPage)));
+      nav.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('sub-page')),
+        ),
+      );
+      await settle(tester);
+      expect(find.text('sub-page'), findsOneWidget);
+
+      await back(tester);
+
+      expect(find.text('sub-page'), findsNothing);
+      expect(find.byType(ShellPage), findsOneWidget);
+      expect(container.read(selectedTabProvider), AppTab.home);
+      expect(exited(), isFalse);
+
+      // 再按一次才是首页上的退出。
+      await back(tester);
+      expect(exited(), isTrue);
+    });
+
+    testWidgets('预测性返回开关：首页交还系统，非首页由框架处理', (tester) async {
+      await pumpShell(tester);
+      // 首页 canPop=true：框架不接管，Android 13+ 播系统"回桌面"动画。
+      expect(
+        platformCalls.where((c) => c.startsWith('SystemNavigator.setFrame')),
+        everyElement(isNot(endsWith(':true'))),
+      );
+
+      platformCalls.clear();
+      await tapTab(tester, AppTab.settings);
+      await tester.pump();
+      expect(
+        platformCalls,
+        contains('SystemNavigator.setFrameworkHandlesBack:true'),
+        reason: '非首页 canPop=false，必须告诉系统返回由框架处理',
+      );
+
+      platformCalls.clear();
+      await back(tester);
+      expect(
+        platformCalls,
+        contains('SystemNavigator.setFrameworkHandlesBack:false'),
+        reason: '回到首页后把返回交还系统',
+      );
+    });
+
+    testWidgets('tab 内压入的二级页面：一次返回只弹一层，回到该 tab 而不是首页', (tester) async {
+      final container = await pumpShell(tester);
+      await tapTab(tester, AppTab.settings);
+
+      final nav = Navigator.of(tester.element(find.byType(ShellPage)));
+      nav.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('sub-page-1')),
+        ),
+      );
+      await settle(tester);
+      nav.push(
+        MaterialPageRoute<void>(
+          builder: (_) => const Scaffold(body: Text('sub-page-2')),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await back(tester);
+      expect(find.text('sub-page-2'), findsNothing);
+      expect(find.text('sub-page-1'), findsOneWidget);
+      expect(container.read(selectedTabProvider), AppTab.settings);
+
+      await back(tester);
+      expect(find.text('sub-page-1'), findsNothing);
+      expect(
+        container.read(selectedTabProvider),
+        AppTab.settings,
+        reason: '弹回该 tab 的根，不是首页',
+      );
+      expect(exited(), isFalse);
+
+      // 此时才轮到 tab 回首页。
+      await back(tester);
+      expect(container.read(selectedTabProvider), AppTab.home);
+      expect(exited(), isFalse);
+    });
+
+    testWidgets('弹层（sheet / dialog）打开时：返回先关弹层，tab 不动', (tester) async {
+      final container = await pumpShell(tester);
+      await tapTab(tester, AppTab.proxies);
+      final context = tester.element(find.byType(ShellPage));
+
+      unawaited(
+        showModalBottomSheet<void>(
+          context: context,
+          useRootNavigator: true,
+          builder: (_) =>
+              const SizedBox(height: 200, child: Text('sheet-body')),
+        ),
+      );
+      await settle(tester);
+      expect(find.text('sheet-body'), findsOneWidget);
+
+      await back(tester);
+      expect(find.text('sheet-body'), findsNothing);
+      expect(container.read(selectedTabProvider), AppTab.proxies);
+
+      unawaited(
+        showDialog<void>(
+          context: context,
+          builder: (_) => const AlertDialog(content: Text('dialog-body')),
+        ),
+      );
+      await settle(tester);
+      expect(find.text('dialog-body'), findsOneWidget);
+
+      await back(tester);
+      expect(find.text('dialog-body'), findsNothing);
+      expect(container.read(selectedTabProvider), AppTab.proxies);
+
+      await back(tester);
+      expect(container.read(selectedTabProvider), AppTab.home);
+      expect(exited(), isFalse);
+    });
+
+    for (final platform in [TargetPlatform.iOS, TargetPlatform.macOS]) {
+      testWidgets('${platform.name} 不受影响：非首页 tab 不拦截返回', (tester) async {
+        debugDefaultTargetPlatformOverride = platform;
+        try {
+          final container = await pumpShell(tester);
+          await tapTab(tester, AppTab.settings);
+          await tester.pump();
+          expect(
+            platformCalls,
+            isNot(contains('SystemNavigator.setFrameworkHandlesBack:true')),
+          );
+
+          await back(tester);
+          expect(container.read(selectedTabProvider), AppTab.settings);
+          expect(exited(), isTrue, reason: '没有 PopScope 拦截，行为同改动前');
+        } finally {
+          debugDefaultTargetPlatformOverride = null;
+        }
+      });
+    }
   });
 }

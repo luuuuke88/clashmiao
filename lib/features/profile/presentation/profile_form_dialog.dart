@@ -1,7 +1,9 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
+
 import 'dart:async';
 import 'dart:io';
+
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -153,9 +155,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                 if (mounted) setState(() => _isLoading = false);
                               },
                               child: Text(
-                                MaterialLocalizations.of(
-                                  context,
-                                ).cancelButtonLabel,
+                                MaterialLocalizations.of(context)
+                                    .cancelButtonLabel,
                                 style: TextStyle(
                                   color: theme.colorScheme.primary,
                                 ),
@@ -622,9 +623,8 @@ class _Button extends StatelessWidget {
               width: 48,
               height: 48,
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.primary
+                    .withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -709,9 +709,8 @@ class _LongButton extends StatelessWidget {
             Icon(
               FluentIcons.chevron_right_24_regular,
               size: 16,
-              color: Theme.of(
-                context,
-              ).aiUi.secondaryTextColor.withValues(alpha: 0.3),
+              color: Theme.of(context).aiUi.secondaryTextColor
+                  .withValues(alpha: 0.3),
             ),
           ],
         ),

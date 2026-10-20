@@ -1321,9 +1321,8 @@ class _BasePreferenceTile extends StatelessWidget {
                 Icon(
                   FluentIcons.chevron_right_24_regular,
                   size: 16,
-                  color: Theme.of(
-                    context,
-                  ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                  color: Theme.of(context).aiUi.secondaryTextColor
+                      .withValues(alpha: 0.5),
                 ),
             ],
           ),

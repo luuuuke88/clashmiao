@@ -117,9 +117,8 @@ void main() {
 
     test('通知栏来源可识别', () {
       expect(
-        KernelSnapshot.fromJson(
-          _json(override: {'source': 'notification'}),
-        ).source,
+        KernelSnapshot.fromJson(_json(override: {'source': 'notification'}))
+            .source,
         DesiredSource.notification,
       );
     });

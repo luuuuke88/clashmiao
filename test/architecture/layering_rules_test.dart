@@ -586,8 +586,7 @@ import 'package:clashmiao/core/storage/stub.dart'
     test('package URI 含 .. 点段 core → domain：被报（不再被当作 core）', () {
       final bad = checkLayering(
         scan({
-          'core/storage/x.dart':
-              "export 'package:clashmiao/core/../domain/profile/application/profile_providers.dart';",
+          'core/storage/x.dart': "export 'package:clashmiao/core/../domain/profile/application/profile_providers.dart';",
         }),
         allowlist: const [],
       );
@@ -643,8 +642,7 @@ import 'package:clashmiao/core/storage/stub.dart'
     test('R1：模型经 package 点段 URI 引用 application：被报，不是跳过', () {
       final bad = checkModelPurity(
         scan({
-          'domain/profile/model/m.dart':
-              "export 'package:clashmiao/domain/profile/model/../application/profile_providers.dart';",
+          'domain/profile/model/m.dart': "export 'package:clashmiao/domain/profile/model/../application/profile_providers.dart';",
         }),
       );
       expect(bad, hasLength(1));

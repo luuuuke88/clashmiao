@@ -226,9 +226,8 @@ void main() {
         tester.getSemantics(find.text('仅线路')),
         isSemantics(isSelected: false, hasSelectedState: true, isButton: true),
       );
-      final scheme = Theme.of(
-        tester.element(find.byType(Scaffold)),
-      ).colorScheme;
+      final scheme = Theme.of(tester.element(find.byType(Scaffold)))
+          .colorScheme;
       final box = tester.widget<AnimatedContainer>(
         find
             .ancestor(
@@ -311,9 +310,8 @@ void main() {
         isSemantics(isSelected: false, hasSelectedState: true, isButton: true),
       );
 
-      final scheme = Theme.of(
-        tester.element(find.byType(Scaffold)),
-      ).colorScheme;
+      final scheme = Theme.of(tester.element(find.byType(Scaffold)))
+          .colorScheme;
       final selectedText = tester.widget<Text>(find.text(selectedLabel));
       expect(selectedText.style?.color, scheme.onPrimaryContainer);
       final box = tester.widget<AnimatedContainer>(
@@ -340,9 +338,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 50));
 
       final other = (Platform.isAndroid || Platform.isIOS) ? 'VPN' : '系统线路';
-      final scheme = Theme.of(
-        tester.element(find.byType(Scaffold)),
-      ).colorScheme;
+      final scheme = Theme.of(tester.element(find.byType(Scaffold)))
+          .colorScheme;
       Color? fillOf(String label) {
         final box = tester.widget<AnimatedContainer>(
           find
@@ -397,9 +394,8 @@ void main() {
       await tester.pumpWidget(widget);
       await tester.pump(const Duration(milliseconds: 50));
       final other = (Platform.isAndroid || Platform.isIOS) ? 'VPN' : '系统线路';
-      final scheme = Theme.of(
-        tester.element(find.byType(Scaffold)),
-      ).colorScheme;
+      final scheme = Theme.of(tester.element(find.byType(Scaffold)))
+          .colorScheme;
 
       await tester.tap(find.text(other));
       await tester.pump();
@@ -481,9 +477,8 @@ void main() {
         await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
 
-        final scheme = Theme.of(
-          tester.element(find.byType(BottomSheet)),
-        ).colorScheme;
+        final scheme = Theme.of(tester.element(find.byType(BottomSheet)))
+            .colorScheme;
         final sheet = tester.widget<BottomSheet>(find.byType(BottomSheet));
         expect(sheet.backgroundColor, scheme.surfaceContainerLow);
       });

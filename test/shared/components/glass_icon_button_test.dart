@@ -100,9 +100,8 @@ void main() {
 
   testWidgets('主操作（filled）：底 primary、图标 onPrimary，成对而不是写死白色', (tester) async {
     await _pump(tester, onTap: () {}, filled: true);
-    final scheme = Theme.of(
-      tester.element(find.byType(GlassIconButton)),
-    ).colorScheme;
+    final scheme = Theme.of(tester.element(find.byType(GlassIconButton)))
+        .colorScheme;
     final icon = tester.widget<Icon>(find.byIcon(FluentIcons.add_24_regular));
     expect(icon.color, scheme.onPrimary);
     final fill = tester

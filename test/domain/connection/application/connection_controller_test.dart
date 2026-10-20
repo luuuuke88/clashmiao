@@ -808,23 +808,19 @@ void main() {
           '{${m.entries.map((e) => '"${e.key}":"${e.value}"').join(',')}}',
     };
 
-    _sim(
-      '按存储里的最新值重放选择组，带 expectedAttempt，最后确认一次；自动选择（urltest）组即使有记录也不碰',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
+    _sim('按存储里的最新值重放选择组，带 expectedAttempt，最后确认一次；自动选择（urltest）组即使有记录也不碰', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
 
-        e.kernelStarted(e.requests.single, attempt: 7, replay: true);
+      e.kernelStarted(e.requests.single, attempt: 7, replay: true);
 
-        expect(e.port.selectCalls, [
-          (group: 'proxy', tag: 'hk', expectedAttempt: 7),
-        ]);
-        expect(e.port.acknowledged, [7]);
-      },
-      prefs: stored({'proxy': 'hk', 'auto': 'sg'}),
-    );
+      expect(e.port.selectCalls, [
+        (group: 'proxy', tag: 'hk', expectedAttempt: 7),
+      ]);
+      expect(e.port.acknowledged, [7]);
+    }, prefs: stored({'proxy': 'hk', 'auto': 'sg'}));
 
     _sim('没有任何持久化选择：不调用 selectOutbound，仍确认重放（出口探测据此触发）', (e) {
       e.push();
@@ -851,52 +847,44 @@ void main() {
       expect(e.port.acknowledged, [1]);
     }, prefs: stored({'proxy': 'hk'}));
 
-    _sim(
-      '某个 group 重放失败，不影响其它 group 继续重放，且仍然确认',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
-        e.runtimeGroups = [
-          ...e.runtimeGroups,
-          const OutboundGroup(
-            tag: 'region',
-            type: 'selector',
-            selected: 'jp',
-            items: [
-              OutboundProxy(tag: 'jp', type: 'vless'),
-              OutboundProxy(tag: 'us', type: 'vless'),
-            ],
-          ),
-        ];
-        e.port.selectResult = (g, _, _) =>
-            g == 'proxy' ? const SelectFailed('gone') : const SelectOk();
+    _sim('某个 group 重放失败，不影响其它 group 继续重放，且仍然确认', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      e.runtimeGroups = [
+        ...e.runtimeGroups,
+        const OutboundGroup(
+          tag: 'region',
+          type: 'selector',
+          selected: 'jp',
+          items: [
+            OutboundProxy(tag: 'jp', type: 'vless'),
+            OutboundProxy(tag: 'us', type: 'vless'),
+          ],
+        ),
+      ];
+      e.port.selectResult = (g, _, _) =>
+          g == 'proxy' ? const SelectFailed('gone') : const SelectOk();
 
-        e.kernelStarted(e.requests.single, attempt: 2, replay: true);
+      e.kernelStarted(e.requests.single, attempt: 2, replay: true);
 
-        expect(e.port.selectCalls.map((c) => c.group), ['proxy', 'region']);
-        expect(e.port.acknowledged, [2]);
-      },
-      prefs: stored({'proxy': 'hk', 'region': 'us'}),
-    );
+      expect(e.port.selectCalls.map((c) => c.group), ['proxy', 'region']);
+      expect(e.port.acknowledged, [2]);
+    }, prefs: stored({'proxy': 'hk', 'region': 'us'}));
 
-    _sim(
-      'stale（内核已换新 attempt）：放弃重放且不确认，新 attempt 自己会再来',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
-        e.port.selectResult = (_, _, _) => const SelectStale();
+    _sim('stale（内核已换新 attempt）：放弃重放且不确认，新 attempt 自己会再来', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      e.port.selectResult = (_, _, _) => const SelectStale();
 
-        e.kernelStarted(e.requests.single, attempt: 2, replay: true);
+      e.kernelStarted(e.requests.single, attempt: 2, replay: true);
 
-        expect(e.port.selectCalls, hasLength(1), reason: '第一项 stale 就停');
-        expect(e.port.acknowledged, isEmpty);
-      },
-      prefs: stored({'proxy': 'hk', 'auto': 'sg'}),
-    );
+      expect(e.port.selectCalls, hasLength(1), reason: '第一项 stale 就停');
+      expect(e.port.acknowledged, isEmpty);
+    }, prefs: stored({'proxy': 'hk', 'auto': 'sg'}));
 
     _sim('旧重放悬停期间用户做了新选择：重放收敛到用户最后的选择', (e) {
       e.push();
@@ -916,11 +904,10 @@ void main() {
       gate.complete();
       e.settle();
 
-      expect(
-        e.port.selectCalls.map((c) => c.tag),
-        ['old', 'new'],
-        reason: '旧值发完后发现存储已变，必须再发最新值，最终内核停在用户最后的选择',
-      );
+      expect(e.port.selectCalls.map((c) => c.tag), [
+        'old',
+        'new',
+      ], reason: '旧值发完后发现存储已变，必须再发最新值，最终内核停在用户最后的选择');
       expect(e.port.acknowledged, [3]);
     }, prefs: stored({'proxy': 'old'}));
 
@@ -967,11 +954,9 @@ void main() {
         e.profileGate!.complete();
         e.rebuild();
 
-        expect(
-          e.port.selectCalls.map((c) => c.expectedAttempt),
-          [2],
-          reason: 'attempt 1 的重放已过期，只为当前 attempt 重放',
-        );
+        expect(e.port.selectCalls.map((c) => c.expectedAttempt), [
+          2,
+        ], reason: 'attempt 1 的重放已过期，只为当前 attempt 重放');
         expect(e.port.acknowledged, [2], reason: '不得确认已过期的 attempt 1');
       },
       holdProfile: true,
@@ -1004,85 +989,73 @@ void main() {
       ),
     ];
 
-    _sim(
-      '升级用户的旧记录（proxy）：分组迟到也等它，迁到 select 后只对 select 重放，绝不碰 proxy',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
+    _sim('升级用户的旧记录（proxy）：分组迟到也等它，迁到 select 后只对 select 重放，绝不碰 proxy', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
 
-        e.kernelStarted(
-          e.requests.single,
-          attempt: 3,
-          replay: true,
-          withGroups: false,
-        );
-        e.fa.elapse(const Duration(seconds: 2));
-        expect(e.port.selectCalls, isEmpty, reason: '分组没到之前什么都不发');
-        expect(e.port.acknowledged, isEmpty);
+      e.kernelStarted(
+        e.requests.single,
+        attempt: 3,
+        replay: true,
+        withGroups: false,
+      );
+      e.fa.elapse(const Duration(seconds: 2));
+      expect(e.port.selectCalls, isEmpty, reason: '分组没到之前什么都不发');
+      expect(e.port.acknowledged, isEmpty);
 
-        e.pushGroups(attempt: 3, groups: runtime);
-        e.fa.flushMicrotasks();
+      e.pushGroups(attempt: 3, groups: runtime);
+      e.fa.flushMicrotasks();
 
-        expect(e.port.selectCalls, [
-          (group: 'select', tag: 'hk', expectedAttempt: 3),
-        ]);
-        expect(e.port.selectCalls.where((c) => c.group == 'proxy'), isEmpty);
-        expect(e.container.read(proxySelectionStoreProvider), {'select': 'hk'});
-        expect(e.prefs.getString('proxy_selection_p1'), '{"select":"hk"}');
-        expect(e.port.acknowledged, [3]);
-      },
-      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
-    );
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 3),
+      ]);
+      expect(e.port.selectCalls.where((c) => c.group == 'proxy'), isEmpty);
+      expect(e.container.read(proxySelectionStoreProvider), {'select': 'hk'});
+      expect(e.prefs.getString('proxy_selection_p1'), '{"select":"hk"}');
+      expect(e.port.acknowledged, [3]);
+    }, prefs: {'proxy_selection_p1': '{"proxy":"hk"}'});
 
-    _sim(
-      '等不到这个实例的分组（5 s）：不重放任何记录、不删任何记录，确认（出口探测得以开始）',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
+    _sim('等不到这个实例的分组（5 s）：不重放任何记录、不删任何记录，确认（出口探测得以开始）', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
 
-        e.kernelStarted(
-          e.requests.single,
-          attempt: 1,
-          replay: true,
-          withGroups: false,
-        );
-        e.pushGroups(attempt: 0, groups: runtime); // 别的实例的分组不算
-        e.fa.elapse(const Duration(seconds: 4, milliseconds: 900));
-        expect(e.port.acknowledged, isEmpty);
-        e.fa.elapse(const Duration(milliseconds: 200));
+      e.kernelStarted(
+        e.requests.single,
+        attempt: 1,
+        replay: true,
+        withGroups: false,
+      );
+      e.pushGroups(attempt: 0, groups: runtime); // 别的实例的分组不算
+      e.fa.elapse(const Duration(seconds: 4, milliseconds: 900));
+      expect(e.port.acknowledged, isEmpty);
+      e.fa.elapse(const Duration(milliseconds: 200));
 
-        expect(e.port.selectCalls, isEmpty);
-        expect(e.port.acknowledged, [1]);
-        expect(e.container.read(proxySelectionStoreProvider), {'proxy': 'hk'});
-      },
-      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
-    );
+      expect(e.port.selectCalls, isEmpty);
+      expect(e.port.acknowledged, [1]);
+      expect(e.container.read(proxySelectionStoreProvider), {'proxy': 'hk'});
+    }, prefs: {'proxy_selection_p1': '{"proxy":"hk"}'});
 
-    _sim(
-      '迁移等待期间重连（新 attempt）：旧流水线丢弃，新 attempt 自己完成迁移与确认',
-      (e) {
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
-        final r = e.requests.single;
+    _sim('迁移等待期间重连（新 attempt）：旧流水线丢弃，新 attempt 自己完成迁移与确认', (e) {
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      final r = e.requests.single;
 
-        e.kernelStarted(r, attempt: 1, replay: true, withGroups: false);
-        e.kernelStarted(r, attempt: 2, replay: true, withGroups: false);
-        e.pushGroups(attempt: 2, groups: runtime);
-        e.fa.elapse(const Duration(seconds: 6));
+      e.kernelStarted(r, attempt: 1, replay: true, withGroups: false);
+      e.kernelStarted(r, attempt: 2, replay: true, withGroups: false);
+      e.pushGroups(attempt: 2, groups: runtime);
+      e.fa.elapse(const Duration(seconds: 6));
 
-        expect(e.port.selectCalls, [
-          (group: 'select', tag: 'hk', expectedAttempt: 2),
-        ]);
-        expect(e.port.acknowledged, [2], reason: 'attempt 1 已过期，不确认');
-      },
-      prefs: {'proxy_selection_p1': '{"proxy":"hk"}'},
-    );
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'hk', expectedAttempt: 2),
+      ]);
+      expect(e.port.acknowledged, [2], reason: 'attempt 1 已过期，不确认');
+    }, prefs: {'proxy_selection_p1': '{"proxy":"hk"}'});
 
     _sim(
       '等待分组期间切到 revision 相同的订阅：attempt 不变，按新订阅重新调度，重放、确认、出口探测开始',
@@ -1529,37 +1502,33 @@ void main() {
       );
     }
 
-    _sim(
-      'A 存 sg、B 没有手选（默认 hk）：同 revision 切到 B 后选择组回到 hk',
-      (e) {
-        e.launcher.defaults = const {'select': 'hk'};
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
-        final r1 = e.requests.single;
-        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
-        e.pushGroups(attempt: 1, groups: runtimeSelecting('hk')); // 启动在默认值
-        expect(e.port.selectCalls, [
-          (group: 'select', tag: 'sg', expectedAttempt: 1),
-        ]);
-        e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
-        e.kernelStarted(r1, attempt: 1, withGroups: false);
+    _sim('A 存 sg、B 没有手选（默认 hk）：同 revision 切到 B 后选择组回到 hk', (e) {
+      e.launcher.defaults = const {'select': 'hk'};
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      final r1 = e.requests.single;
+      e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('hk')); // 启动在默认值
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+      ]);
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('sg'));
+      e.kernelStarted(r1, attempt: 1, withGroups: false);
 
-        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
-        e.rebuild();
-        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-        e.settle();
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
 
-        expect(e.port.selectCalls, [
-          (group: 'select', tag: 'sg', expectedAttempt: 1),
-          (group: 'select', tag: 'hk', expectedAttempt: 1),
-        ], reason: 'B 没有手选：回到运行时默认值，不留 A 的 sg');
-        expect(e.port.selectCalls.where((c) => c.group == 'auto'), isEmpty);
-        expect(e.port.acknowledged, [1, 1]);
-      },
-      prefs: const {'proxy_selection_p1': '{"select":"sg"}'},
-    );
+      expect(e.port.selectCalls, [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+        (group: 'select', tag: 'hk', expectedAttempt: 1),
+      ], reason: 'B 没有手选：回到运行时默认值，不留 A 的 sg');
+      expect(e.port.selectCalls.where((c) => c.group == 'auto'), isEmpty);
+      expect(e.port.acknowledged, [1, 1]);
+    }, prefs: const {'proxy_selection_p1': '{"select":"sg"}'});
 
     _sim('没有任何手选的订阅新连接：即使分组快照显示已在默认值，也显式下发一次默认值（同值幂等）', (e) {
       e.launcher.defaults = const {'select': 'auto'};
@@ -1599,47 +1568,43 @@ void main() {
       expect(e.port.acknowledged, [1]);
     });
 
-    _sim(
-      'A 无手选（默认 auto）：B 的 sg 写入悬停、分组推送迟迟不到时切回 A，最后仍下发 auto',
-      (e) {
-        e.launcher.defaults = const {'select': 'auto'};
-        e.push();
-        e.ctl.connect();
-        e.settle();
-        e.container.read(proxySelectionStoreProvider);
-        final r1 = e.requests.single;
-        e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
-        e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
-        e.kernelStarted(r1, attempt: 1, withGroups: false);
-        final base = e.port.selectCalls.length;
+    _sim('A 无手选（默认 auto）：B 的 sg 写入悬停、分组推送迟迟不到时切回 A，最后仍下发 auto', (e) {
+      e.launcher.defaults = const {'select': 'auto'};
+      e.push();
+      e.ctl.connect();
+      e.settle();
+      e.container.read(proxySelectionStoreProvider);
+      final r1 = e.requests.single;
+      e.kernelStarted(r1, attempt: 1, replay: true, withGroups: false);
+      e.pushGroups(attempt: 1, groups: runtimeSelecting('auto'));
+      e.kernelStarted(r1, attempt: 1, withGroups: false);
+      final base = e.port.selectCalls.length;
 
-        final gate = e.port.onSelectGate = Completer<void>();
-        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
-        e.rebuild();
-        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-        e.settle();
-        expect(e.port.selectCalls.sublist(base), [
-          (group: 'select', tag: 'sg', expectedAttempt: 1),
-        ], reason: 'B 的写入已发出、悬停');
-        e.port.onSelectGate = null;
+      final gate = e.port.onSelectGate = Completer<void>();
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p2';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
+      expect(e.port.selectCalls.sublist(base), [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+      ], reason: 'B 的写入已发出、悬停');
+      e.port.onSelectGate = null;
 
-        e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
-        e.rebuild();
-        e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
-        e.settle();
+      e.container.read(_Env.activeProfileIdProvider.notifier).state = 'p1';
+      e.rebuild();
+      e.kernelStarted(e.requests.last, attempt: 1, withGroups: false);
+      e.settle();
 
-        gate.complete(); // B 的写入生效，但分组推送（sg）迟迟不到：快照仍是 auto
-        e.settle();
-        e.fa.elapse(const Duration(seconds: 1));
+      gate.complete(); // B 的写入生效，但分组推送（sg）迟迟不到：快照仍是 auto
+      e.settle();
+      e.fa.elapse(const Duration(seconds: 1));
 
-        expect(e.port.selectCalls.sublist(base), [
-          (group: 'select', tag: 'sg', expectedAttempt: 1),
-          (group: 'select', tag: 'auto', expectedAttempt: 1),
-        ], reason: '不能因为过期快照显示 auto 就跳过');
-        expect(e.port.selectApplied.last.tag, 'auto');
-      },
-      prefs: const {'proxy_selection_p2': '{"select":"sg"}'},
-    );
+      expect(e.port.selectCalls.sublist(base), [
+        (group: 'select', tag: 'sg', expectedAttempt: 1),
+        (group: 'select', tag: 'auto', expectedAttempt: 1),
+      ], reason: '不能因为过期快照显示 auto 就跳过');
+      expect(e.port.selectApplied.last.tag, 'auto');
+    }, prefs: const {'proxy_selection_p2': '{"select":"sg"}'});
 
     _sim('没有手选、内核却不在默认值上：只把选择组拨回默认值，自动选择组不碰', (e) {
       e.launcher.defaults = const {'select': 'auto', 'auto': 'hk'};

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
+
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
+
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
@@ -223,9 +225,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         sortedItems.sort((a, b) {
           final groupFirst = _compareGroupFirst(a, b);
           if (groupFirst != 0) return groupFirst;
-          return NodeDisplay.stripSuffix(
-            a.tag,
-          ).compareTo(NodeDisplay.stripSuffix(b.tag));
+          return NodeDisplay.stripSuffix(a.tag)
+              .compareTo(NodeDisplay.stripSuffix(b.tag));
         });
       } else if (sortBy == ProxiesSort.delay) {
         sortedItems.sort((a, b) {

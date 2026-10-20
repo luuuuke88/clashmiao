@@ -39,25 +39,20 @@ void main() {
       );
     });
 
-    test(
-      'createService / startService / startCommandServer 都归类为 serviceStartFailed',
-      () {
-        expect(
-          classifyBoxAlert(const BoxAlert(type: BoxAlertType.createService)),
-          ConnectionErrorCategory.serviceStartFailed,
-        );
-        expect(
-          classifyBoxAlert(const BoxAlert(type: BoxAlertType.startService)),
-          ConnectionErrorCategory.serviceStartFailed,
-        );
-        expect(
-          classifyBoxAlert(
-            const BoxAlert(type: BoxAlertType.startCommandServer),
-          ),
-          ConnectionErrorCategory.serviceStartFailed,
-        );
-      },
-    );
+    test('createService / startService / startCommandServer 都归类为 serviceStartFailed', () {
+      expect(
+        classifyBoxAlert(const BoxAlert(type: BoxAlertType.createService)),
+        ConnectionErrorCategory.serviceStartFailed,
+      );
+      expect(
+        classifyBoxAlert(const BoxAlert(type: BoxAlertType.startService)),
+        ConnectionErrorCategory.serviceStartFailed,
+      );
+      expect(
+        classifyBoxAlert(const BoxAlert(type: BoxAlertType.startCommandServer)),
+        ConnectionErrorCategory.serviceStartFailed,
+      );
+    });
 
     test('unknown 归类为 unexpected', () {
       expect(

@@ -13,25 +13,20 @@ import '../../_fakes/fake_kernel_port.dart';
 import '../../support/fake_box_service.dart';
 
 void main() {
-  test(
-    'Android 之外用 EmulatedKernelPort 包装 boxServiceProvider；Android 用 PlatformKernelPort',
-    () {
-      final container = ProviderContainer(
-        overrides: [
-          boxServiceProvider.overrideWithValue(const FakeBoxService()),
-        ],
-      );
-      addTearDown(container.dispose);
-      final port = container.read(kernelPortProvider);
-      expect(port, isA<KernelPort>());
-      if (Platform.isAndroid) {
-        expect(port, isA<PlatformKernelPort>());
-      } else {
-        expect(port, isA<EmulatedKernelPort>());
-      }
-      expect(container.read(kernelPortProvider), same(port), reason: '单例');
-    },
-  );
+  test('Android 之外用 EmulatedKernelPort 包装 boxServiceProvider；Android 用 PlatformKernelPort', () {
+    final container = ProviderContainer(
+      overrides: [boxServiceProvider.overrideWithValue(const FakeBoxService())],
+    );
+    addTearDown(container.dispose);
+    final port = container.read(kernelPortProvider);
+    expect(port, isA<KernelPort>());
+    if (Platform.isAndroid) {
+      expect(port, isA<PlatformKernelPort>());
+    } else {
+      expect(port, isA<EmulatedKernelPort>());
+    }
+    expect(container.read(kernelPortProvider), same(port), reason: '单例');
+  });
 
   test('FakeKernelPort：可编程推送、记录请求、可配置回执与 select 结果', () async {
     final fake = FakeKernelPort(initial: FakeKernelPort.snap());

@@ -316,15 +316,15 @@ void main() {
   ) async {
     final (widget, container, spy) = await _host(connected: true);
     // 把控制器状态换成「已连接，attempt = 4」。
-    (container.read(connectionControllerProvider.notifier)
-            as FakeConnectionController)
-        .set(
-          const ConnectionSnapshot(
-            phase: ConnectionPhase.connected,
-            epoch: 'e1',
-            attempt: 4,
-          ),
-        );
+    (container.read(
+      connectionControllerProvider.notifier,
+    ) as FakeConnectionController).set(
+      const ConnectionSnapshot(
+        phase: ConnectionPhase.connected,
+        epoch: 'e1',
+        attempt: 4,
+      ),
+    );
     await tester.pumpWidget(widget);
     await tester.pump(const Duration(milliseconds: 200));
     await tester.pump(const Duration(milliseconds: 200));

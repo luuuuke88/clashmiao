@@ -1,5 +1,7 @@
 import 'package:clashmiao/core/theme/motion.dart';
+
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -81,9 +83,8 @@ class AiUiModalWrapper extends StatelessWidget {
                           border: Border.all(
                             color: isLight
                                 ? Colors.white.withValues(alpha: 0.5)
-                                : Theme.of(
-                                    context,
-                                  ).aiUi.borderColor.withValues(alpha: 0.1),
+                                : Theme.of(context).aiUi.borderColor
+                                      .withValues(alpha: 0.1),
                             width: 0.5,
                           ),
                         ),

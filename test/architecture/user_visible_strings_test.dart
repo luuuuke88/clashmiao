@@ -210,11 +210,9 @@ void f() {
         isEmpty,
         reason: '白名单按完整字面量匹配',
       );
-      expect(
-        rules("const title = '喵速'; const other = '别的';", allow: {'喵速'}),
-        [ruleCjkLiteral],
-        reason: '同一文件里没登记的字面量照样报',
-      );
+      expect(rules("const title = '喵速'; const other = '别的';", allow: {'喵速'}), [
+        ruleCjkLiteral,
+      ], reason: '同一文件里没登记的字面量照样报');
       expect(rules("const t = '香港';", allow: null), isEmpty);
     });
 
@@ -237,11 +235,9 @@ void f() { try {} catch (e) { state = DeepLinkImportFailure('导入失败: \$e')
         rules("void f() { state = const DeepLinkImportFailure('导入失败'); }"),
         [ruleCjkLiteral],
       );
-      expect(
-        rules("void f() { state = SomeNewFailure('出错了'); }"),
-        [ruleCjkLiteral],
-        reason: '名字以 Failure 结尾不再自动放行',
-      );
+      expect(rules("void f() { state = SomeNewFailure('出错了'); }"), [
+        ruleCjkLiteral,
+      ], reason: '名字以 Failure 结尾不再自动放行');
       expect(
         rules('''
 void f() { try {} catch (e) { report(FooError('\$e')); } }

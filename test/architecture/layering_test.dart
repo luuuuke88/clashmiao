@@ -56,13 +56,10 @@ void main() {
     expect(violations, isEmpty, reason: render(violations));
   });
 
-  test(
-    'R1：domain 模型不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application',
-    () {
-      final violations = checkModelPurity(uris);
-      expect(violations, isEmpty, reason: render(violations));
-    },
-  );
+  test('R1：domain 模型不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application', () {
+    final violations = checkModelPurity(uris);
+    expect(violations, isEmpty, reason: render(violations));
+  });
 
   test('白名单没有过期条目', () {
     final stale = staleEntries(uris, kAllowlist);

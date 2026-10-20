@@ -127,11 +127,9 @@ void main() {
       await container2.read(profileStoreProvider.future);
       await container2.read(activeProfileProvider.future);
 
-      expect(
-        _msOf(container2.read(proxyDelayCacheProvider)),
-        {'US': 88},
-        reason: '同一 profileId 的缓存应该能持久化并被下一次读取到',
-      );
+      expect(_msOf(container2.read(proxyDelayCacheProvider)), {
+        'US': 88,
+      }, reason: '同一 profileId 的缓存应该能持久化并被下一次读取到');
     });
 
     test('订阅被删除或换代后，旧 notifier 的延迟缓存写入被丢弃', () async {

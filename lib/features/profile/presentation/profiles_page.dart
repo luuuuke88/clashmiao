@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
+
 import 'dart:async';
 import 'dart:io';
 
@@ -706,9 +707,8 @@ class _ProfileActionsModal extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Divider(
                     height: 1,
-                    color: Theme.of(
-                      context,
-                    ).dividerColor.withValues(alpha: 0.1),
+                    color: Theme.of(context).dividerColor
+                        .withValues(alpha: 0.1),
                   ),
                 )
                 .animateWithMotion(context)
@@ -1174,9 +1174,8 @@ List<ProfileEntity> sortProfilesByPriority(
 ) {
   final sorted = [...profiles];
   sorted.sort((a, b) {
-    final tierCompare = profileDisplayPriority(
-      a,
-    ).compareTo(profileDisplayPriority(b));
+    final tierCompare = profileDisplayPriority(a)
+        .compareTo(profileDisplayPriority(b));
     if (tierCompare != 0) return tierCompare;
     return tiebreaker(a, b);
   });

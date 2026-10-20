@@ -205,11 +205,10 @@ void main() {
     final ra = await a;
 
     expect(ra, isA<SelectionSuperseded>());
-    expect(
-      port.selectCalls.map((c) => (c.tag, c.expectedAttempt)),
-      [('hk', 3), ('sg', 4)],
-      reason: 'A 不得再带着 hk 重试：否则内核最终是 hk、存储却是 sg',
-    );
+    expect(port.selectCalls.map((c) => (c.tag, c.expectedAttempt)), [
+      ('hk', 3),
+      ('sg', 4),
+    ], reason: 'A 不得再带着 hk 重试：否则内核最终是 hk、存储却是 sg');
     expect(store()['proxy'], 'sg');
   });
 
@@ -262,11 +261,10 @@ void main() {
     final ra = await a;
 
     expect(ra, isA<SelectionSuperseded>());
-    expect(
-      port.selectCalls.map((c) => (c.tag, c.expectedAttempt)),
-      [('hk', 3), ('sg', 4)],
-      reason: '旧订阅的 hk 不得再对新订阅的 attempt 重试：两份订阅可能有同名的组与节点',
-    );
+    expect(port.selectCalls.map((c) => (c.tag, c.expectedAttempt)), [
+      ('hk', 3),
+      ('sg', 4),
+    ], reason: '旧订阅的 hk 不得再对新订阅的 attempt 重试：两份订阅可能有同名的组与节点');
     expect(store()['proxy'], 'sg', reason: '当前（p2）订阅的存储就是它最后的选择');
     expect(
       prefs.getString('proxy_selection_p1'),

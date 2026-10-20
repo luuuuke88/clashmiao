@@ -212,9 +212,8 @@ void main() {
         colorOf('120ms'),
         StatusColors.latency(Brightness.light, LatencyBand.fast),
       );
-      final scheme = Theme.of(
-        tester.element(find.byType(ProxiesPage)),
-      ).colorScheme;
+      final scheme = Theme.of(tester.element(find.byType(ProxiesPage)))
+          .colorScheme;
       expect(
         colorOf('450ms'),
         scheme.onSurfaceVariant,
@@ -450,9 +449,9 @@ void main() {
       await tester.pumpWidget(host.widget);
       await _settle(tester);
 
-      final primary = Theme.of(
-        tester.element(find.byType(ProxiesPage)),
-      ).colorScheme.primary;
+      final primary = Theme.of(tester.element(find.byType(ProxiesPage)))
+          .colorScheme
+          .primary;
 
       final picked = tester.widget<GlassCard>(_tileOf('picked'));
       expect(picked.borderColor, primary);
@@ -798,9 +797,9 @@ void main() {
             await tester.pumpWidget(host.widget);
             live.add(groupsWith(0));
             await _settle(tester);
-            final coordinator =
-                host.container.read(latencyTestCoordinatorProvider.notifier)
-                    as _PresetCoordinator;
+            final coordinator = host.container.read(
+              latencyTestCoordinatorProvider.notifier,
+            ) as _PresetCoordinator;
 
             final cache = host.container.read(proxyDelayCacheProvider.notifier);
             final longAgo = _now.subtract(const Duration(hours: 1));

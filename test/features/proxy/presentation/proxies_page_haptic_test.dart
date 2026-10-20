@@ -167,9 +167,8 @@ void main() {
 
       expect(spy.selectOutboundCalls, 1);
       expect(
-        _hapticCalls(
-          calls,
-        ).where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
+        _hapticCalls(calls)
+            .where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
         hasLength(1),
       );
       await _drainToasts(tester);
@@ -217,9 +216,8 @@ void main() {
 
       expect(spy.urlTestCalls, isNotEmpty);
       expect(
-        _hapticCalls(
-          calls,
-        ).where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
+        _hapticCalls(calls)
+            .where((c) => c.arguments == 'HapticFeedbackType.lightImpact'),
         hasLength(1),
       );
 

@@ -60,16 +60,15 @@ class OverflowReport {
   final List<String> chain;
 
   static OverflowReport? tryParse(FlutterErrorDetails details) {
-    final match = RegExp(
-      r'overflowed by ([\d.]+) pixels on the (\w+)',
-    ).firstMatch(details.exceptionAsString());
+    final match = RegExp(r'overflowed by ([\d.]+) pixels on the (\w+)')
+        .firstMatch(details.exceptionAsString());
     if (match == null) return null;
     final text = (details.informationCollector?.call() ?? const [])
         .map((n) => n.toStringDeep())
         .join('\n');
-    final creator = RegExp(
-      r'(?:debugCreator|creator):\s*(.+)',
-    ).firstMatch(text)?.group(1);
+    final creator = RegExp(r'(?:debugCreator|creator):\s*(.+)')
+        .firstMatch(text)
+        ?.group(1);
     final chain = creator == null
         ? const <String>[]
         : creator.split('←').map((e) => e.trim()).toList();

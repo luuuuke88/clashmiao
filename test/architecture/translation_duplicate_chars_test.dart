@@ -27,9 +27,10 @@ Iterable<(String, String)> _strings(Object? node, [String path = '']) sync* {
 void main() {
   test('中文译文没有相邻重复的汉字（登记的合法叠字除外）', () {
     final offenders = <String>[];
-    final files = Directory(
-      'assets/translations',
-    ).listSync().whereType<File>().where((f) => f.path.endsWith('.i18n.json'));
+    final files = Directory('assets/translations')
+        .listSync()
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.i18n.json'));
     for (final file in files) {
       final json = jsonDecode(file.readAsStringSync());
       for (final (path, value) in _strings(json)) {

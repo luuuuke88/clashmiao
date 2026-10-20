@@ -177,11 +177,14 @@ void main() {
     final out = redactSentryEvent(SentryEvent(contexts: contexts));
     final json = out.contexts.toJson();
 
-    expect(
-      json.keys.toSet(),
-      {'device', 'os', 'app', 'culture', 'dart', 'trace'},
-      reason: '只留 device / os / app / runtime / culture / trace',
-    );
+    expect(json.keys.toSet(), {
+      'device',
+      'os',
+      'app',
+      'culture',
+      'dart',
+      'trace',
+    }, reason: '只留 device / os / app / runtime / culture / trace');
     expect(out.contexts['flutter_error_details'], isNull);
     expect(out.contexts.response, isNull);
     expect(out.contexts.browser, isNull);

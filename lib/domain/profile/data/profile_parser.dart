@@ -34,14 +34,12 @@ class ProfileParser {
 
     // 管理和客服链接
     if (subInfo != null) {
-      if (headers['profile-web-page-url'] case [
-        final pageUrl,
-      ] when Uri.tryParse(pageUrl)?.hasScheme == true) {
+      if (headers['profile-web-page-url'] case [final pageUrl]
+          when Uri.tryParse(pageUrl)?.hasScheme == true) {
         subInfo = subInfo.copyWith(webPageUrl: pageUrl);
       }
-      if (headers['support-url'] case [
-        final supportUrl,
-      ] when Uri.tryParse(supportUrl)?.hasScheme == true) {
+      if (headers['support-url'] case [final supportUrl]
+          when Uri.tryParse(supportUrl)?.hasScheme == true) {
         subInfo = subInfo.copyWith(supportUrl: supportUrl);
       }
     }

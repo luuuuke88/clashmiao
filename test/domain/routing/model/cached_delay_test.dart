@@ -47,16 +47,16 @@ void main() {
     });
 
     test('写出的是 {ms, measuredAt(毫秒时间戳)} 对象，不再是裸 int', () {
-      final raw =
-          jsonDecode(encodeDelayCache({'a': CachedDelay(120, at)}))
-              as Map<String, dynamic>;
+      final raw = jsonDecode(
+        encodeDelayCache({'a': CachedDelay(120, at)}),
+      ) as Map<String, dynamic>;
       expect(raw['a'], {'ms': 120, 'measuredAt': at.millisecondsSinceEpoch});
     });
 
     test('历史值（无时间）重新写出后仍是历史值，不会被冒充成刚测的', () {
-      final raw =
-          jsonDecode(encodeDelayCache({'a': const CachedDelay(9, null)}))
-              as Map<String, dynamic>;
+      final raw = jsonDecode(
+        encodeDelayCache({'a': const CachedDelay(9, null)}),
+      ) as Map<String, dynamic>;
       expect((raw['a'] as Map).containsKey('measuredAt'), isFalse);
       expect(decodeDelayCache(jsonEncode(raw))['a']!.measuredAt, isNull);
     });

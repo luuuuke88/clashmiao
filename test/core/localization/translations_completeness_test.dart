@@ -42,9 +42,9 @@ void main() {
     late Set<String> baseline;
 
     setUpAll(() {
-      baseline = _keysOf(
-        'en',
-      ).where((k) => !k.startsWith(_storeListingPrefix)).toSet();
+      baseline = _keysOf('en')
+          .where((k) => !k.startsWith(_storeListingPrefix))
+          .toSet();
     });
 
     test('en 基准非空（防止解析出错让下面的断言平凡通过）', () {

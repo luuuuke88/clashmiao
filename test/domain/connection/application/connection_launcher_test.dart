@@ -179,9 +179,9 @@ void main() {
 
       final options = jsonDecode(spec.optionsJson) as Map<String, dynamic>;
       expect(options['enable-tun'], isTrue, reason: '默认设置在 Android 上就是 VPN 档');
-      final cfg =
-          jsonDecode(File(spec.runtimeConfigPath).readAsStringSync())
-              as Map<String, dynamic>;
+      final cfg = jsonDecode(
+        File(spec.runtimeConfigPath).readAsStringSync(),
+      ) as Map<String, dynamic>;
       final inbounds = (cfg['inbounds'] as List<dynamic>? ?? const [])
           .cast<Map<dynamic, dynamic>>();
       expect(inbounds.where((i) => i['type'] == 'tun'), isEmpty);

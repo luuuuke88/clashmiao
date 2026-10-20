@@ -161,9 +161,9 @@ _makeContainer() async {
   );
   await container.read(sharedPreferencesProvider.future);
   // 必须先 read 一次 notifier 才会真正构造出来（Riverpod 是惰性的）
-  final controller =
-      container.read(connectionControllerProvider.notifier)
-          as FakeConnectionController;
+  final controller = container.read(
+    connectionControllerProvider.notifier,
+  ) as FakeConnectionController;
   return (container, adapter, controller);
 }
 
@@ -314,9 +314,9 @@ void main() {
       );
       addTearDown(container.dispose);
       await container.read(sharedPreferencesProvider.future);
-      final controller =
-          container.read(connectionControllerProvider.notifier)
-              as FakeConnectionController;
+      final controller = container.read(
+        connectionControllerProvider.notifier,
+      ) as FakeConnectionController;
       container.read(connectionHealthProvider.notifier).start();
 
       controller.emit(ConnectionPhase.connected);
@@ -359,9 +359,9 @@ void main() {
           ],
         );
         await container.read(sharedPreferencesProvider.future);
-        final controller =
-            container.read(connectionControllerProvider.notifier)
-                as FakeConnectionController;
+        final controller = container.read(
+          connectionControllerProvider.notifier,
+        ) as FakeConnectionController;
         return (container, adapter, controller);
       }
 
@@ -371,9 +371,8 @@ void main() {
           late ProviderContainer container;
           late _SwitchableAdapter adapter;
           late FakeConnectionController controller;
-          vpnContainer(
-            tunnel,
-          ).then((r) => (container, adapter, controller) = r);
+          vpnContainer(tunnel)
+              .then((r) => (container, adapter, controller) = r);
           fa.flushMicrotasks();
           container.read(connectionHealthProvider.notifier).start();
           controller.emit(ConnectionPhase.connected);
@@ -524,9 +523,9 @@ void main() {
           ],
         );
         await container.read(sharedPreferencesProvider.future);
-        final controller =
-            container.read(connectionControllerProvider.notifier)
-                as FakeConnectionController;
+        final controller = container.read(
+          connectionControllerProvider.notifier,
+        ) as FakeConnectionController;
         return (container, controller);
       }
 

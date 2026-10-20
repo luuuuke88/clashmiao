@@ -190,9 +190,8 @@ class _ScannerView extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
-        iconTheme: Theme.of(
-          context,
-        ).iconTheme.copyWith(color: Colors.white, size: 32),
+        iconTheme: Theme.of(context).iconTheme
+            .copyWith(color: Colors.white, size: 32),
         actions: [
           IconButton(
             icon: const Icon(FluentIcons.flash_24_regular),
@@ -284,9 +283,8 @@ class _PermissionDeniedView extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        iconTheme: Theme.of(
-          context,
-        ).iconTheme.copyWith(color: Colors.white, size: 32),
+        iconTheme: Theme.of(context).iconTheme
+            .copyWith(color: Colors.white, size: 32),
       ),
       body: Center(
         child: Column(

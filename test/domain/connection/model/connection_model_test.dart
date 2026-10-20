@@ -50,27 +50,24 @@ void main() {
       }
     });
 
-    test(
-      '致命类（P4）：emptyConfiguration/createService/startService/startCommandServer/kernelUnresponsive',
-      () {
-        const fatal = {
-          KernelFailureCode.emptyConfiguration,
-          KernelFailureCode.createService,
-          KernelFailureCode.startService,
-          KernelFailureCode.startCommandServer,
-          KernelFailureCode.kernelUnresponsive,
-        };
-        for (final c in KernelFailureCode.values) {
-          expect(
-            ConnectionFailure.fromKernel(_kf(c)).isFatal,
-            fatal.contains(c),
-            reason: c.name,
-          );
-        }
-        expect(const NativeUnresponsive().isFatal, isFalse);
-        expect(const NoActiveProfile().isFatal, isFalse);
-      },
-    );
+    test('致命类（P4）：emptyConfiguration/createService/startService/startCommandServer/kernelUnresponsive', () {
+      const fatal = {
+        KernelFailureCode.emptyConfiguration,
+        KernelFailureCode.createService,
+        KernelFailureCode.startService,
+        KernelFailureCode.startCommandServer,
+        KernelFailureCode.kernelUnresponsive,
+      };
+      for (final c in KernelFailureCode.values) {
+        expect(
+          ConnectionFailure.fromKernel(_kf(c)).isFatal,
+          fatal.contains(c),
+          reason: c.name,
+        );
+      }
+      expect(const NativeUnresponsive().isFatal, isFalse);
+      expect(const NoActiveProfile().isFatal, isFalse);
+    });
 
     test('值相等', () {
       expect(const PlatformFailure('a', 'b'), const PlatformFailure('a', 'b'));

@@ -43,9 +43,9 @@ Map<String, Object?> _snapshot(SharedPreferences p) => {
   for (final k in p.getKeys()) k: p.get(k),
 };
 
-Future<MigrationReport> _run(SharedPreferences prefs) => StorageMigrator(
-  migrations: [profilesV1Migration(incGenerator: _incs())],
-).run(prefs);
+Future<MigrationReport> _run(SharedPreferences prefs) =>
+    StorageMigrator(migrations: [profilesV1Migration(incGenerator: _incs())])
+        .run(prefs);
 
 List<Map<String, dynamic>> _list(SharedPreferences p) =>
     (jsonDecode(p.getString(_profiles)!) as List).cast<Map<String, dynamic>>();
@@ -188,9 +188,9 @@ void main() {
       final raw = jsonEncode([_p('a', active: true)]);
       final prefs = await _seed({_profiles: raw, _active: 'a'});
       await _run(prefs);
-      final backup =
-          jsonDecode(prefs.getString(kMigrationBackupV0Key)!)
-              as Map<String, dynamic>;
+      final backup = jsonDecode(
+        prefs.getString(kMigrationBackupV0Key)!,
+      ) as Map<String, dynamic>;
       expect(backup[_profiles], raw);
       expect(backup[_active], 'a');
     });
@@ -198,9 +198,9 @@ void main() {
     test('备份保存原值与存在标记，包括类型不对的脏值', () async {
       final prefs = await _seed({_profiles: 42, _active: true});
       await _run(prefs);
-      final backup =
-          jsonDecode(prefs.getString(kMigrationBackupV0Key)!)
-              as Map<String, dynamic>;
+      final backup = jsonDecode(
+        prefs.getString(kMigrationBackupV0Key)!,
+      ) as Map<String, dynamic>;
       expect(backup[_profiles], 42);
       expect(backup[_active], true);
       expect(backup['present'], {_profiles: true, _active: true});
@@ -213,9 +213,9 @@ void main() {
         _profiles: ['a', 'b'],
       });
       await _run(withList);
-      final b2 =
-          jsonDecode(withList.getString(kMigrationBackupV0Key)!)
-              as Map<String, dynamic>;
+      final b2 = jsonDecode(
+        withList.getString(kMigrationBackupV0Key)!,
+      ) as Map<String, dynamic>;
       expect(b2[_profiles], ['a', 'b']);
       expect(b2[_active], isNull);
       expect(b2['present'], {_profiles: true, _active: false});
@@ -235,9 +235,9 @@ void main() {
         final report = await _run(prefs);
         expect(report.outcome, MigrationOutcome.migrated, reason: '$bad');
         expect(prefs.getString(_active), 'b', reason: '$bad：脏值被正确的激活 id 取代');
-        final backup =
-            jsonDecode(prefs.getString(kMigrationBackupV0Key)!)
-                as Map<String, dynamic>;
+        final backup = jsonDecode(
+          prefs.getString(kMigrationBackupV0Key)!,
+        ) as Map<String, dynamic>;
         final name = bad.isNaN
             ? 'NaN'
             : bad.isNegative
@@ -251,17 +251,17 @@ void main() {
       final onList = await _seed({_profiles: double.nan});
       expect((await _run(onList)).outcome, MigrationOutcome.migrated);
       expect(onList.getDouble(_profiles)!.isNaN, isTrue);
-      final b =
-          jsonDecode(onList.getString(kMigrationBackupV0Key)!)
-              as Map<String, dynamic>;
+      final b = jsonDecode(
+        onList.getString(kMigrationBackupV0Key)!,
+      ) as Map<String, dynamic>;
       expect(b[_profiles], {'t': 'double', 'v': 'NaN'});
 
       // 有限浮点原样保存。
       final finite = await _seed({_active: 1.5});
       await _run(finite);
-      final fb =
-          jsonDecode(finite.getString(kMigrationBackupV0Key)!)
-              as Map<String, dynamic>;
+      final fb = jsonDecode(
+        finite.getString(kMigrationBackupV0Key)!,
+      ) as Map<String, dynamic>;
       expect(fb[_active], 1.5);
     });
 

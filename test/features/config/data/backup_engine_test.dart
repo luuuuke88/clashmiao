@@ -139,9 +139,8 @@ void main() {
     test('附属偏好只有快照才带（includeAux），用户导出的备份没有', () async {
       h = await _seededHarness();
       expect((await h.engine.exportBundle()).auxPreferences, isEmpty);
-      final aux = (await h.engine.exportBundle(
-        includeAux: true,
-      )).auxPreferences;
+      final aux = (await h.engine.exportBundle(includeAux: true))
+          .auxPreferences;
       expect(aux.keys, {
         'proxy_selection_a',
         'proxy_delays_a',
@@ -443,12 +442,10 @@ void main() {
     /// - `q.json`：订阅 q 因元数据损坏被隔离（原始条目在隔离区键里），配置完好；
     /// - `orphan1.json`：旧版本删订阅时没删掉的孤儿。
     Future<void> seedStrays() async {
-      File(
-        h.store.configFilePath('q'),
-      ).writeAsStringSync(sampleConfig('q-old'));
-      File(
-        h.store.configFilePath('orphan1'),
-      ).writeAsStringSync(sampleConfig('orphan-old'));
+      File(h.store.configFilePath('q'))
+          .writeAsStringSync(sampleConfig('q-old'));
+      File(h.store.configFilePath('orphan1'))
+          .writeAsStringSync(sampleConfig('orphan-old'));
       await h.real.setString(
         ProfileStore.quarantineKey,
         jsonEncode([

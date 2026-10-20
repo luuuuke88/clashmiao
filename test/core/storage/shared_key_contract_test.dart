@@ -245,9 +245,9 @@ String _installedPluginListPrefixSource() =>
 /// 当前依赖解析到的 shared_preferences_android 的 Kotlin 插件源码里，第一行
 /// 包含 [needle] 的那一行。
 String _installedPluginLine(String needle) {
-  final config =
-      jsonDecode(File('.dart_tool/package_config.json').readAsStringSync())
-          as Map<String, dynamic>;
+  final config = jsonDecode(
+    File('.dart_tool/package_config.json').readAsStringSync(),
+  ) as Map<String, dynamic>;
   final pkg = (config['packages'] as List)
       .cast<Map<String, dynamic>>()
       .firstWhere((p) => p['name'] == 'shared_preferences_android');

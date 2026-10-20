@@ -100,6 +100,46 @@ void main() {
     expect(sent, contains('"region":"hk"'));
   });
 
+  test('父事务先结束、子 span 仍开着：脱敏之后再写进子 span 的凭据也不会进信封', () async {
+    final options = _production();
+    late ISentrySpan child;
+    var lateWrites = 0;
+    // 脱敏回调已经跑完、信封还没序列化：在这个空档往仍开着的子 span 里写凭据。
+    final transport = _CapturingTransport(
+      options,
+      beforeSerialize: () {
+        child
+          ..setData('token', 'LATE_DATA_SECRET')
+          ..setTag('password', 'LATE_TAG_SECRET');
+        lateWrites++;
+      },
+    );
+    options
+      ..tracesSampleRate = 1
+      ..transport = transport;
+    final hub = Hub(options);
+    addTearDown(hub.close);
+
+    final root = hub.startTransaction('import', 'ui.action', bindToScope: true);
+    child = root.startChild('http.client', description: 'GET /sub');
+    final done = root.startChild('db', description: 'select')
+      ..setTag('region', 'hk');
+    await done.finish();
+    // sentry 10 默认不等子 span：父事务先结束，事务照常发送。
+    await root.finish();
+    await pumpEventQueue();
+    addTearDown(child.finish);
+
+    expect(lateWrites, 1, reason: '前提：迟到的写入确实发生在序列化之前');
+    expect(child.finished, isFalse, reason: '前提：子 span 在发送时仍未结束');
+    final sent = transport.envelopes.single;
+    expect(sent, isNot(contains('LATE_DATA_SECRET')));
+    expect(sent, isNot(contains('LATE_TAG_SECRET')));
+    // 已结束的子 span 照常发送。
+    expect(sent, contains('"op":"db"'));
+    expect(sent, contains('"region":"hk"'));
+  });
+
   test('对照：改成 stream 时事务根本不经过 beforeSendTransaction', () async {
     // 锁住「为什么必须是 static」：sentry 10 的默认值 stream 下，事务 API 不再
     // 产生经 beforeSendTransaction 的事务。哪天 SDK 行为变了，这条会提醒重新评估。
@@ -117,13 +157,17 @@ class _DiscardingTransport implements Transport {
 
 /// 把信封按 SDK 的线上格式完整序列化下来（不联网），供断言「最终发出去的内容」。
 class _CapturingTransport implements Transport {
-  _CapturingTransport(this._options);
+  _CapturingTransport(this._options, {this.beforeSerialize});
 
   final SentryOptions _options;
+
+  /// 在序列化信封之前调用：模拟脱敏回调之后、真正编码之前的空档。
+  final void Function()? beforeSerialize;
   final envelopes = <String>[];
 
   @override
   Future<SentryId?> send(SentryEnvelope envelope) async {
+    beforeSerialize?.call();
     final bytes = <int>[];
     await for (final chunk in envelope.envelopeStream(_options)) {
       bytes.addAll(chunk);

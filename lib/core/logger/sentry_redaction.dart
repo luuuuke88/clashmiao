@@ -13,8 +13,8 @@
 //   的对象转成字符串后再过。
 // - 事件消息、异常 value、面包屑 message、transaction / culprit：过脱敏器。抛出
 //   的是 Map / List 时，异常 value 先按键名结构化脱敏再转文本。
-// - 性能事务的子 span：op / description 过脱敏器，data 结构化脱敏，tags 按键名
-//   遮盖；改写不了的清空或丢弃（见 [redactSentryTransaction]）。
+// - 性能事务的子 span：没结束的整个移除（脱敏后它仍可能被写入）；已结束的按
+//   白名单脱敏后换成与原对象脱钩的冻结快照（见 [redactSentryTransaction]）。
 // - **不动**堆栈帧：排障要靠它，帧里只有代码位置。
 //
 // 只在用户主动开启「数据分析」时才会初始化 Sentry（见 main.dart 的门控）；
@@ -23,6 +23,8 @@
 // `SentryEvent.extra` 已被 SDK 标为弃用，但仍会随事件发送（集成或旧代码可能
 // 写入），所以照样要脱敏。
 // ignore_for_file: deprecated_member_use
+
+import 'dart:convert';
 
 import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -92,76 +94,194 @@ SentryEvent redactSentryEvent(SentryEvent event) {
 }
 
 /// `beforeSendTransaction`：性能事务也是一个事件（tags / extra / contexts /
-/// request 同样会发送），按同一套规则处理；事务里的每个子 span 也会随事务一起
-/// 序列化发送，同样逐个脱敏（见 [_redactSpanInPlace]）。
+/// request 同样会发送），按同一套规则处理。事务里的子 span 也会随事务一起序列化
+/// 发送，处理分三步：
 ///
-/// 某个子 span 改写失败时先把它的可变字段整块清空；连清空都失败就把它从事务
-/// 里移除；还移除不掉，整个事务都不发（返回 null）——宁可少一条性能数据，也不
-/// 发出没过滤的内容。
+/// 1. **移除还没结束的子 span**。sentry 10 允许父事务先于子 span 结束，事务里
+///    保存的是子 span 本身；信封要到稍后才序列化，没结束的子 span 在这期间仍能
+///    被 `setData` / `setTag` 写入，脱敏之后再写进去的内容会原样发出。它们的
+///    时间本来就不完整，丢掉不损失什么。
+/// 2. 已结束的子 span 取一次 JSON，按白名单逐字段脱敏（见 [_redactSpanJson]）。
+/// 3. 用 [_RedactedSpanSnapshot] 换掉事务里的原对象：快照只会序列化这份脱敏后的
+///    JSON，与原 span 完全脱钩，之后谁再改原 span 都进不了信封。原 span 本身
+///    不改动。
+///
+/// 某个子 span 取不到 JSON 或脱敏失败时只丢掉它；事务的 span 列表改不了时整个
+/// 事务都不发（返回 null）——宁可少一条性能数据，也不发出没过滤的内容。
 SentryTransaction? redactSentryTransaction(SentryTransaction transaction) {
   redactSentryEvent(transaction);
-  final unsafe = <SentrySpan>[];
-  for (final span in transaction.spans) {
-    try {
-      _redactSpanInPlace(span);
-    } catch (_) {
-      if (!_wipeSpan(span)) unsafe.add(span);
+  final spans = transaction.spans;
+  try {
+    spans.removeWhere((span) => !span.finished);
+    for (var i = spans.length - 1; i >= 0; i--) {
+      final span = spans[i];
+      if (span is _RedactedSpanSnapshot) continue;
+      final snapshot = _RedactedSpanSnapshot.tryCapture(span);
+      if (snapshot == null) {
+        spans.removeAt(i);
+      } else {
+        spans[i] = snapshot;
+      }
     }
-  }
-  if (unsafe.isNotEmpty) {
-    try {
-      transaction.spans.removeWhere(unsafe.contains);
-    } catch (_) {
-      return null;
-    }
+  } catch (_) {
+    return null;
   }
   return transaction;
 }
 
-/// 子 span 会序列化出 op / description / data / tags（其余是 id、时间戳、状态、
-/// origin 这类 SDK 生成的值）。规则与事件相同：描述过脱敏器；data 按键名结构化
-/// 脱敏；tags 键名是秘密字段的整项遮盖，其余过脱敏器。
-///
-/// 事务回调拿到的子 span 都已结束，`setData` / `setTag` 在结束后是空操作，所以
-/// 直接改 `data` / `tags` 返回的底层 Map。
-void _redactSpanInPlace(SentrySpan span) {
-  final context = span.context;
-  context.operation = redactLogText(context.operation);
-  final description = context.description;
-  if (description != null) context.description = redactLogText(description);
-
-  final data = span.data;
-  if (data.isNotEmpty) {
-    final redacted = redactStructuredMap(Map.of(data));
-    data
-      ..clear()
-      ..addAll(redacted);
+/// 子 span 序列化后各键的处理：id、时间戳、状态、来源原样保留；op / description
+/// 过脱敏器；data 按键名结构化脱敏；tags 键名是秘密字段的整项遮盖、其余过
+/// 脱敏器。白名单以外的键（SDK 以后新增的字段）一律丢弃。
+Map<String, dynamic> _redactSpanJson(Map<String, dynamic> json) {
+  final out = <String, dynamic>{};
+  for (final entry in json.entries) {
+    final value = entry.value;
+    switch (entry.key) {
+      case 'span_id' ||
+          'trace_id' ||
+          'parent_span_id' ||
+          'start_timestamp' ||
+          'timestamp' ||
+          'status' ||
+          'origin':
+        out[entry.key] = value is String ? value : '$value';
+      case 'op' || 'description':
+        if (value != null) out[entry.key] = redactLogText('$value');
+      case 'data':
+        if (value is Map) {
+          out['data'] = redactStructuredMap(Map<String, dynamic>.from(value));
+        }
+      case 'tags':
+        if (value is Map) {
+          out['tags'] = <String, String>{
+            for (final tag in value.entries)
+              '${tag.key}': isSecretFieldName('${tag.key}')
+                  ? kRedacted
+                  : redactLogText('${tag.value}'),
+          };
+        }
+    }
   }
-
-  final tags = span.tags;
-  if (tags.isNotEmpty) {
-    final redacted = {
-      for (final entry in tags.entries)
-        entry.key: isSecretFieldName(entry.key)
-            ? kRedacted
-            : redactLogText(entry.value),
-    };
-    tags
-      ..clear()
-      ..addAll(redacted);
-  }
+  return out;
 }
 
-/// 改写失败时的退路：描述、data、tags 整块清掉。成功返回 true。
-bool _wipeSpan(SentrySpan span) {
-  try {
-    span.context.description = null;
-    span.data.clear();
-    span.tags.clear();
-    return true;
-  } catch (_) {
-    return false;
+/// 已结束、已脱敏的子 span 的冻结快照：序列化时只吐出构造时那份 JSON 的拷贝。
+///
+/// 发送管线拿到事务后只会读 span 个数和逐个 `toJson()`；其余成员照接口给出
+/// 合理的只读值，写操作一律忽略。
+class _RedactedSpanSnapshot implements SentrySpan {
+  _RedactedSpanSnapshot._(this._source, this._encoded);
+
+  /// 取 [span] 当下的 JSON 并脱敏、编码成字符串定格；任何一步失败返回 null。
+  static _RedactedSpanSnapshot? tryCapture(SentrySpan span) {
+    try {
+      return _RedactedSpanSnapshot._(
+        span,
+        jsonEncode(_redactSpanJson(span.toJson())),
+      );
+    } catch (_) {
+      return null;
+    }
   }
+
+  final SentrySpan _source;
+  final String _encoded;
+
+  Map<String, dynamic> get _json =>
+      jsonDecode(_encoded) as Map<String, dynamic>;
+
+  @override
+  Map<String, dynamic> toJson() => _json;
+
+  @override
+  Map<String, dynamic> get data => Map.unmodifiable(
+    (_json['data'] as Map<String, dynamic>?) ?? const <String, dynamic>{},
+  );
+
+  @override
+  Map<String, String> get tags => Map.unmodifiable(
+    ((_json['tags'] as Map<String, dynamic>?) ?? const <String, dynamic>{}).map(
+      (key, value) => MapEntry(key, '$value'),
+    ),
+  );
+
+  /// 新建的上下文对象，描述是脱敏后的；改它不影响快照。
+  @override
+  SentrySpanContext get context {
+    final json = _json;
+    final source = _source.context;
+    return SentrySpanContext(
+      traceId: source.traceId,
+      spanId: source.spanId,
+      parentSpanId: source.parentSpanId,
+      operation: json['op'] as String? ?? '',
+      description: json['description'] as String?,
+      origin: json['origin'] as String?,
+    );
+  }
+
+  @override
+  bool get finished => true;
+  @override
+  bool get isRootSpan => false;
+  @override
+  DateTime get startTimestamp => _source.startTimestamp;
+  @override
+  DateTime? get endTimestamp => _source.endTimestamp;
+  @override
+  SpanStatus? get status => _source.status;
+  @override
+  String? get origin => _json['origin'] as String?;
+  @override
+  dynamic get throwable => null;
+  @override
+  SentryTracesSamplingDecision? get samplingDecision =>
+      _source.samplingDecision;
+
+  @override
+  SentryTraceHeader toSentryTrace() => _source.toSentryTrace();
+  @override
+  SentryBaggageHeader? toBaggageHeader() => _source.toBaggageHeader();
+  @override
+  SentryTraceContextHeader? traceContext() => _source.traceContext();
+
+  /// 只剩 SDK 内部成员（`tracer`，类型不对外导出）：发送管线不会在子 span 上
+  /// 用到它，万一用到就明确报错，而不是悄悄返回原对象。
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnsupportedError('脱敏快照不支持 ${invocation.memberName}');
+
+  // ── 写操作：快照已定格，一律忽略 ──
+  @override
+  set status(SpanStatus? status) {}
+  @override
+  set origin(String? origin) {}
+  @override
+  set throwable(dynamic throwable) {}
+  @override
+  void setTag(String key, String value) {}
+  @override
+  void removeTag(String key) {}
+  @override
+  void setData(String key, dynamic value) {}
+  @override
+  void removeData(String key) {}
+  @override
+  void setMeasurement(String name, num value, {SentryMeasurementUnit? unit}) {}
+  @override
+  void scheduleFinish() {}
+  @override
+  Future<void> finish({
+    SpanStatus? status,
+    DateTime? endTimestamp,
+    Hint? hint,
+  }) async {}
+  @override
+  ISentrySpan startChild(
+    String operation, {
+    String? description,
+    DateTime? startTimestamp,
+  }) => NoOpSentrySpan();
 }
 
 /// `beforeBreadcrumb`：原地脱敏后返回同一条面包屑。

@@ -98,8 +98,13 @@ class _SettingsInputDialogState<T>
                   ],
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 200.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
+                .fadeIn(duration: Motion.medium, delay: 200.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 200.ms,
+                ),
             const SizedBox(height: 20),
             _SettingsTextField(
                   controller: _textController,
@@ -109,8 +114,13 @@ class _SettingsInputDialogState<T>
                   keyboardType: widget.keyboardType,
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 250.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
+                .fadeIn(duration: Motion.medium, delay: 250.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 250.ms,
+                ),
             const SizedBox(height: 24),
             Row(
                   children: [
@@ -155,8 +165,13 @@ class _SettingsInputDialogState<T>
                   ],
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 300.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
+                .fadeIn(duration: Motion.medium, delay: 300.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 300.ms,
+                ),
             if (widget.optionalAction != null) ...[
               const SizedBox(height: 8),
               SizedBox(
@@ -170,8 +185,13 @@ class _SettingsInputDialogState<T>
                     ),
                   )
                   .animateWithMotion(context)
-                  .fadeIn(duration: 300.ms, delay: 350.ms)
-                  .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 350.ms),
+                  .fadeIn(duration: Motion.medium, delay: 350.ms)
+                  .slideX(
+                    begin: 0.1,
+                    end: 0,
+                    duration: Motion.medium,
+                    delay: 350.ms,
+                  ),
             ],
             const SizedBox(height: 16),
           ],
@@ -304,8 +324,13 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                   ),
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 200.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
+                .fadeIn(duration: Motion.medium, delay: 200.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 200.ms,
+                ),
             if (label != null) ...[
               const SizedBox(height: 12),
               Text(
@@ -328,8 +353,13 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                   label: label,
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 250.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
+                .fadeIn(duration: Motion.medium, delay: 250.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 250.ms,
+                ),
             const SizedBox(height: 24),
             Row(
                   children: [
@@ -376,8 +406,13 @@ class _SettingsSliderDialogState extends ConsumerState<SettingsSliderDialog> {
                   ],
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 300.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
+                .fadeIn(duration: Motion.medium, delay: 300.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 300.ms,
+                ),
             const SizedBox(height: 16),
           ],
         ),

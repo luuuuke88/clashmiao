@@ -69,11 +69,14 @@ class SettingsSelectionModal<T> extends StatelessWidget {
                       },
                     )
                     .animateWithMotion(context)
-                    .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
+                    .fadeIn(
+                      duration: Motion.medium,
+                      delay: (200 + index * 50).ms,
+                    )
                     .slideX(
                       begin: 0.1,
                       end: 0,
-                      duration: 300.ms,
+                      duration: Motion.medium,
                       delay: (200 + index * 50).ms,
                     );
               },

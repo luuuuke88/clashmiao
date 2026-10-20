@@ -162,7 +162,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                     children: [
                       TipCard(message: t.settings.experimentalMsg)
                           .animateWithMotion(context)
-                          .fadeIn(duration: 400.ms)
+                          .fadeIn(duration: Motion.long)
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 16),
                       _ConfigGroup(

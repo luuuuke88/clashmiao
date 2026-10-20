@@ -1,17 +1,25 @@
 # iOS 真机冒烟：状态与操作手册（2026-10-20）
 
-## 现状：模拟器 / 单元层已绿，真机端到端**尚未跑通**
+## 现状：真机主链路已验证（iPhone 镜像手动操作，profile 包），部分项待补
 
-已验证（自动化）：
-- `swift test`（临时 SwiftPM 壳，86 个用例：核心状态机、配置拼装、外壳、扩展状态写入）全绿。
-- `xcodebuild test`（iPhone 17 模拟器，含仅 Xcode 可跑的 Pigeon 对齐用例）：TEST SUCCEEDED。
-- `flutter build ios --no-codesign --debug`、`flutter build ios --profile`（签名）通过；`flutter analyze --fatal-warnings`、`flutter test`（2585 通过）通过。
+测试设备：iPhone 16 Pro Max，profile 签名包，通过 macOS「iPhone 镜像」操作（Flutter 集成测试因无线调试的 VM Service 发现失败无法附着，改为手动走一遍）。订阅为 e2e-test（测试订阅，未回显链接）。
 
-未完成（需要人在场）：
-1. 真机 iPhone 16 Pro Max（UDID 00008140-000409580E98801C）当前**无线连接且屏幕锁定**：
-   - `flutter run --publish-port` 经无线调试时 Dart VM Service 发现失败（mDNS，75 s 后超时），集成测试无法附着；
-   - `devicectl process launch` 报 `Locked`（设备未解锁）。
-2. 首次运行会弹系统「添加 VPN 配置」授权，必须在手机上点「允许」，否则 `boxService.setup` 会一直等授权（上一次冒烟即卡在这里 30 s 超时；现已把该步骤超时放宽到 3 分钟）。
+| 项 | 结果 |
+|---|---|
+| 启动（含新原生层）无崩溃，读到已有订阅 | ✅ |
+| 连接（点击 → 正在连接 → 已连接，状态栏 VPN 标识） | ✅ 约 6 秒内完成，自动选择香港节点，延迟 71ms |
+| 出口 IP 变化 | ✅ 出现香港出口 IP |
+| 线路页延迟列表 | ✅ 全部节点带延迟，按延迟排序 |
+| 切换节点（日本01）并回首页 | ✅ 出口 IP 变为日本 IP，连接未中断（计时连续） |
+| 切后台 75 秒再回前台 | ✅ 仍为已连接，流量计数继续增长 |
+| 杀进程后冷启动 | ✅ 重新打开即为「已连接」，节点（日本01）与出口 IP 保持，无需重连（接管成功） |
+| 主动断开 | ✅ 「正在断开连接」→「点击连接」；扩展状态 `phase=stopped, stopReason=1`（用户停止），intent `desired=off` |
+| 扩展内存（来自 `extension-state.json`） | ✅ `footprintMax≈15.0 MB`，`availableMemoryMin≈35.0 MB`（可用余量最低值），无被系统杀死 |
+
+未完成 / 未验证：
+- **断开后再次连接**：断开后 iPhone 镜像会话中断（连接中断 → 已超时），之后的画面是过期帧，重连点击没有落到手机上，所以**不是失败而是未验证**。需要在手机上手点一次确认。
+- Wi-Fi ↔ 蜂窝切换、系统「设置 → VPN」开关：未做（需要人在手机上操作）。
+- 自动化集成测试（`integration_test/ios_lifecycle_smoke_test.dart`）：需数据线连接才能附着 VM Service。
 
 ## 需要的人工操作
 - 用数据线连接手机（避免无线 VM Service 发现问题）、解锁并保持亮屏；

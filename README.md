@@ -119,6 +119,40 @@ bin/fetch-libcore.sh ios      # 单独拉 iOS xcframework
 
 CI 同样走这个脚本。升级 sing-box 版本时另起一个 `libcore-v*` tag 上传新二进制。
 
+#### 从源码重编 Android 内核（16 KB 页对齐）
+
+Android 15 起出现 16 KB 内存页设备，Google Play 也要求所有原生库支持 16 KB 页。
+内核库 `libbox.so` 必须让所有 LOAD 段按 16 KB（`2**14`）对齐，否则在这类设备上加载失败。
+`tools/libcore/build-android.sh` 会从固定的内核上游提交重编 `libcore.aar`：
+
+```bash
+tools/libcore/build-android.sh                       # 产物：build/libcore/libcore.aar + .sha256
+REFERENCE_AAR=android/app/libs/libcore.aar \
+  tools/libcore/build-android.sh                     # 顺便与现有 aar 对比 Java 公共 API
+```
+
+固定内容（都写在脚本顶部）：
+
+| 项 | 值 |
+| --- | --- |
+| 内核源码 | 内核上游仓库提交 `5098951`（sing-box 1.8.9 分支，go.mod / go.sum 锁定全部依赖） |
+| Go | 1.22.0（脚本自行下载并校验 sha256，`GOTOOLCHAIN=local`） |
+| gomobile / gobind | v0.1.1（绑定运行时 v0.1.3 由 go.mod 决定） |
+| NDK | r28c `28.2.13676358`，另加 `-extldflags=-Wl,-z,max-page-size=16384` |
+| JDK | 17（保证 `classes.jar` 与发布版逐字节一致） |
+| build tags | `with_gvisor,with_quic,with_wireguard,with_ech,with_utls,with_clash_api,with_grpc` |
+| 目标 | `-androidapi=21`，四个 ABI：arm64-v8a / armeabi-v7a / x86 / x86_64 |
+
+脚本在临时目录里完成克隆和构建，结束后自动校验：每个 ABI 的所有 LOAD 段对齐 ≥ `2**14`，
+`go version -m` 里的 Go 版本、build tags 和锁定依赖版本，以及 `classes.jar` 的 sha256。
+依赖：Android SDK 中装好对应 NDK（`sdkmanager "ndk;28.2.13676358"`）、JDK 17、git、curl。
+
+产物替换到 `android/app/libs/libcore.aar` 即可本地使用。正式分发时，把它和其余平台未变的二进制一起上传到新的
+`libcore-v*` Release，再同步修改 `bin/fetch-libcore.sh`、`.github/workflows/ci.yml`、
+`.github/workflows/release.yml` 里的 `LIBCORE_TAG`。
+
+iOS / macOS 不受 Android 页大小影响；同一份源码也能编 xcframework（`gomobile bind -target ios`），本脚本不涉及。
+
 ### 跑起来
 
 ```bash

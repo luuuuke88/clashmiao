@@ -112,6 +112,8 @@ jobs:
           esac
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "推导版本: $NAME (build ${{ github.run_number }})"
+      # 托盘插件的原生资源钩子会在 host（Linux）上编译 C++，需要 GTK 3 / X11 / Xi 头文件。
+      - run: sudo apt-get update -y && sudo apt-get install -y libgtk-3-dev libx11-dev libxi-dev
       - run: flutter pub get
       - run: dart format --set-exit-if-changed lib/ test/ integration_test/
       - run: flutter analyze --fatal-warnings

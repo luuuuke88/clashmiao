@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
@@ -235,6 +236,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       barrierColor: Colors.transparent,
       useRootNavigator: true,
       isScrollControlled: true,
+      sheetAnimationStyle: Motion.sheetAnimation(context),
       builder: (context) => SettingsSelectionModal<AppLocale>(
         title: t.settings.general.locale,
         items: AppLocale.values,
@@ -261,6 +263,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       barrierColor: Colors.transparent,
       useRootNavigator: true,
       isScrollControlled: true,
+      sheetAnimationStyle: Motion.sheetAnimation(context),
       builder: (context) => SettingsSelectionModal<AppThemeMode>(
         title: t.settings.general.themeMode,
         items: AppThemeMode.values,

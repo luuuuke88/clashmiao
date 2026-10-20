@@ -307,6 +307,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
+      sheetAnimationStyle: Motion.sheetAnimation(context),
       builder: (context) => _ProfileActionsModal(
         profile: profile,
         onShare: () => _copyProfileLink(context, profile, t),

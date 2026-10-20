@@ -67,4 +67,19 @@ void main() {
       const Duration(microseconds: 1),
     );
   });
+
+  testWidgets('弹层转场：入场 medium + emphasized，退场 200 ms + exit', (tester) async {
+    final context = await _context(tester, disableAnimations: false);
+    final style = Motion.sheetAnimation(context);
+    expect(style.duration, Motion.medium);
+    expect(style.reverseDuration, Motion.sheetExit);
+    expect(Motion.sheetExit, lessThan(Motion.medium));
+    expect(style.curve, Motion.emphasized);
+    expect(style.reverseCurve, Motion.exit);
+  });
+
+  testWidgets('减少动画：弹层没有转场', (tester) async {
+    final context = await _context(tester, disableAnimations: true);
+    expect(Motion.sheetAnimation(context), AnimationStyle.noAnimation);
+  });
 }

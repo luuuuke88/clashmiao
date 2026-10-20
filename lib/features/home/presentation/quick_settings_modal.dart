@@ -43,15 +43,7 @@ class QuickSettingsModal extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       clipBehavior: Clip.antiAlias,
-      sheetAnimationStyle: MediaQuery.disableAnimationsOf(context)
-          ? AnimationStyle.noAnimation
-          : const AnimationStyle(
-              duration: Motion.medium,
-              // 退场比入场快一档（规格：250 / 200 ms），不属于 token 的三档。
-              reverseDuration: Duration(milliseconds: 200),
-              curve: Motion.emphasized,
-              reverseCurve: Motion.exit,
-            ),
+      sheetAnimationStyle: Motion.sheetAnimation(context),
       builder: (_) => const QuickSettingsModal(),
     );
   }

@@ -19,6 +19,9 @@ abstract final class Motion {
   /// 较大幅度的过渡。
   static const Duration long = Duration(milliseconds: 400);
 
+  /// 底部弹层的退场：比入场（[medium]）快一档，离开不拖泥带水。
+  static const Duration sheetExit = Duration(milliseconds: 200);
+
   /// 标准曲线（Material 3 standard）：状态在原地变化。
   static const Curve standard = Cubic(0.2, 0, 0, 1);
 
@@ -42,6 +45,20 @@ abstract final class Motion {
   /// 视觉上等同于立即完成。
   static Duration layoutDuration(BuildContext context, Duration token) =>
       reduced(context) ? const Duration(microseconds: 1) : token;
+
+  /// 全部底部弹层（`showModalBottomSheet` / `showAiUiModal`）的统一转场：入场
+  /// [medium] + [emphasized]、退场 [sheetExit] + [exit]；减少动画时无转场。
+  ///
+  /// 每个调用点都要传 `sheetAnimationStyle: Motion.sheetAnimation(context)`，不然
+  /// 框架默认的 250/200 ms + 另一套曲线会让同一个 App 里的弹层各飞各的。
+  static AnimationStyle sheetAnimation(BuildContext context) => reduced(context)
+      ? AnimationStyle.noAnimation
+      : const AnimationStyle(
+          duration: medium,
+          reverseDuration: sheetExit,
+          curve: emphasized,
+          reverseCurve: exit,
+        );
 
   /// 取延迟：减少动画时清除。
   static Duration delay(BuildContext context, Duration delay) =>

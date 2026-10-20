@@ -303,9 +303,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
     // 9/16，多加一个"分享二维码"入口后（激活的远程订阅：分享链接/分享
     // 二维码/编辑配置/更新订阅/删除共 5 行）在小屏视口下会顶到这条隐藏限高，
     // 产生 RenderFlex overflow。改成按内容实际高度撑开，不受这个固定比例
-    // 限制；backgroundColor/barrierColor 保持不变（barrierColor 走 Material
-    // 默认的 Colors.black54，别处测试断言过这个颜色，不能悄悄改成
-    // showAiUiModal 那种透明 barrier）。
+    // 限制；遮罩取主题里统一的弹层 token（ModalTokens.scrim），这里不写字面量。
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,

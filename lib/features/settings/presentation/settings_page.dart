@@ -233,7 +233,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     showModalBottomSheet<AppLocale>(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.transparent,
       useRootNavigator: true,
       isScrollControlled: true,
       sheetAnimationStyle: Motion.sheetAnimation(context),
@@ -260,7 +259,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     showModalBottomSheet<AppThemeMode>(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.transparent,
       useRootNavigator: true,
       isScrollControlled: true,
       sheetAnimationStyle: Motion.sheetAnimation(context),

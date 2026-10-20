@@ -21,21 +21,30 @@ bool isGroupProxyType(String type) {
       normalized == kUrlTestGroupType;
 }
 
-/// 分组里用户看得到、可以选的条目：去掉带隐藏标记的节点和订阅信息条目
-/// （规则见 subscription_info_node.dart，与运行时配置构建器同一口径）。顺序不变。
+/// 整份订阅（[groups] 是它的全部分组）里要按信息条目排除的 tag：对所有分组的
+/// 叶子节点**一次**算出，再套用到每个分组——与运行时配置构建器按整份配置判断
+/// 同一口径，离线与运行时结果一致；「排除后不剩真实节点就不排除」的保护也是
+/// 整份订阅级的。规则见 subscription_info_node.dart。
+Set<String> subscriptionInfoExclusions(Iterable<OutboundGroup> groups) =>
+    subscriptionInfoTagsToExclude({
+      for (final group in groups)
+        for (final item in group.items)
+          if (!isGroupProxyType(item.type)) item.tag,
+    });
+
+/// 分组里用户看得到、可以选的条目：去掉带隐藏标记的节点和 [exclusions]
+/// （[subscriptionInfoExclusions] 按整份订阅算出的信息条目）。顺序不变，嵌套
+/// 分组照常保留。
 ///
-/// 实时分组里信息条目已经被内核排除，这里主要管离线分组——它解析自订阅配置，
-/// 信息条目还在。嵌套分组照常保留，只按叶子节点判断信息条目。
-List<OutboundProxy> selectableGroupItems(List<OutboundProxy> items) {
-  final info = subscriptionInfoTagsToExclude([
-    for (final item in items)
-      if (!isGroupProxyType(item.type)) item.tag,
-  ]);
-  return [
-    for (final item in items)
-      if (!hasHideMarker(item.tag) && !info.contains(item.tag)) item,
-  ];
-}
+/// 实时分组里信息条目已经被内核排除；这里主要管离线分组——它解析自订阅配置，
+/// 信息条目还在。
+List<OutboundProxy> selectableGroupItems(
+  List<OutboundProxy> items,
+  Set<String> exclusions,
+) => [
+  for (final item in items)
+    if (!hasHideMarker(item.tag) && !exclusions.contains(item.tag)) item,
+];
 
 /// 过滤掉内部保留字分组。
 bool isUserVisibleGroup(OutboundGroup group) {

@@ -874,6 +874,7 @@ void _addProxiesPageExtraTests() {
               OutboundProxy(tag: 'auto', type: 'urltest'),
               OutboundProxy(tag: info, type: 'vless', delay: 80),
               OutboundProxy(tag: '香港 01', type: 'vless', delay: 120),
+              OutboundProxy(tag: '香港02 官网优化 IEPL', type: 'vless', delay: 130),
             ],
           ),
         ],
@@ -883,6 +884,11 @@ void _addProxiesPageExtraTests() {
       await tester.pump(const Duration(milliseconds: 200));
 
       expect(find.text('香港 01'), findsOneWidget);
+      expect(
+        find.text('香港02 官网优化 IEPL'),
+        findsOneWidget,
+        reason: '含关键词的真实线路照常展示',
+      );
       expect(find.textContaining('官网地址'), findsNothing);
       expect(find.textContaining('ncink.cc'), findsNothing);
 

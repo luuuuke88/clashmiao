@@ -860,6 +860,38 @@ void _addProxiesPageExtraTests() {
     await tester.pumpAndSettle();
   });
 
+  for (final connected in [true, false]) {
+    testWidgets('订阅信息条目不作为节点展示（${connected ? '实时' : '离线'}分组）', (tester) async {
+      const info = '🌐 官网地址：ncink.cc';
+      final (widget, container, _) = await _hostWithGroups(
+        connected: connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: 'auto',
+            items: [
+              OutboundProxy(tag: 'auto', type: 'urltest'),
+              OutboundProxy(tag: info, type: 'vless', delay: 80),
+              OutboundProxy(tag: '香港 01', type: 'vless', delay: 120),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(widget);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pump(const Duration(milliseconds: 200));
+
+      expect(find.text('香港 01'), findsOneWidget);
+      expect(find.textContaining('官网地址'), findsNothing);
+      expect(find.textContaining('ncink.cc'), findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      container.dispose();
+      await tester.pump(const Duration(seconds: 30));
+    });
+  }
+
   testWidgets('线路节点隐藏内部标记并保留原始 tag 选择', (tester) async {
     const taggedNode = '香港 01 §proxy§';
     final (widget, _, spy) = await _hostWithGroups(

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/profile/data/profile_parser.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/data/subscription_fetch.dart';
@@ -206,7 +207,7 @@ class ProfileRepository {
     String? preferredDefaultFor(List<String> tags) {
       if (tags.isEmpty) return null;
       return tags.firstWhere(
-        (tag) => !_isLikelyInformationalProxyTag(tag),
+        (tag) => !isSubscriptionInfoTag(tag),
         orElse: () => tags.first,
       );
     }
@@ -216,7 +217,7 @@ class ProfileRepository {
       final preferred = preferredDefaultFor(tags);
       return preferred != null &&
           preferred != current &&
-          _isLikelyInformationalProxyTag(current);
+          isSubscriptionInfoTag(current);
     }
 
     Map<dynamic, dynamic>? proxySelector;
@@ -456,23 +457,6 @@ class ProfileRepository {
   static String _truncate(String s, int n) {
     final stripped = s.trim().replaceAll(RegExp(r'\s+'), '');
     return stripped.length <= n ? stripped : '${stripped.substring(0, n)}...';
-  }
-
-  static bool _isLikelyInformationalProxyTag(String tag) {
-    final lower = tag.toLowerCase();
-    return lower.contains('官网') ||
-        lower.contains('官方') ||
-        lower.contains('网址') ||
-        lower.contains('订阅') ||
-        lower.contains('套餐') ||
-        lower.contains('流量') ||
-        lower.contains('剩余') ||
-        lower.contains('到期') ||
-        lower.contains('过期') ||
-        lower.contains('expire') ||
-        lower.contains('traffic') ||
-        lower.contains('website') ||
-        lower.contains('official');
   }
 
   /// 添加订阅（下载并解析）

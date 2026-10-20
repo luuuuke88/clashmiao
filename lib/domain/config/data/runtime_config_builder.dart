@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:flutter/foundation.dart';
 
 /// Connect 时组装 runtime sing-box config：只处理 inbounds/dns/mux 这些
@@ -57,6 +58,11 @@ class RuntimeConfigBuilder {
     //   （真机验收 BUG-B）。Android「仅线路」不起 tun（纯代理 Service 不是
     //   VpnService，留着它内核启动即失败）；桌面没开 TUN 时同理。
     _stripConflictingInbounds(cfg, stripTun: true);
+
+    // 订阅信息条目（「官网地址：…」「剩余流量：…」）不能进自动选择组。主选择
+    // 组 / 自动选择组的成员是内核配置构建器决定的，它只认 tag 里的隐藏标记，
+    // 所以在这里给信息条目打上标记。规则见 subscription_info_node.dart。
+    hideSubscriptionInfoOutbounds(cfg);
 
     final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
         ? advancedConfig!.remoteDnsOverride!
@@ -182,9 +188,6 @@ const String kRuntimeAutoGroupTag = 'auto';
 /// 节点 tag 带这个标记时，内核把主选择组的默认值设成它（而不是自动选择组）。
 const String _kDefaultMarker = '§default§';
 
-/// 节点 tag 带这个标记时，内核不把它放进主选择组 / 自动选择组。
-const String _kHideMarker = '§hide§';
-
 /// 不会成为主选择组成员的出站类型（内核构建主选择组时跳过）。
 const Set<String> _kNonMemberTypes = {
   'direct',
@@ -202,7 +205,8 @@ const Set<String> _kNonMemberTypes = {
 /// 规则（与内核选择组启动时的行为一致）：
 /// - 配置里每个 selector：写了 `default` 就用它；没写则是 `outbounds` 第一项；
 /// - 内核配置构建器会丢弃订阅自带的 selector / urltest，重建主选择组
-///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点，默认
+///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点（不含
+///   带隐藏标记的节点与订阅信息条目），默认
 ///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记字面值）；
 /// - 写明的默认值不是成员时，内核启动该组直接报错、不回退第一项：这种组的默认
 ///   值视为**未知**，不出现在结果里（调用方据此不做还原）。
@@ -227,10 +231,14 @@ Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
       final picked = _defaultOrFirst(o['default'], members);
       if (picked != null) result[tag] = picked;
     }
-    if (!_kNonMemberTypes.contains(type) && !tag.contains(_kHideMarker)) {
+    if (!_kNonMemberTypes.contains(type) && !hasHideMarker(tag)) {
       memberTags.add(tag);
     }
   }
+  // 与 [RuntimeConfigBuilder.build] 同一口径：信息条目会被打上隐藏标记，不是
+  // 主选择组成员。传进来的已经是构建后的配置时这里不会再排除任何东西。
+  final infoTags = subscriptionInfoTagsToExclude(memberTags);
+  memberTags.removeWhere(infoTags.contains);
   final mainMembers = [kRuntimeAutoGroupTag, ...memberTags];
   final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
       ? _kDefaultMarker
@@ -253,4 +261,69 @@ String? _defaultOrFirst(Object? preferred, List<String> members) {
     return members.contains(preferred) ? preferred : null;
   }
   return members.isEmpty ? null : members.first;
+}
+
+/// 给 [cfg] 里的订阅信息条目（[subscriptionInfoTagsToExclude]）的 tag 追加隐藏
+/// 标记 [kHideNodeMarker]，并把配置里引用旧 tag 的地方（出站的 `detour`、分组的
+/// `outbounds` / `default`、路由规则的 `outbound`、`route.final`、DNS 服务器的
+/// `detour`）一并改名，配置自洽。返回旧 tag → 新 tag。
+///
+/// 内核据此不把它们放进主选择组和自动选择组：不测速、不会被自动选中、线路
+/// 列表里也没有。出站本身保留，订阅里别的出站拿它当前置代理时照常可用。
+@visibleForTesting
+Map<String, String> hideSubscriptionInfoOutbounds(Map<String, dynamic> cfg) {
+  final outbounds = (cfg['outbounds'] as List?) ?? const [];
+  final allTags = <String>{};
+  final leafTags = <String>[];
+  for (final o in outbounds) {
+    if (o is! Map) continue;
+    final tag = o['tag'];
+    if (tag is! String) continue;
+    allTags.add(tag);
+    final type = o['type'];
+    if (type is String && !_kNonMemberTypes.contains(type)) leafTags.add(tag);
+  }
+  final renames = <String, String>{};
+  for (final tag in subscriptionInfoTagsToExclude(leafTags)) {
+    var renamed = '$tag $kHideNodeMarker';
+    while (allTags.contains(renamed)) {
+      renamed = '$renamed$kHideNodeMarker';
+    }
+    allTags.add(renamed);
+    renames[tag] = renamed;
+  }
+  if (renames.isEmpty) return renames;
+
+  Object? rename(Object? value) =>
+      value is String ? (renames[value] ?? value) : value;
+  void renameKey(Map<dynamic, dynamic> m, String key) {
+    if (m.containsKey(key)) m[key] = rename(m[key]);
+  }
+
+  for (final o in outbounds) {
+    if (o is! Map) continue;
+    renameKey(o, 'tag');
+    renameKey(o, 'detour');
+    renameKey(o, 'default');
+    final members = o['outbounds'];
+    if (members is List) {
+      for (var i = 0; i < members.length; i++) {
+        members[i] = rename(members[i]);
+      }
+    }
+  }
+  final route = cfg['route'];
+  if (route is Map) {
+    renameKey(route, 'final');
+    for (final r in (route['rules'] as List?) ?? const []) {
+      if (r is Map) renameKey(r, 'outbound');
+    }
+  }
+  final dns = cfg['dns'];
+  if (dns is Map) {
+    for (final s in (dns['servers'] as List?) ?? const []) {
+      if (s is Map) renameKey(s, 'detour');
+    }
+  }
+  return renames;
 }

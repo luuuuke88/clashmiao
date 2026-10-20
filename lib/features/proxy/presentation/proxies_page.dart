@@ -168,9 +168,9 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 后一个分组不会覆盖前一个分组里这个节点的状态。
     final Map<String, Map<String, NodeLatency>> latenciesByGroup = {};
     for (final group in displayGroups) {
-      final sortedItems = group.items
-          .where((item) => !NodeDisplay.isHidden(item.tag))
-          .toList();
+      // 带隐藏标记的节点与订阅信息条目（「官网地址：…」「剩余流量：…」）一律
+      // 不展示：离线分组解析自订阅配置，信息条目还在里面。
+      final sortedItems = selectableGroupItems(group.items);
       final latencies = latenciesByGroup[group.tag] = {
         for (final item in sortedItems) item.tag: latencyOf(group, item),
       };

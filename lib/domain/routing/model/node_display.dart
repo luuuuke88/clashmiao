@@ -1,3 +1,5 @@
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+
 /// 节点名里旗帜的来源。
 enum FlagSource {
   /// 名称开头自带旗帜（订阅给出的，优先于一切推断）。
@@ -76,8 +78,9 @@ class NodeDisplay {
     return parts.isEmpty ? null : parts.join(' ');
   }
 
-  /// 订阅用 `§hide§` 标记不想让用户看到的节点。
-  static bool isHidden(String tag) => tag.contains('§hide§');
+  /// 订阅用 `§hide§` 标记不想让用户看到的节点。分组条目的完整可见口径（还要
+  /// 排除订阅信息条目）见 `selectableGroupItems`。
+  static bool isHidden(String tag) => hasHideMarker(tag);
 
   @override
   bool operator ==(Object other) =>

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/latency/latency_rules.dart';
 import 'package:clashmiao/domain/routing/model/cached_delay.dart';
-import 'package:clashmiao/domain/routing/model/node_display.dart';
 import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -443,12 +442,13 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   }
 }
 
-/// 参与「是否测完」判断的节点：叶子节点，排除订阅标记隐藏的节点与嵌套分组
-/// （它们的延迟不是这一轮 `urlTest` 的结果）。
+/// 参与「是否测完」判断的节点：叶子节点，排除订阅标记隐藏的节点、订阅信息
+/// 条目与嵌套分组（它们的延迟不是这一轮 `urlTest` 的结果——内核不测不在组里
+/// 的条目）。
 Iterable<OutboundProxy> _testableItems(OutboundGroup group) =>
-    group.items.where(
-      (item) => !NodeDisplay.isHidden(item.tag) && !isGroupProxyType(item.type),
-    );
+    selectableGroupItems(
+      group.items,
+    ).where((item) => !isGroupProxyType(item.type));
 
 OutboundGroup? _find(List<OutboundGroup> groups, String tag) {
   for (final group in groups) {

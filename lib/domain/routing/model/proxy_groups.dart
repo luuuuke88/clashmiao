@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:collection/collection.dart';
 
 /// 代理页与自动测速共用的「分组」口径：哪些组用户看得到、哪个是主组、
@@ -18,6 +19,22 @@ bool isGroupProxyType(String type) {
   return normalized == 'selector' ||
       normalized == 'select' ||
       normalized == kUrlTestGroupType;
+}
+
+/// 分组里用户看得到、可以选的条目：去掉带隐藏标记的节点和订阅信息条目
+/// （规则见 subscription_info_node.dart，与运行时配置构建器同一口径）。顺序不变。
+///
+/// 实时分组里信息条目已经被内核排除，这里主要管离线分组——它解析自订阅配置，
+/// 信息条目还在。嵌套分组照常保留，只按叶子节点判断信息条目。
+List<OutboundProxy> selectableGroupItems(List<OutboundProxy> items) {
+  final info = subscriptionInfoTagsToExclude([
+    for (final item in items)
+      if (!isGroupProxyType(item.type)) item.tag,
+  ]);
+  return [
+    for (final item in items)
+      if (!hasHideMarker(item.tag) && !info.contains(item.tag)) item,
+  ];
 }
 
 /// 过滤掉内部保留字分组。

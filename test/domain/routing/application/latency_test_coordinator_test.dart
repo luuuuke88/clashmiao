@@ -625,6 +625,33 @@ void main() {
       ]);
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
     });
+    _fake('订阅信息条目不参与「是否全部有结果」（内核不测它）', (rig, async) {
+      rig.groups = [
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'a',
+          items: [
+            OutboundProxy(tag: 'a', type: 'vmess'),
+            OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vmess'),
+          ],
+        ),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'a',
+          items: [
+            OutboundProxy(tag: 'a', type: 'vmess', delay: 90),
+            OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vmess'),
+          ],
+        ),
+      ]);
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+    });
   });
 
   group('打开代理页时的触发', () {

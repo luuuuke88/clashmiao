@@ -1,3 +1,7 @@
+//go:build !race
+
+// 这组测试是纯结构校验（没有并发），-race 下慢 10 倍以上而没有收益，所以放在 !race 文件里由 gotest.sh 的第二遍运行。
+
 package gate
 
 import (

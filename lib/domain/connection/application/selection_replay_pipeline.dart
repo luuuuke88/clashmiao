@@ -75,20 +75,16 @@ enum _Stage { awaitGroups, migrate, replay, replayStale, acknowledge }
 
 class SelectionReplayPipeline {
   SelectionReplayPipeline({
-    required Ref ref,
-    required KernelPort port,
-    required bool Function(String epoch, int attempt) isCurrentInstance,
+    required this._ref,
+    required this._port,
+    required this._isCurrentInstance,
     bool Function()? ownerUnsettled,
     void Function()? beforeKernelWrite,
     Future<Map<String, String>> Function()? selectorDefaults,
-    Duration groupsWait = kReplayGroupsWait,
-  }) : _ref = ref,
-       _port = port,
-       _isCurrentInstance = isCurrentInstance,
-       _ownerUnsettled = ownerUnsettled ?? _never,
+    this._groupsWait = kReplayGroupsWait,
+  }) : _ownerUnsettled = ownerUnsettled ?? _never,
        _beforeKernelWrite = beforeKernelWrite ?? _noop,
-       _selectorDefaults = selectorDefaults ?? _noDefaults,
-       _groupsWait = groupsWait;
+       _selectorDefaults = selectorDefaults ?? _noDefaults;
 
   static bool _never() => false;
   static void _noop() {}

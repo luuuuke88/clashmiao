@@ -35,13 +35,11 @@ final proxyDelayCacheProvider =
 class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
   ProxyDelayCacheNotifier({
     required SharedPreferences prefs,
-    required ProfileStore? store,
+    required this._store,
     required String? profileId,
-    required String? profileInc,
+    required this._profileInc,
     DateTime Function()? now,
-  }) : _store = store,
-       _profileId = profileId,
-       _profileInc = profileInc,
+  }) : _profileId = profileId,
        _now = now ?? DateTime.now,
        super(_read(prefs, profileId));
 

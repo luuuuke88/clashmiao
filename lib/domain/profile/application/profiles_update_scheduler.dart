@@ -40,15 +40,12 @@ bool isProfileDue(ProfileEntity profile, DateTime now) {
 /// 杀死或完全没打开时也能触发。
 class ProfileUpdateScheduler with WidgetsBindingObserver {
   ProfileUpdateScheduler({
-    required Future<ProfileRepository> Function() repositoryProvider,
+    required this._repositoryProvider,
     this.checkInterval = const Duration(minutes: 20),
     DateTime Function()? now,
-    void Function(List<ProfileEntity> updated)? onChecked,
-    bool Function()? isPaused,
-  }) : _repositoryProvider = repositoryProvider,
-       _now = now ?? DateTime.now,
-       _onChecked = onChecked,
-       _isPaused = isPaused;
+    this._onChecked,
+    this._isPaused,
+  }) : _now = now ?? DateTime.now;
 
   final Future<ProfileRepository> Function() _repositoryProvider;
 

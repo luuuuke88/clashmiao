@@ -641,6 +641,7 @@ void main() {
     group('probeTunnel：真实 HTTP 层', () {
       late HttpServer server;
       late String base;
+      late Completer<void> hangArrived;
       HttpOverrides? savedOverrides;
 
       setUp(() async {
@@ -648,6 +649,7 @@ void main() {
         // 要的就是真实 HttpClient 打本机服务器。
         savedOverrides = HttpOverrides.current;
         HttpOverrides.global = null;
+        hangArrived = Completer<void>();
         server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
         base = 'http://127.0.0.1:${server.port}';
         server.listen((req) async {
@@ -676,8 +678,8 @@ void main() {
               }
               await res.close();
             case '/hang':
-              // 不回任何东西。
-              break;
+              // 不回任何东西；只告诉测试「请求确实到了」。
+              if (!hangArrived.isCompleted) hangArrived.complete();
           }
         });
       });
@@ -726,9 +728,10 @@ void main() {
 
       test('对端不回：取消后立即放弃', () async {
         final cancel = CancelToken();
-        final sw = Stopwatch()..start();
         final pending = probeTunnel(client(), cancel, url: '$base/hang');
-        await Future<void>.delayed(const Duration(milliseconds: 300));
+        // 等服务端真的收到请求再取消，证明取消的是在途请求。
+        await hangArrived.future;
+        final sw = Stopwatch()..start();
         cancel.cancel('deadline');
         expect(await pending, isFalse);
         expect(sw.elapsed, lessThan(const Duration(seconds: 2)));

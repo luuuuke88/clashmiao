@@ -1,3 +1,5 @@
+import 'package:clashmiao/core/theme/motion.dart';
+
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -106,6 +108,7 @@ class _State extends ConsumerState<PerAppProxyPage> {
     final localizations = MaterialLocalizations.of(context);
 
     final apps = _filteredApps(_apps ?? []);
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
 
     return Scaffold(
       appBar: _isSearching
@@ -270,17 +273,29 @@ class _State extends ConsumerState<PerAppProxyPage> {
                       future: _loadIcon(app.packageName),
                       builder: (context, snapshot) {
                         final bytes = snapshot.data;
-                        if (bytes != null) {
-                          return Image.memory(
-                            bytes,
-                            width: 48,
-                            height: 48,
-                            gaplessPlayback: true,
-                          );
-                        }
-                        // 加载中 / 加载失败 / 返回 null 统一降级为通用图标，
-                        // 不额外画转圈——图标区域小，转圈动画反而更显突兀。
-                        return const Icon(FluentIcons.apps_24_regular);
+                        // 图标是异步到的：通用图标淡出、真图标淡入，而不是滚到哪
+                        // 哪一行就「啪」地换一下。
+                        return AnimatedSwitcher(
+                          duration: Motion.duration(context, Motion.short),
+                          child: bytes != null
+                              ? Image.memory(
+                                  bytes,
+                                  key: ValueKey('app-icon-${app.packageName}'),
+                                  width: 48,
+                                  height: 48,
+                                  // 按显示尺寸解码：应用图标原图可以很大，整张
+                                  // 解码再缩小，滚动时每一行都要多吃一次解码与
+                                  // 纹理上传。
+                                  cacheWidth: (48 * devicePixelRatio).round(),
+                                  gaplessPlayback: true,
+                                )
+                              // 加载中 / 加载失败 / 返回 null 统一降级为通用图标，
+                              // 不额外画转圈——图标区域小，转圈动画反而更显突兀。
+                              : const Icon(
+                                  FluentIcons.apps_24_regular,
+                                  key: ValueKey('app-icon-generic'),
+                                ),
+                        );
                       },
                     ),
                   ),

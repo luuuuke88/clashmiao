@@ -264,12 +264,49 @@ void main() {
     await tester.pump();
     await tester.pump();
     await tester.pump();
+    // 通用图标淡出、真图标淡入（150 ms），走完才只剩真图标。
+    await tester.pump(const Duration(milliseconds: 200));
 
     final imageFinder = find.byWidgetPredicate((w) => w is Image);
     expect(imageFinder, findsOneWidget);
     final image = tester.widget<Image>(imageFinder);
-    expect(image.image, isA<MemoryImage>());
-    expect((image.image as MemoryImage).bytes, base64Decode(_minimalPngBase64));
+    // 按显示尺寸解码（ResizeImage 包着 MemoryImage），不整张解码再缩小。
+    expect(image.image, isA<ResizeImage>());
+    final provider = (image.image as ResizeImage).imageProvider;
+    expect(provider, isA<MemoryImage>());
+    expect((provider as MemoryImage).bytes, base64Decode(_minimalPngBase64));
+    expect(find.byIcon(FluentIcons.apps_24_regular), findsNothing);
+  });
+
+  testWidgets('图标到达时通用图标与真图标交叉淡入淡出，不是硬换', (tester) async {
+    final iconReady = Completer<String?>();
+    await tester.pumpWidget(
+      await iconHost(
+        apps: [
+          pigeon.InstalledApp(
+            packageName: 'com.example.app',
+            appName: 'Example App',
+            isSystemApp: false,
+          ),
+        ],
+        iconLoader: (_) => iconReady.future,
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.byIcon(FluentIcons.apps_24_regular), findsOneWidget);
+
+    iconReady.complete(_minimalPngBase64);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(
+      find.byIcon(FluentIcons.apps_24_regular),
+      findsOneWidget,
+      reason: '淡出中的通用图标还在',
+    );
+    expect(find.byWidgetPredicate((w) => w is Image), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 300));
     expect(find.byIcon(FluentIcons.apps_24_regular), findsNothing);
   });
 

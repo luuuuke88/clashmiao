@@ -23,6 +23,32 @@ const _runtime = [
 ];
 
 void main() {
+  group('selectableGroupItems（线路页 / 自动测速的条目口径）', () {
+    test('去掉隐藏标记节点与订阅信息条目，保留真实节点与嵌套分组，顺序不变', () {
+      final items = selectableGroupItems(const [
+        OutboundProxy(tag: 'auto', type: 'urltest'),
+        OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vless'),
+        OutboundProxy(tag: '🇭🇰 香港01-BGP|IEPL中继', type: 'vless'),
+        OutboundProxy(tag: '剩余流量：12 GB', type: 'vless'),
+        OutboundProxy(tag: 'x §hide§', type: 'vless'),
+        OutboundProxy(tag: '🇸🇬 狮城01', type: 'vless'),
+      ]);
+      expect(items.map((i) => i.tag), [
+        'auto',
+        '🇭🇰 香港01-BGP|IEPL中继',
+        '🇸🇬 狮城01',
+      ]);
+    });
+
+    test('叶子节点全是信息条目：不排除（与运行时配置构建器同一保护）', () {
+      final items = selectableGroupItems(const [
+        OutboundProxy(tag: 'auto', type: 'urltest'),
+        OutboundProxy(tag: '官网地址：a.cc', type: 'vless'),
+      ]);
+      expect(items.map((i) => i.tag), ['auto', '官网地址：a.cc']);
+    });
+  });
+
   group('applyStoredSelections（离线展示叠加手选）', () {
     test('有记录且节点在组内：以记录为选中项', () {
       final out = applyStoredSelections(_runtime, {'select': '狮城01'});

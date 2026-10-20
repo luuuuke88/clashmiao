@@ -2,9 +2,27 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/temp_dirs.dart';
+
+/// 按内核配置构建器（BuildConfig）的口径算主选择组 / 自动选择组的节点成员：
+/// 跳过 direct / block / dns / selector / urltest / custom 类型，跳过 tag 含
+/// 隐藏标记的出站。自动选择组的成员就是这份列表，主选择组是 auto 加这份列表。
+List<String> _kernelGroupMembers(Map<String, dynamic> cfg) => [
+  for (final o in cfg['outbounds'] as List)
+    if (!const {
+          'direct',
+          'block',
+          'dns',
+          'selector',
+          'urltest',
+          'custom',
+        }.contains((o as Map)['type']) &&
+        !(o['tag'] as String).contains('§hide§'))
+      o['tag'] as String,
+];
 
 Future<File> _writeProfile(Directory dir, Map<String, dynamic> cfg) async {
   final f = File('${dir.path}/profile.json');
@@ -223,6 +241,131 @@ void main() {
       expect(runtimeSelectorDefaults({'outbounds': <Object>[]}), {
         kRuntimeMainSelectorTag: kRuntimeAutoGroupTag,
       });
+    });
+  });
+  group('订阅信息条目：不进主选择组 / 自动选择组', () {
+    late Directory tmp;
+
+    setUp(() async {
+      tmp = await Directory.systemTemp.createTemp('rcb_info_test_');
+    });
+
+    tearDown(() async {
+      await deleteTempDirBestEffort(tmp);
+    });
+
+    const info = '🌐 官网地址：ncink.cc';
+    const hk = '🇭🇰 香港01-BGP|IEPL中继';
+    const sg = '🇸🇬 狮城01-BGP|IEPL中继';
+    const hiddenInfo = '$info $kHideNodeMarker';
+
+    Map<String, dynamic> subscription() => {
+      'dns': {
+        'servers': [
+          {'tag': 'remote', 'address': 'https://1.1.1.1/dns-query'},
+          {'tag': 'via-info', 'address': '8.8.8.8', 'detour': info},
+        ],
+      },
+      'outbounds': [
+        {
+          'type': 'selector',
+          'tag': '节点选择',
+          'outbounds': ['自动选择', info, hk, sg],
+          'default': info,
+        },
+        {
+          'type': 'urltest',
+          'tag': '自动选择',
+          'outbounds': [info, hk, sg],
+        },
+        {'type': 'vless', 'tag': info, 'server': 'a.example', 'port': 1},
+        {'type': 'vless', 'tag': hk, 'server': 'a.example', 'port': 1},
+        {'type': 'vless', 'tag': sg, 'server': 'b.example', 'port': 2},
+        {'type': 'vless', 'tag': 'chain', 'detour': info},
+        {'type': 'direct', 'tag': 'direct'},
+      ],
+      'route': {
+        'final': info,
+        'rules': [
+          {'domain': 'example.com', 'outbound': info},
+        ],
+      },
+    };
+
+    test('构建结果：信息条目打上隐藏标记，内核口径下不是任何分组的成员', () async {
+      final base = await _writeProfile(tmp, subscription());
+      final out = await RuntimeConfigBuilder().build(
+        baseProfile: base,
+        workingDir: tmp,
+      );
+      final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
+      final tags = [
+        for (final o in cfg['outbounds'] as List) (o as Map)['tag'],
+      ];
+      expect(tags, contains(hiddenInfo));
+      expect(tags, isNot(contains(info)));
+      expect(_kernelGroupMembers(cfg), [hk, sg, 'chain']);
+      expect(runtimeSelectorDefaults(cfg)[kRuntimeMainSelectorTag], 'auto');
+    });
+
+    test('引用旧 tag 的地方一并改名，配置自洽', () {
+      final cfg = subscription();
+      final renames = hideSubscriptionInfoOutbounds(cfg);
+      expect(renames, {info: hiddenInfo});
+
+      final byTag = {
+        for (final o in cfg['outbounds'] as List) (o as Map)['tag']: o,
+      };
+      expect(byTag['节点选择']!['outbounds'], ['自动选择', hiddenInfo, hk, sg]);
+      expect(byTag['节点选择']!['default'], hiddenInfo);
+      expect(byTag['自动选择']!['outbounds'], [hiddenInfo, hk, sg]);
+      expect(byTag['chain']!['detour'], hiddenInfo);
+      expect(byTag[hk]!['tag'], hk, reason: '真实节点不动');
+      final route = cfg['route'] as Map;
+      expect(route['final'], hiddenInfo);
+      expect(((route['rules'] as List)[0] as Map)['outbound'], hiddenInfo);
+      final servers = (cfg['dns'] as Map)['servers'] as List;
+      expect((servers[1] as Map)['detour'], hiddenInfo);
+      expect((servers[0] as Map).containsKey('detour'), isFalse);
+    });
+
+    test('改名后的 tag 已被占用：继续追加标记，不撞名', () {
+      final cfg = <String, dynamic>{
+        'outbounds': [
+          {'type': 'vless', 'tag': info},
+          {'type': 'vless', 'tag': hiddenInfo},
+          {'type': 'vless', 'tag': hk},
+        ],
+      };
+      final renames = hideSubscriptionInfoOutbounds(cfg);
+      expect(renames[info], '$hiddenInfo$kHideNodeMarker');
+      final tags = [
+        for (final o in cfg['outbounds'] as List) (o as Map)['tag'],
+      ];
+      expect(tags.toSet().length, tags.length);
+    });
+
+    test('全是信息条目：不改（宁可留着，也不能让主选择组只剩空的自动选择组）', () {
+      final cfg = <String, dynamic>{
+        'outbounds': [
+          {'type': 'vless', 'tag': info},
+          {'type': 'vless', 'tag': '剩余流量：1 GB'},
+          {'type': 'direct', 'tag': 'direct'},
+        ],
+      };
+      expect(hideSubscriptionInfoOutbounds(cfg), isEmpty);
+      expect(_kernelGroupMembers(cfg), [info, '剩余流量：1 GB']);
+    });
+
+    test('runtimeSelectorDefaults 与构建器同口径：未标记的配置里信息条目同样不算成员', () {
+      // 主选择组成员不含信息条目：它带默认标记也不会成为默认值。
+      final d = runtimeSelectorDefaults({
+        'outbounds': [
+          {'type': 'vless', 'tag': '官网地址：a.cc §default§'},
+          {'type': 'vless', 'tag': hk},
+        ],
+      });
+      expect(d[kRuntimeMainSelectorTag], 'auto');
     });
   });
 }

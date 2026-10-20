@@ -14,7 +14,10 @@ import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
+import 'package:clashmiao/core/theme/motion.dart';
+import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -39,8 +42,14 @@ const _profile = ProfileEntity(
 class _Box extends FakeBoxService {
   final List<String> urlTests = [];
 
+  /// 测速调用的内核结果；默认立即成功。测试可以换成会失败 / 不返回的。
+  Future<void> Function() onUrlTest = () async {};
+
   @override
-  Future<void> urlTest(String groupTag) async => urlTests.add(groupTag);
+  Future<void> urlTest(String groupTag) {
+    urlTests.add(groupTag);
+    return onUrlTest();
+  }
 
   @override
   Stream<List<String>> watchLogs(String p) => const Stream.empty();
@@ -72,18 +81,29 @@ OutboundGroup _group(Map<String, int> delays) => OutboundGroup(
 );
 
 class _Rig {
-  _Rig(this.widget, this.container, this.port, this.groups);
+  _Rig(this.widget, this.container, this.port, this.box, this.groups);
 
   final Widget widget;
   final ProviderContainer container;
   final _Port port;
+  final _Box box;
   final StreamController<List<OutboundGroup>> groups;
+
+  void setConnected(bool value) =>
+      container.read(_connected.notifier).state = value;
+
+  void switchProfile(ProfileEntity profile) =>
+      container.read(_activeProfile.notifier).state = profile;
 }
+
+final _connected = StateProvider<bool>((_) => true);
+final _activeProfile = StateProvider<ProfileEntity>((_) => _profile);
 
 Future<_Rig> _rig(Map<String, int> delays) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
   final port = _Port();
+  final box = _Box();
   // 由 [_teardown] 关闭。
   // ignore: close_sinks
   final groups = StreamController<List<OutboundGroup>>.broadcast();
@@ -91,16 +111,23 @@ Future<_Rig> _rig(Map<String, int> delays) async {
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      activeProfileProvider.overrideWith((_) async => _profile),
-      boxServiceProvider.overrideWithValue(_Box()),
+      activeProfileProvider.overrideWith(
+        (ref) async => ref.watch(_activeProfile),
+      ),
+      boxServiceProvider.overrideWithValue(box),
       kernelPortProvider.overrideWithValue(port),
       connectionControllerProvider.overrideWith(FakeConnectionController.new),
-      offlineProxyGroupsProvider.overrideWith((_) async => initial),
+      // 离线分组解析自订阅配置，不带延迟。
+      offlineProxyGroupsProvider.overrideWith(
+        (_) async => [
+          _group({for (final tag in delays.keys) tag: 0}),
+        ],
+      ),
       outboundGroupsProvider.overrideWith((ref) async* {
         yield initial;
         yield* groups.stream;
       }),
-      isConnectedProvider.overrideWith((_) => true),
+      isConnectedProvider.overrideWith((ref) => ref.watch(_connected)),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
@@ -122,6 +149,7 @@ Future<_Rig> _rig(Map<String, int> delays) async {
     ),
     container,
     port,
+    box,
     groups,
   );
 }
@@ -132,9 +160,12 @@ List<String> _order(WidgetTester tester, List<String> tags) {
   return [...tags]..sort((a, b) => ys[a]!.compareTo(ys[b]!));
 }
 
+/// 逐帧推进 600 ms：数据送达、重排、动画启动与走完各要占帧，只推一两帧时
+/// 动画可能刚启动就停在起点。
 Future<void> _settle(WidgetTester tester) async {
-  await tester.pump(const Duration(milliseconds: 200));
-  await tester.pump(const Duration(milliseconds: 400));
+  for (var i = 0; i < 10; i++) {
+    await tester.pump(const Duration(milliseconds: 60));
+  }
 }
 
 Future<void> _teardown(WidgetTester tester, _Rig rig) async {
@@ -144,6 +175,42 @@ Future<void> _teardown(WidgetTester tester, _Rig rig) async {
   await tester.pump(const Duration(seconds: 15));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
+}
+
+/// 节点行的位移盒在列表里的布局位置。同时确认它是列表（sliver）的直接子节点：
+/// 列表逐个询问直接子节点的命中测试，位移盒能按绘制位置回答，点击才落得到
+/// 看到的那一行上。
+double _layoutTop(WidgetTester tester, String tag) {
+  final box = tester.renderObject(find.byKey(ValueKey('node:$tag')).last);
+  final data = box.parentData;
+  expect(
+    data,
+    isA<SliverMultiBoxAdaptorParentData>(),
+    reason: '位移盒必须是列表的直接子节点',
+  );
+  return (data! as SliverMultiBoxAdaptorParentData).layoutOffset!;
+}
+
+bool _testing(_Rig rig) =>
+    rig.container.read(latencyTestCoordinatorProvider).isGroupTesting('select');
+
+/// 先跑完一轮测速（所有节点都出新结果）：之后 30 s 冷却期内预热不会再自动
+/// 开测，测试里的冻结只来自测试自己发起的那一轮。
+Future<void> _completeRound(
+  WidgetTester tester,
+  _Rig rig,
+  Map<String, int> delays,
+) async {
+  unawaited(
+    rig.container
+        .read(latencyTestCoordinatorProvider.notifier)
+        .manualTest('select'),
+  );
+  await tester.pump();
+  rig.groups.add([_group(delays)]);
+  await tester.pump();
+  await _settle(tester);
+  expect(_testing(rig), isFalse);
 }
 
 void main() {
@@ -303,5 +370,261 @@ void main() {
     final reduced = await run(reduceMotion: true);
     expect(reduced.after, greaterThan(reduced.before));
     expect(reduced.mid, reduced.after, reason: '减少动画：直接出现在新位置');
+  });
+  group('动画途中按看到的位置点击，选中的就是看到的那一行', () {
+    const five = {
+      'Alpha': 100,
+      'Bravo': 200,
+      'Charlie': 300,
+      'Delta': 400,
+      'Echo': 500,
+    };
+    // Alpha 变成最慢：从第 1 行挪到第 5 行（跨 4 行）。
+    const resorted = {
+      'Alpha': 900,
+      'Bravo': 200,
+      'Charlie': 300,
+      'Delta': 400,
+      'Echo': 500,
+    };
+
+    Future<void> tapAlpha(WidgetTester tester, String phase) async {
+      final rig = await _rig(five);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+      final startTop = _layoutTop(tester, 'Alpha');
+      final start = tester.getCenter(find.text('Alpha'));
+      final rowHeight = tester
+          .getSize(find.byKey(const ValueKey('node:Alpha')).last)
+          .height;
+
+      rig.groups.add([_group(resorted)]);
+      // 推进到重排那一帧：布局已经在新位置，画面还在原位置（动画 0%）。
+      for (var i = 0; i < 10 && _layoutTop(tester, 'Alpha') == startTop; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      final travel = _layoutTop(tester, 'Alpha') - startTop;
+      expect(travel, greaterThan(3 * rowHeight), reason: '跨了好几行');
+      final target = start.dy + travel;
+      double visual() => tester.getCenter(find.text('Alpha')).dy;
+
+      switch (phase) {
+        case 'start':
+          expect(visual(), start.dy, reason: '0%：还画在原位置');
+        case 'halfTravel':
+          for (var i = 0; i < 300 && visual() < start.dy + travel / 2; i++) {
+            await tester.pump(const Duration(milliseconds: 1));
+          }
+          expect(visual(), greaterThanOrEqualTo(start.dy + travel / 2));
+          expect(visual(), lessThan(target - rowHeight), reason: '还在半路');
+        case 'halfTime':
+          // 下一帧动画才启动，再走一半时长。
+          await tester.pump(const Duration(milliseconds: 1));
+          await tester.pump(Motion.medium ~/ 2);
+          expect(visual(), greaterThan(start.dy));
+          expect(visual(), lessThan(target), reason: '动画进行到一半');
+        case 'end':
+          await _settle(tester);
+          expect(visual(), target, reason: '100%：到了新位置');
+      }
+      if (phase == 'start' || phase == 'halfTravel') {
+        expect(
+          (visual() - target).abs(),
+          greaterThan(rowHeight / 2),
+          reason: '点的位置在 Alpha 的布局范围之外，只有按绘制位置命中才点得到',
+        );
+      }
+
+      await tester.tapAt(Offset(start.dx, visual()));
+      await tester.pump();
+      expect(rig.port.selected, ['Alpha'], reason: '$phase：点到的是看到的 Alpha');
+      await _teardown(tester, rig);
+    }
+
+    for (final phase in ['start', 'halfTravel', 'halfTime', 'end']) {
+      testWidgets(phase, (tester) => tapAlpha(tester, phase));
+    }
+  });
+
+  testWidgets('行内容在位移盒里面有自己的重绘边界：挪动只换图层偏移，不重绘行内容', (tester) async {
+    final rig = await _rig({'Alpha': 100, 'Bravo': 200});
+    await tester.pumpWidget(rig.widget);
+    await _settle(tester);
+    _layoutTop(tester, 'Alpha'); // 位移盒是列表的直接子节点
+    final slide =
+        tester.renderObject(find.byKey(const ValueKey('node:Alpha')).last)
+            as RenderProxyBox;
+    final semantics = slide.child! as RenderIndexedSemantics;
+    expect(semantics.child!.isRepaintBoundary, isTrue);
+    await _teardown(tester, rig);
+  });
+
+  group('冻结的各种退出路径：退出后补上推迟的重排，之后的重排照常生效', () {
+    const base = {'Alpha': 100, 'Bravo': 200, 'Charlie': 300};
+    // 测速途中回来的部分结果：Alpha 变慢、Bravo 变快，Charlie 还没出结果。
+    const partial = {'Alpha': 900, 'Bravo': 50, 'Charlie': 300};
+    const partialSorted = ['Bravo', 'Charlie', 'Alpha'];
+    // 之后又一次变化：Charlie 最快。
+    const later = {'Alpha': 900, 'Bravo': 50, 'Charlie': 10};
+    const laterSorted = ['Charlie', 'Bravo', 'Alpha'];
+
+    /// 发起一轮测速并推来部分结果：断言这时列表冻结着。
+    Future<({Future<void> round})> startFrozenRound(
+      WidgetTester tester,
+      _Rig rig,
+    ) async {
+      final round = rig.container
+          .read(latencyTestCoordinatorProvider.notifier)
+          .manualTest('select');
+      await tester.pump();
+      rig.groups.add([_group(partial)]);
+      await tester.pump();
+      await _settle(tester);
+      expect(_testing(rig), isTrue);
+      expect(_order(tester, tags), tags, reason: '测速进行中不重排');
+      return (round: round);
+    }
+
+    /// 已退出冻结：推迟的重排补上；再来一次结果变化，也照常重排。
+    Future<void> expectUnfrozen(
+      WidgetTester tester,
+      _Rig rig, {
+      required List<String> now,
+      required void Function() laterChange,
+      required List<String> afterLater,
+    }) async {
+      await _settle(tester);
+      expect(_testing(rig), isFalse);
+      expect(_order(tester, tags), now, reason: '退出冻结后补上推迟的重排');
+      laterChange();
+      await tester.pump();
+      await _settle(tester);
+      expect(_order(tester, tags), afterLater, reason: '之后的重排照常生效');
+    }
+
+    testWidgets('手势被取消（PointerCancel）', (tester) async {
+      final rig = await _rig(base);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+      await _completeRound(tester, rig, {
+        'Alpha': 101,
+        'Bravo': 201,
+        'Charlie': 301,
+      });
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Alpha')),
+      );
+      await tester.pump(const Duration(milliseconds: 50));
+      rig.groups.add([_group(partial)]);
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      expect(_order(tester, tags), tags, reason: '手指按着时不重排');
+
+      await gesture.cancel();
+      await expectUnfrozen(
+        tester,
+        rig,
+        now: partialSorted,
+        laterChange: () => rig.groups.add([_group(later)]),
+        afterLater: laterSorted,
+      );
+      expect(rig.port.selected, isEmpty, reason: '取消的手势不选任何节点');
+      await _teardown(tester, rig);
+    });
+
+    testWidgets('测速调用失败', (tester) async {
+      final rig = await _rig(base);
+      final kernel = Completer<void>();
+      rig.box.onUrlTest = () => kernel.future;
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+
+      final (:round) = await startFrozenRound(tester, rig);
+      Object? thrown;
+      unawaited(round.catchError((Object e) => thrown = e));
+      kernel.completeError(StateError('urlTest failed'));
+      await tester.pump();
+      expect(thrown, isA<StateError>());
+
+      await expectUnfrozen(
+        tester,
+        rig,
+        now: partialSorted,
+        laterChange: () => rig.groups.add([_group(later)]),
+        afterLater: laterSorted,
+      );
+      await _teardown(tester, rig);
+    });
+
+    testWidgets('本轮超时（10 s 还有节点没出结果）', (tester) async {
+      final rig = await _rig(base);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+
+      final (:round) = await startFrozenRound(tester, rig);
+      var done = false;
+      unawaited(round.then((_) => done = true));
+      await tester.pump(const Duration(seconds: 11));
+      expect(done, isTrue, reason: '超时收尾');
+
+      await expectUnfrozen(
+        tester,
+        rig,
+        now: partialSorted,
+        laterChange: () => rig.groups.add([_group(later)]),
+        afterLater: laterSorted,
+      );
+      await _teardown(tester, rig);
+    });
+
+    testWidgets('测速途中断开连接', (tester) async {
+      final rig = await _rig(base);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+
+      await startFrozenRound(tester, rig);
+      final cache = rig.container.read(proxyDelayCacheProvider.notifier);
+      // 实时结果照常进了延迟缓存；断开后线路页按缓存展示。
+      cache.recordMeasured(partial);
+      rig.setConnected(false);
+      await tester.pump();
+
+      await expectUnfrozen(
+        tester,
+        rig,
+        now: partialSorted,
+        laterChange: () => cache.recordMeasured(later),
+        afterLater: laterSorted,
+      );
+      await _teardown(tester, rig);
+    });
+
+    testWidgets('测速途中切换订阅', (tester) async {
+      final rig = await _rig(base);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+
+      await startFrozenRound(tester, rig);
+      rig.switchProfile(
+        const ProfileEntity(
+          id: 'profile-2',
+          name: '另一个订阅',
+          url: 'https://example.com/sub2',
+          active: true,
+        ),
+      );
+      await tester.pump();
+
+      await expectUnfrozen(
+        tester,
+        rig,
+        now: partialSorted,
+        laterChange: () => rig.groups.add([_group(later)]),
+        afterLater: laterSorted,
+      );
+      await _teardown(tester, rig);
+    });
   });
 }

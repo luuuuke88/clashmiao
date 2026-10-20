@@ -361,26 +361,35 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                             child: ListView.builder(
                               padding: const EdgeInsets.only(bottom: 120),
                               itemCount: otherProxies.length + autoCardCount,
-                              // 位移动画在行自己的 paint 里按它在列表中的位置算
-                              // 位移；有重绘边界时行只是挪动、不会重绘，动画就
-                              // 起不来。
+                              // 重绘边界与语义序号由行自己加在位移盒里面（见
+                              // [_ReorderSlide]）：位移盒必须是列表的直接子节点
+                              // ——列表把点交给它、由它按绘制位置判断命中；它
+                              // 在 paint 里发现位置变化，挪动时自己得重绘。
                               addRepaintBoundaries: false,
+                              addSemanticIndexes: false,
                               findChildIndexCallback: (key) =>
                                   key is ValueKey<String>
                                   ? indexByKey[key.value]
                                   : null,
                               itemBuilder: (ctx, index) {
                                 if (autoProxy != null && index == 0) {
-                                  return _AutoSelectCard(
+                                  // 固定在第 0 行，不做位移动画。
+                                  return IndexedSemantics(
                                     key: const ValueKey(_kAutoCardKey),
-                                    isSelected: group.selected == autoProxy.tag,
-                                    onTap: () => _selectProxy(
-                                      context,
-                                      ref,
-                                      group.tag,
-                                      autoProxy.tag,
-                                      isConnected,
-                                      canOperateKernel,
+                                    index: index,
+                                    child: RepaintBoundary(
+                                      child: _AutoSelectCard(
+                                        isSelected:
+                                            group.selected == autoProxy.tag,
+                                        onTap: () => _selectProxy(
+                                          context,
+                                          ref,
+                                          group.tag,
+                                          autoProxy.tag,
+                                          isConnected,
+                                          canOperateKernel,
+                                        ),
+                                      ),
                                     ),
                                   );
                                 }
@@ -389,6 +398,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                                 final isSelected = group.selected == proxy.tag;
                                 return _ReorderSlide(
                                   key: ValueKey(_nodeRowKey(proxy.tag)),
+                                  semanticIndex: index,
                                   child: _ProxyTile(
                                     proxy: proxy,
                                     isSelected: isSelected,
@@ -617,11 +627,23 @@ String _nodeRowKey(String tag) => 'node:$tag';
 /// 位置与上一帧的位置，变了就先画在原位置，再用动画把位移收回到零。
 ///
 /// 行必须带稳定的 key、列表要提供 `findChildIndexCallback`，重排后 element 才是
-/// 「同一行」；列表要关掉 `addRepaintBoundaries`，行挪动时才会重绘。系统开了
-/// 「减少动画」时不做位移，直接出现在新位置。
+/// 「同一行」。位移盒必须是列表（sliver）的直接子节点：列表关掉自带的重绘边界
+/// 与语义序号（它们会包在位移盒外面），由这里加在位移盒**里面**——
+/// - 列表逐个把点交给直接子节点，位移盒按**绘制位置**判断命中，动画途中看到
+///   哪一行、点到的就是哪一行；包在外面的节点会先按布局位置把点拒掉。
+/// - 行内容在自己的重绘边界里：位移只让这个很薄的盒子重绘、换图层偏移，
+///   行内容不重新绘制；测速结果更新也只重绘那一行。
+///
+/// 系统开了「减少动画」时不做位移，直接出现在新位置。
 class _ReorderSlide extends StatefulWidget {
-  const _ReorderSlide({super.key, required this.child});
+  const _ReorderSlide({
+    super.key,
+    required this.semanticIndex,
+    required this.child,
+  });
 
+  /// 这一行在列表里的序号（读屏的「第几项」），等同列表自带的语义序号。
+  final int semanticIndex;
   final Widget child;
 
   @override
@@ -645,7 +667,10 @@ class _ReorderSlideState extends State<_ReorderSlide>
   Widget build(BuildContext context) => _SlideBox(
     controller: _controller,
     enabled: !Motion.reduced(context),
-    child: widget.child,
+    child: IndexedSemantics(
+      index: widget.semanticIndex,
+      child: RepaintBoundary(child: widget.child),
+    ),
   );
 }
 
@@ -738,6 +763,20 @@ class _RenderSlideBox extends RenderProxyBox {
     transform.translateByDouble(0, _paintDy, 0, 1);
   }
 
+  /// 按**绘制位置**判断点没点中这一行。默认实现按布局位置先做边界检查：行
+  /// 画在原位置、布局已在新位置时，点在看到的那一行上会被它拒掉（被吞掉），
+  /// 点在布局位置上又落到一处空白。列表不做边界检查、逐个询问直接子节点
+  /// （从后往前，与绘制的上下层一致），所以这里按绘制位置回答就够了。
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (!size.contains(position - Offset(0, _paintDy))) return false;
+    if (hitTestChildren(result, position: position) || hitTestSelf(position)) {
+      result.add(BoxHitTestEntry(this, position));
+      return true;
+    }
+    return false;
+  }
+
   @override
   bool hitTestChildren(BoxHitTestResult result, {required Offset position}) {
     final child = this.child;
@@ -775,11 +814,7 @@ class _RenderSlideBox extends RenderProxyBox {
 }
 
 class _AutoSelectCard extends HookConsumerWidget {
-  const _AutoSelectCard({
-    super.key,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _AutoSelectCard({required this.isSelected, required this.onTap});
 
   final bool isSelected;
   final VoidCallback onTap;

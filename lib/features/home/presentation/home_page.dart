@@ -900,7 +900,7 @@ class _ConnectionInfo extends ConsumerWidget {
     return SizedBox(
       height: height,
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
+        duration: Motion.duration(context, Motion.short),
         child: KeyedSubtree(
           // 只按「是否已连接」换 key：connecting ↔ disconnecting 之类的过渡之间
           // 都是留白，不需要淡入淡出。

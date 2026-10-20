@@ -116,13 +116,13 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                             )
                             .animateWithMotion(context)
                             .fadeIn(
-                              duration: 300.ms,
+                              duration: Motion.medium,
                               delay: (200 + index * 50).ms,
                             )
                             .slideX(
                               begin: 0.1,
                               end: 0,
-                              duration: 300.ms,
+                              duration: Motion.medium,
                               delay: (200 + index * 50).ms,
                             );
                       },
@@ -254,11 +254,14 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                           ),
                         )
                         .animateWithMotion(context)
-                        .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
+                        .fadeIn(
+                          duration: Motion.medium,
+                          delay: (200 + index * 50).ms,
+                        )
                         .slideX(
                           begin: 0.1,
                           end: 0,
-                          duration: 300.ms,
+                          duration: Motion.medium,
                           delay: (200 + index * 50).ms,
                         );
                   },
@@ -585,11 +588,14 @@ class _ProfilesSortModal extends ConsumerWidget {
                         : null,
                   )
                   .animateWithMotion(context)
-                  .fadeIn(duration: 300.ms, delay: (200 + sort.index * 50).ms)
+                  .fadeIn(
+                    duration: Motion.medium,
+                    delay: (200 + sort.index * 50).ms,
+                  )
                   .slideX(
                     begin: 0.1,
                     end: 0,
-                    duration: 300.ms,
+                    duration: Motion.medium,
                     delay: (200 + sort.index * 50).ms,
                   );
             }),
@@ -647,8 +653,13 @@ class _ProfileActionsModal extends ConsumerWidget {
                   },
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 200.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
+                .fadeIn(duration: Motion.medium, delay: 200.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 200.ms,
+                ),
             // 只有远程订阅才有真正可分享的 URL 可编码——本地导入的
             // `content://` 伪 URL 不是一个能被扫码/粘贴复用的链接，同
             // "更新订阅" 入口一样按 canUpdate 收起。
@@ -668,8 +679,13 @@ class _ProfileActionsModal extends ConsumerWidget {
                     },
                   )
                   .animateWithMotion(context)
-                  .fadeIn(duration: 300.ms, delay: 225.ms)
-                  .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 225.ms),
+                  .fadeIn(duration: Motion.medium, delay: 225.ms)
+                  .slideX(
+                    begin: 0.1,
+                    end: 0,
+                    duration: Motion.medium,
+                    delay: 225.ms,
+                  ),
             ListTile(
                   leading: Icon(
                     FluentIcons.edit_24_regular,
@@ -685,8 +701,13 @@ class _ProfileActionsModal extends ConsumerWidget {
                   },
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 250.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
+                .fadeIn(duration: Motion.medium, delay: 250.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 250.ms,
+                ),
             if (canUpdate)
               ListTile(
                     leading: Icon(
@@ -703,8 +724,13 @@ class _ProfileActionsModal extends ConsumerWidget {
                     },
                   )
                   .animateWithMotion(context)
-                  .fadeIn(duration: 300.ms, delay: 300.ms)
-                  .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
+                  .fadeIn(duration: Motion.medium, delay: 300.ms)
+                  .slideX(
+                    begin: 0.1,
+                    end: 0,
+                    duration: Motion.medium,
+                    delay: 300.ms,
+                  ),
             Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Divider(
@@ -714,7 +740,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                   ),
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 350.ms),
+                .fadeIn(duration: Motion.medium, delay: 350.ms),
             ListTile(
                   leading: const Icon(
                     FluentIcons.delete_24_regular,
@@ -733,8 +759,13 @@ class _ProfileActionsModal extends ConsumerWidget {
                   },
                 )
                 .animateWithMotion(context)
-                .fadeIn(duration: 300.ms, delay: 400.ms)
-                .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 400.ms),
+                .fadeIn(duration: Motion.medium, delay: 400.ms)
+                .slideX(
+                  begin: 0.1,
+                  end: 0,
+                  duration: Motion.medium,
+                  delay: 400.ms,
+                ),
             const SizedBox(height: 24),
           ],
         ),

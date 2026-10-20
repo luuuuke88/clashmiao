@@ -120,11 +120,11 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                         ),
                       )
                       .animateWithMotion(context)
-                      .fadeIn(duration: 300.ms, delay: 200.ms)
+                      .fadeIn(duration: Motion.medium, delay: 200.ms)
                       .slideX(
                         begin: 0.1,
                         end: 0,
-                        duration: 300.ms,
+                        duration: Motion.medium,
                         delay: 200.ms,
                       ),
                   AnimatedCrossFade(
@@ -224,11 +224,11 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                 ),
                               )
                               .animateWithMotion(context)
-                              .fadeIn(duration: 300.ms, delay: 250.ms)
+                              .fadeIn(duration: Motion.medium, delay: 250.ms)
                               .slideX(
                                 begin: 0.1,
                                 end: 0,
-                                duration: 300.ms,
+                                duration: Motion.medium,
                                 delay: 250.ms,
                               ),
                           const SizedBox(height: 16),
@@ -266,11 +266,11 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                 ),
                               )
                               .animateWithMotion(context)
-                              .fadeIn(duration: 300.ms, delay: 300.ms)
+                              .fadeIn(duration: Motion.medium, delay: 300.ms)
                               .slideX(
                                 begin: 0.1,
                                 end: 0,
-                                duration: 300.ms,
+                                duration: Motion.medium,
                                 delay: 300.ms,
                               ),
                         ],
@@ -425,8 +425,13 @@ Future<void> showProfileManualFormDialog(
                     ),
                   )
                   .animateWithMotion(ctx)
-                  .fadeIn(duration: 300.ms, delay: 150.ms)
-                  .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 150.ms),
+                  .fadeIn(duration: Motion.medium, delay: 150.ms)
+                  .slideX(
+                    begin: 0.1,
+                    end: 0,
+                    duration: Motion.medium,
+                    delay: 150.ms,
+                  ),
               _SectionHeader(title: t.profile.details.basicInfo),
               const SizedBox(height: 12),
               _ProfileGlassContainer(

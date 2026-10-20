@@ -734,6 +734,58 @@ void main() {
     expect(find.text('A'), findsOneWidget);
   });
 
+  for (final reduced in [false, true]) {
+    testWidgets('节点胶囊出现：${reduced ? '减少动画 → 第一帧就是终态' : '正常 → 第一帧还是透明，然后淡入'}', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          FakeAccessibilityFeatures(disableAnimations: reduced);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+
+      const groups = [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'A',
+          items: [OutboundProxy(tag: 'A', type: 'shadowsocks', delay: 10)],
+        ),
+      ];
+      final phase = ValueNotifier(ConnectionPhase.disconnected);
+      addTearDown(phase.dispose);
+      await tester.pumpWidget(
+        await _hostConnectionInfo(
+          phase: ConnectionPhase.disconnected,
+          groups: groups,
+          phaseListenable: phase,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 250));
+
+      phase.value = ConnectionPhase.connected;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+      final opacity = tester
+          .widget<FadeTransition>(
+            find
+                .ancestor(
+                  of: find.text('A'),
+                  matching: find.byType(FadeTransition),
+                )
+                .first,
+          )
+          .opacity
+          .value;
+      if (reduced) {
+        expect(opacity, 1.0);
+      } else {
+        expect(opacity, lessThan(1.0));
+      }
+      await _drainLatency(tester);
+    });
+  }
+
   group('出口 IP 卡：五种内容（UI 设计 §1）', () {
     testWidgets('未连接：「连接后显示出口 IP」，整卡不可点、没有刷新图标，点了也不查询', (tester) async {
       var requests = 0;

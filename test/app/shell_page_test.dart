@@ -17,6 +17,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -44,6 +45,7 @@ Future<(Widget, ProviderContainer)> _host({
   // 失败，要换控制器替身就替换掉默认的那一个，而不是再追加一条。
   Override? connectionControllerOverride,
   Brightness brightness = Brightness.light,
+  bool disableAnimations = true,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
@@ -98,7 +100,8 @@ Future<(Widget, ProviderContainer)> _host({
           // 关心的是深链 / alert 的行为，不是动画本身（动画的开关行为由
           // sleeping_brand_hero_test.dart 覆盖）。
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(disableAnimations: true),
+            data: MediaQuery.of(context)
+                .copyWith(disableAnimations: disableAnimations),
             child: child!,
           ),
           home: const ShellPage(),
@@ -646,6 +649,53 @@ void main() {
       expect(find.text('连接失败'), findsNothing);
       expect(find.text('服务启动错误'), findsNothing);
     });
+  });
+
+  testWidgets('切 tab：导航图标由轮廓淡入成实心，而不是一帧换掉', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    // 正常动画：首页那只猫的呼吸是循环动画，pumpAndSettle 会一直等不到空闲，
+    // 这里一律手动推进时间。
+    final (widget, container) = await _host(disableAnimations: false);
+    addTearDown(container.dispose);
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(seconds: 2));
+
+    final globeOutline = find.byIcon(FluentIcons.globe_24_regular);
+    final globeFilled = find.byIcon(FluentIcons.globe_24_filled);
+    expect(globeOutline, findsOneWidget);
+    expect(globeFilled, findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(globeOutline, findsOneWidget, reason: '淡出中的轮廓图标还在');
+    expect(globeFilled, findsOneWidget, reason: '淡入中的实心图标已出现');
+
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(globeOutline, findsNothing);
+    expect(globeFilled, findsOneWidget);
+  });
+
+  testWidgets('减少动画：导航图标瞬时切换', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(find.byIcon(FluentIcons.globe_24_regular), findsNothing);
+    expect(find.byIcon(FluentIcons.globe_24_filled), findsOneWidget);
   });
 
   testWidgets('IndexedStack 里只有当前 tab 的 Ticker 开着（TickerMode）', (tester) async {

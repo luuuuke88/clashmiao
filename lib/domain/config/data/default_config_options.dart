@@ -5,27 +5,25 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 
-/// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
+/// 内核配置构建器（`BuildConfig`）的全局选项（`configOptions`）。
 ///
 /// 智能 / 全局分流由 [isSmart] 驱动的 `rules` 字段决定——**不是**
-/// `RuntimeConfigBuilder` 写进 runtime-config.json 的 profile `route` 块。
-/// 这是踩过坑才确认的：这个 sing-box fork 的 `config.BuildConfig()`
-/// （libcore/config/config.go:383）无条件丢弃/重建 profile 自带的整个 `route`
-/// 块，不管 `enable-full-config`/`execute-config-as-is` 传的是什么——真机验证过，
-/// runtime-config.json 里精心注入的 cn 分流规则从未真正生效，智能/全局分流
-/// 实际行为完全一样。这个 fork 真正认的自定义路由口子是这里的 `rules`
-/// 字段（对应 libcore/config/rules.go 的 `Rule.MakeRule()`），所以中国 IP/域名
-/// 直连的数据必须通过这里注入。
+/// `RuntimeConfigBuilder` 写进 runtime-config.json 的 profile `route` 块：
+/// 构建器对订阅自带的 `dns` / `route` / `inbounds` 一律丢弃重建，DNS 与路由
+/// 只由这里的选项推出。所以中国 IP / 域名直连的数据必须通过 `rules` 注入。
 ///
-/// [executeConfigAsIs] 只用于 Dart 端记录用户选择，不再走 fork 的 `region` 路径
-/// （避免 fork 强制 append 中国大陆下载不动的 remote rule-set）。
+/// [executeConfigAsIs] 只用于 Dart 端记录用户选择，内核不读它。
 ///
 /// [settings] 让用户从 SettingsPage 调的 port / TUN / system-proxy / LAN
 /// 等开关真正生效。`null` 时回退到平台默认值（旧行为）。
 ///
-/// [advancedConfig] 当前激活订阅的 per-profile 高级配置。Fragment 在 TLS
-/// 拨号层全局生效，由内核按 `tls-tricks` 应用；Mux 不走这里（multiplex 由
+/// [advancedConfig] 当前激活订阅的 per-profile 高级配置：`remoteDnsOverride`
+/// 非空时覆盖全局的远程 DNS 地址；TLS 分片在拨号层全局生效，由构建器按
+/// `tls-tricks.enable-fragment` 兑现；Mux 不走这里（multiplex 由
 /// RuntimeConfigBuilder 注入各 outbound，避免内核与 runtime config 双写）。
+///
+/// 键集合是跨语言契约：Dart 产生的每个键 Go 侧都必须认识（`keys.txt`、
+/// `dart_fixture_test.go` 把关）。新增键要同时改 Go 的选项模型。
 Map<String, dynamic> getDefaultConfigOptions({
   bool executeConfigAsIs = false,
   bool isSmart = false,
@@ -34,7 +32,7 @@ Map<String, dynamic> getDefaultConfigOptions({
 }) {
   // 移动端走 VpnService 接管流量 → TUN 必开、系统代理设置不可用（需 root）。
   // 桌面端反过来：系统代理设置 OK，TUN 默认关（需要 admin/root 才能 setup）。
-  final isMobile = Platform.isAndroid || Platform.isIOS;
+  final isMobile = serviceModePlatform != ServiceModePlatform.desktop;
   final s = settings ?? const NetworkSettings();
   // Android 上 enable-tun 就是服务模式（VPN / 仅线路）：原生协调器按它选择
   // Service 类，形态随请求走、进 revision——连接中切模式才会真的换类。iOS 恒为
@@ -45,29 +43,30 @@ Map<String, dynamic> getDefaultConfigOptions({
   // 因为 GHA Linux runner 没 GNOME session，sing-box 调 gsettings 会
   // 死在 "set system proxy: gsettings ... exit status 1"。smoke 用
   // curl --proxy 127.0.0.1:2080 直接走 mixed inbound 不需要 system proxy。
+  final override = advancedConfig?.remoteDnsOverride;
+  final remoteDnsAddress = (override != null && override.isNotEmpty)
+      ? override
+      : s.remoteDnsAddress;
   final isSmoke =
       (Platform.environment['CLASHMIAO_TEST_SUB_URL'] ?? '').isNotEmpty;
   final setSystemProxyFinal = (isMobile || isSmoke) ? false : s.setSystemProxy;
 
   return {
-    // region 永远 'other'：sing-box 1.8 fork（上游 libcore fork）在 region != 'other'
-    // 时会强制 append 一个 remote rule-set，URL 指向 上游 geo CDN，中国大陆 GFW 阻断
-    // 让 sing-box 启动时 routing 不完整。我们改用 Dart 端注入 local rule-set
-    // （RuntimeConfigBuilder）。
+    // region 永远 'other'：内核只认 other（非 other 会被忽略并给 warning）；
+    // 国内直连数据由下面的 `rules` 注入，不依赖任何远程规则集。
     'region': 'other',
-    // Keep this aligned with the UI/upstream meaning:
-    // global = raw/as-is, smart = let libcore generate bypass rules.
+    // 内核不读这个键，只用于 Dart 端记录用户选择。
     'execute-config-as-is': executeConfigAsIs,
-    // 只让内核沿用 profile 自带的 inbounds。dns 与 route 块内核一律丢弃重建
-    // （BuildConfig 先按这个开关拷过去，随后整块覆盖）：真正生效的 DNS 是下面
-    // 的 remote-/direct-dns-address 加分流规则推出的 DNS 规则——智能分流里命中
-    // 国内直连规则的域名走 dns-direct，地址就是 direct-dns-address。
+    // 内核忽略完整配置里的入站；dns 与 route 块一律丢弃重建：真正生效的 DNS 是
+    // 下面的 remote-/direct-dns-address 加分流规则推出的 DNS 规则——智能分流里
+    // 命中国内直连规则的域名走 dns-direct，地址就是 direct-dns-address。
     'enable-full-config': true,
     'block-ads': s.blockAds,
     'log-level': s.logLevel,
     'resolve-destination': s.resolveDestination,
     'ipv6-mode': s.ipv6Mode,
-    'remote-dns-address': s.remoteDnsAddress,
+    // 订阅级覆盖优先于全局设置（高级配置里的 remoteDnsOverride）。
+    'remote-dns-address': remoteDnsAddress,
     'remote-dns-domain-strategy': s.remoteDnsDomainStrategy,
     'direct-dns-address': s.directDnsAddress,
     'direct-dns-domain-strategy': s.directDnsDomainStrategy,
@@ -88,16 +87,14 @@ Map<String, dynamic> getDefaultConfigOptions({
     'allow-connection-from-lan': s.allowConnectionFromLan,
     'enable-fake-dns': s.enableFakeDns,
     // isSmart 时强制开：下面 rules 里的中国 IP/域名直连规则要真正生效，
-    // 依赖 fork 侧 EnableDNSRouting 这个开关（config.go 里 DNS 规则的应用
-    // 整段被 `if opt.EnableDNSRouting` 包住）——不能让用户关闭的
+    // 依赖内核的 DNS 路由开关（DNS 规则的应用整段受它控制）——不能让用户关闭的
     // "DNS 路由"设置连带把智能分流的直连规则也一起废掉。
     'enable-dns-routing': isSmart || s.enableDnsRouting,
     'independent-dns-cache': s.independentDnsCache,
-    // 智能分流的全部数据都在这里注入。内核在 region:"other" 下不支持任何
-    // rule-set，所以只能走明文列表——数据来源和反编译方式见
-    // `cn_direct_rules.dart` 的文件头。
+    // 智能分流的全部数据都在这里注入：明文列表，不依赖任何远程规则集——
+    // 数据来源见 `cn_direct_rules.dart` 的文件头。
     //
-    // 前缀是内核 makeDomainRule() 认的语法：`full:` 进 Domain（精确匹配），
+    // 前缀是内核规则解析认的语法：`full:` 进 Domain（精确匹配），
     // `domain:` 进 DomainSuffix（后缀匹配），`regexp:` 进 DomainRegex。语义
     // 不同，不能混用。正则清单是排除表改写出来的"跳过谷歌系域名的宽后缀"
     // （见 cn_direct_rules.dart 文件头），少了它顶级域 `cn` 下的直连就没了。

@@ -16,7 +16,7 @@ const kExperimentalNoticeDismissedKey =
 /// 判断"当前生效配置"是否命中任意一个已知的实验性字段。
 ///
 /// 字段列表覆盖两层配置来源：
-/// - [settings]：全局网络设置（TLS fragment / TLS padding / WARP / 局域网访问 /
+/// - [settings]：全局网络设置（TLS fragment / WARP / 局域网访问 /
 ///   桌面端 TUN 模式），来自 [networkSettingsProvider]。
 /// - [advancedConfig]：当前激活订阅的 per-profile 高级配置（TLS fragment /
 ///   多路复用 mux），来自 [ProfileEntity.advancedConfig]。
@@ -35,7 +35,6 @@ bool hasExperimentalFeatures({
   }
   if (settings.enableTlsFragment) return true;
   if (advancedConfig?.fragmentEnabled ?? false) return true;
-  if (settings.enableTlsPadding) return true;
   if (advancedConfig?.muxEnabled ?? false) return true;
   if (settings.enableWarp) return true;
   if (settings.bypassLan) return true;

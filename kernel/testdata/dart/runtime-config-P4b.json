@@ -1,0 +1,35 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P4b：出站与 WireGuard 端点混合。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "hk.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6"
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-jp",
+      "address": [
+        "10.8.1.2/32"
+      ],
+      "private_key": "mIJf8rJz/g4nYz/ER0omXXKitRdGdeCmUyu8OVMMNl4=",
+      "peers": [
+        {
+          "address": "wg2.example.net",
+          "port": 51820,
+          "public_key": "q/a2p0GEygHK4Y3HwaMlwq21obY0H0YLghGwPNKSHBo=",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ]
+        }
+      ]
+    }
+  ],
+  "inbounds": []
+}

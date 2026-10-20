@@ -191,14 +191,6 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                         onSelected: (value) => _setRegion(ref, value),
                       ),
                       _ConfigSwitchTile(
-                        title: _experimental(t, t.config.blockAds),
-                        value: settings.blockAds,
-                        onChanged: (value) => ref
-                            .read(networkSettingsProvider.notifier)
-                            .setBlockAds(value),
-                        icon: FluentIcons.shield_dismiss_24_regular,
-                      ),
-                      _ConfigSwitchTile(
                         title: _experimental(t, t.config.bypassLan),
                         value: settings.bypassLan,
                         onChanged: (value) => ref
@@ -400,21 +392,6 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             .setEnableTlsFragment(value),
                         icon: FluentIcons.puzzle_piece_24_regular,
                       ),
-                      _ValueTile(
-                        title: t.config.tlsFragmentSize,
-                        subtitle: settings.tlsFragmentSize,
-                        icon: FluentIcons.resize_24_regular,
-                        onTap: () =>
-                            _showTlsFragmentSizeEditor(context, ref, t),
-                      ),
-                      _ConfigSwitchTile(
-                        title: t.config.enableTlsPadding,
-                        value: settings.enableTlsPadding,
-                        onChanged: (value) => ref
-                            .read(networkSettingsProvider.notifier)
-                            .setEnableTlsPadding(value),
-                        icon: FluentIcons.shield_keyhole_24_regular,
-                      ),
                     ],
                   )
                   .animateWithMotion(context)
@@ -593,37 +570,6 @@ void _showDirectDnsEditor(
   );
 }
 
-void _showTlsFragmentSizeEditor(
-  BuildContext context,
-  WidgetRef ref,
-  TranslationsEn t,
-) {
-  final current = ref.read(networkSettingsProvider).tlsFragmentSize;
-  final controller = TextEditingController(text: current);
-  _showInputModal(
-    context: context,
-    title: t.config.tlsFragmentSize,
-    controller: controller,
-    icon: FluentIcons.resize_24_regular,
-    hintText: '10-30',
-    onConfirm: () async {
-      final range = controller.text.trim();
-      if (!_isOptionalRange(range)) {
-        AppToast.error(context, t.config.rangeFormatError);
-        return false;
-      }
-      await ref
-          .read(networkSettingsProvider.notifier)
-          .setTlsFragmentSize(range);
-      return true;
-    },
-  );
-}
-
-bool _isOptionalRange(String value) {
-  return RegExp(r'^\d+(-\d+)?$').hasMatch(value);
-}
-
 void _showConnectionTestUrlEditor(
   BuildContext context,
   WidgetRef ref,
@@ -784,27 +730,6 @@ void _showWarpPortEditor(
   );
 }
 
-void _showWarpStringEditor({
-  required BuildContext context,
-  required WidgetRef ref,
-  required String title,
-  required String value,
-  required IconData icon,
-  required Future<void> Function(String value) save,
-}) {
-  final controller = TextEditingController(text: value);
-  _showInputModal(
-    context: context,
-    title: title,
-    controller: controller,
-    icon: icon,
-    onConfirm: () async {
-      await save(controller.text);
-      return true;
-    },
-  );
-}
-
 class _WarpOptionsTiles extends ConsumerStatefulWidget {
   const _WarpOptionsTiles();
 
@@ -914,62 +839,6 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
           icon: FluentIcons.connector_24_regular,
           enabled: canChangeOptions,
           onTap: () => _showWarpPortEditor(context, ref, t),
-        ),
-        _ValueTile(
-          title: t.config.warpNoise,
-          subtitle: _notSet(t, settings.warpNoise),
-          icon: FluentIcons.layer_24_regular,
-          enabled: canChangeOptions,
-          onTap: () => _showWarpStringEditor(
-            context: context,
-            ref: ref,
-            title: t.config.warpNoise,
-            value: settings.warpNoise,
-            icon: FluentIcons.layer_24_regular,
-            save: notifier.setWarpNoise,
-          ),
-        ),
-        _ValueTile(
-          title: t.config.warpNoiseMode,
-          subtitle: _notSet(t, settings.warpNoiseMode),
-          icon: FluentIcons.options_24_regular,
-          enabled: canChangeOptions,
-          onTap: () => _showWarpStringEditor(
-            context: context,
-            ref: ref,
-            title: t.config.warpNoiseMode,
-            value: settings.warpNoiseMode,
-            icon: FluentIcons.options_24_regular,
-            save: notifier.setWarpNoiseMode,
-          ),
-        ),
-        _ValueTile(
-          title: t.config.warpNoiseSize,
-          subtitle: _notSet(t, settings.warpNoiseSize),
-          icon: FluentIcons.resize_24_regular,
-          enabled: canChangeOptions,
-          onTap: () => _showWarpStringEditor(
-            context: context,
-            ref: ref,
-            title: t.config.warpNoiseSize,
-            value: settings.warpNoiseSize,
-            icon: FluentIcons.resize_24_regular,
-            save: notifier.setWarpNoiseSize,
-          ),
-        ),
-        _ValueTile(
-          title: t.config.warpNoiseDelay,
-          subtitle: _notSet(t, settings.warpNoiseDelay),
-          icon: FluentIcons.timer_24_regular,
-          enabled: canChangeOptions,
-          onTap: () => _showWarpStringEditor(
-            context: context,
-            ref: ref,
-            title: t.config.warpNoiseDelay,
-            value: settings.warpNoiseDelay,
-            icon: FluentIcons.timer_24_regular,
-            save: notifier.setWarpNoiseDelay,
-          ),
         ),
       ],
     );

@@ -1,0 +1,35 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P4c：端点带 §default§ 标记。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "hk.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "xLDEaZffzOnxmo5R"
+    }
+  ],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-sg§default§",
+      "address": [
+        "10.8.2.2/32"
+      ],
+      "private_key": "k2FUhEJS61XKHNUJQdIKjWAxf/TouEj+mzwCVJ6pYRA=",
+      "peers": [
+        {
+          "address": "wg3.example.net",
+          "port": 51820,
+          "public_key": "Eh4gHwHLJ/uK4Csem8hEaXsttOcMvEdtPAQro8B0bjg=",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ]
+        }
+      ]
+    }
+  ],
+  "inbounds": []
+}

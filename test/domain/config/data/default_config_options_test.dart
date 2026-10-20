@@ -1,6 +1,8 @@
 import 'package:clashmiao/domain/config/data/cn_direct_rules.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
+import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 按内核 BuildConfig 的口径推出「某个域名由哪台 DNS 服务器解析」。
@@ -385,10 +387,9 @@ void main() {
       expect(options['rules'], isEmpty);
     });
 
-    // 这个 sing-box fork 的 DNS 规则应用整段被 `if opt.EnableDNSRouting` 包住
-    // （libcore/config/config.go），isSmart=true 时上面那两条直连规则要真正
-    // 生效，enable-dns-routing 必须为 true——即使用户在设置页把"DNS 路由"
-    // 这个开关关掉了，也不能连带把智能分流的直连规则一起废掉。
+    // 内核把直连规则翻译成 DNS 规则这一步受 enable-dns-routing 控制，
+    // isSmart=true 时上面那两条直连规则要真正生效，它必须为 true——即使用户在
+    // 设置页把"DNS 路由"这个开关关掉了，也不能连带把智能分流的直连规则一起废掉。
     test('isSmart=true 时 enable-dns-routing 强制为 true，不受用户设置开关影响', () {
       final options = getDefaultConfigOptions(
         isSmart: true,
@@ -409,6 +410,120 @@ void main() {
         settings: const NetworkSettings(enableDnsRouting: true),
       );
       expect(optionsOn['enable-dns-routing'], isTrue);
+    });
+  });
+
+  group('订阅级远程 DNS 覆盖（高级配置的 remoteDnsOverride）', () {
+    const settings = NetworkSettings(
+      remoteDnsAddress: 'https://1.1.1.1/dns-query',
+    );
+
+    test('覆盖非空：写进 remote-dns-address，优先于全局设置', () {
+      final options = getDefaultConfigOptions(
+        settings: settings,
+        advancedConfig: const AdvancedConfig(
+          remoteDnsOverride: 'tls://dot.example.net',
+        ),
+      );
+      expect(options['remote-dns-address'], 'tls://dot.example.net');
+    });
+
+    test('覆盖为空串或没有高级配置：沿用全局设置', () {
+      expect(
+        getDefaultConfigOptions(
+          settings: settings,
+          advancedConfig: const AdvancedConfig(remoteDnsOverride: ''),
+        )['remote-dns-address'],
+        'https://1.1.1.1/dns-query',
+      );
+      expect(
+        getDefaultConfigOptions(
+          settings: settings,
+          advancedConfig: const AdvancedConfig(),
+        )['remote-dns-address'],
+        'https://1.1.1.1/dns-query',
+      );
+      expect(
+        getDefaultConfigOptions(settings: settings)['remote-dns-address'],
+        'https://1.1.1.1/dns-query',
+      );
+    });
+
+    test('覆盖只动远程 DNS：直连 DNS 与其余键不变', () {
+      final base = getDefaultConfigOptions(settings: settings);
+      final overridden = getDefaultConfigOptions(
+        settings: settings,
+        advancedConfig: const AdvancedConfig(
+          remoteDnsOverride: 'udp://9.9.9.9',
+        ),
+      );
+      expect(
+        {...overridden}..remove('remote-dns-address'),
+        {...base}..remove('remote-dns-address'),
+      );
+    });
+  });
+
+  group('平台口径（服务模式平台，不是宿主机的 Platform）', () {
+    tearDown(() => debugServiceModePlatformOverride = null);
+
+    test('Android：默认 VPN 档 → enable-tun 真、不设系统代理', () {
+      debugServiceModePlatformOverride = ServiceModePlatform.android;
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(),
+      );
+      expect(options['enable-tun'], isTrue);
+      expect(options['set-system-proxy'], isFalse);
+    });
+
+    test('Android 仅线路：enable-tun 假（两个开关都关）', () {
+      debugServiceModePlatformOverride = ServiceModePlatform.android;
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(
+          enableTun: false,
+          setSystemProxy: false,
+        ),
+      );
+      expect(options['enable-tun'], isFalse);
+      expect(options['set-system-proxy'], isFalse);
+    });
+
+    test('iOS：恒 VPN，不设系统代理', () {
+      debugServiceModePlatformOverride = ServiceModePlatform.ios;
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(enableTun: false, setSystemProxy: true),
+      );
+      expect(options['enable-tun'], isTrue);
+      expect(options['set-system-proxy'], isFalse);
+    });
+
+    test('桌面：尊重显式设置，系统代理可开', () {
+      debugServiceModePlatformOverride = ServiceModePlatform.desktop;
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(enableTun: false, setSystemProxy: true),
+      );
+      expect(options['enable-tun'], isFalse);
+      expect(options['set-system-proxy'], isTrue);
+    });
+  });
+
+  group('界面隐藏的选项仍然照常产出（只隐藏入口，不改持久化值）', () {
+    test('block-ads / padding / 混合 SNI / 噪声：存档里的值原样进选项', () {
+      final options = getDefaultConfigOptions(
+        settings: const NetworkSettings(
+          blockAds: true,
+          enableTlsPadding: true,
+          enableTlsMixedSniCase: true,
+          tlsFragmentSize: '5-9',
+          warpNoise: '2-4',
+        ),
+      );
+      expect(options['block-ads'], isTrue);
+      final tls = options['tls-tricks'] as Map<String, dynamic>;
+      expect(tls['enable-padding'], isTrue);
+      expect(tls['mixed-sni-case'], isTrue);
+      expect(tls['fragment-size'], '5-9');
+      expect((options['warp'] as Map<String, dynamic>)['noise'], '2-4');
     });
   });
 }

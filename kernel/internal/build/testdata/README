@@ -76,5 +76,13 @@ O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽
 
 后续任务往表里加格子（U13：O5a / O5b）。
 
-rules/cn-direct.json：智能分流下 Dart 注入的 rules 全量（7.5k CIDR + 域名），由 lib/domain/config/data/cn_direct_rules.dart 导出；
-U17 的 Dart 测试负责让它与 Dart 侧保持一致（有差异测试失败）。route_test 用它验证「全量清单能过 CheckConfig 与真启动」，不产生黄金文件。
+跨语言夹具（由 Dart 测试生成，入库在 kernel/testdata/，不在本目录）
+--------------------------------------------------------------------
+kernel/testdata/rules/cn-direct.json：智能分流下 Dart 注入的 rules 全量（7.5k CIDR + 域名），
+  由 test/domain/config/data/cn_direct_fixture_export_test.dart 生成并保持同步（有差异测试失败）。
+  route_test 用它验证「全量清单能过 CheckConfig 与真启动」，不产生黄金文件。
+kernel/testdata/options/*.json、keys.txt：Dart 的 getDefaultConfigOptions 在设置矩阵上的输出与键集合
+  （options_fixture_export_test.dart 生成；internal/options 的 dart_fixture_test.go 消费）。
+kernel/testdata/dart/runtime-config-*.json：Dart 的 RuntimeConfigBuilder 对 P1–P7 构建出的 runtime-config.json
+  （runtime_config_fixture_export_test.dart 生成；本包的 dart_profiles_test.go 消费）。
+重新生成：UPDATE_GOLDEN=1 flutter test test/domain/config/data/<对应测试>.dart

@@ -1,0 +1,22 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P3：含 §default§ 标记的节点（默认选择取这个节点的真实 tag）。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "香港01",
+      "server": "hk.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "XUeHGycaTc52Fdv3"
+    },
+    {
+      "type": "shadowsocks",
+      "tag": "日本01§default§",
+      "server": "jp.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "GZA3kWWkGM74YmzP"
+    }
+  ],
+  "inbounds": []
+}

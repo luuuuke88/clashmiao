@@ -3,7 +3,6 @@ include: package:flutter_lints/flutter.yaml
 analyzer:
   exclude:
     - "**/*.g.dart"
-    - "**/*.freezed.dart"
     - "lib/core/localization/gen/**"
     # 平台目录与构建产物里没有手写 Dart，只有工具生成物 / 原生工程。
     # Flutter 3.47 起 `flutter analyze` 发现这些目录没被排除就会自动改写本文件

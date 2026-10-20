@@ -238,7 +238,16 @@ void main() {
     }
 
     /// toast 文本以上所有 FadeTransition 的不透明度之积。
+    ///
+    /// 找不到文本或转场节点时直接让用例失败，而不是返回初始的 1.0——否则「根本
+    /// 没有显示 toast」也会被当成「已是终态」。
     double opacityOf(WidgetTester tester, String text) {
+      expect(find.text(text), findsOneWidget, reason: 'toast 文本必须存在');
+      final transitions = find.ancestor(
+        of: find.text(text),
+        matching: find.byType(FadeTransition),
+      );
+      expect(transitions, findsWidgets, reason: 'toast 的转场节点必须存在');
       var o = 1.0;
       for (final e
           in find
@@ -310,6 +319,15 @@ void main() {
         );
         await tester.pump(); // 插入这一帧
         await tester.pump(const Duration(milliseconds: 1));
+        // 先证明 toast 与它的转场节点都在，再看透明度（不存在时不能算「终态」）。
+        expect(find.text('转场测试'), findsOneWidget);
+        expect(
+          find.ancestor(
+            of: find.text('转场测试'),
+            matching: find.byType(SlideTransition),
+          ),
+          findsWidgets,
+        );
         expect(opacityOf(tester, '转场测试'), 1);
 
         toastification.dismissAll(delayForAnimation: false);

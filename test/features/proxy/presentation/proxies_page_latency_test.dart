@@ -57,7 +57,7 @@ class _PresetCoordinator extends LatencyTestCoordinator {
         urlTest: (_) async {},
         liveGroups: () => const [],
         cache: () => const {},
-        recordMeasured: (_, __) {},
+        recordMeasured: (_, _) {},
         now: () => _now,
       ) {
     state = preset;

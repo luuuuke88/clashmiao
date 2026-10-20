@@ -753,8 +753,8 @@ void main() {
             ),
           ],
         );
-        container.listen(latencyTestCoordinatorProvider, (_, __) {});
-        container.listen(activeProfileProvider, (_, __) {});
+        container.listen(latencyTestCoordinatorProvider, (_, _) {});
+        container.listen(activeProfileProvider, (_, _) {});
         async.flushMicrotasks();
 
         container.read(connected.notifier).state = true;

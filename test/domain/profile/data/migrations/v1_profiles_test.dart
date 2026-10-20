@@ -23,7 +23,7 @@ Map<String, dynamic> _p(
   'name': 'name-$id',
   'url': 'http://sub.test/$id',
   'updateInterval': 1,
-  if (active != null) 'active': active,
+  'active': ?active,
   ...?more,
 };
 
@@ -56,7 +56,7 @@ Map<String, Object> _v0({
   Map<String, Object> extra = const {},
 }) => {
   if (list != null) _profiles: jsonEncode(list),
-  if (active != null) _active: active,
+  _active: ?active,
   ...extra,
 };
 

@@ -161,7 +161,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           return hasData ? g : offlineFallback;
         },
         loading: () => offlineFallback,
-        error: (_, __) => offlineFallback,
+        error: (_, _) => offlineFallback,
       );
     } else {
       rawGroups = offlineFallback;

@@ -12,8 +12,8 @@ Map<String, dynamic> buildProfileJson({
     'url': 'https://example.com',
     'active': false,
     'updateInterval': updateIntervalHours,
-    if (notes != null) 'notes': notes,
-    if (customUserAgent != null) 'customUserAgent': customUserAgent,
+    'notes': ?notes,
+    'customUserAgent': ?customUserAgent,
   };
 }
 

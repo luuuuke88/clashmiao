@@ -46,7 +46,7 @@ Future<String> fetchEgressIp({
 
   final client = HttpClient();
   client.findProxy = (_) => 'DIRECT';
-  client.badCertificateCallback = (_, __, ___) => true;
+  client.badCertificateCallback = (_, _, _) => true;
   client.connectionTimeout = timeout;
   try {
     for (var attempt = 0; attempt < 3; attempt++) {

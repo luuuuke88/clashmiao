@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/profile/data/profile_parser.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
@@ -398,7 +399,11 @@ class ProfileRepository {
       //   local  → 系统 DNS（用来解析 direct 自己的域名 fallback）
       dnsServers.addAll([
         {'tag': 'remote', 'address': 'https://1.1.1.1/dns-query'},
-        {'tag': 'direct', 'address': '1.1.1.1', 'detour': 'direct'},
+        {
+          'tag': 'direct',
+          'address': kDefaultDirectDnsAddress,
+          'detour': 'direct',
+        },
         {'tag': 'local', 'address': 'local', 'detour': 'direct'},
       ]);
       dns['servers'] = dnsServers;

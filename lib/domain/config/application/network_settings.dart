@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -25,7 +26,7 @@ class NetworkSettings {
     this.enableFakeDns = false,
     this.independentDnsCache = true,
     this.remoteDnsDomainStrategy = '',
-    this.directDnsAddress = '1.1.1.1',
+    this.directDnsAddress = kDefaultDirectDnsAddress,
     this.directDnsDomainStrategy = '',
     this.tunImplementation = 'mixed',
     this.strictRoute = true,
@@ -458,7 +459,8 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
         '',
         _validDomainStrategies,
       ),
-      directDnsAddress: _readString(p, _kDirectDnsAddress) ?? '1.1.1.1',
+      directDnsAddress:
+          _readString(p, _kDirectDnsAddress) ?? kDefaultDirectDnsAddress,
       directDnsDomainStrategy: _stringChoice(
         p,
         _kDirectDnsDomainStrategy,

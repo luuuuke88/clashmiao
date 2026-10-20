@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:flutter/foundation.dart';
 
@@ -109,6 +110,10 @@ class RuntimeConfigBuilder {
   /// 保证 runtime config 的 dns 块自足：remote（出口查询）/ direct / local
   /// 三个 server 必须齐。tag 已存在的不动（尊重 profile 自带配置），缺的补上。
   ///
+  /// 注意：Android / 桌面现用的内核配置构建器会丢弃这里的整个 dns 块、自己重建
+  /// （直连 DNS 取 `direct-dns-address`，见 default_config_options.dart），这里
+  /// 只保证文件本身自洽；默认地址与设置的默认值保持一致。
+  ///
   /// remote 用 DoH（TCP，对不支持 UDP 转发的节点也能工作）且带
   /// `detour: 'direct'` 的 address_resolver 自举不需要 —— 默认地址是裸 IP；
   /// 若用户覆盖成域名 DoH，sing-box 需要先解析该域名，因此给 remote 挂
@@ -123,7 +128,11 @@ class RuntimeConfigBuilder {
         .toSet();
 
     if (!tags.contains('direct')) {
-      servers.add({'tag': 'direct', 'address': '1.1.1.1', 'detour': 'direct'});
+      servers.add({
+        'tag': 'direct',
+        'address': kDefaultDirectDnsAddress,
+        'detour': 'direct',
+      });
     }
     if (!tags.contains('local')) {
       servers.add({'tag': 'local', 'address': 'local', 'detour': 'direct'});

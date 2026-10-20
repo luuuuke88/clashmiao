@@ -2,12 +2,16 @@ package com.clashmiao.clashmiao.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.concurrent.thread
 
-/** 启动链编排（[runStartSequence]）：每个阻塞调用一返回就检查取消，不进入下一个原生步骤。 */
+/**
+ * 启动链编排（[runStartSequence]）与回收（[runTeardown]）：
+ * 每个阻塞调用一返回就检查取消，不进入下一个原生步骤；回收每一步各自兜底，资源一个不漏。
+ */
 class KernelStartSequenceTest {
 
     private val spec = LaunchSpec("/cfg/1.json", "{}", "p", 1)
@@ -20,109 +24,252 @@ class KernelStartSequenceTest {
         }
     }
 
-    /** 记录调用顺序；[cancelAfter] 指定的步骤执行时置位取消标（模拟 off 在该调用阻塞期间到达）。 */
-    private class Ops(val ctx: Ctx, val cancelAfter: String? = null) : KernelStartOps {
-        val calls = ArrayList<String>()
+    /**
+     * 假内核：同时实现启动步骤与回收步骤，并像生产实现一样记账——
+     * 创建出来的东西一出现就记在名下（[engineHeld] / [watcherArmed] / [tunOpen]），之后全靠回收清掉。
+     */
+    private class FakeKernel(val ctx: Ctx) : KernelStartOps, KernelTeardownOps {
+        val calls = java.util.Collections.synchronizedList(ArrayList<String>())
+        var cancelAfter: String? = null
+        var failAt: String? = null
+        var failMessage = "boom"
+        var failTeardownAt: String? = null
+
+        @Volatile var engineHeld = false
+        @Volatile var engineRunning = false
+        @Volatile var watcherArmed = false
+        @Volatile var tunOpen = false
+        @Volatile var refReleased = false
+        val teardownCalls = java.util.Collections.synchronizedList(ArrayList<String>())
+
         private fun call(name: String) {
             calls += name
+            if (failAt == name) throw IllegalStateException(failMessage)
             if (name == cancelAfter) ctx.cancelled = true
         }
 
         override fun bootstrap() = call("bootstrap")
-        override fun hasCommandServer() = false
-        override fun spawnCommandServer() = call("commandServer")
+        override fun createEngine() {
+            if (engineHeld) return // 幂等：已有 Engine 什么都不做
+            call("createEngine")
+            engineHeld = true
+            refReleased = false
+        }
         override fun buildConfig(spec: LaunchSpec): String = "cfg".also { call("buildConfig") }
-        override fun prepareRuntime() = call("prepareRuntime")
-        override fun newService(content: String) = call("newService")
-        override fun settleAfterReload(ctx: ExecContext): Boolean {
-            call("settle")
-            return !ctx.cancelled
+        override fun prepareRuntime() {
+            call("prepareRuntime")
+            watcherArmed = true
+        }
+        override fun startEngine(content: String) {
+            tunOpen = true // 内核启动时让宿主建 tun
+            engineRunning = true
+            call("startEngine")
         }
 
-        override fun startService() = call("start")
-        override fun bindCommandServer() = call("setService")
+        private fun td(name: String, body: () -> Unit) {
+            teardownCalls += name
+            try {
+                if (failTeardownAt == name) throw IllegalStateException("td-$name")
+            } finally {
+                body() // 即便「抛异常」，资源也要真的被我们这个假实现处理掉：模拟的是后续步骤仍会执行，而非抛异常的那步成功
+            }
+        }
+
+        override fun stopEngine() = td("stopEngine") { engineRunning = false }
+        override fun closeTunFd() = td("closeTun") { tunOpen = false }
+        override fun closeEngine() = td("closeEngine") { engineHeld = engineHeld /* 句柄由 releaseEngineRef 清 */ }
+        override fun disarmNetworkWatcher() = td("disarm") { watcherArmed = false }
+        override fun releaseEngineRef() = td("release") { engineHeld = false; refReleased = true }
+
+        val leaks: List<String>
+            get() = listOfNotNull(
+                "engine running".takeIf { engineRunning },
+                "tun fd open".takeIf { tunOpen },
+                "network watcher armed".takeIf { watcherArmed },
+                "engine ref held".takeIf { engineHeld },
+            )
     }
 
-    private val all = listOf(
-        "bootstrap", "commandServer", "buildConfig", "prepareRuntime", "newService", "settle", "start", "setService",
-    )
+    private val all = listOf("bootstrap", "createEngine", "buildConfig", "prepareRuntime", "startEngine")
 
     @Test
     fun `完整成功 依次执行全部步骤 每个阻塞步骤前都报告进度`() {
         val ctx = Ctx()
-        val ops = Ops(ctx)
-        assertEquals(JobResult.Started, runStartSequence(ops, spec, reload = true, ctx = ctx))
-        assertEquals(all, ops.calls)
+        val k = FakeKernel(ctx)
+        assertEquals(JobResult.Started, runStartSequence(k, spec, reload = false, ctx = ctx))
+        assertEquals(all, k.calls)
         assertEquals(
-            listOf("bootstrap", "commandServer", "buildConfig", "networkWatcher", "newService", "start", "bindCommandServer"),
+            listOf("bootstrap", "createEngine", "buildConfig", "networkWatcher", "startEngine"),
             ctx.steps.toList(),
         )
     }
 
     @Test
-    fun `任何一个阻塞调用期间被取消 返回后都不再进入下一个原生步骤`() {
+    fun `重载不再等待固定时间 步骤与首次启动完全相同`() {
+        // 行为变化：旧链路重载时在 newService 与 start 之间多一步「reloadSettle」（固定等 1 s）；
+        // 新内核直接再次启动，内核内部先关旧实例（U18 在真机上验证重载稳定性）。
+        val ctxFresh = Ctx()
+        runStartSequence(FakeKernel(ctxFresh), spec, reload = false, ctx = ctxFresh)
+        val ctxReload = Ctx()
+        val k = FakeKernel(ctxReload)
+        assertEquals(JobResult.Started, runStartSequence(k, spec, reload = true, ctx = ctxReload))
+        assertEquals(ctxFresh.steps.toList(), ctxReload.steps.toList())
+        assertFalse(ctxReload.steps.contains("reloadSettle"))
+    }
+
+    @Test
+    fun `任何一个检查点置位取消 后续步骤都不再执行 且回收后不遗漏资源`() {
         for ((i, step) in all.withIndex()) {
             val ctx = Ctx()
-            val ops = Ops(ctx, cancelAfter = step)
-            val result = runStartSequence(ops, spec, reload = true, ctx = ctx)
-            if (step == "setService") {
-                assertEquals(JobResult.Cancelled, result)
-                assertEquals(all, ops.calls)
-            } else {
-                assertEquals("cancel during $step", JobResult.Cancelled, result)
-                assertEquals("cancel during $step", all.take(i + 1), ops.calls)
-            }
+            val k = FakeKernel(ctx).also { it.cancelAfter = step }
+            val result = runStartSequence(k, spec, reload = false, ctx = ctx)
+            assertEquals("cancel during $step", JobResult.Cancelled, result)
+            assertEquals("cancel during $step", all.take(i + 1), k.calls)
+            // 协调器随后发出的完整回收：tun fd / 网络监听 / Engine 引用都不能留
+            runTeardown(k, soft = false, ctx = Ctx())
+            assertEquals("leaks after cancel during $step", emptyList<String>(), k.leaks)
+            assertTrue("ref released after cancel during $step", !k.engineHeld)
         }
     }
 
     @Test
-    fun `start 阻塞期间收到取消 返回后不调用 setService`() {
+    fun `startEngine 阻塞期间收到取消 返回后立即交给回收 并释放全部资源`() {
         val ctx = Ctx()
+        val k = FakeKernel(ctx)
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val calls = java.util.Collections.synchronizedList(ArrayList<String>())
-        val ops = object : KernelStartOps by Ops(ctx) {
-            override fun startService() {
-                calls += "start"
+        val ops = object : KernelStartOps by k {
+            override fun startEngine(content: String) {
+                k.tunOpen = true
+                k.engineRunning = true
+                k.calls += "startEngine"
                 entered.countDown()
-                release.await(5, TimeUnit.SECONDS) // 不可中断的 libbox start
-            }
-
-            override fun bindCommandServer() {
-                calls += "setService"
+                release.await(5, TimeUnit.SECONDS) // 不可中断的原生启动
             }
         }
         var result: JobResult? = null
         val worker = thread { result = runStartSequence(ops, spec, reload = false, ctx = ctx) }
-        assertEquals(true, entered.await(5, TimeUnit.SECONDS))
-        ctx.cancelled = true // off 到达
+        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        ctx.cancelled = true // off 到达（只置位：协调器不会并发打断启动）
         release.countDown()
         worker.join(5_000)
         assertEquals(JobResult.Cancelled, result)
-        assertFalse(calls.contains("setService"))
-        assertEquals("start", ctx.steps.last())
+        assertEquals("startEngine", ctx.steps.last())
+        // 取消之后的回收：运行中的 Engine、tun fd、网络监听、引用都清干净
+        runTeardown(k, soft = false, ctx = Ctx())
+        assertEquals(emptyList<String>(), k.leaks)
     }
 
     @Test
     fun `原生步骤失败映射到对应失败码`() {
-        fun failing(at: String): JobResult {
+        fun failing(at: String, message: String = "x"): JobResult {
             val ctx = Ctx()
-            val ops = object : KernelStartOps by Ops(ctx) {
-                override fun spawnCommandServer() = if (at == "commandServer") error("cs") else Unit
-                override fun buildConfig(spec: LaunchSpec): String = if (at == "buildConfig") error("cfg") else "x"
-                override fun newService(content: String) = if (at == "newService") error("ns") else Unit
-                override fun startService() = if (at == "start") error("st") else Unit
+            val k = FakeKernel(ctx).also {
+                it.failAt = at
+                it.failMessage = message
             }
-            return runStartSequence(ops, spec, reload = false, ctx = ctx)
+            return runStartSequence(k, spec, reload = false, ctx = ctx)
         }
-        assertEquals(FailureCode.StartCommandServer, (failing("commandServer") as JobResult.Failed).code)
-        assertEquals(FailureCode.EmptyConfiguration, (failing("buildConfig") as JobResult.Failed).code)
-        assertEquals(FailureCode.CreateService, (failing("newService") as JobResult.Failed).code)
-        assertEquals(FailureCode.StartService, (failing("start") as JobResult.Failed).code)
+        assertEquals(FailureCode.StartCommandServer, (failing("createEngine", "command-server: x") as JobResult.Failed).code)
+        assertEquals(FailureCode.EmptyConfiguration, (failing("buildConfig", "build-failed: x") as JobResult.Failed).code)
+        // startEngine 的失败按内核给的前缀分类（门面在失败路径上再检查一次配置来区分）
+        assertEquals(FailureCode.CreateService, (failing("startEngine", "create-service: bad config") as JobResult.Failed).code)
+        assertEquals(FailureCode.StartService, (failing("startEngine", "start-service: port in use") as JobResult.Failed).code)
+        assertEquals(FailureCode.StartService, (failing("startEngine", "canceled: service start interrupted") as JobResult.Failed).code)
+        assertEquals(FailureCode.StartService, (failing("startEngine", "") as JobResult.Failed).code)
         val ctx = Ctx()
         assertEquals(
             FailureCode.EmptyConfiguration,
-            (runStartSequence(Ops(ctx), spec.copy(runtimeConfigPath = ""), false, ctx) as JobResult.Failed).code,
+            (runStartSequence(FakeKernel(ctx), spec.copy(runtimeConfigPath = ""), false, ctx) as JobResult.Failed).code,
         )
+        assertEquals(
+            FailureCode.EmptyConfiguration,
+            (runStartSequence(FakeKernel(Ctx()), spec.copy(optionsJson = " "), false, Ctx()) as JobResult.Failed).code,
+        )
+    }
+
+    @Test
+    fun `失败码分类只看前缀`() {
+        assertEquals(FailureCode.CreateService, classifyStartFailure("create-service: x"))
+        assertEquals(FailureCode.CreateService, classifyStartFailure("  create-service: x"))
+        assertEquals(FailureCode.StartService, classifyStartFailure("start-service: x"))
+        assertEquals(FailureCode.StartService, classifyStartFailure("something create-service: inside"))
+        assertEquals(FailureCode.StartService, classifyStartFailure(null))
+    }
+
+    @Test
+    fun `启动失败后 回收也能把已创建的资源收干净`() {
+        val ctx = Ctx()
+        val k = FakeKernel(ctx).also { it.failAt = "startEngine" }
+        assertTrue(runStartSequence(k, spec, false, ctx) is JobResult.Failed)
+        assertTrue("失败时资源仍在 runtime 名下", k.leaks.isNotEmpty())
+        runTeardown(k, soft = false, ctx = Ctx())
+        assertEquals(emptyList<String>(), k.leaks)
+    }
+
+    @Test
+    fun `回收的每一步依次抛错 其余步骤仍执行 失败被记录 之后还能再次启动`() {
+        val hardSteps = listOf("stopEngine", "closeTun", "closeEngine", "disarm", "release")
+        for (failing in hardSteps) {
+            val ctx = Ctx()
+            val k = FakeKernel(ctx)
+            assertEquals(JobResult.Started, runStartSequence(k, spec, false, ctx))
+            k.failTeardownAt = failing
+            val recorded = ArrayList<String>()
+            val failures = runTeardown(k, soft = false, ctx = Ctx()) { step, _ -> recorded += step }
+            assertEquals("all teardown steps ran when $failing throws", hardSteps, k.teardownCalls.toList())
+            assertEquals(1, failures.size)
+            assertEquals(1, recorded.size)
+            assertTrue("failure recorded for $failing", failures[0].second.message!!.contains("td-$failing"))
+            assertEquals("leaks when $failing throws", emptyList<String>(), k.leaks)
+
+            // 之后能再次 start（新的一轮从零开始）
+            k.failTeardownAt = null
+            k.calls.clear()
+            val again = Ctx()
+            assertEquals(JobResult.Started, runStartSequence(k, spec, false, again))
+            assertEquals(all, k.calls)
+        }
+    }
+
+    @Test
+    fun `软回收只做停止与关 tun 保留 Engine 与网络监听`() {
+        val ctx = Ctx()
+        val k = FakeKernel(ctx)
+        runStartSequence(k, spec, false, ctx)
+        val rctx = Ctx()
+        runTeardown(k, soft = true, ctx = rctx)
+        assertEquals(listOf("stopEngine", "closeTun"), k.teardownCalls.toList())
+        assertEquals(listOf("stopEngine", "closeTun"), rctx.steps.toList())
+        assertTrue(k.engineHeld)
+        assertTrue(k.watcherArmed)
+        assertFalse(k.tunOpen)
+        assertFalse(k.engineRunning)
+        // 软回收之后可以直接再次启动（createEngine 幂等：不会重复创建）
+        k.calls.clear()
+        assertEquals(JobResult.Started, runStartSequence(k, spec, true, Ctx()))
+        assertFalse(k.calls.contains("createEngine"))
+    }
+
+    @Test
+    fun `软回收的某一步抛错 另一步仍执行`() {
+        for (failing in listOf("stopEngine", "closeTun")) {
+            val k = FakeKernel(Ctx())
+            runStartSequence(k, spec, false, Ctx())
+            k.failTeardownAt = failing
+            val failures = runTeardown(k, soft = true, ctx = Ctx())
+            assertEquals(listOf("stopEngine", "closeTun"), k.teardownCalls.toList())
+            assertEquals(1, failures.size)
+        }
+    }
+
+    @Test
+    fun `回收幂等 重复回收没有副作用`() {
+        val k = FakeKernel(Ctx())
+        runStartSequence(k, spec, false, Ctx())
+        runTeardown(k, false, Ctx())
+        val failures = runTeardown(k, false, Ctx())
+        assertTrue(failures.isEmpty())
+        assertEquals(emptyList<String>(), k.leaks)
     }
 }

@@ -5,8 +5,8 @@ import android.os.Build
 import android.os.CancellationSignal
 import android.system.ErrnoException
 import androidx.annotation.RequiresApi
-import io.nekohasekai.libbox.ExchangeContext
-import io.nekohasekai.libbox.LocalDNSTransport
+import com.clashmiao.libcore.core.DNSCall
+import com.clashmiao.libcore.core.LocalDNS
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.runBlocking
@@ -15,17 +15,17 @@ import java.net.InetAddress
 import java.net.UnknownHostException
 
 /**
- * libbox 的 `LocalDNSTransport` 实现 —— sing-box 内部触发本地 DNS 查询时（比如
+ * 自有门面的 `LocalDNS` 实现 —— 内核触发本地 DNS 查询时（比如
  * 解析 SS / Trojan 服务端域名）走这里转到 Android 的 [DnsResolver]。
  *
  * 两条 entrypoint：
- *   - [exchange]：raw DNS message 通道，rcode 直接透传给 [ExchangeContext]
+ *   - [exchange]：raw DNS message 通道，rcode 直接透传给 [DNSCall]
  *   - [lookup]：name → IP 文本结果（API < Q 才用，走 InetAddress 阻塞接口）
  *
  * 解析跑在 default network 上（[NetworkWatcher.requireCurrent]）—— VPN 自己的
  * tun 网络不能用来递归，否则 DNS 包被自己 loop 回去。
  */
-object SystemDnsBridge : LocalDNSTransport {
+object SystemDnsBridge : LocalDNS {
 
     private const val DNS_RCODE_NXDOMAIN = 3
 
@@ -33,7 +33,7 @@ object SystemDnsBridge : LocalDNSTransport {
     override fun raw(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
 
     @RequiresApi(Build.VERSION_CODES.Q)
-    override fun exchange(ctx: ExchangeContext, message: ByteArray) = runBlocking {
+    override fun exchange(ctx: DNSCall, message: ByteArray) = runBlocking {
         val net = NetworkWatcher.requireCurrent()
         suspendCancellableCoroutine { cont ->
             val cancel = CancellationSignal()
@@ -65,7 +65,7 @@ object SystemDnsBridge : LocalDNSTransport {
         }
     }
 
-    override fun lookup(ctx: ExchangeContext, network: String, domain: String) = runBlocking {
+    override fun lookup(ctx: DNSCall, network: String, domain: String) = runBlocking {
         val net = NetworkWatcher.requireCurrent()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             asyncLookup(ctx, net, network, domain)
@@ -76,7 +76,7 @@ object SystemDnsBridge : LocalDNSTransport {
 
     @RequiresApi(Build.VERSION_CODES.Q)
     private suspend fun asyncLookup(
-        ctx: ExchangeContext,
+        ctx: DNSCall,
         net: android.net.Network,
         family: String,
         domain: String,
@@ -118,7 +118,7 @@ object SystemDnsBridge : LocalDNSTransport {
         }
     }
 
-    private fun blockingLookup(ctx: ExchangeContext, net: android.net.Network, domain: String) {
+    private fun blockingLookup(ctx: DNSCall, net: android.net.Network, domain: String) {
         val addrs = try {
             net.getAllByName(domain)
         } catch (_: UnknownHostException) {

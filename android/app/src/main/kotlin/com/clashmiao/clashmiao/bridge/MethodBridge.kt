@@ -20,7 +20,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import io.flutter.plugin.common.StandardMethodCodec
-import io.nekohasekai.mobile.Mobile
+import com.clashmiao.libcore.core.Core
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -60,7 +60,7 @@ class MethodBridge(
 
     // 内核 channel handler 表：method name → 该方法的处理函数。
     // 注意：所有 kernel method 已迁去 PigeonBridge；此表仅保留 generate_warp_config
-    // （Mobile SDK 特有，暂未 Pigeon 化）。
+    // （内核门面特有，暂未 Pigeon 化）。
     private val kernelOps: Map<String, KernelOp> = buildMap {
         put("generate_warp_config", ::opGenerateWarpConfig)
     }
@@ -165,7 +165,7 @@ class MethodBridge(
     private suspend fun opGenerateWarpConfig(call: MethodCall, result: MethodChannel.Result) {
         val a = argsAsMap(call)
         result.success(
-            Mobile.generateWarpConfig(
+            Core.generateWarpConfig(
                 a["license-key"] as String,
                 a["previous-account-id"] as String,
                 a["previous-access-token"] as String,

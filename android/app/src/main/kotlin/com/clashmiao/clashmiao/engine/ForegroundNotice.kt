@@ -18,8 +18,8 @@ import com.clashmiao.clashmiao.MainActivity
 import com.clashmiao.clashmiao.R
 import com.clashmiao.clashmiao.core.Prefs
 import com.clashmiao.clashmiao.core.BroadcastIntents
-import io.nekohasekai.libbox.Libbox
-import io.nekohasekai.libbox.StatusMessage
+import org.json.JSONException
+import org.json.JSONObject
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 
@@ -29,18 +29,18 @@ import kotlinx.coroutines.GlobalScope
  * 行为概要：
  *   - [show] 上 foreground notification（包含 "stop" action）；Android 14+ 必须
  *     带 [ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE] 并与 manifest 对齐
- *   - [startUpdates] 在用户开了 dynamic notification 时连一条 libbox CommandClient
+ *   - [startUpdates] 在用户开了 dynamic notification 时订阅内核的统计流
  *     拉取 status 流，按 ~1s tick 刷新通知内容（上行 / 下行 byte 数）；按 [beginUpdates]
  *     的代际归属，[stopUpdates] / [close] 之后迟到的启动任务不会留下资源
- *   - screen on/off 广播控制连通：屏幕关时断开 CommandClient 省电
- *   - [close] 停 foreground + 卸 receiver + 断 CommandClient
+ *   - screen on/off 广播控制连通：屏幕关时断开统计流省电
+ *   - [close] 停 foreground + 卸 receiver + 断统计流
  *
  * 这层是 [KernelHost] 内部组件，外面拿不到引用。
  */
 @OptIn(DelicateCoroutinesApi::class)
 class ForegroundNotice(private val service: Service) :
     BroadcastReceiver(),
-    LibboxCommandStream.Subscriber {
+    CoreStream.Subscriber {
 
     companion object {
         private const val NOTIFY_ID = 1
@@ -54,9 +54,9 @@ class ForegroundNotice(private val service: Service) :
                 Application.notification.areNotificationsEnabled()
     }
 
-    private val statsStream = LibboxCommandStream(
+    private val statsStream = CoreStream(
         GlobalScope,
-        LibboxCommandStream.StreamKind.STATS,
+        CoreStream.StreamKind.STATS,
         this,
     )
 
@@ -146,10 +146,14 @@ class ForegroundNotice(private val service: Service) :
     /** 后台执行：用户开了 dynamic-notification 且本代仍有效时，订阅 stats 流并 wire 屏幕开关广播。 */
     fun startUpdates(generation: Long) = updates.runStart(generation)
 
-    // 参数名跟 Subscriber.onStats(message: StatusMessage) 对齐，方便 named-arg 调用。
-    override fun onStats(message: StatusMessage) {
-        val upText = Libbox.formatBytes(message.uplink) + "/s ↑"
-        val downText = Libbox.formatBytes(message.downlink) + "/s ↓"
+    override fun onStats(json: String) {
+        val (up, down) = try {
+            JSONObject(json).let { it.getLong("uplink") to it.getLong("downlink") }
+        } catch (_: JSONException) {
+            return // 畸形帧：丢弃，等下一帧
+        }
+        val upText = formatBytes(up) + "/s ↑"
+        val downText = formatBytes(down) + "/s ↓"
         Application.notificationManager.notify(
             NOTIFY_ID,
             noticeTemplate.setContentText("$upText\t$downText").build(),

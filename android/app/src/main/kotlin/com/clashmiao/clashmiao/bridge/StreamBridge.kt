@@ -9,15 +9,13 @@ import com.clashmiao.clashmiao.core.KernelStatus
 import com.clashmiao.clashmiao.engine.KernelCoordinator
 import com.clashmiao.clashmiao.engine.InstanceFollower
 import com.clashmiao.clashmiao.engine.KernelSnapshot
-import com.clashmiao.clashmiao.engine.LibboxCommandStream
+import com.clashmiao.clashmiao.engine.CoreStream
 import com.clashmiao.clashmiao.engine.LogBuffer
-import com.clashmiao.clashmiao.engine.OutboundSnapshot
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.JSONMethodCodec
-import io.nekohasekai.libbox.OutboundGroup
-import io.nekohasekai.libbox.StatusMessage
+import org.json.JSONObject
 import kotlinx.coroutines.CoroutineScope
 
 /**
@@ -29,9 +27,10 @@ import kotlinx.coroutines.CoroutineScope
  *     旧的 [CHANNEL_STATUS] 只是从同一份快照派生的兼容流（仅在 status 变化时推）；
  *     [CHANNEL_ALERTS] 只保留**非生命周期**提示（如通知权限被拒）——启动失败等
  *     生命周期事实一律在快照的 lastFailure 里，不再另发 alert。
- *   - **LibboxCommandStream driven**（[CHANNEL_STATS] / [CHANNEL_GROUPS] /
- *     [CHANNEL_GROUPS_LITE]）：listen 时连一条对应 StreamKind 的 sing-box
- *     command client，cancel 时断开；监听期间每个新启动的内核实例都重连一次。
+ *   - **CoreStream driven**（[CHANNEL_STATS] / [CHANNEL_GROUPS]）：listen 时订阅内核对应的流，
+ *     cancel 时断开；监听期间每个新启动的内核实例都重连一次。
+ *     载荷是内核（Go）产出的 JSON：**分组原样透传 `String`**，**统计解析成数字 `Map<String, Long>`** 再发——
+ *     Dart 只认 Map，把统计当字符串发过去会被静默当成全零（[StreamWire]）。
  *   - LogBuffer 直接订阅：[CHANNEL_LOGS] 观察协调器持有的进程级日志缓冲，主线程投递。
  *
  * 每个流的注册都走同一个 [SinkBinding] 抽象，[onAttachedToEngine] 一次性
@@ -46,9 +45,15 @@ class StreamBridge : FlutterPlugin {
         private const val CHANNEL_ALERTS = "com.clashmiao.app/service.alerts"
         private const val CHANNEL_STATS = "com.clashmiao.app/stats"
         private const val CHANNEL_GROUPS = "com.clashmiao.app/groups"
-        private const val CHANNEL_GROUPS_LITE = "com.clashmiao.app/active-groups"
         private const val CHANNEL_LOGS = "com.clashmiao.app/service.logs"
         private const val CHANNEL_NETWORK = "com.clashmiao.app/network"
+
+        /** 统计流的 EventChannel：JSON codec（信封是 JSON 文本，Dart 端 `JSONMethodCodec`）。 */
+        internal fun statsChannel(msg: BinaryMessenger) = EventChannel(msg, CHANNEL_STATS, JSONMethodCodec.INSTANCE)
+
+        /** 分组流的 EventChannel：默认 Standard codec（载荷是 String）。 */
+        internal fun groupsChannel(msg: BinaryMessenger) = EventChannel(msg, CHANNEL_GROUPS)
+
         /** 唯一实例引用，供 NetworkWatcher 等原生组件推送事件。 */
         @Volatile var instance: StreamBridge? = null
             private set
@@ -80,11 +85,11 @@ class StreamBridge : FlutterPlugin {
         bindings += jsonStream(msg, CHANNEL_KERNEL_SNAPSHOT, SnapshotSource())
         bindings += jsonStream(msg, CHANNEL_STATUS, StatusSource(TAG))
         bindings += jsonStream(msg, CHANNEL_ALERTS, AlertsSource(TAG))
-        // 2. LibboxCommandStream 驱动：stats（JSON 编码）+ groups + groups-lite
-        bindings += jsonStream(msg, CHANNEL_STATS, StatsSource())
-        bindings += standardStream(msg, CHANNEL_GROUPS, GroupsSource(LibboxCommandStream.StreamKind.FULL_GROUPS))
-        bindings += standardStream(msg, CHANNEL_GROUPS_LITE, GroupsSource(LibboxCommandStream.StreamKind.GROUP_INFO_ONLY))
-        // 3. logs：直接吃 LogBuffer.subscriber，不走 libbox command client。
+        // 2. CoreStream 驱动：stats（JSON 信封）+ groups（Standard 信封）。
+        //    旧的「仅活动分组」流（active-groups）没有任何 Dart 订阅者（取证：lib/ 与 pigeons/ 里没有该通道名），已删除。
+        bindings += SinkBinding(statsChannel(msg), StatsSource())
+        bindings += SinkBinding(groupsChannel(msg), GroupsSource())
+        // 3. logs：直接吃 LogBuffer.subscriber（内核日志经 Platform.writeLog 进缓冲）。
         bindings += standardStream(msg, CHANNEL_LOGS, LogsSource())
         // 4. network：保留通道兼容旧订阅者；网络切换后的重载由原生协调器自己决定，不再通知 Dart。
         EventChannel(msg, CHANNEL_NETWORK).setStreamHandler(object : EventChannel.StreamHandler {
@@ -113,30 +118,26 @@ class StreamBridge : FlutterPlugin {
         SinkBinding(EventChannel(msg, name), source)
 
     private inner class StatsSource : FollowingCommandSource("stats") {
-        override fun open(scope: CoroutineScope, sink: EventChannel.EventSink) = LibboxCommandStream(
-            scope,
-            LibboxCommandStream.StreamKind.STATS,
-            StatsSubscriber(sink),
-        )
+        override fun open(scope: CoroutineScope, sink: EventChannel.EventSink) =
+            CoreStream(scope, CoreStream.StreamKind.STATS, StatsSubscriber(sink))
     }
 
-    private inner class GroupsSource(private val kind: LibboxCommandStream.StreamKind) :
-        FollowingCommandSource("groups/$kind") {
+    private inner class GroupsSource : FollowingCommandSource("groups") {
         override fun open(scope: CoroutineScope, sink: EventChannel.EventSink) =
-            LibboxCommandStream(scope, kind, GroupsSubscriber(sink))
+            CoreStream(scope, CoreStream.StreamKind.GROUPS, GroupsSubscriber(sink))
     }
 
     /**
-     * 由 libbox command client 驱动的流：Dart 监听期间，跟随当前内核实例——每出现一个新的已
-     * 启动实例（epoch / attempt 变化）就重连一次 command server，不依赖 Dart 侧何时取消、
-     * 重新监听（见 [InstanceFollower]）。连上新实例后 libbox 会先推一次当前值（分组 / 统计）。
+     * 由内核订阅驱动的流：Dart 监听期间，跟随当前内核实例——每出现一个新的已
+     * 启动实例（epoch / attempt 变化）就重连一次，不依赖 Dart 侧何时取消、
+     * 重新监听（见 [InstanceFollower]）。连上新实例后内核会先推一次当前值（分组 / 统计）。
      */
     private abstract inner class FollowingCommandSource(private val name: String) : StreamSource {
-        private var stream: LibboxCommandStream? = null
+        private var stream: CoreStream? = null
         private var observer: Observer<KernelSnapshot>? = null
         private val follower = InstanceFollower()
 
-        abstract fun open(scope: CoroutineScope, sink: EventChannel.EventSink): LibboxCommandStream
+        abstract fun open(scope: CoroutineScope, sink: EventChannel.EventSink): CoreStream
 
         override fun start(sink: EventChannel.EventSink) {
             stop()
@@ -147,7 +148,7 @@ class StreamBridge : FlutterPlugin {
             stream = opened
             val obs = Observer<KernelSnapshot> { snapshot ->
                 if (follower.onSnapshot(snapshot)) {
-                    Log.i(TAG, "$name: 内核实例 ${snapshot.epoch}/${snapshot.attempt} 已启动，重连 command server")
+                    Log.i(TAG, "$name: 内核实例 ${snapshot.epoch}/${snapshot.attempt} 已启动，重连内核流")
                     opened.connect()
                 }
             }
@@ -283,35 +284,47 @@ private class AlertsSource(private val tag: String) : StreamSource {
 }
 
 // ===================================================================
-//  LibboxCommandStream subscriber 实现
+//  CoreStream subscriber 实现
 // ===================================================================
 
-private class StatsSubscriber(private val sink: EventChannel.EventSink) :
-    LibboxCommandStream.Subscriber {
+/**
+ * 内核推给 Dart 的两类载荷的线格式（契约由 Go 侧产出并用黄金文件锁定，见 kernel/testdata/wire）：
+ *   - 分组：JSON 文本（`[{tag,type,selected,items:[{tag,type,url-test-delay}]}]`），**原样透传 String**；
+ *   - 统计：Go 给的 JSON 对象解析成 6 个键的 `Map<String, Long>`，Dart 只认 Map。
+ */
+internal object StreamWire {
+    /** 统计载荷的键，顺序固定（线格式契约）。 */
+    val STATS_KEYS = listOf(
+        "connections-in", "connections-out", "uplink", "downlink", "uplink-total", "downlink-total",
+    )
 
-    override fun onStats(message: StatusMessage) {
-        StreamBridge.postMain {
-            sink.success(
-                mapOf(
-                    "connections-in" to message.connectionsIn,
-                    "connections-out" to message.connectionsOut,
-                    "uplink" to message.uplink,
-                    "downlink" to message.downlink,
-                    "uplink-total" to message.uplinkTotal,
-                    "downlink-total" to message.downlinkTotal,
-                ),
-            )
+    /** 统计 JSON → 6 个键的数字 Map；缺键或不是整数都视为协议违规（抛异常，由调用方丢弃这一帧并记日志）。 */
+    fun statsMap(json: String): Map<String, Long> {
+        val o = JSONObject(json)
+        val out = LinkedHashMap<String, Long>(STATS_KEYS.size)
+        for (k in STATS_KEYS) {
+            require(o.has(k)) { "stats frame lacks key $k" }
+            out[k] = o.getLong(k)
         }
+        return out
     }
 }
 
-private class GroupsSubscriber(private val sink: EventChannel.EventSink) :
-    LibboxCommandStream.Subscriber {
-
-    override fun onGroups(groups: List<OutboundGroup>) {
-        // 在回调线程上拍平（go 迭代器不跨线程），编码见 [OutboundSnapshot.encode]。
-        val payload = OutboundSnapshot.encode(groups.map { OutboundSnapshot.from(it) })
+internal class StatsSubscriber(private val sink: EventChannel.EventSink) : CoreStream.Subscriber {
+    override fun onStats(json: String) {
+        val payload = try {
+            StreamWire.statsMap(json)
+        } catch (e: Exception) {
+            Log.w("A/StreamBridge", "drop malformed stats frame: ${e.message}")
+            return
+        }
         StreamBridge.postMain { sink.success(payload) }
+    }
+}
+
+internal class GroupsSubscriber(private val sink: EventChannel.EventSink) : CoreStream.Subscriber {
+    override fun onGroups(json: String) {
+        StreamBridge.postMain { sink.success(json) }
     }
 }
 
@@ -327,7 +340,7 @@ private class LogsSource : StreamSource {
         buffer = logs
         // 首次订阅先把缓冲快照推给 Dart。
         sink.success(logs.snapshot())
-        // 日志可能来自任意线程（libbox 回调）：合并成一次主线程投递，每次推完整快照。
+        // 日志可能来自任意线程（内核回调）：合并成一次主线程投递，每次推完整快照。
         logs.subscriber = {
             if (!pending) {
                 pending = true

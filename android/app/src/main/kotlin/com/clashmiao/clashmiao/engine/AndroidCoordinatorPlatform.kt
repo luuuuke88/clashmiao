@@ -10,7 +10,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.MutableLiveData
 import com.clashmiao.clashmiao.Application
 import com.clashmiao.clashmiao.core.Prefs
-import io.nekohasekai.libbox.Libbox
 import java.util.UUID
 
 /** 能弹出 VPN 授权对话框的界面（MainActivity）。 */
@@ -108,7 +107,7 @@ internal class AndroidKernelWiring {
             logs = LogBuffer(capacity = 300),
             epoch = UUID.randomUUID().toString(),
             selector = OutboundSelector { group, outbound ->
-                Libbox.newStandaloneCommandClient().selectOutbound(group, outbound)
+                EngineRegistry.require().selectOutbound(group, outbound)
             },
         )
         platform.authSink = { token, granted, message -> coordinator.onAuthResult(token, granted, message) }

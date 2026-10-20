@@ -10,7 +10,7 @@ import file_picker_darwin
 import in_app_review
 import mobile_scanner
 import package_info_plus
-import screen_retriever
+import screen_retriever_macos
 import sentry_flutter
 import share_plus
 import shared_preferences_foundation
@@ -24,7 +24,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   InAppReviewPlugin.register(with: registry.registrar(forPlugin: "InAppReviewPlugin"))
   MobileScannerPlugin.register(with: registry.registrar(forPlugin: "MobileScannerPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
-  ScreenRetrieverPlugin.register(with: registry.registrar(forPlugin: "ScreenRetrieverPlugin"))
+  ScreenRetrieverMacosPlugin.register(with: registry.registrar(forPlugin: "ScreenRetrieverMacosPlugin"))
   SentryFlutterPlugin.register(with: registry.registrar(forPlugin: "SentryFlutterPlugin"))
   SharePlusMacosPlugin.register(with: registry.registrar(forPlugin: "SharePlusMacosPlugin"))
   SharedPreferencesPlugin.register(with: registry.registrar(forPlugin: "SharedPreferencesPlugin"))

@@ -6,7 +6,7 @@
 /// Locales: 10
 /// Strings: 4810 (481 per locale)
 ///
-/// Built on 2026-10-19 at 20:42 UTC
+/// Built on 2026-10-20 at 00:45 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -15792,7 +15792,7 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   @override
   String get warpNoise => '噪音计数';
   @override
-  String get warpNoiseDelay => '噪音延延迟';
+  String get warpNoiseDelay => '噪音延迟';
   @override
   String get desktopProxyScopeNotice =>
       '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
@@ -27839,7 +27839,7 @@ extension on TranslationsZhCn {
       case 'config.warpNoise':
         return '噪音计数';
       case 'config.warpNoiseDelay':
-        return '噪音延延迟';
+        return '噪音延迟';
       case 'config.desktopProxyScopeNotice':
         return '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
       case 'config.warpNoiseSize':

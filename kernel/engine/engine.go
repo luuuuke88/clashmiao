@@ -295,3 +295,13 @@ func (c *commandHandler) SetSystemProxyEnabled(enabled bool) error {
 func (c *commandHandler) TriggerNativeCrash() error       { return os.ErrInvalid }
 func (c *commandHandler) WriteDebugMessage(string)        {}
 func (c *commandHandler) ConnectSSHAgent() (int32, error) { return -1, os.ErrInvalid }
+
+// Version 是内置的 sing-box 版本串（发布构建用 -X 覆盖 constant.Version）。
+func Version() string { return libbox.Version() }
+
+// CheckConfig 只构造、不启动地检查配置（libbox.CheckConfig 的薄封装）。
+// 注意它会放行「detour 指向空 direct」这类只在启动时才被拒绝的配置。
+func CheckConfig(content string) error { return libbox.CheckConfig(content) }
+
+// GoVersion 是编译所用的 Go 版本与目标平台，用于诊断。
+func GoVersion() string { return libbox.GoVersion() }

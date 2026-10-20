@@ -10,8 +10,8 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final en = Translations.build();
-  final zhCn = TranslationsZhCn.build();
+  final en = AppLocale.en.buildSync();
+  final zhCn = AppLocale.zhCn.buildSync();
 
   group('classifyBoxAlert', () {
     test('emptyConfiguration 归类为 invalidConfig', () {

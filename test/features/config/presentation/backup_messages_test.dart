@@ -45,8 +45,8 @@ RestoreReport _report({
 );
 
 void main() {
-  final en = AppLocale.en.build();
-  final zh = AppLocale.zhCn.build();
+  final en = AppLocale.en.buildSync();
+  final zh = AppLocale.zhCn.buildSync();
 
   group('确认对话框', () {
     test('本机有不在备份里的订阅时，明确说会被移除并给出数量', () {

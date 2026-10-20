@@ -161,14 +161,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
-  csv:
-    dependency: transitive
-    description:
-      name: csv
-      sha256: c6aa2679b2a18cb57652920f674488d89712efaf4d3fdf2e537215b35fc19d6c
-      url: "https://pub.dev"
-    source: hosted
-    version: "6.0.0"
   dart_style:
     dependency: transitive
     description:
@@ -484,14 +476,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.14.2"
-  json2yaml:
-    dependency: transitive
-    description:
-      name: json2yaml
-      sha256: da94630fbc56079426fdd167ae58373286f603371075b69bf46d848d63ba3e51
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.0.1"
   leak_tracker:
     dependency: transitive
     description:
@@ -860,6 +844,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.30.1"
+  serial_csv:
+    dependency: transitive
+    description:
+      name: serial_csv
+      sha256: "2d62bb70cb3ce7251383fc86ea9aae1298ab1e57af6ef4e93b6a9751c5c268dd"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2"
   share_plus:
     dependency: "direct main"
     description:
@@ -949,18 +941,18 @@ packages:
     dependency: "direct main"
     description:
       name: slang
-      sha256: a466773de768eb95bdf681e0a92e7c8010d44bb247b62130426c83ece33aeaed
+      sha256: "6091c2b4cd9f663080ede24fde6bcb9ee43f9fad1f9eaa66e2801eee47684e24"
       url: "https://pub.dev"
     source: hosted
-    version: "3.32.0"
+    version: "4.19.2"
   slang_flutter:
     dependency: "direct main"
     description:
       name: slang_flutter
-      sha256: "1a98e878673996902fa5ef0b61ce5c245e41e4d25640d18af061c6aab917b0c7"
+      sha256: "2348a39432c48d7c890a2a1e3409b9faae3e49f117fe56d390d4236de8d064f4"
       url: "https://pub.dev"
     source: hosted
-    version: "3.32.0"
+    version: "4.19.0"
   source_span:
     dependency: transitive
     description:

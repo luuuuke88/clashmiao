@@ -34,7 +34,7 @@ const _profileA = ProfileEntity(
 );
 
 /// 失败提示的完整文案（zhCn）：`profileFailureMessage` 对普通异常给的就是它。
-final _updateFailed = AppLocale.zhCn.build().profile.update.failureMsg;
+final _updateFailed = AppLocale.zhCn.buildSync().profile.update.failureMsg;
 
 Future<void> _drainToasts(WidgetTester tester) async {
   await tester.pump(const Duration(seconds: 6));

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Node 是假节点：本地 SOCKS5 上游（无认证，支持 CONNECT）。被测配置把它当作订阅里的一个 socks 节点；
@@ -20,9 +21,18 @@ type Node struct {
 	// Hosts 把请求里的域名映射成回环 IP（本机没有真实 DNS）；没有映射的域名按系统解析。
 	Hosts map[string]string
 
-	ln    net.Listener
-	mu    sync.Mutex
-	conns map[net.Conn]struct{}
+	ln      net.Listener
+	mu      sync.Mutex
+	conns   map[net.Conn]struct{}
+	latency time.Duration
+}
+
+// SetLatency 让这台节点在建立上游连接前多等 d：人为注入的链路延迟（不是用来等某件事发生），
+// 用来造「这台比那台慢」的测速差异。0 表示不加。
+func (n *Node) SetLatency(d time.Duration) {
+	n.mu.Lock()
+	n.latency = d
+	n.mu.Unlock()
 }
 
 // NewNode 起一个假节点，测试结束自动关闭。
@@ -132,6 +142,13 @@ func (n *Node) handle(c net.Conn) {
 	}
 	target := net.JoinHostPort(host, fmt.Sprint(port))
 	n.Log.Add(Entry{Kind: "socks", Source: c.RemoteAddr().String(), Target: target, Detail: n.Name})
+
+	n.mu.Lock()
+	d := n.latency
+	n.mu.Unlock()
+	if d > 0 {
+		<-time.After(d)
+	}
 
 	dialHost := host
 	if ip, ok := n.Hosts[strings.ToLower(host)]; ok {

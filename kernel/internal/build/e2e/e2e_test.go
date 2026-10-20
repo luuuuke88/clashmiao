@@ -249,3 +249,20 @@ func TestNodeLogsOnlyProxiedRequests(t *testing.T) {
 		t.Errorf("目标应收到 1 次 /p，实际 %d", got)
 	}
 }
+
+// SetLatency 的节点转发得更慢：经它的请求耗时明显更长，不影响别的节点。
+func TestNodeLatencyIsInjected(t *testing.T) {
+	target := NewHTTP(t)
+	fast, slow := NewNode(t, "fast", nil), NewNode(t, "slow", nil)
+	slow.SetLatency(120 * time.Millisecond)
+	took := func(n *Node) time.Duration {
+		u, _ := url.Parse(fmt.Sprintf("socks5://127.0.0.1:%d", n.Port))
+		c := &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(u), DisableKeepAlives: true}}
+		start := time.Now()
+		httpGet(t, c, target.URL("127.0.0.1", "/x"))
+		return time.Since(start)
+	}
+	if f, s := took(fast), took(slow); s < 120*time.Millisecond || f >= s {
+		t.Errorf("慢节点应至少多 120ms：fast=%v slow=%v", f, s)
+	}
+}

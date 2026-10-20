@@ -23,7 +23,8 @@ public final class KernelPlatformBridge: NSObject,
 
     /// Back-pointer to the provider so we can call NEPacketTunnelProvider
     /// APIs (setTunnelNetworkSettings, packetFlow.value(forKeyPath:), …).
-    private let provider: KernelProviderProxy
+    /// 弱引用：provider 持有 bridge，反过来强持有会形成引用环，停止后两者都释放不掉。
+    private weak var provider: KernelProviderProxy?
 
     /// Last applied NE settings. Used to support `clearDNSCache` and the
     /// system-proxy toggle without re-deriving from scratch.
@@ -68,6 +69,9 @@ public final class KernelPlatformBridge: NSObject,
             throw NSError(domain: "[ClashMiao] nil return pointer", code: 2)
         }
 
+        guard let provider else {
+            throw NSError(domain: "[ClashMiao] provider released", code: 7)
+        }
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
 
         if options.getAutoRoute() {
@@ -201,13 +205,13 @@ public final class KernelPlatformBridge: NSObject,
 
     public func writeLog(_ message: String?) {
         guard let message else { return }
-        provider.forwardKernelLine(message)
+        provider?.forwardKernelLine(message)
     }
 
     // MARK: - DNS / proxy lifecycle
 
     public func clearDNSCache() {
-        guard let lastAppliedSettings else { return }
+        guard let lastAppliedSettings, let provider else { return }
         // Bounce the tunnel settings to force a DNS cache flush. We
         // assert reasserting around it so the OS doesn't try to drop
         // the tunnel while we're swapping settings.
@@ -217,10 +221,9 @@ public final class KernelPlatformBridge: NSObject,
         provider.reasserting = false
     }
 
+    /// 不阻塞 libbox 的回调线程：只入队，由 provider 的串行队列执行重载。
     public func serviceReload() throws {
-        awaitBlocking { [provider] in
-            await provider.reloadKernelService()
-        }
+        provider?.requestSelfReload()
     }
 
     public func getSystemProxyStatus() -> LibboxSystemProxyStatus? {
@@ -244,6 +247,7 @@ public final class KernelPlatformBridge: NSObject,
         proxySettings.httpEnabled = isEnabled
         proxySettings.httpsEnabled = isEnabled
         settings.proxySettings = proxySettings
+        guard let provider else { return }
         try awaitBlockingThrowing { [provider] in
             try await provider.setTunnelNetworkSettings(settings)
         }

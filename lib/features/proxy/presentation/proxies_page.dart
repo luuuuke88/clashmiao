@@ -167,10 +167,12 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 分组 tag → 节点 tag → 展示状态。按分组分开存：两个分组共享同一个节点时，
     // 后一个分组不会覆盖前一个分组里这个节点的状态。
     final Map<String, Map<String, NodeLatency>> latenciesByGroup = {};
+    // 带隐藏标记的节点与订阅信息条目（「官网地址：…」「剩余流量：…」）一律
+    // 不展示：离线分组解析自订阅配置，信息条目还在里面。排除集按整份订阅算
+    // 一次，套用到每个分组。
+    final infoExclusions = subscriptionInfoExclusions(displayGroups);
     for (final group in displayGroups) {
-      // 带隐藏标记的节点与订阅信息条目（「官网地址：…」「剩余流量：…」）一律
-      // 不展示：离线分组解析自订阅配置，信息条目还在里面。
-      final sortedItems = selectableGroupItems(group.items);
+      final sortedItems = selectableGroupItems(group.items, infoExclusions);
       final latencies = latenciesByGroup[group.tag] = {
         for (final item in sortedItems) item.tag: latencyOf(group, item),
       };

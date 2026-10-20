@@ -183,6 +183,15 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   void onProfileChanged() => _reset();
 
   /// 分组流推来了新数据。
+  /// 参与「是否测完」判断的节点：叶子节点，排除订阅标记隐藏的节点、订阅信息
+  /// 条目（按整份订阅的实时分组算，与线路页同口径）与嵌套分组——它们的延迟
+  /// 不是这一轮 `urlTest` 的结果，内核不测不在组里的条目。
+  Iterable<OutboundProxy> _testableItems(OutboundGroup group) =>
+      selectableGroupItems(
+        group.items,
+        subscriptionInfoExclusions(_liveGroups()),
+      ).where((item) => !isGroupProxyType(item.type));
+
   void onGroups(List<OutboundGroup> groups) {
     if (!_connected) return;
     if (_warmupPending) {
@@ -441,14 +450,6 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     super.dispose();
   }
 }
-
-/// 参与「是否测完」判断的节点：叶子节点，排除订阅标记隐藏的节点、订阅信息
-/// 条目与嵌套分组（它们的延迟不是这一轮 `urlTest` 的结果——内核不测不在组里
-/// 的条目）。
-Iterable<OutboundProxy> _testableItems(OutboundGroup group) =>
-    selectableGroupItems(
-      group.items,
-    ).where((item) => !isGroupProxyType(item.type));
 
 OutboundGroup? _find(List<OutboundGroup> groups, String tag) {
   for (final group in groups) {

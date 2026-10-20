@@ -23,29 +23,73 @@ const _runtime = [
 ];
 
 void main() {
-  group('selectableGroupItems（线路页 / 自动测速的条目口径）', () {
-    test('去掉隐藏标记节点与订阅信息条目，保留真实节点与嵌套分组，顺序不变', () {
-      final items = selectableGroupItems(const [
+  group('信息条目排除（线路页 / 自动测速的条目口径）', () {
+    test('去掉隐藏标记节点与订阅信息条目，保留真实节点（含关键词的）与嵌套分组，顺序不变', () {
+      const items = [
         OutboundProxy(tag: 'auto', type: 'urltest'),
         OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vless'),
         OutboundProxy(tag: '🇭🇰 香港01-BGP|IEPL中继', type: 'vless'),
         OutboundProxy(tag: '剩余流量：12 GB', type: 'vless'),
         OutboundProxy(tag: 'x §hide§', type: 'vless'),
-        OutboundProxy(tag: '🇸🇬 狮城01', type: 'vless'),
-      ]);
-      expect(items.map((i) => i.tag), [
+        OutboundProxy(tag: '香港01 官网优化 IEPL', type: 'vless'),
+        OutboundProxy(tag: 'HK Official IEPL 01', type: 'vless'),
+      ];
+      const group = OutboundGroup(
+        tag: 'select',
+        type: 'selector',
+        selected: 'auto',
+        items: items,
+      );
+      final out = selectableGroupItems(
+        items,
+        subscriptionInfoExclusions([group]),
+      );
+      expect(out.map((i) => i.tag), [
         'auto',
         '🇭🇰 香港01-BGP|IEPL中继',
-        '🇸🇬 狮城01',
+        '香港01 官网优化 IEPL',
+        'HK Official IEPL 01',
       ]);
     });
 
-    test('叶子节点全是信息条目：不排除（与运行时配置构建器同一保护）', () {
-      final items = selectableGroupItems(const [
-        OutboundProxy(tag: 'auto', type: 'urltest'),
-        OutboundProxy(tag: '官网地址：a.cc', type: 'vless'),
+    test('只有信息条目的分组与真实节点分组并存：按整份订阅判断，信息组同样被清空', () {
+      const infoOnly = OutboundGroup(
+        tag: '订阅信息',
+        type: 'selector',
+        selected: '官网地址：a.cc',
+        items: [
+          OutboundProxy(tag: '官网地址：a.cc', type: 'vless'),
+          OutboundProxy(tag: '剩余流量：1 GB', type: 'vless'),
+        ],
+      );
+      const real = OutboundGroup(
+        tag: '节点',
+        type: 'selector',
+        selected: 'hk',
+        items: [OutboundProxy(tag: 'hk', type: 'vless')],
+      );
+      final exclusions = subscriptionInfoExclusions([infoOnly, real]);
+      expect(selectableGroupItems(infoOnly.items, exclusions), isEmpty);
+      expect(selectableGroupItems(real.items, exclusions).map((i) => i.tag), [
+        'hk',
       ]);
-      expect(items.map((i) => i.tag), ['auto', '官网地址：a.cc']);
+    });
+
+    test('整份订阅全是信息条目：不排除（与运行时配置构建器同一保护）', () {
+      const group = OutboundGroup(
+        tag: 'select',
+        type: 'selector',
+        selected: 'auto',
+        items: [
+          OutboundProxy(tag: 'auto', type: 'urltest'),
+          OutboundProxy(tag: '官网地址：a.cc', type: 'vless'),
+        ],
+      );
+      final out = selectableGroupItems(
+        group.items,
+        subscriptionInfoExclusions([group]),
+      );
+      expect(out.map((i) => i.tag), ['auto', '官网地址：a.cc']);
     });
   });
 

@@ -94,8 +94,8 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^4.0.0
-  pigeon: ^26.1.0
-  analyzer: ^7.6.0
+  pigeon: ^29.0.11
+  analyzer: ^14.5.0
   fake_async: ^1.3.3
   # 仅测试用：box_providers_groups_test 要实现 Riverpod 的调度接口来模拟「后台没有帧」
   riverpod: ^3.4.3

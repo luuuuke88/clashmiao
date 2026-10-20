@@ -99,19 +99,19 @@ class _Visitor extends RecursiveAstVisitor<void> {
   }
 
   @override
-  void visitNamedExpression(NamedExpression node) {
-    final label = node.name.label.name;
-    final fn = node.expression;
+  void visitNamedArgument(NamedArgument node) {
+    final label = node.name.lexeme;
+    final fn = node.argumentExpression;
     if ((label == 'error' || label == 'onError') && fn is FunctionExpression) {
       final first = fn.parameters?.parameters.firstOrNull?.name?.lexeme;
       if (first != null) {
         _errorNames.add(first);
-        super.visitNamedExpression(node);
+        super.visitNamedArgument(node);
         _errorNames.removeLast();
         return;
       }
     }
-    super.visitNamedExpression(node);
+    super.visitNamedArgument(node);
   }
 
   @override
@@ -216,7 +216,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
       }
       if (p is MethodDeclaration && p.name.lexeme == 'toString') return true;
       if (p is InstanceCreationExpression &&
-          carrierTypes.contains(p.constructorName.type.name2.lexeme)) {
+          carrierTypes.contains(p.constructorName.type.name.lexeme)) {
         return true;
       }
       if (p is MethodInvocation) {

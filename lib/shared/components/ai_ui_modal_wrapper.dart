@@ -47,47 +47,51 @@ class AiUiModalWrapper extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: media.size.height - media.padding.top - _modalTopHeadroom,
       ),
-      child: SafeArea(
-        child: Container(
-          decoration: BoxDecoration(
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 30,
-                offset: const Offset(0, -5),
-              ),
-            ],
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(32),
-              topRight: Radius.circular(32),
+      // 不在最外层套 SafeArea：那样毛玻璃底会停在手势导航条上方，导航条那一条
+      // 直接露出下面的页面，弹层看起来断了一截（Android 15+ 强制 edge-to-edge
+      // 后尤其明显）。底色铺满到屏幕底边，安全区只作用在里面的内容上。
+      child: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 30,
+              offset: const Offset(0, -5),
             ),
+          ],
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
           ),
-          child: ClipRRect(
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(32),
-              topRight: Radius.circular(32),
-            ),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child:
-                  Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 0),
-                        decoration: BoxDecoration(
-                          color: isLight
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : Colors.black.withValues(alpha: 0.2),
-                          borderRadius: const BorderRadius.only(
-                            topLeft: Radius.circular(32),
-                            topRight: Radius.circular(32),
-                          ),
-                          border: Border.all(
-                            color: isLight
-                                ? Colors.white.withValues(alpha: 0.5)
-                                : Theme.of(context).aiUi.borderColor
-                                      .withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(32),
+            topRight: Radius.circular(32),
+          ),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child:
+                Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 0),
+                      decoration: BoxDecoration(
+                        color: isLight
+                            ? Colors.white.withValues(alpha: 0.1)
+                            : Colors.black.withValues(alpha: 0.2),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(32),
+                          topRight: Radius.circular(32),
                         ),
+                        border: Border.all(
+                          color: isLight
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : Theme.of(context).aiUi.borderColor
+                                    .withValues(alpha: 0.1),
+                          width: 0.5,
+                        ),
+                      ),
+                      child: SafeArea(
+                        top: false,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -113,11 +117,11 @@ class AiUiModalWrapper extends StatelessWidget {
                               Flexible(child: child),
                           ],
                         ),
-                      )
-                      .animateWithMotion(context)
-                      .fadeIn(duration: 300.ms)
-                      .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
-            ),
+                      ),
+                    )
+                    .animateWithMotion(context)
+                    .fadeIn(duration: 300.ms)
+                    .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
           ),
         ),
       ),

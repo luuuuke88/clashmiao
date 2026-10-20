@@ -83,6 +83,8 @@ var optionFixtures = map[string]func(o *options.Options){
 	"O7-only":   func(o *options.Options) { o.IPv6Mode = "ipv6_only" },
 	// O8：允许局域网连接。
 	"O8": func(o *options.Options) { o.AllowConnectionFromLAN = true },
+	// O10：解析目标地址（resolve-destination）。
+	"O10": func(o *options.Options) { o.ResolveDestination = true },
 	// O9：屏蔽广告开关。
 	"O9": func(o *options.Options) { o.BlockAds = true },
 }

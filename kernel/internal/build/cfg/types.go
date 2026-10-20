@@ -94,12 +94,48 @@ func (e Endpoint) Type() string { s, _ := e["type"].(string); return s }
 
 // Route 对应 `route`。
 type Route struct {
-	Rules                 []RouteRule `json:"rules,omitempty"`
-	RuleSet               []RuleSet   `json:"rule_set,omitempty"`
-	Final                 string      `json:"final,omitempty"`
-	AutoDetectInterface   bool        `json:"auto_detect_interface,omitempty"`
-	OverrideAndroidVPN    bool        `json:"override_android_vpn,omitempty"`
-	DefaultDomainResolver string      `json:"default_domain_resolver,omitempty"`
+	Rules                 []RouteRule     `json:"rules,omitempty"`
+	RuleSet               []RuleSet       `json:"rule_set,omitempty"`
+	Final                 string          `json:"final,omitempty"`
+	AutoDetectInterface   bool            `json:"auto_detect_interface,omitempty"`
+	OverrideAndroidVPN    bool            `json:"override_android_vpn,omitempty"`
+	DefaultDomainResolver *DomainResolver `json:"default_domain_resolver,omitempty"`
+}
+
+// DomainResolver 对应 `default_domain_resolver`：只有 server 时写成字符串，带 strategy 时写成对象。
+// 出站拨号用域名时按 strategy 排序候选地址（prefer_ipv6 先试 v6）；只设 dns.strategy 不会改变拨号顺序。
+type DomainResolver struct {
+	Server   string
+	Strategy string
+}
+
+// MarshalJSON 输出字符串或对象。
+func (d DomainResolver) MarshalJSON() ([]byte, error) {
+	if d.Strategy == "" {
+		return json.Marshal(d.Server)
+	}
+	return json.Marshal(struct {
+		Server   string `json:"server"`
+		Strategy string `json:"strategy"`
+	}{d.Server, d.Strategy})
+}
+
+// UnmarshalJSON 接受字符串或对象两种写法。
+func (d *DomainResolver) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err == nil {
+		*d = DomainResolver{Server: s}
+		return nil
+	}
+	var o struct {
+		Server   string `json:"server"`
+		Strategy string `json:"strategy"`
+	}
+	if err := json.Unmarshal(b, &o); err != nil {
+		return err
+	}
+	*d = DomainResolver{Server: o.Server, Strategy: o.Strategy}
+	return nil
 }
 
 // RouteRule 是一条路由规则（动作默认 route）。

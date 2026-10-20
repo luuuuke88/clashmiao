@@ -35,6 +35,10 @@ var Matrix = []Case{
 	{"dns-O6-local", "P2", "O6-local"},
 	{"dns-O6-direct-doh-domain", "P2", "O6-direct-doh-domain"},
 	{"dns-O7-only", "P2", "O7-only"},
+	// U6：路由与规则（O3 带 bypass / block / IP / proxy 四类用户规则与 bypass-lan）。
+	{"route-O3", "P1", "O3"},
+	{"route-O9", "P1", "O9"},
+	{"route-O10", "P1", "O10"},
 }
 
 // BuildCase 构建一个矩阵格子的原始（Android）配置，并返回它用的选项。

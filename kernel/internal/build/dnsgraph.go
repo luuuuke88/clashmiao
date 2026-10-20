@@ -34,8 +34,8 @@ func CheckDNSDeps(c *cfg.Config) error {
 		entities[e.Tag()] = e
 	}
 	defaultResolver := ""
-	if c.Route != nil {
-		defaultResolver = c.Route.DefaultDomainResolver
+	if c.Route != nil && c.Route.DefaultDomainResolver != nil {
+		defaultResolver = c.Route.DefaultDomainResolver.Server
 	}
 
 	// 节点 key 用前缀区分：dns 服务器与出站 / 端点的 tag 空间是独立的。

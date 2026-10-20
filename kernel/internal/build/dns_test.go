@@ -60,8 +60,8 @@ func TestDNSDetourRules(t *testing.T) {
 			if c.DNS.Final != "dns-remote" {
 				t.Errorf("dns.final = %q", c.DNS.Final)
 			}
-			if c.Route.DefaultDomainResolver != "dns-direct" {
-				t.Errorf("route.default_domain_resolver = %q", c.Route.DefaultDomainResolver)
+			if r := c.Route.DefaultDomainResolver; r == nil || r.Server != "dns-direct" {
+				t.Errorf("route.default_domain_resolver = %+v", r)
 			}
 		})
 	}

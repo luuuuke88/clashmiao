@@ -57,6 +57,8 @@ void main() {
         ),
         debug: true,
       ),
+      // 首次运行会弹系统「添加 VPN 配置」授权，需要人在真机上点允许。
+      timeout: const Duration(minutes: 3),
     );
 
     final port = container.read(kernelPortProvider);

@@ -62,6 +62,17 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
   /// 冻结期间有一次被推迟的重排：最后一根手指抬起时重建一次把它补上。
   bool _reorderDeferred = false;
 
+  /// 列表开始滚动时通知所有行：位移动画直接走到终点。滚动是手势，一旦开始
+  /// 就没有「按看到的位置点击」需要维持了；不收掉的话，布局位置滚进缓存区、
+  /// 父级不再绘制的行还挂着位移。
+  final _SlideSnap _slideSnap = _SlideSnap();
+
+  @override
+  void dispose() {
+    _slideSnap.dispose();
+    super.dispose();
+  }
+
   void _onPointerDown(PointerDownEvent _) => _pointersDown++;
 
   void _onPointerRelease(PointerEvent _) {
@@ -358,68 +369,79 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
                             onPointerDown: _onPointerDown,
                             onPointerUp: _onPointerRelease,
                             onPointerCancel: _onPointerRelease,
-                            child: ListView.builder(
-                              padding: const EdgeInsets.only(bottom: 120),
-                              itemCount: otherProxies.length + autoCardCount,
-                              // 重绘边界与语义序号由行自己加在位移盒里面（见
-                              // [_ReorderSlide]）：位移盒必须是列表的直接子节点
-                              // ——列表把点交给它、由它按绘制位置判断命中；它
-                              // 在 paint 里发现位置变化，挪动时自己得重绘。
-                              addRepaintBoundaries: false,
-                              addSemanticIndexes: false,
-                              findChildIndexCallback: (key) =>
-                                  key is ValueKey<String>
-                                  ? indexByKey[key.value]
-                                  : null,
-                              itemBuilder: (ctx, index) {
-                                if (autoProxy != null && index == 0) {
-                                  // 固定在第 0 行，不做位移动画。
-                                  return IndexedSemantics(
-                                    key: const ValueKey(_kAutoCardKey),
-                                    index: index,
-                                    child: RepaintBoundary(
-                                      child: _AutoSelectCard(
-                                        isSelected:
-                                            group.selected == autoProxy.tag,
-                                        onTap: () => _selectProxy(
-                                          context,
-                                          ref,
-                                          group.tag,
-                                          autoProxy.tag,
-                                          isConnected,
-                                          canOperateKernel,
+                            child:
+                                NotificationListener<ScrollStartNotification>(
+                                  onNotification: (_) {
+                                    _slideSnap.snap();
+                                    return false;
+                                  },
+                                  child: ListView.builder(
+                                    padding: const EdgeInsets.only(bottom: 120),
+                                    itemCount:
+                                        otherProxies.length + autoCardCount,
+                                    // 重绘边界与语义序号由行自己加在位移盒里面（见
+                                    // [_ReorderSlide]）：位移盒必须是列表的直接子节点
+                                    // ——列表把点交给它、由它按绘制位置判断命中；它
+                                    // 在 paint 里发现位置变化，挪动时自己得重绘。
+                                    addRepaintBoundaries: false,
+                                    addSemanticIndexes: false,
+                                    findChildIndexCallback: (key) =>
+                                        key is ValueKey<String>
+                                        ? indexByKey[key.value]
+                                        : null,
+                                    itemBuilder: (ctx, index) {
+                                      if (autoProxy != null && index == 0) {
+                                        // 固定在第 0 行，不做位移动画。
+                                        return IndexedSemantics(
+                                          key: const ValueKey(_kAutoCardKey),
+                                          index: index,
+                                          child: RepaintBoundary(
+                                            child: _AutoSelectCard(
+                                              isSelected:
+                                                  group.selected ==
+                                                  autoProxy.tag,
+                                              onTap: () => _selectProxy(
+                                                context,
+                                                ref,
+                                                group.tag,
+                                                autoProxy.tag,
+                                                isConnected,
+                                                canOperateKernel,
+                                              ),
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                      final proxy =
+                                          otherProxies[index - autoCardCount];
+                                      final isSelected =
+                                          group.selected == proxy.tag;
+                                      return _ReorderSlide(
+                                        key: ValueKey(_nodeRowKey(proxy.tag)),
+                                        semanticIndex: index,
+                                        snap: _slideSnap,
+                                        child: _ProxyTile(
+                                          proxy: proxy,
+                                          isSelected: isSelected,
+                                          latency:
+                                              latenciesByGroup[group.tag]?[proxy
+                                                  .tag] ??
+                                              const NodeLatency(
+                                                LatencyDisplayState.untested,
+                                              ),
+                                          onTap: () => _selectProxy(
+                                            context,
+                                            ref,
+                                            group.tag,
+                                            proxy.tag,
+                                            isConnected,
+                                            canOperateKernel,
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  );
-                                }
-                                final proxy =
-                                    otherProxies[index - autoCardCount];
-                                final isSelected = group.selected == proxy.tag;
-                                return _ReorderSlide(
-                                  key: ValueKey(_nodeRowKey(proxy.tag)),
-                                  semanticIndex: index,
-                                  child: _ProxyTile(
-                                    proxy: proxy,
-                                    isSelected: isSelected,
-                                    latency:
-                                        latenciesByGroup[group.tag]?[proxy
-                                            .tag] ??
-                                        const NodeLatency(
-                                          LatencyDisplayState.untested,
-                                        ),
-                                    onTap: () => _selectProxy(
-                                      context,
-                                      ref,
-                                      group.tag,
-                                      proxy.tag,
-                                      isConnected,
-                                      canOperateKernel,
-                                    ),
+                                      );
+                                    },
                                   ),
-                                );
-                              },
-                            ),
+                                ),
                           );
                         },
                       ),
@@ -639,11 +661,15 @@ class _ReorderSlide extends StatefulWidget {
   const _ReorderSlide({
     super.key,
     required this.semanticIndex,
+    required this.snap,
     required this.child,
   });
 
   /// 这一行在列表里的序号（读屏的「第几项」），等同列表自带的语义序号。
   final int semanticIndex;
+
+  /// 列表开始滚动时触发：位移动画直接走到终点。
+  final _SlideSnap snap;
   final Widget child;
 
   @override
@@ -666,6 +692,7 @@ class _ReorderSlideState extends State<_ReorderSlide>
   @override
   Widget build(BuildContext context) => _SlideBox(
     controller: _controller,
+    snap: widget.snap,
     enabled: !Motion.reduced(context),
     child: IndexedSemantics(
       index: widget.semanticIndex,
@@ -677,27 +704,50 @@ class _ReorderSlideState extends State<_ReorderSlide>
 class _SlideBox extends SingleChildRenderObjectWidget {
   const _SlideBox({
     required this.controller,
+    required this.snap,
     required this.enabled,
     required super.child,
   });
 
   final AnimationController controller;
+  final _SlideSnap snap;
   final bool enabled;
 
   @override
   _RenderSlideBox createRenderObject(BuildContext context) =>
-      _RenderSlideBox(controller, enabled);
+      _RenderSlideBox(controller, snap, enabled);
 
   @override
   void updateRenderObject(BuildContext context, _RenderSlideBox renderObject) {
     renderObject
       ..controller = controller
+      ..snap = snap
       ..enabled = enabled;
   }
 }
 
 class _RenderSlideBox extends RenderProxyBox {
-  _RenderSlideBox(this._controller, this._enabled);
+  _RenderSlideBox(this._controller, this._snap, this._enabled);
+
+  _SlideSnap _snap;
+  set snap(_SlideSnap value) {
+    if (identical(value, _snap)) return;
+    if (attached) _snap.removeListener(_snapToEnd);
+    _snap = value;
+    if (attached) _snap.addListener(_snapToEnd);
+  }
+
+  /// 位移动画直接走到终点：画在、点在布局位置上。同时忘掉上一次绘制的位置：
+  /// 滚动期间没被绘制的行（在缓存区里）之后再画出来时，不从一个早已过时的
+  /// 位置滑过来。
+  void _snapToEnd() {
+    _lastOffset = null;
+    if (_from == 0 && !_startPending) return;
+    _from = 0;
+    _startPending = false;
+    _controller.stop();
+    markNeedsPaint();
+  }
 
   AnimationController _controller;
   set controller(AnimationController value) {
@@ -746,11 +796,13 @@ class _RenderSlideBox extends RenderProxyBox {
   void attach(PipelineOwner owner) {
     super.attach(owner);
     _controller.addListener(markNeedsPaint);
+    _snap.addListener(_snapToEnd);
   }
 
   @override
   void detach() {
     _controller.removeListener(markNeedsPaint);
+    _snap.removeListener(_snapToEnd);
     super.detach();
   }
 
@@ -766,15 +818,31 @@ class _RenderSlideBox extends RenderProxyBox {
   /// 按**绘制位置**判断点没点中这一行。默认实现按布局位置先做边界检查：行
   /// 画在原位置、布局已在新位置时，点在看到的那一行上会被它拒掉（被吞掉），
   /// 点在布局位置上又落到一处空白。列表不做边界检查、逐个询问直接子节点
-  /// （从后往前，与绘制的上下层一致），所以这里按绘制位置回答就够了。
+  /// （从后往前，与绘制的上下层一致），所以这里按绘制位置回答。
+  ///
+  /// 命中与绘制必须一致：列表只绘制布局范围与绘制区间相交的行，布局位置
+  /// 落在缓存区（滚出可视范围、或挪到可视范围外）的行根本没画出来，这里
+  /// 同口径直接拒绝，不能凭位移去截获可见行的点击。
   @override
   bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (!_paintedByParent()) return false;
     if (!size.contains(position - Offset(0, _paintDy))) return false;
     if (hitTestChildren(result, position: position) || hitTestSelf(position)) {
       result.add(BoxHitTestEntry(this, position));
       return true;
     }
     return false;
+  }
+
+  /// 列表（sliver）这一帧会不会绘制这一行：与
+  /// `RenderSliverMultiBoxAdaptor.paint` 的裁剪条件相同——布局区间
+  /// [位置, 位置 + 高度) 与绘制区间 (0, remainingPaintExtent) 相交。
+  bool _paintedByParent() {
+    final sliver = parent;
+    if (sliver is! RenderSliverMultiBoxAdaptor) return true;
+    final delta = sliver.childMainAxisPosition(this);
+    return delta < sliver.constraints.remainingPaintExtent &&
+        delta + size.height > 0;
   }
 
   @override
@@ -811,6 +879,11 @@ class _RenderSlideBox extends RenderProxyBox {
     if (child == null) return;
     context.paintChild(child, offset.translate(0, _paintDy));
   }
+}
+
+/// 列表开始滚动的广播：各行的位移盒监听它，收到就把位移动画直接走到终点。
+class _SlideSnap extends ChangeNotifier {
+  void snap() => notifyListeners();
 }
 
 class _AutoSelectCard extends HookConsumerWidget {

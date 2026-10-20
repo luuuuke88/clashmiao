@@ -181,7 +181,9 @@ Future<void> _teardown(WidgetTester tester, _Rig rig) async {
 /// 列表逐个询问直接子节点的命中测试，位移盒能按绘制位置回答，点击才落得到
 /// 看到的那一行上。
 double _layoutTop(WidgetTester tester, String tag) {
-  final box = tester.renderObject(find.byKey(ValueKey('node:$tag')).last);
+  final box = tester.renderObject(
+    find.byKey(ValueKey('node:$tag'), skipOffstage: false).last,
+  );
   final data = box.parentData;
   expect(
     data,
@@ -190,6 +192,59 @@ double _layoutTop(WidgetTester tester, String tag) {
   );
   return (data! as SliverMultiBoxAdaptorParentData).layoutOffset!;
 }
+
+/// 行内容（位移盒里面的重绘边界）此刻的绘制范围（含位移）。
+Rect _visualRect(WidgetTester tester, String tag) => tester.getRect(
+  find
+      .descendant(
+        of: find.byKey(ValueKey('node:$tag'), skipOffstage: false).last,
+        matching: find.byType(RepaintBoundary, skipOffstage: false),
+        skipOffstage: false,
+      )
+      .first,
+);
+
+/// 节点行可点击的卡片此刻的范围（含位移）。
+Rect _tapRect(WidgetTester tester, String tag) => tester.getRect(
+  find.descendant(
+    of: find.byKey(ValueKey('node:$tag'), skipOffstage: false).last,
+    matching: find.byType(InkWell, skipOffstage: false),
+    skipOffstage: false,
+  ),
+);
+
+/// 位移盒的布局范围（不含位移）。
+Rect _layoutRect(WidgetTester tester, String tag) =>
+    tester.getRect(find.byKey(ValueKey('node:$tag'), skipOffstage: false).last);
+
+bool _built(String tag) => find
+    .byKey(ValueKey('node:$tag'), skipOffstage: false)
+    .evaluate()
+    .isNotEmpty;
+
+ScrollPosition _scroll(WidgetTester tester) => tester
+    .state<ScrollableState>(
+      find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    )
+    .position;
+
+const _many = [
+  'Alpha',
+  'Bravo',
+  'Charlie',
+  'Delta',
+  'Echo',
+  'Foxtrot',
+  'Golf',
+  'Hotel',
+  'India',
+  'Juliet',
+  'Kilo',
+  'Lima',
+];
 
 bool _testing(_Rig rig) =>
     rig.container.read(latencyTestCoordinatorProvider).isGroupTesting('select');
@@ -457,6 +512,145 @@ void main() {
     final semantics = slide.child! as RenderIndexedSemantics;
     expect(semantics.child!.isRepaintBoundary, isTrue);
     await _teardown(tester, rig);
+  });
+
+  group('命中与绘制一致：布局位置在缓存区、没画出来的行不截获点击', () {
+    testWidgets('动画途中又一次重排把行挪进缓存区：它的位移不截获可见行的点击', (tester) async {
+      final delays = {
+        for (var i = 0; i < _many.length; i++) _many[i]: 100 * (i + 1),
+      };
+      final rig = await _rig(delays);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+
+      // 第一个布局位置已在可视范围之外、但仍在缓存区（已构建）的行。
+      final viewport = _scroll(tester).viewportDimension;
+      final j = _many.indexWhere(
+        (tag) => _built(tag) && _layoutTop(tester, tag) >= viewport,
+      );
+      expect(j, greaterThan(4), reason: '可视范围外还有缓存行');
+
+      // 第一次重排：Alpha 从第 1 位挪到第 4 位（画着，开始位移动画）。
+      var top = _layoutTop(tester, 'Alpha');
+      rig.groups.add([
+        _group({...delays, 'Alpha': 450}),
+      ]);
+      for (var i = 0; i < 10 && _layoutTop(tester, 'Alpha') == top; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 16));
+
+      // 动画途中第二次重排：Alpha 挪到第 j 位，布局位置在可视范围之外，列表
+      // 不再绘制它；它身上还挂着第一次动画的位移。
+      top = _layoutTop(tester, 'Alpha');
+      rig.groups.add([
+        _group({...delays, 'Alpha': delays[_many[j]]! + 50}),
+      ]);
+      for (var i = 0; i < 10 && _layoutTop(tester, 'Alpha') == top; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(
+        _layoutTop(tester, 'Alpha') - _scroll(tester).pixels,
+        greaterThanOrEqualTo(viewport),
+        reason: '列表不绘制 Alpha',
+      );
+      final ghost = _visualRect(tester, 'Alpha').center;
+      final visible = [
+        for (final tag in _many)
+          if (tag != 'Alpha' &&
+              _built(tag) &&
+              _visualRect(tester, tag).contains(ghost))
+            tag,
+      ];
+      expect(visible, hasLength(1), reason: 'Alpha 按位移算的位置上有一行看得见的');
+
+      await tester.tapAt(ghost);
+      await tester.pump();
+      expect(rig.port.selected, visible, reason: '选中的是看得见的那一行');
+      await _teardown(tester, rig);
+    });
+
+    testWidgets('动画途中滚动：位移立即走到终点，滚进缓存区的行不截获可见行的点击', (tester) async {
+      // Alpha 原在第 3 位，变慢后挪到第 8 位（跨 5 行往下，排在途经各行之后，
+      // 命中测试时先被询问）。
+      final delays = {
+        for (var i = 1; i < _many.length; i++) _many[i]: 100 * i,
+        'Alpha': 250,
+      };
+      final rig = await _rig(delays);
+      await tester.pumpWidget(rig.widget);
+      await _settle(tester);
+      // 先往下滚一段，留出往回滚的余地。
+      const scrolledAt = 200.0;
+      _scroll(tester).jumpTo(scrolledAt);
+      await _settle(tester);
+      final viewport = _scroll(tester).viewportDimension;
+      final startTop = _layoutTop(tester, 'Alpha');
+
+      rig.groups.add([
+        _group({...delays, 'Alpha': 750}),
+      ]);
+      for (var i = 0; i < 10 && _layoutTop(tester, 'Alpha') == startTop; i++) {
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      expect(
+        _layoutTop(tester, 'Alpha') - scrolledAt,
+        lessThan(viewport),
+        reason: '新位置仍在可视范围内：列表绘制它，位移动画启动',
+      );
+      // 动画刚开始：Alpha 还画在原位置附近（新位置上方好几行）。
+      await tester.pump(const Duration(milliseconds: 1));
+      await tester.pump(const Duration(milliseconds: 16));
+      final rowHeight = _layoutRect(tester, 'Alpha').height;
+      final alphaNow = _visualRect(tester, 'Alpha');
+      expect(
+        _layoutRect(tester, 'Alpha').center.dy - alphaNow.center.dy,
+        greaterThan(3 * rowHeight),
+        reason: '动画进行中，位移还很大',
+      );
+
+      // 往回滚：Alpha 的新布局位置滚出可视范围底端，进入缓存区。
+      final scrollTo = _layoutTop(tester, 'Alpha') - viewport - 10;
+      expect(scrollTo, inInclusiveRange(0, scrolledAt), reason: '往回滚');
+      _scroll(tester).jumpTo(scrollTo);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(_built('Alpha'), isTrue, reason: 'Alpha 仍在缓存区');
+      expect(
+        _layoutTop(tester, 'Alpha') - _scroll(tester).pixels,
+        greaterThanOrEqualTo(viewport),
+        reason: '列表不绘制 Alpha',
+      );
+
+      // 滚动开始时所有位移走到终点：看到的就是布局位置。
+      for (final tag in _many.where(_built)) {
+        expect(
+          _visualRect(tester, tag).top,
+          _layoutRect(tester, tag).top,
+          reason: '$tag 的位移已收掉',
+        );
+      }
+
+      // Alpha 滚动前按位移所在的范围，随滚动一起移动。不收掉位移、也不按绘制
+      // 裁剪的话，Alpha 没画出来、按位移却仍覆盖这片区域，而且它排在途经各行
+      // 之后、先被询问——点在这里看得见的行上，会落到看不见的 Alpha 身上。
+      final ghost = alphaNow.shift(Offset(0, scrolledAt - scrollTo));
+      // 与这片区域交叠最多的可见行（按它可点击的卡片范围算），点在交叠处。
+      final overlaps = {
+        for (final tag in _many)
+          if (tag != 'Alpha' && _built(tag))
+            tag: _tapRect(tester, tag).intersect(ghost),
+      }..removeWhere((_, r) => r.height <= 0 || r.width <= 0);
+      expect(overlaps, isNotEmpty, reason: '这片区域里有看得见的行');
+      final target = overlaps.entries
+          .reduce((a, b) => a.value.height >= b.value.height ? a : b)
+          .key;
+      final point = overlaps[target]!.center;
+      await tester.tapAt(point);
+      await tester.pump();
+      expect(rig.port.selected, [target], reason: '选中的是看得见的那一行');
+      await _teardown(tester, rig);
+    });
   });
 
   group('冻结的各种退出路径：退出后补上推迟的重排，之后的重排照常生效', () {

@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 const kStorageSchemaKey = 'clashmiao_storage_schema';
 
 /// 当前代码理解的最高存储版本。
-const kCurrentStorageSchema = 1;
+const kCurrentStorageSchema = 2;
 
 /// 读取当前存储版本：缺失、类型不符、负数一律按 0（旧版本数据）。读取永不抛出。
 int readStorageSchema(SharedPreferences prefs) {

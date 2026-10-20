@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
+import 'package:clashmiao/domain/config/data/migrations/v2_direct_dns.dart';
 import 'package:clashmiao/domain/profile/data/migrations/v1_profiles.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,7 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 typedef RestoreMarkerCheck = Future<void> Function(SharedPreferences prefs);
 
 /// 本版本全部存储迁移，按版本递增排列。新增迁移只在这里追加。
-List<Migration> storageMigrations() => [profilesV1Migration()];
+List<Migration> storageMigrations() => [
+  profilesV1Migration(),
+  directDnsV2Migration(),
+];
 
 /// 进程内唯一的迁移器：失败的粘滞记录挂在它身上，同一进程里重复调用
 /// [prepareStorage] 不会因为换了新实例而「忘记」失败（见 [StorageMigrator]）。

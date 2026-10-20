@@ -16,7 +16,7 @@ void main() {
       );
     });
 
-    test('手动设置过（包括旧默认 1.1.1.1）：原样保留，不被新默认覆盖', () async {
+    test('偏好里存着的值原样读出（旧版本自动写入的 1.1.1.1 由存储迁移 v2 处理）', () async {
       for (final explicit in ['1.1.1.1', 'https://dns.example/dns-query']) {
         SharedPreferences.setMockInitialValues({
           'clashmiao_direct_dns_address': explicit,

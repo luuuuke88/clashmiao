@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/pref_registry.dart';
+import 'package:clashmiao/domain/config/data/migrations/v2_direct_dns.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
@@ -91,6 +93,8 @@ class BackupCodec {
     final Object? activeRaw = decoded['activeProfileId'];
     final Object? rawConfigs;
     final Object? rawPrefs;
+    // 备份导出时的存储 schema；旧格式（1.0）与没写 schema 的视为 0。
+    var bundleSchema = 0;
     if (version == BackupBundle.legacyVersion) {
       final settings = decoded['settings'];
       final map = settings is Map ? settings : const <Object?, Object?>{};
@@ -104,6 +108,7 @@ class BackupCodec {
           'schema $schema > $currentSchema',
         );
       }
+      if (schema is int && schema > 0) bundleSchema = schema;
       rawConfigs = decoded['profileConfigs'];
       rawPrefs = decoded['preferences'];
     } else {
@@ -199,6 +204,14 @@ class BackupCodec {
         }
         prefs[key] = _copy(value!);
       }
+    }
+
+    // 存储迁移 v2 之前的备份：里面的直连 DNS 若恰好是旧版本自动写入的默认值
+    // 写法，与迁移同口径视为「没动过」——不写回，本机现值（跟随默认或用户自定义）
+    // 保留。见 v2_direct_dns.dart。
+    if (bundleSchema < directDnsV2Migration().toVersion &&
+        isLegacyDirectDnsDefault(prefs[kDirectDnsAddressPrefKey])) {
+      prefs.remove(kDirectDnsAddressPrefKey);
     }
 
     // 游离配置文件（订阅被隔离 / 孤儿）：只认快照，id 必须合法且不与列表订阅重名。

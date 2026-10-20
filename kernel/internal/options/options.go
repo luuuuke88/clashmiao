@@ -215,13 +215,14 @@ func Decode(raw []byte) (*Options, Warnings, error) {
 		warns = append(warns, Warning{WarnRegion, fmt.Sprintf("region %q is not supported, treated as \"other\"", o.Region)})
 		o.Region = "other"
 	}
-	if o.clashAPINonDefault() {
+	if o.ClashAPINonDefault() {
 		warns = append(warns, Warning{WarnClashAPI, "clash api is not built in; enable-clash-api / clash-api-port / web-secret are kept but have no effect"})
 	}
 	return o, warns, nil
 }
 
-func (o *Options) clashAPINonDefault() bool {
+// ClashAPINonDefault 报告用户是否动过 Clash API 相关选项（内核不内置 clash_api，这些选项只会被忽略）。
+func (o *Options) ClashAPINonDefault() bool {
 	return o.WebSecret != "" || (o.EnableClashAPI && o.ClashAPIPort != defaultClashAPIPort)
 }
 

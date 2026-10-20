@@ -1,0 +1,26 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P6：vless + reality。",
+  "outbounds": [
+    {
+      "type": "vless",
+      "tag": "reality-01",
+      "server": "203.0.113.10",
+      "server_port": 443,
+      "uuid": "5690f126-6d83-4329-861c-4036b6e1f8db",
+      "flow": "xtls-rprx-vision",
+      "tls": {
+        "enabled": true,
+        "server_name": "www.example.com",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y",
+          "short_id": "0123abcd"
+        }
+      }
+    }
+  ]
+}

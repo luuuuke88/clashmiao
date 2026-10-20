@@ -1,0 +1,30 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P5：hysteria2 + tuic。",
+  "outbounds": [
+    {
+      "type": "hysteria2",
+      "tag": "hy2-01",
+      "server": "hy.example.net",
+      "server_port": 443,
+      "password": "JnF7O5+R1VYdpyaP",
+      "tls": {
+        "enabled": true,
+        "server_name": "hy.example.net"
+      }
+    },
+    {
+      "type": "tuic",
+      "tag": "tuic-01",
+      "server": "tu.example.net",
+      "server_port": 443,
+      "uuid": "15d22a46-531f-4e15-a6ee-f77d6e2eda20",
+      "password": "o+B0PKZjW26aEia8",
+      "congestion_control": "bbr",
+      "udp_relay_mode": "native",
+      "tls": {
+        "enabled": true,
+        "server_name": "tu.example.net"
+      }
+    }
+  ]
+}

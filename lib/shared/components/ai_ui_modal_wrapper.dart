@@ -10,6 +10,20 @@ import 'package:flutter_animate/flutter_animate.dart';
 /// 都在这个范围里。遮住标题的话，用户会不知道自己还在哪一页。
 const double _modalTopHeadroom = 96;
 
+/// 毛玻璃弹层的底色：模糊之上再压 [kModalSurfaceAlpha] 的实色。
+///
+/// 以前只压 10% 白 / 20% 黑，弹层又很高（语言列表几乎占满半屏），后面页面上的
+/// 开关、卡片被模糊成一团团色块，直接叠在选项文字后面，真机上显得脏。快速设置
+/// 早已改成实色；其余弹层保留毛玻璃的通透，但底色要足够实，盖住页面内容。
+const double kModalSurfaceAlpha = 0.84;
+
+/// [kModalSurfaceAlpha] 对应的弹层底色：浅色压白，深色压卡片底色。
+Color modalSurfaceColor(ThemeData theme) =>
+    (theme.brightness == Brightness.light
+            ? Colors.white
+            : theme.colorScheme.surface)
+        .withValues(alpha: kModalSurfaceAlpha);
+
 class AiUiModalWrapper extends StatelessWidget {
   const AiUiModalWrapper({
     super.key,
@@ -75,9 +89,7 @@ class AiUiModalWrapper extends StatelessWidget {
                 Container(
                       padding: const EdgeInsets.symmetric(horizontal: 0),
                       decoration: BoxDecoration(
-                        color: isLight
-                            ? Colors.white.withValues(alpha: 0.1)
-                            : Colors.black.withValues(alpha: 0.2),
+                        color: modalSurfaceColor(Theme.of(context)),
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(32),
                           topRight: Radius.circular(32),

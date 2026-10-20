@@ -615,24 +615,20 @@ class KernelCoordinatorTest {
     // --- start 阻塞期间取消：返回后不再绑定 command server（审核问题 7）---------
 
     @Test
-    fun `start 阻塞期间收到 off 返回后不再 setService 直接进入完整回收`() {
+    fun `start 阻塞期间收到 off 返回后不再进入后续步骤 直接进入完整回收`() {
         val calls = java.util.Collections.synchronizedList(ArrayList<String>())
         val inStart = CountDownLatch(1)
         val releaseStart = CountDownLatch(1)
         val ops = object : KernelStartOps {
             override fun bootstrap() { calls += "bootstrap" }
-            override fun hasCommandServer() = calls.contains("commandServer")
-            override fun spawnCommandServer() { calls += "commandServer" }
+            override fun createEngine() { if (!calls.contains("createEngine")) calls += "createEngine" }
             override fun buildConfig(spec: LaunchSpec): String = "cfg".also { calls += "buildConfig" }
             override fun prepareRuntime() { calls += "prepareRuntime" }
-            override fun newService(content: String) { calls += "newService" }
-            override fun settleAfterReload(ctx: ExecContext) = true
-            override fun startService() {
-                calls += "start"
+            override fun startEngine(content: String) {
+                calls += "startEngine"
                 inStart.countDown()
                 releaseStart.await(5, TimeUnit.SECONDS)
             }
-            override fun bindCommandServer() { calls += "setService" }
         }
         val runtime = object : KernelRuntime {
             override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext) =
@@ -649,9 +645,10 @@ class KernelCoordinatorTest {
         assertEquals(KernelStatus.Stopping, snap.status)
         releaseStart.countDown()
         platform.pump { snap.status == KernelStatus.Stopped }
-        assertFalse("start 返回后不得再调用 setService：$calls", calls.contains("setService"))
+        // startEngine 返回后不再有任何后续原生步骤（旧链路在这里还会绑定 command server），直接进入完整回收
         assertEquals("teardown(soft=false)", calls.last())
-        assertEquals("start", calls[calls.indexOf("teardown(soft=false)") - 1])
+        assertEquals("startEngine", calls[calls.indexOf("teardown(soft=false)") - 1])
+        assertEquals("startEngine 之后只能是回收：$calls", 1, calls.size - calls.indexOf("startEngine") - 1)
     }
 
     // --- Activity 重建后迟到的授权结果（复审问题 2）-----------------------------
@@ -726,9 +723,9 @@ class KernelCoordinatorTest {
         val spawnGate = CountDownLatch(1)
         val ops = object : KernelStartOps {
             override fun bootstrap() = Unit
-            override fun hasCommandServer() = synchronized(lock) { current != null }
-            override fun spawnCommandServer() {
-                // 按最坏情况建模：对象先记名下再 start()（start 失败时仍留在名下）
+            override fun createEngine() {
+                if (synchronized(lock) { current != null }) return // 幂等：已有 Engine（含启动失败遗留的）不重复创建
+                // 按最坏情况建模：对象先记名下再启动命令服务器（启动失败时仍留在名下）
                 val s = synchronized(lock) { FakeServer(servers.size + 1).also { servers += it; current = it } }
                 if (s.id == 1) {
                     spawnEntered.countDown()
@@ -739,10 +736,7 @@ class KernelCoordinatorTest {
             }
             override fun buildConfig(spec: LaunchSpec) = "cfg"
             override fun prepareRuntime() = Unit
-            override fun newService(content: String) = Unit
-            override fun settleAfterReload(ctx: ExecContext) = true
-            override fun startService() = Unit
-            override fun bindCommandServer() = Unit
+            override fun startEngine(content: String) = Unit
         }
         platform.runtimeOverride = object : KernelRuntime {
             override fun start(spec: LaunchSpec, reload: Boolean, ctx: ExecContext) =

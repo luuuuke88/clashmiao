@@ -90,6 +90,11 @@ android {
         }
     }
 
+    sourceSets {
+        // Go / Kotlin / Dart 三方共用的线格式夹具（kernel/testdata/wire）：Go 产出的载荷 + Kotlin 经真实通道编出的信封黄金文件。
+        getByName("test").resources.srcDir(rootProject.file("../kernel/testdata/wire"))
+    }
+
     testOptions {
         unitTests {
             // host JVM 跑 Android stub 时遇到没实现的 framework call 直接返回默认值

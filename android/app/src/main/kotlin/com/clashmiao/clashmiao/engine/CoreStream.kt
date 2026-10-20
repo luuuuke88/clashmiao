@@ -1,16 +1,11 @@
 package com.clashmiao.clashmiao.engine
 
 import android.util.Log
-import com.clashmiao.clashmiao.core.drain
+import com.clashmiao.libcore.core.Engine
+import com.clashmiao.libcore.core.GroupsHandler
+import com.clashmiao.libcore.core.StatsHandler
+import com.clashmiao.libcore.core.Subscription
 import go.Seq
-import io.nekohasekai.libbox.CommandClient
-import io.nekohasekai.libbox.CommandClientHandler
-import io.nekohasekai.libbox.CommandClientOptions
-import io.nekohasekai.libbox.Libbox
-import io.nekohasekai.libbox.OutboundGroup
-import io.nekohasekai.libbox.OutboundGroupIterator
-import io.nekohasekai.libbox.StatusMessage
-import io.nekohasekai.libbox.StringIterator
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,23 +15,22 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * 单条 libbox 流命令的连接管理 —— sing-box 的 Status / Groups / Log / Clash 等推送
- * 通过这个对象订阅一次性的 streaming command。
+ * 单条内核流（统计 / 分组）的订阅管理 —— 内核的 Stats / Groups 推送通过这个对象订阅一次。
  *
  * 使用形态：
- *   - `LibboxCommandStream(scope, StreamKind.STATS, mySubscriber).connect()`
+ *   - `CoreStream(scope, StreamKind.STATS, mySubscriber).connect()`
  *   - 想停的时候 `.disconnect()`
  *
  * 设计要点：
- *   - libbox 自己的 `CommandClient`（go-jni 那一边的）在 service 初始化前调 `connect()`
- *     会 throw。这里走最多 10 次的间隔重试（每次 100ms + i*50ms），第一次成功就退出。
+ *   - 内核实例（[EngineRegistry.current]）在服务初始化前订阅会失败（没有 Engine / 命令服务器没就绪）。
+ *     这里走最多 10 次的间隔重试（每次 100ms + i*50ms），第一次成功就退出。
  *   - 重试期间如果调用 [disconnect]（或又 connect 了一次）、或父 coroutine 被取消，
- *     这次尝试按代际作废：候选连接自己丢弃，不会留 ghost client。
- *   - [Subscriber] 接口只暴露我们 app 真正用到的两条事件（status / groups）。
- *     libbox 还有 clearLog / writeLog / clashMode 那些 callback 我们不订阅，
- *     所以这层都不暴露，少一个 API surface 就少一份维护成本。
+ *     这次尝试按代际作废：候选连接自己丢弃，不会留 ghost 订阅。
+ *   - 载荷是 Go 产出的 JSON 字符串，这里**不解析**：分组原样透传，统计在 [StreamBridge] 里转成数字 Map（线格式契约）。
+ *   - [Subscriber] 只暴露我们 app 真正用到的两条事件（stats / groups）。
+ *   - 订阅断线（内核停止）只记日志：重连由 [InstanceFollower] 跟随内核实例驱动，不在这里自己重连。
  */
-class LibboxCommandStream internal constructor(
+class CoreStream internal constructor(
     private val scope: CoroutineScope,
     private val newClient: () -> Client,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -44,24 +38,20 @@ class LibboxCommandStream internal constructor(
 ) {
 
     constructor(scope: CoroutineScope, kind: StreamKind, subscriber: Subscriber) :
-        this(scope, { LibboxClient(kind, subscriber) })
+        this(scope, { EngineClient(kind, subscriber) { EngineRegistry.current } })
 
-    /** 哪种流。libbox 用 int command code 区分，这里映射到一个 enum 用着舒服点。 */
-    enum class StreamKind(val command: Int) {
-        STATS(Libbox.CommandStatus),
-        FULL_GROUPS(Libbox.CommandGroup),
-        GROUP_INFO_ONLY(Libbox.CommandGroupInfoOnly),
-    }
+    /** 哪种流。 */
+    enum class StreamKind { STATS, GROUPS }
 
-    /** 订阅者只需要管自己关心的事件。 */
+    /** 订阅者只需要管自己关心的事件；载荷是 Go 产出的 JSON 文本。 */
     interface Subscriber {
-        fun onStats(message: StatusMessage) = Unit
-        fun onGroups(groups: List<OutboundGroup>) = Unit
+        fun onStats(json: String) = Unit
+        fun onGroups(json: String) = Unit
     }
 
-    /** 一条流命令客户端（生产实现包 libbox CommandClient；测试用假实现）。 */
+    /** 一条订阅客户端（生产实现包 Engine 的订阅；测试用假实现）。 */
     internal interface Client {
-        /** 阻塞连接；服务未就绪时抛异常。 */
+        /** 阻塞连接；内核未就绪时抛异常。 */
         fun connect()
 
         /** 放弃从未被采用的候选连接。 */
@@ -104,7 +94,7 @@ class LibboxCommandStream internal constructor(
                             adopted = true
                         }
                     }
-                    if (!ok) Log.w(TAG, "command client gave up after $MAX_ATTEMPTS attempts")
+                    if (!ok) Log.w(TAG, "stream client gave up after $MAX_ATTEMPTS attempts")
                 } finally {
                     if (!adopted) runCatching { candidate.abandon() }
                 }
@@ -144,62 +134,59 @@ class LibboxCommandStream internal constructor(
         runCatching { current.close() }
     }
 
-    // === libbox 客户端 ======================================================
+    // === 内核订阅客户端 ======================================================
 
-    private class LibboxClient(kind: StreamKind, subscriber: Subscriber) : Client {
-        private val client = CommandClient(
-            SubscriberBridge(subscriber),
-            CommandClientOptions().also {
-                it.command = kind.command
-                it.statusInterval = STATS_INTERVAL_NANOS
-            },
-        )
+    private class EngineClient(
+        private val kind: StreamKind,
+        private val subscriber: Subscriber,
+        private val engine: () -> Engine?,
+    ) : Client {
+        @Volatile private var sub: Subscription? = null
 
-        override fun connect() = client.connect()
+        override fun connect() {
+            val e = engine() ?: throw IllegalStateException("kernel engine is not ready")
+            sub = when (kind) {
+                StreamKind.GROUPS -> e.subscribeGroups(GroupsBridge(subscriber))
+                StreamKind.STATS -> e.subscribeStats(StatsBridge(subscriber), STATS_INTERVAL_MILLIS)
+            }
+        }
 
         override fun abandon() {
-            client.disconnect()
+            release(destroyRef = false)
         }
 
         override fun close() {
-            runCatching { client.disconnect() }
-            Seq.destroyRef(client.refnum)
+            release(destroyRef = true)
+        }
+
+        private fun release(destroyRef: Boolean) {
+            val s = sub ?: return
+            sub = null
+            runCatching { s.close() }
+            if (destroyRef) runCatching { Seq.destroyRef(s.refnum) }
         }
     }
 
-    // === libbox → Kotlin 回调桥 ===========================================
+    // === 内核 → Kotlin 回调桥 ==============================================
 
-    private class SubscriberBridge(private val subscriber: Subscriber) : CommandClientHandler {
-        override fun connected() = Unit
-        override fun disconnected(message: String?) {
-            Log.i(TAG, "command client disconnected: $message")
+    private class GroupsBridge(private val subscriber: Subscriber) : GroupsHandler {
+        override fun onGroups(json: String) = subscriber.onGroups(json)
+        override fun onDisconnected(message: String?) {
+            Log.i(TAG, "groups stream disconnected: $message")
         }
-        override fun clearLog() = Unit
-        override fun writeLog(message: String?) = Unit
-        override fun initializeClashMode(modeList: StringIterator, currentMode: String) {
-            // app 没用 clash-mode UI，只 drain 一下 iterator 避免 jni 端泄漏
-            modeList.drain()
-        }
+    }
 
-        override fun updateClashMode(newMode: String) = Unit
-
-        override fun writeStatus(message: StatusMessage?) {
-            val msg = message ?: return
-            subscriber.onStats(msg)
-        }
-
-        override fun writeGroups(message: OutboundGroupIterator?) {
-            val iter = message ?: return
-            val out = ArrayList<OutboundGroup>()
-            while (iter.hasNext()) out.add(iter.next())
-            subscriber.onGroups(out)
+    private class StatsBridge(private val subscriber: Subscriber) : StatsHandler {
+        override fun onStats(json: String) = subscriber.onStats(json)
+        override fun onDisconnected(message: String?) {
+            Log.i(TAG, "stats stream disconnected: $message")
         }
     }
 
     private companion object {
-        private const val TAG = "engine/CommandStream"
-        // libbox status 推送间隔：2 秒（纳秒制）。
-        private const val STATS_INTERVAL_NANOS: Long = 2L * 1000 * 1000 * 1000
+        private const val TAG = "engine/CoreStream"
+        // 统计推送间隔：2 秒。
+        private const val STATS_INTERVAL_MILLIS: Long = 2_000
         private const val MAX_ATTEMPTS = 10
         private const val BASE_BACKOFF_MS = 100L
         private const val BACKOFF_STEP_MS = 50L

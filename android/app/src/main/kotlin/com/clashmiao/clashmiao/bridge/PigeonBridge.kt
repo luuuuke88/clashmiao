@@ -11,7 +11,8 @@ import com.clashmiao.clashmiao.engine.Desired
 import com.clashmiao.clashmiao.engine.KernelCoordinator
 import com.clashmiao.clashmiao.engine.KernelSnapshot
 import com.clashmiao.clashmiao.engine.LaunchSpec
-import com.clashmiao.clashmiao.engine.LibboxKernelRuntime
+import com.clashmiao.clashmiao.engine.CoreKernelRuntime
+import com.clashmiao.clashmiao.engine.EngineRegistry
 import com.clashmiao.clashmiao.engine.SelectResult
 import com.clashmiao.clashmiao.pigeon.BoxHostApi
 import com.clashmiao.clashmiao.pigeon.ConfigOptions
@@ -26,8 +27,6 @@ import com.clashmiao.clashmiao.pigeon.StartRequest
 import com.clashmiao.clashmiao.pigeon.ValidateConfigRequest
 import com.clashmiao.clashmiao.pigeon.ValidateConfigResult
 import io.flutter.embedding.engine.plugins.FlutterPlugin
-import io.nekohasekai.libbox.Libbox
-import io.nekohasekai.mobile.Mobile
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -110,7 +109,7 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         callback: (Result<ValidateConfigResult>) -> Unit,
     ) {
         launchResponding(Dispatchers.IO, callback, "validateConfig") {
-            val errorMessage = LibboxKernelRuntime.parseConfig(req.path, req.tempPath, req.debug)
+            val errorMessage = CoreKernelRuntime.parseConfig(req.path, req.tempPath, req.debug)
             ValidateConfigResult(error = errorMessage.takeIf { it.isNotEmpty() })
         }
     }
@@ -124,7 +123,8 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         debug: Boolean,
         callback: (Result<Unit>) -> Unit,
     ) {
-        launchResponding(Dispatchers.IO, callback, "setup") { Mobile.setup() }
+        // 内核在第一次启动时自己 setup（路径与调试开关由原生侧决定），这里没有事可做
+        launchResponding(Dispatchers.IO, callback, "setup") { }
     }
 
     override fun changeConfigOptions(
@@ -271,7 +271,7 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
             if (normalizedGroupTag.isBlank()) {
                 throw IllegalArgumentException("urlTest requires non-blank groupTag")
             }
-            Libbox.newStandaloneCommandClient().urlTest(normalizedGroupTag)
+            EngineRegistry.require().urlTest(normalizedGroupTag)
         }
     }
 
@@ -282,7 +282,7 @@ class PigeonBridge(private val scope: CoroutineScope) : FlutterPlugin, BoxHostAp
         launchResponding(Dispatchers.IO, callback, "generateFullConfig") {
             val options = Prefs.Engine.configOptionsJson
             if (options.isBlank() || path.isBlank()) null
-            else LibboxKernelRuntime.buildConfig(path, options)
+            else CoreKernelRuntime.buildConfig(path, options)
         }
     }
 

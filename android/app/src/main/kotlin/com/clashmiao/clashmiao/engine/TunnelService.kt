@@ -8,15 +8,13 @@ import android.os.Build
 import android.os.IBinder
 import com.clashmiao.clashmiao.core.Prefs
 import com.clashmiao.clashmiao.core.asAndroidPrefix
-import io.nekohasekai.libbox.StringIterator
-import io.nekohasekai.libbox.TunOptions
 
 /**
  * VPN 模式下的前台 service。
  *
  * 三个职责，**只**有这三个：
  *   1. 对 Android：是个 [VpnService]，处理 onStart / onBind / onRevoke
- *   2. 对 libbox：是个 [LibboxHost]，sing-box 通过 [openTun] 让我们建 TUN 拿 fd
+ *   2. 对内核：是个 [CorePlatform]，内核通过 [openTun] 让我们建 TUN 拿 fd
  *   3. 把生命周期事件交给 [KernelHost]（再上报进程级 [KernelCoordinator]；
  *      是否启动 / 何时停 / 何时退休都由协调器决定，Service 只是被动的载体）
  *
@@ -31,21 +29,21 @@ class TunnelService : VpnService(), Runnable {
     var systemProxyEnabled = false
         private set
 
-    private val libboxHost: LibboxHost = object : LibboxHost() {
-        override fun autoDetectInterfaceControl(fd: Int) {
-            // sing-box 让我们把出口 socket fd 标记成 "不走 VPN tun"
-            // 否则 sing-box outbound 自己又被自己 tun loop 进来。
-            protect(fd)
+    private val corePlatform: CorePlatform = object : CorePlatform() {
+        override fun protect(fd: Int) {
+            // 内核让我们把出口 socket fd 标记成 "不走 VPN tun"
+            // 否则内核的出站会被自己的 tun 绕回来。
+            this@TunnelService.protect(fd)
         }
 
-        override fun openTun(options: TunOptions): Int = buildTunFd(options)
+        override fun openTun(specJSON: String): Int = buildTunFd(TunSpec.parse(specJSON))
 
-        override fun writeLog(message: String) {
-            host.writeLog(message)
+        override fun writeLog(line: String) {
+            host.writeLog(line)
         }
     }
 
-    private val host: KernelHost = KernelHost(this, ServiceType.Vpn, libboxHost)
+    private val host: KernelHost = KernelHost(this, ServiceType.Vpn, corePlatform)
 
     // === Android Service =================================================
 
@@ -74,29 +72,32 @@ class TunnelService : VpnService(), Runnable {
 
     // === 给 KernelHost 用的 hook =========================================
 
-    /** sing-box 直接调，TunnelService 收日志后转 IPC fanOut。 */
+    /** 内核直接调，TunnelService 收日志后转进进程级缓冲。 */
     fun writeLog(message: String) = host.writeLog(message)
 
     // === TUN 构建 ========================================================
 
-    private fun buildTunFd(options: TunOptions): Int {
+    private fun buildTunFd(spec: TunSpec): Int {
         if (prepare(this) != null) error("android: missing vpn permission")
 
         val builder = Builder()
             .setSession("sing-box")
-            .setMtu(options.mtu)
+            .setMtu(spec.mtu)
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             builder.setMetered(false)
         }
 
-        wireAddresses(builder, options)
-        if (options.autoRoute) {
-            builder.addDnsServer(options.dnsServerAddress)
-            wireRoutes(builder, options)
-            wireAppFilter(builder, options)
+        wireAddresses(builder, spec)
+        if (spec.autoRoute) {
+            // dns_mode == disabled：内核不接管 DNS，不向系统添加 DNS 服务器
+            if (spec.dnsMode != TunSpec.DnsMode.Disabled) {
+                spec.dnsServers.forEach { builder.addDnsServer(it) }
+            }
+            wireRoutes(builder, spec)
+            wireAppFilter(builder, spec)
         }
-        wireSystemProxy(builder, options)
+        wireSystemProxy(builder, spec)
 
         val fd = builder.establish()
             ?: error("android: VpnService.Builder.establish() returned null")
@@ -107,72 +108,46 @@ class TunnelService : VpnService(), Runnable {
         return fd.fd
     }
 
-    private fun wireAddresses(builder: Builder, options: TunOptions) {
-        val v4 = options.inet4Address
-        while (v4.hasNext()) {
-            val a = v4.next()
-            builder.addAddress(a.address(), a.prefix())
-        }
-        val v6 = options.inet6Address
-        while (v6.hasNext()) {
-            val a = v6.next()
-            builder.addAddress(a.address(), a.prefix())
-        }
+    private fun wireAddresses(builder: Builder, spec: TunSpec) {
+        (spec.inet4Address + spec.inet6Address).forEach { builder.addAddress(it.address, it.prefix) }
     }
 
-    private fun wireRoutes(builder: Builder, options: TunOptions) {
+    private fun wireRoutes(builder: Builder, spec: TunSpec) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            wireRoutesTiramisuPlus(builder, options)
+            wireRoutesTiramisuPlus(builder, spec)
         } else {
-            wireRoutesLegacy(builder, options)
+            wireRoutesLegacy(builder, spec)
         }
     }
 
-    private fun wireRoutesTiramisuPlus(builder: Builder, options: TunOptions) {
-        val v4Routes = options.inet4RouteAddress
-        if (v4Routes.hasNext()) {
-            while (v4Routes.hasNext()) builder.addRoute(v4Routes.next().asAndroidPrefix())
+    private fun wireRoutesTiramisuPlus(builder: Builder, spec: TunSpec) {
+        if (spec.inet4Route.isNotEmpty()) {
+            spec.inet4Route.forEach { builder.addRoute(it.asAndroidPrefix()) }
         } else {
             builder.addRoute("0.0.0.0", 0)
         }
 
-        val v6Routes = options.inet6RouteAddress
-        if (v6Routes.hasNext()) {
-            while (v6Routes.hasNext()) builder.addRoute(v6Routes.next().asAndroidPrefix())
+        if (spec.inet6Route.isNotEmpty()) {
+            spec.inet6Route.forEach { builder.addRoute(it.asAndroidPrefix()) }
         } else {
             builder.addRoute("::", 0)
         }
 
-        val v4Excl = options.inet4RouteExcludeAddress
-        while (v4Excl.hasNext()) builder.excludeRoute(v4Excl.next().asAndroidPrefix())
-        val v6Excl = options.inet6RouteExcludeAddress
-        while (v6Excl.hasNext()) builder.excludeRoute(v6Excl.next().asAndroidPrefix())
+        spec.inet4RouteExclude.forEach { builder.excludeRoute(it.asAndroidPrefix()) }
+        spec.inet6RouteExclude.forEach { builder.excludeRoute(it.asAndroidPrefix()) }
     }
 
-    private fun wireRoutesLegacy(builder: Builder, options: TunOptions) {
+    private fun wireRoutesLegacy(builder: Builder, spec: TunSpec) {
         // API < TIRAMISU 没 IpPrefix.excludeRoute，只能 add，且接收的是字符串 + len。
-        val v4 = options.inet4RouteRange
-        while (v4.hasNext()) {
-            val a = v4.next()
-            builder.addRoute(a.address(), a.prefix())
-        }
-        val v6 = options.inet6RouteRange
-        while (v6.hasNext()) {
-            val a = v6.next()
-            builder.addRoute(a.address(), a.prefix())
-        }
+        (spec.inet4RouteRange + spec.inet6RouteRange).forEach { builder.addRoute(it.address, it.prefix) }
     }
 
-    private fun wireAppFilter(builder: Builder, options: TunOptions) {
+    private fun wireAppFilter(builder: Builder, spec: TunSpec) {
         // 本 App 始终走隧道（白名单补上、排除名单滤掉），见 [AppFilterRules]。
         val plan = if (Prefs.AppFilter.enabled) {
             AppFilterRules.forUser(Prefs.AppFilter.mode, Prefs.AppFilter.effectiveList, packageName)
         } else {
-            AppFilterRules.forKernel(
-                options.includePackage.toList(),
-                options.excludePackage.toList(),
-                packageName,
-            )
+            AppFilterRules.forKernel(spec.includePackage, spec.excludePackage, packageName)
         }
         when (plan) {
             is AppFilterPlan.Allow -> plan.packages.forEach { pkg ->
@@ -191,14 +166,9 @@ class TunnelService : VpnService(), Runnable {
         }
     }
 
-    private fun StringIterator.toList(): List<String> {
-        val out = ArrayList<String>()
-        while (hasNext()) out.add(next())
-        return out
-    }
-
-    private fun wireSystemProxy(builder: Builder, options: TunOptions) {
-        if (!options.isHTTPProxyEnabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    private fun wireSystemProxy(builder: Builder, spec: TunSpec) {
+        val proxy = spec.httpProxy
+        if (!proxy.enabled || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             systemProxyAvailable = false
             systemProxyEnabled = false
             return
@@ -206,9 +176,7 @@ class TunnelService : VpnService(), Runnable {
         systemProxyAvailable = true
         systemProxyEnabled = Prefs.Notice.systemProxyEnabled
         if (systemProxyEnabled) {
-            builder.setHttpProxy(
-                ProxyInfo.buildDirectProxy(options.httpProxyServer, options.httpProxyServerPort),
-            )
+            builder.setHttpProxy(ProxyInfo.buildDirectProxy(proxy.server, proxy.port))
         }
     }
 }

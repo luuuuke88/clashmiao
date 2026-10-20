@@ -12,7 +12,7 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.clashmiao.clashmiao.R
 import com.clashmiao.clashmiao.core.BroadcastIntents
-import io.nekohasekai.libbox.PlatformInterface
+import com.clashmiao.libcore.core.Platform
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -26,7 +26,7 @@ import kotlinx.coroutines.launch
  *   1. **生命周期上报**：onStartCommand 先 `startForeground`（Android 14+ 要求 ~5 s 内），
  *      再把 startId 交给协调器；onDestroy / onRevoke 同样只是上报事件，**不做阻塞操作**
  *      （旧实现的 onRevoke 在主线程 runBlocking 等主线程，会 ANR）。
- *   2. **按实例暴露给协调器的能力**：运行时（[LibboxKernelRuntime]）、通知更新、
+ *   2. **按实例暴露给协调器的能力**：运行时（[CoreKernelRuntime]）、通知更新、
  *      `stopSelfResult(startId)`。是否启动、何时停、何时退休全部由协调器决定。
  *   3. **转发实例级广播**：通知栏「停止」按钮 → 协调器外部请求（source=notification）；
  *      旧 RELOAD 广播 → 重载请求（source=system）；Doze 进出 → 运行时暂停/唤醒。
@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 class KernelHost(
     private val service: Service,
     override val type: ServiceType,
-    platform: PlatformInterface,
+    platform: Platform,
 ) : ServiceHandle {
 
     private companion object {
@@ -48,7 +48,7 @@ class KernelHost(
 
     private val notice = ForegroundNotice(service)
 
-    private val runtime = LibboxKernelRuntime(
+    private val runtime = CoreKernelRuntime(
         service = service,
         platform = platform,
         logs = coordinator.logs,
@@ -108,7 +108,7 @@ class KernelHost(
         coordinator.onServiceRevoked(this)
     }
 
-    /** sing-box 通过 [LibboxHost.writeLog] 回调进来的日志，直接写进进程级缓冲。 */
+    /** 内核通过 [CorePlatform.writeLog] 回调进来的日志，直接写进进程级缓冲。 */
     fun writeLog(message: String) {
         coordinator.logs.append(message)
     }

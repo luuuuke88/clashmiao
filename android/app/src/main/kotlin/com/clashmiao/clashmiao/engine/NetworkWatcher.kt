@@ -9,7 +9,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import com.clashmiao.clashmiao.Application
-import io.nekohasekai.libbox.InterfaceUpdateListener
+import com.clashmiao.libcore.core.InterfaceListener
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +26,7 @@ import java.net.UnknownHostException
  * 这层做两件事，合并了原本散在两个对象里的职责：
  *   1. **订阅活动**：[start] / [stop]，按 caller-key 去重。多 caller 同时订阅
  *      只在 ConnectivityManager 注册一次 callback，最后一个 caller 走时再 unregister。
- *   2. **通知 libbox**：[attachInterfaceListener] 让 sing-box 在默认网络变了的时候
+ *   2. **通知内核**：[attachInterfaceListener] 让内核在默认网络变了的时候
  *      重新挑出口（VPN 模式下 sing-box 自己要追踪 underlying network）。
  *
  * `register()` 选用哪个 ConnectivityManager API 完全看 API level —— Android 在
@@ -88,14 +88,19 @@ object NetworkWatcher {
         }
     }
 
-    // === libbox interface listener =========================================
+    // === 内核的 interface listener ========================================
 
-    @Volatile private var libboxListener: InterfaceUpdateListener? = null
+    @Volatile private var coreListener: InterfaceListener? = null
 
-    /** 让 sing-box 的 InterfaceUpdateListener 接到 default-interface 变化通知。 */
-    fun attachInterfaceListener(listener: InterfaceUpdateListener?) {
-        libboxListener = listener
-        emitInterfaceUpdate(currentNetwork)
+    /**
+     * 让内核的 [InterfaceListener] 接到 default-interface 变化通知；传 null 即停止。
+     *
+     * 停止之后不再发起新的回调；回调期间**不持锁**（内核在回调里可能回头调平台接口，持锁会和内核自己的锁互相等死）。
+     * 所以与本方法并发、已经在途的那一次回调仍可能在返回之后才结束——这是已知的、良性的窗口。
+     */
+    fun attachInterfaceListener(listener: InterfaceListener?) {
+        coreListener = listener
+        if (listener != null) emitInterfaceUpdate(currentNetwork)
     }
 
     private val watcherKey = Any()
@@ -133,23 +138,29 @@ object NetworkWatcher {
         pending.await()
     }
 
-    /** 把 default network 翻译成 (interface-name, index) 推给 libbox。 */
+    /** 把 default network 翻译成 (interface-name, index, expensive, constrained) 推给内核。 */
     private fun emitInterfaceUpdate(network: Network?) {
-        val listener = libboxListener ?: return
+        if (coreListener == null) return
         if (network == null) {
-            listener.updateDefaultInterface("", -1)
+            notifyListener("", -1, expensive = false, constrained = false)
             return
         }
         val name = Application.connectivity.getLinkProperties(network)?.interfaceName ?: return
+        val expensive = Application.connectivity.getNetworkCapabilities(network)
+            ?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED) == false
         // 偶尔 NetworkInterface.getByName 比 LinkProperties 慢一拍，最多 ~1s 重试。
         repeat(10) {
             val ifc = runCatching { NetworkInterface.getByName(name) }.getOrNull()
             if (ifc != null) {
-                listener.updateDefaultInterface(ifc.name, ifc.index)
+                notifyListener(ifc.name, ifc.index, expensive, constrained = false)
                 return
             }
             Thread.sleep(100)
         }
+    }
+
+    private fun notifyListener(name: String, index: Int, expensive: Boolean, constrained: Boolean) {
+        coreListener?.update(name, index, expensive, constrained)
     }
 
     // === Android ConnectivityManager 注册路径（按 API level 分叉） ============

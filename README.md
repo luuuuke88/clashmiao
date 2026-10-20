@@ -125,6 +125,8 @@ Android 15 起出现 16 KB 内存页设备，Google Play 也要求所有原生�
 内核库 `libbox.so` 必须让所有 LOAD 段按 16 KB（`2**14`）对齐，否则在这类设备上加载失败。
 `tools/libcore/build-android.sh` 会从固定的内核上游提交重编 `libcore.aar`：
 
+内核上游仓库地址不放在公开仓库里：构建前设置环境变量 `LIBCORE_UPSTREAM_REPO`，或把地址写进不入 git 的 `tools/libcore/upstream.local`（一行）。脚本克隆后会校验源码提交与固定的提交一致。
+
 ```bash
 tools/libcore/build-android.sh                       # 产物：build/libcore/libcore.aar + .sha256
 REFERENCE_AAR=android/app/libs/libcore.aar \

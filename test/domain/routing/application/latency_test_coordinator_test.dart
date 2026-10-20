@@ -625,7 +625,7 @@ void main() {
       ]);
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
     });
-    _fake('订阅信息条目不参与「是否全部有结果」（内核不测它）', (rig, async) {
+    _fake('构建器隐藏的订阅信息条目不参与「是否全部有结果」（内核不测它）', (rig, async) {
       rig.groups = [
         const OutboundGroup(
           tag: 'proxy',
@@ -633,7 +633,7 @@ void main() {
           selected: 'a',
           items: [
             OutboundProxy(tag: 'a', type: 'vmess'),
-            OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vmess'),
+            OutboundProxy(tag: '🌐 官网地址：ncink.cc §hide§', type: 'vmess'),
           ],
         ),
       ];
@@ -646,7 +646,7 @@ void main() {
           selected: 'a',
           items: [
             OutboundProxy(tag: 'a', type: 'vmess', delay: 90),
-            OutboundProxy(tag: '🌐 官网地址：ncink.cc', type: 'vmess'),
+            OutboundProxy(tag: '🌐 官网地址：ncink.cc §hide§', type: 'vmess'),
           ],
         ),
       ]);

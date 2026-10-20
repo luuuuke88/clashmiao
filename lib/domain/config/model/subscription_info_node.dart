@@ -22,12 +22,16 @@ const String kHideNodeMarker = '§hide§';
 /// tag 是否带内核隐藏标记。
 bool hasHideMarker(String tag) => tag.contains(kHideNodeMarker);
 
-// ── 判定：按「标签 + 分隔 + 值」的模板，不按关键词 ──
+// ── 判定：整个名字符合「标签 + 分隔 + 值」的模板，不按关键词 ──
 //
-// 只出现关键词不算：真实线路名里会有「官网优化」「Official」「Traffic」这类
-// 词。只有「已知标签」后面紧跟分隔符、再跟一个形状符合预期的值（地址 / 日期 /
-// 带单位的数量 / 百分比）才是信息条目；整个名字只是一个网址或域名也算。拿不准
-// 的一律当真实节点保留。
+// 只出现关键词不算：真实线路名里会有「官网优化」「Official」「Traffic 10Gbps」
+// 「Reset 01-02」这类写法。只有**整个名字**（去掉首尾装饰后）恰好是：
+//
+//   [≤4 个汉字的前缀] 已知标签 [短修饰] 分隔 值 [收尾标点]
+//
+// 才是信息条目；值必须是地址 / 日期 / 带单位的数量 / 百分比之一，并且一直到
+// 名字结尾（只允许跟着收尾标点）。整个名字只是一个网址或域名也算。拿不准的
+// 一律当真实节点保留。
 
 /// 中文标签。长的写在前面（正则按顺序尝试）。
 const List<String> _kCjkLabels = [
@@ -55,39 +59,56 @@ const List<String> _kAsciiLabels = [
   'url',
 ];
 
+/// 中文标签前允许的短前缀（「**最新**网址」「**流量**重置日」），只能是汉字。
+const String _kCjkPrefix = r'[一-鿿]{0,4}';
+
 /// 冒号形式里，标签与冒号之间允许的短修饰（「距离下次重置**剩余**：」
-/// 「流量重置**日**：」「Expire **date**:」）。空格分隔的形式不允许修饰，
-/// 否则「HK Traffic IEPL 10G」会被当成「Traffic … 10G」。
+/// 「流量重置**日**：」「Expire **date**:」）。空白分隔的形式不允许修饰。
 const String _kCjkQualifier = r'[一-鿿]{0,4}';
 const String _kAsciiQualifier = r'(?:\s+[a-z]+){0,2}';
 
-/// 值的形状，必须出现在分隔符之后的开头。
+/// 带单位的数量：流量（GB/MB/TB/KB/PB、GiB…、G/M/T）与时长（天/日/小时/
+/// days/hours）。单位后面不能再跟字母或数字：「10Gbps」不是「10 GB」。
+const String _kQuantity =
+    r'\d+(?:\.\d+)?\s*(?:[kmgtp]i?b|[kmgtp]|天|日|小时|days?|hours?)'
+    r'(?![a-z0-9])';
+
+/// 值：必须一直延续到名字结尾（之后只允许 [_kTail]）。
 final String _kValue = [
-  // 网址 / 域名
-  r'(?:https?://)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?![a-z0-9-])',
-  // 日期 / 日期时间：2026-12-01、2026/12/01、2026年12月1日、12-01、每月 1 日
-  r'\d{4}\s*[-/.年]\s*\d{1,2}\s*[-/.月]\s*\d{1,2}',
-  r'\d{1,2}\s*[-/.月]\s*\d{1,2}\s*日?(?!\d)',
+  // 网址 / 域名（可带端口与路径）
+  r'(?:https?://)?(?:[a-z0-9-]+\.)+[a-z]{2,}(?::\d+)?(?:/\S*)?',
+  // 日期 / 日期时间：2026-12-01、2026/12/01、2026年12月1日、可跟 12:00[:00]
+  r'\d{4}\s*[-/.年]\s*\d{1,2}\s*[-/.月]\s*\d{1,2}\s*日?'
+      r'(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?',
+  // 月-日：12-01、12月1日
+  r'\d{1,2}\s*[-/.月]\s*\d{1,2}\s*日?',
+  // 每月 1 日 / 每月 1 号
   r'每月\s*\d{1,2}\s*[日号]',
   // 百分比
   r'\d+(?:\.\d+)?\s*%',
-  // 带单位的数量：流量（GB/MB/TB/KB/PB、G/M/T、GiB…）与时长（天/日/小时/days/hours）
-  r'\d+(?:\.\d+)?\s*(?:[kmgtp]i?b|[kmgtp](?![a-z])|天|日|小时|days?(?![a-z])|hours?(?![a-z]))',
+  // 数量，或「已用 / 总量」
+  '$_kQuantity(?:\\s*/\\s*$_kQuantity)?',
 ].join('|');
 
+/// 值之后允许的收尾：空白与收尾标点（括号、句读）。别的任何字符都说明名字
+/// 里还有线路描述（「Reset 01-02 IEPL」），不是信息条目。
+const String _kTail = r'[\s)\]）】」》>.,;。，；!！]*';
+
 final RegExp _kInfoTemplate = () {
-  final cjk = _kCjkLabels.join('|');
-  final ascii = _kAsciiLabels.join('|');
-  // 冒号形式：标签 + 短修饰 + 冒号 + 值；空格形式：标签 + 空白 + 值。
-  // 英文标签前不能紧挨字母（preset 里的 reset 不算）。
+  final cjk = '$_kCjkPrefix(?:${_kCjkLabels.join('|')})';
+  final ascii = '(?:${_kAsciiLabels.join('|')})';
   return RegExp(
-    '(?:(?:$cjk)$_kCjkQualifier|(?<![a-z])(?:$ascii)$_kAsciiQualifier)'
+    '^(?:'
+    // 冒号形式：标签 + 短修饰 + 冒号 + 值
+    '(?:$cjk$_kCjkQualifier|$ascii$_kAsciiQualifier)'
     r'\s*[:：]\s*'
     '(?:$_kValue)'
     '|'
-    '(?:(?:$cjk)|(?<![a-z])(?:$ascii))'
+    // 空白形式：标签 + 空白 + 值
+    '(?:$cjk|$ascii)'
     r'\s+'
-    '(?:$_kValue)',
+    '(?:$_kValue)'
+    ')$_kTail\$',
     unicode: true,
   );
 }();
@@ -105,11 +126,11 @@ final RegExp _kOnlyDomain = RegExp(
   r'(?::\d+)?(?:/\S*)?$',
 );
 
-/// 首尾的装饰：emoji、空白、各种括号与标点（不含字母、数字、汉字）。
-final RegExp _kEdgeDecoration = RegExp(
-  r'^[^\p{L}\p{N}]+|[^\p{L}\p{N}/]+$',
-  unicode: true,
-);
+/// 开头的装饰：emoji、空白、各种括号与标点（不含字母、数字、汉字）。
+final RegExp _kLeadingDecoration = RegExp(r'^[^\p{L}\p{N}]+', unicode: true);
+
+/// 结尾的装饰（只用于「整个名字只是网址 / 域名」的判断）。
+final RegExp _kTrailingDecoration = RegExp(r'[^\p{L}\p{N}/]+$', unicode: true);
 
 /// [tag] 是不是订阅信息条目（不看隐藏标记，隐藏标记由 [hasHideMarker] 判断）。
 bool isSubscriptionInfoTag(String tag) {
@@ -117,15 +138,50 @@ bool isSubscriptionInfoTag(String tag) {
   final name = (markerIndex == -1 ? tag : tag.substring(0, markerIndex))
       .toLowerCase()
       .trim();
-  if (_kInfoTemplate.hasMatch(name)) return true;
-  final bare = name.replaceAll(_kEdgeDecoration, '');
+  final body = name.replaceFirst(_kLeadingDecoration, '');
+  if (_kInfoTemplate.hasMatch(body)) return true;
+  final bare = body.replaceFirst(_kTrailingDecoration, '');
   return _kOnlyUrl.hasMatch(bare) || _kOnlyDomain.hasMatch(bare);
 }
 
+// ── 候选叶子节点：构建器、线路页、默认值推导共用同一个定义 ──
+
+/// 不是候选叶子节点的出站类型：分组、直连、阻断、DNS、内核自定义出站。与内核
+/// 重建主选择组 / 自动选择组时跳过的类型一致；其余（各种代理协议）都是候选。
+const Set<String> _kNonCandidateTypes = {
+  'direct',
+  'block',
+  'dns',
+  'selector',
+  'select',
+  'urltest',
+  'custom',
+};
+
+/// 出站类型 [type] 是不是候选叶子节点（大小写、`-` / `_` 不敏感：
+/// `url-test`、`url_test` 都是分组）。
+bool isCandidateLeafType(String type) => !_kNonCandidateTypes.contains(
+  type.trim().toLowerCase().replaceAll('-', '').replaceAll('_', ''),
+);
+
+/// 配置 [cfg]（sing-box JSON）里**全部**候选叶子节点的 tag，按出现顺序；包括
+/// 没被任何分组引用的叶子。
+List<String> candidateLeafTags(Map<String, dynamic> cfg) => [
+  for (final o in (cfg['outbounds'] as List?) ?? const [])
+    if (o is Map && o['tag'] is String && o['type'] is String)
+      if (isCandidateLeafType(o['type'] as String)) o['tag'] as String,
+];
+
+/// 一份订阅配置的信息条目排除集：在 [candidateLeafTags] 上算
+/// [subscriptionInfoTagsToExclude]。构建器（加隐藏标记）与线路页（离线分组）
+/// 都只用它，订阅级的「不能排空」保护也因此一致。
+Set<String> subscriptionInfoExclusionsForConfig(Map<String, dynamic> cfg) =>
+    subscriptionInfoTagsToExclude(candidateLeafTags(cfg));
+
 /// 整份订阅应当按信息条目排除的 tag。
 ///
-/// [leafTags] 必须是**整份订阅**的全部候选叶子节点（不是某一个分组的）：构建器
-/// 与线路页都按整份订阅算一次，再套用到每个分组，离线与运行时结果一致。
+/// [leafTags] 必须是**整份订阅**的全部候选叶子节点（[candidateLeafTags]，不是
+/// 某一个分组的）；一般直接用 [subscriptionInfoExclusionsForConfig]。
 ///
 /// 已带隐藏标记的不在结果里（它们本来就被排除）。保护：排除之后整份订阅一个
 /// 可选节点都不剩时返回空集——宁可把信息条目留着，也不能让主选择组只剩一个

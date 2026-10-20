@@ -38,6 +38,7 @@ void main() {
       '🌐 ncink.cc',
       'https://ncink.cc/login',
       '【www.example.com】',
+      '最新网址：example.com。',
     ];
     for (final tag in infoTags) {
       test('信息条目：$tag', () {
@@ -58,6 +59,16 @@ void main() {
       '台湾 公告专线',
       'HK-Website-01',
       // 长得像域名的线路名。
+      // 审阅反例：标签后跟着带宽、编号、日期状序号，再跟线路描述。
+      'HK Traffic 10Gbps IEPL 02',
+      'HK Traffic 10G IEPL',
+      'HK Reset 01-02 IEPL',
+      'SG Reset 2024-05-01 IEPL',
+      'JP Expire 2025-01 专线',
+      '香港 重置 12-01 BGP',
+      '到期 2026-12-01 IEPL 中继',
+      '剩余流量 100GB 专线',
+      'US Remaining 5 days IEPL',
       'JP.Tokyo',
       'HK.IEPL.01',
       // 常见真实线路名。

@@ -197,16 +197,6 @@ const String kRuntimeAutoGroupTag = 'auto';
 /// 节点 tag 带这个标记时，内核把主选择组的默认值设成它（而不是自动选择组）。
 const String _kDefaultMarker = '§default§';
 
-/// 不会成为主选择组成员的出站类型（内核构建主选择组时跳过）。
-const Set<String> _kNonMemberTypes = {
-  'direct',
-  'block',
-  'dns',
-  'selector',
-  'urltest',
-  'custom',
-};
-
 /// 运行时配置 [cfg]（[RuntimeConfigBuilder.build] 写出的 JSON）对应的「运行时
 /// 选择组默认值」：选择组 tag → 内核启动时它选中的出站。用户在某个订阅下没有
 /// 手选记录时，切到该订阅要把选择组还原成这个值，不能留着上一个订阅的选择。
@@ -240,13 +230,13 @@ Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
       final picked = _defaultOrFirst(o['default'], members);
       if (picked != null) result[tag] = picked;
     }
-    if (!_kNonMemberTypes.contains(type) && !hasHideMarker(tag)) {
+    if (isCandidateLeafType(type) && !hasHideMarker(tag)) {
       memberTags.add(tag);
     }
   }
   // 与 [RuntimeConfigBuilder.build] 同一口径：信息条目会被打上隐藏标记，不是
   // 主选择组成员。传进来的已经是构建后的配置时这里不会再排除任何东西。
-  final infoTags = subscriptionInfoTagsToExclude(memberTags);
+  final infoTags = subscriptionInfoExclusionsForConfig(cfg);
   memberTags.removeWhere(infoTags.contains);
   final mainMembers = [kRuntimeAutoGroupTag, ...memberTags];
   final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
@@ -272,7 +262,7 @@ String? _defaultOrFirst(Object? preferred, List<String> members) {
   return members.isEmpty ? null : members.first;
 }
 
-/// 给 [cfg] 里的订阅信息条目（[subscriptionInfoTagsToExclude]）的 tag 追加隐藏
+/// 给 [cfg] 里的订阅信息条目（[subscriptionInfoExclusionsForConfig]）的 tag 追加隐藏
 /// 标记 [kHideNodeMarker]，并把配置里引用旧 tag 的地方（出站的 `detour`、分组的
 /// `outbounds` / `default`、路由规则的 `outbound`、`route.final`、DNS 服务器的
 /// `detour`）一并改名，配置自洽。返回旧 tag → 新 tag。
@@ -282,18 +272,12 @@ String? _defaultOrFirst(Object? preferred, List<String> members) {
 @visibleForTesting
 Map<String, String> hideSubscriptionInfoOutbounds(Map<String, dynamic> cfg) {
   final outbounds = (cfg['outbounds'] as List?) ?? const [];
-  final allTags = <String>{};
-  final leafTags = <String>[];
-  for (final o in outbounds) {
-    if (o is! Map) continue;
-    final tag = o['tag'];
-    if (tag is! String) continue;
-    allTags.add(tag);
-    final type = o['type'];
-    if (type is String && !_kNonMemberTypes.contains(type)) leafTags.add(tag);
-  }
+  final allTags = <String>{
+    for (final o in outbounds)
+      if (o is Map && o['tag'] is String) o['tag'] as String,
+  };
   final renames = <String, String>{};
-  for (final tag in subscriptionInfoTagsToExclude(leafTags)) {
+  for (final tag in subscriptionInfoExclusionsForConfig(cfg)) {
     var renamed = '$tag $kHideNodeMarker';
     while (allTags.contains(renamed)) {
       renamed = '$renamed$kHideNodeMarker';

@@ -2,7 +2,7 @@
 
 ## 一句话总览
 
-Flutter 写 UI 与业务，**抽象出 `BoxService` 接口**，每个平台用各自最稳的方式接 sing-box：移动端走原生桥（Pigeon + EventChannel，原生侧是 Android 的 VpnService / iOS 的 PacketTunnel 扩展），桌面端走 FFI 直接调动态库。连接的开 / 关 / 重载不直接调 `BoxService`，而是经 **`KernelPort`** 提交「期望状态」，由内核侧（Android 原生协调器，其它平台的 Dart 模拟层）收敛并回报权威快照，见「连接生命周期」。
+Flutter 写 UI 与业务，**抽象出 `BoxService` 接口**，每个平台用各自最稳的方式接 sing-box：移动端走原生桥（Pigeon + EventChannel，原生侧是 Android 的 VpnService / iOS 的 PacketTunnel 扩展），桌面端走 FFI 直接调动态库。连接的开 / 关 / 重载不直接调 `BoxService`，而是经 **`KernelPort`** 提交「期望状态」，由内核侧（移动端的原生协调器，桌面的 Dart 模拟层）收敛并回报权威快照，见「连接生命周期」。
 
 `lib/` 按职责分成五层，依赖方向单一，由架构测试在 CI 里强制（见下一节）。
 
@@ -117,25 +117,25 @@ lib/
 
 接口方法：`init` / `setup` / `validateConfig` / `changeConfigOptions` / `start` / `stop` / `restart` / `selectOutbound` / `urlTest` / `generateFullConfig` / `generateWarpConfig` / `clearLogs` / `resetTunnel`，以及监听流 `watchStatus` / `watchAlerts` / `watchStats` / `watchGroups` / `watchLogs` / `watchNetworkChanged`。持有需要显式释放资源的实现（目前是 `FFIBoxService`）额外实现 `DisposableBoxService`。
 
-在 Android 上，连接生命周期（开 / 关 / 重载 / 手选重放确认）不再走这里的 `start` / `stop` / `restart`，而走 `KernelPort`；iOS 与桌面由 `EmulatedKernelPort` 包装本接口实现同一份契约（见「连接生命周期」）。
+在移动端（Android / iOS），连接生命周期（开 / 关 / 重载 / 手选重放确认）不再走这里的 `start` / `stop` / `restart`，而走 `KernelPort`；桌面由 `EmulatedKernelPort` 包装本接口实现同一份契约（见「连接生命周期」）。
 
 ### 移动端通信协议
 
 `PlatformBoxService` 与原生层之间有三类通道：
 
-**1. Pigeon（强类型 host API）**。接口定义在 `pigeons/box_api.dart` 的 `BoxHostApi`，生成 `lib/core/box_service/pigeon/box_api.g.dart`、`android/.../pigeon/BoxApi.g.kt`、`ios/Runner/Pigeon/BoxApi.g.swift` 三端代码；改完接口跑 `bin/regen-pigeon.sh`。连接生命周期（`getSnapshot` / `request` / `acknowledgeReplay`，以及带 `expectedAttempt` 的 `selectOutbound`）、内核配置与工具（`setup` / `validateConfig` / `changeConfigOptions` / `urlTest` / `generateFullConfig` / `clearLogs` / `resetTunnel`；`start` / `stop` / `restart` 是 iOS `BoxService` 的路径，Android 原生侧只把它们留作翻译成协调器请求的兼容入口，Dart 不再调用）、已安装应用列表与图标（`getInstalledApps` / `getAppIconBase64`，分应用代理页用）、iOS App Group 工作目录（`getAppGroupWorkingDirectory`）都走这里。channel 名由 Pigeon 生成，形如 `dev.flutter.pigeon.clashmiao.BoxHostApi.<method>`。
+**1. Pigeon（强类型 host API）**。接口定义在 `pigeons/box_api.dart` 的 `BoxHostApi`，生成 `lib/core/box_service/pigeon/box_api.g.dart`、`android/.../pigeon/BoxApi.g.kt`、`ios/Runner/Pigeon/BoxApi.g.swift` 三端代码；改完接口跑 `bin/regen-pigeon.sh`。连接生命周期（`getSnapshot` / `request` / `acknowledgeReplay`，以及带 `expectedAttempt` 的 `selectOutbound`）、内核配置与工具（`setup` / `validateConfig` / `changeConfigOptions` / `urlTest` / `generateFullConfig` / `clearLogs` / `resetTunnel`；`start` / `stop` / `restart` 是桌面 `BoxService` 的路径；Android 原生侧把它们留作翻译成协调器请求的兼容入口，iOS 直接返回 `unsupported`，Dart 在移动端都不再调用）、已安装应用列表与图标（`getInstalledApps` / `getAppIconBase64`，分应用代理页用）、iOS App Group 工作目录（`getAppGroupWorkingDirectory`）都走这里。channel 名由 Pigeon 生成，形如 `dev.flutter.pigeon.clashmiao.BoxHostApi.<method>`。
 
 **2. EventChannel（原生 → Flutter 的推送流）**，统一前缀 `com.clashmiao.app`：
 
 | Channel | 内容 |
 |---------|------|
-| `/kernel.snapshot` | 权威内核快照（JSON map，订阅时先推当前值；仅 Android），格式见「连接生命周期」 |
-| `/service.status` | 内核状态（`Started` / `Starting` / `Stopping` / `Stopped`）；Android 上只是从快照派生的兼容流，供统计 / 分组订阅门控 |
+| `/kernel.snapshot` | 权威内核快照（JSON map，订阅时先推当前值；Android 与 iOS），格式见「连接生命周期」 |
+| `/service.status` | 内核状态（`Started` / `Starting` / `Stopping` / `Stopped`）；移动端都只是从快照派生的兼容流，供统计 / 分组订阅门控 |
 | `/service.alerts` | 只剩**与连接生命周期无关**的提示（如通知权限被拒）。启动失败、授权被拒、超时等一律在快照的 `lastFailure` 里 |
 | `/stats` | 上下行速率、累计流量与连接数 |
 | `/groups` | 代理组列表（JSON 字符串） |
 | `/service.logs` | 核心日志 |
-| `/network` | 默认网络切换事件（仅 Android 原生侧有实现） |
+| `/network` | 默认网络切换事件。iOS 由 Runner 内 `NWPathMonitor` 去抖后推送（空 map）；Android 通道保留但不再推（网络切换后的重载由原生协调器自己决定） |
 
 原生侧推送的状态名是 PascalCase（`Started`），`_parseStatus` 做 `toLowerCase()` 后再匹配。`watchStatus`（共享的 `ValueStream`）、`watchAlerts`、`watchStats`、`watchGroups`、`watchNetworkChanged` 在 Dart 侧各缓存一份流、不重复 `receiveBroadcastStream()`：同一时刻 EventChannel 只服务一个活跃的平台订阅，重复新建会把先前的订阅静默顶掉。**`watchLogs()` 例外**：它每次调用都新建一个 `receiveBroadcastStream()`，没有缓存，所以同时存在多个日志订阅者时，后订阅的会把先前的顶掉；目前只有日志页一处订阅（`boxLogStreamProvider`）。
 
@@ -143,7 +143,7 @@ lib/
 
 | Channel | 用途 |
 |---------|------|
-| `com.clashmiao.app/method` | Dart 当前只用它调 `generate_warp_config`（WARP 账号注册）；Android 原生侧同样只保留这一个方法，iOS 原生侧（`ChannelMethodHandler.swift`）仍注册着 setup / start / stop 等旧方法，Dart 不再调用 |
+| `com.clashmiao.app/method` | Dart 当前只用它调 `generate_warp_config`（WARP 账号注册）；Android 与 iOS 原生侧都只保留这一个方法 |
 | `com.clashmiao.app/platform` | 电池优化豁免查询与申请（仅 Android，`BatteryOptimizationService`） |
 | `com.clashmiao/auto_start` | macOS 开机启动（`auto_start_notifier.dart`） |
 
@@ -210,35 +210,55 @@ native 层依赖 `android/app/libs/libcore.aar`（gomobile 生成的 libbox 包�
 
 ### iOS 原生侧（`ios/Runner/` + `ios/SingBoxPacketTunnel/`）
 
-iOS 没有 Android 那样的原生 VPN Service，走 **NetworkExtension PacketTunnelProvider**：内核跑在 Network Extension 进程里，主 App 通过 `NETunnelProviderManager` 控制隧道，两个进程通过 App Group 共享容器交换配置与运行时文件。
+iOS 没有 Android 那样的原生 VPN Service，走 **NetworkExtension PacketTunnelProvider**：内核跑在 Network Extension 进程里，主 App 通过 `NETunnelProviderManager` 控制隧道，两个进程通过 App Group 容器交换意图与事实。**协调器住在 Runner**（「关」状态下扩展进程根本不存在，只有 Runner 能回答「已停止」），扩展是**自洽的执行体**：读落盘的意图起 / 重载 / 停内核，把事实写盘，失败自己清理并 `throw` / `cancelTunnelWithError`，不依赖 Runner 在场（Runner 进后台会被挂起）。
 
 ```
 ios/
 ├── Runner/                    — 主 App
 │   ├── AppDelegate.swift / SceneDelegate.swift
-│   ├── Extensions/Bundle+Properties.swift — 从 Info.plist 读 SERVICE_IDENTIFIER（channel 前缀）
-│   ├── VPN/
-│   │   ├── TunnelManager.swift   — NETunnelProviderManager 生命周期与告警
-│   │   └── TunnelProfile.swift   — 当前选中的隧道配置（UserDefaults 持久化）
-│   ├── Handlers/                 — Flutter 侧桥接
-│   │   ├── PigeonBridge.swift       — Pigeon BoxHostApi 的实现
-│   │   ├── ChannelMethodHandler.swift — `/method` MethodChannel
-│   │   └── TunnelStatusStream / BoxAlertsStream / TrafficStatsStream / ProxyGroupsStream / LogLinesStream
+│   ├── Kernel/                — 连接协调器（与 Android engine/ 一一对应）
+│   │   ├── CoordinatorModel.swift   — Desired / Source / FailureCode / KernelSnapshot / Effect（wire 字符串与 Dart 逐字一致）
+│   │   ├── CoordinatorCore.swift    — 纯 Swift 状态机（事件 → 动作 + 快照；不碰线程 / NE / 文件 / 时钟），单测主体
+│   │   ├── KernelCoordinator.swift  — 命令层外壳：串行队列执行动作；定时器触发前先读事实；ready 门；选择栅栏
+│   │   ├── KernelExecutor.swift     — 执行层：串行后台队列跑授权 / 拼配置 / 发布意图 / 提交启动 / 发重载消息 / 停
+│   │   ├── TunnelAdapter.swift      — 对 NETunnelProviderManager 的最小抽象（测试可替身）
+│   │   ├── TunnelController.swift   — NE 适配器真实现（不启用 On Demand）
+│   │   ├── KernelStore.swift        — intent.json 的唯一写者
+│   │   ├── ConfigBuilder.swift      — 内核拼装（注入）+ tun inbound 去重 + 原子写 final-<rev>.json
+│   │   └── KernelHost.swift         — 进程级装配 + NWPathMonitor
+│   ├── VPN/TunnelProfile.swift      — 只剩 generateFullConfig 用的 configOptions
+│   ├── Handlers/                    — Flutter 侧桥接
+│   │   ├── PigeonBridge.swift       — Pigeon BoxHostApi 的实现（生命周期调用转给协调器；旧 start/stop/restart 返回 unsupported）
+│   │   ├── KernelSnapshotStream / NetworkStream / TunnelStatusStream（快照派生）/ BoxAlertsStream（无事件）
+│   │   ├── ChannelMethodHandler.swift — `/method`，只剩 generate_warp_config
+│   │   └── TrafficStatsStream / ProxyGroupsStream / LogLinesStream — 命令服务器通道，沿用
 │   └── Pigeon/BoxApi.g.swift     — Pigeon 生成代码
 ├── SingBoxPacketTunnel/       — Network Extension（com.apple.product-type.app-extension）
 │   ├── ClashMiaoTunnelProvider.swift  — NEPacketTunnelProvider 入口（继承 KernelProviderProxy）
-│   ├── TrafficStats / TunnelLogger
 │   └── Kernel/
-│       ├── KernelProviderProxy.swift  — 持有内核生命周期（LibboxBoxService / CommandServer）
-│       ├── KernelEngine.swift         — 配置串校验
-│       ├── KernelPlatformBridge.swift — 实现 libcore 的平台回调（TUN 配置、日志、DNS 等）
-│       └── BlockingRunner.swift       — 把 async Swift 桥成 libcore 要求的同步回调
+│       ├── KernelProviderProxy.swift  — opQueue 串行；start / reload / select / 自发重载；失败自洽；内存采样
+│       └── KernelPlatformBridge.swift — 实现 libcore 的平台回调（TUN 配置、日志、DNS 等）
 └── Shared/                    — Runner 和 Extension 都用
+    ├── ProfilePathResolver.swift — App Group 容器内的路径约定
     ├── KernelBridge.swift / KernelCommandClient.swift
-    └── ProfilePathResolver.swift — App Group 容器内的路径约定
+    └── Kernel/ — 进程间契约：KernelIntent（intent.json）、ExtensionState（extension-state.json + 应用消息）、ExtensionStateWriter（终态粘性）
 ```
 
-`ios/Frameworks/Libcore.xcframework/` 同 Android：不在 git tracking，`bin/fetch-libcore.sh ios` 拉 zip 解压并整理成 iOS 能用的 shallow framework。
+**进程间契约**（`<App Group>/Library/Application Support/ClashMiao/kernel/`；不放 Caches，也不放 Dart 的 `Runtime/`）：
+
+| 文件 | 写入方 | 内容 |
+|---|---|---|
+| `final-<revision>.json` | Runner | 已拼好的最终配置，同名即同内容，不可变，原子写 |
+| `intent.json` | Runner（唯一写者） | `{desired, launchId, spec, finalConfigPath, finalRevision}`；扩展启动时一律读它，不看 `desired` |
+| `extension-state.json` | 扩展（唯一写者） | `{sessionId, launchId, phase, generation, revision, code, message, stopReason, availableMemoryMin}` |
+
+三个标识：`launchId` = Runner 的操作 ID；`sessionId` = 扩展实例 ID（每次 `startTunnel` 新生成）；`generation` = 内核 service 代次（每建一次 service +1，`clearDNSCache` 引起的 `reasserting` 不改它）。`attempt` 严格按真实 generation / session 变化分配。`failed` / `stopped` 对同一 session 是终态；被系统强杀（内存超限）不留任何终态记录，Runner 据此判定 `kernelExited`。
+
+**手选出站**：Runner 栅栏（`liveAttempt`）只拦得住 Runner 已知的重载，真正的 `(sessionId, generation)` 校验与写入在扩展里、与 service 替换同一条串行队列上完成，旧 attempt 的写入绝不会落到新 service。
+
+**扩展内存**（约 50 MB 的观察值，Apple 不保证）：配置在 Runner 拼装，扩展只读文件 → 建 service → 立即释放文本，不解析、不常驻；删除了一个从未对上端口的流量轮询；`provider ↔ bridge` 引用环断开；重载先完整释放旧 service；关键步骤与每 10 s 采样余量写进 state。
+
+`ios/Frameworks/Libcore.xcframework/` 同 Android：不在 git tracking，`bin/fetch-libcore.sh ios` 拉 zip 解压并整理成 iOS 能用的 shallow framework。新增 Swift 文件要登记进 Xcode 工程（`objectVersion=54`，无目录同步）：改 `ios/scripts/sync_sources.rb` 的 MANIFEST 后运行它。
 
 签名与 Xcode 工程配置（NetworkExtension capability、App Group `group.com.clashmiao.shared`、扩展 target）见 `ios/SCAFFOLDING.md`。
 
@@ -278,7 +298,7 @@ ios/
 | `acknowledgeReplay(attempt)` | 确认该 attempt 的手选重放已完成（幂等） |
 | `selectOutbound(..., expectedAttempt)` | attempt 不符时不写入，返回 `SelectStale` |
 
-实现：Android 为 `PlatformKernelPort`（Pigeon + `/kernel.snapshot`，流断开后 0.5 / 1 / 2 / 4 s 退避重订阅并重同步）；其它平台为 `EmulatedKernelPort`。接线在 `kernel_port_provider.dart`。
+实现：Android 与 iOS 为 `PlatformKernelPort`（Pigeon + `/kernel.snapshot`，流断开后 0.5 / 1 / 2 / 4 s 退避重订阅并重同步）；桌面为 `EmulatedKernelPort`。接线在 `kernel_port_provider.dart`。
 
 **请求序号**：`DesiredRequest{epoch, seq, desired, reason, launch}`。seq 在「启动产物准备完成、即将发送」时才分配（准备期间被新意图取代的不占号），基线是首个快照的 `appliedSeq + 1`，每次纪元变化重设。协调器按 seq 顺序处理、后到覆盖先到；`seq ≤ appliedSeq` 回 `stale`，纪元不符回 `wrongEpoch`，两者都不改变状态。
 
@@ -309,9 +329,19 @@ ios/
 - `ConnectionController`：执行这些动作、按 `nextWake` 安排 Tick；副作用（触觉、评分、手选重放、系统代理脏标记、上报）按 `(epoch, attempt)` 至多一次。冷启动挂上运行中的隧道（首个快照即 started）不触觉、不评分、时长未知。
 - `ConnectionLauncher`：生成内联 options 与运行时配置文件。**命名**：`runtime-<revision>.json`，`configRevision` 是（options JSON + 运行时配置内容）的稳定哈希；先写 `runtime-prep-<token>.json`，目标不存在或内容不同时才原子改名覆盖。**清理**：只有同时满足以下条件的文件才删（含旧版 `runtime-config-<seq>.json` 与临时文件）——已收到首个权威快照；不在最新快照的 `retainedConfigPaths` 里（快照报未知则一个都不删）；不被未终结请求引用；不是本进程最近准备的 3 个 revision 之一。从不按修改时间或文件年龄删。
 
-### iOS / 桌面：降级契约
+### iOS 原生协调器
 
-`EmulatedKernelPort` 包装 `BoxService`，在 Dart 里实现同样的接口与语义（串行受理、stale / wrongEpoch、30 s 启动超时、20 s 停止无响应、失败归属当前请求），但承诺降低：epoch / attempt 是 Dart 本地值；来自平台自身的变化（iOS 系统设置、意外退出）一律记 `source=system`；iOS 的初始状态读取与连接中断开、桌面 FFI 调用阻塞 UI isolate 维持现状。核心库不可用（桩实现）时 on 请求立即以 `coreUnavailable` 失败。iOS 平台会持久化最近一次启动的配置路径，第一次调用确认之前 `retainedConfigPaths` 报未知。
+结构同 Android 的「命令层 + 执行层」（见上），差异在承载内核的东西：Android 是多个 Service 实例，iOS 是**一条隧道会话**，所以核心 `CoordinatorCore` 没有实例表 / startId / VPN 授权对话框，换成隧道事实（`NEVPNStatus` + 扩展写盘的 state）与 `Connect` / `Reload` / `Teardown` 三类任务。所有隧道输入都是电平触发：外壳每次都读**当前**的 `connection.status` 与 state 文件，所以 Runner 被挂起时错过的通知由 `resync`（回到前台、状态通知、**每个定时器触发之前**）追平。
+
+- **预期中的下线**：派发 Teardown 的那一刻起 `stopSubmitted`，直到观察到 down；期间的 `disconnected` 只算停止完成，不会按「系统关闭」覆盖期间到达的新 on 请求。
+- **Connect 的提交窗口**：`startVPNTunnel` 返回只表示已提交，执行层再等隧道可见地离开 disconnected（≤5 s）；等不到就补发 `stopVPNTunnel` 并按 `abandoned` 失败，10 s 内迟到的启动不被当作外部启动（adoptGuard）。
+- **外部变化**（设置里开 / 关 VPN、冷启动挂接、扩展被杀、`stopReason` 分类）与 `generation` / `sessionId` 变化的处理矩阵见 `docs/superpowers/specs/2026-10-20-ios-lifecycle-design.md` §4.1，每一行有 `CoordinatorCoreTests` 用例。
+- **能力边界**：Runner 进后台后无法计时 / 响应；以「扩展自洽失败 + 读事实优先 + 墙钟计时」兜底。扩展被杀无回调，只能事后推断为 `kernelExited`（文案注明可能是内存不足）。
+- 不启用 On Demand；保存偏好时显式关闭遗留的开关。
+
+### 桌面：降级契约
+
+`EmulatedKernelPort` 包装 `BoxService`，在 Dart 里实现同样的接口与语义（串行受理、stale / wrongEpoch、30 s 启动超时、20 s 停止无响应、失败归属当前请求），但承诺降低：epoch / attempt 是 Dart 本地值；来自平台自身的变化（意外退出）一律记 `source=system`；桌面 FFI 调用阻塞 UI isolate 维持现状。核心库不可用（桩实现）时 on 请求立即以 `coreUnavailable` 失败。桌面 FFI 内核与进程同生命周期，没有跨进程的配置引用，`retainedConfigPaths` 总是确知的。
 
 ### 原生 → Dart 的 JSON 模型：键名必须显式写出
 
@@ -352,7 +382,8 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 - `test/support/` — 共享的测试替身（`fake_box_service.dart`、`counting_box_service.dart`、`temp_dirs.dart`）；
 - `test/main_test.dart`、`test/branding/` — 入口与品牌资源回归；
 - `integration_test/` — 真机 / 模拟器上的集成测试（Android 智能模式、iOS 首页连接信息与快捷设置）；
-- `android/app/src/test/` — Android 原生层的 JVM 单测（`cd android && ./gradlew :app:testDebugUnitTest`，CI 里是 `test-android-unit`）。
+- `android/app/src/test/` — Android 原生层的 JVM 单测（`cd android && ./gradlew :app:testDebugUnitTest`，CI 里是 `test-android-unit`）；
+- `ios/RunnerTests/` — iOS 原生层的 Swift 单测：`CoordinatorCore`（纯状态机）、协调器外壳（假适配器 + 手动定时器）、进程间契约与拼装、Pigeon 查询 / 事件同值。跑法：`cd ios && xcodebuild test -workspace Runner.xcworkspace -scheme Runner -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:RunnerTests CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO`（模拟器构建需要 ad-hoc 签名才带上 App Group 授权，纯 `CODE_SIGNING_ALLOWED=NO` 会让宿主 App 因取不到共享容器而起不来）。
 
 跑法：`flutter test`（全量）；提交前还要过 `flutter analyze --fatal-warnings` 和 `dart format --set-exit-if-changed lib test integration_test`（格式化器版本与 CI 的 Flutter 3.47.7 保持一致，版本不同会改动无关行）。
 
@@ -367,7 +398,6 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 - `core/build.sh` 不是发布用 libcore 的来源（见「内核版本」）。libcore 二进制目前由外部构建后挂到 GitHub Release tag，CI / release flow 已通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 libcore tag，并让 tag 名反映真实内核版本。
 - 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
-- iOS 原生侧没有实现 `/network` EventChannel（`ios/Runner/Handlers/` 里只有 status / alerts / stats / groups / logs 五条），Dart 侧 `watchNetworkChanged` 在 iOS 上收不到事件。
-- iOS 原生侧只有 Xcode 模板自带的占位测试；Android 的协调器、执行层、持久化与线上编码有约 190 个 JVM 单测（`android/app/src/test/`，CI 的 `test-android-unit`），但 libbox 真实调用与各条 EventChannel 的推送仍主要靠真机验证。
-- iOS / 桌面的连接生命周期是降级契约（见「连接生命周期」）：iOS 初始状态读取与连接中断开、桌面 FFI 移出 UI isolate 尚未完成。
+- 原生层的 libbox 真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。
+- 桌面的连接生命周期是降级契约（见「桌面：降级契约」）：FFI 调用移出 UI isolate 尚未完成。
 - 功能之间还有 5 条页面跳转依赖留在架构测试白名单里，等路由统一后清零（见「白名单：只减不增」）。

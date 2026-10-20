@@ -36,9 +36,11 @@
 - 组织类型的 Apple Developer 账号、App ID（主 App + `.SingBoxPacketTunnel` 扩展）、App Group `group.com.clashmiao.shared`、签名配置就绪
 - 2026-10 真机验证：导入订阅、建立 VPN、出口 IP 切换均正常
 
+- iOS 原生连接协调器（2026-10）：对齐 Android 的期望状态 / 快照 / 手选栅栏契约，`/network` 事件通道，扩展内存纪律与自洽失败；Swift 单测在 Xcode 模拟器上全绿（设计与计划见 `docs/superpowers/specs|plans/2026-10-20-ios-lifecycle*`）
+
 **剩下要做的事**：
-1. iOS 原生侧补上网络变化事件通道（Dart 侧 `watchNetworkChanged` 在 iOS 上目前收不到事件）
-2. App Store 上架材料：隐私说明、截图、审核备注（VPN 类 App 需说明用途，审核指南 5.4）
+1. 新协调器的真机验收（导入订阅、连接、出口 IP、延迟、切节点、前后台、杀进程重开、设置里开关 VPN、Wi-Fi ↔ 蜂窝、黑洞场景、扩展内存余量）
+2. App Store 上架材料：见 `docs/release/app-store-checklist.md`（隐私、审核备注、截图）
 3. 首发地区：美国、香港
 
 详见 `ios/SCAFFOLDING.md`。

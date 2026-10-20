@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:clashmiao/app/system_ui.dart';
+import 'package:clashmiao/shared/components/system_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -102,7 +102,7 @@ void main() {
       for (final entity in Directory(root).listSync(recursive: true)) {
         if (entity is! File || !entity.path.endsWith('.dart')) continue;
         final path = entity.path.replaceAll('\\', '/');
-        if (path == 'lib/app/system_ui.dart') continue;
+        if (path == 'lib/shared/components/system_ui.dart') continue;
         if (entity.readAsStringSync().contains('systemNavigationBarColor')) {
           offenders.add(path);
         }

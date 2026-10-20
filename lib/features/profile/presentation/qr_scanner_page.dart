@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/shared/components/system_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -123,9 +124,11 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage>
     final t = ref.watch(translationsProvider);
 
     if (_permissionStatus == null && !widget.skipPermissionCheck) {
-      return const Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(child: MotionProgress(strokeWidth: 4)),
+      return const DarkSurfaceSystemUi(
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Center(child: MotionProgress(strokeWidth: 4)),
+        ),
       );
     }
 
@@ -137,14 +140,16 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage>
       );
     }
 
-    return _ScannerView(
-      controller: _controller,
-      started: _started,
-      onDetect: _handleDetect,
-      torchTooltip: t.profile.add.qrScanner.torchSemanticLabel,
-      cameraTooltip: t.profile.add.qrScanner.facingSemanticLabel,
-      permissionError: t.profile.add.qrScanner.permissionDeniedError,
-      unknownError: t.profile.add.qrScanner.unexpectedError,
+    return DarkSurfaceSystemUi(
+      child: _ScannerView(
+        controller: _controller,
+        started: _started,
+        onDetect: _handleDetect,
+        torchTooltip: t.profile.add.qrScanner.torchSemanticLabel,
+        cameraTooltip: t.profile.add.qrScanner.facingSemanticLabel,
+        permissionError: t.profile.add.qrScanner.permissionDeniedError,
+        unknownError: t.profile.add.qrScanner.unexpectedError,
+      ),
     );
   }
 
@@ -190,6 +195,8 @@ class _ScannerView extends StatelessWidget {
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
+        // AppBar 自带一份按背景推算的状态栏样式，会盖过外层的覆盖：这里显式给浅色图标。
+        systemOverlayStyle: appSystemUiOverlayStyle(Brightness.dark),
         iconTheme: Theme.of(context).iconTheme
             .copyWith(color: Colors.white, size: 32),
         actions: [

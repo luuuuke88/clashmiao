@@ -2,7 +2,7 @@ import 'package:clashmiao/core/localization/locale_extensions.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/app/router/app_router.dart';
-import 'package:clashmiao/app/system_ui.dart';
+import 'package:clashmiao/shared/components/system_ui.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';

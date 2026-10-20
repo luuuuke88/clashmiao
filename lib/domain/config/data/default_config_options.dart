@@ -96,7 +96,9 @@ Map<String, dynamic> getDefaultConfigOptions({
     // `cn_direct_rules.dart` 的文件头。
     //
     // 前缀是内核 makeDomainRule() 认的语法：`full:` 进 Domain（精确匹配），
-    // `domain:` 进 DomainSuffix（后缀匹配）。两者语义不同，不能混用。
+    // `domain:` 进 DomainSuffix（后缀匹配），`regexp:` 进 DomainRegex。语义
+    // 不同，不能混用。正则清单是排除表改写出来的"跳过谷歌系域名的宽后缀"
+    // （见 cn_direct_rules.dart 文件头），少了它顶级域 `cn` 下的直连就没了。
     'rules': isSmart
         ? <Map<String, dynamic>>[
             {'ip': cnDirectCidrRanges.join(','), 'outbound': 'bypass'},
@@ -104,6 +106,7 @@ Map<String, dynamic> getDefaultConfigOptions({
               'domains': [
                 ...cnDirectDomains.map((d) => 'full:$d'),
                 ...cnDirectDomainSuffixes.map((d) => 'domain:$d'),
+                ...cnDirectDomainRegexes.map((r) => 'regexp:$r'),
               ].join(','),
               'outbound': 'bypass',
             },

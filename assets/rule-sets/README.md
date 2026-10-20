@@ -34,7 +34,12 @@ docker run --rm -v "$PWD/core/sing-box:/src" \
   -w /src golang:1.22 sh -c \
   "go run ./cmd/srsdump /geo/geosite-cn.srs > /out/site.json && \
    go run ./cmd/srsdump /geo/geoip-cn.srs > /out/ip.json"
+dart tools/srsdump/gen_cn_direct_rules.dart out/site.json out/ip.json
 ```
+
+第二步的生成器会先应用 `tools/srsdump/cn_direct_exclusions.txt`（谷歌系域名 /
+地址段排除表——它们在大陆网络下直连会超时），再写出 Dart 文件；排除表每次
+重新生成都会自动重新应用，不需要手改生成文件。
 
 工具源码见 `tools/srsdump/`（含用法说明；`core/sing-box/` 在 .gitignore 里，
 所以工具本体放在跟踪目录，用前复制进内核源码树再编）。原理：`srs.Read(reader, recovery=true)`

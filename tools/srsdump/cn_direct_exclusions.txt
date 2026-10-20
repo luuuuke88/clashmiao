@@ -1,0 +1,127 @@
+# 国内直连清单的排除表——生成 lib/domain/config/data/cn_direct_rules.dart 时
+# 由 gen_cn_direct_rules.dart 读取并应用，是生成管线的一部分，不是事后手改。
+#
+# ## 为什么要排除
+#
+# geosite-cn 里带着一批谷歌系域名（上游域名数据里打了 `google@cn` 标签的
+# 那部分）：当年谷歌在北京有缓存节点（GOOGLECN），这些域名
+# 在大陆可以直连。这个前提早已不成立——2026-10 在西安移动真机上实测，
+# www.gstatic.com / connectivitycheck.gstatic.com / fonts.gstatic.com /
+# csi.gstatic.com / www.google.cn 走直连全部约 5.4 s 超时（000）。后果是智能
+# 模式下，引用谷歌字体或静态资源的网站在大陆网络下卡住。
+#
+# 排除之后这些域名不再命中直连规则，落到最终出站（代理），DNS 也随之走远端。
+#
+# ## 格式
+#
+# - 一行一条，`#` 之后是注释，空行忽略。
+# - 含 `/` 的是 CIDR：清单里被它覆盖的网段删掉，覆盖它的更大网段会被拆开、
+#   只挖掉这一段。
+# - 其余是域名：该域名本身及其所有子域，在精确清单（cnDirectDomains）和后缀
+#   清单（cnDirectDomainSuffixes）里都删掉。
+# - 如果某条保留下来的更宽的后缀（典型是顶级域 `cn`）仍会盖住被排除的域名，
+#   生成器会把那条后缀改写成一条"后缀匹配、但跳过被排除域名"的正则
+#   （cnDirectDomainRegexes），保证被排除的域名真的落到代理。
+#
+# ## 维护
+#
+# 规则库升级后，跑一次生成器即可自动重新应用这份表；测试
+# test/domain/config/data/cn_direct_rules_test.dart 会用一组谷歌系关键词兜底，
+# 新数据里冒出这份表没覆盖到的谷歌域名会直接让测试失败，届时把它补进来。
+
+# ── 谷歌在大陆的地址段（APNIC whois：netname GOOGLECN，
+#    Beijing Gu Xiang Information Technology Co.,Ltd.）。这些节点已不再提供服务，
+#    留在 geoip-cn 里只会让解析到这里的连接直连超时。
+203.208.32.0/19
+2401:3800::/32
+
+# ── 谷歌主站与 .cn 镜像
+google.com
+google.cn
+g.cn
+xn--flw351e.com
+265.com
+
+# ── 静态资源 / API / 字体
+gstatic.com
+gstatic.cn
+gstatic-cn.com
+gstaticcnapps.cn
+googleapis.com
+googleapis.cn
+googleapis-cn.com
+googleadapis.com
+googlecnapps.cn
+googleapps-cn.com
+gkecnapps.cn
+googleusercontent.com
+ggpht.com
+ggpht.cn
+ampproject.org
+
+# ── 下载 / 更新 / 视频 CDN
+gvt1.com
+gvt2.com
+gvt1-cn.com
+gvt2-cn.com
+googlevideo.com
+bdn.dev
+xn--ngstr-lra8j.com
+
+# ── 广告 / 统计 / 标签管理
+doubleclick.net
+doubleclick-cn.net
+2mdn.net
+2mdn-cn.net
+admob.com
+admob-cn.com
+googleads.com
+googleadservices.com
+googleadservices-cn.com
+googlesyndication.com
+googlesyndication-cn.com
+googletagmanager.com
+googletagmanager-cn.com
+googletagservices.com
+googletagservices-cn.com
+googletraveladservices.com
+googletraveladservices-cn.com
+googlevads-cn.com
+google-analytics.com
+google-analytics-cn.com
+googleanalytics.com
+googleoptimize.com
+googleoptimize-cn.com
+app-measurement.com
+app-measurement-cn.com
+app-analytics-services.com
+urchin.com
+dartsearch.net
+dartsearch-cn.net
+cc-dt.com
+destinationurl.com
+oingo.com
+googleflights.net
+googleflights-cn.net
+
+# ── 其他谷歌产品与基础设施
+youtube.com
+youtubeeducation.com
+ytimg.com
+gmail.com
+android.com
+chromium.org
+crashlytics.com
+recaptcha.net
+recaptcha-cn.net
+widevine.com
+pki.goog
+floonet.goog
+gonglchuangl.net
+gongyichuangyi.net
+qiao-cn.com
+
+# ── 上游数据把这两个主机名归在 google@cn 下，但主域本身不是（或无法确认是）
+#    谷歌的，所以只排除这一个主机名，不连带整个主域。
+gtm.oasisfeng.com
+www.pxcc.com

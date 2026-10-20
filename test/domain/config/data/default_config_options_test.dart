@@ -197,9 +197,12 @@ void main() {
       expect(domainRule, isNotEmpty, reason: 'isSmart=true 必须有一条基于域名的直连规则');
       expect(domainRule['outbound'], 'bypass');
       final domains = (domainRule['domains'] as String).split(',');
+      expect(domains, containsAll(['domain:baidu.com', 'domain:qq.com']));
+      // 顶级域 `cn` 不再是裸后缀：排除表把它改写成跳过谷歌系 .cn 域名的正则。
+      expect(domains, isNot(contains('domain:cn')));
       expect(
         domains,
-        containsAll(['domain:cn', 'domain:baidu.com', 'domain:qq.com']),
+        containsAll(cnDirectDomainRegexes.map((r) => 'regexp:$r')),
       );
     });
 
@@ -218,8 +221,10 @@ void main() {
 
       expect(
         domains.length,
-        cnDirectDomains.length + cnDirectDomainSuffixes.length,
-        reason: '两个清单必须完整注入，不能有截断',
+        cnDirectDomains.length +
+            cnDirectDomainSuffixes.length +
+            cnDirectDomainRegexes.length,
+        reason: '三个清单必须完整注入，不能有截断',
       );
       expect(
         cnDirectDomainSuffixes.length,
@@ -230,9 +235,9 @@ void main() {
     });
 
     // 前缀语义不同不能混用：`full:` 进内核的 Domain（精确匹配），
-    // `domain:` 进 DomainSuffix（后缀匹配）。搞反了会让精确规则变成后缀规则，
-    // 把不该直连的子域一起放走。
-    test('精确域名用 full: 前缀，后缀用 domain: 前缀', () {
+    // `domain:` 进 DomainSuffix（后缀匹配），`regexp:` 进 DomainRegex。搞反了
+    // 会让精确规则变成后缀规则，把不该直连的子域一起放走。
+    test('精确域名用 full: 前缀，后缀用 domain: 前缀，正则用 regexp: 前缀', () {
       final options = getDefaultConfigOptions(
         isSmart: true,
         settings: const NetworkSettings(),
@@ -244,9 +249,13 @@ void main() {
 
       expect(domains, contains('full:${cnDirectDomains.first}'));
       expect(domains, contains('domain:${cnDirectDomainSuffixes.first}'));
+      expect(domains, contains('regexp:${cnDirectDomainRegexes.first}'));
       expect(
         domains.where(
-          (d) => !d.startsWith('full:') && !d.startsWith('domain:'),
+          (d) =>
+              !d.startsWith('full:') &&
+              !d.startsWith('domain:') &&
+              !d.startsWith('regexp:'),
         ),
         isEmpty,
         reason: '每一条都必须带前缀，裸域名会被内核的 makeDomainRule 直接忽略',

@@ -54,6 +54,8 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: stable
           cache: true
+      # 托盘插件的原生资源钩子会在 host（Linux）上编译 C++，需要 GTK 3 / X11 / Xi 头文件。
+      - run: sudo apt-get update -y && sudo apt-get install -y libgtk-3-dev libx11-dev libxi-dev
       - run: flutter pub get
       - run: flutter test test/ --reporter expanded
 

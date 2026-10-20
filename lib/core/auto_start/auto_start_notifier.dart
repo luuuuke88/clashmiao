@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:launch_at_startup/launch_at_startup.dart';
+
+import 'package:clashmiao/core/auto_start/windows_run_key.dart';
 
 /// 平台无关的"开机自启动"读/写抽象。存在的意义是让 [AutoStartNotifier] 的
 /// init/toggle 分发逻辑可以脱离真实 `dart:io Platform`（宿主机是什么系统就
@@ -30,11 +31,9 @@ class _MacAutoStartBackend implements AutoStartBackend {
   }
 }
 
-/// 薄封装，把 `launch_at_startup` 包的全局单例包一层接口，方便测试注入假实现。
-/// 直接测真单例不可行：它内部按*运行测试的宿主机*真实 `Platform.isXxx`
-/// 分发到 Windows 注册表 / macOS LaunchAgents / Linux autostart 文件，在非
-/// Windows 机器上跑测试要么崩（win32_registry 走 FFI 调 Win32 API），要么
-/// 静默写脏宿主机的真实文件。
+/// 薄封装，把 Windows 注册表自启实现（[WindowsRunKeyLauncher]）包一层接口，
+/// 方便测试注入假实现。真实实现走 FFI 调 Win32 API，在非 Windows 宿主机上
+/// 调用会直接崩；注册表层面的逻辑另有内存实现的单测（windows_run_key_test）。
 abstract class WindowsLaunchAtStartupApi {
   void setup({required String appName, required String appPath});
   Future<bool> isEnabled();
@@ -43,25 +42,41 @@ abstract class WindowsLaunchAtStartupApi {
 }
 
 class _RealWindowsLaunchAtStartupApi implements WindowsLaunchAtStartupApi {
-  const _RealWindowsLaunchAtStartupApi();
+  _RealWindowsLaunchAtStartupApi();
 
-  @override
-  void setup({required String appName, required String appPath}) {
-    launchAtStartup.setup(appName: appName, appPath: appPath);
+  WindowsRunKeyLauncher? _launcher;
+
+  WindowsRunKeyLauncher get _requireLauncher {
+    final launcher = _launcher;
+    if (launcher == null) {
+      throw StateError('setup() must be called before using the launcher');
+    }
+    return launcher;
   }
 
   @override
-  Future<bool> isEnabled() => launchAtStartup.isEnabled();
+  void setup({required String appName, required String appPath}) {
+    _launcher = WindowsRunKeyLauncher(appName: appName, appPath: appPath);
+  }
 
   @override
-  Future<bool> enable() => launchAtStartup.enable();
+  Future<bool> isEnabled() async => _requireLauncher.isEnabled();
 
   @override
-  Future<bool> disable() => launchAtStartup.disable();
+  Future<bool> enable() async {
+    _requireLauncher.enable();
+    return true;
+  }
+
+  @override
+  Future<bool> disable() async {
+    _requireLauncher.disable();
+    return true;
+  }
 }
 
 /// Windows：真正的开机自启动实现，写 `HKCU\...\CurrentVersion\Run` 注册表键
-/// （`launch_at_startup` 包内部实现，见其 `AppAutoLauncherImplWindows`）。
+/// （见 [WindowsRunKeyLauncher]）。
 ///
 /// 此前的 bug：[AutoStartNotifier] 对所有非 macOS 平台的 `_init`/`toggle`
 /// 直接 `if (!Platform.isMacOS) return`，短路空转。但设置页
@@ -73,7 +88,7 @@ class WindowsAutoStartBackend implements AutoStartBackend {
     WindowsLaunchAtStartupApi? api,
     String appName = 'ClashMiao',
     String? appPath,
-  }) : _api = api ?? const _RealWindowsLaunchAtStartupApi() {
+  }) : _api = api ?? _RealWindowsLaunchAtStartupApi() {
     _api.setup(
       appName: appName,
       appPath: appPath ?? Platform.resolvedExecutable,
@@ -96,7 +111,7 @@ class WindowsAutoStartBackend implements AutoStartBackend {
 }
 
 /// macOS 13+ 使用 SMAppService 实现开机启动（见 _MacAutoStartBackend）。
-/// Windows 使用 launch_at_startup 包写 Registry Run 键（见
+/// Windows 写 Registry Run 键（见
 /// [WindowsAutoStartBackend]）。其余平台（Linux/mobile）不支持，backend 为
 /// null，init/toggle 都是 no-op，state 恒为 false——这与之前的行为一致，
 /// 且这些平台在 settings_page.dart 里本来就不会展示这个开关。

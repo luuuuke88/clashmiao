@@ -54,7 +54,7 @@ dependencies:
   fluentui_system_icons: ^1.1.245
 
   # 工具类
-  package_info_plus: ^9.0.0
+  package_info_plus: ^10.2.2
   url_launcher: ^6.3.0
   uuid: ^4.4.0
   loggy: ^2.0.3
@@ -66,6 +66,8 @@ dependencies:
   # 桌面端
   window_manager: ^0.3.9
   tray_manager: ^0.2.2
+  # Windows 开机自启（HKCU\...\Run 注册表，见 core/auto_start/windows_run_key.dart）
+  win32_registry: ^3.0.3
 
   # 二维码
   qr_flutter: ^4.1.0
@@ -76,12 +78,11 @@ dependencies:
   slang: ^3.32.0
   slang_flutter: ^3.32.0
   intl: ^0.20.2
-  launch_at_startup: ^0.5.1
 
   # 监控、分享、文件、权限、加密
   sentry_flutter: ^9.0.0
-  share_plus: ^10.0.0
-  file_picker: ^8.1.2
+  share_plus: ^13.3.1
+  file_picker: ^13.1.0
   permission_handler: ^11.3.0
   crypto: ^3.0.3
 

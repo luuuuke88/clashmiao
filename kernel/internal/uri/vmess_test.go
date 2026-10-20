@@ -1,0 +1,65 @@
+package uri
+
+import "testing"
+
+func vmessLink(j map[string]any) string { return "vmess://" + b64(jsonOf(j)) }
+
+func TestVMess(t *testing.T) {
+	cases := []convCase{
+		{name: "ws + tls（base64 JSON）", in: vmessLink(m("v", "2", "ps", "香港 ws", "add", "hk.example.net", "port", "443", "id", testUUID, "aid", "0", "scy", "auto",
+			"net", "ws", "type", "none", "host", "cdn.example.net", "path", "/ws", "tls", "tls", "sni", "hk.example.net", "alpn", "h2,http/1.1", "fp", "chrome")),
+			want: m("type", "vmess", "tag", "香港 ws", "server", "hk.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "hk.example.net", "alpn", list("h2", "http/1.1"), "utls", m("enabled", true, "fingerprint", "chrome")),
+				"transport", m("type", "ws", "path", "/ws", "headers", m("Host", "cdn.example.net")))},
+		{name: "tcp 无 tls，端口是数字", in: vmessLink(m("ps", "plain", "add", "192.0.2.5", "port", 8443, "id", testUUID, "net", "tcp", "type", "none")),
+			want: m("type", "vmess", "tag", "plain", "server", "192.0.2.5", "server_port", 8443, "uuid", testUUID, "security", "auto")},
+		{name: "grpc（path 是 serviceName）", in: vmessLink(m("ps", "grpc", "add", "g.example.net", "port", "443", "id", testUUID, "net", "grpc", "path", "svc", "tls", "tls")),
+			want: m("type", "vmess", "tag", "grpc", "server", "g.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "g.example.net"), "transport", m("type", "grpc", "service_name", "svc"))},
+		{name: "h2", in: vmessLink(m("ps", "h2", "add", "h.example.net", "port", "443", "id", testUUID, "net", "h2", "host", "h.example.net", "path", "/h2", "tls", "tls")),
+			want: m("type", "vmess", "tag", "h2", "server", "h.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "h.example.net"), "transport", m("type", "http", "path", "/h2", "host", list("h.example.net")))},
+		{name: "httpupgrade", in: vmessLink(m("ps", "hu", "add", "u.example.net", "port", "80", "id", testUUID, "net", "httpupgrade", "host", "u.example.net", "path", "/up")),
+			want: m("type", "vmess", "tag", "hu", "server", "u.example.net", "server_port", 80, "uuid", testUUID, "security", "auto",
+				"transport", m("type", "httpupgrade", "path", "/up", "host", "u.example.net"))},
+		{name: "tcp + http 伪装头（多个 host）", in: vmessLink(m("ps", "tcp-http", "add", "t.example.net", "port", "80", "id", testUUID, "net", "tcp", "type", "http", "host", "a.example.com,b.example.com", "path", "/x")),
+			want: m("type", "vmess", "tag", "tcp-http", "server", "t.example.net", "server_port", 80, "uuid", testUUID, "security", "auto",
+				"transport", m("type", "http", "path", "/x", "method", "GET", "host", list("a.example.com", "b.example.com")))},
+		{name: "alterId 与 scy", in: vmessLink(m("ps", "aid", "add", "a.example.net", "port", "443", "id", testUUID, "aid", "4", "scy", "aes-128-gcm")),
+			want: m("type", "vmess", "tag", "aid", "server", "a.example.net", "server_port", 443, "uuid", testUUID, "security", "aes-128-gcm", "alter_id", 4)},
+		{name: "ps 缺省时用 #fragment", in: "vmess://" + b64(jsonOf(m("add", "n.example.net", "port", "443", "id", testUUID))) + "#%E5%90%8D%E5%AD%97",
+			want: m("type", "vmess", "tag", "名字", "server", "n.example.net", "server_port", 443, "uuid", testUUID, "security", "auto")},
+		{name: "ps 与 fragment 都没有", in: vmessLink(m("add", "n.example.net", "port", "443", "id", testUUID)),
+			want: m("type", "vmess", "tag", "n.example.net:443", "server", "n.example.net", "server_port", 443, "uuid", testUUID, "security", "auto")},
+		{name: "allowInsecure", in: vmessLink(m("ps", "insecure", "add", "i.example.net", "port", "443", "id", testUUID, "tls", "tls", "allowInsecure", "1")),
+			want: m("type", "vmess", "tag", "insecure", "server", "i.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "i.example.net", "insecure", true))},
+		{name: "ws early data", in: vmessLink(m("ps", "ed", "add", "e.example.net", "port", "443", "id", testUUID, "net", "ws", "path", "/ws?ed=2048", "tls", "tls")),
+			want: m("type", "vmess", "tag", "ed", "server", "e.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "e.example.net"),
+				"transport", m("type", "ws", "path", "/ws", "max_early_data", 2048, "early_data_header_name", "Sec-WebSocket-Protocol"))},
+		{name: "urlsafe 无 padding 的 base64", in: "vmess://" + b64u(jsonOf(m("ps", "u", "add", "x.example.net", "port", "443", "id", testUUID))),
+			want: m("type", "vmess", "tag", "u", "server", "x.example.net", "server_port", 443, "uuid", testUUID, "security", "auto")},
+		{name: "URL 形式 ws + tls", in: "vmess://" + testUUID + "@w.example.net:443?type=ws&security=tls&host=cdn.example.net&path=%2Fws&sni=w.example.net&encryption=auto#%E7%BE%8E%E5%9B%BD",
+			want: m("type", "vmess", "tag", "美国", "server", "w.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "w.example.net"),
+				"transport", m("type", "ws", "path", "/ws", "headers", m("Host", "cdn.example.net")))},
+		{name: "URL 形式 grpc", in: "vmess://" + testUUID + "@g2.example.net:443?type=grpc&serviceName=svc2&security=tls#g",
+			want: m("type", "vmess", "tag", "g", "server", "g2.example.net", "server_port", 443, "uuid", testUUID, "security", "auto",
+				"tls", m("enabled", true, "server_name", "g2.example.net"), "transport", m("type", "grpc", "service_name", "svc2"))},
+		{name: "IPv6 服务器（URL 形式）", in: "vmess://" + testUUID + "@[2001:db8::7]:443#v6",
+			want: m("type", "vmess", "tag", "v6", "server", "2001:db8::7", "server_port", 443, "uuid", testUUID, "security", "auto")},
+
+		{name: "不是 base64 也不是 URL", in: "vmess://!!!not-base64", err: "neither base64 JSON nor a URL"},
+		{name: "payload 不是 JSON", in: "vmess://" + b64("hello"), err: "not JSON"},
+		{name: "缺 id", in: vmessLink(m("add", "a.example.net", "port", "443")), err: "missing id"},
+		{name: "端口非法", in: vmessLink(m("add", "a.example.net", "port", "70000", "id", testUUID)), err: "bad server address or port"},
+		{name: "缺地址", in: vmessLink(m("port", "443", "id", testUUID)), err: "bad server address or port"},
+		{name: "kcp 传输不支持", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "net", "kcp")), err: `unsupported transport "kcp"`},
+		{name: "xhttp 传输不支持", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "net", "xhttp")), err: `unsupported transport "xhttp"`},
+		{name: "tcp 的未知伪装头", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "net", "tcp", "type", "srtp")), err: "unsupported tcp header type"},
+		{name: "URL 形式的 xtls 不支持", in: "vmess://" + testUUID + "@a.example.net:443?security=xtls", err: `unsupported security "xtls"`},
+		{name: "URL 形式缺端口", in: "vmess://" + testUUID + "@a.example.net", err: "missing port"},
+	}
+	runCases(t, "vmess", cases)
+}

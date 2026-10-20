@@ -1,0 +1,14 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 vless 的表驱动测试生成（go test ./internal/uri -update）。
+vless://11111111-2222-4333-8444-555555555555@r.example.net:443?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.example.com&fp=chrome&pbk=ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y&sid=0123abcd&spx=%2F&type=tcp#reality
+vless://11111111-2222-4333-8444-555555555555@r2.example.net:443?security=reality&pbk=ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y&sid=ab#r2
+vless://11111111-2222-4333-8444-555555555555@w.example.net:443?encryption=none&security=tls&sni=w.example.net&type=ws&host=cdn.example.net&path=%2Fws%3Fed%3D2048&alpn=h2%2Chttp%2F1.1&fp=firefox#ws
+vless://11111111-2222-4333-8444-555555555555@g.example.net:443?security=tls&type=grpc&serviceName=gsvc&mode=gun#grpc
+vless://11111111-2222-4333-8444-555555555555@h.example.net:80?type=httpupgrade&host=h.example.net&path=%2Fup#hu
+vless://11111111-2222-4333-8444-555555555555@h2.example.net:443?security=tls&type=h2&host=h2.example.net&path=%2Fh#h2
+vless://11111111-2222-4333-8444-555555555555@t.example.net:80?type=tcp&headerType=http&host=a.example.com&path=%2F#th
+vless://11111111-2222-4333-8444-555555555555@192.0.2.9:8443
+vless://11111111-2222-4333-8444-555555555555@[2001:db8::9]:443?security=tls&sni=v6.example.net#v6
+vless://11111111-2222-4333-8444-555555555555@i.example.net:443?security=tls&allowInsecure=1&packetEncoding=xudp#i
+vless://11111111-2222-4333-8444-555555555555@n.example.net:443?security=tls#%F0%9F%87%AD%F0%9F%87%B0%20%E9%A6%99%E6%B8%AF
+vless://11111111-2222-4333-8444-555555555555@s.example.net:443?security=reality&servername=sn.example.com&pbk=ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y#sn

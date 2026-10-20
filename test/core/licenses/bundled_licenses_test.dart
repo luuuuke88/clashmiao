@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/licenses/bundled_licenses.dart';
@@ -165,7 +166,14 @@ void main() {
 
   test('登记的文案不出现被禁止点名的项目', () async {
     final all = (await _registered()).values.join('\n').toLowerCase();
-    for (final banned in ['hiddify', 'baseproxy', 'nekobox', 'nekohasekai']) {
+    // 名单以 base64 保存：公开仓库里不出现这些名字的明文。
+    const encoded = [
+      'aGlkZGlmeQ==',
+      'YmFzZXByb3h5',
+      'bmVrb2JveA==',
+      'bmVrb2hhc2VrYWk=',
+    ];
+    for (final banned in encoded.map((e) => utf8.decode(base64.decode(e)))) {
       expect(all, isNot(contains(banned)));
     }
   });

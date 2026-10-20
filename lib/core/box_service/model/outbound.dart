@@ -13,7 +13,34 @@
 ///      （带深度上限防成环）。
 ///
 /// 解不出返回 `null`（首页据此回退到"未知"文案）。
-OutboundProxy? resolveActiveProxy(List<OutboundGroup> groups) {
+OutboundProxy? resolveActiveProxy(List<OutboundGroup> groups) =>
+    resolveActiveRoute(groups)?.item;
+
+/// 当前生效路径（[resolveActiveRoute] 的结果）。
+class ActiveRoute {
+  const ActiveRoute(this.item, {required this.viaAuto, required this.isLeaf});
+
+  /// 与 [resolveActiveProxy] 相同的那一项（选择、出口探测都按它）。
+  final OutboundProxy item;
+
+  /// 下钻途中经过了自动选择组（主选择组默认选中的就是它）。
+  final bool viaAuto;
+
+  /// [item] 是顺着 `selected` 真正解到的叶子节点；为 false 时它只是一个解不
+  /// 下去的分组条目（内核没推这个分组的数据），或 `selected` 落空时的兜底首项。
+  final bool isLeaf;
+
+  /// 自动选择组当前选中的节点：只在经过自动选择组且真正解到叶子时才有。
+  OutboundProxy? get autoNode => viaAuto && isLeaf ? item : null;
+}
+
+/// 解析当前生效路径：规则见 [resolveActiveProxy]，另外记下是否经过自动选择组
+/// （urltest，或 tag 为 auto——与线路页识别自动选择卡同一口径）。
+///
+/// 真机验收 BUG-C：内核不一定推送自动选择组本身的数据（单节点订阅、节点从未
+/// 测通时只推主选择组），主选择组选中 `auto` 时下钻不下去，首页只能把原始 tag
+/// 「auto」当节点名显示。调用方据 [ActiveRoute.viaAuto] 显示本地化的「自动选择」。
+ActiveRoute? resolveActiveRoute(List<OutboundGroup> groups) {
   bool visible(OutboundGroup g) {
     final t = g.tag.toUpperCase();
     return t != 'GLOBAL' && t != 'DIRECT' && t != 'REJECT';
@@ -37,6 +64,17 @@ OutboundProxy? resolveActiveProxy(List<OutboundGroup> groups) {
   primary ??= visibleGroups.where((g) => g.items.isNotEmpty).firstOrNull;
   if (primary == null) return null;
 
+  ActiveRoute? fallback(OutboundGroup group, bool viaAuto) {
+    final first = group.items.firstOrNull;
+    if (first == null) return null;
+    return ActiveRoute(
+      first,
+      viaAuto: viaAuto || _isAutoGroupItem(first),
+      isLeaf: false,
+    );
+  }
+
+  var viaAuto = false;
   var group = primary;
   for (var depth = 0; depth < 8; depth++) {
     final sel = group.selected;
@@ -48,17 +86,29 @@ OutboundProxy? resolveActiveProxy(List<OutboundGroup> groups) {
       }
     }
     // selected 不在自己 items 里：至少回退到第一个 item，好过显示"未知"。
-    if (item == null) return group.items.firstOrNull;
+    if (item == null) return fallback(group, viaAuto);
+    if (_isAutoGroupItem(item)) viaAuto = true;
     // selected 指向的又是一个非空分组 → 继续下钻；否则它就是叶子节点。
     final nested = byTag[item.tag];
     if (nested != null && nested.tag != group.tag && nested.items.isNotEmpty) {
       group = nested;
       continue;
     }
-    return item;
+    return ActiveRoute(item, viaAuto: viaAuto, isLeaf: !_isGroupItem(item));
   }
-  return group.items.firstOrNull;
+  return fallback(group, viaAuto);
 }
+
+String _normalizedType(String type) =>
+    type.trim().toLowerCase().replaceAll('-', '').replaceAll('_', '');
+
+bool _isGroupItem(OutboundProxy item) {
+  final t = _normalizedType(item.type);
+  return t == 'selector' || t == 'select' || t == 'urltest';
+}
+
+bool _isAutoGroupItem(OutboundProxy item) =>
+    _normalizedType(item.type) == 'urltest' || item.tag.toLowerCase() == 'auto';
 
 /// 出站代理节点
 class OutboundProxy {

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
 import 'package:crypto/crypto.dart';
@@ -54,11 +55,13 @@ class GeoUpdateService {
         final actual = sha256.convert(await tmpFile.readAsBytes()).toString();
         if (actual != expected) {
           await tmpFile.delete();
-          throw Exception('SHA256 校验失败，文件可能已损坏');
+          throw GeoChecksumMismatchException(asset.filename);
         }
       }
-    } catch (e) {
-      if (e.toString().contains('SHA256 校验失败')) rethrow;
+    } on GeoChecksumMismatchException {
+      rethrow;
+    } catch (e, st) {
+      logAppFailure('geo.sha256Skipped', e, st);
     }
 
     final dest = File('${workDir.path}/${asset.filename}');
@@ -67,4 +70,14 @@ class GeoUpdateService {
   }
 
   void dispose() => _progressController.close();
+}
+
+/// 下载的资源文件与发布的 SHA256 不一致（文件可能已损坏或被篡改），已删除。
+class GeoChecksumMismatchException implements Exception {
+  const GeoChecksumMismatchException(this.filename);
+
+  final String filename;
+
+  @override
+  String toString() => 'GeoChecksumMismatchException($filename)';
 }

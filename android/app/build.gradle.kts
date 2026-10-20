@@ -76,10 +76,6 @@ android {
         }
     }
 
-    buildFeatures {
-        aidl = true
-    }
-
     testOptions {
         unitTests {
             // host JVM 跑 Android stub 时遇到没实现的 framework call 直接返回默认值
@@ -134,6 +130,9 @@ dependencies {
     // 卡 timeout，性价比低。当前覆盖的 Prefs / PermissionGate / LogBuffer 都
     // 已经设计成可纯 JUnit 测的形态（关键逻辑抽到不依赖 Android Context 的函数）。
     testImplementation("junit:junit:4.13.2")
+    // android.jar 里的 org.json 在 host JVM 上只是桩（isReturnDefaultValues 下静默返回
+    // 默认值），解析 JSON 的单测要用真实实现。
+    testImplementation("org.json:json:20250517")
 }
 
 flutter {

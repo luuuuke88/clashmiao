@@ -24,7 +24,12 @@
     "openAppSettings": "開啟應用程式設定",
     "grantPermission": "授予權限",
     "underDevelopment": "功能開發中",
-    "confirm": "確認"
+    "confirm": "確認",
+    "close": "關閉",
+    "cancel": "取消",
+    "clipboardEmpty": "剪貼簿為空",
+    "clipboardReadFailed": "讀取剪貼簿失敗",
+    "moreOptions": "更多選項"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "繼續即表示您同意合約 ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "應用程式未能載入網路核心程式庫，無法建立連線。請重新安裝應用程式，或確認核心程式庫檔案與主程式在同一目錄下。",
     "degradedTitle": "已連線，但無法存取網路",
     "degradedMsg": "通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。",
-    "degradedRetry": "重新檢測"
+    "degradedRetry": "重新檢測",
+    "egressIp": {
+      "label": "出口 IP",
+      "notConnected": "連線後顯示出口 IP",
+      "tapToCheck": "點擊檢測出口 IP",
+      "checking": "正在檢測…",
+      "failedRetry": "檢測失敗，點擊重試"
+    },
+    "emptyProfilesHint": "點擊下方按鈕開始探索",
+    "noActiveProfileTitle": "未選擇設定檔"
   },
   "stats": {
     "traffic": "流量",
@@ -56,7 +70,9 @@
     "speed": "速度",
     "totalTransferred": "總傳輸量",
     "trafficUsage": "流量使用",
-    "liveSpeed": "即時速度"
+    "liveSpeed": "即時速度",
+    "sessionTraffic": "本次流量",
+    "downloadSpeed": "下載速度"
   },
   "profile": {
     "overviewPageTitle": "設定檔",
@@ -99,7 +115,12 @@
       "failureMsg": "新增設定檔失敗",
       "modalSubtitle": "選擇新增設定檔的方式",
       "manuallyDescription": "手動輸入伺服器設定",
-      "warpDescription": "使用 Cloudflare WARP 免費加速"
+      "warpDescription": "使用 Cloudflare WARP 免費加速",
+      "importedNamed": "已匯入訂閱：${name}",
+      "clipboardEmpty": "剪貼簿為空，無法匯入訂閱",
+      "deepLinkMissingUrl": "連結中缺少訂閱位址",
+      "successMsg": "新增成功",
+      "nameAutoHint": "自動識別（選填）"
     },
     "update": {
       "buttonTxt": "更新",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "刪除",
       "confirmationMsg": "要永久刪除設定檔嗎？",
-      "successMsg": "設定檔刪除成功"
+      "successMsg": "設定檔刪除成功",
+      "confirmTitle": "刪除設定檔",
+      "namedConfirmMsg": "確定要刪除「${name}」嗎？此操作無法復原。"
     },
     "save": {
       "buttonText": "儲存",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "關閉",
+      "updateIntervalHours": "${hours} 小時",
+      "updateIntervalDays": "${days} 天"
     },
     "actionButtons": {
       "add": "新增",
@@ -171,7 +197,10 @@
       "currentlyUsing": "目前使用中",
       "remainingDays": "剩餘 ${days} 天"
     },
-    "remoteProfile": "遠端訂閱"
+    "remoteProfile": "遠端訂閱",
+    "defaultLocalName": "本機匯入",
+    "defaultDeepLinkName": "連結匯入",
+    "switchFailedMsg": "切換設定檔失敗"
   },
   "proxies": {
     "pageTitle": "線路",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "延遲： ${delay}ms",
       "timeout": "延遲測試超時",
-      "testing": "正在測試延遲"
+      "testing": "正在測試延遲",
+      "untested": "延遲： 未測試",
+      "stale": "延遲： ${delay}ms（歷史值）"
     },
     "ipInfoSemantics": {
       "address": "IP 地址",
@@ -200,10 +231,14 @@
     "sortModalTitle": "選擇排序方式",
     "testingDelayInfo": "正在檢測延遲：${name}",
     "switchedTo": "已切換到 ${name}",
-    "switchToFailed": "切換失敗：${error}",
+    "switchFailed": "切換線路失敗，請稍後重試",
+    "testFailed": "測速失敗，請稍後重試",
+    "groupsLoading": "線路資訊載入中，請稍候再試",
     "connectBeforeSwitch": "請先連線再切換線路",
     "startDelayTestForGroups": "已開始檢測 ${count} 條線路的延遲",
     "delayTestBtn": "延遲",
+    "delayTimeout": "逾時",
+    "connectBeforeTest": "請連線後再測速",
     "lineCount": "${count} 條線路",
     "manualSelect": "手動選擇",
     "autoTest": "自動測速"
@@ -220,7 +255,10 @@
     "logsCleared": "日誌已清空",
     "logsCopied": "日誌已複製",
     "logsUnderDevelopment": "日誌功能開發中",
-    "noLogsWhenDisconnected": "未連線，無日誌"
+    "noLogsWhenDisconnected": "未連線，無日誌",
+    "loadFailed": "日誌讀取失敗",
+    "empty": "暫無日誌",
+    "clearFailed": "清除日誌失敗"
   },
   "settings": {
     "pageTitle": "設定",
@@ -231,6 +269,37 @@
     "exportAllOptions": "匯出選項至剪貼簿(用於偵錯) ",
     "importOptions": "從剪貼簿匯入選項",
     "importOptionsMsg": "這將使用提供的值複寫所有配置選項。您確定嗎？",
+    "backup": {
+      "importConfirmTitle": "匯入備份",
+      "importConfirmMsg": "這會用備份中的訂閱取代目前的訂閱，並套用備份中的設定。匯入前會先儲存目前資料的快照，匯入失敗時自動還原。",
+      "importRemovesMsg": "本機有 ${count} 個訂閱不在備份中，匯入後將被移除。",
+      "reportImported": "已匯入 ${profiles} 個訂閱、${settings} 項設定。",
+      "reportDropped": "備份中有 ${count} 個訂閱因資料無效而被略過。",
+      "reportSettingsSkipped": "有 ${count} 項設定被略過，保留了目前的值。",
+      "reportWarpOff": "匯入時已關閉 WARP，請在本機重新啟用。",
+      "reportBackfill": "有 ${count} 個訂閱將在背景下載。",
+      "errInvalidFile": "這不是有效的 ClashMiao 備份檔案。",
+      "errUnsupportedVersion": "不支援這種備份格式。",
+      "errNewerSchema": "此備份由較新版本的應用程式建立，請先升級應用程式。",
+      "errNoUsableProfiles": "此備份中沒有可以匯入的訂閱。",
+      "errSnapshotFailed": "無法儲存目前資料的快照，因此沒有做任何變更。",
+      "errUnresolvedPrevious": "上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。",
+      "errRolledBack": "匯入失敗，已還原到匯入之前的資料。",
+      "errNotRolledBack": "匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。",
+      "errFailed": "匯入失敗。",
+      "errBusy": "已有另一個匯入正在進行，請等它結束後再試。",
+      "recoveryFailedTitle": "自動還原沒有完成",
+      "recoveryFailedMsg": "上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。",
+      "recoveryUnrecoverableTitle": "無法復原被中斷的匯入",
+      "recoveryUnrecoverableMsg": "上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。",
+      "recoveryRetry": "重試",
+      "recoveryClose": "關閉",
+      "recoveryRetried": "已把資料還原到被中斷的匯入之前。",
+      "exportAction": "匯出備份",
+      "importAction": "匯入備份",
+      "exportFailed": "匯出失敗",
+      "shareText": "ClashMiao 備份"
+    },
     "general": {
       "sectionTitle": "一般",
       "locale": "語言",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "系統代理已啟用",
     "systemProxyDisabled": "系統代理已停用（重新連線後生效）",
     "adminPrivilegesRequired": "macOS 上需要管理員權限",
-    "portChangeNotice": "連接埠變更需要重新連線才會生效"
+    "portChangeNotice": "連接埠變更需要重新連線才會生效",
+    "groups": {
+      "general": "一般",
+      "connection": "連線",
+      "privacy": "隱私"
+    },
+    "importOptionsInvalid": "剪貼簿內容不是有效的設定 JSON",
+    "importOptionsNothing": "未識別到可匯入的設定項",
+    "importOptionsDone": "已匯入 ${count} 項設定",
+    "importOptionsPartial": "已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過"
   },
   "about": {
     "pageTitle": "關於",
@@ -320,7 +398,8 @@
     "checkForUpdate": "檢查更新",
     "privacyPolicy": "隱私政策",
     "termsAndConditions": "條款與條件",
-    "appDescription": "基於 sing-box 核心的跨平台代理用戶端"
+    "appDescription": "基於 sing-box 核心的跨平台代理用戶端",
+    "openSourceLicenses": "開放原始碼授權"
   },
   "appUpdate": {
     "notAvailableMsg": "已經是最新版本",
@@ -330,7 +409,8 @@
     "newVersionLbl": "新版本",
     "updateNowBtnTxt": "立即更新",
     "laterBtnTxt": "稍後再說",
-    "ignoreBtnTxt": "忽略"
+    "ignoreBtnTxt": "忽略",
+    "checkFailedMsg": "檢查更新失敗，請檢查網路後再試"
   },
   "tray": {
     "dashboard": "儀表板",
@@ -342,7 +422,8 @@
       "disconnect": "中斷連線",
       "disconnecting": "中斷連線中"
     },
-    "hide": "隱藏"
+    "hide": "隱藏",
+    "proxyModeMenu": "代理模式"
   },
   "failure": {
     "unexpected": "意外錯誤",
@@ -362,21 +443,25 @@
       "create": "服務建立錯誤",
       "start": "服務啟動錯誤",
       "coreLibraryMissing": "核心程式庫未安裝",
-      "startTimeout": "服務啟動逾時"
+      "startTimeout": "服務啟動逾時",
+      "kernelUnresponsive": "核心無回應，請重試或重新啟動應用程式",
+      "kernelExited": "核心意外結束"
     },
     "connectivity": {
       "unexpected": "意外失敗",
       "missingVpnPermission": "缺少 VPN 權限",
       "missingNotificationPermission": "缺少通知權限",
       "core": "核心錯誤",
-      "networkUnavailable": "網路無法使用"
+      "networkUnavailable": "網路無法使用",
+      "nativeUnresponsive": "與背景服務失去連線，請重試"
     },
     "profiles": {
       "unexpected": "意外錯誤",
       "notFound": "未找到設定檔",
       "invalidConfig": "無效配置",
       "invalidUrl": "無效網址",
-      "noActive": "沒有啟用的訂閱"
+      "noActive": "沒有啟用的訂閱",
+      "readOnlyUpgrade": "請升級 App 後再修改訂閱"
     },
     "connection": {
       "unexpected": "意外連線錯誤",
@@ -389,7 +474,8 @@
       "unexpected": "意外錯誤",
       "notUpdate": "暫無可用更新",
       "activeNotFound": "未找到活動 GEO 資源文件"
-    }
+    },
+    "withReason": "${message}：${reason}"
   },
   "connection": {
     "tapToConnect": "點擊以連線",
@@ -397,9 +483,9 @@
     "disconnecting": "中斷連線中",
     "connected": "已連線",
     "reconnect": "重新連線",
-    "connectAnyWay": "連線",
-    "experimentalNotice": "使用中的實驗性功能",
-    "experimentalNoticeMsg": "您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。",
+    "connectAnyWay": "仍然連線",
+    "experimentalNotice": "實驗性功能提醒",
+    "experimentalNoticeMsg": "目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。",
     "disableExperimentalNotice": "不再提示",
     "reconnectMsg": "重新連線以使變更生效",
     "staleSystemProxyCleaned": "已清理上次異常結束殘留的系統代理設定"
@@ -479,6 +565,8 @@
     "muxProtocol": "復用器控制",
     "muxMaxStreams": "最大並發數",
     "enableWarp": "啟用 WARP",
+    "setUpWarp": "設定 WARP",
+    "warpNotConfigured": "未設定",
     "warpDetourMode": "鏈式線路",
     "warpDetourModes": {
       "proxyOverWarp": "透過 WARP 連線線路",
@@ -496,6 +584,14 @@
     "blockAds": "封鎖廣告",
     "warpNoiseSize": "雜訊大小",
     "warpNoiseMode": "雜訊模式",
-    "desktopProxyScopeNotice": "桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。"
+    "desktopProxyScopeNotice": "桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。",
+    "serviceModeIosVpnOnly": "iOS 僅支援 VPN 模式",
+    "warpGenerating": "正在產生 WARP 設定…",
+    "warpConfigFailed": "WARP 設定產生失敗，請稍後再試",
+    "portRangeError": "連接埠範圍 1024-65535",
+    "dnsEmptyError": "DNS 位址不能為空",
+    "rangeFormatError": "請輸入數字或範圍，例如 10-30",
+    "urlSchemeError": "URL 必須以 http:// 或 https:// 開頭",
+    "manageRuleAssets": "規則庫管理"
   }
 }

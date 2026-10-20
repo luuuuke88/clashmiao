@@ -1,3 +1,7 @@
+import 'package:clashmiao/features/about/presentation/about_page.dart';
+import 'package:clashmiao/features/settings/presentation/settings_page.dart';
+import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
+import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'dart:async';
 
 import 'package:clashmiao/app/shell_page.dart';
@@ -20,6 +24,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/config/data/backup_engine.dart';
+import 'package:clashmiao/core/box_service/kernel_port.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+
+import '../support/fake_connection_controller.dart';
 
 Future<(Widget, ProviderContainer)> _host({
   List<Override> extraOverrides = const [],
@@ -46,6 +59,7 @@ Future<(Widget, ProviderContainer)> _host({
         (_) => Stream<List<OutboundGroup>>.value(const []),
       ),
       boxStatsProvider.overrideWith((_) => Stream.value(BoxStats.empty)),
+      connectionControllerProvider.overrideWith(FakeConnectionController.new),
       ...extraOverrides,
     ],
   );
@@ -153,6 +167,27 @@ void main() {
     expect(rect.height, lessThanOrEqualTo(52));
   });
 
+  testWidgets('底部导航不使用 BackdropFilter（底色不透明，模糊看不见却每帧离屏绘制）', (tester) async {
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    final bar = find.byKey(const ValueKey('bottom_nav_bar'));
+    expect(bar, findsOneWidget);
+    expect(
+      find.ancestor(of: bar, matching: find.byType(BackdropFilter)),
+      findsNothing,
+    );
+    // 圆角、底色、描边都还在。
+    final decoration =
+        tester.widget<Container>(bar).decoration! as BoxDecoration;
+    expect(decoration.borderRadius, isNotNull);
+    expect(decoration.color, isNotNull);
+    expect(decoration.border, isNotNull);
+  });
+
   testWidgets('底部导航在浅色模式使用实色蓝灰白底', (tester) async {
     final (widget, container) = await _host();
     addTearDown(container.dispose);
@@ -207,11 +242,12 @@ void main() {
     await tester.pumpWidget(widget);
     await tester.pumpAndSettle();
 
+    // DeepLinkImportFailure 携带的已是本地化的完整文案，ShellPage 原样展示。
     container.read(deepLinkImportResultProvider.notifier).state =
-        const DeepLinkImportFailure('深链缺少订阅地址参数');
+        const DeepLinkImportFailure('添加配置文件失败：链接中缺少订阅地址');
     await tester.pumpAndSettle(const Duration(milliseconds: 300));
 
-    expect(find.text('导入订阅失败：深链缺少订阅地址参数'), findsOneWidget);
+    expect(find.text('添加配置文件失败：链接中缺少订阅地址'), findsOneWidget);
 
     await _drainToasts(tester);
   });
@@ -288,26 +324,151 @@ void main() {
     });
   });
 
-  group('sing-box alert：致命用阻断式弹窗，非致命用 toast（回归 #29）', () {
-    testWidgets('致命 alert（sing-box 启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认', (tester) async {
-      final alertController = StreamController<BoxAlert>();
-      addTearDown(alertController.close);
+  group('启动时上次备份恢复被中断的提示', () {
+    // 启动屏障早于 ShellPage 挂载：结果在挂载前就已写进 provider，首帧后要补提示。
+    Future<(Widget, ProviderContainer, List<int>)> host(
+      RecoveryOutcome outcome, {
+      List<RecoveryOutcome> retryResults = const [],
+    }) async {
+      final calls = <int>[];
       final (widget, container) = await _host(
         extraOverrides: [
-          boxAlertsProvider.overrideWith((_) => alertController.stream),
+          startupRestoreRecoveryProvider.overrideWith((ref) => outcome),
+          startupRestoreRetryProvider.overrideWithValue(() async {
+            calls.add(calls.length + 1);
+            return retryResults[calls.length - 1];
+          }),
         ],
       );
       addTearDown(container.dispose);
+      return (widget, container, calls);
+    }
 
+    String zh(ProviderContainer c) =>
+        c.read(translationsProvider).settings.backup.recoveryFailedTitle;
+
+    testWidgets('自动回滚没完成（failed）：首帧后明确提示，并提供重试；关闭不重试、标记不动', (tester) async {
+      final (widget, container, calls) = await host(RecoveryOutcome.failed);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(find.text(b.recoveryFailedTitle), findsOneWidget);
+      expect(find.text(b.recoveryFailedMsg), findsOneWidget);
+      expect(find.byKey(const Key('restoreRecoveryRetry')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryClose')));
+      await tester.pumpAndSettle();
+      expect(find.text(b.recoveryFailedTitle), findsNothing);
+      expect(calls, isEmpty, reason: '关闭不是重试');
+      expect(
+        container.read(startupRestoreRecoveryProvider),
+        RecoveryOutcome.failed,
+        reason: '没有重试成功就不能当作已了结',
+      );
+    });
+
+    testWidgets('重试成功：对话框关闭、提示已恢复、结果清除', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.failed,
+        retryResults: [RecoveryOutcome.recovered],
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(calls, [1]);
+      expect(find.text(b.recoveryFailedTitle), findsNothing);
+      expect(find.text(b.recoveryRetried), findsOneWidget);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('重试仍失败：回到对话框继续提供重试', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.failed,
+        retryResults: [RecoveryOutcome.failed, RecoveryOutcome.recovered],
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(calls, [1]);
+      expect(find.text(zh(container)), findsOneWidget, reason: '仍在提示');
+      expect(
+        container.read(startupRestoreRecoveryProvider),
+        RecoveryOutcome.failed,
+      );
+
+      await tester.tap(find.byKey(const Key('restoreRecoveryRetry')));
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+      expect(calls, [1, 2]);
+      expect(find.text(zh(container)), findsNothing);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+      await _drainToasts(tester);
+    });
+
+    testWidgets('快照丢了（unrecoverable）：说明无法撤销，没有重试按钮，确认后不再提示', (tester) async {
+      final (widget, container, calls) = await host(
+        RecoveryOutcome.unrecoverable,
+      );
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle(const Duration(milliseconds: 300));
+
+      final b = container.read(translationsProvider).settings.backup;
+      expect(find.text(b.recoveryUnrecoverableTitle), findsOneWidget);
+      expect(find.text(b.recoveryUnrecoverableMsg), findsOneWidget);
+      expect(find.byKey(const Key('restoreRecoveryRetry')), findsNothing);
+
+      await tester.tap(find.text(b.recoveryClose));
+      await tester.pumpAndSettle();
+      expect(find.text(b.recoveryUnrecoverableTitle), findsNothing);
+      expect(calls, isEmpty);
+      expect(container.read(startupRestoreRecoveryProvider), isNull);
+    });
+
+    for (final outcome in [RecoveryOutcome.none, RecoveryOutcome.recovered]) {
+      testWidgets('${outcome.name}：不打扰用户', (tester) async {
+        final (widget, container, _) = await host(outcome);
+        await tester.pumpWidget(widget);
+        await tester.pumpAndSettle(const Duration(milliseconds: 300));
+        final b = container.read(translationsProvider).settings.backup;
+        expect(find.text(b.recoveryFailedTitle), findsNothing);
+        expect(find.text(b.recoveryUnrecoverableTitle), findsNothing);
+      });
+    }
+  });
+
+  group('连接失败提示：致命用阻断式弹窗，非致命用 toast（回归 #29，现按 failureSeq 去重）', () {
+    FakeConnectionController ctl(ProviderContainer c) =>
+        c.read(connectionControllerProvider.notifier)
+            as FakeConnectionController;
+
+    ConnectionSnapshot failed(ConnectionFailure f, int seq) =>
+        ConnectionSnapshot(
+          phase: ConnectionPhase.disconnected,
+          failure: f,
+          failureSeq: seq,
+        );
+
+    testWidgets('致命失败（内核启动失败）→ 阻断式弹窗，点遮罩关不掉，必须点确认', (tester) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
       await tester.pumpWidget(widget);
       await tester.pumpAndSettle();
 
-      alertController.add(
-        const BoxAlert(
-          type: BoxAlertType.startService,
-          // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的
-          // 本地化文案，不应该把这段原始文本糊给用户看。
-          message: 'native stacktrace: goroutine 7 [running]',
+      ctl(container).set(
+        failed(
+          // 原始 message 是原生内部堆栈信息，弹窗只应该展示分类后的本地化文案。
+          const KernelStartFailed(
+            KernelFailureCode.startService,
+            'native stacktrace: goroutine 7 [running]',
+          ),
+          1,
         ),
       );
       await tester.pumpAndSettle();
@@ -330,9 +491,108 @@ void main() {
       expect(find.text('连接失败'), findsNothing);
     });
 
-    testWidgets('非致命 alert（VPN 权限被拒绝）→ 仍然是可自动消失的 toast，不弹阻断式对话框', (
+    testWidgets('致命类全集：配置为空 / 建服务 / 起服务 / 起命令服务 / 内核无响应 都是阻断式', (tester) async {
+      final cases = <ConnectionFailure>[
+        const KernelStartFailed(KernelFailureCode.emptyConfiguration, ''),
+        const KernelStartFailed(KernelFailureCode.createService, ''),
+        const KernelStartFailed(KernelFailureCode.startService, ''),
+        const KernelStartFailed(KernelFailureCode.startCommandServer, ''),
+        const KernelUnresponsive(),
+      ];
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      var seq = 0;
+      for (final f in cases) {
+        ctl(container).set(failed(f, ++seq));
+        await tester.pumpAndSettle();
+        expect(find.text('连接失败'), findsOneWidget, reason: '$f');
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('非致命失败（缺 VPN 授权、启动超时、无订阅、内核退出）→ 可自动消失的 toast，不弹对话框', (
       tester,
     ) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      ctl(container).set(failed(const PermissionDenied(), 1));
+      await tester.pumpAndSettle();
+
+      expect(find.text('缺少 VPN 权限'), findsOneWidget);
+      // 阻断式弹窗的标题不应该出现——非致命场景不能升级成阻断式。
+      expect(find.text('连接失败'), findsNothing);
+      await _drainToasts(tester);
+
+      for (final f in <ConnectionFailure>[
+        const StartTimeout(),
+        const NoActiveProfile(),
+        const NativeUnresponsive(),
+        const KernelStartFailed(KernelFailureCode.kernelExited, ''),
+      ]) {
+        expect(f.isFatal, isFalse, reason: '$f');
+      }
+    });
+
+    testWidgets('同一个 failureSeq 只提示一次；新的失败（seq 递增）再提示', (tester) async {
+      final (widget, container) = await _host();
+      addTearDown(container.dispose);
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      ctl(container).set(failed(const KernelUnresponsive(), 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsNothing);
+
+      // 同一个失败、同一个序号，只是别的字段变了（例如 stale 标记）：不重复弹。
+      ctl(container).set(
+        const ConnectionSnapshot(
+          phase: ConnectionPhase.disconnected,
+          failure: KernelUnresponsive(),
+          failureSeq: 1,
+          stale: true,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsNothing);
+
+      ctl(container).set(failed(const KernelUnresponsive(), 2));
+      await tester.pumpAndSettle();
+      expect(find.text('连接失败'), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('挂载之前就已存在的失败不弹窗（冷启动不重复提示旧失败）', (tester) async {
+      final (widget, container) = await _host(
+        extraOverrides: [
+          connectionControllerProvider.overrideWith(
+            (ref) => FakeConnectionController(
+              ref,
+              snapshot: failed(const KernelUnresponsive(), 3),
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      expect(find.text('连接失败'), findsNothing);
+    });
+  });
+
+  group('alerts 通道：只剩与连接生命周期无关的提示', () {
+    testWidgets('非致命 alert（通知权限等）→ toast', (tester) async {
       final alertController = StreamController<BoxAlert>();
       addTearDown(alertController.close);
       final (widget, container) = await _host(
@@ -346,15 +606,72 @@ void main() {
       await tester.pumpAndSettle();
 
       alertController.add(
-        const BoxAlert(type: BoxAlertType.requestVpnPermission),
+        // 用与上一个用例不同的文案：AppToast 对 800 ms 内的相同文案会去重。
+        const BoxAlert(type: BoxAlertType.requestNotificationPermission),
       );
       await tester.pumpAndSettle();
+      // toastification 的 overlay entry 创建后还要延迟 ~100 ms 才插入 toast。
+      await tester.pump(const Duration(milliseconds: 300));
 
-      expect(find.text('缺少 VPN 权限'), findsOneWidget);
-      // 阻断式弹窗的标题不应该出现——非致命场景不能升级成阻断式。
+      expect(find.text('缺少通知权限'), findsOneWidget);
       expect(find.text('连接失败'), findsNothing);
 
       await _drainToasts(tester);
     });
+
+    testWidgets('致命 alert 不再单独弹窗：生命周期失败只经连接状态提示一次，避免同一故障双重提示', (tester) async {
+      final alertController = StreamController<BoxAlert>();
+      addTearDown(alertController.close);
+      final (widget, container) = await _host(
+        extraOverrides: [
+          boxAlertsProvider.overrideWith((_) => alertController.stream),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(widget);
+      await tester.pumpAndSettle();
+
+      alertController.add(const BoxAlert(type: BoxAlertType.startService));
+      await tester.pumpAndSettle();
+
+      expect(find.text('连接失败'), findsNothing);
+      expect(find.text('服务启动错误'), findsNothing);
+    });
+  });
+
+  testWidgets('IndexedStack 里只有当前 tab 的 Ticker 开着（TickerMode）', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final (widget, container) = await _host();
+    addTearDown(container.dispose);
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 300));
+
+    /// 四个页面各自上下文里生效的 TickerMode。
+    List<bool> tickerModes() => [
+      for (final page in [HomePage, ProxiesPage, SettingsPage, AboutPage])
+        TickerMode.valuesOf(
+          tester.element(find.byType(page, skipOffstage: false)),
+        ).enabled,
+    ];
+
+    expect(tickerModes(), [true, false, false, false]);
+
+    for (var i = 1; i < 4; i++) {
+      await tester.tap(find.byKey(ValueKey('bottom_nav_$i')));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(tickerModes(), [
+        for (var k = 0; k < 4; k++) k == i,
+      ], reason: '选中第 $i 个 tab 时只有它的 Ticker 开着');
+    }
+
+    // 切回首页：恢复。
+    await tester.tap(find.byKey(const ValueKey('bottom_nav_0')));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(tickerModes(), [true, false, false, false]);
   });
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
@@ -69,6 +70,6 @@ Future<void> runStartupUpdateCheck(
     );
   } catch (e, st) {
     // 静默失败：启动自动检查绝不能因为网络/平台异常影响正常启动流程。
-    debugPrint('[StartupUpdateCheck] 启动自动检查更新失败: $e\n$st');
+    logAppFailure('startupUpdateCheck', e, st);
   }
 }

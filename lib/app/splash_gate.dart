@@ -1,3 +1,4 @@
+import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/app/shell_page.dart';
 import 'package:clashmiao/features/splash/presentation/splash_page.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +21,7 @@ class _SplashGateState extends State<SplashGate> {
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 320),
+      duration: Motion.duration(context, Motion.medium),
       child: _showSplash
           ? SplashPage(
               key: const ValueKey('splash'),

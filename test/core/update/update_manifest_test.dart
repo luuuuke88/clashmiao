@@ -144,4 +144,96 @@ void main() {
     expect(site.requestedPaths.length, firstCount, reason: '不该重复请求');
     expect(again, 'v0.2.0', reason: '缓存命中时仍应正确报告有新版本');
   });
+
+  group('check：区分「已是最新」与「检查失败」', () {
+    // 回环地址上一个刚关掉的端口：连接立即被拒绝，模拟「所有来源都不可达」。
+    Future<String> deadGithubUrl() async {
+      final dead = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      final port = dead.port;
+      await dead.close(force: true);
+      return 'http://localhost:$port/releases/latest';
+    }
+
+    test('有新版本 → available，带 tag', () async {
+      final site = await _FakeSite.start(manifest: _manifest('0.2.0'));
+      addTearDown(site.close);
+      final prefs = await SharedPreferences.getInstance();
+
+      final result = await UpdateChecker.check(
+        prefs,
+        dio: Dio(),
+        manifestUrl: site.manifestUrl,
+      );
+
+      expect(result.status, UpdateCheckStatus.available);
+      expect(result.tag, 'v0.2.0');
+    });
+
+    test('确认版本不比当前新 → upToDate', () async {
+      final site = await _FakeSite.start(manifest: _manifest('0.1.1'));
+      addTearDown(site.close);
+      final prefs = await SharedPreferences.getInstance();
+
+      final result = await UpdateChecker.check(
+        prefs,
+        dio: Dio(),
+        manifestUrl: site.manifestUrl,
+      );
+
+      expect(result.status, UpdateCheckStatus.upToDate);
+      expect(result.tag, isNull);
+    });
+
+    test('官网与 GitHub 都失败 → failed，而不是 upToDate', () async {
+      final site = await _FakeSite.start(manifest: {}, manifestStatus: 503);
+      addTearDown(site.close);
+      final prefs = await SharedPreferences.getInstance();
+
+      final result = await UpdateChecker.check(
+        prefs,
+        dio: Dio(),
+        manifestUrl: site.manifestUrl,
+        githubApiUrl: await deadGithubUrl(),
+      );
+
+      expect(result.status, UpdateCheckStatus.failed);
+      expect(result.tag, isNull);
+      // 失败不能写入「最近一次检查成功」的时间戳，否则 24 小时内再点都直接
+      // 命中缓存、永远不会重试。
+      expect(prefs.getInt('update_last_check_ms'), isNull);
+    });
+
+    test('只有时间戳没有缓存 tag 时不能当作「已是最新」', () async {
+      SharedPreferences.setMockInitialValues({
+        'update_last_check_ms': DateTime.now().millisecondsSinceEpoch,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final site = await _FakeSite.start(manifest: {}, manifestStatus: 503);
+      addTearDown(site.close);
+
+      final result = await UpdateChecker.check(
+        prefs,
+        dio: Dio(),
+        manifestUrl: site.manifestUrl,
+        githubApiUrl: await deadGithubUrl(),
+      );
+
+      expect(result.status, UpdateCheckStatus.failed);
+    });
+
+    test('checkOnce 对失败仍返回 null（启动静默检查的契约不变）', () async {
+      final site = await _FakeSite.start(manifest: {}, manifestStatus: 503);
+      addTearDown(site.close);
+      final prefs = await SharedPreferences.getInstance();
+
+      final tag = await UpdateChecker.checkOnce(
+        prefs,
+        dio: Dio(),
+        manifestUrl: site.manifestUrl,
+        githubApiUrl: await deadGithubUrl(),
+      );
+
+      expect(tag, isNull);
+    });
+  });
 }

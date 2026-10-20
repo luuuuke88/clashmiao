@@ -24,7 +24,12 @@
     "openAppSettings": "کردنەوەی ڕێکخستنەکانی ئەپەکە",
     "grantPermission": "مۆڵەتدان",
     "underDevelopment": "لە ژێر گەشەپێداندایە",
-    "confirm": "دڵنیاکردنەوە"
+    "confirm": "دڵنیاکردنەوە",
+    "close": "داخستن",
+    "cancel": "هەڵوەشاندنەوە",
+    "clipboardEmpty": "کلیپبۆرد بەتاڵە",
+    "clipboardReadFailed": "نەتوانرا کلیپبۆرد بخوێندرێتەوە",
+    "moreOptions": "هەڵبژاردنی زیاتر"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "بە بەردەوام بوون تۆ ڕازیت لەگەڵ ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "ئەپەکە نەیتوانی ناوکی تۆڕەکەی باربکات. پەیوەندی بەردەست نییە. ئەپەکە دووبارە دامەزرێنە، یان دڵنیابە کە فایلی کتێبخانەی ناوک لەگەڵ فایلی جێبەجێکاردا هەیە.",
     "degradedTitle": "پەیوەست بووە، بەڵام دەستگەیشتن بە ئینتەرنێت نییە",
     "degradedMsg": "تونێلەکە کارا بووە بەڵام داتا ناڕوات. لەوانەیە نۆدەکە لەکارکەوتبێت — نۆدێکی تر تاقی بکەرەوە، یان پەیوەندی ببڕە.",
-    "degradedRetry": "دووبارە پشکنین"
+    "degradedRetry": "دووبارە پشکنین",
+    "egressIp": {
+      "label": "IPی دەرچوون",
+      "notConnected": "پەیوەندی بکە بۆ پیشاندانی IPی دەرچوون",
+      "tapToCheck": "دەست لێبدە بۆ پشکنینی IPی دەرچوون",
+      "checking": "پشکنین دەکرێت…",
+      "failedRetry": "پشکنین سەرکەوتوو نەبوو، دەست لێبدە بۆ هەوڵدانەوە"
+    },
+    "emptyProfilesHint": "دوگمەی خوارەوە دابگرە بۆ دەستپێکردن",
+    "noActiveProfileTitle": "هیچ پڕۆفایلێک هەڵنەبژێردراوە"
   },
   "stats": {
     "traffic": "هاتوچۆی داتا",
@@ -56,7 +70,9 @@
     "speed": "خێرایی",
     "totalTransferred": "کۆی گشتی گواستراو",
     "trafficUsage": "بەکارهێنانی ترافیک",
-    "liveSpeed": "خێرایی ڕاستەوخۆ"
+    "liveSpeed": "خێرایی ڕاستەوخۆ",
+    "sessionTraffic": "ترافیکی ئەم جارە",
+    "downloadSpeed": "خێرایی داگرتن"
   },
   "profile": {
     "overviewPageTitle": "پرۆفایلەکان",
@@ -99,7 +115,12 @@
       "failureMsg": "زیادکردنی پڕۆفایل شکستی هێنا",
       "modalSubtitle": "شێوازی زیادکردنی فایلی ڕێکخستن هەڵبژێرە",
       "manuallyDescription": "بە دەست ڕێکخستنی ڕاژە بنووسە",
-      "warpDescription": "خێراکردنی بێبەرامبەر بە Cloudflare WARP"
+      "warpDescription": "خێراکردنی بێبەرامبەر بە Cloudflare WARP",
+      "importedNamed": "بەشداربوون هاوردە کرا: ${name}",
+      "clipboardEmpty": "کلیپبۆرد بەتاڵە، هیچ شتێک بۆ هاوردەکردن نییە",
+      "deepLinkMissingUrl": "بەستەرەکە ناونیشانی بەشداربوونی تێدا نییە",
+      "successMsg": "پڕۆفایل زیاد کرا",
+      "nameAutoHint": "خۆکارانە دەناسرێتەوە (ئارەزوومەندانە)"
     },
     "update": {
       "buttonTxt": "بەڕۆژکردنەوە",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "سڕینەوە",
       "confirmationMsg": "سڕینەوەی پڕۆفایل بۆ هەمیشە؟",
-      "successMsg": "پڕۆفایلی بە سەرکەوتوویی سڕاوەتەوە"
+      "successMsg": "پڕۆفایلی بە سەرکەوتوویی سڕاوەتەوە",
+      "confirmTitle": "سڕینەوەی پڕۆفایل",
+      "namedConfirmMsg": "\"${name}\" بسڕدرێتەوە؟ ئەم کارە ناگەڕێتەوە."
     },
     "save": {
       "buttonText": "پاشەکەوت",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "کوژاوە",
+      "updateIntervalHours": "${hours} کاتژمێر",
+      "updateIntervalDays": "${days} ڕۆژ"
     },
     "actionButtons": {
       "add": "زیادکردن",
@@ -171,7 +197,10 @@
       "currentlyUsing": "ئێستا بەکاردێت",
       "remainingDays": "${days} ڕۆژ ماوە"
     },
-    "remoteProfile": "پرۆفایلی دوور"
+    "remoteProfile": "پرۆفایلی دوور",
+    "defaultLocalName": "هاوردەی ناوخۆیی",
+    "defaultDeepLinkName": "هاوردە لە بەستەرەوە",
+    "switchFailedMsg": "گۆڕینی پڕۆفایل شکستی هێنا"
   },
   "proxies": {
     "pageTitle": "پرۆکسیەکان",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "دواکەوتن: ${delay}ms",
       "timeout": "وادەی تاقیکردنەوەی دواکەوتن بەسەرچوو",
-      "testing": "دواکەوتن: خەریکی تاقیکردنەوە..."
+      "testing": "دواکەوتن: خەریکی تاقیکردنەوە...",
+      "untested": "دواکەوتن: تاقی نەکراوەتەوە",
+      "stale": "دواکەوتن: ${delay}ms (ئەنجامی پێشوو)"
     },
     "ipInfoSemantics": {
       "address": "ناونیشانی IP",
@@ -200,10 +231,14 @@
     "sortModalTitle": "شێوازی ڕیزکردن هەڵبژێرە",
     "testingDelayInfo": "تاقیکردنەوەی دواکەوتن بۆ: ${name}",
     "switchedTo": "گۆڕدرا بۆ ${name}",
-    "switchToFailed": "گۆڕین سەرکەوتوو نەبوو: ${error}",
+    "switchFailed": "گۆڕینی سێرڤەر سەرکەوتوو نەبوو. تکایە دووبارە هەوڵ بدەرەوە.",
+    "testFailed": "تاقیکردنەوەی دواکەوتن سەرکەوتوو نەبوو. تکایە دووبارە هەوڵ بدەرەوە.",
+    "groupsLoading": "لیستی سێرڤەرەکان هێشتا بار دەکرێت. تکایە کەمێکی تر هەوڵ بدەرەوە.",
     "connectBeforeSwitch": "تکایە پێش گۆڕینی هێڵەکان پەیوەندی بکە",
     "startDelayTestForGroups": "تاقیکردنەوەی دواکەوتن بۆ ${count} هێڵ دەستی پێکرد",
     "delayTestBtn": "دواکەوتن",
+    "delayTimeout": "بەسەرچوو",
+    "connectBeforeTest": "سەرەتا پەیوەندی بکە بۆ تاقیکردنەوەی دواکەوتن",
     "lineCount": "${count} هێڵ",
     "manualSelect": "هەڵبژاردنی دەستی",
     "autoTest": "تاقیکردنەوەی خۆکار"
@@ -220,7 +255,10 @@
     "logsCleared": "لۆگەکان سڕانەوە",
     "logsCopied": "لۆگەکان کۆپی کران",
     "logsUnderDevelopment": "تایبەتمەندی لۆگ لە ژێر گەشەپێداندایە",
-    "noLogsWhenDisconnected": "پەیوەست نییە، هیچ لۆگێک نییە"
+    "noLogsWhenDisconnected": "پەیوەست نییە، هیچ لۆگێک نییە",
+    "loadFailed": "بارکردنی تۆمارەکان شکستی هێنا",
+    "empty": "هێشتا هیچ تۆمارێک نییە",
+    "clearFailed": "سڕینەوەی تۆمارەکان شکستی هێنا"
   },
   "settings": {
     "pageTitle": "ڕێکخستنه‌کان",
@@ -231,6 +269,37 @@
     "exportAllOptions": "هەناردەکردنی ڕێکخستنەکان بۆ کلیپبۆرد (debug)",
     "importOptions": "هاوردەکردنی ڕێکخستنەکان لە کلیپبۆردەوە",
     "importOptionsMsg": "ئەمە هەموو هەڵبژاردەکانی ڕێکخستن بە بەهاکانی دابینکراو دەنووسێتەوە. ئایا دڵنیایت؟",
+    "backup": {
+      "importConfirmTitle": "هاوردەکردنی پاشەکەوت",
+      "importConfirmMsg": "ئەمە بەشداریکردنەکانت دەگۆڕێت بە ئەوانەی ناو پاشەکەوتەکە و ڕێکخستنەکانی بەکاردێنێت. سەرەتا وێنەیەکی ئێستای داتاکان پاشەکەوت دەکرێت و ئەگەر هاوردەکردنەکە شکستی هێنا بە خۆکار دەگەڕێنرێتەوە.",
+      "importRemovesMsg": "${count} بەشداریکردن لەسەر ئەم ئامێرە لە پاشەکەوتەکەدا نییە و دەسڕدرێتەوە.",
+      "reportImported": "${profiles} بەشداریکردن و ${settings} ڕێکخستن هاوردەکرا.",
+      "reportDropped": "${count} بەشداریکردن لە پاشەکەوتەکەدا بەهۆی نادروستی داتاکانیەوە پەڕێنرا.",
+      "reportSettingsSkipped": "${count} ڕێکخستن پەڕێنرا؛ بەهاکانی ئێستات هێڵرانەوە.",
+      "reportWarpOff": "هاوردەکردنەکە WARPـی کوژاندەوە. لەسەر ئەم ئامێرە دووبارە چالاکی بکەرەوە.",
+      "reportBackfill": "${count} بەشداریکردن لە پشتەوە دابەزێنرێت.",
+      "errInvalidFile": "ئەمە فایلێکی پاشەکەوتی دروستی ClashMiao نییە.",
+      "errUnsupportedVersion": "ئەم شێوازی پاشەکەوتە پشتگیری ناکرێت.",
+      "errNewerSchema": "ئەم پاشەکەوتە بە وەشانێکی نوێتری ئەپەکە دروستکراوە. تکایە سەرەتا ئەپەکە نوێ بکەرەوە.",
+      "errNoUsableProfiles": "هیچ یەکێک لە بەشداریکردنەکانی ئەم پاشەکەوتە ناتوانرێت هاوردە بکرێت.",
+      "errSnapshotFailed": "نەتوانرا وێنەی ئێستای داتاکان پاشەکەوت بکرێت، بۆیە هیچ شتێک نەگۆڕدرا.",
+      "errUnresolvedPrevious": "هاوردەکردنێکی پێشوو وەستا و هێشتا نەتوانراوە بگەڕێنرێتەوە. هیچ شتێک نەگۆڕدرا. ئەپەکە دووبارە بکەرەوە و جارێکی تر هەوڵ بدەرەوە.",
+      "errRolledBack": "هاوردەکردن شکستی هێنا. داتاکانی پێشووت گەڕێنرانەوە.",
+      "errNotRolledBack": "هاوردەکردن شکستی هێنا و گەڕاندنەوەی خۆکار تەواو نەبوو. بۆ هەوڵدانەوە ئەپەکە دووبارە بکەرەوە. وێنەیەک لە ${path} پاشەکەوت کراوە.",
+      "errFailed": "هاوردەکردن شکستی هێنا.",
+      "errBusy": "هاوردەکردنێکی تر لە کارکردندایە. تکایە چاوەڕێ بکە تا تەواو دەبێت.",
+      "recoveryFailedTitle": "گەڕاندنەوەی خۆکار تەواو نەبوو",
+      "recoveryFailedMsg": "دوایین هاوردەکردنی پاشەکەوت وەستا و ئەپەکە نەیتوانی داتاکانت بگەڕێنێتەوە بۆ دۆخی پێشوو. لەوانەیە هەندێک داتا بە نیوەچڵی هاوردە کرابێت. ئێستا دووبارە گەڕاندنەوەی خۆکار تاقی بکەرەوە.",
+      "recoveryUnrecoverableTitle": "هاوردەکردنی وەستاو نەگەڕێنرایەوە",
+      "recoveryUnrecoverableMsg": "دوایین هاوردەکردنی پاشەکەوت وەستا، بەڵام وێنەکەی ون بووە یان ناخوێنرێتەوە، بۆیە ناتوانرێت بگەڕێنرێتەوە. تکایە بەشداریکردنەکان و ڕێکخستنەکانت بپشکنە.",
+      "recoveryRetry": "دووبارە هەوڵبدەرەوە",
+      "recoveryClose": "داخستن",
+      "recoveryRetried": "داتاکانت گەڕێنرانەوە بۆ پێش هاوردەکردنی وەستاو.",
+      "exportAction": "هەناردەکردنی پاشەکەوت",
+      "importAction": "هاوردەکردنی پاشەکەوت",
+      "exportFailed": "هەناردەکردنی پاشەکەوت شکستی هێنا",
+      "shareText": "پاشەکەوتی ClashMiao"
+    },
     "general": {
       "sectionTitle": "گشتی",
       "locale": "زمان",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "پڕۆکسی سیستەم چالاک کرا",
     "systemProxyDisabled": "پڕۆکسی سیستەم ناچالاک کرا (بۆ کاراکردن دووبارە پەیوەندی بکە)",
     "adminPrivilegesRequired": "لەسەر macOS مۆڵەتی بەڕێوەبەری پێویستە",
-    "portChangeNotice": "گۆڕانی پۆرت پێویستی بە پەیوەندی دووبارە هەیە بۆ کاراکردن"
+    "portChangeNotice": "گۆڕانی پۆرت پێویستی بە پەیوەندی دووبارە هەیە بۆ کاراکردن",
+    "groups": {
+      "general": "گشتی",
+      "connection": "پەیوەندی",
+      "privacy": "تایبەتمەندی"
+    },
+    "importOptionsInvalid": "ناوەڕۆکی کلیپبۆرد JSONـی ڕێکخستنی دروست نییە",
+    "importOptionsNothing": "هیچ ڕێکخستنێکی هاوردەکراو نەدۆزرایەوە",
+    "importOptionsDone": "${count} ڕێکخستن هاوردە کرا",
+    "importOptionsPartial": "${applied} ڕێکخستن هاوردە کرا؛ ${skipped} بەهۆی نادروستی تێپەڕێنران"
   },
   "about": {
     "pageTitle": "سەبارەت",
@@ -320,7 +398,8 @@
     "checkForUpdate": "پشکنین بۆ نوێکاریی و بەڕۆژبوون",
     "privacyPolicy": "سیاسەتی پاراستنی نهێنی",
     "termsAndConditions": "مەرج و ڕێسای بەکارهێنان",
-    "appDescription": "ڕاژەخوازی پڕۆکسی فرە-سەکۆ لەسەر بنەمای ناوکی sing-box"
+    "appDescription": "ڕاژەخوازی پڕۆکسی فرە-سەکۆ لەسەر بنەمای ناوکی sing-box",
+    "openSourceLicenses": "مۆڵەتنامەکانی سەرچاوە کراوە"
   },
   "appUpdate": {
     "notAvailableMsg": "نوێترین وەشانی ClashMiao بەکاردەهێنیت",
@@ -330,7 +409,8 @@
     "newVersionLbl": "وەشانى نوێ",
     "updateNowBtnTxt": "ئیستا بەڕۆژی کەرەوە",
     "laterBtnTxt": "دواتر",
-    "ignoreBtnTxt": "پشتگوێخستن"
+    "ignoreBtnTxt": "پشتگوێخستن",
+    "checkFailedMsg": "نەتوانرا نوێکارییەکان بپشکنرێن. تۆڕەکەت بپشکنە و دووبارە هەوڵبدەوە."
   },
   "tray": {
     "dashboard": "داشبۆرد",
@@ -342,7 +422,8 @@
       "disconnect": "پچڕانی پەیوەندی",
       "disconnecting": "پچڕانی پەیوەندی..."
     },
-    "hide": "شاردنەوە"
+    "hide": "شاردنەوە",
+    "proxyModeMenu": "شێوازی پرۆکسی"
   },
   "failure": {
     "unexpected": "هەڵەیەکی چاوەڕواننەکراو",
@@ -362,21 +443,25 @@
       "create": "هەڵەی دروستکردنی خزمەتگوزاری",
       "start": "هەڵەی دەستپێکردنی خزمەتگوزاری",
       "coreLibraryMissing": "کتێبخانەی ناوک دانەمەزراوە",
-      "startTimeout": "کاتی دەستپێکردنی خزمەتگوزاری تەواو بوو"
+      "startTimeout": "کاتی دەستپێکردنی خزمەتگوزاری تەواو بوو",
+      "kernelUnresponsive": "ناوەکە وەڵام نادات. تکایە دووبارە هەوڵبدەرەوە یان بەرنامەکە دووبارە بکەرەوە.",
+      "kernelExited": "ناوەکە بە شێوەیەکی چاوەڕواننەکراو وەستا"
     },
     "connectivity": {
       "unexpected": "شکستی چاوەڕواننەکراو",
       "missingVpnPermission": "مۆڵەت و دەستڕاگەیشتن VPN نییە",
       "missingNotificationPermission": "هیچ دەستڕاگەیشتنێکی ئاگادارکردنەوە نییە",
       "core": "هەڵەی ناوک",
-      "networkUnavailable": "تۆڕ بەردەست نییە"
+      "networkUnavailable": "تۆڕ بەردەست نییە",
+      "nativeUnresponsive": "پەیوەندی بە خزمەتگوزاری پاشبنەما پچڕا. تکایە دووبارە هەوڵبدەرەوە."
     },
     "profiles": {
       "unexpected": "هەڵەی چاوەڕواننەکراو",
       "notFound": "پڕۆفایلی نەدۆزرایەوە",
       "invalidConfig": "ڕێکخستنە نادروستەکان",
       "invalidUrl": "URL ی نادروست",
-      "noActive": "هیچ بەشداریی چالاک نییە"
+      "noActive": "هیچ بەشداریی چالاک نییە",
+      "readOnlyUpgrade": "تکایە ئەپەکە نوێ بکەرەوە پێش ئەوەی بەشداریکردنەکان بگۆڕیت"
     },
     "connection": {
       "unexpected": "هەڵەی پەیوەندی چاوەڕواننەکراو",
@@ -389,7 +474,8 @@
       "unexpected": "هەڵەی چاوەڕواننەکراو",
       "notUpdate": "هیچ نوێکارییەک بەردەست نییە",
       "activeNotFound": "پەڕگەی جوگرافی چالاک نەدۆزرایەوە"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "بۆ پەیوەندیکردن بکوتە",
@@ -397,7 +483,7 @@
     "disconnecting": "پچڕانی پەیوەندی...",
     "connected": "بەستراوەتەوە",
     "reconnect": "پەیوەندی کردنەوەی دووبارە",
-    "connectAnyWay": "گرێدان",
+    "connectAnyWay": "هەر گرێبدە",
     "experimentalNotice": "تایبەتمەندییە تاقیکارییەکانی بەکارهێنراو",
     "experimentalNoticeMsg": "تۆ هەندێک تایبەتمەندی تاقیکاریت چالاک کردووە کە لەوانەیە کاریگەری لەسەر کوالیتی پەیوەندی هەبێت و ببێتە هۆی هەڵەی چاوەڕواننەکراو. هەمیشە دەتوانیت ئەم هەڵبژاردنانە لە لاپەڕەی هەڵبژاردنەکانی ڕێکخستنەوە بگۆڕیت یان ڕێست بکەیتەوە.",
     "disableExperimentalNotice": "جارێکی تر نیشان مەدە، وەڕەز بووووووم",
@@ -479,6 +565,8 @@
     "muxProtocol": "پرۆتۆکۆڵی Mux",
     "muxMaxStreams": "زۆرترین ڕەوتی هاوکات",
     "enableWarp": "چالاک کردنی WARP",
+    "setUpWarp": "ڕێکخستنی WARP",
+    "warpNotConfigured": "ڕێک نەخراوە",
     "warpDetourMode": "دۆخی وارپ",
     "warpDetourModes": {
       "proxyOverWarp": "تێپەڕاندنی پرۆکسیەکان لە ڕێگەی WARP",
@@ -496,6 +584,14 @@
     "blockAds": "ڕێگری لە ڕیکلامەکان",
     "warpNoiseSize": "قەبارەی ژاوەژاو",
     "warpNoiseMode": "دۆخی ژاوەژاو",
-    "desktopProxyScopeNotice": "لەسەر دێسکتۆپ، تەنها ئەو ئەپانە بە تونێلدا دەڕۆن کە ڕێزی پڕۆکسی سیستەم دەگرن. ئەو نەرمەکالایانەی پشتگوێی دەخەن (هەندێک یاری، ئامرازەکانی هێڵی فەرمان، ئەپەکانی خاوەن ڕێکخستنی پڕۆکسی تایبەت) ڕاستەوخۆ دەبەسترێن و IP ڕاستەقینەت ئاشکرا دەکەن."
+    "desktopProxyScopeNotice": "لەسەر دێسکتۆپ، تەنها ئەو ئەپانە بە تونێلدا دەڕۆن کە ڕێزی پڕۆکسی سیستەم دەگرن. ئەو نەرمەکالایانەی پشتگوێی دەخەن (هەندێک یاری، ئامرازەکانی هێڵی فەرمان، ئەپەکانی خاوەن ڕێکخستنی پڕۆکسی تایبەت) ڕاستەوخۆ دەبەسترێن و IP ڕاستەقینەت ئاشکرا دەکەن.",
+    "serviceModeIosVpnOnly": "iOS تەنها شێوازی VPN پشتگیری دەکات",
+    "warpGenerating": "ڕێکخستنی WARP دروست دەکرێت…",
+    "warpConfigFailed": "دروستکردنی ڕێکخستنی WARP شکستی هێنا. تکایە دواتر هەوڵ بدەرەوە.",
+    "portRangeError": "دەبێت پۆرت لە نێوان 1024 و 65535 بێت",
+    "dnsEmptyError": "ناونیشانی DNS نابێت بەتاڵ بێت",
+    "rangeFormatError": "ژمارەیەک یان مەودایەک بنووسە، بۆ نموونە 10-30",
+    "urlSchemeError": "دەبێت URL بە http:// یان https:// دەست پێبکات",
+    "manageRuleAssets": "بەڕێوەبردنی کۆمەڵە یاساکان"
   }
 }

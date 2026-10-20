@@ -136,5 +136,39 @@ void main() {
       expect(appContent, contains('app-layer log line'));
       expect(appContent, isNot(contains('core log line one')));
     });
+
+    test('"分享应用日志"分享的是脱敏副本：升级前写下的带 token 旧日志不外泄', () async {
+      final rawLog = File('${tempDir.path}/app.log');
+      await rawLog.writeAsString(
+        '2026-06-01T10:00:00.000 [ERROR] profiles.update: '
+        'fetch https://example.test/sub?token=SECRET failed\n'
+        'import vless://uuid@1.2.3.4:443#hk\n',
+      );
+
+      final appPath = await resolveAppLogSharePath();
+
+      expect(appPath, isNot(rawLog.path), reason: '不能把原始 app.log 交给分享');
+      final shared = await File(appPath).readAsString();
+      expect(shared, isNot(contains('SECRET')));
+      expect(shared, isNot(contains('uuid@1.2.3.4')));
+      expect(shared, contains('https://example.test/sub?…'));
+      expect(shared, contains('vless://…'));
+      expect(shared, contains('[ERROR] profiles.update'));
+    });
+
+    test('导出的核心日志过同一个脱敏器：订阅凭据与分享链接不进文件', () async {
+      final corePath = await writeCoreLogsTempFile([
+        'INFO outbound/vless[hk]: started',
+        'ERROR fetch https://example.test/sub?token=SECRET failed',
+        'WARN parse link trojan://pass@h.example.test:443#jp',
+      ]);
+
+      final content = await File(corePath).readAsString();
+      expect(content, isNot(contains('SECRET')));
+      expect(content, isNot(contains('pass@h.example.test')));
+      expect(content, contains('INFO outbound/vless[hk]: started'));
+      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('trojan://…'));
+    });
   });
 }

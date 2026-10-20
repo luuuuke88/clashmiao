@@ -1,15 +1,20 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
-import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 这条连接实际能不能出网。
 ///
-/// 跟 [BoxStatus] 是两件不同的事：[BoxStatus] 说的是"内核起没起来、隧道建没
-/// 建成"，这里说的是"建成的这条隧道，数据包真的送得出去吗"。两者会不一致，
+/// 跟连接阶段（[ConnectionPhase]）是两件不同的事：阶段说的是"内核起没起来、
+/// 隧道建没建成"，这里说的是"建成的这条隧道，数据包真的送得出去吗"。两者会不一致，
 /// 而且不一致的那个组合（已连接 + 出不去）正是最坑用户的情形。
 enum ConnectionHealth {
   /// 未连接，或刚连上、还没有任何一次探测结果。
@@ -29,21 +34,19 @@ enum ConnectionHealth {
 ///
 /// ## 为什么需要它
 ///
-/// 这个 App 此前完全没有"连上了但不通"的检测能力：内核报告 `BoxStarted`
+/// 这个 App 此前完全没有"连上了但不通"的检测能力：内核报告已连接
 /// 之后，UI 就一直显示"已连接"，哪怕真实 egress 早已不通、整机流量被黑洞。
 /// 用户看到的是"VPN 连着呢"，实际上什么都打不开。
 ///
-/// ## 探测手段：复用已有的 [EgressIpService]，不新造轮子
+/// ## 探测手段：按连接形态选通路（见 [connectionHealthProbeProvider]）
 ///
-/// [EgressIpService] 本来就是**走隧道**（`preferTunnel: true`，经本地 mixed
-/// 代理端口发出）去查出口 IP 的。它其实已经是一个现成的、语义正确的
-/// "隧道通不通"探针，只是原来放错了位置、也没有把失败当回事：
+/// VPN 形态从本进程直连探测，流量由系统路由进 tun、经内核 tun 协议栈转发——
+/// 其他应用走的就是这条路；没有 tun 的形态经本地 mixed 代理端口
+/// （[EgressIpService]）。早先一律经代理端口探测，它绕过 tun：tun 转发全部被拒
+/// 时（真机验收 BUG-B）照样成功，「已连接」一直显示正常。
 ///
-/// - 挂在 `HomePage` widget 的生命周期里 → 用户不在首页 / App 在后台时不探测
-/// - 只在刚进入 `BoxStarted` 时打一次 → 没有周期性复查，连上之后节点挂掉
-///   永远发现不了
-/// - 失败被当成"锦上添花没查到"，返回 `EgressIpResult.unknown` 静默吞掉 →
-///   从不升级成"这条连接实际不通"
+/// 此前更早的问题（已修）：探测挂在 `HomePage` 生命周期里、只在刚连上时打
+/// 一次、失败被静默吞掉，从不升级成「这条连接实际不通」。
 ///
 /// 这个类把探测能力提到 App 生命周期级，并且给失败一个出口。
 ///
@@ -74,7 +77,7 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   ConnectionHealthMonitor(this._ref) : super(ConnectionHealth.unknown);
 
   final Ref _ref;
-  ProviderSubscription<AsyncValue<BoxStatus>>? _sub;
+  ProviderSubscription<ConnectionSnapshot>? _sub;
   Timer? _timer;
 
   /// 开始跟随连接状态做周期探测。由 App 启动流程调用一次，见类文档。
@@ -82,17 +85,27 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   /// 重复调用无副作用（幂等）。
   void start() {
     if (_sub != null) return;
-    _sub = _ref.listen<AsyncValue<BoxStatus>>(connectionControllerProvider, (
+    _sub = _ref.listen<ConnectionSnapshot>(connectionControllerProvider, (
       previous,
       next,
     ) {
-      _onStatus(next.valueOrNull);
+      _onSnapshot(next);
     }, fireImmediately: true);
   }
 
-  /// 一次探测还在飞的时候不再发起第二次——周期定时器和"刚连上"的首次探测
-  /// 可能撞在一起，重复请求既浪费也会让失败计数翻倍。
-  bool _probing = false;
+  /// 调度代次：每次进入已连接、离开已连接、或已连接时换了内核实例都 +1。
+  ///
+  /// 探测请求、定时器、结果与续排都绑在发起时的代次上：代次一变，在途请求被
+  /// 取消，晚到的结果与它要安排的下一次探测一律丢弃——上一条连接的探测不能
+  /// 改写这一条的健康度，也不能顶掉这一条的首次探测定时器。
+  int _generation = 0;
+
+  /// 当前监控的连接实例 (epoch, attempt)；未在监控时为 null。
+  (String?, int?)? _instance;
+
+  /// 本代次在途的探测（同一代次内不并发：周期定时器和「重新检测」可能撞在
+  /// 一起，重复请求会让失败计数翻倍）。换代时取消并清空，不挡下一代。
+  CancelToken? _inFlight;
 
   int _consecutiveFailures = 0;
 
@@ -104,6 +117,14 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
   /// 之后的探测间隔。
   static const probeInterval = Duration(seconds: 60);
 
+  /// 探测失败、还没到阈值时，下一次探测的间隔：尽快确认是不是真的不通，不让
+  /// 「已连接」在一条黑洞连接上挂好几分钟。
+  static const retryInterval = Duration(seconds: 10);
+
+  /// 单次探测的整体时限：与连接 / 接收超时无关，到点即取消请求、按失败计。
+  /// 对端在接收超时之内一点点地吐数据，或请求压根不返回，都不能让监控停摆。
+  static const probeDeadline = Duration(seconds: 8);
+
   /// 连续失败多少次才判定 [ConnectionHealth.degraded]。
   ///
   /// 取 3 而不是 1：单次失败太容易是网络抖动/对端限流，误报会让这个提示变成
@@ -112,57 +133,172 @@ class ConnectionHealthMonitor extends StateNotifier<ConnectionHealth> {
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _stop();
     _sub?.close();
     super.dispose();
   }
 
-  void _onStatus(BoxStatus? status) {
-    if (status is BoxStarted) {
-      if (_timer != null) return; // 已经在监控了，重复的 BoxStarted 不重启周期
-      _consecutiveFailures = 0;
-      state = ConnectionHealth.unknown;
-      _timer = Timer(firstProbeDelay, () {
-        unawaited(_probe());
-        _timer = Timer.periodic(probeInterval, (_) => unawaited(_probe()));
-      });
-    } else {
+  void _onSnapshot(ConnectionSnapshot snap) {
+    if (snap.phase == ConnectionPhase.connected) {
+      final instance = (snap.epoch, snap.attempt);
+      // 已经在监控同一个实例：重复的 connected 不重启周期。
+      if (_instance == instance) return;
+      _stop();
+      _instance = instance;
+      _schedule(firstProbeDelay, _generation);
+    } else if (_instance != null) {
       // 断开 / 正在切换：停止探测并复位。不保留上一次的 degraded——那是上一条
       // 连接的结论，套到下一条连接上就是误报。
-      _timer?.cancel();
-      _timer = null;
-      _consecutiveFailures = 0;
-      if (state != ConnectionHealth.unknown) {
-        state = ConnectionHealth.unknown;
-      }
+      _stop();
     }
   }
 
-  /// 立即探测一次（供 UI 上的"重试"入口调用）。
-  Future<void> probeNow() => _probe();
-
-  Future<void> _probe() async {
-    if (_probing) return;
-    _probing = true;
-    try {
-      final result = await _ref.read(egressIpServiceProvider).fetch();
-      if (!mounted) return;
-      if (result.isUnknown) {
-        _consecutiveFailures++;
-        debugPrint(
-          '[ConnectionHealth] 探测失败 '
-          '$_consecutiveFailures/$failureThreshold',
-        );
-        if (_consecutiveFailures >= failureThreshold) {
-          state = ConnectionHealth.degraded;
-        }
-      } else {
-        _consecutiveFailures = 0;
-        state = ConnectionHealth.healthy;
-      }
-    } finally {
-      _probing = false;
+  /// 结束当前代次：取消定时器与在途请求，复位计数与健康度。
+  void _stop() {
+    _generation++;
+    _instance = null;
+    _timer?.cancel();
+    _timer = null;
+    _inFlight?.cancel('connection instance changed');
+    _inFlight = null;
+    _consecutiveFailures = 0;
+    if (mounted && state != ConnectionHealth.unknown) {
+      state = ConnectionHealth.unknown;
     }
+  }
+
+  /// 按 [delay] 安排代次 [gen] 的下一次探测；探测完成后按结果安排再下一次
+  /// （失败未到阈值用 [retryInterval]，否则 [probeInterval]）。
+  void _schedule(Duration delay, int gen) {
+    _timer?.cancel();
+    _timer = Timer(delay, () async {
+      await _probe(gen);
+      if (!mounted || gen != _generation) return; // 已换代：不再续排
+      final failing =
+          _consecutiveFailures > 0 && _consecutiveFailures < failureThreshold;
+      _schedule(failing ? retryInterval : probeInterval, gen);
+    });
+  }
+
+  /// 立即探测一次（供 UI 上的"重试"入口调用）。未在监控连接时什么也不做。
+  Future<void> probeNow() async {
+    if (_instance == null) return;
+    await _probe(_generation);
+  }
+
+  Future<void> _probe(int gen) async {
+    if (gen != _generation || _inFlight != null) return;
+    final token = CancelToken();
+    _inFlight = token;
+    final ok = await _runWithDeadline(
+      _ref.read(connectionHealthProbeProvider),
+      token,
+    );
+    // 换代后晚到的结果：丢弃（在途请求已在换代时取消）。
+    if (!mounted || gen != _generation) return;
+    _inFlight = null;
+    if (!ok) {
+      _consecutiveFailures++;
+      debugPrint(
+        '[ConnectionHealth] 探测失败 '
+        '$_consecutiveFailures/$failureThreshold',
+      );
+      if (_consecutiveFailures >= failureThreshold) {
+        state = ConnectionHealth.degraded;
+      }
+    } else {
+      _consecutiveFailures = 0;
+      state = ConnectionHealth.healthy;
+    }
+  }
+
+  /// 跑一次探测，最多等 [probeDeadline]：到点取消 [token] 并按失败计，不管
+  /// 探测实现自己会不会响应取消。探测抛出也按失败计。
+  static Future<bool> _runWithDeadline(HealthProbe probe, CancelToken token) {
+    final result = Completer<bool>();
+    final deadline = Timer(probeDeadline, () {
+      if (!token.isCancelled) token.cancel('health probe deadline');
+      if (!result.isCompleted) result.complete(false);
+    });
+    Future<bool>.sync(() => probe(token)).then(
+      (ok) {
+        if (!result.isCompleted) result.complete(ok);
+      },
+      onError: (Object e, StackTrace _) {
+        if (!result.isCompleted) result.complete(false);
+      },
+    );
+    return result.future.whenComplete(deadline.cancel);
+  }
+}
+
+/// 一次健康探测：这条连接此刻能不能出网。[cancel] 在换代（断开 / 换实例）或
+/// 超出 [ConnectionHealthMonitor.probeDeadline] 时被取消，实现应尽快放弃请求。
+typedef HealthProbe = Future<bool> Function(CancelToken cancel);
+
+/// 隧道（tun）通路探测的目标：境外站点，智能分流下按规则走代理节点，与出口
+/// 探测同一取向（不用 gstatic：它在国内直连名单里，直连在国内不通）。
+const kTunnelProbeUrl = 'http://cp.cloudflare.com/generate_204';
+
+/// 按连接形态选探测通路。
+///
+/// - VPN 形态（内核起 tun，[kernelEnableTun]）：从本进程**直连**（不设代理）
+///   请求 [kTunnelProbeUrl]，流量由系统路由进 tun、经内核的 tun 协议栈转发——
+///   验证的正是其他应用的流量走的那条路。本 App 始终走隧道：原生分应用规则里
+///   白名单模式总会补上本 App、排除模式总会滤掉本 App（`TunnelService`）。
+///   只经本地 mixed 代理端口的探测（[EgressIpService]）绕过了 tun：tun 转发
+///   全部被拒（真机验收 BUG-B，TCP 约 2 ms 内 connection refused）时它照样
+///   成功，「已连接」会一直显示正常。
+/// - 仅线路 / 系统代理形态（没有 tun）：经本地代理端口（[EgressIpService]）。
+final connectionHealthProbeProvider = Provider<HealthProbe>((ref) {
+  return (cancel) async {
+    final throughTunnel = kernelEnableTun(ref.read(networkSettingsProvider));
+    if (throughTunnel) {
+      return probeTunnel(ref.read(tunnelProbeHttpClientProvider)(), cancel);
+    }
+    final result = await ref.read(egressIpServiceProvider).fetch();
+    return !result.isUnknown;
+  };
+});
+
+/// 经 tun 探测用的 HTTP 客户端工厂：直连（不设代理）、不重试。测试替换适配器。
+final tunnelProbeHttpClientProvider = Provider<Dio Function()>((ref) {
+  return () => createAppHttpClient(
+    preferTunnel: false,
+    connectTimeout: const Duration(seconds: 5),
+    receiveTimeout: const Duration(seconds: 5),
+    maxRetries: 0,
+  );
+});
+
+/// 经 tun 的一次直连探测：只认 [kTunnelProbeUrl] 的 **204**。
+///
+/// - 不跟随重定向，3xx 一律不通过：门户 / 网关拦截常用 302 把请求带去登录页。
+/// - 200 也不通过：返回 200 的登录页、拦截页不能证明目标网络可达。
+/// - 不读响应体（流式响应、读完头就判定），慢吞吞吐数据的对端拖不住探测；
+///   用完即关闭客户端，连同未读的响应一起释放。
+@visibleForTesting
+Future<bool> probeTunnel(
+  Dio dio,
+  CancelToken cancel, {
+  String url = kTunnelProbeUrl,
+}) async {
+  try {
+    final response = await dio.get<ResponseBody>(
+      url,
+      cancelToken: cancel,
+      options: Options(
+        followRedirects: false,
+        responseType: ResponseType.stream,
+        validateStatus: (_) => true,
+      ),
+    );
+    return response.statusCode == 204;
+  } catch (e) {
+    debugPrint('[ConnectionHealth] 经 tun 探测失败: $e');
+    return false;
+  } finally {
+    dio.close(force: true);
   }
 }
 

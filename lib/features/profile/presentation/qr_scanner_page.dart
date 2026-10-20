@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// Opens a full-screen QR scanner. Returns the scanned URL string,
 /// or null if the user cancelled or camera permission was denied.
@@ -111,8 +113,8 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage>
       await _controller.start();
       if (!mounted) return;
       setState(() => _started = true);
-    } catch (error) {
-      debugPrint('Error starting QR scanner: $error');
+    } catch (error, st) {
+      logAppFailure('qrScanner.start', error, st);
     }
   }
 
@@ -123,7 +125,7 @@ class _QrScannerPageState extends ConsumerState<QrScannerPage>
     if (_permissionStatus == null && !widget.skipPermissionCheck) {
       return const Scaffold(
         backgroundColor: Colors.black,
-        body: Center(child: CircularProgressIndicator()),
+        body: Center(child: MotionProgress(strokeWidth: 4)),
       );
     }
 

@@ -4,9 +4,6 @@ import 'dart:io';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:flutter/foundation.dart';
 
-bool get _isDesktop =>
-    Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
 /// Connect 时组装 runtime sing-box config：只处理 inbounds/dns/mux 这些
 /// 会真正生效的部分。
 ///
@@ -25,16 +22,22 @@ class RuntimeConfigBuilder {
 
   static const _runtimeFileName = 'runtime-config.json';
 
-  /// 读 [baseProfile]，写到 [workingDir]/runtime-config.json 并返回该 File。
+  /// 读 [baseProfile]，写到 [workingDir]/[outputFileName]（默认
+  /// `runtime-config.json`）并返回该 File。
+  ///
+  /// 连接生命周期（子项目 B）里先写临时文件 `runtime-prep-<token>.json`，算出
+  /// revision 后再定稿为 `runtime-<revision>.json`，所以文件名由调用方决定。
   ///
   /// [remoteDnsAddress] 会覆盖 profile 里 `dns.servers[tag=remote]` 的 address。
   /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）
   /// 无法跟随 NetworkSettings 变更，所以每次 connect 都在这里现拼。
+  ///
   Future<File> build({
     required File baseProfile,
     required Directory workingDir,
     String? remoteDnsAddress,
     AdvancedConfig? advancedConfig,
+    String outputFileName = _runtimeFileName,
   }) async {
     final raw = await baseProfile.readAsString();
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
@@ -44,11 +47,16 @@ class RuntimeConfigBuilder {
     //   mixed:MixedPort（默认 2080），profile 自带 mixed 必然撞端口
     //   → sing-box 启动直接 `listen tcp 127.0.0.1:2080: bind: address already in use`。
     //
-    // tun inbound：
-    //   - 桌面端剥 —— 用户进程没 root 建不了 tun，service 会 "operation not permitted"。
-    //   - Android 不能剥 —— Settings.needVPNService() 靠扫 profile 里的 tun inbound 决定
-    //     要不要起 VpnService。剥了直接走 NORMAL mode（无 TUN，无系统级路由）。
-    _stripConflictingInbounds(cfg, stripTun: _isDesktop);
+    // tun inbound 也永远剥（所有平台、所有服务模式）：
+    //   tun 只由启动参数 `enable-tun` 交给内核配置构建器创建——它会自己 append
+    //   一个 tag 为 tun-in 的 tun inbound（地址 / MTU / 栈 / 严格路由取自网络设置）。
+    //   订阅里再留一个，运行配置就有两个 tun inbound：VPN 每次启动都调两次
+    //   VpnService.Builder.establish()，第二次把第一个 VPN 接口替换掉，两套 tun
+    //   协议栈抢同一个地址 172.19.0.1；被替换接口的拆除与新协议栈的 TCP 转发监听
+    //   赛跑，输了的那次启动 tun 转发监听不存在，所有经 tun 的 TCP 约 2 ms 内被拒
+    //   （真机验收 BUG-B）。Android「仅线路」不起 tun（纯代理 Service 不是
+    //   VpnService，留着它内核启动即失败）；桌面没开 TUN 时同理。
+    _stripConflictingInbounds(cfg, stripTun: true);
 
     final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
         ? advancedConfig!.remoteDnsOverride!
@@ -67,7 +75,7 @@ class RuntimeConfigBuilder {
       _injectMux(cfg, advancedConfig!);
     }
 
-    final out = File('${workingDir.path}/$_runtimeFileName');
+    final out = File('${workingDir.path}/$outputFileName');
     await out.writeAsString(jsonEncode(cfg), flush: true);
     if (kDebugMode) {
       debugPrint(
@@ -162,4 +170,87 @@ class RuntimeConfigBuilder {
       };
     }
   }
+}
+
+/// 内核配置构建器重建的主选择组 tag（订阅里的 selector / urltest 一律被丢弃，
+/// 换成这一组加自动选择组 [kRuntimeAutoGroupTag]）。
+const String kRuntimeMainSelectorTag = 'select';
+
+/// 内核配置构建器重建的自动选择（urltest）组 tag。
+const String kRuntimeAutoGroupTag = 'auto';
+
+/// 节点 tag 带这个标记时，内核把主选择组的默认值设成它（而不是自动选择组）。
+const String _kDefaultMarker = '§default§';
+
+/// 节点 tag 带这个标记时，内核不把它放进主选择组 / 自动选择组。
+const String _kHideMarker = '§hide§';
+
+/// 不会成为主选择组成员的出站类型（内核构建主选择组时跳过）。
+const Set<String> _kNonMemberTypes = {
+  'direct',
+  'block',
+  'dns',
+  'selector',
+  'urltest',
+  'custom',
+};
+
+/// 运行时配置 [cfg]（[RuntimeConfigBuilder.build] 写出的 JSON）对应的「运行时
+/// 选择组默认值」：选择组 tag → 内核启动时它选中的出站。用户在某个订阅下没有
+/// 手选记录时，切到该订阅要把选择组还原成这个值，不能留着上一个订阅的选择。
+///
+/// 规则（与内核选择组启动时的行为一致）：
+/// - 配置里每个 selector：写了 `default` 就用它；没写则是 `outbounds` 第一项；
+/// - 内核配置构建器会丢弃订阅自带的 selector / urltest，重建主选择组
+///   [kRuntimeMainSelectorTag]，成员为 [kRuntimeAutoGroupTag] 加全部节点，默认
+///   是 [kRuntimeAutoGroupTag]（节点 tag 带 `§default§` 标记时是该标记字面值）；
+/// - 写明的默认值不是成员时，内核启动该组直接报错、不回退第一项：这种组的默认
+///   值视为**未知**，不出现在结果里（调用方据此不做还原）。
+///
+/// 只描述 selector；urltest / 自动选择组没有可还原的默认值，调用方不碰它们。
+/// 结果里可能含运行时并不存在的 tag（订阅自带、被内核丢弃的 selector），调用方
+/// 只对运行时真实存在的分组生效。
+Map<String, String> runtimeSelectorDefaults(Map<String, dynamic> cfg) {
+  final outbounds = (cfg['outbounds'] as List?) ?? const [];
+  final result = <String, String>{};
+  final memberTags = <String>[];
+  for (final o in outbounds) {
+    if (o is! Map) continue;
+    final tag = o['tag'];
+    final type = o['type'];
+    if (tag is! String || type is! String) continue;
+    if (type == 'selector') {
+      final members = [
+        for (final m in (o['outbounds'] as List?) ?? const [])
+          if (m is String) m,
+      ];
+      final picked = _defaultOrFirst(o['default'], members);
+      if (picked != null) result[tag] = picked;
+    }
+    if (!_kNonMemberTypes.contains(type) && !tag.contains(_kHideMarker)) {
+      memberTags.add(tag);
+    }
+  }
+  final mainMembers = [kRuntimeAutoGroupTag, ...memberTags];
+  final mainDefault = memberTags.any((t) => t.contains(_kDefaultMarker))
+      ? _kDefaultMarker
+      : kRuntimeAutoGroupTag;
+  // 主选择组由内核重建，订阅里同名的旧 selector 已被丢弃：它的默认值不能代表
+  // 重建后的主组，推导不出时必须是「未知」，不能留着旧条目。
+  final main = _defaultOrFirst(mainDefault, mainMembers);
+  if (main != null) {
+    result[kRuntimeMainSelectorTag] = main;
+  } else {
+    result.remove(kRuntimeMainSelectorTag);
+  }
+  return result;
+}
+
+/// 选择组启动时选中的出站：写明了默认值（非空）就必须是成员，否则未知；
+/// 没写则是第一项。
+String? _defaultOrFirst(Object? preferred, List<String> members) {
+  if (preferred is String && preferred.isNotEmpty) {
+    return members.contains(preferred) ? preferred : null;
+  }
+  return members.isEmpty ? null : members.first;
 }

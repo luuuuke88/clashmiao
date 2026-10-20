@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
@@ -154,14 +157,23 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
   try {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
     clipboardText = data?.text?.trim() ?? '';
-  } catch (e) {
-    if (context.mounted) AppToast.error(context, '读取剪贴板失败：$e');
+  } catch (e, st) {
+    logAppFailure('pasteImport.readClipboard', e, st);
+    if (context.mounted) {
+      AppToast.error(
+        context,
+        ref.read(translationsProvider).general.clipboardReadFailed,
+      );
+    }
     return;
   }
 
   if (clipboardText.isEmpty) {
     if (context.mounted) {
-      AppToast.warning(context, '剪贴板为空，无法导入订阅');
+      AppToast.warning(
+        context,
+        ref.read(translationsProvider).profile.add.clipboardEmpty,
+      );
     }
     return;
   }
@@ -172,16 +184,33 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
     if (isHttpDownloadUrl(clipboardText)) {
       profile = await repo.addByUrl(clipboardText);
     } else {
-      profile = await repo.addByContent(clipboardText, name: '');
+      profile = await repo.addByContent(
+        clipboardText,
+        name: ref.read(translationsProvider).profile.defaultLocalName,
+      );
     }
     ref.invalidate(profileListProvider);
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);
     if (context.mounted) {
-      AppToast.success(context, '已导入订阅：${profile.name}');
+      AppToast.success(
+        context,
+        ref
+            .read(translationsProvider)
+            .profile
+            .add
+            .importedNamed(name: profile.name),
+      );
     }
-  } catch (e) {
-    if (context.mounted) AppToast.error(context, '导入失败：$e');
+  } catch (e, st) {
+    logAppFailure('pasteImport.import', e, st);
+    if (context.mounted) {
+      final t = ref.read(translationsProvider);
+      AppToast.error(
+        context,
+        profileFailureMessage(e, t, failed: t.profile.add.failureMsg),
+      );
+    }
   }
 }
 

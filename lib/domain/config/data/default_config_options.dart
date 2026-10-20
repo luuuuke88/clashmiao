@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/domain/config/data/cn_direct_rules.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 
 /// sing-box 内核启动时使用的全局默认配置（上游 libcore fork 的 `configOptions`）。
@@ -35,9 +36,10 @@ Map<String, dynamic> getDefaultConfigOptions({
   // 桌面端反过来：系统代理设置 OK，TUN 默认关（需要 admin/root 才能 setup）。
   final isMobile = Platform.isAndroid || Platform.isIOS;
   final s = settings ?? const NetworkSettings();
-  // 移动端 TUN 永远开（不允许 user 关，否则没流量入口）；
-  // 桌面端 TUN 默认关，由用户决定要不要开（需要 root）。
-  final enableTunFinal = isMobile ? true : s.enableTun;
+  // Android 上 enable-tun 就是服务模式（VPN / 仅线路）：原生协调器按它选择
+  // Service 类，形态随请求走、进 revision——连接中切模式才会真的换类。iOS 恒为
+  // true；桌面端按用户开关。口径见 service_mode.dart。
+  final enableTunFinal = kernelEnableTun(s);
   // 移动端 system-proxy 始终 false（不可用）；桌面端按用户开关。
   // 例外：CLASHMIAO_TEST_SUB_URL 有值时（CI smoke）强制 false，
   // 因为 GHA Linux runner 没 GNOME session，sing-box 调 gsettings 会

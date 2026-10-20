@@ -1,5 +1,6 @@
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/shared/components/settings_row.dart';
 import 'package:flutter/material.dart';
 
 /// Analytics（数据分析）开关的统一 UI 外壳。
@@ -25,13 +26,11 @@ class AnalyticsToggleTile extends StatelessWidget {
   final String label;
 
   /// 可选副标题说明。为 null 时不展示副标题，布局跟没有副标题的其它设置行
-  /// 完全一致（单行、固定 56 高）。
+  /// 完全一致（单行、最小 56 高）。
   final String? subtitle;
 
   final bool value;
   final ValueChanged<bool> onChanged;
-
-  static const _iconColor = Color(0xFFF97316);
 
   @override
   Widget build(BuildContext context) {
@@ -57,26 +56,44 @@ class AnalyticsToggleTile extends StatelessWidget {
               ),
             ],
           )
-        : Text(
-            label,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
           );
 
-    return InkWell(
-      onTap: () => onChanged(!value),
-      child: Container(
-        height: hasSubtitle ? null : 56,
-        padding: EdgeInsets.symmetric(
-          horizontal: 24,
-          vertical: hasSubtitle ? 12 : 0,
-        ),
-        child: Row(
-          children: [
-            const Icon(FluentIcons.bug_24_regular, size: 20, color: _iconColor),
-            const SizedBox(width: 16),
-            Expanded(child: labelColumn),
-            Switch(value: value, onChanged: onChanged),
-          ],
+    // 整行合并成一个语义节点（标题 + 开关状态 + 单一操作）。开关保持 48 dp
+    // 点击目标；行上的 InkWell 不再另生成点击语义，免得出现两个可点节点。
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        excludeFromSemantics: true,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kSettingsRowMinHeight),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: 24,
+              vertical: hasSubtitle ? 12 : 4,
+            ),
+            child: Row(
+              children: [
+                // 与设置页其它行一致：图标用中性色，不再单独染橙。
+                ExcludeSemantics(
+                  child: Icon(
+                    FluentIcons.bug_24_regular,
+                    size: 20,
+                    color: aiUi.secondaryTextColor,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(child: labelColumn),
+                const SizedBox(width: 8),
+                Switch(value: value, onChanged: onChanged),
+              ],
+            ),
+          ),
         ),
       ),
     );

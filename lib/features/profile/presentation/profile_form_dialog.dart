@@ -1,8 +1,11 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -17,6 +20,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// 订阅表单弹窗（新增 / 编辑 共用）
 ///
@@ -28,15 +32,29 @@ Future<void> showProfileFormDialog(
 }) {
   final isEdit = profile != null;
 
-  if (!isEdit) {
-    return showAiUiModal(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _AddProfileModal(ref: ref),
-    );
-  }
+  if (!isEdit) return _showAddProfileSheet(context, ref);
 
   return showProfileManualFormDialog(context, ref, profile: profile);
+}
+
+/// 「添加订阅」弹窗关闭时带回来的后续动作。
+enum _AddSheetResult { manualInput }
+
+/// 打开「添加订阅」弹窗；用户选「手动输入」时，弹窗**先正常退出**，再由仍然
+/// 活着的调用方页面（它自己的、稳定的 context 与 ref）打开手动表单。
+///
+/// 不能在弹窗内部「`maybePop()` 之后立刻再 push 手动表单」：`maybePop` 要等
+/// `willPop`，等它返回时路由栈已经被新 push 的表单改了，pop 就放弃了，结果两层
+/// 弹窗叠在一起，而且手动表单还拿着已销毁弹窗的 context。
+Future<void> _showAddProfileSheet(BuildContext context, WidgetRef ref) async {
+  final result = await showAiUiModal<_AddSheetResult>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => _AddProfileModal(ref: ref),
+  );
+  if (result == _AddSheetResult.manualInput && context.mounted) {
+    await showProfileManualFormDialog(context, ref);
+  }
 }
 
 class _AddProfileModal extends ConsumerStatefulWidget {
@@ -63,7 +81,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
         child: AnimatedSize(
-          duration: const Duration(milliseconds: 250),
+          duration: Motion.layoutDuration(context, Motion.medium),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final buttonWidth =
@@ -98,7 +116,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                           ],
                         ),
                       )
-                      .animate()
+                      .animateWithMotion(context)
                       .fadeIn(duration: 300.ms, delay: 200.ms)
                       .slideX(
                         begin: 0.1,
@@ -123,7 +141,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                             const SizedBox(height: 16),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(4),
-                              child: const LinearProgressIndicator(
+                              // 减少动画时停成静态条，语义仍是「加载中」。
+                              child: const MotionProgress.linear(
                                 minHeight: 6,
                                 backgroundColor: Colors.transparent,
                               ),
@@ -202,7 +221,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 250.ms)
                               .slideX(
                                 begin: 0.1,
@@ -244,7 +263,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                   ],
                                 ),
                               )
-                              .animate()
+                              .animateWithMotion(context)
                               .fadeIn(duration: 300.ms, delay: 300.ms)
                               .slideX(
                                 begin: 0.1,
@@ -258,7 +277,7 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                     crossFadeState: _isLoading
                         ? CrossFadeState.showFirst
                         : CrossFadeState.showSecond,
-                    duration: const Duration(milliseconds: 250),
+                    duration: Motion.duration(context, Motion.medium),
                   ),
                 ],
               );
@@ -273,16 +292,16 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
     final text = value.trim();
     if (text.isEmpty || _isLoading) return;
     setState(() => _isLoading = true);
-    await _doAdd(context, widget.ref, text);
+    await doAddProfile(context, widget.ref, text);
     if (!mounted) return;
     setState(() => _isLoading = false);
     unawaited(Navigator.of(context).maybePop());
   }
 
-  void _showManualForm() {
-    unawaited(Navigator.of(context).maybePop());
-    showProfileManualFormDialog(context, widget.ref);
-  }
+  /// 选「手动输入」：只负责带着结果关闭本弹窗，手动表单由调用方在弹窗退出后
+  /// 打开（见 [_showAddProfileSheet]）。
+  void _showManualForm() =>
+      Navigator.of(context).pop(_AddSheetResult.manualInput);
 
   Future<void> _showWarpConsent() async {
     final settings = ref.read(networkSettingsProvider);
@@ -299,7 +318,8 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
 
     if (!mounted || _isGeneratingWarp) return;
     setState(() => _isGeneratingWarp = true);
-    AppToast.info(context, '正在生成 WARP 配置…');
+    final t = ref.read(translationsProvider);
+    AppToast.info(context, t.config.warpGenerating);
     try {
       final licenseKey = ref.read(networkSettingsProvider).warpLicenseKey;
       await ref
@@ -307,10 +327,11 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
           .generateAndStore(licenseKey: licenseKey);
       await notifier.setEnableWarp(true);
       if (!mounted) return;
-      AppToast.success(context, 'WARP 配置生成成功');
+      AppToast.success(context, t.config.warpConfigGenerated);
       unawaited(Navigator.of(context).maybePop());
-    } catch (e) {
-      if (mounted) AppToast.error(context, 'WARP 配置生成失败: $e');
+    } catch (e, st) {
+      logAppFailure('addProfile.generateWarp', e, st);
+      if (mounted) AppToast.error(context, t.config.warpConfigFailed);
     } finally {
       if (mounted) setState(() => _isGeneratingWarp = false);
     }
@@ -348,9 +369,9 @@ Future<void> showProfileManualFormDialog(
 
         Navigator.of(ctx).pop();
         if (isEdit) {
-          await _doEdit(context, ref, profile.id, name: name, url: url);
+          await doEditProfile(context, ref, profile.id, name: name, url: url);
         } else {
-          await _doAdd(
+          await doAddProfile(
             context,
             ref,
             url,
@@ -388,7 +409,6 @@ Future<void> showProfileManualFormDialog(
                         FilledButton(
                           onPressed: submit,
                           style: FilledButton.styleFrom(
-                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 10,
@@ -402,7 +422,7 @@ Future<void> showProfileManualFormDialog(
                       ],
                     ),
                   )
-                  .animate()
+                  .animateWithMotion(ctx)
                   .fadeIn(duration: 300.ms, delay: 150.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 150.ms),
               _SectionHeader(title: t.profile.details.basicInfo),
@@ -415,7 +435,7 @@ Future<void> showProfileManualFormDialog(
                       label: t.profile.detailsForm.nameLabel,
                       hint: isEdit
                           ? t.profile.detailsForm.nameHint
-                          : '自动识别（可选）',
+                          : t.profile.add.nameAutoHint,
                     ),
                     _ProfileTextField(
                       controller: urlCtrl,
@@ -511,9 +531,8 @@ class _ProfileTextField extends StatelessWidget {
             ),
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: TextStyle(
-                color: aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
+              // 占位提示同样是小字：用不透明的 onSurfaceVariant，不叠 alpha。
+              hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
               filled: true,
               fillColor: theme.canvasColor,
               suffixIcon: suffixIcon,
@@ -712,7 +731,9 @@ bool isHttpDownloadUrl(String input) {
   return uri != null && (uri.scheme == 'http' || uri.scheme == 'https');
 }
 
-Future<void> _doAdd(
+/// 添加订阅并反馈结果。
+@visibleForTesting
+Future<void> doAddProfile(
   BuildContext context,
   WidgetRef ref,
   String urlOrUri, {
@@ -723,18 +744,38 @@ Future<void> _doAdd(
     if (isHttpDownloadUrl(urlOrUri)) {
       await repo.addByUrl(urlOrUri, customName: customName);
     } else {
-      await repo.addByContent(urlOrUri, name: customName ?? '');
+      final name = customName ?? '';
+      await repo.addByContent(
+        urlOrUri,
+        name: name.trim().isEmpty
+            ? ref.read(translationsProvider).profile.defaultLocalName
+            : name,
+      );
     }
     ref.invalidate(profileListProvider);
     ref.invalidate(activeProfileProvider);
     ref.invalidate(offlineProxyGroupsProvider);
-    if (context.mounted) AppToast.success(context, '添加成功');
-  } catch (e) {
-    if (context.mounted) AppToast.error(context, '添加失败: $e');
+    if (context.mounted) {
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).profile.add.successMsg,
+      );
+    }
+  } catch (e, st) {
+    logAppFailure('profiles.add', e, st);
+    if (context.mounted) {
+      final t = ref.read(translationsProvider);
+      AppToast.error(
+        context,
+        profileFailureMessage(e, t, failed: t.profile.add.failureMsg),
+      );
+    }
   }
 }
 
-Future<void> _doEdit(
+/// 保存订阅的名称 / URL 编辑并反馈结果。
+@visibleForTesting
+Future<void> doEditProfile(
   BuildContext context,
   WidgetRef ref,
   String id, {
@@ -745,9 +786,21 @@ Future<void> _doEdit(
     final repo = await ref.read(profileRepositoryProvider.future);
     await repo.editProfile(id, newName: name, newUrl: url);
     ref.invalidate(profileListProvider);
-    if (context.mounted) AppToast.success(context, '保存成功');
-  } catch (e) {
-    if (context.mounted) AppToast.error(context, '保存失败: $e');
+    if (context.mounted) {
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).profile.save.successMsg,
+      );
+    }
+  } catch (e, st) {
+    logAppFailure('profiles.edit', e, st);
+    if (context.mounted) {
+      final t = ref.read(translationsProvider);
+      AppToast.error(
+        context,
+        profileFailureMessage(e, t, failed: t.profile.save.failureMsg),
+      );
+    }
   }
 }
 

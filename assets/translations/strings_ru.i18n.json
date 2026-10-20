@@ -24,7 +24,12 @@
     "openAppSettings": "Открыть настройки",
     "grantPermission": "Дать права доступа",
     "underDevelopment": "В разработке",
-    "confirm": "Подтвердить"
+    "confirm": "Подтвердить",
+    "close": "Закрыть",
+    "cancel": "Отмена",
+    "clipboardEmpty": "Буфер обмена пуст",
+    "clipboardReadFailed": "Не удалось прочитать буфер обмена",
+    "moreOptions": "Дополнительно"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "Продолжая, Вы соглашаетесь с ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "Приложению не удалось загрузить сетевое ядро. Подключение недоступно. Переустановите приложение или убедитесь, что файл библиотеки ядра находится рядом с исполняемым файлом.",
     "degradedTitle": "Подключено, но нет доступа в интернет",
     "degradedMsg": "Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.",
-    "degradedRetry": "Проверить ещё раз"
+    "degradedRetry": "Проверить ещё раз",
+    "egressIp": {
+      "label": "Выходной IP",
+      "notConnected": "Подключитесь, чтобы увидеть выходной IP",
+      "tapToCheck": "Нажмите, чтобы проверить выходной IP",
+      "checking": "Проверка…",
+      "failedRetry": "Не удалось проверить, нажмите для повтора"
+    },
+    "emptyProfilesHint": "Нажмите кнопку ниже, чтобы начать",
+    "noActiveProfileTitle": "Профиль не выбран"
   },
   "stats": {
     "traffic": "Трафик",
@@ -56,7 +70,9 @@
     "speed": "Скорость",
     "totalTransferred": "Всего передано",
     "trafficUsage": "Использование трафика",
-    "liveSpeed": "Текущая скорость"
+    "liveSpeed": "Текущая скорость",
+    "sessionTraffic": "Трафик за сеанс",
+    "downloadSpeed": "Скорость загрузки"
   },
   "profile": {
     "overviewPageTitle": "Профили",
@@ -99,7 +115,12 @@
       "manuallyDescription": "Введите конфигурацию сервера вручную",
       "addWarp": "Добавить WARP",
       "warpDescription": "Бесплатное ускорение через Cloudflare WARP",
-      "addingWarpMsg": "Подождите, идёт регистрация WARP."
+      "addingWarpMsg": "Подождите, идёт регистрация WARP.",
+      "importedNamed": "Подписка импортирована: ${name}",
+      "clipboardEmpty": "Буфер обмена пуст, импортировать нечего",
+      "deepLinkMissingUrl": "В ссылке нет адреса подписки",
+      "successMsg": "Профиль добавлен",
+      "nameAutoHint": "Определяется автоматически (необязательно)"
     },
     "update": {
       "buttonTxt": "Обновить",
@@ -129,7 +150,9 @@
     "delete": {
       "buttonTxt": "Удалить",
       "confirmationMsg": "Безвозвратно удалить профиль?",
-      "successMsg": "Профиль успешно удалён"
+      "successMsg": "Профиль успешно удалён",
+      "confirmTitle": "Удалить профиль",
+      "namedConfirmMsg": "Удалить «${name}»? Это действие нельзя отменить."
     },
     "save": {
       "buttonText": "Сохранить",
@@ -149,7 +172,10 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Выкл.",
+      "updateIntervalHours": "${hours} ч",
+      "updateIntervalDays": "${days} дн."
     },
     "actionButtons": {
       "add": "Добавить",
@@ -171,7 +197,10 @@
       "currentlyUsing": "Используется сейчас",
       "remainingDays": "Осталось ${days} дн."
     },
-    "remoteProfile": "Удалённый профиль"
+    "remoteProfile": "Удалённый профиль",
+    "defaultLocalName": "Локальный импорт",
+    "defaultDeepLinkName": "Импорт по ссылке",
+    "switchFailedMsg": "Не удалось переключить профиль"
   },
   "proxies": {
     "pageTitle": "Прокси",
@@ -189,7 +218,9 @@
     "delaySemantics": {
       "result": "Задержка: ${delay}мс",
       "timeout": "Тайм-аут при тестировании задержки",
-      "testing": "Задержка: Тестирование..."
+      "testing": "Задержка: Тестирование...",
+      "untested": "Задержка: не проверялась",
+      "stale": "Задержка: ${delay}мс (прежний результат)"
     },
     "ipInfoSemantics": {
       "address": "IP адрес",
@@ -200,10 +231,14 @@
     "sortModalTitle": "Выберите способ сортировки",
     "testingDelayInfo": "Проверка задержки: ${name}",
     "switchedTo": "Переключено на ${name}",
-    "switchToFailed": "Не удалось переключить: ${error}",
+    "switchFailed": "Не удалось переключить сервер. Попробуйте ещё раз.",
+    "testFailed": "Не удалось проверить задержку. Попробуйте ещё раз.",
+    "groupsLoading": "Список серверов ещё загружается. Повторите попытку через минуту.",
     "connectBeforeSwitch": "Подключитесь перед сменой линии",
     "startDelayTestForGroups": "Запущена проверка задержки для ${count} линий",
     "delayTestBtn": "Задержка",
+    "delayTimeout": "Тайм-аут",
+    "connectBeforeTest": "Сначала подключитесь, чтобы проверить задержку",
     "lineCount": "Линий: ${count}",
     "manualSelect": "Ручной выбор",
     "autoTest": "Автотест"
@@ -220,7 +255,10 @@
     "logsCleared": "Журналы очищены",
     "logsCopied": "Журналы скопированы",
     "logsUnderDevelopment": "Функция журналов в разработке",
-    "noLogsWhenDisconnected": "Нет подключения, журналы отсутствуют"
+    "noLogsWhenDisconnected": "Нет подключения, журналы отсутствуют",
+    "loadFailed": "Не удалось загрузить журнал",
+    "empty": "Журнал пока пуст",
+    "clearFailed": "Не удалось очистить журнал"
   },
   "settings": {
     "pageTitle": "Настройки",
@@ -229,6 +267,37 @@
     "experimentalMsg": "Функции с флагом «Экспериментально» все еще находятся в разработке и могут вызвать проблемы.",
     "importOptions": "Импорт параметров из буфера обмена",
     "importOptionsMsg": "Это перезапишет все параметры конфига предоставленными значениями. Вы уверены?",
+    "backup": {
+      "importConfirmTitle": "Импорт резервной копии",
+      "importConfirmMsg": "Ваши подписки будут заменены подписками из резервной копии, а настройки из неё применены. Сначала сохраняется снимок текущих данных, который автоматически восстанавливается, если импорт не удастся.",
+      "importRemovesMsg": "Подписок на этом устройстве, которых нет в резервной копии, будет удалено: ${count}.",
+      "reportImported": "Импортировано подписок: ${profiles}, настроек: ${settings}.",
+      "reportDropped": "Пропущено подписок из резервной копии из-за недопустимых данных: ${count}.",
+      "reportSettingsSkipped": "Пропущено настроек: ${count}; текущие значения сохранены.",
+      "reportWarpOff": "При импорте WARP был выключен. Включите его заново на этом устройстве.",
+      "reportBackfill": "Подписок, которые будут загружены в фоне: ${count}.",
+      "errInvalidFile": "Это не файл резервной копии ClashMiao.",
+      "errUnsupportedVersion": "Этот формат резервной копии не поддерживается.",
+      "errNewerSchema": "Эта резервная копия создана более новой версией приложения. Сначала обновите приложение.",
+      "errNoUsableProfiles": "Ни одну подписку из этой резервной копии нельзя импортировать.",
+      "errSnapshotFailed": "Не удалось сохранить снимок текущих данных, поэтому ничего не изменено.",
+      "errUnresolvedPrevious": "Предыдущий импорт был прерван и пока не отменён. Ничего не изменено. Перезапустите приложение и повторите попытку.",
+      "errRolledBack": "Не удалось импортировать. Прежние данные восстановлены.",
+      "errNotRolledBack": "Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.",
+      "errFailed": "Не удалось импортировать.",
+      "errBusy": "Другой импорт уже выполняется. Дождитесь его завершения.",
+      "recoveryFailedTitle": "Автоматическое восстановление не завершилось",
+      "recoveryFailedMsg": "Последний импорт резервной копии был прерван, и приложению не удалось вернуть данные в прежнее состояние. Часть данных могла быть импортирована не полностью. Повторите автоматическое восстановление.",
+      "recoveryUnrecoverableTitle": "Не удалось отменить прерванный импорт",
+      "recoveryUnrecoverableMsg": "Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.",
+      "recoveryRetry": "Повторить",
+      "recoveryClose": "Закрыть",
+      "recoveryRetried": "Данные возвращены в состояние до прерванного импорта.",
+      "exportAction": "Экспорт резервной копии",
+      "importAction": "Импорт резервной копии",
+      "exportFailed": "Не удалось экспортировать резервную копию",
+      "shareText": "Резервная копия ClashMiao"
+    },
     "general": {
       "sectionTitle": "Основные",
       "locale": "Язык",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "Системный прокси включён",
     "systemProxyDisabled": "Системный прокси отключён (переподключитесь для применения)",
     "adminPrivilegesRequired": "На macOS требуются права администратора",
-    "portChangeNotice": "Изменения порта применяются после переподключения"
+    "portChangeNotice": "Изменения порта применяются после переподключения",
+    "groups": {
+      "general": "Общие",
+      "connection": "Подключение",
+      "privacy": "Конфиденциальность"
+    },
+    "importOptionsInvalid": "В буфере обмена нет корректного JSON настроек",
+    "importOptionsNothing": "Не найдено настроек для импорта",
+    "importOptionsDone": "Импортировано настроек: ${count}",
+    "importOptionsPartial": "Импортировано: ${applied}; пропущено как некорректные: ${skipped}"
   },
   "about": {
     "pageTitle": "О программе",
@@ -320,7 +398,8 @@
     "checkForUpdate": "Проверка обновления",
     "privacyPolicy": "Политика конфиденциальности",
     "termsAndConditions": "Условия и положения",
-    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box"
+    "appDescription": "Кроссплатформенный прокси-клиент на основе ядра sing-box",
+    "openSourceLicenses": "Лицензии открытого ПО"
   },
   "appUpdate": {
     "notAvailableMsg": "Установлена последняя версия",
@@ -330,7 +409,8 @@
     "newVersionLbl": "Новая версия",
     "updateNowBtnTxt": "Обновить",
     "laterBtnTxt": "Позже",
-    "ignoreBtnTxt": "Пропустить"
+    "ignoreBtnTxt": "Пропустить",
+    "checkFailedMsg": "Не удалось проверить обновления. Проверьте сеть и повторите попытку."
   },
   "tray": {
     "dashboard": "Панель",
@@ -342,7 +422,8 @@
       "disconnect": "Отключиться",
       "disconnecting": "Отключение"
     },
-    "hide": "Скрыть"
+    "hide": "Скрыть",
+    "proxyModeMenu": "Режим прокси"
   },
   "failure": {
     "unexpected": "Непредвиденная ошибка",
@@ -362,21 +443,25 @@
       "create": "Ошибка создания сервиса",
       "start": "Ошибка запуска сервиса",
       "coreLibraryMissing": "Библиотека ядра не установлена",
-      "startTimeout": "Истекло время запуска службы"
+      "startTimeout": "Истекло время запуска службы",
+      "kernelUnresponsive": "Ядро не отвечает. Повторите попытку или перезапустите приложение.",
+      "kernelExited": "Ядро неожиданно завершило работу"
     },
     "connectivity": {
       "unexpected": "Непредвиденная ошибка",
       "missingVpnPermission": "Отсутствует разрешение VPN",
       "missingNotificationPermission": "Отсутствует разрешение на показ уведомлений",
       "core": "Ошибка ядра",
-      "networkUnavailable": "Сеть недоступна"
+      "networkUnavailable": "Сеть недоступна",
+      "nativeUnresponsive": "Потеряна связь с фоновой службой. Повторите попытку."
     },
     "profiles": {
       "unexpected": "Непредвиденная ошибка",
       "notFound": "Профиль не найден",
       "invalidConfig": "Неправильная конфигурация",
       "invalidUrl": "Неправильный URL",
-      "noActive": "Нет активного профиля"
+      "noActive": "Нет активного профиля",
+      "readOnlyUpgrade": "Обновите приложение, прежде чем изменять подписки"
     },
     "connection": {
       "unexpected": "Неожиданная ошибка подключения",
@@ -389,7 +474,8 @@
       "unexpected": "Неожиданная ошибка",
       "notUpdate": "Нет доступных обновлений",
       "activeNotFound": "Активный географический актив не найден"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Нажмите для подключения",
@@ -397,7 +483,7 @@
     "disconnecting": "Отключение",
     "connected": "Подключено",
     "reconnect": "Восстановить соединение",
-    "connectAnyWay": "Подключиться",
+    "connectAnyWay": "Всё равно подключиться",
     "experimentalNotice": "Экспериментальные функции в использовании",
     "experimentalNoticeMsg": "Вы включили некоторые экспериментальные функции, которые могут повлиять на качество соединения и вызвать непредвиденные ошибки. Вы всегда можете изменить или сбросить эти параметры на странице параметров конфигурации.",
     "disableExperimentalNotice": "Больше не показывать",
@@ -479,6 +565,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Настроить WARP",
+    "warpNotConfigured": "Не настроено",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "proxyOverWarp": "Работа прокси через WARP",
@@ -496,6 +584,14 @@
     "warpNoiseSize": "Размер шума",
     "warpNoiseMode": "Режим шума",
     "warpNoiseDelay": "Задержка шума",
-    "desktopProxyScopeNotice": "На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP."
+    "desktopProxyScopeNotice": "На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.",
+    "serviceModeIosVpnOnly": "iOS поддерживает только режим VPN",
+    "warpGenerating": "Создание конфигурации WARP…",
+    "warpConfigFailed": "Не удалось создать конфигурацию WARP. Повторите попытку позже.",
+    "portRangeError": "Порт должен быть от 1024 до 65535",
+    "dnsEmptyError": "Адрес DNS не может быть пустым",
+    "rangeFormatError": "Введите число или диапазон, например 10-30",
+    "urlSchemeError": "URL должен начинаться с http:// или https://",
+    "manageRuleAssets": "Наборы правил"
   }
 }

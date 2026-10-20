@@ -1,8 +1,12 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
@@ -108,7 +112,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                                 t,
                               ),
                             )
-                            .animate()
+                            .animateWithMotion(context)
                             .fadeIn(
                               duration: 300.ms,
                               delay: (200 + index * 50).ms,
@@ -125,15 +129,18 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   loading: () => const Center(
                     child: Padding(
                       padding: EdgeInsets.all(24),
-                      child: CircularProgressIndicator(),
+                      child: MotionProgress(strokeWidth: 4),
                     ),
                   ),
-                  error: (e, _) => Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text('${t.failure.unexpected}: $e'),
-                    ),
-                  ),
+                  error: (e, st) {
+                    logAppFailureOnce('profiles.list', e, st);
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(t.failure.unexpected),
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -244,7 +251,7 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                             t,
                           ),
                         )
-                        .animate()
+                        .animateWithMotion(context)
                         .fadeIn(duration: 300.ms, delay: (200 + index * 50).ms)
                         .slideX(
                           begin: 0.1,
@@ -255,9 +262,12 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) =>
-                  Center(child: Text('${t.failure.unexpected}: $e')),
+              loading: () =>
+                  const Center(child: MotionProgress(strokeWidth: 4)),
+              error: (e, st) {
+                logAppFailureOnce('profiles.list', e, st);
+                return Center(child: Text(t.failure.unexpected));
+              },
             ),
           ),
         ],
@@ -315,6 +325,11 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       builder: (context) => ProfileQrDialog(
         data: profileShareUrl(profile),
         profileName: profile.name,
+        qrSemanticsLabel: ref
+            .read(translationsProvider)
+            .profile
+            .share
+            .subLinkQrCode,
       ),
     );
   }
@@ -334,12 +349,13 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (context.mounted) {
         final message = _isRemoteProfile(profile)
             ? t.profile.share.subscriptionLinkCopied
-            : '配置内容已复制';
+            : t.profile.share.configCopied;
         AppToast.success(context, message);
       }
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.copyLink', e, st);
       if (context.mounted) {
-        AppToast.error(context, '${t.failure.unexpected}: $e');
+        AppToast.error(context, t.failure.unexpected);
       }
     }
   }
@@ -388,8 +404,15 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       if (widget.embedInSheet && mounted) {
         unawaited(Navigator.of(context).maybePop());
       }
-    } catch (e) {
-      if (mounted) AppToast.error(context, '切换失败: $e');
+    } catch (e, st) {
+      logAppFailure('profiles.setActive', e, st);
+      if (mounted) {
+        final t = ref.read(translationsProvider);
+        AppToast.error(
+          context,
+          profileFailureMessage(e, t, failed: t.profile.switchFailedMsg),
+        );
+      }
     }
   }
 
@@ -403,9 +426,17 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (e) {
-      if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+    } catch (e, st) {
+      logAppFailure('profiles.update', e, st);
+      if (isStaleRefresh(e)) {
+        // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
+        // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
+        // 让两个 provider 重新计算；而页面此时可能已销毁，销毁后碰 ref 会抛异常。
+      } else if (mounted) {
+        AppToast.error(
+          context,
+          profileFailureMessage(e, t, failed: t.profile.update.failureMsg),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -419,8 +450,8 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
   ) async {
     final ok = await showConfirmationDialog(
       context,
-      title: '删除配置文件',
-      message: '确定要删除"$name"吗？此操作不可撤销。',
+      title: t.profile.delete.confirmTitle,
+      message: t.profile.delete.namedConfirmMsg(name: name),
       icon: FluentIcons.delete_24_regular,
     );
     if (!ok || !mounted) return;
@@ -435,8 +466,14 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.info(context, t.profile.delete.successMsg);
-    } catch (e) {
-      if (mounted) AppToast.error(context, '${t.failure.unexpected}: $e');
+    } catch (e, st) {
+      logAppFailure('profiles.delete', e, st);
+      if (mounted) {
+        AppToast.error(
+          context,
+          profileFailureMessage(e, t, failed: t.failure.unexpected),
+        );
+      }
     }
   }
 
@@ -449,9 +486,13 @@ class _ProfilesPageState extends ConsumerState<ProfilesPage> {
       ref.invalidate(activeProfileProvider);
       ref.invalidate(offlineProxyGroupsProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
-    } catch (e) {
+    } catch (e, st) {
+      logAppFailure('profiles.updateAll', e, st);
       if (mounted) {
-        AppToast.error(context, '${t.profile.update.failureMsg}: $e');
+        AppToast.error(
+          context,
+          profileFailureMessage(e, t, failed: t.profile.update.failureMsg),
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -529,7 +570,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                             onPressed: () => onChanged(sort, !ascending),
                             icon: AnimatedRotation(
                               turns: arrowTurn,
-                              duration: const Duration(milliseconds: 100),
+                              duration: Motion.duration(context, Motion.short),
                               child: Icon(
                                 FluentIcons.arrow_sort_up_24_regular,
                                 semanticLabel: ascending
@@ -540,7 +581,7 @@ class _ProfilesSortModal extends ConsumerWidget {
                           )
                         : null,
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: (200 + sort.index * 50).ms)
                   .slideX(
                     begin: 0.1,
@@ -593,16 +634,16 @@ class _ProfileActionsModal extends ConsumerWidget {
                     FluentIcons.share_24_regular,
                     color: aiUi.secondaryTextColor,
                   ),
-                  title: const Text(
-                    '分享链接',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    t.profile.share.shareLink,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.of(context).maybePop();
                     onShare();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 200.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 200.ms),
             // 只有远程订阅才有真正可分享的 URL 可编码——本地导入的
@@ -623,7 +664,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                       onShowQr();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 225.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 225.ms),
             ListTile(
@@ -631,16 +672,16 @@ class _ProfileActionsModal extends ConsumerWidget {
                     FluentIcons.edit_24_regular,
                     color: aiUi.secondaryTextColor,
                   ),
-                  title: const Text(
-                    '编辑配置',
-                    style: TextStyle(fontWeight: FontWeight.w600),
+                  title: Text(
+                    t.profile.actionButtons.editConfig,
+                    style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   onTap: () {
                     Navigator.of(context).maybePop();
                     onEdit();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 250.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 250.ms),
             if (canUpdate)
@@ -649,33 +690,37 @@ class _ProfileActionsModal extends ConsumerWidget {
                       FluentIcons.arrow_sync_24_regular,
                       color: aiUi.secondaryTextColor,
                     ),
-                    title: const Text(
-                      '更新订阅',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                    title: Text(
+                      t.profile.update.updateSubscriptions,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     onTap: () {
                       Navigator.of(context).maybePop();
                       onUpdate();
                     },
                   )
-                  .animate()
+                  .animateWithMotion(context)
                   .fadeIn(duration: 300.ms, delay: 300.ms)
                   .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 300.ms),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Divider(
-                height: 1,
-                color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-              ),
-            ).animate().fadeIn(duration: 300.ms, delay: 350.ms),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Divider(
+                    height: 1,
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.1),
+                  ),
+                )
+                .animateWithMotion(context)
+                .fadeIn(duration: 300.ms, delay: 350.ms),
             ListTile(
                   leading: const Icon(
                     FluentIcons.delete_24_regular,
                     color: Colors.redAccent,
                   ),
-                  title: const Text(
-                    '删除',
-                    style: TextStyle(
+                  title: Text(
+                    t.profile.delete.buttonTxt,
+                    style: const TextStyle(
                       color: Colors.redAccent,
                       fontWeight: FontWeight.w600,
                     ),
@@ -685,7 +730,7 @@ class _ProfileActionsModal extends ConsumerWidget {
                     onDelete();
                   },
                 )
-                .animate()
+                .animateWithMotion(context)
                 .fadeIn(duration: 300.ms, delay: 400.ms)
                 .slideX(begin: 0.1, end: 0, duration: 300.ms, delay: 400.ms),
             const SizedBox(height: 24),
@@ -733,10 +778,7 @@ class _EmptyState extends ConsumerWidget {
           const SizedBox(height: 8),
           Text(
             '',
-            style: TextStyle(
-              fontSize: 13,
-              color: aiUi.secondaryTextColor.withValues(alpha: 0.7),
-            ),
+            style: TextStyle(fontSize: 13, color: aiUi.secondaryTextColor),
           ),
           const SizedBox(height: 32),
           FilledButton.icon(
@@ -795,16 +837,17 @@ class _HeaderButton extends StatelessWidget {
             child: isLoading
                 ? Padding(
                     padding: const EdgeInsets.all(10),
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: filled ? Colors.white : aiUi.secondaryTextColor,
+                    child: MotionProgress(
+                      color: filled
+                          ? theme.colorScheme.onPrimary
+                          : aiUi.secondaryTextColor,
                     ),
                   )
                 : Icon(
                     icon,
                     size: 20,
                     color: filled
-                        ? Colors.white
+                        ? theme.colorScheme.onPrimary
                         : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
           ),
@@ -1063,7 +1106,8 @@ class _ActionButton extends StatelessWidget {
         ),
         child: Column(
           children: [
-            isLoading
+            // 减少动画时不转，停在静态图标上（加载中靠按钮变灰/文案表达）。
+            isLoading && Motion.loops(context)
                 ? Icon(
                         icon,
                         size: 20,
@@ -1076,7 +1120,10 @@ class _ActionButton extends StatelessWidget {
                 : Icon(
                     icon,
                     size: 20,
-                    color: isLight ? aiUi.secondaryTextColor : Colors.white70,
+                    // 加载中但减少动画：静态图标沿用「进行中」的强调色。
+                    color: isLoading
+                        ? (isLight ? theme.colorScheme.primary : Colors.white)
+                        : (isLight ? aiUi.secondaryTextColor : Colors.white70),
                   ),
             const SizedBox(height: 8),
             Text(

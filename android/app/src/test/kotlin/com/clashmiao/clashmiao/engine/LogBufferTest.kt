@@ -73,4 +73,43 @@ class LogBufferTest {
         buf.append("ok")
         assertFalse(buf.snapshot().isEmpty())
     }
+
+    // --- 进程级缓冲：Activity / Flutter engine 重建后的订阅语义（计划 P2①）---
+
+    @Test
+    fun `engine 重建 新订阅者取代旧订阅者 缓冲内容保留 之后的追加与清空只通知新订阅者`() {
+        val buf = LogBuffer(capacity = 10)
+        buf.append("before-rebuild")
+        val oldCalls = ArrayList<Boolean>()
+        buf.subscriber = { oldCalls += it }
+        buf.append("a")
+        assertEquals(1, oldCalls.size)
+
+        // 旧 engine 销毁、新 engine 订阅：旧订阅者被置空，新订阅者先拿到完整快照
+        buf.subscriber = null
+        val newCalls = ArrayList<Boolean>()
+        val initial = buf.snapshot()
+        buf.subscriber = { newCalls += it }
+        assertEquals(listOf("before-rebuild", "a"), initial)
+
+        buf.append("b")
+        buf.clear()
+        assertEquals(listOf(false, true), newCalls)
+        assertEquals(1, oldCalls.size)
+        assertTrue(buf.snapshot().isEmpty())
+    }
+
+    @Test
+    fun `多线程并发追加 不丢行 不超容量 订阅者可在任意线程被调用`() {
+        val buf = LogBuffer(capacity = 1000)
+        val notified = java.util.concurrent.atomic.AtomicInteger(0)
+        buf.subscriber = { notified.incrementAndGet() }
+        val threads = (0 until 4).map { t ->
+            Thread { repeat(200) { i -> buf.append("t$t-$i") } }.also { it.start() }
+        }
+        threads.forEach { it.join() }
+        assertEquals(800, buf.snapshot().size)
+        assertEquals(800, notified.get())
+        assertEquals(800, buf.snapshot().toSet().size)
+    }
 }

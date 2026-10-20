@@ -1,14 +1,19 @@
+import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/core/theme/motion.dart';
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/warp_config_service.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
 import 'package:clashmiao/features/config/data/backup_service.dart';
+import 'package:clashmiao/features/config/presentation/backup_messages.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:clashmiao/shared/components/agreement_modal.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -22,8 +27,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-enum _ServiceMode { proxy, systemProxy, tun }
 
 const _logLevelChoices = ['trace', 'debug', 'info', 'warn'];
 const _regionChoices = ['ir', 'cn', 'ru', 'af', 'id', 'other'];
@@ -135,24 +138,19 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 24),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    t.config.pageTitle,
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.onSurface,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
+              // 与其它页同一个 PageHeader：标题可折行，大字号 / 窄屏下右侧胶囊
+              // 按钮不被挤出屏。
+              PageHeader(
+                title: t.config.pageTitle,
+                actions: [
                   _HeaderControlPill(
                     onMore: () => showAiUiModal<void>(
                       context: context,
                       builder: (_) => const _ConfigOptionsActionsModal(),
                     ),
                     onClose: () => Navigator.of(context).maybePop(),
+                    moreLabel: t.general.showMore,
+                    closeLabel: t.general.close,
                   ),
                 ],
               ),
@@ -163,7 +161,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                   child: Column(
                     children: [
                       TipCard(message: t.settings.experimentalMsg)
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(duration: 400.ms)
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 16),
@@ -239,7 +237,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 100.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -298,7 +296,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 200.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -306,29 +304,54 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             icon: FluentIcons.box_arrow_left_24_regular,
                             iconColor: Colors.orange,
                             children: [
-                              _ChoiceTile<_ServiceMode>(
-                                title: t.config.serviceMode,
-                                subtitle: _presentServiceMode(t, settings),
-                                icon: FluentIcons.settings_24_regular,
-                                selected: _serviceModeOf(settings),
-                                choices: _serviceModeChoices,
-                                itemLabel: (value) =>
-                                    _serviceModeLabel(t, value),
-                                itemIcon: (value) => switch (value) {
-                                  _ServiceMode.proxy =>
-                                    FluentIcons.plug_disconnected_24_regular,
-                                  _ServiceMode.systemProxy =>
-                                    FluentIcons.globe_search_24_regular,
-                                  _ServiceMode.tun =>
-                                    FluentIcons.arrow_routing_24_regular,
-                                },
-                                onSelected: (value) =>
-                                    _setServiceMode(ref, context, t, value),
-                              ),
-                              // 桌面端只做到"系统代理级接管"，不遵循系统代理
-                              // 的程序会直连、暴露真实 IP。这是当前架构的边界，
-                              // 作为 VPN 产品必须让用户知道，不能藏着。
-                              if (!Platform.isAndroid && !Platform.isIOS)
+                              // 只有一档的平台（iOS 恒为 VPN）不给选择器，只展示
+                              // 当前值并说明边界——点开一个只有一个选项的列表
+                              // 本身就是假入口。
+                              if (serviceModeIsFixed) ...[
+                                _BasePreferenceTile(
+                                  title: t.config.serviceMode,
+                                  subtitle: _presentServiceMode(t, settings),
+                                  icon: FluentIcons.settings_24_regular,
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
+                                  ),
+                                  child: TipCard(
+                                    message: t.config.serviceModeIosVpnOnly,
+                                  ),
+                                ),
+                              ] else
+                                _ChoiceTile<ServiceMode>(
+                                  title: t.config.serviceMode,
+                                  subtitle: _presentServiceMode(t, settings),
+                                  icon: FluentIcons.settings_24_regular,
+                                  selected: serviceModeOf(settings),
+                                  choices: serviceModeChoices(settings),
+                                  itemLabel: (value) =>
+                                      _serviceModeLabel(t, value),
+                                  itemIcon: (value) => switch (value) {
+                                    ServiceMode.proxyOnly =>
+                                      FluentIcons.plug_disconnected_24_regular,
+                                    ServiceMode.systemProxy =>
+                                      FluentIcons.globe_search_24_regular,
+                                    ServiceMode.vpn =>
+                                      FluentIcons.arrow_routing_24_regular,
+                                  },
+                                  onSelected: (value) => applyServiceMode(
+                                    ref.read(networkSettingsProvider.notifier),
+                                    value,
+                                  ),
+                                ),
+                              // 桌面端（未开 TUN 时）只做到"系统代理级接管"，
+                              // 不遵循系统代理的程序会直连、暴露真实 IP。这是
+                              // 当前架构的边界，作为 VPN 产品必须让用户知道。
+                              if (serviceModePlatform ==
+                                      ServiceModePlatform.desktop &&
+                                  !kernelEnableTun(settings))
                                 Padding(
                                   padding: const EdgeInsets.fromLTRB(
                                     16,
@@ -340,27 +363,31 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                                     message: t.config.desktopProxyScopeNotice,
                                   ),
                                 ),
-                              _ConfigSwitchTile(
-                                title: t.config.strictRoute,
-                                value: settings.strictRoute,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setStrictRoute(value),
-                                icon: FluentIcons.prohibited_24_regular,
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.config.tunImplementation,
-                                subtitle: settings.tunImplementation,
-                                icon: FluentIcons.keyboard_24_regular,
-                                selected: settings.tunImplementation,
-                                choices: _tunImplementationChoices,
-                                itemLabel: (value) => value,
-                                itemIcon: (_) =>
-                                    FluentIcons.keyboard_24_regular,
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setTunImplementation(value),
-                              ),
+                              // 严格路由与 TUN 实现只对 TUN 起作用：内核不以 TUN
+                              // 运行时（Android「仅线路」、桌面未开 TUN）不展示。
+                              if (tunSettingsTakeEffect(settings)) ...[
+                                _ConfigSwitchTile(
+                                  title: t.config.strictRoute,
+                                  value: settings.strictRoute,
+                                  onChanged: (value) => ref
+                                      .read(networkSettingsProvider.notifier)
+                                      .setStrictRoute(value),
+                                  icon: FluentIcons.prohibited_24_regular,
+                                ),
+                                _ChoiceTile<String>(
+                                  title: t.config.tunImplementation,
+                                  subtitle: settings.tunImplementation,
+                                  icon: FluentIcons.keyboard_24_regular,
+                                  selected: settings.tunImplementation,
+                                  choices: _tunImplementationChoices,
+                                  itemLabel: (value) => value,
+                                  itemIcon: (_) =>
+                                      FluentIcons.keyboard_24_regular,
+                                  onSelected: (value) => ref
+                                      .read(networkSettingsProvider.notifier)
+                                      .setTunImplementation(value),
+                                ),
+                              ],
                               _ValueTile(
                                 title: t.config.mixedPort,
                                 subtitle: '${settings.mixedPort}',
@@ -380,7 +407,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 300.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -413,7 +440,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 400.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -422,7 +449,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                             iconColor: Colors.indigo,
                             children: const [_WarpOptionsTiles()],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 500.ms)
                           .slideY(begin: 0.1, end: 0),
                       _ConfigGroup(
@@ -451,7 +478,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                               ),
                             ],
                           )
-                          .animate()
+                          .animateWithMotion(context)
                           .fadeIn(delay: 600.ms)
                           .slideY(begin: 0.1, end: 0),
                       const SizedBox(height: 120),
@@ -467,34 +494,18 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
   }
 }
 
-/// 桌面端**没有** TUN 档：仓库里不带 wintun 驱动，macOS 的 entitlements 也只有
-/// `network.client/server`，既没有网络扩展权限、也没有特权 helper。选了 TUN
-/// 只会让内核起 tun 设备失败——给用户一个必定失败的选项，比不给这个选项糟糕。
-///
-/// 桌面因此只做到"系统代理级接管"，泄漏面（不遵循系统代理的程序会直连）
-/// 由 `t.config.desktopProxyScopeNotice` 明确告知，不藏着。
-List<_ServiceMode> get _serviceModeChoices {
-  if (Platform.isIOS || Platform.isAndroid) {
-    return const [_ServiceMode.proxy, _ServiceMode.tun];
-  }
-  return const [_ServiceMode.proxy, _ServiceMode.systemProxy];
-}
-
-_ServiceMode _serviceModeOf(NetworkSettings settings) {
-  if (settings.enableTun) return _ServiceMode.tun;
-  if (settings.setSystemProxy) return _ServiceMode.systemProxy;
-  return _ServiceMode.proxy;
-}
+// 档位与选中态：service_mode.dart 的 [serviceModeChoices] / [serviceModeOf]
+// （与快速设置弹层同一口径）。
 
 String _presentServiceMode(TranslationsEn t, NetworkSettings settings) {
-  return _serviceModeLabel(t, _serviceModeOf(settings));
+  return _serviceModeLabel(t, serviceModeOf(settings));
 }
 
-String _serviceModeLabel(TranslationsEn t, _ServiceMode mode) {
+String _serviceModeLabel(TranslationsEn t, ServiceMode mode) {
   return switch (mode) {
-    _ServiceMode.proxy => t.config.serviceModes.proxy,
-    _ServiceMode.systemProxy => t.config.serviceModes.systemProxy,
-    _ServiceMode.tun => t.config.serviceModes.tun,
+    ServiceMode.proxyOnly => t.config.serviceModes.proxy,
+    ServiceMode.systemProxy => t.config.serviceModes.systemProxy,
+    ServiceMode.vpn => t.config.serviceModes.tun,
   };
 }
 
@@ -532,29 +543,6 @@ Future<void> _setRegion(WidgetRef ref, String value) async {
   await notifier.setDirectDnsAddress(value == 'cn' ? '223.5.5.5' : '1.1.1.1');
 }
 
-Future<void> _setServiceMode(
-  WidgetRef ref,
-  BuildContext context,
-  TranslationsEn t,
-  _ServiceMode mode,
-) async {
-  final notifier = ref.read(networkSettingsProvider.notifier);
-  switch (mode) {
-    case _ServiceMode.proxy:
-      await notifier.setEnableTun(false);
-      await notifier.setSystemProxy(false);
-    case _ServiceMode.systemProxy:
-      await notifier.setEnableTun(false);
-      await notifier.setSystemProxy(true);
-    case _ServiceMode.tun:
-      if (!Platform.isAndroid && !Platform.isIOS) {
-        AppToast.info(context, t.settings.adminPrivilegesRequired);
-      }
-      await notifier.setSystemProxy(false);
-      await notifier.setEnableTun(true);
-  }
-}
-
 void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
   final current = ref.read(networkSettingsProvider).mixedPort;
   final controller = TextEditingController(text: '$current');
@@ -569,7 +557,7 @@ void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
       final raw = controller.text.trim();
       final port = int.tryParse(raw);
       if (port == null || port < 1024 || port > 65535) {
-        AppToast.error(context, '端口范围 1024-65535');
+        AppToast.error(context, t.config.portRangeError);
         return false;
       }
       await ref.read(networkSettingsProvider.notifier).setMixedPort(port);
@@ -591,7 +579,7 @@ void _showDnsEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
     onConfirm: () async {
       final address = controller.text.trim();
       if (address.isEmpty) {
-        AppToast.error(context, 'DNS 地址不能为空');
+        AppToast.error(context, t.config.dnsEmptyError);
         return false;
       }
       await ref
@@ -619,7 +607,7 @@ void _showDirectDnsEditor(
     onConfirm: () async {
       final address = controller.text.trim();
       if (address.isEmpty) {
-        AppToast.error(context, 'DNS 地址不能为空');
+        AppToast.error(context, t.config.dnsEmptyError);
         return false;
       }
       await ref
@@ -646,7 +634,7 @@ void _showTlsFragmentSizeEditor(
     onConfirm: () async {
       final range = controller.text.trim();
       if (!_isOptionalRange(range)) {
-        AppToast.error(context, '请输入数字或范围，例如 10-30');
+        AppToast.error(context, t.config.rangeFormatError);
         return false;
       }
       await ref
@@ -678,7 +666,7 @@ void _showConnectionTestUrlEditor(
       final url = controller.text.trim();
       final uri = Uri.tryParse(url);
       if (uri == null || !(uri.scheme == 'http' || uri.scheme == 'https')) {
-        AppToast.error(context, 'URL 必须以 http:// 或 https:// 开头');
+        AppToast.error(context, t.config.urlSchemeError);
         return false;
       }
       await ref
@@ -812,7 +800,7 @@ void _showWarpPortEditor(
     onConfirm: () async {
       final port = int.tryParse(controller.text.trim());
       if (port == null || port < 1024 || port > 65535) {
-        AppToast.error(context, '端口范围 1024-65535');
+        AppToast.error(context, t.config.portRangeError);
         return false;
       }
       await ref.read(networkSettingsProvider.notifier).setWarpPort(port);
@@ -859,9 +847,18 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
       await ref
           .read(warpConfigServiceProvider)
           .generateAndStore(licenseKey: settings.warpLicenseKey);
-      if (mounted) AppToast.success(context, 'WARP 配置生成成功');
-    } catch (e) {
-      if (mounted) AppToast.error(context, 'WARP 配置生成失败: $e');
+      if (!mounted) return;
+      AppToast.success(
+        context,
+        ref.read(translationsProvider).config.warpConfigGenerated,
+      );
+    } catch (e, st) {
+      logAppFailure('config.generateWarp', e, st);
+      if (!mounted) return;
+      AppToast.error(
+        context,
+        ref.read(translationsProvider).config.warpConfigFailed,
+      );
     } finally {
       if (mounted) setState(() => _generating = false);
     }
@@ -904,11 +901,7 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
           ),
           enabled: canChangeOptions && !_generating,
           trailing: _generating
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
+              ? const SizedBox(width: 16, height: 16, child: MotionProgress())
               : const Icon(FluentIcons.chevron_right_16_regular, size: 16),
           contentPadding: const EdgeInsets.symmetric(horizontal: 24),
           onTap: (canChangeOptions && !_generating)
@@ -1009,18 +1002,29 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
 }
 
 class _HeaderControlPill extends StatelessWidget {
-  const _HeaderControlPill({required this.onMore, required this.onClose});
+  const _HeaderControlPill({
+    required this.onMore,
+    required this.onClose,
+    required this.moreLabel,
+    required this.closeLabel,
+  });
 
   final VoidCallback onMore;
   final VoidCallback onClose;
 
+  /// 两颗图标按钮的无障碍标签 / 提示文字（i18n）。
+  final String moreLabel;
+  final String closeLabel;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 44,
+      // 48 dp 高：两颗按钮各有 ≥48×48 的交互区（Android 最小触控目标）。
+      // 外框含上下各 1 dp 描边，所以外框 50、内部按钮 48。
+      height: kMinInteractiveDimension + 2,
       decoration: BoxDecoration(
         color: Theme.of(context).aiUi.glassColor,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(25),
         border: Border.all(color: Theme.of(context).aiUi.borderColor),
         boxShadow: Theme.of(context).aiUi.cardShadow,
       ),
@@ -1032,6 +1036,7 @@ class _HeaderControlPill extends StatelessWidget {
               apple: FluentIcons.more_horizontal_24_regular,
               other: FluentIcons.more_vertical_24_regular,
             ),
+            label: moreLabel,
             onTap: onMore,
           ),
           Container(
@@ -1041,6 +1046,7 @@ class _HeaderControlPill extends StatelessWidget {
           ),
           _PillButton(
             icon: FluentIcons.dismiss_24_regular,
+            label: closeLabel,
             onTap: onClose,
             isDestructive: true,
           ),
@@ -1053,28 +1059,40 @@ class _HeaderControlPill extends StatelessWidget {
 class _PillButton extends StatelessWidget {
   const _PillButton({
     required this.icon,
+    required this.label,
     required this.onTap,
     this.isDestructive = false,
   });
 
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final bool isDestructive;
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Semantics(
+      label: label,
+      button: true,
+      excludeSemantics: true,
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
-      child: SizedBox(
-        width: 52,
-        height: 44,
-        child: Icon(
-          icon,
-          size: 20,
-          color: isDestructive
-              ? Colors.red.withValues(alpha: 0.8)
-              : Theme.of(context).aiUi.secondaryTextColor,
+      child: Tooltip(
+        message: label,
+        excludeFromSemantics: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: SizedBox(
+            width: 52,
+            height: kMinInteractiveDimension,
+            child: Icon(
+              icon,
+              size: 20,
+              color: isDestructive
+                  ? Colors.red.withValues(alpha: 0.8)
+                  : Theme.of(context).aiUi.secondaryTextColor,
+            ),
+          ),
         ),
       ),
     );
@@ -1131,14 +1149,17 @@ class _ConfigGroup extends StatelessWidget {
                     ),
                     const SizedBox(width: 12),
                   ],
-                  Text(
-                    title.toUpperCase(),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                      fontFamily: 'monospace',
-                      color: Theme.of(context).aiUi.secondaryTextColor,
+                  // Expanded：组标题放大后换行，不把整行撑出卡片。
+                  Expanded(
+                    child: Text(
+                      title.toUpperCase(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.2,
+                        fontFamily: 'monospace',
+                        color: Theme.of(context).aiUi.secondaryTextColor,
+                      ),
                     ),
                   ),
                 ],
@@ -1236,14 +1257,16 @@ class _BasePreferenceTile extends StatelessWidget {
   const _BasePreferenceTile({
     required this.title,
     required this.subtitle,
-    required this.onTap,
+    this.onTap,
     this.icon,
     this.enabled = true,
   });
 
   final String title;
   final String subtitle;
-  final VoidCallback onTap;
+
+  /// null = 只读展示：不可点、没有箭头。
+  final VoidCallback? onTap;
   final IconData? icon;
   final bool enabled;
 
@@ -1289,13 +1312,14 @@ class _BasePreferenceTile extends StatelessWidget {
                   ],
                 ),
               ),
-              Icon(
-                FluentIcons.chevron_right_24_regular,
-                size: 16,
-                color: Theme.of(
-                  context,
-                ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
-              ),
+              if (onTap != null)
+                Icon(
+                  FluentIcons.chevron_right_24_regular,
+                  size: 16,
+                  color: Theme.of(
+                    context,
+                  ).aiUi.secondaryTextColor.withValues(alpha: 0.5),
+                ),
             ],
           ),
         ),
@@ -1356,7 +1380,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                   child: Text(
-                    '更多选项',
+                    t.general.moreOptions,
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                       letterSpacing: -0.5,
@@ -1423,14 +1447,23 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.arrow_upload_20_regular,
-                  label: '导出备份',
+                  label: t.settings.backup.exportAction,
                   onTap: () async {
+                    final container = ProviderScope.containerOf(context);
+                    final navContext = Navigator.of(
+                      context,
+                      rootNavigator: true,
+                    ).context;
                     Navigator.pop(context);
                     try {
-                      await BackupService.export(ref);
-                    } catch (e) {
-                      if (context.mounted) {
-                        AppToast.error(context, '导出失败: $e');
+                      await BackupService.export(container);
+                    } catch (e, st) {
+                      logAppFailure('backup.export', e, st);
+                      if (navContext.mounted) {
+                        AppToast.error(
+                          navContext,
+                          t.settings.backup.exportFailed,
+                        );
                       }
                     }
                   },
@@ -1438,25 +1471,13 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.arrow_download_20_regular,
-                  label: '导入备份',
-                  onTap: () async {
-                    Navigator.pop(context);
-                    try {
-                      final msg = await BackupService.import(ref);
-                      if (msg != null && context.mounted) {
-                        AppToast.success(context, msg);
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        AppToast.error(context, '导入失败: $e');
-                      }
-                    }
-                  },
+                  label: t.settings.backup.importAction,
+                  onTap: () => _importBackup(context, ref),
                 ),
                 const SizedBox(height: 4),
                 _ActionTile(
                   icon: FluentIcons.database_20_regular,
-                  label: '规则库管理',
+                  label: t.config.manageRuleAssets,
                   onTap: () {
                     Navigator.pop(context);
                     Navigator.of(context).push(
@@ -1499,6 +1520,51 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
   }
 }
 
+/// 导入备份：选文件并完整校验 → 弹确认（含「本机不在备份中的订阅会被移除」）→
+/// 应用 → 提示结果。选文件与确认都在底部菜单还开着时做，确认之后才关菜单；
+/// 之后的提示用根导航器的 context，不依赖已销毁的菜单。
+Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
+  final container = ProviderScope.containerOf(context);
+  final navContext = Navigator.of(context, rootNavigator: true).context;
+  final t = ref.read(translationsProvider);
+
+  final PreparedImport? prepared;
+  try {
+    prepared = await BackupService.pickAndPrepare(container);
+  } catch (e, st) {
+    logAppFailure('backup.pick', e, st);
+    if (context.mounted) Navigator.pop(context);
+    if (navContext.mounted) {
+      AppToast.error(navContext, BackupMessages.error(t, e));
+    }
+    return;
+  }
+  if (prepared == null) {
+    if (context.mounted) Navigator.pop(context);
+    return;
+  }
+  if (!context.mounted) return;
+  final confirmed = await showConfirmationDialog(
+    context,
+    title: t.settings.backup.importConfirmTitle,
+    message: BackupMessages.confirm(t, prepared),
+  );
+  if (context.mounted) Navigator.pop(context);
+  if (!confirmed) return;
+
+  try {
+    final outcome = await BackupService.apply(container, prepared);
+    if (navContext.mounted) {
+      AppToast.success(navContext, BackupMessages.report(t, outcome.report));
+    }
+  } catch (e, st) {
+    logAppFailure('backup.apply', e, st);
+    if (navContext.mounted) {
+      AppToast.error(navContext, BackupMessages.error(t, e));
+    }
+  }
+}
+
 /// "从剪贴板导入选项"：读剪贴板文本，交给
 /// [NetworkSettingsNotifier.importJson] 解析 + 逐字段写入，再把结果转成一条
 /// toast。解析/校验逻辑都在 notifier 里（可独立单测），这里只管剪贴板 I/O
@@ -1507,10 +1573,11 @@ Future<void> _importNetworkSettingsFromClipboard(
   BuildContext context,
   WidgetRef ref,
 ) async {
+  final t = ref.read(translationsProvider);
   final data = await Clipboard.getData(Clipboard.kTextPlain);
   final text = data?.text;
   if (text == null || text.trim().isEmpty) {
-    if (context.mounted) AppToast.error(context, '剪贴板为空');
+    if (context.mounted) AppToast.error(context, t.general.clipboardEmpty);
     return;
   }
 
@@ -1520,17 +1587,19 @@ Future<void> _importNetworkSettingsFromClipboard(
   if (!context.mounted) return;
 
   if (result.hasParseError) {
-    AppToast.error(context, result.parseError!);
+    AppToast.error(context, t.settings.importOptionsInvalid);
     return;
   }
   if (result.appliedKeys.isEmpty) {
-    AppToast.error(context, '未识别到可导入的配置项');
+    AppToast.error(context, t.settings.importOptionsNothing);
     return;
   }
   final message = result.skippedKeys.isEmpty
-      ? '已导入 ${result.appliedKeys.length} 项配置'
-      : '已导入 ${result.appliedKeys.length} 项配置，'
-            '${result.skippedKeys.length} 项因格式无效被跳过';
+      ? t.settings.importOptionsDone(count: result.appliedKeys.length)
+      : t.settings.importOptionsPartial(
+          applied: result.appliedKeys.length,
+          skipped: result.skippedKeys.length,
+        );
   AppToast.success(context, message);
 }
 
@@ -1641,7 +1710,7 @@ class _ActionTile extends StatelessWidget {
             Icon(
               FluentIcons.chevron_right_24_regular,
               size: 16,
-              color: theme.aiUi.secondaryTextColor.withValues(alpha: 0.3),
+              color: theme.aiUi.secondaryTextColor,
             ),
           ],
         ),

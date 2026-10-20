@@ -41,9 +41,19 @@ void main() {
       expect(p.name, '%E4%BD');
     });
 
-    test('全部都缺 fallback 到 "远程订阅"', () {
-      final p = ProfileParser.parse('https://example.com/', {});
-      expect(p.name, '远程订阅');
+    test('全部都缺：fallback 到调用方给的默认名（不给则英文兜底）', () {
+      expect(
+        ProfileParser.parse(
+          'https://example.com/',
+          {},
+          fallbackName: '远程订阅',
+        ).name,
+        '远程订阅',
+      );
+      expect(
+        ProfileParser.parse('https://example.com/', {}).name,
+        'Remote subscription',
+      );
     });
   });
 }

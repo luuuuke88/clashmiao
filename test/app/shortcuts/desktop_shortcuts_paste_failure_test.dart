@@ -27,7 +27,7 @@ void main() {
       addTearDown(() async {
         await deleteTempDirBestEffort(tmpDir);
       });
-      SharedPreferences.setMockInitialValues({});
+      SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
       final prefs = await SharedPreferences.getInstance();
 
       // 这条要用不特判 StubBoxService 的假 BoxService，见
@@ -62,9 +62,9 @@ void main() {
       );
       await pressPaste(tester, meta: true);
       await done.future.timeout(const Duration(seconds: 10));
-      await pumpUntilFound(tester, find.textContaining('导入失败'));
+      await pumpUntilFound(tester, find.textContaining('添加配置文件失败'));
 
-      expect(find.textContaining('导入失败'), findsOneWidget);
+      expect(find.textContaining('添加配置文件失败'), findsOneWidget);
       final profiles = await container.read(profileListProvider.future);
       expect(profiles, isEmpty);
 

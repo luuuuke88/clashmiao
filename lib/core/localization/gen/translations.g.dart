@@ -4,9 +4,9 @@
 /// To regenerate, run: `dart run slang`
 ///
 /// Locales: 10
-/// Strings: 3910 (391 per locale)
+/// Strings: 4810 (481 per locale)
 ///
-/// Built on 2026-07-29 at 04:30 UTC
+/// Built on 2026-10-20 at 00:45 UTC
 
 // coverage:ignore-file
 // ignore_for_file: type=lint
@@ -162,6 +162,11 @@ class TranslationsGeneralEn {
   String get grantPermission => 'Grant Permission';
   String get underDevelopment => 'Under Development';
   String get confirm => 'Confirm';
+  String get close => 'Close';
+  String get cancel => 'Cancel';
+  String get clipboardEmpty => 'Clipboard is empty';
+  String get clipboardReadFailed => 'Couldn\'t read the clipboard';
+  String get moreOptions => 'More options';
 }
 
 // Path: intro
@@ -202,6 +207,11 @@ class TranslationsHomeEn {
   String get degradedMsg =>
       'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
   String get degradedRetry => 'Check again';
+  late final TranslationsHomeEgressIpEn egressIp = TranslationsHomeEgressIpEn._(
+    _root,
+  );
+  String get emptyProfilesHint => 'Tap the button below to get started';
+  String get noActiveProfileTitle => 'No profile selected';
 }
 
 // Path: stats
@@ -221,6 +231,8 @@ class TranslationsStatsEn {
   String get connection => 'Connection';
   String get speed => 'Speed';
   String get totalTransferred => 'Total Transferred';
+  String get sessionTraffic => 'Session traffic';
+  String get downloadSpeed => 'Download speed';
 }
 
 // Path: profile
@@ -267,6 +279,9 @@ class TranslationsProfileEn {
   late final TranslationsProfileDetailsFormEn detailsForm =
       TranslationsProfileDetailsFormEn._(_root);
   String get remoteProfile => 'Remote Profile';
+  String get defaultLocalName => 'Local import';
+  String get defaultDeepLinkName => 'Link import';
+  String get switchFailedMsg => 'Couldn\'t switch profile';
 }
 
 // Path: proxies
@@ -295,12 +310,16 @@ class TranslationsProxiesEn {
   String testingDelayInfo({required Object name}) =>
       'Testing delay for: ${name}';
   String switchedTo({required Object name}) => 'Switched to ${name}';
-  String switchToFailed({required Object error}) =>
-      'Failed to switch: ${error}';
+  String get switchFailed => 'Couldn\'t switch the server. Please try again.';
+  String get testFailed => 'Latency test failed. Please try again.';
+  String get groupsLoading =>
+      'Server list is still loading. Please try again in a moment.';
   String get connectBeforeSwitch => 'Please connect before switching lines';
   String startDelayTestForGroups({required Object count}) =>
       'Started delay test for ${count} lines';
   String get delayTestBtn => 'Delay';
+  String get delayTimeout => 'Timeout';
+  String get connectBeforeTest => 'Connect first to test delay';
   String lineCount({required Object count}) => '${count} lines';
   String get manualSelect => 'Manual Select';
   String get autoTest => 'Auto Test';
@@ -325,6 +344,9 @@ class TranslationsLogsEn {
   String get logsCopied => 'Logs copied';
   String get logsUnderDevelopment => 'Log feature is under development';
   String get noLogsWhenDisconnected => 'Not connected, no logs';
+  String get loadFailed => 'Couldn\'t load logs';
+  String get empty => 'No logs yet';
+  String get clearFailed => 'Couldn\'t clear logs';
 }
 
 // Path: settings
@@ -344,6 +366,8 @@ class TranslationsSettingsEn {
   String get importOptions => 'Import Options From Clipboard';
   String get importOptionsMsg =>
       'This will rewrite all config options with provided values. Are you sure?';
+  late final TranslationsSettingsBackupEn backup =
+      TranslationsSettingsBackupEn._(_root);
   late final TranslationsSettingsGeneralEn general =
       TranslationsSettingsGeneralEn._(_root);
   late final TranslationsSettingsAdvancedEn advanced =
@@ -358,6 +382,18 @@ class TranslationsSettingsEn {
   String get adminPrivilegesRequired =>
       'Administrator privileges required on macOS';
   String get portChangeNotice => 'Port changes require reconnect to apply';
+  late final TranslationsSettingsGroupsEn groups =
+      TranslationsSettingsGroupsEn._(_root);
+  String get importOptionsInvalid =>
+      'The clipboard doesn\'t contain valid settings JSON';
+  String get importOptionsNothing => 'No importable settings found';
+  String importOptionsDone({required Object count}) =>
+      'Imported ${count} settings';
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'Imported ${applied} settings; ${skipped} were skipped because they were invalid';
 }
 
 // Path: about
@@ -376,6 +412,7 @@ class TranslationsAboutEn {
   String get termsAndConditions => 'Terms and Conditions';
   String get appDescription =>
       'A cross-platform proxy client based on sing-box core';
+  String get openSourceLicenses => 'Open-source licenses';
 }
 
 // Path: appUpdate
@@ -394,6 +431,8 @@ class TranslationsAppUpdateEn {
   String get updateNowBtnTxt => 'Update Now';
   String get laterBtnTxt => 'Later';
   String get ignoreBtnTxt => 'Ignore';
+  String get checkFailedMsg =>
+      'Couldn\'t check for updates. Check your network and try again.';
 }
 
 // Path: tray
@@ -410,6 +449,7 @@ class TranslationsTrayEn {
   late final TranslationsTrayStatusEn status = TranslationsTrayStatusEn._(
     _root,
   );
+  String get proxyModeMenu => 'Proxy Mode';
 }
 
 // Path: failure
@@ -433,6 +473,8 @@ class TranslationsFailureEn {
       TranslationsFailureConnectionEn._(_root);
   late final TranslationsFailureGeoAssetsEn geoAssets =
       TranslationsFailureGeoAssetsEn._(_root);
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -447,7 +489,7 @@ class TranslationsConnectionEn {
   String get disconnecting => 'Disconnecting';
   String get connected => 'Connected';
   String get reconnect => 'Reconnect';
-  String get connectAnyWay => 'Connect';
+  String get connectAnyWay => 'Connect Anyway';
   String get experimentalNotice => 'Experimental Features In Use';
   String get experimentalNoticeMsg =>
       'You\'ve enabled some experimental features which might affect connection quality and cause unexpected errors. You can always change or reset these options from Config options page.';
@@ -520,6 +562,8 @@ class TranslationsConfigEn {
   String get muxProtocol => 'Mux Protocol';
   String get muxMaxStreams => 'Max Concurrent Streams';
   String get enableWarp => 'Enable WARP';
+  String get setUpWarp => 'Set up WARP';
+  String get warpNotConfigured => 'Not configured';
   String get warpDetourMode => 'Detour Mode';
   late final TranslationsConfigWarpDetourModesEn warpDetourModes =
       TranslationsConfigWarpDetourModesEn._(_root);
@@ -532,6 +576,15 @@ class TranslationsConfigEn {
   String get warpNoiseDelay => 'Noise Delay';
   String get desktopProxyScopeNotice =>
       'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
+  String get serviceModeIosVpnOnly => 'iOS supports VPN mode only';
+  String get warpGenerating => 'Generating WARP configuration…';
+  String get warpConfigFailed =>
+      'Couldn\'t generate the WARP configuration. Please try again later.';
+  String get portRangeError => 'Port must be between 1024 and 65535';
+  String get dnsEmptyError => 'DNS address can\'t be empty';
+  String get rangeFormatError => 'Enter a number or a range, e.g. 10-30';
+  String get urlSchemeError => 'URL must start with http:// or https://';
+  String get manageRuleAssets => 'Manage rule sets';
 }
 
 // Path: general.toggle
@@ -564,6 +617,20 @@ class TranslationsHomeRoutingModeEn {
   // Translations
   String get global => 'Global Proxy';
   String get smart => 'Smart Routing';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get label => 'Egress IP';
+  String get notConnected => 'Connect to show egress IP';
+  String get tapToCheck => 'Tap to check egress IP';
+  String get checking => 'Checking…';
+  String get failedRetry => 'Check failed, tap to retry';
 }
 
 // Path: profile.subscription
@@ -635,6 +702,12 @@ class TranslationsProfileAddEn {
   String get addingWarpMsg => 'Please wait while we register WARP.';
   String get addingProfileMsg => 'Adding Profile';
   String get failureMsg => 'Failed to Add Profile';
+  String importedNamed({required Object name}) =>
+      'Imported subscription: ${name}';
+  String get clipboardEmpty => 'The clipboard is empty, nothing to import';
+  String get deepLinkMissingUrl => 'The link has no subscription address';
+  String get successMsg => 'Profile added';
+  String get nameAutoHint => 'Detected automatically (optional)';
 }
 
 // Path: profile.details
@@ -724,6 +797,9 @@ class TranslationsProfileDeleteEn {
   String get buttonTxt => 'Delete';
   String get confirmationMsg => 'Delete Profile Permanently?';
   String get successMsg => 'Profile Deleted Successfully';
+  String get confirmTitle => 'Delete profile';
+  String namedConfirmMsg({required Object name}) =>
+      'Delete "${name}"? This can\'t be undone.';
 }
 
 // Path: profile.save
@@ -759,6 +835,9 @@ class TranslationsProfileDetailsFormEn {
   String get mux => 'Mux';
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  String get updateIntervalOff => 'Off';
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: proxies.sortOptions
@@ -783,6 +862,8 @@ class TranslationsProxiesDelaySemanticsEn {
   String result({required Object delay}) => 'Delay: ${delay}ms';
   String get timeout => 'Delay Test Timeout';
   String get testing => 'Delay: Testing...';
+  String get untested => 'Delay: Not tested';
+  String stale({required Object delay}) => 'Delay: ${delay}ms (earlier result)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -794,6 +875,62 @@ class TranslationsProxiesIpInfoSemanticsEn {
   // Translations
   String get address => 'IP Address';
   String get country => 'Country';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get importConfirmTitle => 'Import Backup';
+  String get importConfirmMsg =>
+      'This replaces your subscriptions with the ones in the backup and applies the backup\'s settings. A snapshot of the current data is saved first and restored automatically if the import fails.';
+  String importRemovesMsg({required Object count}) =>
+      '${count} subscription(s) on this device are not in the backup and will be removed.';
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Imported ${profiles} subscription(s) and ${settings} setting(s).';
+  String reportDropped({required Object count}) =>
+      '${count} subscription(s) in the backup were skipped because their data was invalid.';
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} setting(s) were skipped; your current values are kept.';
+  String get reportWarpOff =>
+      'WARP was turned off by the import. Re-enable it on this device.';
+  String reportBackfill({required Object count}) =>
+      '${count} subscription(s) will be downloaded in the background.';
+  String get errInvalidFile => 'This is not a valid ClashMiao backup file.';
+  String get errUnsupportedVersion => 'This backup format is not supported.';
+  String get errNewerSchema =>
+      'This backup was created by a newer version of the app. Please upgrade the app first.';
+  String get errNoUsableProfiles =>
+      'None of the subscriptions in this backup can be imported.';
+  String get errSnapshotFailed =>
+      'Could not save a snapshot of the current data, so nothing was changed.';
+  String get errUnresolvedPrevious =>
+      'A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.';
+  String get errRolledBack =>
+      'Import failed. Your previous data has been restored.';
+  String errNotRolledBack({required Object path}) =>
+      'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
+  String get errFailed => 'Import failed.';
+  String get errBusy =>
+      'Another import is already running. Please wait for it to finish.';
+  String get recoveryFailedTitle => 'Automatic restore did not finish';
+  String get recoveryFailedMsg =>
+      'The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.';
+  String get recoveryUnrecoverableTitle =>
+      'Interrupted import could not be undone';
+  String get recoveryUnrecoverableMsg =>
+      'The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.';
+  String get recoveryRetry => 'Retry';
+  String get recoveryClose => 'Close';
+  String get recoveryRetried =>
+      'Your data was restored to before the interrupted import.';
+  String get exportAction => 'Export backup';
+  String get importAction => 'Import backup';
+  String get exportFailed => 'Couldn\'t export the backup';
+  String get shareText => 'ClashMiao backup';
 }
 
 // Path: settings.general
@@ -888,6 +1025,18 @@ class TranslationsSettingsGeoAssetsEn {
       'Selected Routing Assets\' files are missing. Either download them or choose existing ones';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEn._(this._root);
+
+  final Translations _root; // ignore: unused_field
+
+  // Translations
+  String get general => 'General';
+  String get connection => 'Connection';
+  String get privacy => 'Privacy';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusEn {
   TranslationsTrayStatusEn._(this._root);
@@ -933,6 +1082,9 @@ class TranslationsFailureSingboxEn {
   String get create => 'Service Creation Error';
   String get start => 'Service Startup Error';
   String get startTimeout => 'Service Startup Timed Out';
+  String get kernelUnresponsive =>
+      'The core is not responding. Please try again, or restart the app.';
+  String get kernelExited => 'The core exited unexpectedly';
 }
 
 // Path: failure.connectivity
@@ -947,6 +1099,8 @@ class TranslationsFailureConnectivityEn {
   String get missingNotificationPermission => 'Missing Notification Permission';
   String get networkUnavailable => 'Network Unavailable';
   String get core => 'Core Error';
+  String get nativeUnresponsive =>
+      'Lost contact with the background service. Please try again.';
 }
 
 // Path: failure.profiles
@@ -961,6 +1115,8 @@ class TranslationsFailureProfilesEn {
   String get noActive => 'No Active Profile';
   String get invalidConfig => 'Invalid Configs';
   String get invalidUrl => 'Invalid URL';
+  String get readOnlyUpgrade =>
+      'Please upgrade the app before changing subscriptions';
 }
 
 // Path: failure.connection
@@ -1281,6 +1437,16 @@ class TranslationsGeneralAr extends TranslationsGeneralEn {
   String get underDevelopment => 'قيد التطوير';
   @override
   String get confirm => 'تأكيد';
+  @override
+  String get close => 'إغلاق';
+  @override
+  String get cancel => 'إلغاء';
+  @override
+  String get clipboardEmpty => 'الحافظة فارغة';
+  @override
+  String get clipboardReadFailed => 'تعذّرت قراءة الحافظة';
+  @override
+  String get moreOptions => 'خيارات إضافية';
 }
 
 // Path: intro
@@ -1336,6 +1502,14 @@ class TranslationsHomeAr extends TranslationsHomeEn {
       'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
   @override
   String get degradedRetry => 'إعادة الفحص';
+  @override
+  late final TranslationsHomeEgressIpAr egressIp = TranslationsHomeEgressIpAr._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'اضغط على الزر أدناه للبدء';
+  @override
+  String get noActiveProfileTitle => 'لم يتم اختيار ملف تعريف';
 }
 
 // Path: stats
@@ -1366,6 +1540,10 @@ class TranslationsStatsAr extends TranslationsStatsEn {
   String get trafficUsage => 'استخدام البيانات';
   @override
   String get liveSpeed => 'السرعة الحالية';
+  @override
+  String get sessionTraffic => 'حركة البيانات في هذه الجلسة';
+  @override
+  String get downloadSpeed => 'سرعة التنزيل';
 }
 
 // Path: profile
@@ -1433,6 +1611,12 @@ class TranslationsProfileAr extends TranslationsProfileEn {
       TranslationsProfileOverviewAr._(_root);
   @override
   String get remoteProfile => 'اشتراك بعيد';
+  @override
+  String get defaultLocalName => 'استيراد محلي';
+  @override
+  String get defaultDeepLinkName => 'استيراد من رابط';
+  @override
+  String get switchFailedMsg => 'تعذّر تبديل ملف التعريف';
 }
 
 // Path: proxies
@@ -1480,7 +1664,12 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'تم التبديل إلى ${name}';
   @override
-  String switchToFailed({required Object error}) => 'فشل التبديل: ${error}';
+  String get switchFailed => 'تعذّر تبديل الخادم. يُرجى المحاولة مرة أخرى.';
+  @override
+  String get testFailed => 'فشل اختبار زمن الاستجابة. يُرجى المحاولة مرة أخرى.';
+  @override
+  String get groupsLoading =>
+      'لا تزال قائمة الخوادم قيد التحميل. يُرجى المحاولة بعد قليل.';
   @override
   String get connectBeforeSwitch => 'يرجى الاتصال قبل تبديل الخطوط';
   @override
@@ -1488,6 +1677,10 @@ class TranslationsProxiesAr extends TranslationsProxiesEn {
       'بدأ اختبار التأخير لـ ${count} خط';
   @override
   String get delayTestBtn => 'التأخير';
+  @override
+  String get delayTimeout => 'انتهت المهلة';
+  @override
+  String get connectBeforeTest => 'اتصل أولاً لاختبار التأخير';
   @override
   String lineCount({required Object count}) => '${count} خط';
   @override
@@ -1528,6 +1721,12 @@ class TranslationsLogsAr extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'ميزة السجلات قيد التطوير';
   @override
   String get noLogsWhenDisconnected => 'غير متصل، لا توجد سجلات';
+  @override
+  String get loadFailed => 'تعذّر تحميل السجلات';
+  @override
+  String get empty => 'لا توجد سجلات بعد';
+  @override
+  String get clearFailed => 'تعذّر مسح السجلات';
 }
 
 // Path: settings
@@ -1560,6 +1759,9 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'سيؤدي هذا إلى إعادة كتابة جميع خيارات التكوين بالقيم المحددة. هل أنت متأكد؟';
   @override
+  late final TranslationsSettingsBackupAr backup =
+      TranslationsSettingsBackupAr._(_root);
+  @override
   late final TranslationsSettingsGeneralAr general =
       TranslationsSettingsGeneralAr._(_root);
   @override
@@ -1580,6 +1782,23 @@ class TranslationsSettingsAr extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'يتطلب صلاحيات المسؤول على macOS';
   @override
   String get portChangeNotice => 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+  @override
+  late final TranslationsSettingsGroupsAr groups =
+      TranslationsSettingsGroupsAr._(_root);
+  @override
+  String get importOptionsInvalid => 'لا تحتوي الحافظة على JSON إعدادات صالح';
+  @override
+  String get importOptionsNothing =>
+      'لم يتم العثور على إعدادات قابلة للاستيراد';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'تم استيراد ${count} من الإعدادات';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة';
 }
 
 // Path: about
@@ -1607,6 +1826,8 @@ class TranslationsAboutAr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+  @override
+  String get openSourceLicenses => 'تراخيص المصدر المفتوح';
 }
 
 // Path: appUpdate
@@ -1636,6 +1857,9 @@ class TranslationsAppUpdateAr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'لاحقًا';
   @override
   String get ignoreBtnTxt => 'تجاهل';
+  @override
+  String get checkFailedMsg =>
+      'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
 }
 
 // Path: tray
@@ -1658,6 +1882,8 @@ class TranslationsTrayAr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'إخفاء';
+  @override
+  String get proxyModeMenu => 'وضع الوكيل';
 }
 
 // Path: failure
@@ -1691,6 +1917,9 @@ class TranslationsFailureAr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsAr geoAssets =
       TranslationsFailureGeoAssetsAr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -1714,7 +1943,7 @@ class TranslationsConnectionAr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'أعد الاتصال';
   @override
-  String get connectAnyWay => 'اتصل';
+  String get connectAnyWay => 'اتصل على أي حال';
   @override
   String get experimentalNotice => 'ميزات تجريبية قيد الاستخدام';
   @override
@@ -1839,6 +2068,10 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   @override
   String get enableWarp => 'تمكين WARP';
   @override
+  String get setUpWarp => 'إعداد WARP';
+  @override
+  String get warpNotConfigured => 'غير مهيأ';
+  @override
   String get warpDetourMode => 'وضع التفاف';
   @override
   late final TranslationsConfigWarpDetourModesAr warpDetourModes =
@@ -1866,6 +2099,23 @@ class TranslationsConfigAr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
+  @override
+  String get serviceModeIosVpnOnly => 'يدعم iOS وضع VPN فقط';
+  @override
+  String get warpGenerating => 'جارٍ إنشاء إعدادات WARP…';
+  @override
+  String get warpConfigFailed =>
+      'تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.';
+  @override
+  String get portRangeError => 'يجب أن يكون المنفذ بين 1024 و65535';
+  @override
+  String get dnsEmptyError => 'لا يمكن أن يكون عنوان DNS فارغًا';
+  @override
+  String get rangeFormatError => 'أدخل رقمًا أو نطاقًا، مثل 10-30';
+  @override
+  String get urlSchemeError => 'يجب أن يبدأ الرابط بـ http:// أو https://';
+  @override
+  String get manageRuleAssets => 'إدارة مجموعات القواعد';
 }
 
 // Path: general.toggle
@@ -1912,6 +2162,28 @@ class TranslationsHomeRoutingModeAr extends TranslationsHomeRoutingModeEn {
   String get global => 'بروكسي عام';
   @override
   String get smart => 'توجيه ذكي';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpAr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'عنوان IP الخارجي';
+  @override
+  String get notConnected => 'اتصل لعرض عنوان IP الخارجي';
+  @override
+  String get tapToCheck => 'اضغط للتحقق من عنوان IP الخارجي';
+  @override
+  String get checking => 'جارٍ التحقق…';
+  @override
+  String get failedRetry => 'فشل التحقق، اضغط لإعادة المحاولة';
 }
 
 // Path: profile.subscription
@@ -2005,6 +2277,17 @@ class TranslationsProfileAddAr extends TranslationsProfileAddEn {
   String get warpDescription => 'تسريع مجاني عبر Cloudflare WARP';
   @override
   String get addingWarpMsg => 'يرجى الانتظار أثناء تسجيل WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'تم استيراد الاشتراك: ${name}';
+  @override
+  String get clipboardEmpty => 'الحافظة فارغة، لا يوجد ما يمكن استيراده';
+  @override
+  String get deepLinkMissingUrl => 'لا يحتوي الرابط على عنوان اشتراك';
+  @override
+  String get successMsg => 'تمت إضافة ملف التعريف';
+  @override
+  String get nameAutoHint => 'يُكتشف تلقائيًا (اختياري)';
 }
 
 // Path: profile.update
@@ -2097,6 +2380,11 @@ class TranslationsProfileDeleteAr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'حذف ملف التعريف نهائياً؟';
   @override
   String get successMsg => 'تم حذف ملف التعريف بنجاح';
+  @override
+  String get confirmTitle => 'حذف ملف التعريف';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'هل تريد حذف "${name}"؟ لا يمكن التراجع عن ذلك.';
 }
 
 // Path: profile.save
@@ -2155,6 +2443,12 @@ class TranslationsProfileDetailsFormAr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'إيقاف';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ساعة';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} يوم';
 }
 
 // Path: profile.actionButtons
@@ -2258,6 +2552,11 @@ class TranslationsProxiesDelaySemanticsAr
   String get timeout => 'انتهاء الوقت في اختبار التأخير';
   @override
   String get testing => 'التأخير: قيد الاختبار...';
+  @override
+  String get untested => 'التأخير: لم يُختبر بعد';
+  @override
+  String stale({required Object delay}) =>
+      'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -2275,6 +2574,92 @@ class TranslationsProxiesIpInfoSemanticsAr
   String get address => 'عنوان IP';
   @override
   String get country => 'الدولة';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupAr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'استيراد نسخة احتياطية';
+  @override
+  String get importConfirmMsg =>
+      'سيؤدي هذا إلى استبدال اشتراكاتك بالاشتراكات الموجودة في النسخة الاحتياطية وتطبيق إعداداتها. يتم أولًا حفظ لقطة من البيانات الحالية وتُستعاد تلقائيًا إذا فشل الاستيراد.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'يوجد ${count} اشتراك على هذا الجهاز غير موجود في النسخة الاحتياطية وسيتم حذفه.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'تم استيراد ${profiles} اشتراك و${settings} إعداد.';
+  @override
+  String reportDropped({required Object count}) =>
+      'تم تخطي ${count} اشتراك في النسخة الاحتياطية لأن بياناته غير صالحة.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'تم تخطي ${count} إعداد، وتم الاحتفاظ بقيمك الحالية.';
+  @override
+  String get reportWarpOff =>
+      'أدى الاستيراد إلى إيقاف WARP. أعد تفعيله على هذا الجهاز.';
+  @override
+  String reportBackfill({required Object count}) =>
+      'سيتم تنزيل ${count} اشتراك في الخلفية.';
+  @override
+  String get errInvalidFile => 'هذا ليس ملف نسخة احتياطية صالحًا لـ ClashMiao.';
+  @override
+  String get errUnsupportedVersion => 'صيغة هذه النسخة الاحتياطية غير مدعومة.';
+  @override
+  String get errNewerSchema =>
+      'تم إنشاء هذه النسخة الاحتياطية بإصدار أحدث من التطبيق. يرجى تحديث التطبيق أولًا.';
+  @override
+  String get errNoUsableProfiles =>
+      'لا يمكن استيراد أي من الاشتراكات في هذه النسخة الاحتياطية.';
+  @override
+  String get errSnapshotFailed =>
+      'تعذر حفظ لقطة من البيانات الحالية، لذلك لم يتم تغيير أي شيء.';
+  @override
+  String get errUnresolvedPrevious =>
+      'توقف استيراد سابق ولم يتم التراجع عنه بعد. لم يتم تغيير أي شيء. أعد تشغيل التطبيق وحاول مرة أخرى.';
+  @override
+  String get errRolledBack => 'فشل الاستيراد. تمت استعادة بياناتك السابقة.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
+  @override
+  String get errFailed => 'فشل الاستيراد.';
+  @override
+  String get errBusy =>
+      'هناك استيراد آخر قيد التنفيذ. يرجى الانتظار حتى ينتهي.';
+  @override
+  String get recoveryFailedTitle => 'لم تكتمل الاستعادة التلقائية';
+  @override
+  String get recoveryFailedMsg =>
+      'توقف آخر استيراد للنسخة الاحتياطية ولم يتمكن التطبيق من إعادة بياناتك إلى حالتها السابقة. قد تكون بعض البيانات قد استُوردت جزئيًا. أعد محاولة الاستعادة التلقائية الآن.';
+  @override
+  String get recoveryUnrecoverableTitle => 'تعذر التراجع عن الاستيراد المتوقف';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.';
+  @override
+  String get recoveryRetry => 'إعادة المحاولة';
+  @override
+  String get recoveryClose => 'إغلاق';
+  @override
+  String get recoveryRetried =>
+      'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
+  @override
+  String get exportAction => 'تصدير نسخة احتياطية';
+  @override
+  String get importAction => 'استيراد نسخة احتياطية';
+  @override
+  String get exportFailed => 'تعذّر تصدير النسخة الاحتياطية';
+  @override
+  String get shareText => 'نسخة ClashMiao الاحتياطية';
 }
 
 // Path: settings.general
@@ -2426,6 +2811,24 @@ class TranslationsSettingsGeoAssetsAr extends TranslationsSettingsGeoAssetsEn {
       'ملفات أصول التوجيه المحددة مفقودة. قم بتنزيلها أو اختر ملفات موجودة';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsAr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsAr._(TranslationsAr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsAr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عام';
+  @override
+  String get connection => 'الاتصال';
+  @override
+  String get privacy => 'الخصوصية';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusAr extends TranslationsTrayStatusEn {
   TranslationsTrayStatusAr._(TranslationsAr root)
@@ -2498,6 +2901,11 @@ class TranslationsFailureSingboxAr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'مكتبة النواة غير مثبتة';
   @override
   String get startTimeout => 'انتهت مهلة بدء الخدمة';
+  @override
+  String get kernelUnresponsive =>
+      'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+  @override
+  String get kernelExited => 'توقفت النواة بشكل غير متوقع';
 }
 
 // Path: failure.connectivity
@@ -2521,6 +2929,9 @@ class TranslationsFailureConnectivityAr
   String get core => 'خطأ في النواة';
   @override
   String get networkUnavailable => 'الشبكة غير متاحة';
+  @override
+  String get nativeUnresponsive =>
+      'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
 }
 
 // Path: failure.profiles
@@ -2543,6 +2954,8 @@ class TranslationsFailureProfilesAr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'عنوان URL غير صالح';
   @override
   String get noActive => 'لا يوجد اشتراك مفعّل';
+  @override
+  String get readOnlyUpgrade => 'يرجى ترقية التطبيق قبل تعديل الاشتراكات';
 }
 
 // Path: failure.connection
@@ -2968,6 +3381,16 @@ class TranslationsGeneralEs extends TranslationsGeneralEn {
   String get underDevelopment => 'En desarrollo';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Cerrar';
+  @override
+  String get cancel => 'Cancelar';
+  @override
+  String get clipboardEmpty => 'El portapapeles está vacío';
+  @override
+  String get clipboardReadFailed => 'No se pudo leer el portapapeles';
+  @override
+  String get moreOptions => 'Más opciones';
 }
 
 // Path: intro
@@ -3023,6 +3446,14 @@ class TranslationsHomeEs extends TranslationsHomeEn {
       'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
   @override
   String get degradedRetry => 'Comprobar de nuevo';
+  @override
+  late final TranslationsHomeEgressIpEs egressIp = TranslationsHomeEgressIpEs._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'Toca el botón de abajo para empezar';
+  @override
+  String get noActiveProfileTitle => 'No hay ningún perfil seleccionado';
 }
 
 // Path: profile
@@ -3090,6 +3521,12 @@ class TranslationsProfileEs extends TranslationsProfileEn {
       TranslationsProfileOverviewEs._(_root);
   @override
   String get remoteProfile => 'Perfil remoto';
+  @override
+  String get defaultLocalName => 'Importación local';
+  @override
+  String get defaultDeepLinkName => 'Importado desde enlace';
+  @override
+  String get switchFailedMsg => 'No se pudo cambiar de perfil';
 }
 
 // Path: proxies
@@ -3138,8 +3575,13 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Cambiado a ${name}';
   @override
-  String switchToFailed({required Object error}) =>
-      'Error al cambiar: ${error}';
+  String get switchFailed =>
+      'No se pudo cambiar de servidor. Inténtalo de nuevo.';
+  @override
+  String get testFailed => 'La prueba de latencia falló. Inténtalo de nuevo.';
+  @override
+  String get groupsLoading =>
+      'La lista de servidores aún se está cargando. Inténtalo en un momento.';
   @override
   String get connectBeforeSwitch => 'Conéctate antes de cambiar de línea';
   @override
@@ -3147,6 +3589,10 @@ class TranslationsProxiesEs extends TranslationsProxiesEn {
       'Prueba de latencia iniciada para ${count} líneas';
   @override
   String get delayTestBtn => 'Latencia';
+  @override
+  String get delayTimeout => 'Agotado';
+  @override
+  String get connectBeforeTest => 'Conéctate primero para probar la latencia';
   @override
   String lineCount({required Object count}) => '${count} líneas';
   @override
@@ -3188,6 +3634,12 @@ class TranslationsLogsEs extends TranslationsLogsEn {
       'La función de registros está en desarrollo';
   @override
   String get noLogsWhenDisconnected => 'Sin conexión, no hay registros';
+  @override
+  String get loadFailed => 'No se pudieron cargar los registros';
+  @override
+  String get empty => 'Aún no hay registros';
+  @override
+  String get clearFailed => 'No se pudieron borrar los registros';
 }
 
 // Path: settings
@@ -3232,6 +3684,9 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
   @override
+  late final TranslationsSettingsBackupEs backup =
+      TranslationsSettingsBackupEs._(_root);
+  @override
   String get systemProxyEnabled => 'Proxy del sistema activado';
   @override
   String get systemProxyDisabled =>
@@ -3242,6 +3697,23 @@ class TranslationsSettingsEs extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Los cambios de puerto requieren reconectar para aplicarse';
+  @override
+  late final TranslationsSettingsGroupsEs groups =
+      TranslationsSettingsGroupsEs._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'El portapapeles no contiene un JSON de ajustes válido';
+  @override
+  String get importOptionsNothing => 'No se encontraron ajustes importables';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'Se importaron ${count} ajustes';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      'Se importaron ${applied} ajustes; se omitieron ${skipped} por no ser válidos';
 }
 
 // Path: about
@@ -3269,6 +3741,8 @@ class TranslationsAboutEs extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licencias de código abierto';
 }
 
 // Path: appUpdate
@@ -3298,6 +3772,9 @@ class TranslationsAppUpdateEs extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Más tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
 }
 
 // Path: tray
@@ -3320,6 +3797,8 @@ class TranslationsTrayEs extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Ocultar';
+  @override
+  String get proxyModeMenu => 'Modo de proxy';
 }
 
 // Path: failure
@@ -3353,6 +3832,9 @@ class TranslationsFailureEs extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsEs geoAssets =
       TranslationsFailureGeoAssetsEs._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -3383,7 +3865,7 @@ class TranslationsConnectionEs extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Reconectar';
   @override
-  String get connectAnyWay => 'Conectar';
+  String get connectAnyWay => 'Conectar de todos modos';
   @override
   String get reconnectMsg => 'Reconectando para aplicar los cambios...';
   @override
@@ -3484,6 +3966,10 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Enable WARP';
   @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Sin configurar';
+  @override
   String get warpDetourMode => 'Detour Mode';
   @override
   late final TranslationsConfigWarpDetourModesEs warpDetourModes =
@@ -3528,6 +4014,23 @@ class TranslationsConfigEs extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS solo admite el modo VPN';
+  @override
+  String get warpGenerating => 'Generando la configuración de WARP…';
+  @override
+  String get warpConfigFailed =>
+      'No se pudo generar la configuración de WARP. Inténtalo más tarde.';
+  @override
+  String get portRangeError => 'El puerto debe estar entre 1024 y 65535';
+  @override
+  String get dnsEmptyError => 'La dirección DNS no puede estar vacía';
+  @override
+  String get rangeFormatError => 'Introduce un número o un rango, p. ej. 10-30';
+  @override
+  String get urlSchemeError => 'La URL debe empezar por http:// o https://';
+  @override
+  String get manageRuleAssets => 'Gestionar conjuntos de reglas';
 }
 
 // Path: stats
@@ -3558,6 +4061,10 @@ class TranslationsStatsEs extends TranslationsStatsEn {
   String get speed => 'Velocidad';
   @override
   String get totalTransferred => 'Total transferido';
+  @override
+  String get sessionTraffic => 'Tráfico de esta sesión';
+  @override
+  String get downloadSpeed => 'Velocidad de descarga';
 }
 
 // Path: general.toggle
@@ -3604,6 +4111,28 @@ class TranslationsHomeRoutingModeEs extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy global';
   @override
   String get smart => 'Enrutamiento inteligente';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpEs extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP de salida';
+  @override
+  String get notConnected => 'Conéctate para ver la IP de salida';
+  @override
+  String get tapToCheck => 'Toca para comprobar la IP de salida';
+  @override
+  String get checking => 'Comprobando…';
+  @override
+  String get failedRetry => 'Error al comprobar, toca para reintentar';
 }
 
 // Path: profile.subscription
@@ -3697,6 +4226,19 @@ class TranslationsProfileAddEs extends TranslationsProfileAddEn {
   String get warpDescription => 'Aceleración gratuita con Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Espera mientras registramos WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Suscripción importada: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'El portapapeles está vacío; no hay nada que importar';
+  @override
+  String get deepLinkMissingUrl =>
+      'El enlace no contiene una dirección de suscripción';
+  @override
+  String get successMsg => 'Perfil agregado';
+  @override
+  String get nameAutoHint => 'Se detecta automáticamente (opcional)';
 }
 
 // Path: profile.update
@@ -3794,6 +4336,11 @@ class TranslationsProfileDeleteEs extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '¿Eliminar perfil permanentemente?';
   @override
   String get successMsg => 'Perfil eliminado exitosamente';
+  @override
+  String get confirmTitle => 'Eliminar perfil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '¿Eliminar "${name}"? Esta acción no se puede deshacer.';
 }
 
 // Path: profile.save
@@ -3853,6 +4400,12 @@ class TranslationsProfileDetailsFormEs
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Desactivado';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: profile.actionButtons
@@ -3957,6 +4510,11 @@ class TranslationsProxiesDelaySemanticsEs
   String get timeout => 'Tiempo de prueba de latencia agotado';
   @override
   String get testing => 'Latencia: probando...';
+  @override
+  String get untested => 'Latencia: sin probar';
+  @override
+  String stale({required Object delay}) =>
+      'Latencia: ${delay} ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -4127,6 +4685,114 @@ class TranslationsSettingsGeoAssetsEs extends TranslationsSettingsGeoAssetsEn {
       'Faltan los archivos de los recursos de enrutamiento seleccionados. Descárgalos o elige los existentes.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupEs extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Importar copia de seguridad';
+  @override
+  String get importConfirmMsg =>
+      'Esto reemplaza tus suscripciones por las de la copia de seguridad y aplica sus ajustes. Antes se guarda una instantánea de los datos actuales, que se restaura automáticamente si la importación falla.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} suscripción(es) de este dispositivo no están en la copia de seguridad y se eliminarán.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Se importaron ${profiles} suscripción(es) y ${settings} ajuste(s).';
+  @override
+  String reportDropped({required Object count}) =>
+      'Se omitieron ${count} suscripción(es) de la copia de seguridad porque sus datos no eran válidos.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'Se omitieron ${count} ajuste(s); se conservan tus valores actuales.';
+  @override
+  String get reportWarpOff =>
+      'La importación desactivó WARP. Vuelve a activarlo en este dispositivo.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} suscripción(es) se descargarán en segundo plano.';
+  @override
+  String get errInvalidFile =>
+      'Este no es un archivo de copia de seguridad de ClashMiao válido.';
+  @override
+  String get errUnsupportedVersion =>
+      'Este formato de copia de seguridad no es compatible.';
+  @override
+  String get errNewerSchema =>
+      'Esta copia de seguridad fue creada por una versión más reciente de la aplicación. Actualiza la aplicación primero.';
+  @override
+  String get errNoUsableProfiles =>
+      'Ninguna de las suscripciones de esta copia de seguridad se puede importar.';
+  @override
+  String get errSnapshotFailed =>
+      'No se pudo guardar una instantánea de los datos actuales, así que no se cambió nada.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Una importación anterior se interrumpió y aún no se pudo deshacer. No se cambió nada. Reinicia la aplicación e inténtalo de nuevo.';
+  @override
+  String get errRolledBack =>
+      'La importación falló. Se han restaurado tus datos anteriores.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
+  @override
+  String get errFailed => 'La importación falló.';
+  @override
+  String get errBusy =>
+      'Ya hay otra importación en curso. Espera a que termine.';
+  @override
+  String get recoveryFailedTitle => 'La restauración automática no terminó';
+  @override
+  String get recoveryFailedMsg =>
+      'La última importación de la copia de seguridad se interrumpió y la aplicación no pudo devolver tus datos a su estado anterior. Es posible que algunos datos se hayan importado a medias. Reintenta la restauración automática ahora.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'No se pudo deshacer la importación interrumpida';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'La última importación de la copia de seguridad se interrumpió, pero su instantánea falta o no se puede leer, así que no se puede deshacer. Revisa tus suscripciones y ajustes.';
+  @override
+  String get recoveryRetry => 'Reintentar';
+  @override
+  String get recoveryClose => 'Cerrar';
+  @override
+  String get recoveryRetried =>
+      'Tus datos se restauraron al estado anterior a la importación interrumpida.';
+  @override
+  String get exportAction => 'Exportar copia de seguridad';
+  @override
+  String get importAction => 'Importar copia de seguridad';
+  @override
+  String get exportFailed => 'No se pudo exportar la copia de seguridad';
+  @override
+  String get shareText => 'Copia de seguridad de ClashMiao';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsEs extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsEs._(TranslationsEs root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsEs _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'General';
+  @override
+  String get connection => 'Conexión';
+  @override
+  String get privacy => 'Privacidad';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusEs extends TranslationsTrayStatusEn {
   TranslationsTrayStatusEs._(TranslationsEs root)
@@ -4199,6 +4865,11 @@ class TranslationsFailureSingboxEs extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca del núcleo no instalada';
   @override
   String get startTimeout => 'Tiempo de inicio del servicio agotado';
+  @override
+  String get kernelUnresponsive =>
+      'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+  @override
+  String get kernelExited => 'El núcleo se cerró inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -4223,6 +4894,9 @@ class TranslationsFailureConnectivityEs
   String get core => 'Error central';
   @override
   String get networkUnavailable => 'Red no disponible';
+  @override
+  String get nativeUnresponsive =>
+      'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
 }
 
 // Path: failure.profiles
@@ -4245,6 +4919,9 @@ class TranslationsFailureProfilesEs extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL Invalido';
   @override
   String get noActive => 'Sin perfil activo';
+  @override
+  String get readOnlyUpgrade =>
+      'Actualiza la app antes de modificar las suscripciones';
 }
 
 // Path: failure.connection
@@ -4671,6 +5348,16 @@ class TranslationsGeneralFa extends TranslationsGeneralEn {
   String get underDevelopment => 'در حال توسعه';
   @override
   String get confirm => 'تأیید';
+  @override
+  String get close => 'بستن';
+  @override
+  String get cancel => 'لغو';
+  @override
+  String get clipboardEmpty => 'کلیپ‌بورد خالی است';
+  @override
+  String get clipboardReadFailed => 'خواندن کلیپ‌بورد ناموفق بود';
+  @override
+  String get moreOptions => 'گزینه‌های بیشتر';
 }
 
 // Path: intro
@@ -4727,6 +5414,14 @@ class TranslationsHomeFa extends TranslationsHomeEn {
       'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
   @override
   String get degradedRetry => 'بررسی مجدد';
+  @override
+  late final TranslationsHomeEgressIpFa egressIp = TranslationsHomeEgressIpFa._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'برای شروع، دکمهٔ زیر را بزنید';
+  @override
+  String get noActiveProfileTitle => 'هیچ پروفایلی انتخاب نشده است';
 }
 
 // Path: stats
@@ -4757,6 +5452,10 @@ class TranslationsStatsFa extends TranslationsStatsEn {
   String get trafficUsage => 'مصرف ترافیک';
   @override
   String get liveSpeed => 'سرعت لحظه‌ای';
+  @override
+  String get sessionTraffic => 'ترافیک این نشست';
+  @override
+  String get downloadSpeed => 'سرعت دانلود';
 }
 
 // Path: profile
@@ -4824,6 +5523,12 @@ class TranslationsProfileFa extends TranslationsProfileEn {
       TranslationsProfileOverviewFa._(_root);
   @override
   String get remoteProfile => 'پروفایل راه دور';
+  @override
+  String get defaultLocalName => 'درون‌ریزی محلی';
+  @override
+  String get defaultDeepLinkName => 'درون‌ریزی از پیوند';
+  @override
+  String get switchFailedMsg => 'تغییر پروفایل ناموفق بود';
 }
 
 // Path: proxies
@@ -4871,8 +5576,12 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'به ${name} تغییر یافت';
   @override
-  String switchToFailed({required Object error}) =>
-      'تعویض ناموفق بود: ${error}';
+  String get switchFailed => 'تغییر سرور انجام نشد. لطفاً دوباره تلاش کنید.';
+  @override
+  String get testFailed => 'آزمون تأخیر ناموفق بود. لطفاً دوباره تلاش کنید.';
+  @override
+  String get groupsLoading =>
+      'فهرست سرورها هنوز در حال بارگذاری است. لطفاً کمی بعد دوباره تلاش کنید.';
   @override
   String get connectBeforeSwitch => 'پیش از تعویض خط، متصل شوید';
   @override
@@ -4880,6 +5589,10 @@ class TranslationsProxiesFa extends TranslationsProxiesEn {
       'آزمایش تأخیر برای ${count} خط آغاز شد';
   @override
   String get delayTestBtn => 'تأخیر';
+  @override
+  String get delayTimeout => 'مهلت تمام';
+  @override
+  String get connectBeforeTest => 'برای تست تأخیر ابتدا متصل شوید';
   @override
   String lineCount({required Object count}) => '${count} خط';
   @override
@@ -4920,6 +5633,12 @@ class TranslationsLogsFa extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'قابلیت گزارش‌گیری در حال توسعه است';
   @override
   String get noLogsWhenDisconnected => 'متصل نیست، گزارشی وجود ندارد';
+  @override
+  String get loadFailed => 'بارگیری گزارش‌ها ناموفق بود';
+  @override
+  String get empty => 'هنوز گزارشی وجود ندارد';
+  @override
+  String get clearFailed => 'پاک کردن گزارش‌ها ناموفق بود';
 }
 
 // Path: settings
@@ -4952,6 +5671,9 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'این اقدام همه‌ی تنظیمات پیکربندی را با مقادیر اولیه بازنویسی می‌کند. آیا مطمئن هستید؟';
   @override
+  late final TranslationsSettingsBackupFa backup =
+      TranslationsSettingsBackupFa._(_root);
+  @override
   late final TranslationsSettingsGeneralFa general =
       TranslationsSettingsGeneralFa._(_root);
   @override
@@ -4973,6 +5695,23 @@ class TranslationsSettingsFa extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+  @override
+  late final TranslationsSettingsGroupsFa groups =
+      TranslationsSettingsGroupsFa._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست';
+  @override
+  String get importOptionsNothing => 'هیچ تنظیم قابل درون‌ریزی پیدا نشد';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} تنظیم درون‌ریزی شد';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد';
 }
 
 // Path: about
@@ -5000,6 +5739,8 @@ class TranslationsAboutFa extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+  @override
+  String get openSourceLicenses => 'مجوزهای متن‌باز';
 }
 
 // Path: appUpdate
@@ -5029,6 +5770,9 @@ class TranslationsAppUpdateFa extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'بعداً';
   @override
   String get ignoreBtnTxt => 'نادیده‌گرفتن';
+  @override
+  String get checkFailedMsg =>
+      'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
 }
 
 // Path: tray
@@ -5051,6 +5795,8 @@ class TranslationsTrayFa extends TranslationsTrayEn {
   );
   @override
   String get hide => 'پنهان کردن';
+  @override
+  String get proxyModeMenu => 'حالت پروکسی';
 }
 
 // Path: failure
@@ -5084,6 +5830,9 @@ class TranslationsFailureFa extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsFa geoAssets =
       TranslationsFailureGeoAssetsFa._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -5107,7 +5856,7 @@ class TranslationsConnectionFa extends TranslationsConnectionEn {
   @override
   String get reconnect => 'اتصال دوباره';
   @override
-  String get connectAnyWay => 'متصل کردن';
+  String get connectAnyWay => 'در هر صورت متصل شو';
   @override
   String get experimentalNotice => 'ویژگی‌های آزمایشی در حال استفاده';
   @override
@@ -5234,6 +5983,10 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   @override
   String get enableWarp => 'فعال‌سازی WARP';
   @override
+  String get setUpWarp => 'راه‌اندازی WARP';
+  @override
+  String get warpNotConfigured => 'پیکربندی نشده';
+  @override
   String get warpDetourMode => 'حالت وارپ';
   @override
   late final TranslationsConfigWarpDetourModesFa warpDetourModes =
@@ -5259,6 +6012,23 @@ class TranslationsConfigFa extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS فقط از حالت VPN پشتیبانی می‌کند';
+  @override
+  String get warpGenerating => 'در حال ساخت پیکربندی WARP…';
+  @override
+  String get warpConfigFailed =>
+      'ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.';
+  @override
+  String get portRangeError => 'پورت باید بین 1024 و 65535 باشد';
+  @override
+  String get dnsEmptyError => 'نشانی DNS نمی‌تواند خالی باشد';
+  @override
+  String get rangeFormatError => 'یک عدد یا بازه وارد کنید، مثلاً 10-30';
+  @override
+  String get urlSchemeError => 'نشانی باید با http:// یا https:// شروع شود';
+  @override
+  String get manageRuleAssets => 'مدیریت مجموعه‌قواعد';
 }
 
 // Path: general.toggle
@@ -5305,6 +6075,28 @@ class TranslationsHomeRoutingModeFa extends TranslationsHomeRoutingModeEn {
   String get global => 'پروکسی سراسری';
   @override
   String get smart => 'مسیریابی هوشمند';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpFa extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'آی‌پی خروجی';
+  @override
+  String get notConnected => 'برای نمایش آی‌پی خروجی متصل شوید';
+  @override
+  String get tapToCheck => 'برای بررسی آی‌پی خروجی ضربه بزنید';
+  @override
+  String get checking => 'در حال بررسی…';
+  @override
+  String get failedRetry => 'بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید';
 }
 
 // Path: profile.subscription
@@ -5398,6 +6190,18 @@ class TranslationsProfileAddFa extends TranslationsProfileAddEn {
   String get manuallyDescription => 'پیکربندی سرور را دستی وارد کنید';
   @override
   String get warpDescription => 'شتاب‌دهی رایگان با Cloudflare WARP';
+  @override
+  String importedNamed({required Object name}) =>
+      'اشتراک درون‌ریزی شد: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد';
+  @override
+  String get deepLinkMissingUrl => 'پیوند نشانی اشتراک ندارد';
+  @override
+  String get successMsg => 'پروفایل افزوده شد';
+  @override
+  String get nameAutoHint => 'به‌طور خودکار تشخیص داده می‌شود (اختیاری)';
 }
 
 // Path: profile.update
@@ -5492,6 +6296,11 @@ class TranslationsProfileDeleteFa extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'پروفایل برای همیشه حذف شود؟';
   @override
   String get successMsg => 'پروفایل با موفقیت حذف شد';
+  @override
+  String get confirmTitle => 'حذف پروفایل';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '«${name}» حذف شود؟ این کار برگشت‌پذیر نیست.';
 }
 
 // Path: profile.save
@@ -5551,6 +6360,12 @@ class TranslationsProfileDetailsFormFa
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'خاموش';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ساعت';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} روز';
 }
 
 // Path: profile.actionButtons
@@ -5654,6 +6469,10 @@ class TranslationsProxiesDelaySemanticsFa
   String get timeout => 'مهلت تست تأخیر به اتمام رسید';
   @override
   String get testing => 'تأخیر: در حال آزمایش...';
+  @override
+  String get untested => 'تأخیر: آزمایش نشده';
+  @override
+  String stale({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -5671,6 +6490,94 @@ class TranslationsProxiesIpInfoSemanticsFa
   String get address => 'آدرس آی‌پی';
   @override
   String get country => 'کشور';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupFa extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'درون‌ریزی پشتیبان';
+  @override
+  String get importConfirmMsg =>
+      'این کار اشتراک‌های شما را با اشتراک‌های موجود در پشتیبان جایگزین می‌کند و تنظیمات آن را اعمال می‌کند. ابتدا یک نسخهٔ لحظه‌ای از داده‌های فعلی ذخیره می‌شود و اگر درون‌ریزی ناموفق باشد، خودکار بازیابی می‌شود.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} اشتراک روی این دستگاه در پشتیبان نیست و حذف خواهد شد.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} اشتراک و ${settings} تنظیم درون‌ریزی شد.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} اشتراک در پشتیبان به دلیل نامعتبر بودن داده‌ها نادیده گرفته شد.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} تنظیم نادیده گرفته شد؛ مقدارهای فعلی شما حفظ شدند.';
+  @override
+  String get reportWarpOff =>
+      'درون‌ریزی WARP را خاموش کرد. آن را دوباره روی این دستگاه فعال کنید.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} اشتراک در پس‌زمینه دانلود خواهد شد.';
+  @override
+  String get errInvalidFile => 'این یک فایل پشتیبان معتبر ClashMiao نیست.';
+  @override
+  String get errUnsupportedVersion => 'این قالب پشتیبان پشتیبانی نمی‌شود.';
+  @override
+  String get errNewerSchema =>
+      'این پشتیبان با نسخهٔ جدیدتری از برنامه ساخته شده است. لطفاً ابتدا برنامه را به‌روزرسانی کنید.';
+  @override
+  String get errNoUsableProfiles =>
+      'هیچ‌یک از اشتراک‌های این پشتیبان قابل درون‌ریزی نیست.';
+  @override
+  String get errSnapshotFailed =>
+      'ذخیرهٔ نسخهٔ لحظه‌ای داده‌های فعلی ممکن نشد، بنابراین چیزی تغییر نکرد.';
+  @override
+  String get errUnresolvedPrevious =>
+      'درون‌ریزی قبلی نیمه‌کاره ماند و هنوز بازگردانی نشده است. چیزی تغییر نکرد. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید.';
+  @override
+  String get errRolledBack =>
+      'درون‌ریزی ناموفق بود. داده‌های قبلی شما بازیابی شد.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
+  @override
+  String get errFailed => 'درون‌ریزی ناموفق بود.';
+  @override
+  String get errBusy =>
+      'درون‌ریزی دیگری در حال اجراست. لطفاً تا پایان آن صبر کنید.';
+  @override
+  String get recoveryFailedTitle => 'بازیابی خودکار کامل نشد';
+  @override
+  String get recoveryFailedMsg =>
+      'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند و برنامه نتوانست داده‌های شما را به حالت قبل برگرداند. ممکن است بخشی از داده‌ها نیمه‌کاره درون‌ریزی شده باشد. اکنون بازیابی خودکار را دوباره امتحان کنید.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'بازگردانی درون‌ریزی نیمه‌کاره ممکن نشد';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.';
+  @override
+  String get recoveryRetry => 'تلاش دوباره';
+  @override
+  String get recoveryClose => 'بستن';
+  @override
+  String get recoveryRetried =>
+      'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
+  @override
+  String get exportAction => 'برون‌بری پشتیبان';
+  @override
+  String get importAction => 'درون‌ریزی پشتیبان';
+  @override
+  String get exportFailed => 'برون‌بری پشتیبان ناموفق بود';
+  @override
+  String get shareText => 'پشتیبان ClashMiao';
 }
 
 // Path: settings.general
@@ -5823,6 +6730,24 @@ class TranslationsSettingsGeoAssetsFa extends TranslationsSettingsGeoAssetsEn {
       'فایل‌های مسیریابی انتخاب شده وجود ندارند. یا آن‌ها را دانلود کنید و یا یکی از موارد موجود را انتخاب کنید';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsFa extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsFa._(TranslationsFa root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsFa _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'عمومی';
+  @override
+  String get connection => 'اتصال';
+  @override
+  String get privacy => 'حریم خصوصی';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusFa extends TranslationsTrayStatusEn {
   TranslationsTrayStatusFa._(TranslationsFa root)
@@ -5895,6 +6820,11 @@ class TranslationsFailureSingboxFa extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'کتابخانهٔ هسته نصب نشده است';
   @override
   String get startTimeout => 'زمان راه‌اندازی سرویس به پایان رسید';
+  @override
+  String get kernelUnresponsive =>
+      'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+  @override
+  String get kernelExited => 'هسته به‌طور غیرمنتظره متوقف شد';
 }
 
 // Path: failure.connectivity
@@ -5918,6 +6848,9 @@ class TranslationsFailureConnectivityFa
   String get core => 'خطای هسته';
   @override
   String get networkUnavailable => 'شبکه در دسترس نیست';
+  @override
+  String get nativeUnresponsive =>
+      'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
 }
 
 // Path: failure.profiles
@@ -5940,6 +6873,9 @@ class TranslationsFailureProfilesFa extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'لینک نامعتبر است';
   @override
   String get noActive => 'هیچ پروفایل فعالی وجود ندارد';
+  @override
+  String get readOnlyUpgrade =>
+      'لطفاً پیش از تغییر اشتراک‌ها برنامه را به‌روزرسانی کنید';
 }
 
 // Path: failure.connection
@@ -6365,6 +7301,16 @@ class TranslationsGeneralId extends TranslationsGeneralEn {
   String get underDevelopment => 'Dalam Pengembangan';
   @override
   String get confirm => 'Konfirmasi';
+  @override
+  String get close => 'Tutup';
+  @override
+  String get cancel => 'Batal';
+  @override
+  String get clipboardEmpty => 'Papan klip kosong';
+  @override
+  String get clipboardReadFailed => 'Gagal membaca papan klip';
+  @override
+  String get moreOptions => 'Opsi lainnya';
 }
 
 // Path: intro
@@ -6420,6 +7366,14 @@ class TranslationsHomeId extends TranslationsHomeEn {
       'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
   @override
   String get degradedRetry => 'Periksa Lagi';
+  @override
+  late final TranslationsHomeEgressIpId egressIp = TranslationsHomeEgressIpId._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'Ketuk tombol di bawah untuk memulai';
+  @override
+  String get noActiveProfileTitle => 'Belum ada profil yang dipilih';
 }
 
 // Path: stats
@@ -6450,6 +7404,10 @@ class TranslationsStatsId extends TranslationsStatsEn {
   String get speed => 'Kecepatan';
   @override
   String get totalTransferred => 'Total Ditransfer';
+  @override
+  String get sessionTraffic => 'Lalu lintas sesi ini';
+  @override
+  String get downloadSpeed => 'Kecepatan unduh';
 }
 
 // Path: profile
@@ -6517,6 +7475,12 @@ class TranslationsProfileId extends TranslationsProfileEn {
       TranslationsProfileOverviewId._(_root);
   @override
   String get remoteProfile => 'Profil Jarak Jauh';
+  @override
+  String get defaultLocalName => 'Impor lokal';
+  @override
+  String get defaultDeepLinkName => 'Impor dari tautan';
+  @override
+  String get switchFailedMsg => 'Gagal mengganti profil';
 }
 
 // Path: proxies
@@ -6564,7 +7528,12 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Beralih ke ${name}';
   @override
-  String switchToFailed({required Object error}) => 'Gagal beralih: ${error}';
+  String get switchFailed => 'Gagal mengganti server. Silakan coba lagi.';
+  @override
+  String get testFailed => 'Uji latensi gagal. Silakan coba lagi.';
+  @override
+  String get groupsLoading =>
+      'Daftar server masih dimuat. Silakan coba lagi sebentar lagi.';
   @override
   String get connectBeforeSwitch =>
       'Sambungkan terlebih dahulu sebelum mengganti jalur';
@@ -6573,6 +7542,10 @@ class TranslationsProxiesId extends TranslationsProxiesEn {
       'Uji jeda dimulai untuk ${count} jalur';
   @override
   String get delayTestBtn => 'Jeda';
+  @override
+  String get delayTimeout => 'Habis waktu';
+  @override
+  String get connectBeforeTest => 'Sambungkan dulu untuk menguji jeda';
   @override
   String lineCount({required Object count}) => '${count} jalur';
   @override
@@ -6613,6 +7586,12 @@ class TranslationsLogsId extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Fitur log sedang dikembangkan';
   @override
   String get noLogsWhenDisconnected => 'Tidak tersambung, tidak ada log';
+  @override
+  String get loadFailed => 'Gagal memuat log';
+  @override
+  String get empty => 'Belum ada log';
+  @override
+  String get clearFailed => 'Gagal menghapus log';
 }
 
 // Path: settings
@@ -6656,6 +7635,9 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
   @override
+  late final TranslationsSettingsBackupId backup =
+      TranslationsSettingsBackupId._(_root);
+  @override
   String get systemProxyEnabled => 'Proxy sistem diaktifkan';
   @override
   String get systemProxyDisabled =>
@@ -6665,6 +7647,22 @@ class TranslationsSettingsId extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Perubahan port memerlukan sambung ulang agar berlaku';
+  @override
+  late final TranslationsSettingsGroupsId groups =
+      TranslationsSettingsGroupsId._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'Papan klip tidak berisi JSON pengaturan yang valid';
+  @override
+  String get importOptionsNothing => 'Tidak ada pengaturan yang dapat diimpor';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} pengaturan diimpor';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '${applied} pengaturan diimpor; ${skipped} dilewati karena tidak valid';
 }
 
 // Path: about
@@ -6692,6 +7690,8 @@ class TranslationsAboutId extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Klien proxy lintas platform berbasis inti sing-box';
+  @override
+  String get openSourceLicenses => 'Lisensi sumber terbuka';
 }
 
 // Path: appUpdate
@@ -6721,6 +7721,9 @@ class TranslationsAppUpdateId extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Nanti';
   @override
   String get ignoreBtnTxt => 'Lewati';
+  @override
+  String get checkFailedMsg =>
+      'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
 }
 
 // Path: tray
@@ -6743,6 +7746,8 @@ class TranslationsTrayId extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Sembunyikan';
+  @override
+  String get proxyModeMenu => 'Mode Proksi';
 }
 
 // Path: failure
@@ -6776,6 +7781,9 @@ class TranslationsFailureId extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsId geoAssets =
       TranslationsFailureGeoAssetsId._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -6806,7 +7814,7 @@ class TranslationsConnectionId extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Sambungkan Ulang';
   @override
-  String get connectAnyWay => 'Sambungkan';
+  String get connectAnyWay => 'Tetap sambungkan';
   @override
   String get reconnectMsg =>
       'Menyambungkan ulang untuk menerapkan perubahan...';
@@ -6908,6 +7916,10 @@ class TranslationsConfigId extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Enable WARP';
   @override
+  String get setUpWarp => 'Siapkan WARP';
+  @override
+  String get warpNotConfigured => 'Belum dikonfigurasi';
+  @override
   String get warpDetourMode => 'Detour Mode';
   @override
   late final TranslationsConfigWarpDetourModesId warpDetourModes =
@@ -6952,6 +7964,23 @@ class TranslationsConfigId extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS hanya mendukung mode VPN';
+  @override
+  String get warpGenerating => 'Membuat konfigurasi WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Gagal membuat konfigurasi WARP. Coba lagi nanti.';
+  @override
+  String get portRangeError => 'Port harus antara 1024 dan 65535';
+  @override
+  String get dnsEmptyError => 'Alamat DNS tidak boleh kosong';
+  @override
+  String get rangeFormatError => 'Masukkan angka atau rentang, mis. 10-30';
+  @override
+  String get urlSchemeError => 'URL harus diawali http:// atau https://';
+  @override
+  String get manageRuleAssets => 'Kelola set aturan';
 }
 
 // Path: general.toggle
@@ -6998,6 +8027,28 @@ class TranslationsHomeRoutingModeId extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy Global';
   @override
   String get smart => 'Perutean Cerdas';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpId extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP keluar';
+  @override
+  String get notConnected => 'Hubungkan untuk melihat IP keluar';
+  @override
+  String get tapToCheck => 'Ketuk untuk memeriksa IP keluar';
+  @override
+  String get checking => 'Memeriksa…';
+  @override
+  String get failedRetry => 'Pemeriksaan gagal, ketuk untuk mencoba lagi';
 }
 
 // Path: profile.subscription
@@ -7090,6 +8141,16 @@ class TranslationsProfileAddId extends TranslationsProfileAddEn {
   String get warpDescription => 'Akselerasi gratis dengan Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Mohon tunggu, kami sedang mendaftarkan WARP.';
+  @override
+  String importedNamed({required Object name}) => 'Langganan diimpor: ${name}';
+  @override
+  String get clipboardEmpty => 'Papan klip kosong, tidak ada yang bisa diimpor';
+  @override
+  String get deepLinkMissingUrl => 'Tautan tidak berisi alamat langganan';
+  @override
+  String get successMsg => 'Profil ditambahkan';
+  @override
+  String get nameAutoHint => 'Terdeteksi otomatis (opsional)';
 }
 
 // Path: profile.update
@@ -7182,6 +8243,11 @@ class TranslationsProfileDeleteId extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Hapus profil permanen?';
   @override
   String get successMsg => 'Sukses hapus profil';
+  @override
+  String get confirmTitle => 'Hapus profil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Hapus "${name}"? Tindakan ini tidak dapat dibatalkan.';
 }
 
 // Path: profile.save
@@ -7241,6 +8307,12 @@ class TranslationsProfileDetailsFormId
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Mati';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} jam';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} hari';
 }
 
 // Path: profile.actionButtons
@@ -7344,6 +8416,11 @@ class TranslationsProxiesDelaySemanticsId
   String get timeout => 'Waktu Uji Jeda Habis';
   @override
   String get testing => 'Jeda: Menguji...';
+  @override
+  String get untested => 'Jeda: Belum diuji';
+  @override
+  String stale({required Object delay}) =>
+      'Jeda: ${delay}ms (hasil sebelumnya)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -7512,6 +8589,111 @@ class TranslationsSettingsGeoAssetsId extends TranslationsSettingsGeoAssetsEn {
       'Routing aset terpilih filenya hilang. Silahkan unduh atau pilih dari yang ada';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupId extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Impor Cadangan';
+  @override
+  String get importConfirmMsg =>
+      'Ini mengganti langganan Anda dengan langganan dari cadangan dan menerapkan pengaturannya. Snapshot data saat ini disimpan terlebih dahulu dan dipulihkan otomatis jika impor gagal.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} langganan di perangkat ini tidak ada di cadangan dan akan dihapus.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} langganan dan ${settings} pengaturan diimpor.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} langganan dalam cadangan dilewati karena datanya tidak valid.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} pengaturan dilewati; nilai Anda saat ini dipertahankan.';
+  @override
+  String get reportWarpOff =>
+      'Impor mematikan WARP. Aktifkan kembali di perangkat ini.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} langganan akan diunduh di latar belakang.';
+  @override
+  String get errInvalidFile => 'Ini bukan file cadangan ClashMiao yang valid.';
+  @override
+  String get errUnsupportedVersion => 'Format cadangan ini tidak didukung.';
+  @override
+  String get errNewerSchema =>
+      'Cadangan ini dibuat oleh aplikasi versi yang lebih baru. Perbarui aplikasi terlebih dahulu.';
+  @override
+  String get errNoUsableProfiles =>
+      'Tidak ada langganan dalam cadangan ini yang dapat diimpor.';
+  @override
+  String get errSnapshotFailed =>
+      'Snapshot data saat ini tidak dapat disimpan, sehingga tidak ada yang diubah.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.';
+  @override
+  String get errRolledBack =>
+      'Impor gagal. Data Anda sebelumnya telah dipulihkan.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
+  @override
+  String get errFailed => 'Impor gagal.';
+  @override
+  String get errBusy => 'Impor lain sedang berjalan. Tunggu sampai selesai.';
+  @override
+  String get recoveryFailedTitle => 'Pemulihan otomatis belum selesai';
+  @override
+  String get recoveryFailedMsg =>
+      'Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Impor yang terhenti tidak dapat dibatalkan';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.';
+  @override
+  String get recoveryRetry => 'Coba lagi';
+  @override
+  String get recoveryClose => 'Tutup';
+  @override
+  String get recoveryRetried =>
+      'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
+  @override
+  String get exportAction => 'Ekspor cadangan';
+  @override
+  String get importAction => 'Impor cadangan';
+  @override
+  String get exportFailed => 'Gagal mengekspor cadangan';
+  @override
+  String get shareText => 'Cadangan ClashMiao';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsId extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsId._(TranslationsId root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsId _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Umum';
+  @override
+  String get connection => 'Koneksi';
+  @override
+  String get privacy => 'Privasi';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusId extends TranslationsTrayStatusEn {
   TranslationsTrayStatusId._(TranslationsId root)
@@ -7584,6 +8766,11 @@ class TranslationsFailureSingboxId extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Pustaka Inti Belum Terpasang';
   @override
   String get startTimeout => 'Waktu Mulai Layanan Habis';
+  @override
+  String get kernelUnresponsive =>
+      'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+  @override
+  String get kernelExited => 'Inti berhenti secara tak terduga';
 }
 
 // Path: failure.connectivity
@@ -7607,6 +8794,9 @@ class TranslationsFailureConnectivityId
   String get core => 'Error Inti';
   @override
   String get networkUnavailable => 'Jaringan Tidak Tersedia';
+  @override
+  String get nativeUnresponsive =>
+      'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
 }
 
 // Path: failure.profiles
@@ -7629,6 +8819,8 @@ class TranslationsFailureProfilesId extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL tidak valid';
   @override
   String get noActive => 'Tidak Ada Profil Aktif';
+  @override
+  String get readOnlyUpgrade => 'Perbarui aplikasi sebelum mengubah langganan';
 }
 
 // Path: failure.connection
@@ -8054,6 +9246,17 @@ class TranslationsGeneralPtBr extends TranslationsGeneralEn {
   String get underDevelopment => 'Em desenvolvimento';
   @override
   String get confirm => 'Confirmar';
+  @override
+  String get close => 'Fechar';
+  @override
+  String get cancel => 'Cancelar';
+  @override
+  String get clipboardEmpty => 'A área de transferência está vazia';
+  @override
+  String get clipboardReadFailed =>
+      'Não foi possível ler a área de transferência';
+  @override
+  String get moreOptions => 'Mais opções';
 }
 
 // Path: intro
@@ -8113,6 +9316,13 @@ class TranslationsHomePtBr extends TranslationsHomeEn {
       'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
   @override
   String get degradedRetry => 'Verificar novamente';
+  @override
+  late final TranslationsHomeEgressIpPtBr egressIp =
+      TranslationsHomeEgressIpPtBr._(_root);
+  @override
+  String get emptyProfilesHint => 'Toque no botão abaixo para começar';
+  @override
+  String get noActiveProfileTitle => 'Nenhum perfil selecionado';
 }
 
 // Path: stats
@@ -8145,6 +9355,10 @@ class TranslationsStatsPtBr extends TranslationsStatsEn {
   String get trafficUsage => 'Uso de tráfego';
   @override
   String get liveSpeed => 'Velocidade ao vivo';
+  @override
+  String get sessionTraffic => 'Tráfego da sessão';
+  @override
+  String get downloadSpeed => 'Velocidade de download';
 }
 
 // Path: profile
@@ -8210,6 +9424,12 @@ class TranslationsProfilePtBr extends TranslationsProfileEn {
       TranslationsProfileOverviewPtBr._(_root);
   @override
   String get remoteProfile => 'Perfil remoto';
+  @override
+  String get defaultLocalName => 'Importação local';
+  @override
+  String get defaultDeepLinkName => 'Importado por link';
+  @override
+  String get switchFailedMsg => 'Não foi possível trocar de perfil';
 }
 
 // Path: proxies
@@ -8258,7 +9478,13 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Alterado para ${name}';
   @override
-  String switchToFailed({required Object error}) => 'Falha ao trocar: ${error}';
+  String get switchFailed =>
+      'Não foi possível trocar de servidor. Tente novamente.';
+  @override
+  String get testFailed => 'O teste de latência falhou. Tente novamente.';
+  @override
+  String get groupsLoading =>
+      'A lista de servidores ainda está carregando. Tente novamente em instantes.';
   @override
   String get connectBeforeSwitch => 'Conecte-se antes de trocar de linha';
   @override
@@ -8266,6 +9492,10 @@ class TranslationsProxiesPtBr extends TranslationsProxiesEn {
       'Teste de latência iniciado para ${count} linhas';
   @override
   String get delayTestBtn => 'Latência';
+  @override
+  String get delayTimeout => 'Esgotado';
+  @override
+  String get connectBeforeTest => 'Conecte primeiro para testar o atraso';
   @override
   String lineCount({required Object count}) => '${count} linhas';
   @override
@@ -8309,6 +9539,12 @@ class TranslationsLogsPtBr extends TranslationsLogsEn {
       'O recurso de registros está em desenvolvimento';
   @override
   String get noLogsWhenDisconnected => 'Desconectado, sem registros';
+  @override
+  String get loadFailed => 'Não foi possível carregar os logs';
+  @override
+  String get empty => 'Ainda não há logs';
+  @override
+  String get clearFailed => 'Não foi possível limpar os logs';
 }
 
 // Path: settings
@@ -8355,6 +9591,9 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
   @override
+  late final TranslationsSettingsBackupPtBr backup =
+      TranslationsSettingsBackupPtBr._(_root);
+  @override
   String get systemProxyEnabled => 'Proxy do sistema ativado';
   @override
   String get systemProxyDisabled =>
@@ -8365,6 +9604,24 @@ class TranslationsSettingsPtBr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Alterações de porta exigem reconexão para serem aplicadas';
+  @override
+  late final TranslationsSettingsGroupsPtBr groups =
+      TranslationsSettingsGroupsPtBr._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'A área de transferência não contém um JSON de configurações válido';
+  @override
+  String get importOptionsNothing =>
+      'Nenhuma configuração importável encontrada';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} configurações importadas';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} configurações importadas; ${skipped} ignoradas por serem inválidas';
 }
 
 // Path: about
@@ -8394,6 +9651,8 @@ class TranslationsAboutPtBr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+  @override
+  String get openSourceLicenses => 'Licenças de código aberto';
 }
 
 // Path: appUpdate
@@ -8423,6 +9682,9 @@ class TranslationsAppUpdatePtBr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Mais tarde';
   @override
   String get ignoreBtnTxt => 'Ignorar';
+  @override
+  String get checkFailedMsg =>
+      'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
 }
 
 // Path: tray
@@ -8447,6 +9709,8 @@ class TranslationsTrayPtBr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Ocultar';
+  @override
+  String get proxyModeMenu => 'Modo de proxy';
 }
 
 // Path: failure
@@ -8479,6 +9743,9 @@ class TranslationsFailurePtBr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsPtBr geoAssets =
       TranslationsFailureGeoAssetsPtBr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -8509,7 +9776,7 @@ class TranslationsConnectionPtBr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Reconectar';
   @override
-  String get connectAnyWay => 'Conectar';
+  String get connectAnyWay => 'Conectar mesmo assim';
   @override
   String get reconnectMsg => 'Reconectando para aplicar as alterações...';
   @override
@@ -8616,6 +9883,10 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Habilitar WARP';
   @override
+  String get setUpWarp => 'Configurar WARP';
+  @override
+  String get warpNotConfigured => 'Não configurado';
+  @override
   String get warpDetourMode => 'Modo de desvio';
   @override
   late final TranslationsConfigWarpDetourModesPtBr warpDetourModes =
@@ -8654,6 +9925,24 @@ class TranslationsConfigPtBr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
+  @override
+  String get serviceModeIosVpnOnly => 'O iOS só oferece suporte ao modo VPN';
+  @override
+  String get warpGenerating => 'Gerando a configuração do WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.';
+  @override
+  String get portRangeError => 'A porta deve estar entre 1024 e 65535';
+  @override
+  String get dnsEmptyError => 'O endereço DNS não pode ficar vazio';
+  @override
+  String get rangeFormatError =>
+      'Digite um número ou um intervalo, por exemplo 10-30';
+  @override
+  String get urlSchemeError => 'A URL deve começar com http:// ou https://';
+  @override
+  String get manageRuleAssets => 'Gerenciar conjuntos de regras';
 }
 
 // Path: general.toggle
@@ -8700,6 +9989,28 @@ class TranslationsHomeRoutingModePtBr extends TranslationsHomeRoutingModeEn {
   String get global => 'Proxy global';
   @override
   String get smart => 'Roteamento inteligente';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpPtBr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'IP de saída';
+  @override
+  String get notConnected => 'Conecte para ver o IP de saída';
+  @override
+  String get tapToCheck => 'Toque para verificar o IP de saída';
+  @override
+  String get checking => 'Verificando…';
+  @override
+  String get failedRetry => 'Falha na verificação, toque para tentar novamente';
 }
 
 // Path: profile.subscription
@@ -8794,6 +10105,19 @@ class TranslationsProfileAddPtBr extends TranslationsProfileAddEn {
   String get warpDescription => 'Aceleração gratuita com Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Aguarde enquanto registramos o WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Assinatura importada: ${name}';
+  @override
+  String get clipboardEmpty =>
+      'A área de transferência está vazia; não há nada para importar';
+  @override
+  String get deepLinkMissingUrl =>
+      'O link não contém um endereço de assinatura';
+  @override
+  String get successMsg => 'Perfil adicionado';
+  @override
+  String get nameAutoHint => 'Detectado automaticamente (opcional)';
 }
 
 // Path: profile.update
@@ -8892,6 +10216,11 @@ class TranslationsProfileDeletePtBr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Deletar perfil permanentemente?';
   @override
   String get successMsg => 'Perfil deletado com sucesso';
+  @override
+  String get confirmTitle => 'Excluir perfil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Excluir "${name}"? Essa ação não pode ser desfeita.';
 }
 
 // Path: profile.save
@@ -8951,6 +10280,12 @@ class TranslationsProfileDetailsFormPtBr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Desativado';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} h';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} d';
 }
 
 // Path: profile.actionButtons
@@ -9055,6 +10390,11 @@ class TranslationsProxiesDelaySemanticsPtBr
   String get timeout => 'atrasar o tempo limite do teste';
   @override
   String get testing => 'atraso: testando...';
+  @override
+  String get untested => 'atraso: não testado';
+  @override
+  String stale({required Object delay}) =>
+      'atraso: ${delay}ms (resultado anterior)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -9226,6 +10566,114 @@ class TranslationsSettingsGeoAssetsPtBr
       'Os arquivos dos ativos de roteamento selecionados estão ausentes. Baixe-os ou escolha os existentes.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupPtBr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Importar backup';
+  @override
+  String get importConfirmMsg =>
+      'Isto substitui suas assinaturas pelas do backup e aplica as configurações dele. Antes, um instantâneo dos dados atuais é salvo e restaurado automaticamente se a importação falhar.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '${count} assinatura(s) deste dispositivo não estão no backup e serão removidas.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} assinatura(s) e ${settings} configuração(ões) importadas.';
+  @override
+  String reportDropped({required Object count}) =>
+      '${count} assinatura(s) do backup foram ignoradas porque os dados eram inválidos.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} configuração(ões) foram ignoradas; seus valores atuais foram mantidos.';
+  @override
+  String get reportWarpOff =>
+      'A importação desativou o WARP. Ative-o novamente neste dispositivo.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} assinatura(s) serão baixadas em segundo plano.';
+  @override
+  String get errInvalidFile =>
+      'Este não é um arquivo de backup válido do ClashMiao.';
+  @override
+  String get errUnsupportedVersion =>
+      'Este formato de backup não é compatível.';
+  @override
+  String get errNewerSchema =>
+      'Este backup foi criado por uma versão mais recente do app. Atualize o app primeiro.';
+  @override
+  String get errNoUsableProfiles =>
+      'Nenhuma das assinaturas deste backup pode ser importada.';
+  @override
+  String get errSnapshotFailed =>
+      'Não foi possível salvar um instantâneo dos dados atuais, então nada foi alterado.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.';
+  @override
+  String get errRolledBack =>
+      'A importação falhou. Seus dados anteriores foram restaurados.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
+  @override
+  String get errFailed => 'A importação falhou.';
+  @override
+  String get errBusy =>
+      'Já há outra importação em andamento. Aguarde ela terminar.';
+  @override
+  String get recoveryFailedTitle => 'A restauração automática não terminou';
+  @override
+  String get recoveryFailedMsg =>
+      'A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Não foi possível desfazer a importação interrompida';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.';
+  @override
+  String get recoveryRetry => 'Tentar novamente';
+  @override
+  String get recoveryClose => 'Fechar';
+  @override
+  String get recoveryRetried =>
+      'Seus dados foram restaurados ao estado anterior à importação interrompida.';
+  @override
+  String get exportAction => 'Exportar backup';
+  @override
+  String get importAction => 'Importar backup';
+  @override
+  String get exportFailed => 'Não foi possível exportar o backup';
+  @override
+  String get shareText => 'Backup do ClashMiao';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsPtBr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsPtBr._(TranslationsPtBr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsPtBr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Geral';
+  @override
+  String get connection => 'Conexão';
+  @override
+  String get privacy => 'Privacidade';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusPtBr extends TranslationsTrayStatusEn {
   TranslationsTrayStatusPtBr._(TranslationsPtBr root)
@@ -9298,6 +10746,11 @@ class TranslationsFailureSingboxPtBr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Biblioteca do núcleo não instalada';
   @override
   String get startTimeout => 'Tempo de inicialização do serviço esgotado';
+  @override
+  String get kernelUnresponsive =>
+      'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+  @override
+  String get kernelExited => 'O núcleo foi encerrado inesperadamente';
 }
 
 // Path: failure.connectivity
@@ -9322,6 +10775,9 @@ class TranslationsFailureConnectivityPtBr
   String get core => 'Erro central';
   @override
   String get networkUnavailable => 'Rede indisponível';
+  @override
+  String get nativeUnresponsive =>
+      'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
 }
 
 // Path: failure.profiles
@@ -9344,6 +10800,9 @@ class TranslationsFailureProfilesPtBr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'URL inválida';
   @override
   String get noActive => 'Nenhum perfil ativo';
+  @override
+  String get readOnlyUpgrade =>
+      'Atualize o app antes de alterar as assinaturas';
 }
 
 // Path: failure.connection
@@ -9772,6 +11231,16 @@ class TranslationsGeneralRu extends TranslationsGeneralEn {
   String get underDevelopment => 'В разработке';
   @override
   String get confirm => 'Подтвердить';
+  @override
+  String get close => 'Закрыть';
+  @override
+  String get cancel => 'Отмена';
+  @override
+  String get clipboardEmpty => 'Буфер обмена пуст';
+  @override
+  String get clipboardReadFailed => 'Не удалось прочитать буфер обмена';
+  @override
+  String get moreOptions => 'Дополнительно';
 }
 
 // Path: intro
@@ -9827,6 +11296,14 @@ class TranslationsHomeRu extends TranslationsHomeEn {
       'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
   @override
   String get degradedRetry => 'Проверить ещё раз';
+  @override
+  late final TranslationsHomeEgressIpRu egressIp = TranslationsHomeEgressIpRu._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'Нажмите кнопку ниже, чтобы начать';
+  @override
+  String get noActiveProfileTitle => 'Профиль не выбран';
 }
 
 // Path: stats
@@ -9857,6 +11334,10 @@ class TranslationsStatsRu extends TranslationsStatsEn {
   String get trafficUsage => 'Использование трафика';
   @override
   String get liveSpeed => 'Текущая скорость';
+  @override
+  String get sessionTraffic => 'Трафик за сеанс';
+  @override
+  String get downloadSpeed => 'Скорость загрузки';
 }
 
 // Path: profile
@@ -9924,6 +11405,12 @@ class TranslationsProfileRu extends TranslationsProfileEn {
       TranslationsProfileOverviewRu._(_root);
   @override
   String get remoteProfile => 'Удалённый профиль';
+  @override
+  String get defaultLocalName => 'Локальный импорт';
+  @override
+  String get defaultDeepLinkName => 'Импорт по ссылке';
+  @override
+  String get switchFailedMsg => 'Не удалось переключить профиль';
 }
 
 // Path: proxies
@@ -9972,8 +11459,13 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => 'Переключено на ${name}';
   @override
-  String switchToFailed({required Object error}) =>
-      'Не удалось переключить: ${error}';
+  String get switchFailed =>
+      'Не удалось переключить сервер. Попробуйте ещё раз.';
+  @override
+  String get testFailed => 'Не удалось проверить задержку. Попробуйте ещё раз.';
+  @override
+  String get groupsLoading =>
+      'Список серверов ещё загружается. Повторите попытку через минуту.';
   @override
   String get connectBeforeSwitch => 'Подключитесь перед сменой линии';
   @override
@@ -9981,6 +11473,11 @@ class TranslationsProxiesRu extends TranslationsProxiesEn {
       'Запущена проверка задержки для ${count} линий';
   @override
   String get delayTestBtn => 'Задержка';
+  @override
+  String get delayTimeout => 'Тайм-аут';
+  @override
+  String get connectBeforeTest =>
+      'Сначала подключитесь, чтобы проверить задержку';
   @override
   String lineCount({required Object count}) => 'Линий: ${count}';
   @override
@@ -10021,6 +11518,12 @@ class TranslationsLogsRu extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Функция журналов в разработке';
   @override
   String get noLogsWhenDisconnected => 'Нет подключения, журналы отсутствуют';
+  @override
+  String get loadFailed => 'Не удалось загрузить журнал';
+  @override
+  String get empty => 'Журнал пока пуст';
+  @override
+  String get clearFailed => 'Не удалось очистить журнал';
 }
 
 // Path: settings
@@ -10049,6 +11552,9 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Это перезапишет все параметры конфига предоставленными значениями. Вы уверены?';
   @override
+  late final TranslationsSettingsBackupRu backup =
+      TranslationsSettingsBackupRu._(_root);
+  @override
   late final TranslationsSettingsGeneralRu general =
       TranslationsSettingsGeneralRu._(_root);
   @override
@@ -10075,6 +11581,22 @@ class TranslationsSettingsRu extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Изменения порта применяются после переподключения';
+  @override
+  late final TranslationsSettingsGroupsRu groups =
+      TranslationsSettingsGroupsRu._(_root);
+  @override
+  String get importOptionsInvalid =>
+      'В буфере обмена нет корректного JSON настроек';
+  @override
+  String get importOptionsNothing => 'Не найдено настроек для импорта';
+  @override
+  String importOptionsDone({required Object count}) =>
+      'Импортировано настроек: ${count}';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => 'Импортировано: ${applied}; пропущено как некорректные: ${skipped}';
 }
 
 // Path: about
@@ -10102,6 +11624,8 @@ class TranslationsAboutRu extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+  @override
+  String get openSourceLicenses => 'Лицензии открытого ПО';
 }
 
 // Path: appUpdate
@@ -10131,6 +11655,9 @@ class TranslationsAppUpdateRu extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Позже';
   @override
   String get ignoreBtnTxt => 'Пропустить';
+  @override
+  String get checkFailedMsg =>
+      'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
 }
 
 // Path: tray
@@ -10153,6 +11680,8 @@ class TranslationsTrayRu extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Скрыть';
+  @override
+  String get proxyModeMenu => 'Режим прокси';
 }
 
 // Path: failure
@@ -10186,6 +11715,9 @@ class TranslationsFailureRu extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsRu geoAssets =
       TranslationsFailureGeoAssetsRu._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -10209,7 +11741,7 @@ class TranslationsConnectionRu extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Восстановить соединение';
   @override
-  String get connectAnyWay => 'Подключиться';
+  String get connectAnyWay => 'Всё равно подключиться';
   @override
   String get experimentalNotice => 'Экспериментальные функции в использовании';
   @override
@@ -10334,6 +11866,10 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Enable WARP';
   @override
+  String get setUpWarp => 'Настроить WARP';
+  @override
+  String get warpNotConfigured => 'Не настроено';
+  @override
   String get warpDetourMode => 'Detour Mode';
   @override
   late final TranslationsConfigWarpDetourModesRu warpDetourModes =
@@ -10361,6 +11897,23 @@ class TranslationsConfigRu extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS поддерживает только режим VPN';
+  @override
+  String get warpGenerating => 'Создание конфигурации WARP…';
+  @override
+  String get warpConfigFailed =>
+      'Не удалось создать конфигурацию WARP. Повторите попытку позже.';
+  @override
+  String get portRangeError => 'Порт должен быть от 1024 до 65535';
+  @override
+  String get dnsEmptyError => 'Адрес DNS не может быть пустым';
+  @override
+  String get rangeFormatError => 'Введите число или диапазон, например 10-30';
+  @override
+  String get urlSchemeError => 'URL должен начинаться с http:// или https://';
+  @override
+  String get manageRuleAssets => 'Наборы правил';
 }
 
 // Path: general.toggle
@@ -10407,6 +11960,28 @@ class TranslationsHomeRoutingModeRu extends TranslationsHomeRoutingModeEn {
   String get global => 'Глобальный прокси';
   @override
   String get smart => 'Умная маршрутизация';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpRu extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'Выходной IP';
+  @override
+  String get notConnected => 'Подключитесь, чтобы увидеть выходной IP';
+  @override
+  String get tapToCheck => 'Нажмите, чтобы проверить выходной IP';
+  @override
+  String get checking => 'Проверка…';
+  @override
+  String get failedRetry => 'Не удалось проверить, нажмите для повтора';
 }
 
 // Path: profile.subscription
@@ -10498,6 +12073,17 @@ class TranslationsProfileAddRu extends TranslationsProfileAddEn {
   String get warpDescription => 'Бесплатное ускорение через Cloudflare WARP';
   @override
   String get addingWarpMsg => 'Подождите, идёт регистрация WARP.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Подписка импортирована: ${name}';
+  @override
+  String get clipboardEmpty => 'Буфер обмена пуст, импортировать нечего';
+  @override
+  String get deepLinkMissingUrl => 'В ссылке нет адреса подписки';
+  @override
+  String get successMsg => 'Профиль добавлен';
+  @override
+  String get nameAutoHint => 'Определяется автоматически (необязательно)';
 }
 
 // Path: profile.update
@@ -10595,6 +12181,11 @@ class TranslationsProfileDeleteRu extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Безвозвратно удалить профиль?';
   @override
   String get successMsg => 'Профиль успешно удалён';
+  @override
+  String get confirmTitle => 'Удалить профиль';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      'Удалить «${name}»? Это действие нельзя отменить.';
 }
 
 // Path: profile.save
@@ -10653,6 +12244,12 @@ class TranslationsProfileDetailsFormRu
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Выкл.';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} ч';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} дн.';
 }
 
 // Path: profile.actionButtons
@@ -10757,6 +12354,11 @@ class TranslationsProxiesDelaySemanticsRu
   String get timeout => 'Тайм-аут при тестировании задержки';
   @override
   String get testing => 'Задержка: Тестирование...';
+  @override
+  String get untested => 'Задержка: не проверялась';
+  @override
+  String stale({required Object delay}) =>
+      'Задержка: ${delay}мс (прежний результат)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -10774,6 +12376,96 @@ class TranslationsProxiesIpInfoSemanticsRu
   String get address => 'IP адрес';
   @override
   String get country => 'Страна';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupRu extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Импорт резервной копии';
+  @override
+  String get importConfirmMsg =>
+      'Ваши подписки будут заменены подписками из резервной копии, а настройки из неё применены. Сначала сохраняется снимок текущих данных, который автоматически восстанавливается, если импорт не удастся.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'Подписок на этом устройстве, которых нет в резервной копии, будет удалено: ${count}.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      'Импортировано подписок: ${profiles}, настроек: ${settings}.';
+  @override
+  String reportDropped({required Object count}) =>
+      'Пропущено подписок из резервной копии из-за недопустимых данных: ${count}.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      'Пропущено настроек: ${count}; текущие значения сохранены.';
+  @override
+  String get reportWarpOff =>
+      'При импорте WARP был выключен. Включите его заново на этом устройстве.';
+  @override
+  String reportBackfill({required Object count}) =>
+      'Подписок, которые будут загружены в фоне: ${count}.';
+  @override
+  String get errInvalidFile => 'Это не файл резервной копии ClashMiao.';
+  @override
+  String get errUnsupportedVersion =>
+      'Этот формат резервной копии не поддерживается.';
+  @override
+  String get errNewerSchema =>
+      'Эта резервная копия создана более новой версией приложения. Сначала обновите приложение.';
+  @override
+  String get errNoUsableProfiles =>
+      'Ни одну подписку из этой резервной копии нельзя импортировать.';
+  @override
+  String get errSnapshotFailed =>
+      'Не удалось сохранить снимок текущих данных, поэтому ничего не изменено.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Предыдущий импорт был прерван и пока не отменён. Ничего не изменено. Перезапустите приложение и повторите попытку.';
+  @override
+  String get errRolledBack =>
+      'Не удалось импортировать. Прежние данные восстановлены.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
+  @override
+  String get errFailed => 'Не удалось импортировать.';
+  @override
+  String get errBusy =>
+      'Другой импорт уже выполняется. Дождитесь его завершения.';
+  @override
+  String get recoveryFailedTitle =>
+      'Автоматическое восстановление не завершилось';
+  @override
+  String get recoveryFailedMsg =>
+      'Последний импорт резервной копии был прерван, и приложению не удалось вернуть данные в прежнее состояние. Часть данных могла быть импортирована не полностью. Повторите автоматическое восстановление.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Не удалось отменить прерванный импорт';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.';
+  @override
+  String get recoveryRetry => 'Повторить';
+  @override
+  String get recoveryClose => 'Закрыть';
+  @override
+  String get recoveryRetried =>
+      'Данные возвращены в состояние до прерванного импорта.';
+  @override
+  String get exportAction => 'Экспорт резервной копии';
+  @override
+  String get importAction => 'Импорт резервной копии';
+  @override
+  String get exportFailed => 'Не удалось экспортировать резервную копию';
+  @override
+  String get shareText => 'Резервная копия ClashMiao';
 }
 
 // Path: settings.general
@@ -10927,6 +12619,24 @@ class TranslationsSettingsGeoAssetsRu extends TranslationsSettingsGeoAssetsEn {
       'Файлы выбранных ресурсов маршрутизации отсутствуют. Либо скачайте их, либо выберите существующие.';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsRu extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsRu._(TranslationsRu root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsRu _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Общие';
+  @override
+  String get connection => 'Подключение';
+  @override
+  String get privacy => 'Конфиденциальность';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusRu extends TranslationsTrayStatusEn {
   TranslationsTrayStatusRu._(TranslationsRu root)
@@ -10999,6 +12709,11 @@ class TranslationsFailureSingboxRu extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Библиотека ядра не установлена';
   @override
   String get startTimeout => 'Истекло время запуска службы';
+  @override
+  String get kernelUnresponsive =>
+      'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+  @override
+  String get kernelExited => 'Ядро неожиданно завершило работу';
 }
 
 // Path: failure.connectivity
@@ -11023,6 +12738,9 @@ class TranslationsFailureConnectivityRu
   String get core => 'Ошибка ядра';
   @override
   String get networkUnavailable => 'Сеть недоступна';
+  @override
+  String get nativeUnresponsive =>
+      'Потеряна связь с фоновой службой. Повторите попытку.';
 }
 
 // Path: failure.profiles
@@ -11045,6 +12763,9 @@ class TranslationsFailureProfilesRu extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'Неправильный URL';
   @override
   String get noActive => 'Нет активного профиля';
+  @override
+  String get readOnlyUpgrade =>
+      'Обновите приложение, прежде чем изменять подписки';
 }
 
 // Path: failure.connection
@@ -11471,6 +13192,16 @@ class TranslationsGeneralTr extends TranslationsGeneralEn {
   String get underDevelopment => 'Geliştirme Aşamasında';
   @override
   String get confirm => 'Onayla';
+  @override
+  String get close => 'Kapat';
+  @override
+  String get cancel => 'İptal';
+  @override
+  String get clipboardEmpty => 'Pano boş';
+  @override
+  String get clipboardReadFailed => 'Pano okunamadı';
+  @override
+  String get moreOptions => 'Diğer seçenekler';
 }
 
 // Path: intro
@@ -11527,6 +13258,14 @@ class TranslationsHomeTr extends TranslationsHomeEn {
       'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
   @override
   String get degradedRetry => 'Yeniden Denetle';
+  @override
+  late final TranslationsHomeEgressIpTr egressIp = TranslationsHomeEgressIpTr._(
+    _root,
+  );
+  @override
+  String get emptyProfilesHint => 'Başlamak için aşağıdaki düğmeye dokunun';
+  @override
+  String get noActiveProfileTitle => 'Profil seçilmedi';
 }
 
 // Path: stats
@@ -11557,6 +13296,10 @@ class TranslationsStatsTr extends TranslationsStatsEn {
   String get speed => 'Hız';
   @override
   String get totalTransferred => 'Toplam Aktarılan';
+  @override
+  String get sessionTraffic => 'Bu oturumun trafiği';
+  @override
+  String get downloadSpeed => 'İndirme hızı';
 }
 
 // Path: profile
@@ -11624,6 +13367,12 @@ class TranslationsProfileTr extends TranslationsProfileEn {
       TranslationsProfileOverviewTr._(_root);
   @override
   String get remoteProfile => 'Uzak Profil';
+  @override
+  String get defaultLocalName => 'Yerel içe aktarma';
+  @override
+  String get defaultDeepLinkName => 'Bağlantıdan içe aktarma';
+  @override
+  String get switchFailedMsg => 'Profil değiştirilemedi';
 }
 
 // Path: proxies
@@ -11671,7 +13420,13 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '${name} olarak değiştirildi';
   @override
-  String switchToFailed({required Object error}) => 'Geçiş başarısız: ${error}';
+  String get switchFailed => 'Sunucu değiştirilemedi. Lütfen tekrar deneyin.';
+  @override
+  String get testFailed =>
+      'Gecikme testi başarısız oldu. Lütfen tekrar deneyin.';
+  @override
+  String get groupsLoading =>
+      'Sunucu listesi hâlâ yükleniyor. Lütfen birazdan tekrar deneyin.';
   @override
   String get connectBeforeSwitch => 'Hat değiştirmeden önce bağlanın';
   @override
@@ -11679,6 +13434,10 @@ class TranslationsProxiesTr extends TranslationsProxiesEn {
       '${count} hat için gecikme testi başlatıldı';
   @override
   String get delayTestBtn => 'Gecikme';
+  @override
+  String get delayTimeout => 'Zaman aşımı';
+  @override
+  String get connectBeforeTest => 'Gecikmeyi test etmek için önce bağlanın';
   @override
   String lineCount({required Object count}) => '${count} hat';
   @override
@@ -11719,6 +13478,12 @@ class TranslationsLogsTr extends TranslationsLogsEn {
   String get logsUnderDevelopment => 'Günlük özelliği geliştirme aşamasında';
   @override
   String get noLogsWhenDisconnected => 'Bağlı değil, günlük yok';
+  @override
+  String get loadFailed => 'Günlükler yüklenemedi';
+  @override
+  String get empty => 'Henüz günlük yok';
+  @override
+  String get clearFailed => 'Günlükler temizlenemedi';
 }
 
 // Path: settings
@@ -11763,6 +13528,9 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   String get importOptionsMsg =>
       'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
   @override
+  late final TranslationsSettingsBackupTr backup =
+      TranslationsSettingsBackupTr._(_root);
+  @override
   String get systemProxyEnabled => 'Sistem proxy’si etkin';
   @override
   String get systemProxyDisabled =>
@@ -11773,6 +13541,22 @@ class TranslationsSettingsTr extends TranslationsSettingsEn {
   @override
   String get portChangeNotice =>
       'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+  @override
+  late final TranslationsSettingsGroupsTr groups =
+      TranslationsSettingsGroupsTr._(_root);
+  @override
+  String get importOptionsInvalid => 'Pano geçerli bir ayar JSON\'u içermiyor';
+  @override
+  String get importOptionsNothing => 'İçe aktarılabilir ayar bulunamadı';
+  @override
+  String importOptionsDone({required Object count}) =>
+      '${count} ayar içe aktarıldı';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) =>
+      '${applied} ayar içe aktarıldı; ${skipped} ayar geçersiz olduğu için atlandı';
 }
 
 // Path: about
@@ -11800,6 +13584,8 @@ class TranslationsAboutTr extends TranslationsAboutEn {
   @override
   String get appDescription =>
       'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+  @override
+  String get openSourceLicenses => 'Açık kaynak lisansları';
 }
 
 // Path: appUpdate
@@ -11829,6 +13615,9 @@ class TranslationsAppUpdateTr extends TranslationsAppUpdateEn {
   String get laterBtnTxt => 'Daha sonra';
   @override
   String get ignoreBtnTxt => 'Görmezden gel';
+  @override
+  String get checkFailedMsg =>
+      'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
 }
 
 // Path: tray
@@ -11851,6 +13640,8 @@ class TranslationsTrayTr extends TranslationsTrayEn {
   );
   @override
   String get hide => 'Gizle';
+  @override
+  String get proxyModeMenu => 'Proxy Modu';
 }
 
 // Path: failure
@@ -11884,6 +13675,9 @@ class TranslationsFailureTr extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsTr geoAssets =
       TranslationsFailureGeoAssetsTr._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}: ${reason}';
 }
 
 // Path: connection
@@ -11914,7 +13708,7 @@ class TranslationsConnectionTr extends TranslationsConnectionEn {
   @override
   String get reconnect => 'Yeniden Bağlan';
   @override
-  String get connectAnyWay => 'Bağlan';
+  String get connectAnyWay => 'Yine de bağlan';
   @override
   String get reconnectMsg =>
       'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
@@ -12016,6 +13810,10 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   @override
   String get enableWarp => 'Enable WARP';
   @override
+  String get setUpWarp => 'WARP\'ı ayarla';
+  @override
+  String get warpNotConfigured => 'Yapılandırılmadı';
+  @override
   String get warpDetourMode => 'Detour Mode';
   @override
   late final TranslationsConfigWarpDetourModesTr warpDetourModes =
@@ -12060,6 +13858,23 @@ class TranslationsConfigTr extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS yalnızca VPN modunu destekler';
+  @override
+  String get warpGenerating => 'WARP yapılandırması oluşturuluyor…';
+  @override
+  String get warpConfigFailed =>
+      'WARP yapılandırması oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
+  @override
+  String get portRangeError => 'Port 1024 ile 65535 arasında olmalıdır';
+  @override
+  String get dnsEmptyError => 'DNS adresi boş olamaz';
+  @override
+  String get rangeFormatError => 'Bir sayı veya aralık girin, örn. 10-30';
+  @override
+  String get urlSchemeError => 'URL http:// veya https:// ile başlamalıdır';
+  @override
+  String get manageRuleAssets => 'Kural setlerini yönet';
 }
 
 // Path: general.toggle
@@ -12106,6 +13921,28 @@ class TranslationsHomeRoutingModeTr extends TranslationsHomeRoutingModeEn {
   String get global => 'Genel Proxy';
   @override
   String get smart => 'Akıllı Yönlendirme';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpTr extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => 'Çıkış IP\'si';
+  @override
+  String get notConnected => 'Çıkış IP\'sini görmek için bağlanın';
+  @override
+  String get tapToCheck => 'Çıkış IP\'sini denetlemek için dokunun';
+  @override
+  String get checking => 'Denetleniyor…';
+  @override
+  String get failedRetry => 'Denetim başarısız, yeniden denemek için dokunun';
 }
 
 // Path: profile.subscription
@@ -12199,6 +14036,17 @@ class TranslationsProfileAddTr extends TranslationsProfileAddEn {
   String get warpDescription => 'Cloudflare WARP ile ücretsiz hızlandırma';
   @override
   String get addingWarpMsg => 'WARP kaydedilirken lütfen bekleyin.';
+  @override
+  String importedNamed({required Object name}) =>
+      'Abonelik içe aktarıldı: ${name}';
+  @override
+  String get clipboardEmpty => 'Pano boş, içe aktarılacak bir şey yok';
+  @override
+  String get deepLinkMissingUrl => 'Bağlantıda abonelik adresi yok';
+  @override
+  String get successMsg => 'Profil eklendi';
+  @override
+  String get nameAutoHint => 'Otomatik algılanır (isteğe bağlı)';
 }
 
 // Path: profile.update
@@ -12292,6 +14140,11 @@ class TranslationsProfileDeleteTr extends TranslationsProfileDeleteEn {
   String get confirmationMsg => 'Profil kalıcı olarak silinsin mi?';
   @override
   String get successMsg => 'Profil başarıyla silindi';
+  @override
+  String get confirmTitle => 'Profili sil';
+  @override
+  String namedConfirmMsg({required Object name}) =>
+      '"${name}" silinsin mi? Bu işlem geri alınamaz.';
 }
 
 // Path: profile.save
@@ -12351,6 +14204,12 @@ class TranslationsProfileDetailsFormTr
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => 'Kapalı';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} sa';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} gün';
 }
 
 // Path: profile.actionButtons
@@ -12454,6 +14313,11 @@ class TranslationsProxiesDelaySemanticsTr
   String get timeout => 'Gecikme Testi Zaman Aşımı';
   @override
   String get testing => 'Gecikme: Test ediliyor...';
+  @override
+  String get untested => 'Gecikme: Test edilmedi';
+  @override
+  String stale({required Object delay}) =>
+      'Gecikme: ${delay} ms (önceki sonuç)';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -12624,6 +14488,112 @@ class TranslationsSettingsGeoAssetsTr extends TranslationsSettingsGeoAssetsEn {
       'Seçilen yönlendirme varlıklarının dosyaları eksik. Bunları indirin veya mevcut olanları seçin.';
 }
 
+// Path: settings.backup
+class TranslationsSettingsBackupTr extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => 'Yedeği İçe Aktar';
+  @override
+  String get importConfirmMsg =>
+      'Bu işlem aboneliklerinizi yedekteki aboneliklerle değiştirir ve yedekteki ayarları uygular. Önce mevcut verilerin bir anlık görüntüsü kaydedilir; içe aktarma başarısız olursa otomatik olarak geri yüklenir.';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      'Bu cihazdaki ${count} abonelik yedekte yok ve kaldırılacak.';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '${profiles} abonelik ve ${settings} ayar içe aktarıldı.';
+  @override
+  String reportDropped({required Object count}) =>
+      'Yedekteki ${count} abonelik, verileri geçersiz olduğu için atlandı.';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '${count} ayar atlandı; mevcut değerleriniz korundu.';
+  @override
+  String get reportWarpOff =>
+      'İçe aktarma WARP\'ı kapattı. Bu cihazda yeniden etkinleştirin.';
+  @override
+  String reportBackfill({required Object count}) =>
+      '${count} abonelik arka planda indirilecek.';
+  @override
+  String get errInvalidFile => 'Bu geçerli bir ClashMiao yedek dosyası değil.';
+  @override
+  String get errUnsupportedVersion => 'Bu yedek biçimi desteklenmiyor.';
+  @override
+  String get errNewerSchema =>
+      'Bu yedek uygulamanın daha yeni bir sürümüyle oluşturulmuş. Lütfen önce uygulamayı güncelleyin.';
+  @override
+  String get errNoUsableProfiles =>
+      'Bu yedekteki aboneliklerin hiçbiri içe aktarılamıyor.';
+  @override
+  String get errSnapshotFailed =>
+      'Mevcut verilerin anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey değiştirilmedi.';
+  @override
+  String get errUnresolvedPrevious =>
+      'Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.';
+  @override
+  String get errRolledBack =>
+      'İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
+  @override
+  String get errFailed => 'İçe aktarma başarısız oldu.';
+  @override
+  String get errBusy =>
+      'Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.';
+  @override
+  String get recoveryFailedTitle => 'Otomatik geri yükleme tamamlanmadı';
+  @override
+  String get recoveryFailedMsg =>
+      'Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.';
+  @override
+  String get recoveryUnrecoverableTitle =>
+      'Yarıda kalan içe aktarma geri alınamadı';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      'Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.';
+  @override
+  String get recoveryRetry => 'Yeniden dene';
+  @override
+  String get recoveryClose => 'Kapat';
+  @override
+  String get recoveryRetried =>
+      'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
+  @override
+  String get exportAction => 'Yedeği dışa aktar';
+  @override
+  String get importAction => 'Yedeği içe aktar';
+  @override
+  String get exportFailed => 'Yedek dışa aktarılamadı';
+  @override
+  String get shareText => 'ClashMiao yedeği';
+}
+
+// Path: settings.groups
+class TranslationsSettingsGroupsTr extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsTr._(TranslationsTr root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsTr _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => 'Genel';
+  @override
+  String get connection => 'Bağlantı';
+  @override
+  String get privacy => 'Gizlilik';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusTr extends TranslationsTrayStatusEn {
   TranslationsTrayStatusTr._(TranslationsTr root)
@@ -12696,6 +14666,11 @@ class TranslationsFailureSingboxTr extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => 'Çekirdek Kitaplığı Yüklü Değil';
   @override
   String get startTimeout => 'Servis Başlatma Zaman Aşımı';
+  @override
+  String get kernelUnresponsive =>
+      'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+  @override
+  String get kernelExited => 'Çekirdek beklenmedik şekilde kapandı';
 }
 
 // Path: failure.connectivity
@@ -12719,6 +14694,9 @@ class TranslationsFailureConnectivityTr
   String get core => 'Temel Hata';
   @override
   String get networkUnavailable => 'Ağ Kullanılamıyor';
+  @override
+  String get nativeUnresponsive =>
+      'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
 }
 
 // Path: failure.profiles
@@ -12741,6 +14719,9 @@ class TranslationsFailureProfilesTr extends TranslationsFailureProfilesEn {
   String get invalidUrl => 'Geçersiz URL';
   @override
   String get noActive => 'Etkin Profil Yok';
+  @override
+  String get readOnlyUpgrade =>
+      'Abonelikleri değiştirmeden önce uygulamayı güncelleyin';
 }
 
 // Path: failure.connection
@@ -13165,6 +15146,16 @@ class TranslationsGeneralZhCn extends TranslationsGeneralEn {
   String get underDevelopment => '功能开发中';
   @override
   String get confirm => '确认';
+  @override
+  String get close => '关闭';
+  @override
+  String get cancel => '取消';
+  @override
+  String get clipboardEmpty => '剪贴板为空';
+  @override
+  String get clipboardReadFailed => '读取剪贴板失败';
+  @override
+  String get moreOptions => '更多选项';
 }
 
 // Path: intro
@@ -13221,6 +15212,13 @@ class TranslationsHomeZhCn extends TranslationsHomeEn {
   String get degradedMsg => '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
   @override
   String get degradedRetry => '重新检测';
+  @override
+  late final TranslationsHomeEgressIpZhCn egressIp =
+      TranslationsHomeEgressIpZhCn._(_root);
+  @override
+  String get emptyProfilesHint => '点击下方按钮开始探索';
+  @override
+  String get noActiveProfileTitle => '未选择配置文件';
 }
 
 // Path: stats
@@ -13253,6 +15251,10 @@ class TranslationsStatsZhCn extends TranslationsStatsEn {
   String get speed => '速度';
   @override
   String get totalTransferred => '总传输量';
+  @override
+  String get sessionTraffic => '本次流量';
+  @override
+  String get downloadSpeed => '下载速度';
 }
 
 // Path: profile
@@ -13318,6 +15320,12 @@ class TranslationsProfileZhCn extends TranslationsProfileEn {
       TranslationsProfileDetailsFormZhCn._(_root);
   @override
   String get remoteProfile => '远程订阅';
+  @override
+  String get defaultLocalName => '本地导入';
+  @override
+  String get defaultDeepLinkName => '深链导入';
+  @override
+  String get switchFailedMsg => '切换配置文件失败';
 }
 
 // Path: proxies
@@ -13364,7 +15372,11 @@ class TranslationsProxiesZhCn extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '已切换到 ${name}';
   @override
-  String switchToFailed({required Object error}) => '切换失败: ${error}';
+  String get switchFailed => '切换线路失败，请稍后重试';
+  @override
+  String get testFailed => '测速失败，请稍后重试';
+  @override
+  String get groupsLoading => '线路信息加载中，请稍候再试';
   @override
   String get connectBeforeSwitch => '请先连接后再切换节点';
   @override
@@ -13372,6 +15384,10 @@ class TranslationsProxiesZhCn extends TranslationsProxiesEn {
       '已开始测试当前订阅的 ${count} 个节点';
   @override
   String get delayTestBtn => '测速';
+  @override
+  String get delayTimeout => '超时';
+  @override
+  String get connectBeforeTest => '请连接后测速';
   @override
   String lineCount({required Object count}) => '${count} 个节点';
   @override
@@ -13414,6 +15430,12 @@ class TranslationsLogsZhCn extends TranslationsLogsEn {
   String get logsUnderDevelopment => '日志功能开发中';
   @override
   String get noLogsWhenDisconnected => '未连接，无日志';
+  @override
+  String get loadFailed => '日志读取失败';
+  @override
+  String get empty => '暂无日志';
+  @override
+  String get clearFailed => '清除日志失败';
 }
 
 // Path: settings
@@ -13443,6 +15465,9 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   @override
   String get importOptionsMsg => '这将使用提供的值重写所有配置选项。您确定吗？';
   @override
+  late final TranslationsSettingsBackupZhCn backup =
+      TranslationsSettingsBackupZhCn._(_root);
+  @override
   late final TranslationsSettingsGeneralZhCn general =
       TranslationsSettingsGeneralZhCn._(_root);
   @override
@@ -13462,6 +15487,20 @@ class TranslationsSettingsZhCn extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 需要管理员权限';
   @override
   String get portChangeNotice => '端口修改需要重启连接生效';
+  @override
+  late final TranslationsSettingsGroupsZhCn groups =
+      TranslationsSettingsGroupsZhCn._(_root);
+  @override
+  String get importOptionsInvalid => '剪贴板内容不是有效的配置 JSON';
+  @override
+  String get importOptionsNothing => '未识别到可导入的配置项';
+  @override
+  String importOptionsDone({required Object count}) => '已导入 ${count} 项配置';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过';
 }
 
 // Path: about
@@ -13490,6 +15529,8 @@ class TranslationsAboutZhCn extends TranslationsAboutEn {
   String get termsAndConditions => '条款和条件';
   @override
   String get appDescription => '基于 sing-box 核心的跨平台代理客户端';
+  @override
+  String get openSourceLicenses => '开源许可';
 }
 
 // Path: appUpdate
@@ -13518,6 +15559,8 @@ class TranslationsAppUpdateZhCn extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '以后再说';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '检查更新失败，请检查网络后重试';
 }
 
 // Path: tray
@@ -13542,6 +15585,8 @@ class TranslationsTrayZhCn extends TranslationsTrayEn {
   late final TranslationsTrayStatusZhCn status = TranslationsTrayStatusZhCn._(
     _root,
   );
+  @override
+  String get proxyModeMenu => '代理模式';
 }
 
 // Path: failure
@@ -13574,6 +15619,9 @@ class TranslationsFailureZhCn extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhCn geoAssets =
       TranslationsFailureGeoAssetsZhCn._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}：${reason}';
 }
 
 // Path: connection
@@ -13597,14 +15645,14 @@ class TranslationsConnectionZhCn extends TranslationsConnectionEn {
   @override
   String get reconnect => '重新连接';
   @override
-  String get connectAnyWay => '连接';
+  String get connectAnyWay => '仍然连接';
   @override
-  String get experimentalNotice => '使用中的实验功能';
+  String get experimentalNotice => '实验性功能提醒';
   @override
   String get experimentalNoticeMsg =>
-      '您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。';
+      '当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。';
   @override
-  String get disableExperimentalNotice => '不再显示';
+  String get disableExperimentalNotice => '不再提示';
   @override
   String get reconnectMsg => '重新连接以使更改生效';
   @override
@@ -13727,6 +15775,10 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   @override
   String get enableWarp => '启用 WARP';
   @override
+  String get setUpWarp => '设置 WARP';
+  @override
+  String get warpNotConfigured => '未配置';
+  @override
   String get warpDetourMode => '链式线路';
   @override
   late final TranslationsConfigWarpDetourModesZhCn warpDetourModes =
@@ -13740,7 +15792,7 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   @override
   String get warpNoise => '噪音计数';
   @override
-  String get warpNoiseDelay => '噪音延延迟';
+  String get warpNoiseDelay => '噪音延迟';
   @override
   String get desktopProxyScopeNotice =>
       '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
@@ -13748,6 +15800,22 @@ class TranslationsConfigZhCn extends TranslationsConfigEn {
   String get warpNoiseSize => '噪音大小';
   @override
   String get warpNoiseMode => '噪音模式';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS 仅支持 VPN 模式';
+  @override
+  String get warpGenerating => '正在生成 WARP 配置…';
+  @override
+  String get warpConfigFailed => 'WARP 配置生成失败，请稍后重试';
+  @override
+  String get portRangeError => '端口范围 1024-65535';
+  @override
+  String get dnsEmptyError => 'DNS 地址不能为空';
+  @override
+  String get rangeFormatError => '请输入数字或范围，例如 10-30';
+  @override
+  String get urlSchemeError => 'URL 必须以 http:// 或 https:// 开头';
+  @override
+  String get manageRuleAssets => '规则库管理';
 }
 
 // Path: general.toggle
@@ -13794,6 +15862,28 @@ class TranslationsHomeRoutingModeZhCn extends TranslationsHomeRoutingModeEn {
   String get global => '全局代理';
   @override
   String get smart => '智能分流';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpZhCn extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => '出口 IP';
+  @override
+  String get notConnected => '连接后显示出口 IP';
+  @override
+  String get tapToCheck => '点击检测出口 IP';
+  @override
+  String get checking => '正在检测…';
+  @override
+  String get failedRetry => '检测失败，点击重试';
 }
 
 // Path: profile.subscription
@@ -13908,6 +15998,16 @@ class TranslationsProfileAddZhCn extends TranslationsProfileAddEn {
   String get addingProfileMsg => '添加配置文件';
   @override
   String get failureMsg => '添加配置文件失败';
+  @override
+  String importedNamed({required Object name}) => '已导入订阅：${name}';
+  @override
+  String get clipboardEmpty => '剪贴板为空，无法导入订阅';
+  @override
+  String get deepLinkMissingUrl => '链接中缺少订阅地址';
+  @override
+  String get successMsg => '添加成功';
+  @override
+  String get nameAutoHint => '自动识别（可选）';
 }
 
 // Path: profile.details
@@ -14042,6 +16142,10 @@ class TranslationsProfileDeleteZhCn extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '要永久删除配置文件吗？';
   @override
   String get successMsg => '配置文件删除成功';
+  @override
+  String get confirmTitle => '删除配置文件';
+  @override
+  String namedConfirmMsg({required Object name}) => '确定要删除"${name}"吗？此操作不可撤销。';
 }
 
 // Path: profile.save
@@ -14099,6 +16203,12 @@ class TranslationsProfileDetailsFormZhCn
   String get mux => 'Mux 多路复用';
   @override
   String get muxDescription => '复用出站连接以减少握手开销';
+  @override
+  String get updateIntervalOff => '关闭';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} 小时';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} 天';
 }
 
 // Path: proxies.sortOptions
@@ -14137,6 +16247,10 @@ class TranslationsProxiesDelaySemanticsZhCn
   String get timeout => '延迟测试超时';
   @override
   String get testing => '正在测试延迟';
+  @override
+  String get untested => '延迟: 未测试';
+  @override
+  String stale({required Object delay}) => '延迟: ${delay}ms（历史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -14154,6 +16268,83 @@ class TranslationsProxiesIpInfoSemanticsZhCn
   String get address => 'IP 地址';
   @override
   String get country => '国家';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupZhCn extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => '导入备份';
+  @override
+  String get importConfirmMsg =>
+      '这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '本机有 ${count} 个订阅不在备份中，导入后将被移除。';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '已导入 ${profiles} 个订阅、${settings} 项设置。';
+  @override
+  String reportDropped({required Object count}) => '备份中有 ${count} 个订阅因数据无效被跳过。';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '有 ${count} 项设置被跳过，保留了当前值。';
+  @override
+  String get reportWarpOff => '导入时已关闭 WARP，请在本机重新启用。';
+  @override
+  String reportBackfill({required Object count}) => '有 ${count} 个订阅将在后台下载。';
+  @override
+  String get errInvalidFile => '这不是有效的 ClashMiao 备份文件。';
+  @override
+  String get errUnsupportedVersion => '不支持这种备份格式。';
+  @override
+  String get errNewerSchema => '此备份由更新版本的应用生成，请先升级应用。';
+  @override
+  String get errNoUsableProfiles => '此备份中没有可以导入的订阅。';
+  @override
+  String get errSnapshotFailed => '无法保存当前数据的快照，所以没有做任何改动。';
+  @override
+  String get errUnresolvedPrevious => '上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。';
+  @override
+  String get errRolledBack => '导入失败，已恢复到导入之前的数据。';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
+  @override
+  String get errFailed => '导入失败。';
+  @override
+  String get errBusy => '已有另一个导入正在进行，请等它结束后再试。';
+  @override
+  String get recoveryFailedTitle => '自动恢复没有完成';
+  @override
+  String get recoveryFailedMsg =>
+      '上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。';
+  @override
+  String get recoveryUnrecoverableTitle => '无法撤销被中断的导入';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      '上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。';
+  @override
+  String get recoveryRetry => '重试';
+  @override
+  String get recoveryClose => '关闭';
+  @override
+  String get recoveryRetried => '已把数据恢复到被中断的导入之前。';
+  @override
+  String get exportAction => '导出备份';
+  @override
+  String get importAction => '导入备份';
+  @override
+  String get exportFailed => '导出失败';
+  @override
+  String get shareText => 'ClashMiao 备份';
 }
 
 // Path: settings.general
@@ -14300,6 +16491,24 @@ class TranslationsSettingsGeoAssetsZhCn
   String get missingGeoAssetsMsg => '所选路由资源的文件丢失。下载它们或选择现有的。';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsZhCn extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhCn._(TranslationsZhCn root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhCn _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '通用';
+  @override
+  String get connection => '连接';
+  @override
+  String get privacy => '隐私';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusZhCn extends TranslationsTrayStatusEn {
   TranslationsTrayStatusZhCn._(TranslationsZhCn root)
@@ -14370,6 +16579,10 @@ class TranslationsFailureSingboxZhCn extends TranslationsFailureSingboxEn {
   String get start => '服务启动错误';
   @override
   String get startTimeout => '服务启动超时';
+  @override
+  String get kernelUnresponsive => '内核无响应，请重试或重启应用';
+  @override
+  String get kernelExited => '内核意外退出';
 }
 
 // Path: failure.connectivity
@@ -14393,6 +16606,8 @@ class TranslationsFailureConnectivityZhCn
   String get networkUnavailable => '网络不可用';
   @override
   String get core => '核心错误';
+  @override
+  String get nativeUnresponsive => '与后台服务失去联系，请重试';
 }
 
 // Path: failure.profiles
@@ -14415,6 +16630,8 @@ class TranslationsFailureProfilesZhCn extends TranslationsFailureProfilesEn {
   String get invalidConfig => '无效配置';
   @override
   String get invalidUrl => '网址无效';
+  @override
+  String get readOnlyUpgrade => '请升级 App 后再修改订阅';
 }
 
 // Path: failure.connection
@@ -14841,6 +17058,16 @@ class TranslationsGeneralZhTw extends TranslationsGeneralEn {
   String get underDevelopment => '功能開發中';
   @override
   String get confirm => '確認';
+  @override
+  String get close => '關閉';
+  @override
+  String get cancel => '取消';
+  @override
+  String get clipboardEmpty => '剪貼簿為空';
+  @override
+  String get clipboardReadFailed => '讀取剪貼簿失敗';
+  @override
+  String get moreOptions => '更多選項';
 }
 
 // Path: intro
@@ -14898,6 +17125,13 @@ class TranslationsHomeZhTw extends TranslationsHomeEn {
   String get degradedMsg => '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
   @override
   String get degradedRetry => '重新檢測';
+  @override
+  late final TranslationsHomeEgressIpZhTw egressIp =
+      TranslationsHomeEgressIpZhTw._(_root);
+  @override
+  String get emptyProfilesHint => '點擊下方按鈕開始探索';
+  @override
+  String get noActiveProfileTitle => '未選擇設定檔';
 }
 
 // Path: stats
@@ -14930,6 +17164,10 @@ class TranslationsStatsZhTw extends TranslationsStatsEn {
   String get trafficUsage => '流量使用';
   @override
   String get liveSpeed => '即時速度';
+  @override
+  String get sessionTraffic => '本次流量';
+  @override
+  String get downloadSpeed => '下載速度';
 }
 
 // Path: profile
@@ -14995,6 +17233,12 @@ class TranslationsProfileZhTw extends TranslationsProfileEn {
       TranslationsProfileOverviewZhTw._(_root);
   @override
   String get remoteProfile => '遠端訂閱';
+  @override
+  String get defaultLocalName => '本機匯入';
+  @override
+  String get defaultDeepLinkName => '連結匯入';
+  @override
+  String get switchFailedMsg => '切換設定檔失敗';
 }
 
 // Path: proxies
@@ -15041,7 +17285,11 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
   @override
   String switchedTo({required Object name}) => '已切換到 ${name}';
   @override
-  String switchToFailed({required Object error}) => '切換失敗：${error}';
+  String get switchFailed => '切換線路失敗，請稍後重試';
+  @override
+  String get testFailed => '測速失敗，請稍後重試';
+  @override
+  String get groupsLoading => '線路資訊載入中，請稍候再試';
   @override
   String get connectBeforeSwitch => '請先連線再切換線路';
   @override
@@ -15049,6 +17297,10 @@ class TranslationsProxiesZhTw extends TranslationsProxiesEn {
       '已開始檢測 ${count} 條線路的延遲';
   @override
   String get delayTestBtn => '延遲';
+  @override
+  String get delayTimeout => '逾時';
+  @override
+  String get connectBeforeTest => '請連線後再測速';
   @override
   String lineCount({required Object count}) => '${count} 條線路';
   @override
@@ -15091,6 +17343,12 @@ class TranslationsLogsZhTw extends TranslationsLogsEn {
   String get logsUnderDevelopment => '日誌功能開發中';
   @override
   String get noLogsWhenDisconnected => '未連線，無日誌';
+  @override
+  String get loadFailed => '日誌讀取失敗';
+  @override
+  String get empty => '暫無日誌';
+  @override
+  String get clearFailed => '清除日誌失敗';
 }
 
 // Path: settings
@@ -15120,6 +17378,9 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   @override
   String get importOptionsMsg => '這將使用提供的值複寫所有配置選項。您確定嗎？';
   @override
+  late final TranslationsSettingsBackupZhTw backup =
+      TranslationsSettingsBackupZhTw._(_root);
+  @override
   late final TranslationsSettingsGeneralZhTw general =
       TranslationsSettingsGeneralZhTw._(_root);
   @override
@@ -15139,6 +17400,20 @@ class TranslationsSettingsZhTw extends TranslationsSettingsEn {
   String get adminPrivilegesRequired => 'macOS 上需要管理員權限';
   @override
   String get portChangeNotice => '連接埠變更需要重新連線才會生效';
+  @override
+  late final TranslationsSettingsGroupsZhTw groups =
+      TranslationsSettingsGroupsZhTw._(_root);
+  @override
+  String get importOptionsInvalid => '剪貼簿內容不是有效的設定 JSON';
+  @override
+  String get importOptionsNothing => '未識別到可匯入的設定項';
+  @override
+  String importOptionsDone({required Object count}) => '已匯入 ${count} 項設定';
+  @override
+  String importOptionsPartial({
+    required Object applied,
+    required Object skipped,
+  }) => '已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過';
 }
 
 // Path: about
@@ -15167,6 +17442,8 @@ class TranslationsAboutZhTw extends TranslationsAboutEn {
   String get termsAndConditions => '條款與條件';
   @override
   String get appDescription => '基於 sing-box 核心的跨平台代理用戶端';
+  @override
+  String get openSourceLicenses => '開放原始碼授權';
 }
 
 // Path: appUpdate
@@ -15195,6 +17472,8 @@ class TranslationsAppUpdateZhTw extends TranslationsAppUpdateEn {
   String get laterBtnTxt => '稍後再說';
   @override
   String get ignoreBtnTxt => '忽略';
+  @override
+  String get checkFailedMsg => '檢查更新失敗，請檢查網路後再試';
 }
 
 // Path: tray
@@ -15219,6 +17498,8 @@ class TranslationsTrayZhTw extends TranslationsTrayEn {
   );
   @override
   String get hide => '隱藏';
+  @override
+  String get proxyModeMenu => '代理模式';
 }
 
 // Path: failure
@@ -15251,6 +17532,9 @@ class TranslationsFailureZhTw extends TranslationsFailureEn {
   @override
   late final TranslationsFailureGeoAssetsZhTw geoAssets =
       TranslationsFailureGeoAssetsZhTw._(_root);
+  @override
+  String withReason({required Object message, required Object reason}) =>
+      '${message}：${reason}';
 }
 
 // Path: connection
@@ -15274,12 +17558,12 @@ class TranslationsConnectionZhTw extends TranslationsConnectionEn {
   @override
   String get reconnect => '重新連線';
   @override
-  String get connectAnyWay => '連線';
+  String get connectAnyWay => '仍然連線';
   @override
-  String get experimentalNotice => '使用中的實驗性功能';
+  String get experimentalNotice => '實驗性功能提醒';
   @override
   String get experimentalNoticeMsg =>
-      '您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。';
+      '目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。';
   @override
   String get disableExperimentalNotice => '不再提示';
   @override
@@ -15398,6 +17682,10 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   @override
   String get enableWarp => '啟用 WARP';
   @override
+  String get setUpWarp => '設定 WARP';
+  @override
+  String get warpNotConfigured => '未設定';
+  @override
   String get warpDetourMode => '鏈式線路';
   @override
   late final TranslationsConfigWarpDetourModesZhTw warpDetourModes =
@@ -15425,6 +17713,22 @@ class TranslationsConfigZhTw extends TranslationsConfigEn {
   @override
   String get desktopProxyScopeNotice =>
       '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
+  @override
+  String get serviceModeIosVpnOnly => 'iOS 僅支援 VPN 模式';
+  @override
+  String get warpGenerating => '正在產生 WARP 設定…';
+  @override
+  String get warpConfigFailed => 'WARP 設定產生失敗，請稍後再試';
+  @override
+  String get portRangeError => '連接埠範圍 1024-65535';
+  @override
+  String get dnsEmptyError => 'DNS 位址不能為空';
+  @override
+  String get rangeFormatError => '請輸入數字或範圍，例如 10-30';
+  @override
+  String get urlSchemeError => 'URL 必須以 http:// 或 https:// 開頭';
+  @override
+  String get manageRuleAssets => '規則庫管理';
 }
 
 // Path: general.toggle
@@ -15471,6 +17775,28 @@ class TranslationsHomeRoutingModeZhTw extends TranslationsHomeRoutingModeEn {
   String get global => '全域代理';
   @override
   String get smart => '智慧分流';
+}
+
+// Path: home.egressIp
+class TranslationsHomeEgressIpZhTw extends TranslationsHomeEgressIpEn {
+  TranslationsHomeEgressIpZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get label => '出口 IP';
+  @override
+  String get notConnected => '連線後顯示出口 IP';
+  @override
+  String get tapToCheck => '點擊檢測出口 IP';
+  @override
+  String get checking => '正在檢測…';
+  @override
+  String get failedRetry => '檢測失敗，點擊重試';
 }
 
 // Path: profile.subscription
@@ -15562,6 +17888,16 @@ class TranslationsProfileAddZhTw extends TranslationsProfileAddEn {
   String get manuallyDescription => '手動輸入伺服器設定';
   @override
   String get warpDescription => '使用 Cloudflare WARP 免費加速';
+  @override
+  String importedNamed({required Object name}) => '已匯入訂閱：${name}';
+  @override
+  String get clipboardEmpty => '剪貼簿為空，無法匯入訂閱';
+  @override
+  String get deepLinkMissingUrl => '連結中缺少訂閱位址';
+  @override
+  String get successMsg => '新增成功';
+  @override
+  String get nameAutoHint => '自動識別（選填）';
 }
 
 // Path: profile.update
@@ -15654,6 +17990,10 @@ class TranslationsProfileDeleteZhTw extends TranslationsProfileDeleteEn {
   String get confirmationMsg => '要永久刪除設定檔嗎？';
   @override
   String get successMsg => '設定檔刪除成功';
+  @override
+  String get confirmTitle => '刪除設定檔';
+  @override
+  String namedConfirmMsg({required Object name}) => '確定要刪除「${name}」嗎？此操作無法復原。';
 }
 
 // Path: profile.save
@@ -15712,6 +18052,12 @@ class TranslationsProfileDetailsFormZhTw
   @override
   String get muxDescription =>
       'Multiplex outbound connections to reduce handshake overhead';
+  @override
+  String get updateIntervalOff => '關閉';
+  @override
+  String updateIntervalHours({required Object hours}) => '${hours} 小時';
+  @override
+  String updateIntervalDays({required Object days}) => '${days} 天';
 }
 
 // Path: profile.actionButtons
@@ -15815,6 +18161,10 @@ class TranslationsProxiesDelaySemanticsZhTw
   String get timeout => '延遲測試超時';
   @override
   String get testing => '正在測試延遲';
+  @override
+  String get untested => '延遲： 未測試';
+  @override
+  String stale({required Object delay}) => '延遲： ${delay}ms（歷史值）';
 }
 
 // Path: proxies.ipInfoSemantics
@@ -15832,6 +18182,84 @@ class TranslationsProxiesIpInfoSemanticsZhTw
   String get address => 'IP 地址';
   @override
   String get country => '國家';
+}
+
+// Path: settings.backup
+class TranslationsSettingsBackupZhTw extends TranslationsSettingsBackupEn {
+  TranslationsSettingsBackupZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get importConfirmTitle => '匯入備份';
+  @override
+  String get importConfirmMsg =>
+      '這會用備份中的訂閱取代目前的訂閱，並套用備份中的設定。匯入前會先儲存目前資料的快照，匯入失敗時自動還原。';
+  @override
+  String importRemovesMsg({required Object count}) =>
+      '本機有 ${count} 個訂閱不在備份中，匯入後將被移除。';
+  @override
+  String reportImported({required Object profiles, required Object settings}) =>
+      '已匯入 ${profiles} 個訂閱、${settings} 項設定。';
+  @override
+  String reportDropped({required Object count}) =>
+      '備份中有 ${count} 個訂閱因資料無效而被略過。';
+  @override
+  String reportSettingsSkipped({required Object count}) =>
+      '有 ${count} 項設定被略過，保留了目前的值。';
+  @override
+  String get reportWarpOff => '匯入時已關閉 WARP，請在本機重新啟用。';
+  @override
+  String reportBackfill({required Object count}) => '有 ${count} 個訂閱將在背景下載。';
+  @override
+  String get errInvalidFile => '這不是有效的 ClashMiao 備份檔案。';
+  @override
+  String get errUnsupportedVersion => '不支援這種備份格式。';
+  @override
+  String get errNewerSchema => '此備份由較新版本的應用程式建立，請先升級應用程式。';
+  @override
+  String get errNoUsableProfiles => '此備份中沒有可以匯入的訂閱。';
+  @override
+  String get errSnapshotFailed => '無法儲存目前資料的快照，因此沒有做任何變更。';
+  @override
+  String get errUnresolvedPrevious => '上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。';
+  @override
+  String get errRolledBack => '匯入失敗，已還原到匯入之前的資料。';
+  @override
+  String errNotRolledBack({required Object path}) =>
+      '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
+  @override
+  String get errFailed => '匯入失敗。';
+  @override
+  String get errBusy => '已有另一個匯入正在進行，請等它結束後再試。';
+  @override
+  String get recoveryFailedTitle => '自動還原沒有完成';
+  @override
+  String get recoveryFailedMsg =>
+      '上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。';
+  @override
+  String get recoveryUnrecoverableTitle => '無法復原被中斷的匯入';
+  @override
+  String get recoveryUnrecoverableMsg =>
+      '上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。';
+  @override
+  String get recoveryRetry => '重試';
+  @override
+  String get recoveryClose => '關閉';
+  @override
+  String get recoveryRetried => '已把資料還原到被中斷的匯入之前。';
+  @override
+  String get exportAction => '匯出備份';
+  @override
+  String get importAction => '匯入備份';
+  @override
+  String get exportFailed => '匯出失敗';
+  @override
+  String get shareText => 'ClashMiao 備份';
 }
 
 // Path: settings.general
@@ -15978,6 +18406,24 @@ class TranslationsSettingsGeoAssetsZhTw
   String get missingGeoAssetsMsg => '所選路由資源的檔案遺失。下載它們或選擇現有的。';
 }
 
+// Path: settings.groups
+class TranslationsSettingsGroupsZhTw extends TranslationsSettingsGroupsEn {
+  TranslationsSettingsGroupsZhTw._(TranslationsZhTw root)
+    : this._root = root,
+      super._(root);
+
+  @override
+  final TranslationsZhTw _root; // ignore: unused_field
+
+  // Translations
+  @override
+  String get general => '一般';
+  @override
+  String get connection => '連線';
+  @override
+  String get privacy => '隱私';
+}
+
 // Path: tray.status
 class TranslationsTrayStatusZhTw extends TranslationsTrayStatusEn {
   TranslationsTrayStatusZhTw._(TranslationsZhTw root)
@@ -16048,6 +18494,10 @@ class TranslationsFailureSingboxZhTw extends TranslationsFailureSingboxEn {
   String get coreLibraryMissing => '核心程式庫未安裝';
   @override
   String get startTimeout => '服務啟動逾時';
+  @override
+  String get kernelUnresponsive => '核心無回應，請重試或重新啟動應用程式';
+  @override
+  String get kernelExited => '核心意外結束';
 }
 
 // Path: failure.connectivity
@@ -16071,6 +18521,8 @@ class TranslationsFailureConnectivityZhTw
   String get core => '核心錯誤';
   @override
   String get networkUnavailable => '網路無法使用';
+  @override
+  String get nativeUnresponsive => '與背景服務失去連線，請重試';
 }
 
 // Path: failure.profiles
@@ -16093,6 +18545,8 @@ class TranslationsFailureProfilesZhTw extends TranslationsFailureProfilesEn {
   String get invalidUrl => '無效網址';
   @override
   String get noActive => '沒有啟用的訂閱';
+  @override
+  String get readOnlyUpgrade => '請升級 App 後再修改訂閱';
 }
 
 // Path: failure.connection
@@ -16439,6 +18893,16 @@ extension on Translations {
         return 'Under Development';
       case 'general.confirm':
         return 'Confirm';
+      case 'general.close':
+        return 'Close';
+      case 'general.cancel':
+        return 'Cancel';
+      case 'general.clipboardEmpty':
+        return 'Clipboard is empty';
+      case 'general.clipboardReadFailed':
+        return 'Couldn\'t read the clipboard';
+      case 'general.moreOptions':
+        return 'More options';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -16472,6 +18936,20 @@ extension on Translations {
         return 'The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.';
       case 'home.degradedRetry':
         return 'Check again';
+      case 'home.egressIp.label':
+        return 'Egress IP';
+      case 'home.egressIp.notConnected':
+        return 'Connect to show egress IP';
+      case 'home.egressIp.tapToCheck':
+        return 'Tap to check egress IP';
+      case 'home.egressIp.checking':
+        return 'Checking…';
+      case 'home.egressIp.failedRetry':
+        return 'Check failed, tap to retry';
+      case 'home.emptyProfilesHint':
+        return 'Tap the button below to get started';
+      case 'home.noActiveProfileTitle':
+        return 'No profile selected';
       case 'stats.traffic':
         return 'Traffic';
       case 'stats.trafficLive':
@@ -16492,6 +18970,10 @@ extension on Translations {
         return 'Speed';
       case 'stats.totalTransferred':
         return 'Total Transferred';
+      case 'stats.sessionTraffic':
+        return 'Session traffic';
+      case 'stats.downloadSpeed':
+        return 'Download speed';
       case 'profile.overviewPageTitle':
         return 'Profiles';
       case 'profile.detailsPageTitle':
@@ -16571,6 +19053,16 @@ extension on Translations {
         return 'Adding Profile';
       case 'profile.add.failureMsg':
         return 'Failed to Add Profile';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Imported subscription: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'The clipboard is empty, nothing to import';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'The link has no subscription address';
+      case 'profile.add.successMsg':
+        return 'Profile added';
+      case 'profile.add.nameAutoHint':
+        return 'Detected automatically (optional)';
       case 'profile.details.basicInfo':
         return 'Basic Information';
       case 'profile.details.subscriptionStatus':
@@ -16633,6 +19125,11 @@ extension on Translations {
         return 'Delete Profile Permanently?';
       case 'profile.delete.successMsg':
         return 'Profile Deleted Successfully';
+      case 'profile.delete.confirmTitle':
+        return 'Delete profile';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Delete "${name}"? This can\'t be undone.';
       case 'profile.save.buttonText':
         return 'Save';
       case 'profile.save.successMsg':
@@ -16665,8 +19162,20 @@ extension on Translations {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Off';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.remoteProfile':
         return 'Remote Profile';
+      case 'profile.defaultLocalName':
+        return 'Local import';
+      case 'profile.defaultDeepLinkName':
+        return 'Link import';
+      case 'profile.switchFailedMsg':
+        return 'Couldn\'t switch profile';
       case 'proxies.pageTitle':
         return 'Lines';
       case 'proxies.emptyProxiesMsg':
@@ -16699,6 +19208,11 @@ extension on Translations {
         return 'Delay Test Timeout';
       case 'proxies.delaySemantics.testing':
         return 'Delay: Testing...';
+      case 'proxies.delaySemantics.untested':
+        return 'Delay: Not tested';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Delay: ${delay}ms (earlier result)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Address';
       case 'proxies.ipInfoSemantics.country':
@@ -16707,8 +19221,12 @@ extension on Translations {
         return ({required Object name}) => 'Testing delay for: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Switched to ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Failed to switch: ${error}';
+      case 'proxies.switchFailed':
+        return 'Couldn\'t switch the server. Please try again.';
+      case 'proxies.testFailed':
+        return 'Latency test failed. Please try again.';
+      case 'proxies.groupsLoading':
+        return 'Server list is still loading. Please try again in a moment.';
       case 'proxies.connectBeforeSwitch':
         return 'Please connect before switching lines';
       case 'proxies.startDelayTestForGroups':
@@ -16716,6 +19234,10 @@ extension on Translations {
             'Started delay test for ${count} lines';
       case 'proxies.delayTestBtn':
         return 'Delay';
+      case 'proxies.delayTimeout':
+        return 'Timeout';
+      case 'proxies.connectBeforeTest':
+        return 'Connect first to test delay';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} lines';
       case 'proxies.manualSelect':
@@ -16746,6 +19268,12 @@ extension on Translations {
         return 'Log feature is under development';
       case 'logs.noLogsWhenDisconnected':
         return 'Not connected, no logs';
+      case 'logs.loadFailed':
+        return 'Couldn\'t load logs';
+      case 'logs.empty':
+        return 'No logs yet';
+      case 'logs.clearFailed':
+        return 'Couldn\'t clear logs';
       case 'settings.pageTitle':
         return 'Settings';
       case 'settings.requiresRestartMsg':
@@ -16762,6 +19290,70 @@ extension on Translations {
         return 'Import Options From Clipboard';
       case 'settings.importOptionsMsg':
         return 'This will rewrite all config options with provided values. Are you sure?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Import Backup';
+      case 'settings.backup.importConfirmMsg':
+        return 'This replaces your subscriptions with the ones in the backup and applies the backup\'s settings. A snapshot of the current data is saved first and restored automatically if the import fails.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} subscription(s) on this device are not in the backup and will be removed.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Imported ${profiles} subscription(s) and ${settings} setting(s).';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} subscription(s) in the backup were skipped because their data was invalid.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} setting(s) were skipped; your current values are kept.';
+      case 'settings.backup.reportWarpOff':
+        return 'WARP was turned off by the import. Re-enable it on this device.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} subscription(s) will be downloaded in the background.';
+      case 'settings.backup.errInvalidFile':
+        return 'This is not a valid ClashMiao backup file.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'This backup format is not supported.';
+      case 'settings.backup.errNewerSchema':
+        return 'This backup was created by a newer version of the app. Please upgrade the app first.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'None of the subscriptions in this backup can be imported.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Could not save a snapshot of the current data, so nothing was changed.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.';
+      case 'settings.backup.errRolledBack':
+        return 'Import failed. Your previous data has been restored.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Import failed.';
+      case 'settings.backup.errBusy':
+        return 'Another import is already running. Please wait for it to finish.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Automatic restore did not finish';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Interrupted import could not be undone';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.';
+      case 'settings.backup.recoveryRetry':
+        return 'Retry';
+      case 'settings.backup.recoveryClose':
+        return 'Close';
+      case 'settings.backup.recoveryRetried':
+        return 'Your data was restored to before the interrupted import.';
+      case 'settings.backup.exportAction':
+        return 'Export backup';
+      case 'settings.backup.importAction':
+        return 'Import backup';
+      case 'settings.backup.exportFailed':
+        return 'Couldn\'t export the backup';
+      case 'settings.backup.shareText':
+        return 'ClashMiao backup';
       case 'settings.general.sectionTitle':
         return 'General';
       case 'settings.general.locale':
@@ -16890,6 +19482,21 @@ extension on Translations {
         return 'Administrator privileges required on macOS';
       case 'settings.portChangeNotice':
         return 'Port changes require reconnect to apply';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Connection';
+      case 'settings.groups.privacy':
+        return 'Privacy';
+      case 'settings.importOptionsInvalid':
+        return 'The clipboard doesn\'t contain valid settings JSON';
+      case 'settings.importOptionsNothing':
+        return 'No importable settings found';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Imported ${count} settings';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Imported ${applied} settings; ${skipped} were skipped because they were invalid';
       case 'about.pageTitle':
         return 'About';
       case 'about.version':
@@ -16906,6 +19513,8 @@ extension on Translations {
         return 'Terms and Conditions';
       case 'about.appDescription':
         return 'A cross-platform proxy client based on sing-box core';
+      case 'about.openSourceLicenses':
+        return 'Open-source licenses';
       case 'appUpdate.notAvailableMsg':
         return 'Already Using The Latest Version';
       case 'appUpdate.dialogTitle':
@@ -16922,6 +19531,8 @@ extension on Translations {
         return 'Later';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignore';
+      case 'appUpdate.checkFailedMsg':
+        return 'Couldn\'t check for updates. Check your network and try again.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -16938,6 +19549,8 @@ extension on Translations {
         return 'Disconnect';
       case 'tray.status.disconnecting':
         return 'Disconnecting';
+      case 'tray.proxyModeMenu':
+        return 'Proxy Mode';
       case 'failure.unexpected':
         return 'Unexpected Error';
       case 'failure.clash.unexpected':
@@ -16968,6 +19581,10 @@ extension on Translations {
         return 'Service Startup Error';
       case 'failure.singbox.startTimeout':
         return 'Service Startup Timed Out';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'The core is not responding. Please try again, or restart the app.';
+      case 'failure.singbox.kernelExited':
+        return 'The core exited unexpectedly';
       case 'failure.connectivity.unexpected':
         return 'Unexpected Failure';
       case 'failure.connectivity.missingVpnPermission':
@@ -16978,6 +19595,8 @@ extension on Translations {
         return 'Network Unavailable';
       case 'failure.connectivity.core':
         return 'Core Error';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Lost contact with the background service. Please try again.';
       case 'failure.profiles.unexpected':
         return 'Unexpected Error';
       case 'failure.profiles.notFound':
@@ -16988,6 +19607,8 @@ extension on Translations {
         return 'Invalid Configs';
       case 'failure.profiles.invalidUrl':
         return 'Invalid URL';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Please upgrade the app before changing subscriptions';
       case 'failure.connection.unexpected':
         return 'Unexpected Connection Error';
       case 'failure.connection.timeout':
@@ -17004,6 +19625,9 @@ extension on Translations {
         return 'No Update Available';
       case 'failure.geoAssets.activeNotFound':
         return 'Active Geo Asset Not Found';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Tap To Connect';
       case 'connection.connecting':
@@ -17015,7 +19639,7 @@ extension on Translations {
       case 'connection.reconnect':
         return 'Reconnect';
       case 'connection.connectAnyWay':
-        return 'Connect';
+        return 'Connect Anyway';
       case 'connection.experimentalNotice':
         return 'Experimental Features In Use';
       case 'connection.experimentalNoticeMsg':
@@ -17174,6 +19798,10 @@ extension on Translations {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Set up WARP';
+      case 'config.warpNotConfigured':
+        return 'Not configured';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -17200,6 +19828,22 @@ extension on Translations {
         return 'Noise Delay';
       case 'config.desktopProxyScopeNotice':
         return 'On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS supports VPN mode only';
+      case 'config.warpGenerating':
+        return 'Generating WARP configuration…';
+      case 'config.warpConfigFailed':
+        return 'Couldn\'t generate the WARP configuration. Please try again later.';
+      case 'config.portRangeError':
+        return 'Port must be between 1024 and 65535';
+      case 'config.dnsEmptyError':
+        return 'DNS address can\'t be empty';
+      case 'config.rangeFormatError':
+        return 'Enter a number or a range, e.g. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL must start with http:// or https://';
+      case 'config.manageRuleAssets':
+        return 'Manage rule sets';
       default:
         return null;
     }
@@ -17251,6 +19895,16 @@ extension on TranslationsAr {
         return 'قيد التطوير';
       case 'general.confirm':
         return 'تأكيد';
+      case 'general.close':
+        return 'إغلاق';
+      case 'general.cancel':
+        return 'إلغاء';
+      case 'general.clipboardEmpty':
+        return 'الحافظة فارغة';
+      case 'general.clipboardReadFailed':
+        return 'تعذّرت قراءة الحافظة';
+      case 'general.moreOptions':
+        return 'خيارات إضافية';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -17284,6 +19938,20 @@ extension on TranslationsAr {
         return 'النفق يعمل لكن البيانات لا تمر. قد يكون الخادم معطلاً — جرّب خادماً آخر أو اقطع الاتصال.';
       case 'home.degradedRetry':
         return 'إعادة الفحص';
+      case 'home.egressIp.label':
+        return 'عنوان IP الخارجي';
+      case 'home.egressIp.notConnected':
+        return 'اتصل لعرض عنوان IP الخارجي';
+      case 'home.egressIp.tapToCheck':
+        return 'اضغط للتحقق من عنوان IP الخارجي';
+      case 'home.egressIp.checking':
+        return 'جارٍ التحقق…';
+      case 'home.egressIp.failedRetry':
+        return 'فشل التحقق، اضغط لإعادة المحاولة';
+      case 'home.emptyProfilesHint':
+        return 'اضغط على الزر أدناه للبدء';
+      case 'home.noActiveProfileTitle':
+        return 'لم يتم اختيار ملف تعريف';
       case 'stats.traffic':
         return 'حركة المرور';
       case 'stats.trafficLive':
@@ -17304,6 +19972,10 @@ extension on TranslationsAr {
         return 'استخدام البيانات';
       case 'stats.liveSpeed':
         return 'السرعة الحالية';
+      case 'stats.sessionTraffic':
+        return 'حركة البيانات في هذه الجلسة';
+      case 'stats.downloadSpeed':
+        return 'سرعة التنزيل';
       case 'profile.overviewPageTitle':
         return 'الملفات الشخصية';
       case 'profile.detailsPageTitle':
@@ -17373,6 +20045,16 @@ extension on TranslationsAr {
         return 'تسريع مجاني عبر Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'يرجى الانتظار أثناء تسجيل WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'تم استيراد الاشتراك: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'الحافظة فارغة، لا يوجد ما يمكن استيراده';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'لا يحتوي الرابط على عنوان اشتراك';
+      case 'profile.add.successMsg':
+        return 'تمت إضافة ملف التعريف';
+      case 'profile.add.nameAutoHint':
+        return 'يُكتشف تلقائيًا (اختياري)';
       case 'profile.update.buttonTxt':
         return 'تحديث';
       case 'profile.update.tooltip':
@@ -17417,6 +20099,11 @@ extension on TranslationsAr {
         return 'حذف ملف التعريف نهائياً؟';
       case 'profile.delete.successMsg':
         return 'تم حذف ملف التعريف بنجاح';
+      case 'profile.delete.confirmTitle':
+        return 'حذف ملف التعريف';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'هل تريد حذف "${name}"؟ لا يمكن التراجع عن ذلك.';
       case 'profile.save.buttonText':
         return 'حفظ';
       case 'profile.save.successMsg':
@@ -17449,6 +20136,12 @@ extension on TranslationsAr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'إيقاف';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ساعة';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} يوم';
       case 'profile.actionButtons.add':
         return 'إضافة';
       case 'profile.actionButtons.updateAll':
@@ -17479,6 +20172,12 @@ extension on TranslationsAr {
         return ({required Object days}) => 'متبقٍ ${days} يوماً';
       case 'profile.remoteProfile':
         return 'اشتراك بعيد';
+      case 'profile.defaultLocalName':
+        return 'استيراد محلي';
+      case 'profile.defaultDeepLinkName':
+        return 'استيراد من رابط';
+      case 'profile.switchFailedMsg':
+        return 'تعذّر تبديل ملف التعريف';
       case 'proxies.pageTitle':
         return 'الخوادم الوكيلية';
       case 'proxies.emptyProxiesMsg':
@@ -17505,6 +20204,11 @@ extension on TranslationsAr {
         return 'انتهاء الوقت في اختبار التأخير';
       case 'proxies.delaySemantics.testing':
         return 'التأخير: قيد الاختبار...';
+      case 'proxies.delaySemantics.untested':
+        return 'التأخير: لم يُختبر بعد';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'التأخير: ${delay} مللي ثانية (نتيجة سابقة)';
       case 'proxies.ipInfoSemantics.address':
         return 'عنوان IP';
       case 'proxies.ipInfoSemantics.country':
@@ -17519,14 +20223,22 @@ extension on TranslationsAr {
         return ({required Object name}) => 'جارٍ اختبار التأخير لـ: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'تم التبديل إلى ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'فشل التبديل: ${error}';
+      case 'proxies.switchFailed':
+        return 'تعذّر تبديل الخادم. يُرجى المحاولة مرة أخرى.';
+      case 'proxies.testFailed':
+        return 'فشل اختبار زمن الاستجابة. يُرجى المحاولة مرة أخرى.';
+      case 'proxies.groupsLoading':
+        return 'لا تزال قائمة الخوادم قيد التحميل. يُرجى المحاولة بعد قليل.';
       case 'proxies.connectBeforeSwitch':
         return 'يرجى الاتصال قبل تبديل الخطوط';
       case 'proxies.startDelayTestForGroups':
         return ({required Object count}) => 'بدأ اختبار التأخير لـ ${count} خط';
       case 'proxies.delayTestBtn':
         return 'التأخير';
+      case 'proxies.delayTimeout':
+        return 'انتهت المهلة';
+      case 'proxies.connectBeforeTest':
+        return 'اتصل أولاً لاختبار التأخير';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -17557,6 +20269,12 @@ extension on TranslationsAr {
         return 'ميزة السجلات قيد التطوير';
       case 'logs.noLogsWhenDisconnected':
         return 'غير متصل، لا توجد سجلات';
+      case 'logs.loadFailed':
+        return 'تعذّر تحميل السجلات';
+      case 'logs.empty':
+        return 'لا توجد سجلات بعد';
+      case 'logs.clearFailed':
+        return 'تعذّر مسح السجلات';
       case 'settings.pageTitle':
         return 'الإعدادات';
       case 'settings.requiresRestartMsg':
@@ -17573,6 +20291,70 @@ extension on TranslationsAr {
         return 'استيراد الخيارات من الحافظة';
       case 'settings.importOptionsMsg':
         return 'سيؤدي هذا إلى إعادة كتابة جميع خيارات التكوين بالقيم المحددة. هل أنت متأكد؟';
+      case 'settings.backup.importConfirmTitle':
+        return 'استيراد نسخة احتياطية';
+      case 'settings.backup.importConfirmMsg':
+        return 'سيؤدي هذا إلى استبدال اشتراكاتك بالاشتراكات الموجودة في النسخة الاحتياطية وتطبيق إعداداتها. يتم أولًا حفظ لقطة من البيانات الحالية وتُستعاد تلقائيًا إذا فشل الاستيراد.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'يوجد ${count} اشتراك على هذا الجهاز غير موجود في النسخة الاحتياطية وسيتم حذفه.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'تم استيراد ${profiles} اشتراك و${settings} إعداد.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'تم تخطي ${count} اشتراك في النسخة الاحتياطية لأن بياناته غير صالحة.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'تم تخطي ${count} إعداد، وتم الاحتفاظ بقيمك الحالية.';
+      case 'settings.backup.reportWarpOff':
+        return 'أدى الاستيراد إلى إيقاف WARP. أعد تفعيله على هذا الجهاز.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            'سيتم تنزيل ${count} اشتراك في الخلفية.';
+      case 'settings.backup.errInvalidFile':
+        return 'هذا ليس ملف نسخة احتياطية صالحًا لـ ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'صيغة هذه النسخة الاحتياطية غير مدعومة.';
+      case 'settings.backup.errNewerSchema':
+        return 'تم إنشاء هذه النسخة الاحتياطية بإصدار أحدث من التطبيق. يرجى تحديث التطبيق أولًا.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'لا يمكن استيراد أي من الاشتراكات في هذه النسخة الاحتياطية.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'تعذر حفظ لقطة من البيانات الحالية، لذلك لم يتم تغيير أي شيء.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'توقف استيراد سابق ولم يتم التراجع عنه بعد. لم يتم تغيير أي شيء. أعد تشغيل التطبيق وحاول مرة أخرى.';
+      case 'settings.backup.errRolledBack':
+        return 'فشل الاستيراد. تمت استعادة بياناتك السابقة.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'فشل الاستيراد ولم تكتمل الاستعادة التلقائية. أعد تشغيل التطبيق لإعادة المحاولة. تم حفظ لقطة في ${path}.';
+      case 'settings.backup.errFailed':
+        return 'فشل الاستيراد.';
+      case 'settings.backup.errBusy':
+        return 'هناك استيراد آخر قيد التنفيذ. يرجى الانتظار حتى ينتهي.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'لم تكتمل الاستعادة التلقائية';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'توقف آخر استيراد للنسخة الاحتياطية ولم يتمكن التطبيق من إعادة بياناتك إلى حالتها السابقة. قد تكون بعض البيانات قد استُوردت جزئيًا. أعد محاولة الاستعادة التلقائية الآن.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'تعذر التراجع عن الاستيراد المتوقف';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'توقف آخر استيراد للنسخة الاحتياطية، لكن لقطته مفقودة أو غير قابلة للقراءة، لذلك لا يمكن التراجع عنه. يرجى مراجعة اشتراكاتك وإعداداتك.';
+      case 'settings.backup.recoveryRetry':
+        return 'إعادة المحاولة';
+      case 'settings.backup.recoveryClose':
+        return 'إغلاق';
+      case 'settings.backup.recoveryRetried':
+        return 'تمت استعادة بياناتك إلى ما قبل الاستيراد المتوقف.';
+      case 'settings.backup.exportAction':
+        return 'تصدير نسخة احتياطية';
+      case 'settings.backup.importAction':
+        return 'استيراد نسخة احتياطية';
+      case 'settings.backup.exportFailed':
+        return 'تعذّر تصدير النسخة الاحتياطية';
+      case 'settings.backup.shareText':
+        return 'نسخة ClashMiao الاحتياطية';
       case 'settings.general.sectionTitle':
         return 'عام';
       case 'settings.general.locale':
@@ -17701,6 +20483,21 @@ extension on TranslationsAr {
         return 'يتطلب صلاحيات المسؤول على macOS';
       case 'settings.portChangeNotice':
         return 'تغييرات المنفذ تتطلب إعادة الاتصال لتفعيلها';
+      case 'settings.groups.general':
+        return 'عام';
+      case 'settings.groups.connection':
+        return 'الاتصال';
+      case 'settings.groups.privacy':
+        return 'الخصوصية';
+      case 'settings.importOptionsInvalid':
+        return 'لا تحتوي الحافظة على JSON إعدادات صالح';
+      case 'settings.importOptionsNothing':
+        return 'لم يتم العثور على إعدادات قابلة للاستيراد';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'تم استيراد ${count} من الإعدادات';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'تم استيراد ${applied} من الإعدادات، وتم تخطي ${skipped} لأنها غير صالحة';
       case 'about.pageTitle':
         return 'حول\nتعريب:م. ابراهيم قاسم';
       case 'about.version':
@@ -17717,6 +20514,8 @@ extension on TranslationsAr {
         return 'الشروط والأحكام';
       case 'about.appDescription':
         return 'عميل بروكسي متعدد المنصات يعتمد على نواة sing-box';
+      case 'about.openSourceLicenses':
+        return 'تراخيص المصدر المفتوح';
       case 'appUpdate.notAvailableMsg':
         return 'أنت تستخدم أحدث إصدار بالفعل';
       case 'appUpdate.dialogTitle':
@@ -17733,6 +20532,8 @@ extension on TranslationsAr {
         return 'لاحقًا';
       case 'appUpdate.ignoreBtnTxt':
         return 'تجاهل';
+      case 'appUpdate.checkFailedMsg':
+        return 'تعذّر التحقق من التحديثات. تحقق من اتصالك بالشبكة وحاول مرة أخرى.';
       case 'tray.dashboard':
         return 'لوحة التحكم';
       case 'tray.quit':
@@ -17749,6 +20550,8 @@ extension on TranslationsAr {
         return 'جار فصم الاتصال';
       case 'tray.hide':
         return 'إخفاء';
+      case 'tray.proxyModeMenu':
+        return 'وضع الوكيل';
       case 'failure.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.clash.unexpected':
@@ -17779,6 +20582,10 @@ extension on TranslationsAr {
         return 'مكتبة النواة غير مثبتة';
       case 'failure.singbox.startTimeout':
         return 'انتهت مهلة بدء الخدمة';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'النواة لا تستجيب. حاول مرة أخرى أو أعد تشغيل التطبيق.';
+      case 'failure.singbox.kernelExited':
+        return 'توقفت النواة بشكل غير متوقع';
       case 'failure.connectivity.unexpected':
         return 'فشل غير متوقع';
       case 'failure.connectivity.missingVpnPermission':
@@ -17789,6 +20596,8 @@ extension on TranslationsAr {
         return 'خطأ في النواة';
       case 'failure.connectivity.networkUnavailable':
         return 'الشبكة غير متاحة';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'فُقد الاتصال بالخدمة الخلفية. حاول مرة أخرى.';
       case 'failure.profiles.unexpected':
         return 'خطأ غير متوقع';
       case 'failure.profiles.notFound':
@@ -17799,6 +20608,8 @@ extension on TranslationsAr {
         return 'عنوان URL غير صالح';
       case 'failure.profiles.noActive':
         return 'لا يوجد اشتراك مفعّل';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'يرجى ترقية التطبيق قبل تعديل الاشتراكات';
       case 'failure.connection.unexpected':
         return 'خطأ في الاتصال غير متوقع';
       case 'failure.connection.timeout':
@@ -17815,6 +20626,9 @@ extension on TranslationsAr {
         return 'لا يوجد تحديث متاح';
       case 'failure.geoAssets.activeNotFound':
         return 'لم يتم العثور على أصل Geo النشط';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'انقر للاتصال';
       case 'connection.connecting':
@@ -17826,7 +20640,7 @@ extension on TranslationsAr {
       case 'connection.reconnect':
         return 'أعد الاتصال';
       case 'connection.connectAnyWay':
-        return 'اتصل';
+        return 'اتصل على أي حال';
       case 'connection.experimentalNotice':
         return 'ميزات تجريبية قيد الاستخدام';
       case 'connection.experimentalNoticeMsg':
@@ -17979,6 +20793,10 @@ extension on TranslationsAr {
         return 'أقصى عدد من التدفقات المتزامنة';
       case 'config.enableWarp':
         return 'تمكين WARP';
+      case 'config.setUpWarp':
+        return 'إعداد WARP';
+      case 'config.warpNotConfigured':
+        return 'غير مهيأ';
       case 'config.warpDetourMode':
         return 'وضع التفاف';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -18011,6 +20829,22 @@ extension on TranslationsAr {
         return 'وضع الضجيج';
       case 'config.desktopProxyScopeNotice':
         return 'على سطح المكتب، يتم توجيه التطبيقات التي تحترم بروكسي النظام فقط عبر النفق. البرامج التي تتجاهله (بعض الألعاب وأدوات سطر الأوامر والتطبيقات ذات إعدادات البروكسي الخاصة) تتصل مباشرة وتكشف عنوان IP الحقيقي.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'يدعم iOS وضع VPN فقط';
+      case 'config.warpGenerating':
+        return 'جارٍ إنشاء إعدادات WARP…';
+      case 'config.warpConfigFailed':
+        return 'تعذّر إنشاء إعدادات WARP. يُرجى المحاولة لاحقًا.';
+      case 'config.portRangeError':
+        return 'يجب أن يكون المنفذ بين 1024 و65535';
+      case 'config.dnsEmptyError':
+        return 'لا يمكن أن يكون عنوان DNS فارغًا';
+      case 'config.rangeFormatError':
+        return 'أدخل رقمًا أو نطاقًا، مثل 10-30';
+      case 'config.urlSchemeError':
+        return 'يجب أن يبدأ الرابط بـ http:// أو https://';
+      case 'config.manageRuleAssets':
+        return 'إدارة مجموعات القواعد';
       default:
         return null;
     }
@@ -18062,6 +20896,16 @@ extension on TranslationsEs {
         return 'En desarrollo';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Cerrar';
+      case 'general.cancel':
+        return 'Cancelar';
+      case 'general.clipboardEmpty':
+        return 'El portapapeles está vacío';
+      case 'general.clipboardReadFailed':
+        return 'No se pudo leer el portapapeles';
+      case 'general.moreOptions':
+        return 'Más opciones';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18096,6 +20940,20 @@ extension on TranslationsEs {
         return 'El túnel está activo pero el tráfico no pasa. Puede que el nodo esté caído: prueba otro nodo o desconéctate.';
       case 'home.degradedRetry':
         return 'Comprobar de nuevo';
+      case 'home.egressIp.label':
+        return 'IP de salida';
+      case 'home.egressIp.notConnected':
+        return 'Conéctate para ver la IP de salida';
+      case 'home.egressIp.tapToCheck':
+        return 'Toca para comprobar la IP de salida';
+      case 'home.egressIp.checking':
+        return 'Comprobando…';
+      case 'home.egressIp.failedRetry':
+        return 'Error al comprobar, toca para reintentar';
+      case 'home.emptyProfilesHint':
+        return 'Toca el botón de abajo para empezar';
+      case 'home.noActiveProfileTitle':
+        return 'No hay ningún perfil seleccionado';
       case 'profile.overviewPageTitle':
         return 'Perfiles';
       case 'profile.detailsPageTitle':
@@ -18167,6 +21025,16 @@ extension on TranslationsEs {
         return 'Aceleración gratuita con Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Espera mientras registramos WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Suscripción importada: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'El portapapeles está vacío; no hay nada que importar';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'El enlace no contiene una dirección de suscripción';
+      case 'profile.add.successMsg':
+        return 'Perfil agregado';
+      case 'profile.add.nameAutoHint':
+        return 'Se detecta automáticamente (opcional)';
       case 'profile.update.buttonTxt':
         return 'Actualizar';
       case 'profile.update.tooltip':
@@ -18211,6 +21079,11 @@ extension on TranslationsEs {
         return '¿Eliminar perfil permanentemente?';
       case 'profile.delete.successMsg':
         return 'Perfil eliminado exitosamente';
+      case 'profile.delete.confirmTitle':
+        return 'Eliminar perfil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '¿Eliminar "${name}"? Esta acción no se puede deshacer.';
       case 'profile.save.buttonText':
         return 'Ahorrar';
       case 'profile.save.successMsg':
@@ -18243,6 +21116,12 @@ extension on TranslationsEs {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Desactivado';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.actionButtons.add':
         return 'Añadir';
       case 'profile.actionButtons.updateAll':
@@ -18273,6 +21152,12 @@ extension on TranslationsEs {
         return ({required Object days}) => 'Quedan ${days} días';
       case 'profile.remoteProfile':
         return 'Perfil remoto';
+      case 'profile.defaultLocalName':
+        return 'Importación local';
+      case 'profile.defaultDeepLinkName':
+        return 'Importado desde enlace';
+      case 'profile.switchFailedMsg':
+        return 'No se pudo cambiar de perfil';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -18305,6 +21190,11 @@ extension on TranslationsEs {
         return 'Tiempo de prueba de latencia agotado';
       case 'proxies.delaySemantics.testing':
         return 'Latencia: probando...';
+      case 'proxies.delaySemantics.untested':
+        return 'Latencia: sin probar';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Latencia: ${delay} ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Dirección IP';
       case 'proxies.ipInfoSemantics.country':
@@ -18313,8 +21203,12 @@ extension on TranslationsEs {
         return ({required Object name}) => 'Probando latencia de: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Cambiado a ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Error al cambiar: ${error}';
+      case 'proxies.switchFailed':
+        return 'No se pudo cambiar de servidor. Inténtalo de nuevo.';
+      case 'proxies.testFailed':
+        return 'La prueba de latencia falló. Inténtalo de nuevo.';
+      case 'proxies.groupsLoading':
+        return 'La lista de servidores aún se está cargando. Inténtalo en un momento.';
       case 'proxies.connectBeforeSwitch':
         return 'Conéctate antes de cambiar de línea';
       case 'proxies.startDelayTestForGroups':
@@ -18322,6 +21216,10 @@ extension on TranslationsEs {
             'Prueba de latencia iniciada para ${count} líneas';
       case 'proxies.delayTestBtn':
         return 'Latencia';
+      case 'proxies.delayTimeout':
+        return 'Agotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conéctate primero para probar la latencia';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} líneas';
       case 'proxies.manualSelect':
@@ -18352,6 +21250,12 @@ extension on TranslationsEs {
         return 'La función de registros está en desarrollo';
       case 'logs.noLogsWhenDisconnected':
         return 'Sin conexión, no hay registros';
+      case 'logs.loadFailed':
+        return 'No se pudieron cargar los registros';
+      case 'logs.empty':
+        return 'Aún no hay registros';
+      case 'logs.clearFailed':
+        return 'No se pudieron borrar los registros';
       case 'settings.pageTitle':
         return 'Ajustes';
       case 'settings.requiresRestartMsg':
@@ -18488,6 +21392,70 @@ extension on TranslationsEs {
         return 'Importar opciones desde el portapapeles';
       case 'settings.importOptionsMsg':
         return 'Esto sobrescribirá todas las opciones de configuración con los valores proporcionados. ¿Continuar?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Importar copia de seguridad';
+      case 'settings.backup.importConfirmMsg':
+        return 'Esto reemplaza tus suscripciones por las de la copia de seguridad y aplica sus ajustes. Antes se guarda una instantánea de los datos actuales, que se restaura automáticamente si la importación falla.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} suscripción(es) de este dispositivo no están en la copia de seguridad y se eliminarán.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Se importaron ${profiles} suscripción(es) y ${settings} ajuste(s).';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Se omitieron ${count} suscripción(es) de la copia de seguridad porque sus datos no eran válidos.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'Se omitieron ${count} ajuste(s); se conservan tus valores actuales.';
+      case 'settings.backup.reportWarpOff':
+        return 'La importación desactivó WARP. Vuelve a activarlo en este dispositivo.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} suscripción(es) se descargarán en segundo plano.';
+      case 'settings.backup.errInvalidFile':
+        return 'Este no es un archivo de copia de seguridad de ClashMiao válido.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Este formato de copia de seguridad no es compatible.';
+      case 'settings.backup.errNewerSchema':
+        return 'Esta copia de seguridad fue creada por una versión más reciente de la aplicación. Actualiza la aplicación primero.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Ninguna de las suscripciones de esta copia de seguridad se puede importar.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'No se pudo guardar una instantánea de los datos actuales, así que no se cambió nada.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Una importación anterior se interrumpió y aún no se pudo deshacer. No se cambió nada. Reinicia la aplicación e inténtalo de nuevo.';
+      case 'settings.backup.errRolledBack':
+        return 'La importación falló. Se han restaurado tus datos anteriores.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'La importación falló y la restauración automática no terminó. Reinicia la aplicación para reintentarla. Hay una instantánea guardada en ${path}.';
+      case 'settings.backup.errFailed':
+        return 'La importación falló.';
+      case 'settings.backup.errBusy':
+        return 'Ya hay otra importación en curso. Espera a que termine.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'La restauración automática no terminó';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'La última importación de la copia de seguridad se interrumpió y la aplicación no pudo devolver tus datos a su estado anterior. Es posible que algunos datos se hayan importado a medias. Reintenta la restauración automática ahora.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'No se pudo deshacer la importación interrumpida';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'La última importación de la copia de seguridad se interrumpió, pero su instantánea falta o no se puede leer, así que no se puede deshacer. Revisa tus suscripciones y ajustes.';
+      case 'settings.backup.recoveryRetry':
+        return 'Reintentar';
+      case 'settings.backup.recoveryClose':
+        return 'Cerrar';
+      case 'settings.backup.recoveryRetried':
+        return 'Tus datos se restauraron al estado anterior a la importación interrumpida.';
+      case 'settings.backup.exportAction':
+        return 'Exportar copia de seguridad';
+      case 'settings.backup.importAction':
+        return 'Importar copia de seguridad';
+      case 'settings.backup.exportFailed':
+        return 'No se pudo exportar la copia de seguridad';
+      case 'settings.backup.shareText':
+        return 'Copia de seguridad de ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy del sistema activado';
       case 'settings.systemProxyDisabled':
@@ -18496,6 +21464,21 @@ extension on TranslationsEs {
         return 'Se requieren privilegios de administrador en macOS';
       case 'settings.portChangeNotice':
         return 'Los cambios de puerto requieren reconectar para aplicarse';
+      case 'settings.groups.general':
+        return 'General';
+      case 'settings.groups.connection':
+        return 'Conexión';
+      case 'settings.groups.privacy':
+        return 'Privacidad';
+      case 'settings.importOptionsInvalid':
+        return 'El portapapeles no contiene un JSON de ajustes válido';
+      case 'settings.importOptionsNothing':
+        return 'No se encontraron ajustes importables';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Se importaron ${count} ajustes';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Se importaron ${applied} ajustes; se omitieron ${skipped} por no ser válidos';
       case 'about.pageTitle':
         return 'Acerca de';
       case 'about.version':
@@ -18512,6 +21495,8 @@ extension on TranslationsEs {
         return 'Términos y condiciones';
       case 'about.appDescription':
         return 'Un cliente proxy multiplataforma basado en el núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licencias de código abierto';
       case 'appUpdate.notAvailableMsg':
         return 'Ya estas usando la última versión.';
       case 'appUpdate.dialogTitle':
@@ -18528,6 +21513,8 @@ extension on TranslationsEs {
         return 'Más tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'No se pudo buscar actualizaciones. Revisa tu red e inténtalo de nuevo.';
       case 'tray.dashboard':
         return 'Panel';
       case 'tray.quit':
@@ -18544,6 +21531,8 @@ extension on TranslationsEs {
         return 'Desconectando';
       case 'tray.hide':
         return 'Ocultar';
+      case 'tray.proxyModeMenu':
+        return 'Modo de proxy';
       case 'failure.unexpected':
         return 'Error inesperado';
       case 'failure.clash.unexpected':
@@ -18574,6 +21563,10 @@ extension on TranslationsEs {
         return 'Biblioteca del núcleo no instalada';
       case 'failure.singbox.startTimeout':
         return 'Tiempo de inicio del servicio agotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'El núcleo no responde. Inténtalo de nuevo o reinicia la aplicación.';
+      case 'failure.singbox.kernelExited':
+        return 'El núcleo se cerró inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falla inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -18584,6 +21577,8 @@ extension on TranslationsEs {
         return 'Error central';
       case 'failure.connectivity.networkUnavailable':
         return 'Red no disponible';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Se perdió el contacto con el servicio en segundo plano. Inténtalo de nuevo.';
       case 'failure.profiles.unexpected':
         return 'Error Inesperado';
       case 'failure.profiles.notFound':
@@ -18594,6 +21589,8 @@ extension on TranslationsEs {
         return 'URL Invalido';
       case 'failure.profiles.noActive':
         return 'Sin perfil activo';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Actualiza la app antes de modificar las suscripciones';
       case 'failure.connection.unexpected':
         return 'Error de conexión inesperado';
       case 'failure.connection.timeout':
@@ -18610,6 +21607,9 @@ extension on TranslationsEs {
         return 'Actualización no disponible';
       case 'failure.geoAssets.activeNotFound':
         return 'Activo geográfico activo no encontrado';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Toque para conectarse';
       case 'connection.connecting':
@@ -18627,7 +21627,7 @@ extension on TranslationsEs {
       case 'connection.reconnect':
         return 'Reconectar';
       case 'connection.connectAnyWay':
-        return 'Conectar';
+        return 'Conectar de todos modos';
       case 'connection.reconnectMsg':
         return 'Reconectando para aplicar los cambios...';
       case 'connection.staleSystemProxyCleaned':
@@ -18752,6 +21752,10 @@ extension on TranslationsEs {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Sin configurar';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -18806,6 +21810,22 @@ extension on TranslationsEs {
         return 'Retardo de ruido';
       case 'config.desktopProxyScopeNotice':
         return 'En el escritorio, solo las aplicaciones que respetan el proxy del sistema pasan por el túnel. El software que lo ignora (algunos juegos, herramientas de línea de comandos, aplicaciones con su propia configuración de proxy) se conecta directamente y expone tu IP real.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS solo admite el modo VPN';
+      case 'config.warpGenerating':
+        return 'Generando la configuración de WARP…';
+      case 'config.warpConfigFailed':
+        return 'No se pudo generar la configuración de WARP. Inténtalo más tarde.';
+      case 'config.portRangeError':
+        return 'El puerto debe estar entre 1024 y 65535';
+      case 'config.dnsEmptyError':
+        return 'La dirección DNS no puede estar vacía';
+      case 'config.rangeFormatError':
+        return 'Introduce un número o un rango, p. ej. 10-30';
+      case 'config.urlSchemeError':
+        return 'La URL debe empezar por http:// o https://';
+      case 'config.manageRuleAssets':
+        return 'Gestionar conjuntos de reglas';
       case 'stats.traffic':
         return 'Tráfico';
       case 'stats.trafficLive':
@@ -18826,6 +21846,10 @@ extension on TranslationsEs {
         return 'Velocidad';
       case 'stats.totalTransferred':
         return 'Total transferido';
+      case 'stats.sessionTraffic':
+        return 'Tráfico de esta sesión';
+      case 'stats.downloadSpeed':
+        return 'Velocidad de descarga';
       default:
         return null;
     }
@@ -18877,6 +21901,16 @@ extension on TranslationsFa {
         return 'در حال توسعه';
       case 'general.confirm':
         return 'تأیید';
+      case 'general.close':
+        return 'بستن';
+      case 'general.cancel':
+        return 'لغو';
+      case 'general.clipboardEmpty':
+        return 'کلیپ‌بورد خالی است';
+      case 'general.clipboardReadFailed':
+        return 'خواندن کلیپ‌بورد ناموفق بود';
+      case 'general.moreOptions':
+        return 'گزینه‌های بیشتر';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -18911,6 +21945,20 @@ extension on TranslationsFa {
         return 'تونل برقرار است اما ترافیک عبور نمی‌کند. ممکن است نود از کار افتاده باشد — نود دیگری را امتحان کنید یا قطع کنید.';
       case 'home.degradedRetry':
         return 'بررسی مجدد';
+      case 'home.egressIp.label':
+        return 'آی‌پی خروجی';
+      case 'home.egressIp.notConnected':
+        return 'برای نمایش آی‌پی خروجی متصل شوید';
+      case 'home.egressIp.tapToCheck':
+        return 'برای بررسی آی‌پی خروجی ضربه بزنید';
+      case 'home.egressIp.checking':
+        return 'در حال بررسی…';
+      case 'home.egressIp.failedRetry':
+        return 'بررسی ناموفق بود، برای تلاش دوباره ضربه بزنید';
+      case 'home.emptyProfilesHint':
+        return 'برای شروع، دکمهٔ زیر را بزنید';
+      case 'home.noActiveProfileTitle':
+        return 'هیچ پروفایلی انتخاب نشده است';
       case 'stats.traffic':
         return 'مصرف';
       case 'stats.trafficLive':
@@ -18931,6 +21979,10 @@ extension on TranslationsFa {
         return 'مصرف ترافیک';
       case 'stats.liveSpeed':
         return 'سرعت لحظه‌ای';
+      case 'stats.sessionTraffic':
+        return 'ترافیک این نشست';
+      case 'stats.downloadSpeed':
+        return 'سرعت دانلود';
       case 'profile.overviewPageTitle':
         return 'پروفایل‌ها';
       case 'profile.detailsPageTitle':
@@ -19001,6 +22053,16 @@ extension on TranslationsFa {
         return 'پیکربندی سرور را دستی وارد کنید';
       case 'profile.add.warpDescription':
         return 'شتاب‌دهی رایگان با Cloudflare WARP';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'اشتراک درون‌ریزی شد: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'کلیپ‌بورد خالی است و چیزی برای درون‌ریزی وجود ندارد';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'پیوند نشانی اشتراک ندارد';
+      case 'profile.add.successMsg':
+        return 'پروفایل افزوده شد';
+      case 'profile.add.nameAutoHint':
+        return 'به‌طور خودکار تشخیص داده می‌شود (اختیاری)';
       case 'profile.update.buttonTxt':
         return 'به‌روزرسانی';
       case 'profile.update.tooltip':
@@ -19045,6 +22107,11 @@ extension on TranslationsFa {
         return 'پروفایل برای همیشه حذف شود؟';
       case 'profile.delete.successMsg':
         return 'پروفایل با موفقیت حذف شد';
+      case 'profile.delete.confirmTitle':
+        return 'حذف پروفایل';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '«${name}» حذف شود؟ این کار برگشت‌پذیر نیست.';
       case 'profile.save.buttonText':
         return 'ذخیره';
       case 'profile.save.successMsg':
@@ -19077,6 +22144,12 @@ extension on TranslationsFa {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'خاموش';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ساعت';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} روز';
       case 'profile.actionButtons.add':
         return 'افزودن';
       case 'profile.actionButtons.updateAll':
@@ -19107,6 +22180,12 @@ extension on TranslationsFa {
         return ({required Object days}) => '${days} روز باقی مانده';
       case 'profile.remoteProfile':
         return 'پروفایل راه دور';
+      case 'profile.defaultLocalName':
+        return 'درون‌ریزی محلی';
+      case 'profile.defaultDeepLinkName':
+        return 'درون‌ریزی از پیوند';
+      case 'profile.switchFailedMsg':
+        return 'تغییر پروفایل ناموفق بود';
       case 'proxies.pageTitle':
         return 'پروکسی‌ها';
       case 'proxies.emptyProxiesMsg':
@@ -19133,6 +22212,10 @@ extension on TranslationsFa {
         return 'مهلت تست تأخیر به اتمام رسید';
       case 'proxies.delaySemantics.testing':
         return 'تأخیر: در حال آزمایش...';
+      case 'proxies.delaySemantics.untested':
+        return 'تأخیر: آزمایش نشده';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => 'تأخیر: ${delay}ms (نتیجه قبلی)';
       case 'proxies.ipInfoSemantics.address':
         return 'آدرس آی‌پی';
       case 'proxies.ipInfoSemantics.country':
@@ -19147,8 +22230,12 @@ extension on TranslationsFa {
         return ({required Object name}) => 'در حال آزمایش تأخیر: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'به ${name} تغییر یافت';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'تعویض ناموفق بود: ${error}';
+      case 'proxies.switchFailed':
+        return 'تغییر سرور انجام نشد. لطفاً دوباره تلاش کنید.';
+      case 'proxies.testFailed':
+        return 'آزمون تأخیر ناموفق بود. لطفاً دوباره تلاش کنید.';
+      case 'proxies.groupsLoading':
+        return 'فهرست سرورها هنوز در حال بارگذاری است. لطفاً کمی بعد دوباره تلاش کنید.';
       case 'proxies.connectBeforeSwitch':
         return 'پیش از تعویض خط، متصل شوید';
       case 'proxies.startDelayTestForGroups':
@@ -19156,6 +22243,10 @@ extension on TranslationsFa {
             'آزمایش تأخیر برای ${count} خط آغاز شد';
       case 'proxies.delayTestBtn':
         return 'تأخیر';
+      case 'proxies.delayTimeout':
+        return 'مهلت تمام';
+      case 'proxies.connectBeforeTest':
+        return 'برای تست تأخیر ابتدا متصل شوید';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} خط';
       case 'proxies.manualSelect':
@@ -19186,6 +22277,12 @@ extension on TranslationsFa {
         return 'قابلیت گزارش‌گیری در حال توسعه است';
       case 'logs.noLogsWhenDisconnected':
         return 'متصل نیست، گزارشی وجود ندارد';
+      case 'logs.loadFailed':
+        return 'بارگیری گزارش‌ها ناموفق بود';
+      case 'logs.empty':
+        return 'هنوز گزارشی وجود ندارد';
+      case 'logs.clearFailed':
+        return 'پاک کردن گزارش‌ها ناموفق بود';
       case 'settings.pageTitle':
         return 'تنظیمات';
       case 'settings.requiresRestartMsg':
@@ -19202,6 +22299,70 @@ extension on TranslationsFa {
         return 'وارد کردن تنظیمات از کلیپ‌بورد';
       case 'settings.importOptionsMsg':
         return 'این اقدام همه‌ی تنظیمات پیکربندی را با مقادیر اولیه بازنویسی می‌کند. آیا مطمئن هستید؟';
+      case 'settings.backup.importConfirmTitle':
+        return 'درون‌ریزی پشتیبان';
+      case 'settings.backup.importConfirmMsg':
+        return 'این کار اشتراک‌های شما را با اشتراک‌های موجود در پشتیبان جایگزین می‌کند و تنظیمات آن را اعمال می‌کند. ابتدا یک نسخهٔ لحظه‌ای از داده‌های فعلی ذخیره می‌شود و اگر درون‌ریزی ناموفق باشد، خودکار بازیابی می‌شود.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} اشتراک روی این دستگاه در پشتیبان نیست و حذف خواهد شد.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} اشتراک و ${settings} تنظیم درون‌ریزی شد.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} اشتراک در پشتیبان به دلیل نامعتبر بودن داده‌ها نادیده گرفته شد.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} تنظیم نادیده گرفته شد؛ مقدارهای فعلی شما حفظ شدند.';
+      case 'settings.backup.reportWarpOff':
+        return 'درون‌ریزی WARP را خاموش کرد. آن را دوباره روی این دستگاه فعال کنید.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} اشتراک در پس‌زمینه دانلود خواهد شد.';
+      case 'settings.backup.errInvalidFile':
+        return 'این یک فایل پشتیبان معتبر ClashMiao نیست.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'این قالب پشتیبان پشتیبانی نمی‌شود.';
+      case 'settings.backup.errNewerSchema':
+        return 'این پشتیبان با نسخهٔ جدیدتری از برنامه ساخته شده است. لطفاً ابتدا برنامه را به‌روزرسانی کنید.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'هیچ‌یک از اشتراک‌های این پشتیبان قابل درون‌ریزی نیست.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'ذخیرهٔ نسخهٔ لحظه‌ای داده‌های فعلی ممکن نشد، بنابراین چیزی تغییر نکرد.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'درون‌ریزی قبلی نیمه‌کاره ماند و هنوز بازگردانی نشده است. چیزی تغییر نکرد. برنامه را دوباره راه‌اندازی کنید و دوباره تلاش کنید.';
+      case 'settings.backup.errRolledBack':
+        return 'درون‌ریزی ناموفق بود. داده‌های قبلی شما بازیابی شد.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'درون‌ریزی ناموفق بود و بازیابی خودکار کامل نشد. برای تلاش دوباره برنامه را راه‌اندازی مجدد کنید. یک نسخهٔ لحظه‌ای در ${path} ذخیره شده است.';
+      case 'settings.backup.errFailed':
+        return 'درون‌ریزی ناموفق بود.';
+      case 'settings.backup.errBusy':
+        return 'درون‌ریزی دیگری در حال اجراست. لطفاً تا پایان آن صبر کنید.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'بازیابی خودکار کامل نشد';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند و برنامه نتوانست داده‌های شما را به حالت قبل برگرداند. ممکن است بخشی از داده‌ها نیمه‌کاره درون‌ریزی شده باشد. اکنون بازیابی خودکار را دوباره امتحان کنید.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'بازگردانی درون‌ریزی نیمه‌کاره ممکن نشد';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'آخرین درون‌ریزی پشتیبان نیمه‌کاره ماند، اما نسخهٔ لحظه‌ای آن گم شده یا خوانده نمی‌شود و بنابراین نمی‌توان آن را بازگرداند. لطفاً اشتراک‌ها و تنظیمات خود را بررسی کنید.';
+      case 'settings.backup.recoveryRetry':
+        return 'تلاش دوباره';
+      case 'settings.backup.recoveryClose':
+        return 'بستن';
+      case 'settings.backup.recoveryRetried':
+        return 'داده‌های شما به پیش از درون‌ریزی نیمه‌کاره بازیابی شد.';
+      case 'settings.backup.exportAction':
+        return 'برون‌بری پشتیبان';
+      case 'settings.backup.importAction':
+        return 'درون‌ریزی پشتیبان';
+      case 'settings.backup.exportFailed':
+        return 'برون‌بری پشتیبان ناموفق بود';
+      case 'settings.backup.shareText':
+        return 'پشتیبان ClashMiao';
       case 'settings.general.sectionTitle':
         return 'عمومی';
       case 'settings.general.locale':
@@ -19330,6 +22491,21 @@ extension on TranslationsFa {
         return 'در macOS به دسترسی مدیر نیاز است';
       case 'settings.portChangeNotice':
         return 'تغییر پورت برای اعمال شدن نیاز به اتصال مجدد دارد';
+      case 'settings.groups.general':
+        return 'عمومی';
+      case 'settings.groups.connection':
+        return 'اتصال';
+      case 'settings.groups.privacy':
+        return 'حریم خصوصی';
+      case 'settings.importOptionsInvalid':
+        return 'محتوای کلیپ‌بورد JSON تنظیمات معتبری نیست';
+      case 'settings.importOptionsNothing':
+        return 'هیچ تنظیم قابل درون‌ریزی پیدا نشد';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} تنظیم درون‌ریزی شد';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} تنظیم درون‌ریزی شد؛ ${skipped} مورد به دلیل نامعتبر بودن رد شد';
       case 'about.pageTitle':
         return 'درباره';
       case 'about.version':
@@ -19346,6 +22522,8 @@ extension on TranslationsFa {
         return 'شرایط و ضوابط استفاده';
       case 'about.appDescription':
         return 'یک کلاینت پروکسی چندسکویی مبتنی بر هستهٔ sing-box';
+      case 'about.openSourceLicenses':
+        return 'مجوزهای متن‌باز';
       case 'appUpdate.notAvailableMsg':
         return 'در حال استفاده از آخرین نسخه هستید';
       case 'appUpdate.dialogTitle':
@@ -19362,6 +22540,8 @@ extension on TranslationsFa {
         return 'بعداً';
       case 'appUpdate.ignoreBtnTxt':
         return 'نادیده‌گرفتن';
+      case 'appUpdate.checkFailedMsg':
+        return 'بررسی به‌روزرسانی ناموفق بود. شبکه خود را بررسی کنید و دوباره تلاش کنید.';
       case 'tray.dashboard':
         return 'داشبورد';
       case 'tray.quit':
@@ -19378,6 +22558,8 @@ extension on TranslationsFa {
         return 'در حال قطع اتصال';
       case 'tray.hide':
         return 'پنهان کردن';
+      case 'tray.proxyModeMenu':
+        return 'حالت پروکسی';
       case 'failure.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.clash.unexpected':
@@ -19408,6 +22590,10 @@ extension on TranslationsFa {
         return 'کتابخانهٔ هسته نصب نشده است';
       case 'failure.singbox.startTimeout':
         return 'زمان راه‌اندازی سرویس به پایان رسید';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'هسته پاسخ نمی‌دهد. دوباره تلاش کنید یا برنامه را دوباره راه‌اندازی کنید.';
+      case 'failure.singbox.kernelExited':
+        return 'هسته به‌طور غیرمنتظره متوقف شد';
       case 'failure.connectivity.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.connectivity.missingVpnPermission':
@@ -19418,6 +22604,8 @@ extension on TranslationsFa {
         return 'خطای هسته';
       case 'failure.connectivity.networkUnavailable':
         return 'شبکه در دسترس نیست';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'ارتباط با سرویس پس‌زمینه قطع شد. دوباره تلاش کنید.';
       case 'failure.profiles.unexpected':
         return 'خطای غیرمنتظره';
       case 'failure.profiles.notFound':
@@ -19428,6 +22616,8 @@ extension on TranslationsFa {
         return 'لینک نامعتبر است';
       case 'failure.profiles.noActive':
         return 'هیچ پروفایل فعالی وجود ندارد';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'لطفاً پیش از تغییر اشتراک‌ها برنامه را به‌روزرسانی کنید';
       case 'failure.connection.unexpected':
         return ' خطای غیرمنتظره در اتصال';
       case 'failure.connection.timeout':
@@ -19444,6 +22634,9 @@ extension on TranslationsFa {
         return 'هیچ به‌روزرسانی موجود نیست';
       case 'failure.geoAssets.activeNotFound':
         return 'فایل جغرافیایی فعال یافت نشد';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'برای اتصال ضربه بزنید';
       case 'connection.connecting':
@@ -19455,7 +22648,7 @@ extension on TranslationsFa {
       case 'connection.reconnect':
         return 'اتصال دوباره';
       case 'connection.connectAnyWay':
-        return 'متصل کردن';
+        return 'در هر صورت متصل شو';
       case 'connection.experimentalNotice':
         return 'ویژگی‌های آزمایشی در حال استفاده';
       case 'connection.experimentalNoticeMsg':
@@ -19610,6 +22803,10 @@ extension on TranslationsFa {
         return 'حداکثر جریان‌های هم‌زمان';
       case 'config.enableWarp':
         return 'فعال‌سازی WARP';
+      case 'config.setUpWarp':
+        return 'راه‌اندازی WARP';
+      case 'config.warpNotConfigured':
+        return 'پیکربندی نشده';
       case 'config.warpDetourMode':
         return 'حالت وارپ';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -19640,6 +22837,22 @@ extension on TranslationsFa {
         return 'همهٔ گزینه‌های پیشرفته';
       case 'config.desktopProxyScopeNotice':
         return 'در دسکتاپ، فقط برنامه‌هایی که پروکسی سیستم را رعایت می‌کنند از تونل عبور می‌کنند. نرم‌افزارهایی که آن را نادیده می‌گیرند (برخی بازی‌ها، ابزارهای خط فرمان، برنامه‌های دارای تنظیمات پروکسی مستقل) مستقیم وصل می‌شوند و IP واقعی شما را افشا می‌کنند.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS فقط از حالت VPN پشتیبانی می‌کند';
+      case 'config.warpGenerating':
+        return 'در حال ساخت پیکربندی WARP…';
+      case 'config.warpConfigFailed':
+        return 'ساخت پیکربندی WARP ناموفق بود. لطفاً بعداً دوباره تلاش کنید.';
+      case 'config.portRangeError':
+        return 'پورت باید بین 1024 و 65535 باشد';
+      case 'config.dnsEmptyError':
+        return 'نشانی DNS نمی‌تواند خالی باشد';
+      case 'config.rangeFormatError':
+        return 'یک عدد یا بازه وارد کنید، مثلاً 10-30';
+      case 'config.urlSchemeError':
+        return 'نشانی باید با http:// یا https:// شروع شود';
+      case 'config.manageRuleAssets':
+        return 'مدیریت مجموعه‌قواعد';
       default:
         return null;
     }
@@ -19691,6 +22904,16 @@ extension on TranslationsId {
         return 'Dalam Pengembangan';
       case 'general.confirm':
         return 'Konfirmasi';
+      case 'general.close':
+        return 'Tutup';
+      case 'general.cancel':
+        return 'Batal';
+      case 'general.clipboardEmpty':
+        return 'Papan klip kosong';
+      case 'general.clipboardReadFailed':
+        return 'Gagal membaca papan klip';
+      case 'general.moreOptions':
+        return 'Opsi lainnya';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -19724,6 +22947,20 @@ extension on TranslationsId {
         return 'Terowongan aktif tetapi lalu lintas tidak tersalur. Node mungkin mati — coba node lain, atau putuskan koneksi.';
       case 'home.degradedRetry':
         return 'Periksa Lagi';
+      case 'home.egressIp.label':
+        return 'IP keluar';
+      case 'home.egressIp.notConnected':
+        return 'Hubungkan untuk melihat IP keluar';
+      case 'home.egressIp.tapToCheck':
+        return 'Ketuk untuk memeriksa IP keluar';
+      case 'home.egressIp.checking':
+        return 'Memeriksa…';
+      case 'home.egressIp.failedRetry':
+        return 'Pemeriksaan gagal, ketuk untuk mencoba lagi';
+      case 'home.emptyProfilesHint':
+        return 'Ketuk tombol di bawah untuk memulai';
+      case 'home.noActiveProfileTitle':
+        return 'Belum ada profil yang dipilih';
       case 'stats.traffic':
         return 'Trafik Langsung';
       case 'stats.trafficTotal':
@@ -19744,6 +22981,10 @@ extension on TranslationsId {
         return 'Kecepatan';
       case 'stats.totalTransferred':
         return 'Total Ditransfer';
+      case 'stats.sessionTraffic':
+        return 'Lalu lintas sesi ini';
+      case 'stats.downloadSpeed':
+        return 'Kecepatan unduh';
       case 'profile.overviewPageTitle':
         return 'Beberapa Profil';
       case 'profile.detailsPageTitle':
@@ -19814,6 +23055,16 @@ extension on TranslationsId {
         return 'Akselerasi gratis dengan Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Mohon tunggu, kami sedang mendaftarkan WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Langganan diimpor: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Papan klip kosong, tidak ada yang bisa diimpor';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'Tautan tidak berisi alamat langganan';
+      case 'profile.add.successMsg':
+        return 'Profil ditambahkan';
+      case 'profile.add.nameAutoHint':
+        return 'Terdeteksi otomatis (opsional)';
       case 'profile.update.buttonTxt':
         return 'Perbarui';
       case 'profile.update.tooltip':
@@ -19858,6 +23109,11 @@ extension on TranslationsId {
         return 'Hapus profil permanen?';
       case 'profile.delete.successMsg':
         return 'Sukses hapus profil';
+      case 'profile.delete.confirmTitle':
+        return 'Hapus profil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Hapus "${name}"? Tindakan ini tidak dapat dibatalkan.';
       case 'profile.save.buttonText':
         return 'Simpan';
       case 'profile.save.successMsg':
@@ -19890,6 +23146,12 @@ extension on TranslationsId {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Mati';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} jam';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} hari';
       case 'profile.actionButtons.add':
         return 'Tambah';
       case 'profile.actionButtons.updateAll':
@@ -19920,6 +23182,12 @@ extension on TranslationsId {
         return ({required Object days}) => 'Sisa ${days} hari';
       case 'profile.remoteProfile':
         return 'Profil Jarak Jauh';
+      case 'profile.defaultLocalName':
+        return 'Impor lokal';
+      case 'profile.defaultDeepLinkName':
+        return 'Impor dari tautan';
+      case 'profile.switchFailedMsg':
+        return 'Gagal mengganti profil';
       case 'proxies.pageTitle':
         return 'Proxy';
       case 'proxies.emptyProxiesMsg':
@@ -19952,6 +23220,11 @@ extension on TranslationsId {
         return 'Waktu Uji Jeda Habis';
       case 'proxies.delaySemantics.testing':
         return 'Jeda: Menguji...';
+      case 'proxies.delaySemantics.untested':
+        return 'Jeda: Belum diuji';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Jeda: ${delay}ms (hasil sebelumnya)';
       case 'proxies.ipInfoSemantics.address':
         return 'Alamat IP';
       case 'proxies.ipInfoSemantics.country':
@@ -19960,8 +23233,12 @@ extension on TranslationsId {
         return ({required Object name}) => 'Menguji jeda untuk: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Beralih ke ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Gagal beralih: ${error}';
+      case 'proxies.switchFailed':
+        return 'Gagal mengganti server. Silakan coba lagi.';
+      case 'proxies.testFailed':
+        return 'Uji latensi gagal. Silakan coba lagi.';
+      case 'proxies.groupsLoading':
+        return 'Daftar server masih dimuat. Silakan coba lagi sebentar lagi.';
       case 'proxies.connectBeforeSwitch':
         return 'Sambungkan terlebih dahulu sebelum mengganti jalur';
       case 'proxies.startDelayTestForGroups':
@@ -19969,6 +23246,10 @@ extension on TranslationsId {
             'Uji jeda dimulai untuk ${count} jalur';
       case 'proxies.delayTestBtn':
         return 'Jeda';
+      case 'proxies.delayTimeout':
+        return 'Habis waktu';
+      case 'proxies.connectBeforeTest':
+        return 'Sambungkan dulu untuk menguji jeda';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} jalur';
       case 'proxies.manualSelect':
@@ -19999,6 +23280,12 @@ extension on TranslationsId {
         return 'Fitur log sedang dikembangkan';
       case 'logs.noLogsWhenDisconnected':
         return 'Tidak tersambung, tidak ada log';
+      case 'logs.loadFailed':
+        return 'Gagal memuat log';
+      case 'logs.empty':
+        return 'Belum ada log';
+      case 'logs.clearFailed':
+        return 'Gagal menghapus log';
       case 'settings.pageTitle':
         return 'Setting';
       case 'settings.requiresRestartMsg':
@@ -20135,6 +23422,70 @@ extension on TranslationsId {
         return 'Impor Opsi dari Papan Klip';
       case 'settings.importOptionsMsg':
         return 'Ini akan menimpa semua opsi konfigurasi dengan nilai yang diberikan. Anda yakin?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Impor Cadangan';
+      case 'settings.backup.importConfirmMsg':
+        return 'Ini mengganti langganan Anda dengan langganan dari cadangan dan menerapkan pengaturannya. Snapshot data saat ini disimpan terlebih dahulu dan dipulihkan otomatis jika impor gagal.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} langganan di perangkat ini tidak ada di cadangan dan akan dihapus.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} langganan dan ${settings} pengaturan diimpor.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} langganan dalam cadangan dilewati karena datanya tidak valid.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} pengaturan dilewati; nilai Anda saat ini dipertahankan.';
+      case 'settings.backup.reportWarpOff':
+        return 'Impor mematikan WARP. Aktifkan kembali di perangkat ini.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} langganan akan diunduh di latar belakang.';
+      case 'settings.backup.errInvalidFile':
+        return 'Ini bukan file cadangan ClashMiao yang valid.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Format cadangan ini tidak didukung.';
+      case 'settings.backup.errNewerSchema':
+        return 'Cadangan ini dibuat oleh aplikasi versi yang lebih baru. Perbarui aplikasi terlebih dahulu.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Tidak ada langganan dalam cadangan ini yang dapat diimpor.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Snapshot data saat ini tidak dapat disimpan, sehingga tidak ada yang diubah.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Impor sebelumnya terhenti dan belum dapat dibatalkan. Tidak ada yang diubah. Mulai ulang aplikasi lalu coba lagi.';
+      case 'settings.backup.errRolledBack':
+        return 'Impor gagal. Data Anda sebelumnya telah dipulihkan.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Impor gagal dan pemulihan otomatis belum selesai. Mulai ulang aplikasi untuk mencobanya lagi. Snapshot disimpan di ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Impor gagal.';
+      case 'settings.backup.errBusy':
+        return 'Impor lain sedang berjalan. Tunggu sampai selesai.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Pemulihan otomatis belum selesai';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Impor cadangan terakhir terhenti dan aplikasi tidak dapat mengembalikan data Anda ke keadaan sebelumnya. Sebagian data mungkin hanya terimpor sebagian. Coba pemulihan otomatis lagi sekarang.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Impor yang terhenti tidak dapat dibatalkan';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Impor cadangan terakhir terhenti, tetapi snapshot-nya hilang atau tidak dapat dibaca sehingga tidak dapat dibatalkan. Periksa langganan dan pengaturan Anda.';
+      case 'settings.backup.recoveryRetry':
+        return 'Coba lagi';
+      case 'settings.backup.recoveryClose':
+        return 'Tutup';
+      case 'settings.backup.recoveryRetried':
+        return 'Data Anda dipulihkan ke keadaan sebelum impor yang terhenti.';
+      case 'settings.backup.exportAction':
+        return 'Ekspor cadangan';
+      case 'settings.backup.importAction':
+        return 'Impor cadangan';
+      case 'settings.backup.exportFailed':
+        return 'Gagal mengekspor cadangan';
+      case 'settings.backup.shareText':
+        return 'Cadangan ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy sistem diaktifkan';
       case 'settings.systemProxyDisabled':
@@ -20143,6 +23494,21 @@ extension on TranslationsId {
         return 'Memerlukan hak administrator di macOS';
       case 'settings.portChangeNotice':
         return 'Perubahan port memerlukan sambung ulang agar berlaku';
+      case 'settings.groups.general':
+        return 'Umum';
+      case 'settings.groups.connection':
+        return 'Koneksi';
+      case 'settings.groups.privacy':
+        return 'Privasi';
+      case 'settings.importOptionsInvalid':
+        return 'Papan klip tidak berisi JSON pengaturan yang valid';
+      case 'settings.importOptionsNothing':
+        return 'Tidak ada pengaturan yang dapat diimpor';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} pengaturan diimpor';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} pengaturan diimpor; ${skipped} dilewati karena tidak valid';
       case 'about.pageTitle':
         return 'Tentang';
       case 'about.version':
@@ -20159,6 +23525,8 @@ extension on TranslationsId {
         return 'Syarat dan Ketentuan Umum';
       case 'about.appDescription':
         return 'Klien proxy lintas platform berbasis inti sing-box';
+      case 'about.openSourceLicenses':
+        return 'Lisensi sumber terbuka';
       case 'appUpdate.notAvailableMsg':
         return 'Sudah menggunakan versi terakhir';
       case 'appUpdate.dialogTitle':
@@ -20175,6 +23543,8 @@ extension on TranslationsId {
         return 'Nanti';
       case 'appUpdate.ignoreBtnTxt':
         return 'Lewati';
+      case 'appUpdate.checkFailedMsg':
+        return 'Gagal memeriksa pembaruan. Periksa jaringan Anda lalu coba lagi.';
       case 'tray.dashboard':
         return 'Dashboard';
       case 'tray.quit':
@@ -20191,6 +23561,8 @@ extension on TranslationsId {
         return 'Memutuskan';
       case 'tray.hide':
         return 'Sembunyikan';
+      case 'tray.proxyModeMenu':
+        return 'Mode Proksi';
       case 'failure.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.clash.unexpected':
@@ -20221,6 +23593,10 @@ extension on TranslationsId {
         return 'Pustaka Inti Belum Terpasang';
       case 'failure.singbox.startTimeout':
         return 'Waktu Mulai Layanan Habis';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Inti tidak merespons. Coba lagi atau mulai ulang aplikasi.';
+      case 'failure.singbox.kernelExited':
+        return 'Inti berhenti secara tak terduga';
       case 'failure.connectivity.unexpected':
         return 'Kegagalan tidak terduga';
       case 'failure.connectivity.missingVpnPermission':
@@ -20231,6 +23607,8 @@ extension on TranslationsId {
         return 'Error Inti';
       case 'failure.connectivity.networkUnavailable':
         return 'Jaringan Tidak Tersedia';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Kehilangan kontak dengan layanan latar belakang. Coba lagi.';
       case 'failure.profiles.unexpected':
         return 'Error Tidak Terduga';
       case 'failure.profiles.notFound':
@@ -20241,6 +23619,8 @@ extension on TranslationsId {
         return 'URL tidak valid';
       case 'failure.profiles.noActive':
         return 'Tidak Ada Profil Aktif';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Perbarui aplikasi sebelum mengubah langganan';
       case 'failure.connection.unexpected':
         return 'Sambungan error tidak terduga';
       case 'failure.connection.timeout':
@@ -20257,6 +23637,9 @@ extension on TranslationsId {
         return 'Perbaruan tidak tersedia';
       case 'failure.geoAssets.activeNotFound':
         return 'Geo Aset Aktif tidak ditemukan';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Ketuk untuk Sambung';
       case 'connection.connecting':
@@ -20274,7 +23657,7 @@ extension on TranslationsId {
       case 'connection.reconnect':
         return 'Sambungkan Ulang';
       case 'connection.connectAnyWay':
-        return 'Sambungkan';
+        return 'Tetap sambungkan';
       case 'connection.reconnectMsg':
         return 'Menyambungkan ulang untuk menerapkan perubahan...';
       case 'connection.staleSystemProxyCleaned':
@@ -20399,6 +23782,10 @@ extension on TranslationsId {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Siapkan WARP';
+      case 'config.warpNotConfigured':
+        return 'Belum dikonfigurasi';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -20453,6 +23840,22 @@ extension on TranslationsId {
         return 'Penundaan Noise';
       case 'config.desktopProxyScopeNotice':
         return 'Di desktop, hanya aplikasi yang mematuhi proxy sistem yang dialihkan melalui terowongan. Perangkat lunak yang mengabaikannya (beberapa game, alat baris perintah, aplikasi dengan pengaturan proxy sendiri) terhubung langsung dan membocorkan IP asli Anda.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS hanya mendukung mode VPN';
+      case 'config.warpGenerating':
+        return 'Membuat konfigurasi WARP…';
+      case 'config.warpConfigFailed':
+        return 'Gagal membuat konfigurasi WARP. Coba lagi nanti.';
+      case 'config.portRangeError':
+        return 'Port harus antara 1024 dan 65535';
+      case 'config.dnsEmptyError':
+        return 'Alamat DNS tidak boleh kosong';
+      case 'config.rangeFormatError':
+        return 'Masukkan angka atau rentang, mis. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL harus diawali http:// atau https://';
+      case 'config.manageRuleAssets':
+        return 'Kelola set aturan';
       default:
         return null;
     }
@@ -20504,6 +23907,16 @@ extension on TranslationsPtBr {
         return 'Em desenvolvimento';
       case 'general.confirm':
         return 'Confirmar';
+      case 'general.close':
+        return 'Fechar';
+      case 'general.cancel':
+        return 'Cancelar';
+      case 'general.clipboardEmpty':
+        return 'A área de transferência está vazia';
+      case 'general.clipboardReadFailed':
+        return 'Não foi possível ler a área de transferência';
+      case 'general.moreOptions':
+        return 'Mais opções';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -20538,6 +23951,20 @@ extension on TranslationsPtBr {
         return 'O túnel está ativo, mas o tráfego não passa. O nó pode estar fora do ar — tente outro nó ou desconecte.';
       case 'home.degradedRetry':
         return 'Verificar novamente';
+      case 'home.egressIp.label':
+        return 'IP de saída';
+      case 'home.egressIp.notConnected':
+        return 'Conecte para ver o IP de saída';
+      case 'home.egressIp.tapToCheck':
+        return 'Toque para verificar o IP de saída';
+      case 'home.egressIp.checking':
+        return 'Verificando…';
+      case 'home.egressIp.failedRetry':
+        return 'Falha na verificação, toque para tentar novamente';
+      case 'home.emptyProfilesHint':
+        return 'Toque no botão abaixo para começar';
+      case 'home.noActiveProfileTitle':
+        return 'Nenhum perfil selecionado';
       case 'stats.trafficLive':
         return 'Tráfego ao vivo';
       case 'stats.trafficTotal':
@@ -20558,6 +23985,10 @@ extension on TranslationsPtBr {
         return 'Uso de tráfego';
       case 'stats.liveSpeed':
         return 'Velocidade ao vivo';
+      case 'stats.sessionTraffic':
+        return 'Tráfego da sessão';
+      case 'stats.downloadSpeed':
+        return 'Velocidade de download';
       case 'profile.overviewPageTitle':
         return 'Perfis';
       case 'profile.detailsPageTitle':
@@ -20628,6 +24059,16 @@ extension on TranslationsPtBr {
         return 'Aceleração gratuita com Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Aguarde enquanto registramos o WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Assinatura importada: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'A área de transferência está vazia; não há nada para importar';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'O link não contém um endereço de assinatura';
+      case 'profile.add.successMsg':
+        return 'Perfil adicionado';
+      case 'profile.add.nameAutoHint':
+        return 'Detectado automaticamente (opcional)';
       case 'profile.update.buttonTxt':
         return 'Atualizar';
       case 'profile.update.tooltip':
@@ -20672,6 +24113,11 @@ extension on TranslationsPtBr {
         return 'Deletar perfil permanentemente?';
       case 'profile.delete.successMsg':
         return 'Perfil deletado com sucesso';
+      case 'profile.delete.confirmTitle':
+        return 'Excluir perfil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Excluir "${name}"? Essa ação não pode ser desfeita.';
       case 'profile.save.buttonText':
         return 'Salvar';
       case 'profile.save.successMsg':
@@ -20704,6 +24150,12 @@ extension on TranslationsPtBr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Desativado';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} h';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} d';
       case 'profile.actionButtons.add':
         return 'Adicionar';
       case 'profile.actionButtons.updateAll':
@@ -20734,6 +24186,12 @@ extension on TranslationsPtBr {
         return ({required Object days}) => 'Restam ${days} dias';
       case 'profile.remoteProfile':
         return 'Perfil remoto';
+      case 'profile.defaultLocalName':
+        return 'Importação local';
+      case 'profile.defaultDeepLinkName':
+        return 'Importado por link';
+      case 'profile.switchFailedMsg':
+        return 'Não foi possível trocar de perfil';
       case 'proxies.pageTitle':
         return 'Proxies';
       case 'proxies.emptyProxiesMsg':
@@ -20760,6 +24218,11 @@ extension on TranslationsPtBr {
         return 'atrasar o tempo limite do teste';
       case 'proxies.delaySemantics.testing':
         return 'atraso: testando...';
+      case 'proxies.delaySemantics.untested':
+        return 'atraso: não testado';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'atraso: ${delay}ms (resultado anterior)';
       case 'proxies.ipInfoSemantics.address':
         return 'Endereço de IP';
       case 'proxies.ipInfoSemantics.country':
@@ -20774,8 +24237,12 @@ extension on TranslationsPtBr {
         return ({required Object name}) => 'Testando latência de: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Alterado para ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Falha ao trocar: ${error}';
+      case 'proxies.switchFailed':
+        return 'Não foi possível trocar de servidor. Tente novamente.';
+      case 'proxies.testFailed':
+        return 'O teste de latência falhou. Tente novamente.';
+      case 'proxies.groupsLoading':
+        return 'A lista de servidores ainda está carregando. Tente novamente em instantes.';
       case 'proxies.connectBeforeSwitch':
         return 'Conecte-se antes de trocar de linha';
       case 'proxies.startDelayTestForGroups':
@@ -20783,6 +24250,10 @@ extension on TranslationsPtBr {
             'Teste de latência iniciado para ${count} linhas';
       case 'proxies.delayTestBtn':
         return 'Latência';
+      case 'proxies.delayTimeout':
+        return 'Esgotado';
+      case 'proxies.connectBeforeTest':
+        return 'Conecte primeiro para testar o atraso';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} linhas';
       case 'proxies.manualSelect':
@@ -20813,6 +24284,12 @@ extension on TranslationsPtBr {
         return 'O recurso de registros está em desenvolvimento';
       case 'logs.noLogsWhenDisconnected':
         return 'Desconectado, sem registros';
+      case 'logs.loadFailed':
+        return 'Não foi possível carregar os logs';
+      case 'logs.empty':
+        return 'Ainda não há logs';
+      case 'logs.clearFailed':
+        return 'Não foi possível limpar os logs';
       case 'settings.pageTitle':
         return 'Configurações';
       case 'settings.requiresRestartMsg':
@@ -20949,6 +24426,70 @@ extension on TranslationsPtBr {
         return 'Importar opções da área de transferência';
       case 'settings.importOptionsMsg':
         return 'Isso substituirá todas as opções de configuração pelos valores fornecidos. Tem certeza?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Importar backup';
+      case 'settings.backup.importConfirmMsg':
+        return 'Isto substitui suas assinaturas pelas do backup e aplica as configurações dele. Antes, um instantâneo dos dados atuais é salvo e restaurado automaticamente se a importação falhar.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            '${count} assinatura(s) deste dispositivo não estão no backup e serão removidas.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} assinatura(s) e ${settings} configuração(ões) importadas.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            '${count} assinatura(s) do backup foram ignoradas porque os dados eram inválidos.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} configuração(ões) foram ignoradas; seus valores atuais foram mantidos.';
+      case 'settings.backup.reportWarpOff':
+        return 'A importação desativou o WARP. Ative-o novamente neste dispositivo.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} assinatura(s) serão baixadas em segundo plano.';
+      case 'settings.backup.errInvalidFile':
+        return 'Este não é um arquivo de backup válido do ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Este formato de backup não é compatível.';
+      case 'settings.backup.errNewerSchema':
+        return 'Este backup foi criado por uma versão mais recente do app. Atualize o app primeiro.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Nenhuma das assinaturas deste backup pode ser importada.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Não foi possível salvar um instantâneo dos dados atuais, então nada foi alterado.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Uma importação anterior foi interrompida e ainda não pôde ser desfeita. Nada foi alterado. Reinicie o app e tente novamente.';
+      case 'settings.backup.errRolledBack':
+        return 'A importação falhou. Seus dados anteriores foram restaurados.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'A importação falhou e a restauração automática não terminou. Reinicie o app para tentar novamente. Um instantâneo foi salvo em ${path}.';
+      case 'settings.backup.errFailed':
+        return 'A importação falhou.';
+      case 'settings.backup.errBusy':
+        return 'Já há outra importação em andamento. Aguarde ela terminar.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'A restauração automática não terminou';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'A última importação de backup foi interrompida e o app não conseguiu devolver seus dados ao estado anterior. Alguns dados podem ter sido importados pela metade. Tente a restauração automática novamente agora.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Não foi possível desfazer a importação interrompida';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'A última importação de backup foi interrompida, mas o instantâneo dela está ausente ou ilegível, então não pode ser desfeita. Verifique suas assinaturas e configurações.';
+      case 'settings.backup.recoveryRetry':
+        return 'Tentar novamente';
+      case 'settings.backup.recoveryClose':
+        return 'Fechar';
+      case 'settings.backup.recoveryRetried':
+        return 'Seus dados foram restaurados ao estado anterior à importação interrompida.';
+      case 'settings.backup.exportAction':
+        return 'Exportar backup';
+      case 'settings.backup.importAction':
+        return 'Importar backup';
+      case 'settings.backup.exportFailed':
+        return 'Não foi possível exportar o backup';
+      case 'settings.backup.shareText':
+        return 'Backup do ClashMiao';
       case 'settings.systemProxyEnabled':
         return 'Proxy do sistema ativado';
       case 'settings.systemProxyDisabled':
@@ -20957,6 +24498,21 @@ extension on TranslationsPtBr {
         return 'Requer privilégios de administrador no macOS';
       case 'settings.portChangeNotice':
         return 'Alterações de porta exigem reconexão para serem aplicadas';
+      case 'settings.groups.general':
+        return 'Geral';
+      case 'settings.groups.connection':
+        return 'Conexão';
+      case 'settings.groups.privacy':
+        return 'Privacidade';
+      case 'settings.importOptionsInvalid':
+        return 'A área de transferência não contém um JSON de configurações válido';
+      case 'settings.importOptionsNothing':
+        return 'Nenhuma configuração importável encontrada';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} configurações importadas';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} configurações importadas; ${skipped} ignoradas por serem inválidas';
       case 'about.pageTitle':
         return 'Sobre';
       case 'about.version':
@@ -20973,6 +24529,8 @@ extension on TranslationsPtBr {
         return 'Termos e Condições';
       case 'about.appDescription':
         return 'Um cliente proxy multiplataforma baseado no núcleo sing-box';
+      case 'about.openSourceLicenses':
+        return 'Licenças de código aberto';
       case 'appUpdate.notAvailableMsg':
         return 'Já usando a versão mais recente';
       case 'appUpdate.dialogTitle':
@@ -20989,6 +24547,8 @@ extension on TranslationsPtBr {
         return 'Mais tarde';
       case 'appUpdate.ignoreBtnTxt':
         return 'Ignorar';
+      case 'appUpdate.checkFailedMsg':
+        return 'Não foi possível verificar atualizações. Verifique sua rede e tente novamente.';
       case 'tray.dashboard':
         return 'Painel';
       case 'tray.quit':
@@ -21005,6 +24565,8 @@ extension on TranslationsPtBr {
         return 'Desconectando';
       case 'tray.hide':
         return 'Ocultar';
+      case 'tray.proxyModeMenu':
+        return 'Modo de proxy';
       case 'failure.unexpected':
         return 'Erro inesperado';
       case 'failure.clash.unexpected':
@@ -21035,6 +24597,10 @@ extension on TranslationsPtBr {
         return 'Biblioteca do núcleo não instalada';
       case 'failure.singbox.startTimeout':
         return 'Tempo de inicialização do serviço esgotado';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'O núcleo não está respondendo. Tente novamente ou reinicie o aplicativo.';
+      case 'failure.singbox.kernelExited':
+        return 'O núcleo foi encerrado inesperadamente';
       case 'failure.connectivity.unexpected':
         return 'Falha inesperada';
       case 'failure.connectivity.missingVpnPermission':
@@ -21045,6 +24611,8 @@ extension on TranslationsPtBr {
         return 'Erro central';
       case 'failure.connectivity.networkUnavailable':
         return 'Rede indisponível';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Perdeu-se o contato com o serviço em segundo plano. Tente novamente.';
       case 'failure.profiles.unexpected':
         return 'Erro inesperado';
       case 'failure.profiles.notFound':
@@ -21055,6 +24623,8 @@ extension on TranslationsPtBr {
         return 'URL inválida';
       case 'failure.profiles.noActive':
         return 'Nenhum perfil ativo';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Atualize o app antes de alterar as assinaturas';
       case 'failure.connection.unexpected':
         return 'Erro de conexão inesperado';
       case 'failure.connection.timeout':
@@ -21071,6 +24641,9 @@ extension on TranslationsPtBr {
         return 'Nenhuma atualização disponível';
       case 'failure.geoAssets.activeNotFound':
         return 'Recurso geográfico ativo não encontrado';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Toque para conectar';
       case 'connection.connecting':
@@ -21088,7 +24661,7 @@ extension on TranslationsPtBr {
       case 'connection.reconnect':
         return 'Reconectar';
       case 'connection.connectAnyWay':
-        return 'Conectar';
+        return 'Conectar mesmo assim';
       case 'connection.reconnectMsg':
         return 'Reconectando para aplicar as alterações...';
       case 'connection.staleSystemProxyCleaned':
@@ -21219,6 +24792,10 @@ extension on TranslationsPtBr {
         return 'Máximo de fluxos simultâneos';
       case 'config.enableWarp':
         return 'Habilitar WARP';
+      case 'config.setUpWarp':
+        return 'Configurar WARP';
+      case 'config.warpNotConfigured':
+        return 'Não configurado';
       case 'config.warpDetourMode':
         return 'Modo de desvio';
       case 'config.warpDetourModes.inbound':
@@ -21267,6 +24844,22 @@ extension on TranslationsPtBr {
         return 'Modo de ruído';
       case 'config.desktopProxyScopeNotice':
         return 'No desktop, apenas aplicativos que respeitam o proxy do sistema passam pelo túnel. Softwares que o ignoram (alguns jogos, ferramentas de linha de comando, apps com configuração de proxy própria) conectam diretamente e expõem seu IP real.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'O iOS só oferece suporte ao modo VPN';
+      case 'config.warpGenerating':
+        return 'Gerando a configuração do WARP…';
+      case 'config.warpConfigFailed':
+        return 'Não foi possível gerar a configuração do WARP. Tente novamente mais tarde.';
+      case 'config.portRangeError':
+        return 'A porta deve estar entre 1024 e 65535';
+      case 'config.dnsEmptyError':
+        return 'O endereço DNS não pode ficar vazio';
+      case 'config.rangeFormatError':
+        return 'Digite um número ou um intervalo, por exemplo 10-30';
+      case 'config.urlSchemeError':
+        return 'A URL deve começar com http:// ou https://';
+      case 'config.manageRuleAssets':
+        return 'Gerenciar conjuntos de regras';
       default:
         return null;
     }
@@ -21318,6 +24911,16 @@ extension on TranslationsRu {
         return 'В разработке';
       case 'general.confirm':
         return 'Подтвердить';
+      case 'general.close':
+        return 'Закрыть';
+      case 'general.cancel':
+        return 'Отмена';
+      case 'general.clipboardEmpty':
+        return 'Буфер обмена пуст';
+      case 'general.clipboardReadFailed':
+        return 'Не удалось прочитать буфер обмена';
+      case 'general.moreOptions':
+        return 'Дополнительно';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -21352,6 +24955,20 @@ extension on TranslationsRu {
         return 'Туннель поднят, но трафик не проходит. Возможно, узел недоступен — попробуйте другой узел или отключитесь.';
       case 'home.degradedRetry':
         return 'Проверить ещё раз';
+      case 'home.egressIp.label':
+        return 'Выходной IP';
+      case 'home.egressIp.notConnected':
+        return 'Подключитесь, чтобы увидеть выходной IP';
+      case 'home.egressIp.tapToCheck':
+        return 'Нажмите, чтобы проверить выходной IP';
+      case 'home.egressIp.checking':
+        return 'Проверка…';
+      case 'home.egressIp.failedRetry':
+        return 'Не удалось проверить, нажмите для повтора';
+      case 'home.emptyProfilesHint':
+        return 'Нажмите кнопку ниже, чтобы начать';
+      case 'home.noActiveProfileTitle':
+        return 'Профиль не выбран';
       case 'stats.traffic':
         return 'Трафик';
       case 'stats.trafficLive':
@@ -21372,6 +24989,10 @@ extension on TranslationsRu {
         return 'Использование трафика';
       case 'stats.liveSpeed':
         return 'Текущая скорость';
+      case 'stats.sessionTraffic':
+        return 'Трафик за сеанс';
+      case 'stats.downloadSpeed':
+        return 'Скорость загрузки';
       case 'profile.overviewPageTitle':
         return 'Профили';
       case 'profile.detailsPageTitle':
@@ -21442,6 +25063,16 @@ extension on TranslationsRu {
         return 'Бесплатное ускорение через Cloudflare WARP';
       case 'profile.add.addingWarpMsg':
         return 'Подождите, идёт регистрация WARP.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Подписка импортирована: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Буфер обмена пуст, импортировать нечего';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'В ссылке нет адреса подписки';
+      case 'profile.add.successMsg':
+        return 'Профиль добавлен';
+      case 'profile.add.nameAutoHint':
+        return 'Определяется автоматически (необязательно)';
       case 'profile.update.buttonTxt':
         return 'Обновить';
       case 'profile.update.tooltip':
@@ -21486,6 +25117,11 @@ extension on TranslationsRu {
         return 'Безвозвратно удалить профиль?';
       case 'profile.delete.successMsg':
         return 'Профиль успешно удалён';
+      case 'profile.delete.confirmTitle':
+        return 'Удалить профиль';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            'Удалить «${name}»? Это действие нельзя отменить.';
       case 'profile.save.buttonText':
         return 'Сохранить';
       case 'profile.save.successMsg':
@@ -21518,6 +25154,12 @@ extension on TranslationsRu {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Выкл.';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} ч';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} дн.';
       case 'profile.actionButtons.add':
         return 'Добавить';
       case 'profile.actionButtons.updateAll':
@@ -21548,6 +25190,12 @@ extension on TranslationsRu {
         return ({required Object days}) => 'Осталось ${days} дн.';
       case 'profile.remoteProfile':
         return 'Удалённый профиль';
+      case 'profile.defaultLocalName':
+        return 'Локальный импорт';
+      case 'profile.defaultDeepLinkName':
+        return 'Импорт по ссылке';
+      case 'profile.switchFailedMsg':
+        return 'Не удалось переключить профиль';
       case 'proxies.pageTitle':
         return 'Прокси';
       case 'proxies.emptyProxiesMsg':
@@ -21574,6 +25222,11 @@ extension on TranslationsRu {
         return 'Тайм-аут при тестировании задержки';
       case 'proxies.delaySemantics.testing':
         return 'Задержка: Тестирование...';
+      case 'proxies.delaySemantics.untested':
+        return 'Задержка: не проверялась';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Задержка: ${delay}мс (прежний результат)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP адрес';
       case 'proxies.ipInfoSemantics.country':
@@ -21588,8 +25241,12 @@ extension on TranslationsRu {
         return ({required Object name}) => 'Проверка задержки: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => 'Переключено на ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Не удалось переключить: ${error}';
+      case 'proxies.switchFailed':
+        return 'Не удалось переключить сервер. Попробуйте ещё раз.';
+      case 'proxies.testFailed':
+        return 'Не удалось проверить задержку. Попробуйте ещё раз.';
+      case 'proxies.groupsLoading':
+        return 'Список серверов ещё загружается. Повторите попытку через минуту.';
       case 'proxies.connectBeforeSwitch':
         return 'Подключитесь перед сменой линии';
       case 'proxies.startDelayTestForGroups':
@@ -21597,6 +25254,10 @@ extension on TranslationsRu {
             'Запущена проверка задержки для ${count} линий';
       case 'proxies.delayTestBtn':
         return 'Задержка';
+      case 'proxies.delayTimeout':
+        return 'Тайм-аут';
+      case 'proxies.connectBeforeTest':
+        return 'Сначала подключитесь, чтобы проверить задержку';
       case 'proxies.lineCount':
         return ({required Object count}) => 'Линий: ${count}';
       case 'proxies.manualSelect':
@@ -21627,6 +25288,12 @@ extension on TranslationsRu {
         return 'Функция журналов в разработке';
       case 'logs.noLogsWhenDisconnected':
         return 'Нет подключения, журналы отсутствуют';
+      case 'logs.loadFailed':
+        return 'Не удалось загрузить журнал';
+      case 'logs.empty':
+        return 'Журнал пока пуст';
+      case 'logs.clearFailed':
+        return 'Не удалось очистить журнал';
       case 'settings.pageTitle':
         return 'Настройки';
       case 'settings.requiresRestartMsg':
@@ -21639,6 +25306,70 @@ extension on TranslationsRu {
         return 'Импорт параметров из буфера обмена';
       case 'settings.importOptionsMsg':
         return 'Это перезапишет все параметры конфига предоставленными значениями. Вы уверены?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Импорт резервной копии';
+      case 'settings.backup.importConfirmMsg':
+        return 'Ваши подписки будут заменены подписками из резервной копии, а настройки из неё применены. Сначала сохраняется снимок текущих данных, который автоматически восстанавливается, если импорт не удастся.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'Подписок на этом устройстве, которых нет в резервной копии, будет удалено: ${count}.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            'Импортировано подписок: ${profiles}, настроек: ${settings}.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Пропущено подписок из резервной копии из-за недопустимых данных: ${count}.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            'Пропущено настроек: ${count}; текущие значения сохранены.';
+      case 'settings.backup.reportWarpOff':
+        return 'При импорте WARP был выключен. Включите его заново на этом устройстве.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            'Подписок, которые будут загружены в фоне: ${count}.';
+      case 'settings.backup.errInvalidFile':
+        return 'Это не файл резервной копии ClashMiao.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Этот формат резервной копии не поддерживается.';
+      case 'settings.backup.errNewerSchema':
+        return 'Эта резервная копия создана более новой версией приложения. Сначала обновите приложение.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Ни одну подписку из этой резервной копии нельзя импортировать.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Не удалось сохранить снимок текущих данных, поэтому ничего не изменено.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Предыдущий импорт был прерван и пока не отменён. Ничего не изменено. Перезапустите приложение и повторите попытку.';
+      case 'settings.backup.errRolledBack':
+        return 'Не удалось импортировать. Прежние данные восстановлены.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'Не удалось импортировать, а автоматическое восстановление не завершилось. Перезапустите приложение, чтобы повторить его. Снимок сохранён в ${path}.';
+      case 'settings.backup.errFailed':
+        return 'Не удалось импортировать.';
+      case 'settings.backup.errBusy':
+        return 'Другой импорт уже выполняется. Дождитесь его завершения.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Автоматическое восстановление не завершилось';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Последний импорт резервной копии был прерван, и приложению не удалось вернуть данные в прежнее состояние. Часть данных могла быть импортирована не полностью. Повторите автоматическое восстановление.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Не удалось отменить прерванный импорт';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Последний импорт резервной копии был прерван, но его снимок отсутствует или не читается, поэтому отменить его нельзя. Проверьте свои подписки и настройки.';
+      case 'settings.backup.recoveryRetry':
+        return 'Повторить';
+      case 'settings.backup.recoveryClose':
+        return 'Закрыть';
+      case 'settings.backup.recoveryRetried':
+        return 'Данные возвращены в состояние до прерванного импорта.';
+      case 'settings.backup.exportAction':
+        return 'Экспорт резервной копии';
+      case 'settings.backup.importAction':
+        return 'Импорт резервной копии';
+      case 'settings.backup.exportFailed':
+        return 'Не удалось экспортировать резервную копию';
+      case 'settings.backup.shareText':
+        return 'Резервная копия ClashMiao';
       case 'settings.general.sectionTitle':
         return 'Основные';
       case 'settings.general.locale':
@@ -21771,6 +25502,21 @@ extension on TranslationsRu {
         return 'На macOS требуются права администратора';
       case 'settings.portChangeNotice':
         return 'Изменения порта применяются после переподключения';
+      case 'settings.groups.general':
+        return 'Общие';
+      case 'settings.groups.connection':
+        return 'Подключение';
+      case 'settings.groups.privacy':
+        return 'Конфиденциальность';
+      case 'settings.importOptionsInvalid':
+        return 'В буфере обмена нет корректного JSON настроек';
+      case 'settings.importOptionsNothing':
+        return 'Не найдено настроек для импорта';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => 'Импортировано настроек: ${count}';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            'Импортировано: ${applied}; пропущено как некорректные: ${skipped}';
       case 'about.pageTitle':
         return 'О программе';
       case 'about.version':
@@ -21787,6 +25533,8 @@ extension on TranslationsRu {
         return 'Условия и положения';
       case 'about.appDescription':
         return 'Кроссплатформенный прокси-клиент на основе ядра sing-box';
+      case 'about.openSourceLicenses':
+        return 'Лицензии открытого ПО';
       case 'appUpdate.notAvailableMsg':
         return 'Установлена последняя версия';
       case 'appUpdate.dialogTitle':
@@ -21803,6 +25551,8 @@ extension on TranslationsRu {
         return 'Позже';
       case 'appUpdate.ignoreBtnTxt':
         return 'Пропустить';
+      case 'appUpdate.checkFailedMsg':
+        return 'Не удалось проверить обновления. Проверьте сеть и повторите попытку.';
       case 'tray.dashboard':
         return 'Панель';
       case 'tray.quit':
@@ -21819,6 +25569,8 @@ extension on TranslationsRu {
         return 'Отключение';
       case 'tray.hide':
         return 'Скрыть';
+      case 'tray.proxyModeMenu':
+        return 'Режим прокси';
       case 'failure.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.clash.unexpected':
@@ -21849,6 +25601,10 @@ extension on TranslationsRu {
         return 'Библиотека ядра не установлена';
       case 'failure.singbox.startTimeout':
         return 'Истекло время запуска службы';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Ядро не отвечает. Повторите попытку или перезапустите приложение.';
+      case 'failure.singbox.kernelExited':
+        return 'Ядро неожиданно завершило работу';
       case 'failure.connectivity.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.connectivity.missingVpnPermission':
@@ -21859,6 +25615,8 @@ extension on TranslationsRu {
         return 'Ошибка ядра';
       case 'failure.connectivity.networkUnavailable':
         return 'Сеть недоступна';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Потеряна связь с фоновой службой. Повторите попытку.';
       case 'failure.profiles.unexpected':
         return 'Непредвиденная ошибка';
       case 'failure.profiles.notFound':
@@ -21869,6 +25627,8 @@ extension on TranslationsRu {
         return 'Неправильный URL';
       case 'failure.profiles.noActive':
         return 'Нет активного профиля';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Обновите приложение, прежде чем изменять подписки';
       case 'failure.connection.unexpected':
         return 'Неожиданная ошибка подключения';
       case 'failure.connection.timeout':
@@ -21885,6 +25645,9 @@ extension on TranslationsRu {
         return 'Нет доступных обновлений';
       case 'failure.geoAssets.activeNotFound':
         return 'Активный географический актив не найден';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Нажмите для подключения';
       case 'connection.connecting':
@@ -21896,7 +25659,7 @@ extension on TranslationsRu {
       case 'connection.reconnect':
         return 'Восстановить соединение';
       case 'connection.connectAnyWay':
-        return 'Подключиться';
+        return 'Всё равно подключиться';
       case 'connection.experimentalNotice':
         return 'Экспериментальные функции в использовании';
       case 'connection.experimentalNoticeMsg':
@@ -22049,6 +25812,10 @@ extension on TranslationsRu {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'Настроить WARP';
+      case 'config.warpNotConfigured':
+        return 'Не настроено';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -22081,6 +25848,22 @@ extension on TranslationsRu {
         return 'Задержка шума';
       case 'config.desktopProxyScopeNotice':
         return 'На настольных системах через туннель идут только приложения, соблюдающие системный прокси. Программы, которые его игнорируют (некоторые игры, консольные утилиты, приложения с собственными настройками прокси), подключаются напрямую и раскрывают ваш реальный IP.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS поддерживает только режим VPN';
+      case 'config.warpGenerating':
+        return 'Создание конфигурации WARP…';
+      case 'config.warpConfigFailed':
+        return 'Не удалось создать конфигурацию WARP. Повторите попытку позже.';
+      case 'config.portRangeError':
+        return 'Порт должен быть от 1024 до 65535';
+      case 'config.dnsEmptyError':
+        return 'Адрес DNS не может быть пустым';
+      case 'config.rangeFormatError':
+        return 'Введите число или диапазон, например 10-30';
+      case 'config.urlSchemeError':
+        return 'URL должен начинаться с http:// или https://';
+      case 'config.manageRuleAssets':
+        return 'Наборы правил';
       default:
         return null;
     }
@@ -22132,6 +25915,16 @@ extension on TranslationsTr {
         return 'Geliştirme Aşamasında';
       case 'general.confirm':
         return 'Onayla';
+      case 'general.close':
+        return 'Kapat';
+      case 'general.cancel':
+        return 'İptal';
+      case 'general.clipboardEmpty':
+        return 'Pano boş';
+      case 'general.clipboardReadFailed':
+        return 'Pano okunamadı';
+      case 'general.moreOptions':
+        return 'Diğer seçenekler';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -22166,6 +25959,20 @@ extension on TranslationsTr {
         return 'Tünel açık ancak trafik geçmiyor. Sunucu çalışmıyor olabilir — başka bir sunucu deneyin veya bağlantıyı kesin.';
       case 'home.degradedRetry':
         return 'Yeniden Denetle';
+      case 'home.egressIp.label':
+        return 'Çıkış IP\'si';
+      case 'home.egressIp.notConnected':
+        return 'Çıkış IP\'sini görmek için bağlanın';
+      case 'home.egressIp.tapToCheck':
+        return 'Çıkış IP\'sini denetlemek için dokunun';
+      case 'home.egressIp.checking':
+        return 'Denetleniyor…';
+      case 'home.egressIp.failedRetry':
+        return 'Denetim başarısız, yeniden denemek için dokunun';
+      case 'home.emptyProfilesHint':
+        return 'Başlamak için aşağıdaki düğmeye dokunun';
+      case 'home.noActiveProfileTitle':
+        return 'Profil seçilmedi';
       case 'stats.trafficLive':
         return 'Canlı Trafik';
       case 'stats.trafficTotal':
@@ -22186,6 +25993,10 @@ extension on TranslationsTr {
         return 'Hız';
       case 'stats.totalTransferred':
         return 'Toplam Aktarılan';
+      case 'stats.sessionTraffic':
+        return 'Bu oturumun trafiği';
+      case 'stats.downloadSpeed':
+        return 'İndirme hızı';
       case 'profile.overviewPageTitle':
         return 'Profiller';
       case 'profile.detailsPageTitle':
@@ -22256,6 +26067,16 @@ extension on TranslationsTr {
         return 'Cloudflare WARP ile ücretsiz hızlandırma';
       case 'profile.add.addingWarpMsg':
         return 'WARP kaydedilirken lütfen bekleyin.';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => 'Abonelik içe aktarıldı: ${name}';
+      case 'profile.add.clipboardEmpty':
+        return 'Pano boş, içe aktarılacak bir şey yok';
+      case 'profile.add.deepLinkMissingUrl':
+        return 'Bağlantıda abonelik adresi yok';
+      case 'profile.add.successMsg':
+        return 'Profil eklendi';
+      case 'profile.add.nameAutoHint':
+        return 'Otomatik algılanır (isteğe bağlı)';
       case 'profile.update.buttonTxt':
         return 'Güncelle';
       case 'profile.update.tooltip':
@@ -22300,6 +26121,11 @@ extension on TranslationsTr {
         return 'Profil kalıcı olarak silinsin mi?';
       case 'profile.delete.successMsg':
         return 'Profil başarıyla silindi';
+      case 'profile.delete.confirmTitle':
+        return 'Profili sil';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) =>
+            '"${name}" silinsin mi? Bu işlem geri alınamaz.';
       case 'profile.save.buttonText':
         return 'Kaydet';
       case 'profile.save.successMsg':
@@ -22332,6 +26158,12 @@ extension on TranslationsTr {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return 'Kapalı';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} sa';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} gün';
       case 'profile.actionButtons.add':
         return 'Ekle';
       case 'profile.actionButtons.updateAll':
@@ -22362,6 +26194,12 @@ extension on TranslationsTr {
         return ({required Object days}) => '${days} gün kaldı';
       case 'profile.remoteProfile':
         return 'Uzak Profil';
+      case 'profile.defaultLocalName':
+        return 'Yerel içe aktarma';
+      case 'profile.defaultDeepLinkName':
+        return 'Bağlantıdan içe aktarma';
+      case 'profile.switchFailedMsg':
+        return 'Profil değiştirilemedi';
       case 'proxies.pageTitle':
         return 'Proxyler';
       case 'proxies.emptyProxiesMsg':
@@ -22394,6 +26232,11 @@ extension on TranslationsTr {
         return 'Gecikme Testi Zaman Aşımı';
       case 'proxies.delaySemantics.testing':
         return 'Gecikme: Test ediliyor...';
+      case 'proxies.delaySemantics.untested':
+        return 'Gecikme: Test edilmedi';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) =>
+            'Gecikme: ${delay} ms (önceki sonuç)';
       case 'proxies.ipInfoSemantics.address':
         return 'IP Adresi';
       case 'proxies.ipInfoSemantics.country':
@@ -22402,8 +26245,12 @@ extension on TranslationsTr {
         return ({required Object name}) => 'Gecikme test ediliyor: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '${name} olarak değiştirildi';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => 'Geçiş başarısız: ${error}';
+      case 'proxies.switchFailed':
+        return 'Sunucu değiştirilemedi. Lütfen tekrar deneyin.';
+      case 'proxies.testFailed':
+        return 'Gecikme testi başarısız oldu. Lütfen tekrar deneyin.';
+      case 'proxies.groupsLoading':
+        return 'Sunucu listesi hâlâ yükleniyor. Lütfen birazdan tekrar deneyin.';
       case 'proxies.connectBeforeSwitch':
         return 'Hat değiştirmeden önce bağlanın';
       case 'proxies.startDelayTestForGroups':
@@ -22411,6 +26258,10 @@ extension on TranslationsTr {
             '${count} hat için gecikme testi başlatıldı';
       case 'proxies.delayTestBtn':
         return 'Gecikme';
+      case 'proxies.delayTimeout':
+        return 'Zaman aşımı';
+      case 'proxies.connectBeforeTest':
+        return 'Gecikmeyi test etmek için önce bağlanın';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} hat';
       case 'proxies.manualSelect':
@@ -22441,6 +26292,12 @@ extension on TranslationsTr {
         return 'Günlük özelliği geliştirme aşamasında';
       case 'logs.noLogsWhenDisconnected':
         return 'Bağlı değil, günlük yok';
+      case 'logs.loadFailed':
+        return 'Günlükler yüklenemedi';
+      case 'logs.empty':
+        return 'Henüz günlük yok';
+      case 'logs.clearFailed':
+        return 'Günlükler temizlenemedi';
       case 'settings.pageTitle':
         return 'Ayarlar';
       case 'settings.requiresRestartMsg':
@@ -22577,6 +26434,70 @@ extension on TranslationsTr {
         return 'Seçenekleri Panodan İçe Aktar';
       case 'settings.importOptionsMsg':
         return 'Bu işlem tüm yapılandırma seçeneklerini verilen değerlerle değiştirir. Emin misiniz?';
+      case 'settings.backup.importConfirmTitle':
+        return 'Yedeği İçe Aktar';
+      case 'settings.backup.importConfirmMsg':
+        return 'Bu işlem aboneliklerinizi yedekteki aboneliklerle değiştirir ve yedekteki ayarları uygular. Önce mevcut verilerin bir anlık görüntüsü kaydedilir; içe aktarma başarısız olursa otomatik olarak geri yüklenir.';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) =>
+            'Bu cihazdaki ${count} abonelik yedekte yok ve kaldırılacak.';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '${profiles} abonelik ve ${settings} ayar içe aktarıldı.';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) =>
+            'Yedekteki ${count} abonelik, verileri geçersiz olduğu için atlandı.';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) =>
+            '${count} ayar atlandı; mevcut değerleriniz korundu.';
+      case 'settings.backup.reportWarpOff':
+        return 'İçe aktarma WARP\'ı kapattı. Bu cihazda yeniden etkinleştirin.';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) =>
+            '${count} abonelik arka planda indirilecek.';
+      case 'settings.backup.errInvalidFile':
+        return 'Bu geçerli bir ClashMiao yedek dosyası değil.';
+      case 'settings.backup.errUnsupportedVersion':
+        return 'Bu yedek biçimi desteklenmiyor.';
+      case 'settings.backup.errNewerSchema':
+        return 'Bu yedek uygulamanın daha yeni bir sürümüyle oluşturulmuş. Lütfen önce uygulamayı güncelleyin.';
+      case 'settings.backup.errNoUsableProfiles':
+        return 'Bu yedekteki aboneliklerin hiçbiri içe aktarılamıyor.';
+      case 'settings.backup.errSnapshotFailed':
+        return 'Mevcut verilerin anlık görüntüsü kaydedilemedi, bu yüzden hiçbir şey değiştirilmedi.';
+      case 'settings.backup.errUnresolvedPrevious':
+        return 'Önceki bir içe aktarma yarıda kaldı ve henüz geri alınamadı. Hiçbir şey değiştirilmedi. Uygulamayı yeniden başlatıp tekrar deneyin.';
+      case 'settings.backup.errRolledBack':
+        return 'İçe aktarma başarısız oldu. Önceki verileriniz geri yüklendi.';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            'İçe aktarma başarısız oldu ve otomatik geri yükleme tamamlanmadı. Yeniden denemek için uygulamayı yeniden başlatın. Bir anlık görüntü ${path} konumuna kaydedildi.';
+      case 'settings.backup.errFailed':
+        return 'İçe aktarma başarısız oldu.';
+      case 'settings.backup.errBusy':
+        return 'Başka bir içe aktarma zaten sürüyor. Bitmesini bekleyin.';
+      case 'settings.backup.recoveryFailedTitle':
+        return 'Otomatik geri yükleme tamamlanmadı';
+      case 'settings.backup.recoveryFailedMsg':
+        return 'Son yedek içe aktarma yarıda kesildi ve uygulama verilerinizi önceki durumuna döndüremedi. Bazı veriler yarım aktarılmış olabilir. Otomatik geri yüklemeyi şimdi yeniden deneyin.';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return 'Yarıda kalan içe aktarma geri alınamadı';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return 'Son yedek içe aktarma yarıda kesildi, ancak anlık görüntüsü eksik veya okunamıyor; bu yüzden geri alınamaz. Lütfen aboneliklerinizi ve ayarlarınızı kontrol edin.';
+      case 'settings.backup.recoveryRetry':
+        return 'Yeniden dene';
+      case 'settings.backup.recoveryClose':
+        return 'Kapat';
+      case 'settings.backup.recoveryRetried':
+        return 'Verileriniz yarıda kalan içe aktarmadan önceki duruma geri yüklendi.';
+      case 'settings.backup.exportAction':
+        return 'Yedeği dışa aktar';
+      case 'settings.backup.importAction':
+        return 'Yedeği içe aktar';
+      case 'settings.backup.exportFailed':
+        return 'Yedek dışa aktarılamadı';
+      case 'settings.backup.shareText':
+        return 'ClashMiao yedeği';
       case 'settings.systemProxyEnabled':
         return 'Sistem proxy’si etkin';
       case 'settings.systemProxyDisabled':
@@ -22585,6 +26506,21 @@ extension on TranslationsTr {
         return 'macOS\'ta yönetici ayrıcalıkları gerekir';
       case 'settings.portChangeNotice':
         return 'Bağlantı noktası değişikliklerinin uygulanması için yeniden bağlanmak gerekir';
+      case 'settings.groups.general':
+        return 'Genel';
+      case 'settings.groups.connection':
+        return 'Bağlantı';
+      case 'settings.groups.privacy':
+        return 'Gizlilik';
+      case 'settings.importOptionsInvalid':
+        return 'Pano geçerli bir ayar JSON\'u içermiyor';
+      case 'settings.importOptionsNothing':
+        return 'İçe aktarılabilir ayar bulunamadı';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '${count} ayar içe aktarıldı';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '${applied} ayar içe aktarıldı; ${skipped} ayar geçersiz olduğu için atlandı';
       case 'about.pageTitle':
         return 'Hakkında';
       case 'about.version':
@@ -22601,6 +26537,8 @@ extension on TranslationsTr {
         return 'Şartlar ve koşullar';
       case 'about.appDescription':
         return 'sing-box çekirdeğine dayalı çok platformlu proxy istemcisi';
+      case 'about.openSourceLicenses':
+        return 'Açık kaynak lisansları';
       case 'appUpdate.notAvailableMsg':
         return ' En son sürümü kullanıyorsunuz';
       case 'appUpdate.dialogTitle':
@@ -22617,6 +26555,8 @@ extension on TranslationsTr {
         return 'Daha sonra';
       case 'appUpdate.ignoreBtnTxt':
         return 'Görmezden gel';
+      case 'appUpdate.checkFailedMsg':
+        return 'Güncellemeler denetlenemedi. Ağınızı kontrol edip tekrar deneyin.';
       case 'tray.dashboard':
         return 'Gösterge Paneli';
       case 'tray.quit':
@@ -22633,6 +26573,8 @@ extension on TranslationsTr {
         return 'Bağlantı kesiliyor';
       case 'tray.hide':
         return 'Gizle';
+      case 'tray.proxyModeMenu':
+        return 'Proxy Modu';
       case 'failure.unexpected':
         return 'Beklenmeyen hata';
       case 'failure.clash.unexpected':
@@ -22663,6 +26605,10 @@ extension on TranslationsTr {
         return 'Çekirdek Kitaplığı Yüklü Değil';
       case 'failure.singbox.startTimeout':
         return 'Servis Başlatma Zaman Aşımı';
+      case 'failure.singbox.kernelUnresponsive':
+        return 'Çekirdek yanıt vermiyor. Lütfen tekrar deneyin veya uygulamayı yeniden başlatın.';
+      case 'failure.singbox.kernelExited':
+        return 'Çekirdek beklenmedik şekilde kapandı';
       case 'failure.connectivity.unexpected':
         return 'Beklenmedik Hata';
       case 'failure.connectivity.missingVpnPermission':
@@ -22673,6 +26619,8 @@ extension on TranslationsTr {
         return 'Temel Hata';
       case 'failure.connectivity.networkUnavailable':
         return 'Ağ Kullanılamıyor';
+      case 'failure.connectivity.nativeUnresponsive':
+        return 'Arka plan hizmetiyle bağlantı kesildi. Lütfen tekrar deneyin.';
       case 'failure.profiles.unexpected':
         return 'Beklenmedik hata';
       case 'failure.profiles.notFound':
@@ -22683,6 +26631,8 @@ extension on TranslationsTr {
         return 'Geçersiz URL';
       case 'failure.profiles.noActive':
         return 'Etkin Profil Yok';
+      case 'failure.profiles.readOnlyUpgrade':
+        return 'Abonelikleri değiştirmeden önce uygulamayı güncelleyin';
       case 'failure.connection.unexpected':
         return 'Beklenmeyen bağlantı hatası';
       case 'failure.connection.timeout':
@@ -22699,6 +26649,9 @@ extension on TranslationsTr {
         return 'Güncelleme mevcut değil';
       case 'failure.geoAssets.activeNotFound':
         return 'Etkin Coğrafi Varlık Bulunamadı';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}: ${reason}';
       case 'connection.tapToConnect':
         return 'Bağlanmak için dokunun';
       case 'connection.connecting':
@@ -22716,7 +26669,7 @@ extension on TranslationsTr {
       case 'connection.reconnect':
         return 'Yeniden Bağlan';
       case 'connection.connectAnyWay':
-        return 'Bağlan';
+        return 'Yine de bağlan';
       case 'connection.reconnectMsg':
         return 'Değişiklikleri uygulamak için yeniden bağlanılıyor...';
       case 'connection.staleSystemProxyCleaned':
@@ -22841,6 +26794,10 @@ extension on TranslationsTr {
         return 'Max Concurrent Streams';
       case 'config.enableWarp':
         return 'Enable WARP';
+      case 'config.setUpWarp':
+        return 'WARP\'ı ayarla';
+      case 'config.warpNotConfigured':
+        return 'Yapılandırılmadı';
       case 'config.warpDetourMode':
         return 'Detour Mode';
       case 'config.warpDetourModes.inbound':
@@ -22895,6 +26852,22 @@ extension on TranslationsTr {
         return 'Gürültü Gecikmesi';
       case 'config.desktopProxyScopeNotice':
         return 'Masaüstünde yalnızca sistem proxy ayarına uyan uygulamalar tünelden geçer. Buna uymayan yazılımlar (bazı oyunlar, komut satırı araçları, kendi proxy ayarı olan uygulamalar) doğrudan bağlanır ve gerçek IP adresinizi açığa çıkarır.';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS yalnızca VPN modunu destekler';
+      case 'config.warpGenerating':
+        return 'WARP yapılandırması oluşturuluyor…';
+      case 'config.warpConfigFailed':
+        return 'WARP yapılandırması oluşturulamadı. Lütfen daha sonra tekrar deneyin.';
+      case 'config.portRangeError':
+        return 'Port 1024 ile 65535 arasında olmalıdır';
+      case 'config.dnsEmptyError':
+        return 'DNS adresi boş olamaz';
+      case 'config.rangeFormatError':
+        return 'Bir sayı veya aralık girin, örn. 10-30';
+      case 'config.urlSchemeError':
+        return 'URL http:// veya https:// ile başlamalıdır';
+      case 'config.manageRuleAssets':
+        return 'Kural setlerini yönet';
       default:
         return null;
     }
@@ -22946,6 +26919,16 @@ extension on TranslationsZhCn {
         return '功能开发中';
       case 'general.confirm':
         return '确认';
+      case 'general.close':
+        return '关闭';
+      case 'general.cancel':
+        return '取消';
+      case 'general.clipboardEmpty':
+        return '剪贴板为空';
+      case 'general.clipboardReadFailed':
+        return '读取剪贴板失败';
+      case 'general.moreOptions':
+        return '更多选项';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -22979,6 +26962,20 @@ extension on TranslationsZhCn {
         return '隧道已建立，但数据送不出去。可能是节点已失效——试试换一个节点，或者断开连接。';
       case 'home.degradedRetry':
         return '重新检测';
+      case 'home.egressIp.label':
+        return '出口 IP';
+      case 'home.egressIp.notConnected':
+        return '连接后显示出口 IP';
+      case 'home.egressIp.tapToCheck':
+        return '点击检测出口 IP';
+      case 'home.egressIp.checking':
+        return '正在检测…';
+      case 'home.egressIp.failedRetry':
+        return '检测失败，点击重试';
+      case 'home.emptyProfilesHint':
+        return '点击下方按钮开始探索';
+      case 'home.noActiveProfileTitle':
+        return '未选择配置文件';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -22999,6 +26996,10 @@ extension on TranslationsZhCn {
         return '速度';
       case 'stats.totalTransferred':
         return '总传输量';
+      case 'stats.sessionTraffic':
+        return '本次流量';
+      case 'stats.downloadSpeed':
+        return '下载速度';
       case 'profile.overviewPageTitle':
         return '配置文件';
       case 'profile.detailsPageTitle':
@@ -23078,6 +27079,16 @@ extension on TranslationsZhCn {
         return '添加配置文件';
       case 'profile.add.failureMsg':
         return '添加配置文件失败';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => '已导入订阅：${name}';
+      case 'profile.add.clipboardEmpty':
+        return '剪贴板为空，无法导入订阅';
+      case 'profile.add.deepLinkMissingUrl':
+        return '链接中缺少订阅地址';
+      case 'profile.add.successMsg':
+        return '添加成功';
+      case 'profile.add.nameAutoHint':
+        return '自动识别（可选）';
       case 'profile.details.basicInfo':
         return '基础信息';
       case 'profile.details.subscriptionStatus':
@@ -23140,6 +27151,10 @@ extension on TranslationsZhCn {
         return '要永久删除配置文件吗？';
       case 'profile.delete.successMsg':
         return '配置文件删除成功';
+      case 'profile.delete.confirmTitle':
+        return '删除配置文件';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) => '确定要删除"${name}"吗？此操作不可撤销。';
       case 'profile.save.buttonText':
         return '保存';
       case 'profile.save.successMsg':
@@ -23172,8 +27187,20 @@ extension on TranslationsZhCn {
         return 'Mux 多路复用';
       case 'profile.detailsForm.muxDescription':
         return '复用出站连接以减少握手开销';
+      case 'profile.detailsForm.updateIntervalOff':
+        return '关闭';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} 小时';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} 天';
       case 'profile.remoteProfile':
         return '远程订阅';
+      case 'profile.defaultLocalName':
+        return '本地导入';
+      case 'profile.defaultDeepLinkName':
+        return '深链导入';
+      case 'profile.switchFailedMsg':
+        return '切换配置文件失败';
       case 'proxies.pageTitle':
         return '线路';
       case 'proxies.emptyProxiesMsg':
@@ -23206,6 +27233,10 @@ extension on TranslationsZhCn {
         return '延迟测试超时';
       case 'proxies.delaySemantics.testing':
         return '正在测试延迟';
+      case 'proxies.delaySemantics.untested':
+        return '延迟: 未测试';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延迟: ${delay}ms（历史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -23214,14 +27245,22 @@ extension on TranslationsZhCn {
         return ({required Object name}) => '正在测速: ${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '已切换到 ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => '切换失败: ${error}';
+      case 'proxies.switchFailed':
+        return '切换线路失败，请稍后重试';
+      case 'proxies.testFailed':
+        return '测速失败，请稍后重试';
+      case 'proxies.groupsLoading':
+        return '线路信息加载中，请稍候再试';
       case 'proxies.connectBeforeSwitch':
         return '请先连接后再切换节点';
       case 'proxies.startDelayTestForGroups':
         return ({required Object count}) => '已开始测试当前订阅的 ${count} 个节点';
       case 'proxies.delayTestBtn':
         return '测速';
+      case 'proxies.delayTimeout':
+        return '超时';
+      case 'proxies.connectBeforeTest':
+        return '请连接后测速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 个节点';
       case 'proxies.manualSelect':
@@ -23252,6 +27291,12 @@ extension on TranslationsZhCn {
         return '日志功能开发中';
       case 'logs.noLogsWhenDisconnected':
         return '未连接，无日志';
+      case 'logs.loadFailed':
+        return '日志读取失败';
+      case 'logs.empty':
+        return '暂无日志';
+      case 'logs.clearFailed':
+        return '清除日志失败';
       case 'settings.pageTitle':
         return '设置';
       case 'settings.requiresRestartMsg':
@@ -23268,6 +27313,66 @@ extension on TranslationsZhCn {
         return '从剪贴板导入选项';
       case 'settings.importOptionsMsg':
         return '这将使用提供的值重写所有配置选项。您确定吗？';
+      case 'settings.backup.importConfirmTitle':
+        return '导入备份';
+      case 'settings.backup.importConfirmMsg':
+        return '这会用备份中的订阅替换当前订阅，并应用备份中的设置。导入前会先保存当前数据的快照，导入失败时自动恢复。';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) => '本机有 ${count} 个订阅不在备份中，导入后将被移除。';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '已导入 ${profiles} 个订阅、${settings} 项设置。';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) => '备份中有 ${count} 个订阅因数据无效被跳过。';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) => '有 ${count} 项设置被跳过，保留了当前值。';
+      case 'settings.backup.reportWarpOff':
+        return '导入时已关闭 WARP，请在本机重新启用。';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) => '有 ${count} 个订阅将在后台下载。';
+      case 'settings.backup.errInvalidFile':
+        return '这不是有效的 ClashMiao 备份文件。';
+      case 'settings.backup.errUnsupportedVersion':
+        return '不支持这种备份格式。';
+      case 'settings.backup.errNewerSchema':
+        return '此备份由更新版本的应用生成，请先升级应用。';
+      case 'settings.backup.errNoUsableProfiles':
+        return '此备份中没有可以导入的订阅。';
+      case 'settings.backup.errSnapshotFailed':
+        return '无法保存当前数据的快照，所以没有做任何改动。';
+      case 'settings.backup.errUnresolvedPrevious':
+        return '上一次导入被中断，尚未能撤销。没有做任何改动，请重启应用后再试。';
+      case 'settings.backup.errRolledBack':
+        return '导入失败，已恢复到导入之前的数据。';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            '导入失败，且自动恢复没有完成。请重启应用让它重试。快照保存在 ${path}。';
+      case 'settings.backup.errFailed':
+        return '导入失败。';
+      case 'settings.backup.errBusy':
+        return '已有另一个导入正在进行，请等它结束后再试。';
+      case 'settings.backup.recoveryFailedTitle':
+        return '自动恢复没有完成';
+      case 'settings.backup.recoveryFailedMsg':
+        return '上一次备份导入被中断，应用没能把数据恢复到导入之前的状态，部分数据可能只导入了一半。现在重试自动恢复。';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return '无法撤销被中断的导入';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return '上一次备份导入被中断，但它的快照丢失或无法读取，因此无法撤销。请检查你的订阅和设置。';
+      case 'settings.backup.recoveryRetry':
+        return '重试';
+      case 'settings.backup.recoveryClose':
+        return '关闭';
+      case 'settings.backup.recoveryRetried':
+        return '已把数据恢复到被中断的导入之前。';
+      case 'settings.backup.exportAction':
+        return '导出备份';
+      case 'settings.backup.importAction':
+        return '导入备份';
+      case 'settings.backup.exportFailed':
+        return '导出失败';
+      case 'settings.backup.shareText':
+        return 'ClashMiao 备份';
       case 'settings.general.sectionTitle':
         return '一般选项';
       case 'settings.general.locale':
@@ -23396,6 +27501,21 @@ extension on TranslationsZhCn {
         return 'macOS 需要管理员权限';
       case 'settings.portChangeNotice':
         return '端口修改需要重启连接生效';
+      case 'settings.groups.general':
+        return '通用';
+      case 'settings.groups.connection':
+        return '连接';
+      case 'settings.groups.privacy':
+        return '隐私';
+      case 'settings.importOptionsInvalid':
+        return '剪贴板内容不是有效的配置 JSON';
+      case 'settings.importOptionsNothing':
+        return '未识别到可导入的配置项';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '已导入 ${count} 项配置';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '已导入 ${applied} 项配置，${skipped} 项因格式无效被跳过';
       case 'about.pageTitle':
         return '关于';
       case 'about.version':
@@ -23412,6 +27532,8 @@ extension on TranslationsZhCn {
         return '条款和条件';
       case 'about.appDescription':
         return '基于 sing-box 核心的跨平台代理客户端';
+      case 'about.openSourceLicenses':
+        return '开源许可';
       case 'appUpdate.notAvailableMsg':
         return '已是最新版本';
       case 'appUpdate.dialogTitle':
@@ -23428,6 +27550,8 @@ extension on TranslationsZhCn {
         return '以后再说';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '检查更新失败，请检查网络后重试';
       case 'tray.dashboard':
         return '仪表板';
       case 'tray.quit':
@@ -23444,6 +27568,8 @@ extension on TranslationsZhCn {
         return '断开连接';
       case 'tray.status.disconnecting':
         return '正在断开连接';
+      case 'tray.proxyModeMenu':
+        return '代理模式';
       case 'failure.unexpected':
         return '意外错误';
       case 'failure.clash.unexpected':
@@ -23474,6 +27600,10 @@ extension on TranslationsZhCn {
         return '服务启动错误';
       case 'failure.singbox.startTimeout':
         return '服务启动超时';
+      case 'failure.singbox.kernelUnresponsive':
+        return '内核无响应，请重试或重启应用';
+      case 'failure.singbox.kernelExited':
+        return '内核意外退出';
       case 'failure.connectivity.unexpected':
         return '意外失败';
       case 'failure.connectivity.missingVpnPermission':
@@ -23484,6 +27614,8 @@ extension on TranslationsZhCn {
         return '网络不可用';
       case 'failure.connectivity.core':
         return '核心错误';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '与后台服务失去联系，请重试';
       case 'failure.profiles.unexpected':
         return '意外错误';
       case 'failure.profiles.notFound':
@@ -23494,6 +27626,8 @@ extension on TranslationsZhCn {
         return '无效配置';
       case 'failure.profiles.invalidUrl':
         return '网址无效';
+      case 'failure.profiles.readOnlyUpgrade':
+        return '请升级 App 后再修改订阅';
       case 'failure.connection.unexpected':
         return '意外连接错误';
       case 'failure.connection.timeout':
@@ -23510,6 +27644,9 @@ extension on TranslationsZhCn {
         return '无可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到激活的 GEO 资源文件';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}：${reason}';
       case 'connection.tapToConnect':
         return '点击连接';
       case 'connection.connecting':
@@ -23521,13 +27658,13 @@ extension on TranslationsZhCn {
       case 'connection.reconnect':
         return '重新连接';
       case 'connection.connectAnyWay':
-        return '连接';
+        return '仍然连接';
       case 'connection.experimentalNotice':
-        return '使用中的实验功能';
+        return '实验性功能提醒';
       case 'connection.experimentalNoticeMsg':
-        return '您启用了一些实验性功能，这些功能可能会影响连接质量并导致意外错误。您可以随时从“配置”页面更改或重置这些选项。';
+        return '当前配置启用了实验性高级选项（例如 TLS 混淆分片、封包填充、多路复用、WARP 中转，或允许局域网访问等），可能不稳定，连接质量或成功率会受影响。';
       case 'connection.disableExperimentalNotice':
-        return '不再显示';
+        return '不再提示';
       case 'connection.reconnectMsg':
         return '重新连接以使更改生效';
       case 'connection.staleSystemProxyCleaned':
@@ -23679,6 +27816,10 @@ extension on TranslationsZhCn {
         return 'Mux 最大并发数';
       case 'config.enableWarp':
         return '启用 WARP';
+      case 'config.setUpWarp':
+        return '设置 WARP';
+      case 'config.warpNotConfigured':
+        return '未配置';
       case 'config.warpDetourMode':
         return '链式线路';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -23698,13 +27839,29 @@ extension on TranslationsZhCn {
       case 'config.warpNoise':
         return '噪音计数';
       case 'config.warpNoiseDelay':
-        return '噪音延延迟';
+        return '噪音延迟';
       case 'config.desktopProxyScopeNotice':
         return '桌面端只有遵循系统代理设置的程序会走隧道。不遵循的软件（部分游戏、命令行工具、自带代理设置的客户端）会直连，暴露你的真实 IP。';
       case 'config.warpNoiseSize':
         return '噪音大小';
       case 'config.warpNoiseMode':
         return '噪音模式';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS 仅支持 VPN 模式';
+      case 'config.warpGenerating':
+        return '正在生成 WARP 配置…';
+      case 'config.warpConfigFailed':
+        return 'WARP 配置生成失败，请稍后重试';
+      case 'config.portRangeError':
+        return '端口范围 1024-65535';
+      case 'config.dnsEmptyError':
+        return 'DNS 地址不能为空';
+      case 'config.rangeFormatError':
+        return '请输入数字或范围，例如 10-30';
+      case 'config.urlSchemeError':
+        return 'URL 必须以 http:// 或 https:// 开头';
+      case 'config.manageRuleAssets':
+        return '规则库管理';
       default:
         return null;
     }
@@ -23756,6 +27913,16 @@ extension on TranslationsZhTw {
         return '功能開發中';
       case 'general.confirm':
         return '確認';
+      case 'general.close':
+        return '關閉';
+      case 'general.cancel':
+        return '取消';
+      case 'general.clipboardEmpty':
+        return '剪貼簿為空';
+      case 'general.clipboardReadFailed':
+        return '讀取剪貼簿失敗';
+      case 'general.moreOptions':
+        return '更多選項';
       case 'intro.termsAndPolicyCaution':
         return ({required InlineSpanBuilder tap}) => TextSpan(
           children: [
@@ -23789,6 +27956,20 @@ extension on TranslationsZhTw {
         return '通道已建立，但資料送不出去。可能是節點已失效——試試換一個節點，或者中斷連線。';
       case 'home.degradedRetry':
         return '重新檢測';
+      case 'home.egressIp.label':
+        return '出口 IP';
+      case 'home.egressIp.notConnected':
+        return '連線後顯示出口 IP';
+      case 'home.egressIp.tapToCheck':
+        return '點擊檢測出口 IP';
+      case 'home.egressIp.checking':
+        return '正在檢測…';
+      case 'home.egressIp.failedRetry':
+        return '檢測失敗，點擊重試';
+      case 'home.emptyProfilesHint':
+        return '點擊下方按鈕開始探索';
+      case 'home.noActiveProfileTitle':
+        return '未選擇設定檔';
       case 'stats.traffic':
         return '流量';
       case 'stats.trafficLive':
@@ -23809,6 +27990,10 @@ extension on TranslationsZhTw {
         return '流量使用';
       case 'stats.liveSpeed':
         return '即時速度';
+      case 'stats.sessionTraffic':
+        return '本次流量';
+      case 'stats.downloadSpeed':
+        return '下載速度';
       case 'profile.overviewPageTitle':
         return '設定檔';
       case 'profile.detailsPageTitle':
@@ -23878,6 +28063,16 @@ extension on TranslationsZhTw {
         return '手動輸入伺服器設定';
       case 'profile.add.warpDescription':
         return '使用 Cloudflare WARP 免費加速';
+      case 'profile.add.importedNamed':
+        return ({required Object name}) => '已匯入訂閱：${name}';
+      case 'profile.add.clipboardEmpty':
+        return '剪貼簿為空，無法匯入訂閱';
+      case 'profile.add.deepLinkMissingUrl':
+        return '連結中缺少訂閱位址';
+      case 'profile.add.successMsg':
+        return '新增成功';
+      case 'profile.add.nameAutoHint':
+        return '自動識別（選填）';
       case 'profile.update.buttonTxt':
         return '更新';
       case 'profile.update.tooltip':
@@ -23922,6 +28117,10 @@ extension on TranslationsZhTw {
         return '要永久刪除設定檔嗎？';
       case 'profile.delete.successMsg':
         return '設定檔刪除成功';
+      case 'profile.delete.confirmTitle':
+        return '刪除設定檔';
+      case 'profile.delete.namedConfirmMsg':
+        return ({required Object name}) => '確定要刪除「${name}」嗎？此操作無法復原。';
       case 'profile.save.buttonText':
         return '儲存';
       case 'profile.save.successMsg':
@@ -23954,6 +28153,12 @@ extension on TranslationsZhTw {
         return 'Mux';
       case 'profile.detailsForm.muxDescription':
         return 'Multiplex outbound connections to reduce handshake overhead';
+      case 'profile.detailsForm.updateIntervalOff':
+        return '關閉';
+      case 'profile.detailsForm.updateIntervalHours':
+        return ({required Object hours}) => '${hours} 小時';
+      case 'profile.detailsForm.updateIntervalDays':
+        return ({required Object days}) => '${days} 天';
       case 'profile.actionButtons.add':
         return '新增';
       case 'profile.actionButtons.updateAll':
@@ -23984,6 +28189,12 @@ extension on TranslationsZhTw {
         return ({required Object days}) => '剩餘 ${days} 天';
       case 'profile.remoteProfile':
         return '遠端訂閱';
+      case 'profile.defaultLocalName':
+        return '本機匯入';
+      case 'profile.defaultDeepLinkName':
+        return '連結匯入';
+      case 'profile.switchFailedMsg':
+        return '切換設定檔失敗';
       case 'proxies.pageTitle':
         return '線路';
       case 'proxies.emptyProxiesMsg':
@@ -24010,6 +28221,10 @@ extension on TranslationsZhTw {
         return '延遲測試超時';
       case 'proxies.delaySemantics.testing':
         return '正在測試延遲';
+      case 'proxies.delaySemantics.untested':
+        return '延遲： 未測試';
+      case 'proxies.delaySemantics.stale':
+        return ({required Object delay}) => '延遲： ${delay}ms（歷史值）';
       case 'proxies.ipInfoSemantics.address':
         return 'IP 地址';
       case 'proxies.ipInfoSemantics.country':
@@ -24024,14 +28239,22 @@ extension on TranslationsZhTw {
         return ({required Object name}) => '正在檢測延遲：${name}';
       case 'proxies.switchedTo':
         return ({required Object name}) => '已切換到 ${name}';
-      case 'proxies.switchToFailed':
-        return ({required Object error}) => '切換失敗：${error}';
+      case 'proxies.switchFailed':
+        return '切換線路失敗，請稍後重試';
+      case 'proxies.testFailed':
+        return '測速失敗，請稍後重試';
+      case 'proxies.groupsLoading':
+        return '線路資訊載入中，請稍候再試';
       case 'proxies.connectBeforeSwitch':
         return '請先連線再切換線路';
       case 'proxies.startDelayTestForGroups':
         return ({required Object count}) => '已開始檢測 ${count} 條線路的延遲';
       case 'proxies.delayTestBtn':
         return '延遲';
+      case 'proxies.delayTimeout':
+        return '逾時';
+      case 'proxies.connectBeforeTest':
+        return '請連線後再測速';
       case 'proxies.lineCount':
         return ({required Object count}) => '${count} 條線路';
       case 'proxies.manualSelect':
@@ -24062,6 +28285,12 @@ extension on TranslationsZhTw {
         return '日誌功能開發中';
       case 'logs.noLogsWhenDisconnected':
         return '未連線，無日誌';
+      case 'logs.loadFailed':
+        return '日誌讀取失敗';
+      case 'logs.empty':
+        return '暫無日誌';
+      case 'logs.clearFailed':
+        return '清除日誌失敗';
       case 'settings.pageTitle':
         return '設定';
       case 'settings.requiresRestartMsg':
@@ -24078,6 +28307,66 @@ extension on TranslationsZhTw {
         return '從剪貼簿匯入選項';
       case 'settings.importOptionsMsg':
         return '這將使用提供的值複寫所有配置選項。您確定嗎？';
+      case 'settings.backup.importConfirmTitle':
+        return '匯入備份';
+      case 'settings.backup.importConfirmMsg':
+        return '這會用備份中的訂閱取代目前的訂閱，並套用備份中的設定。匯入前會先儲存目前資料的快照，匯入失敗時自動還原。';
+      case 'settings.backup.importRemovesMsg':
+        return ({required Object count}) => '本機有 ${count} 個訂閱不在備份中，匯入後將被移除。';
+      case 'settings.backup.reportImported':
+        return ({required Object profiles, required Object settings}) =>
+            '已匯入 ${profiles} 個訂閱、${settings} 項設定。';
+      case 'settings.backup.reportDropped':
+        return ({required Object count}) => '備份中有 ${count} 個訂閱因資料無效而被略過。';
+      case 'settings.backup.reportSettingsSkipped':
+        return ({required Object count}) => '有 ${count} 項設定被略過，保留了目前的值。';
+      case 'settings.backup.reportWarpOff':
+        return '匯入時已關閉 WARP，請在本機重新啟用。';
+      case 'settings.backup.reportBackfill':
+        return ({required Object count}) => '有 ${count} 個訂閱將在背景下載。';
+      case 'settings.backup.errInvalidFile':
+        return '這不是有效的 ClashMiao 備份檔案。';
+      case 'settings.backup.errUnsupportedVersion':
+        return '不支援這種備份格式。';
+      case 'settings.backup.errNewerSchema':
+        return '此備份由較新版本的應用程式建立，請先升級應用程式。';
+      case 'settings.backup.errNoUsableProfiles':
+        return '此備份中沒有可以匯入的訂閱。';
+      case 'settings.backup.errSnapshotFailed':
+        return '無法儲存目前資料的快照，因此沒有做任何變更。';
+      case 'settings.backup.errUnresolvedPrevious':
+        return '上一次匯入被中斷，尚未能復原。沒有做任何變更，請重新啟動應用程式後再試。';
+      case 'settings.backup.errRolledBack':
+        return '匯入失敗，已還原到匯入之前的資料。';
+      case 'settings.backup.errNotRolledBack':
+        return ({required Object path}) =>
+            '匯入失敗，且自動還原沒有完成。請重新啟動應用程式讓它重試。快照儲存在 ${path}。';
+      case 'settings.backup.errFailed':
+        return '匯入失敗。';
+      case 'settings.backup.errBusy':
+        return '已有另一個匯入正在進行，請等它結束後再試。';
+      case 'settings.backup.recoveryFailedTitle':
+        return '自動還原沒有完成';
+      case 'settings.backup.recoveryFailedMsg':
+        return '上一次備份匯入被中斷，應用程式未能把資料還原到匯入之前的狀態，部分資料可能只匯入了一半。現在重試自動還原。';
+      case 'settings.backup.recoveryUnrecoverableTitle':
+        return '無法復原被中斷的匯入';
+      case 'settings.backup.recoveryUnrecoverableMsg':
+        return '上一次備份匯入被中斷，但它的快照遺失或無法讀取，因此無法復原。請檢查你的訂閱和設定。';
+      case 'settings.backup.recoveryRetry':
+        return '重試';
+      case 'settings.backup.recoveryClose':
+        return '關閉';
+      case 'settings.backup.recoveryRetried':
+        return '已把資料還原到被中斷的匯入之前。';
+      case 'settings.backup.exportAction':
+        return '匯出備份';
+      case 'settings.backup.importAction':
+        return '匯入備份';
+      case 'settings.backup.exportFailed':
+        return '匯出失敗';
+      case 'settings.backup.shareText':
+        return 'ClashMiao 備份';
       case 'settings.general.sectionTitle':
         return '一般';
       case 'settings.general.locale':
@@ -24206,6 +28495,21 @@ extension on TranslationsZhTw {
         return 'macOS 上需要管理員權限';
       case 'settings.portChangeNotice':
         return '連接埠變更需要重新連線才會生效';
+      case 'settings.groups.general':
+        return '一般';
+      case 'settings.groups.connection':
+        return '連線';
+      case 'settings.groups.privacy':
+        return '隱私';
+      case 'settings.importOptionsInvalid':
+        return '剪貼簿內容不是有效的設定 JSON';
+      case 'settings.importOptionsNothing':
+        return '未識別到可匯入的設定項';
+      case 'settings.importOptionsDone':
+        return ({required Object count}) => '已匯入 ${count} 項設定';
+      case 'settings.importOptionsPartial':
+        return ({required Object applied, required Object skipped}) =>
+            '已匯入 ${applied} 項設定，${skipped} 項因格式無效被略過';
       case 'about.pageTitle':
         return '關於';
       case 'about.version':
@@ -24222,6 +28526,8 @@ extension on TranslationsZhTw {
         return '條款與條件';
       case 'about.appDescription':
         return '基於 sing-box 核心的跨平台代理用戶端';
+      case 'about.openSourceLicenses':
+        return '開放原始碼授權';
       case 'appUpdate.notAvailableMsg':
         return '已經是最新版本';
       case 'appUpdate.dialogTitle':
@@ -24238,6 +28544,8 @@ extension on TranslationsZhTw {
         return '稍後再說';
       case 'appUpdate.ignoreBtnTxt':
         return '忽略';
+      case 'appUpdate.checkFailedMsg':
+        return '檢查更新失敗，請檢查網路後再試';
       case 'tray.dashboard':
         return '儀表板';
       case 'tray.quit':
@@ -24254,6 +28562,8 @@ extension on TranslationsZhTw {
         return '中斷連線中';
       case 'tray.hide':
         return '隱藏';
+      case 'tray.proxyModeMenu':
+        return '代理模式';
       case 'failure.unexpected':
         return '意外錯誤';
       case 'failure.clash.unexpected':
@@ -24284,6 +28594,10 @@ extension on TranslationsZhTw {
         return '核心程式庫未安裝';
       case 'failure.singbox.startTimeout':
         return '服務啟動逾時';
+      case 'failure.singbox.kernelUnresponsive':
+        return '核心無回應，請重試或重新啟動應用程式';
+      case 'failure.singbox.kernelExited':
+        return '核心意外結束';
       case 'failure.connectivity.unexpected':
         return '意外失敗';
       case 'failure.connectivity.missingVpnPermission':
@@ -24294,6 +28608,8 @@ extension on TranslationsZhTw {
         return '核心錯誤';
       case 'failure.connectivity.networkUnavailable':
         return '網路無法使用';
+      case 'failure.connectivity.nativeUnresponsive':
+        return '與背景服務失去連線，請重試';
       case 'failure.profiles.unexpected':
         return '意外錯誤';
       case 'failure.profiles.notFound':
@@ -24304,6 +28620,8 @@ extension on TranslationsZhTw {
         return '無效網址';
       case 'failure.profiles.noActive':
         return '沒有啟用的訂閱';
+      case 'failure.profiles.readOnlyUpgrade':
+        return '請升級 App 後再修改訂閱';
       case 'failure.connection.unexpected':
         return '意外連線錯誤';
       case 'failure.connection.timeout':
@@ -24320,6 +28638,9 @@ extension on TranslationsZhTw {
         return '暫無可用更新';
       case 'failure.geoAssets.activeNotFound':
         return '未找到活動 GEO 資源文件';
+      case 'failure.withReason':
+        return ({required Object message, required Object reason}) =>
+            '${message}：${reason}';
       case 'connection.tapToConnect':
         return '點擊以連線';
       case 'connection.connecting':
@@ -24331,11 +28652,11 @@ extension on TranslationsZhTw {
       case 'connection.reconnect':
         return '重新連線';
       case 'connection.connectAnyWay':
-        return '連線';
+        return '仍然連線';
       case 'connection.experimentalNotice':
-        return '使用中的實驗性功能';
+        return '實驗性功能提醒';
       case 'connection.experimentalNoticeMsg':
-        return '您啟用了一些實驗性功能，這些功能可能會影響連線品質並導致某些意外錯誤。您始終可以從「配置選項」頁面變更或重設這些選項。';
+        return '目前設定啟用了實驗性進階選項（例如 TLS 混淆分片、封包填充、多工、WARP 中轉，或允許區域網路存取等），可能不穩定，連線品質或成功率會受影響。';
       case 'connection.disableExperimentalNotice':
         return '不再提示';
       case 'connection.reconnectMsg':
@@ -24483,6 +28804,10 @@ extension on TranslationsZhTw {
         return '最大並發數';
       case 'config.enableWarp':
         return '啟用 WARP';
+      case 'config.setUpWarp':
+        return '設定 WARP';
+      case 'config.warpNotConfigured':
+        return '未設定';
       case 'config.warpDetourMode':
         return '鏈式線路';
       case 'config.warpDetourModes.proxyOverWarp':
@@ -24515,6 +28840,22 @@ extension on TranslationsZhTw {
         return '雜訊模式';
       case 'config.desktopProxyScopeNotice':
         return '桌面端只有遵循系統代理設定的程式會走通道。不遵循的軟體（部分遊戲、命令列工具、自帶代理設定的用戶端）會直連，暴露你的真實 IP。';
+      case 'config.serviceModeIosVpnOnly':
+        return 'iOS 僅支援 VPN 模式';
+      case 'config.warpGenerating':
+        return '正在產生 WARP 設定…';
+      case 'config.warpConfigFailed':
+        return 'WARP 設定產生失敗，請稍後再試';
+      case 'config.portRangeError':
+        return '連接埠範圍 1024-65535';
+      case 'config.dnsEmptyError':
+        return 'DNS 位址不能為空';
+      case 'config.rangeFormatError':
+        return '請輸入數字或範圍，例如 10-30';
+      case 'config.urlSchemeError':
+        return 'URL 必須以 http:// 或 https:// 開頭';
+      case 'config.manageRuleAssets':
+        return '規則庫管理';
       default:
         return null;
     }

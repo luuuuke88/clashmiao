@@ -1,9 +1,11 @@
+import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'dart:async';
 
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/about/application/update_available_provider.dart';
+import 'package:clashmiao/core/update/update_checker.dart';
+import 'package:clashmiao/features/about/application/update_check_provider.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
@@ -29,6 +31,8 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(translationsProvider);
+    // 入口图标统一用品牌色，不再各染一色（绿/橙/红留给状态）。
+    final brandIconColor = Theme.of(context).colorScheme.primary;
 
     // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(
@@ -39,7 +43,6 @@ class _AboutPageState extends ConsumerState<AboutPage> {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: CustomScrollView(
-                physics: const NeverScrollableScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(
                     child: Column(
@@ -108,73 +111,37 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                         children: [
                           _AboutTile(
                             icon: FluentIcons.arrow_sync_24_regular,
-                            iconColor: Colors.blue.shade400,
+                            iconColor: brandIconColor,
                             label: t.about.checkForUpdate,
                             trailing: _checkingUpdate
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
+                                    child: MotionProgress(),
                                   )
-                                : Icon(
-                                    FluentIcons.chevron_right_24_regular,
-                                    size: 18,
-                                    color: Theme.of(context)
-                                        .aiUi
-                                        .secondaryTextColor
-                                        .withValues(alpha: 0.3),
+                                : _Chevron(
+                                    color: Theme.of(
+                                      context,
+                                    ).aiUi.secondaryTextColor,
                                   ),
                             onTap: _checkingUpdate
                                 ? null
-                                : () async {
-                                    setState(() => _checkingUpdate = true);
-                                    try {
-                                      ref.invalidate(updateAvailableProvider);
-                                      final version = await ref.read(
-                                        updateAvailableProvider.future,
-                                      );
-                                      if (!context.mounted) return;
-                                      // version == null 覆盖"已是最新版本"和
-                                      // "静默检查失败"两种情况——两者在
-                                      // UpdateChecker.checkOnce 里本来就是同一
-                                      // 条返回路径（网络失败会被内部吞掉当作
-                                      // "没有更新"处理），保留原有的提示文案。
-                                      if (version == null) {
-                                        AppToast.info(
-                                          context,
-                                          t.appUpdate.notAvailableMsg,
-                                        );
-                                        return;
-                                      }
-                                      final info = await _packageInfoFuture;
-                                      if (!context.mounted) return;
-                                      // 故意不 await 弹窗关闭——「稍后」/
-                                      // 「立即更新」什么时候点是用户的事，不该
-                                      // 让"检查更新"这一行的 loading 态一直等
-                                      // 到弹窗关掉才恢复。
-                                      unawaited(
-                                        showUpdateAvailableDialog(
-                                          context,
-                                          currentVersion: info.version,
-                                          latestVersion: version.replaceFirst(
-                                            'v',
-                                            '',
-                                          ),
-                                        ),
-                                      );
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => _checkingUpdate = false);
-                                      }
-                                    }
-                                  },
+                                : () => _checkForUpdate(context, t),
+                          ),
+                          const _Divider(),
+                          _AboutTile(
+                            icon: FluentIcons.document_bullet_list_24_regular,
+                            iconColor: brandIconColor,
+                            label: t.about.openSourceLicenses,
+                            trailing: _Chevron(
+                              color: Theme.of(context).aiUi.secondaryTextColor,
+                            ),
+                            onTap: () => _showLicenses(context),
                           ),
                           const _Divider(),
                           _AboutTile(
                             icon: FluentIcons.code_24_regular,
-                            iconColor: Colors.grey.shade400,
+                            iconColor: brandIconColor,
                             label: t.about.sourceCode,
                             trailing: _Chevron(
                               color: Theme.of(context).aiUi.secondaryTextColor,
@@ -187,7 +154,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             const _Divider(),
                             _AboutTile(
                               icon: FluentIcons.people_community_24_regular,
-                              iconColor: Colors.lightBlue.shade400,
+                              iconColor: brandIconColor,
                               label: t.about.telegramChannel,
                               trailing: _Chevron(
                                 color: Theme.of(
@@ -201,7 +168,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             const _Divider(),
                             _AboutTile(
                               icon: FluentIcons.shield_checkmark_24_regular,
-                              iconColor: Colors.purple.shade400,
+                              iconColor: brandIconColor,
                               label: t.about.privacyPolicy,
                               trailing: _Chevron(
                                 color: Theme.of(
@@ -231,10 +198,15 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             ),
                           ),
                           const SizedBox(height: 4),
+                          // 版权行：不写年份与「All Rights Reserved」，待许可证
+                          // 确定后再定。12 sp、不加字距、允许换行（文字放大时
+                          // 不溢出）。
                           Text(
-                            '© 2024 ClashMiao Studio. All Rights Reserved.',
+                            '© ClashMiao',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
-                              fontSize: 9,
+                              fontSize: 12,
+                              letterSpacing: 0,
                               color: Theme.of(context).aiUi.secondaryTextColor,
                             ),
                           ),
@@ -248,6 +220,60 @@ class _AboutPageState extends ConsumerState<AboutPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// 手动检查更新。三种结论各有各的反馈：有新版本弹对话框；确认已是最新
+  /// 提示「已是最新版本」；**检查失败**单独提示失败——不能把「没问到」当成
+  /// 「已是最新」告诉用户，那等于骗人。
+  Future<void> _checkForUpdate(BuildContext context, Translations t) async {
+    setState(() => _checkingUpdate = true);
+    try {
+      ref.invalidate(updateCheckProvider);
+      UpdateCheckResult result;
+      try {
+        result = await ref.read(updateCheckProvider.future);
+      } catch (_) {
+        // provider 本身抛了（读 prefs 失败等）同样是「没得到结论」。
+        result = const UpdateCheckResult.failed();
+      }
+      if (!context.mounted) return;
+      switch (result.status) {
+        case UpdateCheckStatus.failed:
+          AppToast.error(context, t.appUpdate.checkFailedMsg);
+        case UpdateCheckStatus.upToDate:
+          AppToast.info(context, t.appUpdate.notAvailableMsg);
+        case UpdateCheckStatus.available:
+          final info = await _packageInfoFuture;
+          if (!context.mounted) return;
+          // 故意不 await 弹窗关闭——「稍后」/「立即更新」什么时候点是用户的
+          // 事，不该让"检查更新"这一行的 loading 态一直等到弹窗关掉才恢复。
+          unawaited(
+            showUpdateAvailableDialog(
+              context,
+              currentVersion: info.version,
+              latestVersion: result.tag!.replaceFirst('v', ''),
+            ),
+          );
+      }
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
+
+  /// 系统的开源许可页：pub 依赖的许可由 Flutter 自动收集，sing-box 内核与
+  /// 规则集由 `registerBundledLicenses()` 在启动时补登记。
+  Future<void> _showLicenses(BuildContext context) async {
+    final info = await _packageInfoFuture;
+    if (!context.mounted) return;
+    showLicensePage(
+      context: context,
+      applicationName: 'ClashMiao',
+      applicationVersion: info.version,
+      applicationIcon: const Padding(
+        padding: EdgeInsets.all(8),
+        child: BrandMark(size: 56),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
@@ -16,13 +17,15 @@ class GeoUpdateState {
   });
   final bool isUpdating;
   final double progress;
-  final String? error;
+
+  /// 最近一次更新失败的异常（只给日志 / 判断用，不直接展示给用户）。
+  final Object? error;
   final DateTime? lastUpdated;
 
   GeoUpdateState copyWith({
     bool? isUpdating,
     double? progress,
-    String? error,
+    Object? error,
     DateTime? lastUpdated,
   }) => GeoUpdateState(
     isUpdating: isUpdating ?? this.isUpdating,
@@ -99,8 +102,9 @@ class GeoUpdateNotifier
           lastUpdated: DateTime.now(),
         ),
       };
-    } catch (e) {
-      state = {...state, asset.type: GeoUpdateState(error: e.toString())};
+    } catch (e, st) {
+      logAppFailure('geo.update', e, st);
+      state = {...state, asset.type: GeoUpdateState(error: e)};
     } finally {
       await progressSub?.cancel();
       service?.dispose();

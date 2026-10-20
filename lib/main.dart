@@ -4,15 +4,20 @@ import 'dart:io';
 
 import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/app/app.dart';
+import 'package:clashmiao/app/bootstrap/restore_wiring.dart';
+import 'package:clashmiao/app/bootstrap/storage_bootstrap.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/domain/config/data/default_config_options.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
+import 'package:clashmiao/core/licenses/bundled_licenses.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/sentry_redaction.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
@@ -23,6 +28,9 @@ import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/app/window/desktop_exit_guard.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/domain/profile/application/profiles_update_scheduler.dart';
+import 'package:clashmiao/features/config/application/restore_refresher.dart';
+import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/config/data/restore_recovery.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart'
     show isHttpDownloadUrl;
 import 'package:flutter/foundation.dart';
@@ -44,9 +52,22 @@ void main() async {
   // 启动过程中的异常。
   await initAppLogger();
 
-  final container = ProviderContainer();
+  // 登记随包分发但不在 pub 依赖树里的组件许可（sing-box 内核、规则集），
+  // 关于页的「开源许可」页才查得到。同步、无 IO，放最早处即可。
+  registerBundledLicenses();
+
+  final container = ProviderContainer(overrides: restoreWiringOverrides());
   // Ensure shared preferences are loaded before app runs
   await container.read(sharedPreferencesProvider.future);
+  // 启动屏障：恢复标记检查（上次备份恢复被杀就用快照回到恢复前）→ 存储迁移，
+  // 必须先于任何业务 provider 读取偏好、推送原生配置。
+  await prepareStorage(
+    container.read(sharedPreferencesProvider).requireValue,
+    checkRestoreMarker: checkRestoreMarkerAtStartup,
+  );
+  // 启动时恢复失败 / 无法回滚的结果交给界面（ShellPage 首帧后提示）。
+  container.read(startupRestoreRecoveryProvider.notifier).state =
+      lastRestoreRecoveryOutcome;
 
   // 初始化 BoxService
   final boxService = container.read(boxServiceProvider);
@@ -163,6 +184,12 @@ void main() async {
   // 不取决于某个页面在不在（详见 ConnectionHealthMonitor 类文档）。
   container.read(connectionHealthProvider.notifier).start();
 
+  // 连接控制器与出口 IP 探测随 App 创建（而不是等首页第一次 build）：它们订阅
+  // 内核快照，冷启动挂上运行中隧道、或磁贴 / 开机自启抢先把隧道拉起来时，状态
+  // 与出口 IP 都不依赖某个页面在不在。
+  container.read(connectionControllerProvider);
+  container.read(egressIpProbeProvider);
+
   // 订阅自动更新调度器：读每条订阅的 updateInterval，到期的用跟"立即更新"
   // 按钮同一条刷新逻辑静默更新一次。触发时机三条：这里的启动时查一次
   // （失败不阻塞，让用户至少能用旧 profile）、Timer.periodic 定期查一次、
@@ -173,6 +200,8 @@ void main() async {
       container.invalidate(profileListProvider);
       container.invalidate(activeProfileProvider);
     },
+    // 备份恢复整表替换订阅期间，定时刷新让路。
+    isPaused: () => container.read(restoreInProgressProvider),
   );
   unawaited(profileUpdateScheduler.checkAndRefreshDue());
   profileUpdateScheduler.start();
@@ -215,6 +244,13 @@ void main() async {
       options.tracesSampleRate = 0.05;
       options.attachScreenshot = false;
       options.sendDefaultPii = false;
+      // 发送前与 app.log 同一个脱敏器：订阅地址凭据、分享链接不随上报离开设备。
+      // 请求整块丢弃、contexts 只留白名单，其余字段逐项脱敏。
+      options.beforeSend = (event, hint) => redactSentryEvent(event);
+      options.beforeSendTransaction = (transaction, hint) =>
+          redactSentryTransaction(transaction);
+      options.beforeBreadcrumb = (breadcrumb, hint) =>
+          redactBreadcrumb(breadcrumb);
     }, appRunner: appRunner),
     // 桌面端全局键盘快捷键（Cmd/Ctrl+V 快速粘贴导入订阅是最高优先级的一个，
     // 另外还有 macOS 的 Cmd+W/Cmd+,、Linux 的 Ctrl+Q，见

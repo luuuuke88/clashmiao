@@ -256,7 +256,7 @@ void main() {
       expect(settings.warpAccessToken, 'token-from-add-warp');
       expect(jsonDecode(settings.warpWireguardConfig), {'private_key': 'pk'});
       expect(settings.enableWarp, isTrue);
-      expect(find.textContaining('WARP 配置生成成功'), findsOneWidget);
+      expect(find.text('WARP 配置文件已生成'), findsOneWidget);
       expect(find.text('新的配置文件'), findsNothing);
 
       await _drainToasts(tester);

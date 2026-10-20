@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:clashmiao/features/logs/application/box_log_stream_provider.dart';
 import 'package:clashmiao/features/logs/application/log_filter_notifier.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
@@ -11,23 +12,33 @@ import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:clashmiao/shared/components/motion_progress.dart';
 
 /// 把核心（sing-box）日志行写到一个临时文件，供"分享核心日志"使用。
 /// 抽成顶层函数是为了能在 logs_page_test.dart 里直接验证它和
 /// [resolveAppLogSharePath] 返回的是两个不同的文件——这是"分享核心日志"
 /// 和"分享应用日志"必须是两个真正不同数据源的核心验证点。
+///
+/// 写出前逐行过 [redactLogText]（与 app.log 同一个脱敏器）：内核日志里可能带
+/// 订阅地址、出站的分享链接，导出文件会被用户发给别人。
 @visibleForTesting
 Future<String> writeCoreLogsTempFile(List<String> lines) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/clashmiao-core-logs.txt');
-  await file.writeAsString(lines.join('\n'));
+  await file.writeAsString(lines.map(redactLogText).join('\n'));
   return file.path;
 }
 
-/// "分享应用日志"用的文件路径：AppLogger 落地的本地 app.log，和上面的核心
-/// 日志临时文件是完全独立的数据源。
+/// "分享应用日志"用的文件路径：AppLogger 落地的本地 app.log 的**脱敏副本**
+/// （写在临时目录），和上面的核心日志临时文件是完全独立的数据源。
+///
+/// 从不交出原始 app.log：升级前写下的旧内容可能还带着没脱敏的凭据。
 @visibleForTesting
-Future<String> resolveAppLogSharePath() => AppLogger.instance.getLogFilePath();
+Future<String> resolveAppLogSharePath() async {
+  final dir = await getTemporaryDirectory();
+  final copy = await AppLogger.instance.writeRedactedCopy(dir);
+  return copy.path;
+}
 
 class LogsPage extends ConsumerStatefulWidget {
   const LogsPage({super.key, this.debugShowShareMenu});
@@ -53,7 +64,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
     await Share.shareXFiles([XFile(path)], text: 'ClashMiao Core Logs');
   }
 
-  /// 分享应用（Dart/Flutter）日志：AppLogger 落地的本地 app.log，包含
+  /// 分享应用（Dart/Flutter）日志：AppLogger 落地的本地 app.log（脱敏副本），包含
   /// FlutterError.onError / PlatformDispatcher.onError 兜底捕获到的未处理
   /// 异常，和上面的核心日志是完全独立的数据源。
   Future<void> _shareAppLogs() async {
@@ -103,9 +114,10 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                         onPressed: () async {
                           try {
                             await notifier.clear();
-                          } catch (error) {
+                          } catch (error, st) {
+                            logAppFailure('logs.clear', error, st);
                             if (!context.mounted) return;
-                            AppToast.error(context, error.toString());
+                            AppToast.error(context, t.logs.clearFailed);
                           }
                         },
                         icon: const Icon(FluentIcons.delete_lines_20_regular),
@@ -162,10 +174,15 @@ class _LogsPageState extends ConsumerState<LogsPage> {
         body: Builder(
           builder: (context) {
             if (logsAsync.hasError) {
-              return Center(child: Text('日志读取失败: ${logsAsync.error}'));
+              logAppFailureOnce(
+                'logs.load',
+                logsAsync.error!,
+                logsAsync.stackTrace,
+              );
+              return Center(child: Text(t.logs.loadFailed));
             }
             if (logsAsync.isLoading && state.lines.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: MotionProgress(strokeWidth: 4));
             }
 
             if (state.lines.isEmpty) {
@@ -181,7 +198,7 @@ class _LogsPageState extends ConsumerState<LogsPage> {
                     hasScrollBody: false,
                     child: Center(
                       child: Text(
-                        '暂无日志',
+                        t.logs.empty,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),

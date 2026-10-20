@@ -24,7 +24,12 @@
     "openAppSettings": "Open App Settings",
     "grantPermission": "Grant Permission",
     "underDevelopment": "Under Development",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "close": "Close",
+    "cancel": "Cancel",
+    "clipboardEmpty": "Clipboard is empty",
+    "clipboardReadFailed": "Couldn't read the clipboard",
+    "moreOptions": "More options"
   },
   "intro": {
     "termsAndPolicyCaution(rich)": "By Continuing You Agree With ${tap(@:about.termsAndConditions)}",
@@ -44,7 +49,16 @@
     "coreMissingMsg": "The app could not load its networking core. Connecting is unavailable. Reinstall the app, or make sure the core library file sits next to the executable.",
     "degradedTitle": "Connected, but no internet access",
     "degradedMsg": "The tunnel is up but traffic is not getting through. The node may be down — try another node, or disconnect.",
-    "degradedRetry": "Check again"
+    "degradedRetry": "Check again",
+    "egressIp": {
+      "label": "Egress IP",
+      "notConnected": "Connect to show egress IP",
+      "tapToCheck": "Tap to check egress IP",
+      "checking": "Checking…",
+      "failedRetry": "Check failed, tap to retry"
+    },
+    "emptyProfilesHint": "Tap the button below to get started",
+    "noActiveProfileTitle": "No profile selected"
   },
   "stats": {
     "traffic": "Traffic",
@@ -56,7 +70,9 @@
     "downlink": "Downlink",
     "connection": "Connection",
     "speed": "Speed",
-    "totalTransferred": "Total Transferred"
+    "totalTransferred": "Total Transferred",
+    "sessionTraffic": "Session traffic",
+    "downloadSpeed": "Download speed"
   },
   "profile": {
     "overviewPageTitle": "Profiles",
@@ -106,7 +122,12 @@
       "warpDescription": "Free acceleration with Cloudflare WARP",
       "addingWarpMsg": "Please wait while we register WARP.",
       "addingProfileMsg": "Adding Profile",
-      "failureMsg": "Failed to Add Profile"
+      "failureMsg": "Failed to Add Profile",
+      "importedNamed": "Imported subscription: ${name}",
+      "clipboardEmpty": "The clipboard is empty, nothing to import",
+      "deepLinkMissingUrl": "The link has no subscription address",
+      "successMsg": "Profile added",
+      "nameAutoHint": "Detected automatically (optional)"
     },
     "details": {
       "basicInfo": "Basic Information",
@@ -149,7 +170,9 @@
     "delete": {
       "buttonTxt": "Delete",
       "confirmationMsg": "Delete Profile Permanently?",
-      "successMsg": "Profile Deleted Successfully"
+      "successMsg": "Profile Deleted Successfully",
+      "confirmTitle": "Delete profile",
+      "namedConfirmMsg": "Delete \"${name}\"? This can't be undone."
     },
     "save": {
       "buttonText": "Save",
@@ -169,9 +192,15 @@
       "userAgent": "User-Agent",
       "userAgentNotSet": "Not Set",
       "mux": "Mux",
-      "muxDescription": "Multiplex outbound connections to reduce handshake overhead"
+      "muxDescription": "Multiplex outbound connections to reduce handshake overhead",
+      "updateIntervalOff": "Off",
+      "updateIntervalHours": "${hours} h",
+      "updateIntervalDays": "${days} d"
     },
-    "remoteProfile": "Remote Profile"
+    "remoteProfile": "Remote Profile",
+    "defaultLocalName": "Local import",
+    "defaultDeepLinkName": "Link import",
+    "switchFailedMsg": "Couldn't switch profile"
   },
   "proxies": {
     "pageTitle": "Lines",
@@ -192,7 +221,9 @@
     "delaySemantics": {
       "result": "Delay: ${delay}ms",
       "timeout": "Delay Test Timeout",
-      "testing": "Delay: Testing..."
+      "testing": "Delay: Testing...",
+      "untested": "Delay: Not tested",
+      "stale": "Delay: ${delay}ms (earlier result)"
     },
     "ipInfoSemantics": {
       "address": "IP Address",
@@ -200,10 +231,14 @@
     },
     "testingDelayInfo": "Testing delay for: ${name}",
     "switchedTo": "Switched to ${name}",
-    "switchToFailed": "Failed to switch: ${error}",
+    "switchFailed": "Couldn't switch the server. Please try again.",
+    "testFailed": "Latency test failed. Please try again.",
+    "groupsLoading": "Server list is still loading. Please try again in a moment.",
     "connectBeforeSwitch": "Please connect before switching lines",
     "startDelayTestForGroups": "Started delay test for ${count} lines",
     "delayTestBtn": "Delay",
+    "delayTimeout": "Timeout",
+    "connectBeforeTest": "Connect first to test delay",
     "lineCount": "${count} lines",
     "manualSelect": "Manual Select",
     "autoTest": "Auto Test"
@@ -220,7 +255,10 @@
     "logsCleared": "Logs cleared",
     "logsCopied": "Logs copied",
     "logsUnderDevelopment": "Log feature is under development",
-    "noLogsWhenDisconnected": "Not connected, no logs"
+    "noLogsWhenDisconnected": "Not connected, no logs",
+    "loadFailed": "Couldn't load logs",
+    "empty": "No logs yet",
+    "clearFailed": "Couldn't clear logs"
   },
   "settings": {
     "pageTitle": "Settings",
@@ -231,6 +269,37 @@
     "exportAllOptions": "Copy All Options to Clipboard",
     "importOptions": "Import Options From Clipboard",
     "importOptionsMsg": "This will rewrite all config options with provided values. Are you sure?",
+    "backup": {
+      "importConfirmTitle": "Import Backup",
+      "importConfirmMsg": "This replaces your subscriptions with the ones in the backup and applies the backup's settings. A snapshot of the current data is saved first and restored automatically if the import fails.",
+      "importRemovesMsg": "${count} subscription(s) on this device are not in the backup and will be removed.",
+      "reportImported": "Imported ${profiles} subscription(s) and ${settings} setting(s).",
+      "reportDropped": "${count} subscription(s) in the backup were skipped because their data was invalid.",
+      "reportSettingsSkipped": "${count} setting(s) were skipped; your current values are kept.",
+      "reportWarpOff": "WARP was turned off by the import. Re-enable it on this device.",
+      "reportBackfill": "${count} subscription(s) will be downloaded in the background.",
+      "errInvalidFile": "This is not a valid ClashMiao backup file.",
+      "errUnsupportedVersion": "This backup format is not supported.",
+      "errNewerSchema": "This backup was created by a newer version of the app. Please upgrade the app first.",
+      "errNoUsableProfiles": "None of the subscriptions in this backup can be imported.",
+      "errSnapshotFailed": "Could not save a snapshot of the current data, so nothing was changed.",
+      "errUnresolvedPrevious": "A previous import was interrupted and could not be undone yet. Nothing was changed. Restart the app and try again.",
+      "errRolledBack": "Import failed. Your previous data has been restored.",
+      "errNotRolledBack": "Import failed and the automatic restore did not finish. Restart the app to retry it. A snapshot is saved at ${path}.",
+      "errFailed": "Import failed.",
+      "errBusy": "Another import is already running. Please wait for it to finish.",
+      "recoveryFailedTitle": "Automatic restore did not finish",
+      "recoveryFailedMsg": "The last backup import was interrupted and the app could not return your data to its previous state. Some data may be partly imported. Retry the automatic restore now.",
+      "recoveryUnrecoverableTitle": "Interrupted import could not be undone",
+      "recoveryUnrecoverableMsg": "The last backup import was interrupted, but its snapshot is missing or unreadable, so it cannot be undone. Please check your subscriptions and settings.",
+      "recoveryRetry": "Retry",
+      "recoveryClose": "Close",
+      "recoveryRetried": "Your data was restored to before the interrupted import.",
+      "exportAction": "Export backup",
+      "importAction": "Import backup",
+      "exportFailed": "Couldn't export the backup",
+      "shareText": "ClashMiao backup"
+    },
     "general": {
       "sectionTitle": "General",
       "locale": "Language",
@@ -310,7 +379,16 @@
     "systemProxyEnabled": "System proxy enabled",
     "systemProxyDisabled": "System proxy disabled (Reconnect to apply)",
     "adminPrivilegesRequired": "Administrator privileges required on macOS",
-    "portChangeNotice": "Port changes require reconnect to apply"
+    "portChangeNotice": "Port changes require reconnect to apply",
+    "groups": {
+      "general": "General",
+      "connection": "Connection",
+      "privacy": "Privacy"
+    },
+    "importOptionsInvalid": "The clipboard doesn't contain valid settings JSON",
+    "importOptionsNothing": "No importable settings found",
+    "importOptionsDone": "Imported ${count} settings",
+    "importOptionsPartial": "Imported ${applied} settings; ${skipped} were skipped because they were invalid"
   },
   "about": {
     "pageTitle": "About",
@@ -320,7 +398,8 @@
     "checkForUpdate": "Check For Update",
     "privacyPolicy": "Privacy Policy",
     "termsAndConditions": "Terms and Conditions",
-    "appDescription": "A cross-platform proxy client based on sing-box core"
+    "appDescription": "A cross-platform proxy client based on sing-box core",
+    "openSourceLicenses": "Open-source licenses"
   },
   "appUpdate": {
     "notAvailableMsg": "Already Using The Latest Version",
@@ -330,7 +409,8 @@
     "newVersionLbl": "New Version",
     "updateNowBtnTxt": "Update Now",
     "laterBtnTxt": "Later",
-    "ignoreBtnTxt": "Ignore"
+    "ignoreBtnTxt": "Ignore",
+    "checkFailedMsg": "Couldn't check for updates. Check your network and try again."
   },
   "tray": {
     "dashboard": "Dashboard",
@@ -342,7 +422,8 @@
       "connecting": "Connecting",
       "disconnect": "Disconnect",
       "disconnecting": "Disconnecting"
-    }
+    },
+    "proxyModeMenu": "Proxy Mode"
   },
   "failure": {
     "unexpected": "Unexpected Error",
@@ -362,21 +443,25 @@
       "invalidConfig": "Invalid Configuration",
       "create": "Service Creation Error",
       "start": "Service Startup Error",
-      "startTimeout": "Service Startup Timed Out"
+      "startTimeout": "Service Startup Timed Out",
+      "kernelUnresponsive": "The core is not responding. Please try again, or restart the app.",
+      "kernelExited": "The core exited unexpectedly"
     },
     "connectivity": {
       "unexpected": "Unexpected Failure",
       "missingVpnPermission": "Missing VPN Permission",
       "missingNotificationPermission": "Missing Notification Permission",
       "networkUnavailable": "Network Unavailable",
-      "core": "Core Error"
+      "core": "Core Error",
+      "nativeUnresponsive": "Lost contact with the background service. Please try again."
     },
     "profiles": {
       "unexpected": "Unexpected Error",
       "notFound": "Profile Not Found",
       "noActive": "No Active Profile",
       "invalidConfig": "Invalid Configs",
-      "invalidUrl": "Invalid URL"
+      "invalidUrl": "Invalid URL",
+      "readOnlyUpgrade": "Please upgrade the app before changing subscriptions"
     },
     "connection": {
       "unexpected": "Unexpected Connection Error",
@@ -389,7 +474,8 @@
       "unexpected": "Unexpected Error",
       "notUpdate": "No Update Available",
       "activeNotFound": "Active Geo Asset Not Found"
-    }
+    },
+    "withReason": "${message}: ${reason}"
   },
   "connection": {
     "tapToConnect": "Tap To Connect",
@@ -397,7 +483,7 @@
     "disconnecting": "Disconnecting",
     "connected": "Connected",
     "reconnect": "Reconnect",
-    "connectAnyWay": "Connect",
+    "connectAnyWay": "Connect Anyway",
     "experimentalNotice": "Experimental Features In Use",
     "experimentalNoticeMsg": "You've enabled some experimental features which might affect connection quality and cause unexpected errors. You can always change or reset these options from Config options page.",
     "disableExperimentalNotice": "Don't Show Again",
@@ -482,6 +568,8 @@
     "muxProtocol": "Mux Protocol",
     "muxMaxStreams": "Max Concurrent Streams",
     "enableWarp": "Enable WARP",
+    "setUpWarp": "Set up WARP",
+    "warpNotConfigured": "Not configured",
     "warpDetourMode": "Detour Mode",
     "warpDetourModes": {
       "proxyOverWarp": "Detour Lines Through WARP",
@@ -496,6 +584,14 @@
     "warpNoiseSize": "Noise Size",
     "warpNoiseMode": "Noise Mode",
     "warpNoiseDelay": "Noise Delay",
-    "desktopProxyScopeNotice": "On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP."
+    "desktopProxyScopeNotice": "On desktop, only apps that honor the system proxy are routed through the tunnel. Software that ignores it (some games, CLI tools, apps with their own proxy settings) connects directly and exposes your real IP.",
+    "serviceModeIosVpnOnly": "iOS supports VPN mode only",
+    "warpGenerating": "Generating WARP configuration…",
+    "warpConfigFailed": "Couldn't generate the WARP configuration. Please try again later.",
+    "portRangeError": "Port must be between 1024 and 65535",
+    "dnsEmptyError": "DNS address can't be empty",
+    "rangeFormatError": "Enter a number or a range, e.g. 10-30",
+    "urlSchemeError": "URL must start with http:// or https://",
+    "manageRuleAssets": "Manage rule sets"
   }
 }

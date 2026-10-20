@@ -446,9 +446,21 @@ void main() {
       expect(await file.readAsString(), ssUri);
     });
 
-    test('空 name 使用默认 "本地导入"', () async {
+    test('空 name 使用注入的默认名（未注入时英文兜底）', () async {
       final profile = await repo.addByContent('ss://abc@h:1#x', name: '');
-      expect(profile.name, '本地导入');
+      expect(profile.name, 'Local import');
+
+      // provider 注入的是当前语言的文案（惰性求值：按创建那一刻的语言）。
+      final localized = ProfileRepository(
+        dio: Dio(),
+        configDir: tmpDir,
+        prefs: repo.prefs,
+        boxService: const StubBoxService(),
+        store: repo.store,
+        defaultNames: ProfileDefaultNames(local: () => '本地导入'),
+      );
+      final p2 = await localized.addByContent('ss://xyz@h:2#y', name: ' ');
+      expect(p2.name, '本地导入');
     });
 
     test('第二次 addByContent 不自动 active（保留首条）', () async {

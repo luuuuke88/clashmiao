@@ -3,8 +3,7 @@ package com.clashmiao.clashmiao.core
 import android.content.Context
 import android.content.SharedPreferences
 import com.clashmiao.clashmiao.Application
-import com.clashmiao.clashmiao.engine.PlainService
-import com.clashmiao.clashmiao.engine.TunnelService
+import com.google.gson.JsonParser
 import org.json.JSONObject
 import java.io.ByteArrayInputStream
 import java.io.File
@@ -96,31 +95,6 @@ object Prefs {
         var disableMemoryLimit: Boolean
             get() = read(PrefsKey.DISABLE_MEMORY_LIMIT, false)
             set(value) = write(PrefsKey.DISABLE_MEMORY_LIMIT, value)
-
-        var startedByUser: Boolean
-            get() = read(PrefsKey.STARTED_BY_USER, false)
-            set(value) = write(PrefsKey.STARTED_BY_USER, value)
-
-        /** 把当前 [mode] 翻译成对应 Service class。 */
-        fun serviceClass(): Class<*> = when (mode) {
-            EngineMode.VPN -> TunnelService::class.java
-            else -> PlainService::class.java
-        }
-
-        @Volatile
-        private var lastBuiltMode: String? = null
-
-        /**
-         * 把当前 mode 跟上一次"已建"的 mode 比较，相同返回 false（不用重建 Service），
-         * 不同 cache 当前 mode 并返回 true（caller 应该 stopSelf + 起新 Service）。
-         */
-        @Synchronized
-        fun shouldRebuildService(): Boolean {
-            val cur = if (mode == EngineMode.VPN) EngineMode.VPN else EngineMode.PROXY_ONLY
-            if (lastBuiltMode == cur) return false
-            lastBuiltMode = cur
-            return true
-        }
     }
 
     // === Notification ====================================================
@@ -138,9 +112,16 @@ object Prefs {
     // === Per-app filter ==================================================
 
     object AppFilter {
-        // Dart 端是用 Flutter shared_preferences 的 setStringList 落盘的 ——
-        // 它把 List 序列化成 base64 + 加这个 magic 前缀。读出来要先剥前缀再反序列化。
+        // Dart 端是用 Flutter shared_preferences 的 setStringList 落盘的，值都以这个
+        // magic 前缀开头。前缀之后有两种编码（见 [decodeFlutterList]）：
+        //   - 当前插件（shared_preferences_android 2.3+）：`!` + JSON 数组；
+        //   - 旧版插件：base64(Java 序列化的 List<String>)。
+        // 读出来先剥前缀再按格式解码。
         private const val FLUTTER_LIST_MAGIC = "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIGxpc3Qu"
+
+        // 插件的 JSON_LIST_PREFIX = LIST_PREFIX + "!"。`!` 不在 base64 字母表里，所以
+        // 不会和旧格式的 payload 混淆。
+        private const val JSON_LIST_MARKER = "!"
 
         var mode: String
             get() = read(PrefsKey.APP_FILTER_MODE, AppFilterMode.OFF)
@@ -158,24 +139,50 @@ object Prefs {
                     else -> return emptyList()
                 }
                 val raw = read(key, "")
-                if (!raw.startsWith(FLUTTER_LIST_MAGIC)) return emptyList()
-                return decodeFlutterList(raw.substring(FLUTTER_LIST_MAGIC.length))
+                return decodeStoredList(raw)
             }
 
-        // 内部：Flutter shared_preferences 的 setStringList 编码格式 = MAGIC + base64
-        // (Java-serialized List<String>)。用 [java.util.Base64.getMimeDecoder] 因为
-        // Flutter 自家编码可能带 line-wrap，MIME decoder 都吃得下；普通 decoder 严格
-        // 反而对边界情况炸。这条函数只对 payload 做解码，不读 Android 任何 API ——
-        // 单测在 host JVM 直接覆盖（[PrefsListDecoderTest]）。
-        internal fun decodeFlutterList(payload: String): List<String> = try {
+        /** 解码 Dart setStringList 落盘的完整字符串（含 MAGIC 前缀）；缺省 / 没有前缀 → 空。 */
+        internal fun decodeStoredList(raw: String): List<String> {
+            if (!raw.startsWith(FLUTTER_LIST_MAGIC)) return emptyList()
+            return decodeFlutterList(raw.substring(FLUTTER_LIST_MAGIC.length))
+        }
+
+        // 内部：解码剥掉 MAGIC 之后的 payload，两种格式都认：
+        //   - `!` + JSON 字符串数组（当前插件写入的格式）。非字符串元素丢弃，与插件
+        //     读取平台编码列表时的 filterIsInstance<String>() 一致；
+        //   - base64(Java-serialized List<String>)（旧版插件写入、升级前留在磁盘上
+        //     的格式）。用 [java.util.Base64.getMimeDecoder] 因为 Flutter 自家编码可能
+        //     带 line-wrap，MIME decoder 都吃得下；普通 decoder 严格反而对边界情况炸。
+        // 任何格式解不开都返回空 list，不抛。这条函数只对 payload 做解码，不读
+        // Android 任何 API —— 单测在 host JVM 直接覆盖（[PrefsListDecoderTest]）。
+        internal fun decodeFlutterList(payload: String): List<String> =
+            if (payload.startsWith(JSON_LIST_MARKER)) {
+                decodeJsonList(payload.substring(JSON_LIST_MARKER.length))
+            } else {
+                decodeJavaSerializedList(payload)
+            }
+
+        private fun decodeJsonList(json: String): List<String> = try {
+            JsonParser.parseString(json).asJsonArray.mapNotNull { e ->
+                if (e.isJsonPrimitive && e.asJsonPrimitive.isString) e.asString else null
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+
+        private fun decodeJavaSerializedList(payload: String): List<String> = try {
             val bytes = Base64.getMimeDecoder().decode(payload)
-            @Suppress("UNCHECKED_CAST")
-            ObjectInputStream(ByteArrayInputStream(bytes)).readObject() as List<String>
+            (ObjectInputStream(ByteArrayInputStream(bytes)).readObject() as List<*>)
+                .filterIsInstance<String>()
         } catch (_: Exception) {
             emptyList()
         }
 
         /** 公开 magic 前缀给测试 + 文档调用；前缀本身是 Flutter 端硬定的字面量。 */
         internal const val FLUTTER_LIST_MAGIC_PUBLIC = FLUTTER_LIST_MAGIC
+
+        /** 同上，JSON 格式在前缀之后的标记。 */
+        internal const val JSON_LIST_MARKER_PUBLIC = JSON_LIST_MARKER
     }
 }

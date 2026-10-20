@@ -1,5 +1,6 @@
 package com.clashmiao.clashmiao.engine
 
+import android.util.Log
 import com.clashmiao.clashmiao.core.drain
 import go.Seq
 import io.nekohasekai.libbox.CommandClient
@@ -10,9 +11,10 @@ import io.nekohasekai.libbox.OutboundGroup
 import io.nekohasekai.libbox.OutboundGroupIterator
 import io.nekohasekai.libbox.StatusMessage
 import io.nekohasekai.libbox.StringIterator
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -28,17 +30,21 @@ import kotlinx.coroutines.launch
  * 设计要点：
  *   - libbox 自己的 `CommandClient`（go-jni 那一边的）在 service 初始化前调 `connect()`
  *     会 throw。这里走最多 10 次的间隔重试（每次 100ms + i*50ms），第一次成功就退出。
- *   - 重试期间如果调用 [disconnect] 或父 coroutine 被取消，就直接释放后退出，
- *     不会留 ghost client。
+ *   - 重试期间如果调用 [disconnect]（或又 connect 了一次）、或父 coroutine 被取消，
+ *     这次尝试按代际作废：候选连接自己丢弃，不会留 ghost client。
  *   - [Subscriber] 接口只暴露我们 app 真正用到的两条事件（status / groups）。
  *     libbox 还有 clearLog / writeLog / clashMode 那些 callback 我们不订阅，
  *     所以这层都不暴露，少一个 API surface 就少一份维护成本。
  */
-class LibboxCommandStream(
+class LibboxCommandStream internal constructor(
     private val scope: CoroutineScope,
-    private val kind: StreamKind,
-    private val subscriber: Subscriber,
+    private val newClient: () -> Client,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val backoff: suspend (attempt: Int) -> Unit = { delay(BASE_BACKOFF_MS + it * BACKOFF_STEP_MS) },
 ) {
+
+    constructor(scope: CoroutineScope, kind: StreamKind, subscriber: Subscriber) :
+        this(scope, { LibboxClient(kind, subscriber) })
 
     /** 哪种流。libbox 用 int command code 区分，这里映射到一个 enum 用着舒服点。 */
     enum class StreamKind(val command: Int) {
@@ -53,30 +59,56 @@ class LibboxCommandStream(
         fun onGroups(groups: List<OutboundGroup>) = Unit
     }
 
-    @Volatile
-    private var live: CommandClient? = null
+    /** 一条流命令客户端（生产实现包 libbox CommandClient；测试用假实现）。 */
+    internal interface Client {
+        /** 阻塞连接；服务未就绪时抛异常。 */
+        fun connect()
 
-    private val callbackBridge = SubscriberBridge()
+        /** 放弃从未被采用的候选连接。 */
+        fun abandon()
+
+        /** 关闭已采用的连接并释放 jni ref。 */
+        fun close()
+    }
+
+    // 代际：每次 connect / disconnect 都开新的一代；后台连接尝试只有仍是当前代才会被采用，
+    // 否则（期间被 disconnect 或又 connect 了一次）自己丢弃候选，不留 ghost client。
+    private val lock = Any()
+    private var generation = 0L
+    private var live: Client? = null
+    private var pending: Job? = null
+
+    /** 当前是否持有一条已采用的连接（测试用）。 */
+    internal val isConnected: Boolean get() = synchronized(lock) { live != null }
 
     /**
      * 启动连接。多次调用 [connect] 时，老连接会先被 disconnect。
-     * 真正的连接尝试在 IO scope 内异步跑，最多 10 次。
+     * 真正的连接尝试在后台异步跑，最多 10 次。
      */
-    @OptIn(DelicateCoroutinesApi::class)
     fun connect() {
-        disconnect()
-        val options = CommandClientOptions().also {
-            it.command = kind.command
-            it.statusInterval = STATS_INTERVAL_NANOS
-        }
-        val candidate = CommandClient(callbackBridge, options)
-        scope.launch(Dispatchers.IO) {
-            val ok = attemptWithBackoff(candidate)
-            if (!ok || !isActive) {
-                runCatching { candidate.disconnect() }
-                return@launch
+        synchronized(lock) {
+            closeLocked()
+            val gen = generation
+            pending = scope.launch(dispatcher) {
+                val candidate = synchronized(lock) {
+                    if (gen != generation) return@launch
+                    newClient()
+                }
+                var adopted = false
+                try {
+                    val ok = attemptWithBackoff(candidate)
+                    synchronized(lock) {
+                        if (ok && isActive && gen == generation) {
+                            live = candidate
+                            pending = null
+                            adopted = true
+                        }
+                    }
+                    if (!ok) Log.w(TAG, "command client gave up after $MAX_ATTEMPTS attempts")
+                } finally {
+                    if (!adopted) runCatching { candidate.abandon() }
+                }
             }
-            live = candidate
         }
     }
 
@@ -84,9 +116,9 @@ class LibboxCommandStream(
      * 至多 [MAX_ATTEMPTS] 次循环尝试 connect()，每次 backoff 时长按 attempt index 线性递增。
      * 任意一次成功就返回 true；中途 cancel 也算 false。
      */
-    private suspend fun attemptWithBackoff(candidate: CommandClient): Boolean {
+    private suspend fun attemptWithBackoff(candidate: Client): Boolean {
         for (attempt in 1..MAX_ATTEMPTS) {
-            delay(BASE_BACKOFF_MS + attempt * BACKOFF_STEP_MS)
+            backoff(attempt)
             try {
                 candidate.connect()
                 return true
@@ -98,19 +130,50 @@ class LibboxCommandStream(
         return false
     }
 
-    /** 把当前活动的 libbox client 断开 + 释放 jni ref。空闲调用安全。 */
+    /** 断开当前连接、作废在途的连接尝试。空闲调用安全。 */
     fun disconnect() {
+        synchronized(lock) { closeLocked() }
+    }
+
+    private fun closeLocked() {
+        generation++
+        pending?.cancel()
+        pending = null
         val current = live ?: return
-        runCatching { current.disconnect() }
-        Seq.destroyRef(current.refnum)
         live = null
+        runCatching { current.close() }
+    }
+
+    // === libbox 客户端 ======================================================
+
+    private class LibboxClient(kind: StreamKind, subscriber: Subscriber) : Client {
+        private val client = CommandClient(
+            SubscriberBridge(subscriber),
+            CommandClientOptions().also {
+                it.command = kind.command
+                it.statusInterval = STATS_INTERVAL_NANOS
+            },
+        )
+
+        override fun connect() = client.connect()
+
+        override fun abandon() {
+            client.disconnect()
+        }
+
+        override fun close() {
+            runCatching { client.disconnect() }
+            Seq.destroyRef(client.refnum)
+        }
     }
 
     // === libbox → Kotlin 回调桥 ===========================================
 
-    private inner class SubscriberBridge : CommandClientHandler {
+    private class SubscriberBridge(private val subscriber: Subscriber) : CommandClientHandler {
         override fun connected() = Unit
-        override fun disconnected(message: String?) = Unit
+        override fun disconnected(message: String?) {
+            Log.i(TAG, "command client disconnected: $message")
+        }
         override fun clearLog() = Unit
         override fun writeLog(message: String?) = Unit
         override fun initializeClashMode(modeList: StringIterator, currentMode: String) {
@@ -134,6 +197,7 @@ class LibboxCommandStream(
     }
 
     private companion object {
+        private const val TAG = "engine/CommandStream"
         // libbox status 推送间隔：2 秒（纳秒制）。
         private const val STATS_INTERVAL_NANOS: Long = 2L * 1000 * 1000 * 1000
         private const val MAX_ATTEMPTS = 10

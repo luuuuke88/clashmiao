@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
+import 'package:clashmiao/core/box_service/model/box_service_exception.dart';
 import 'package:clashmiao/core/box_service/model/box_stats.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
@@ -17,6 +18,33 @@ import 'package:path/path.dart' as p;
 import 'package:rxdart/rxdart.dart';
 
 typedef GoUint8 = UnsignedChar;
+
+/// 内核报告「上一个实例还没停」时的错误文本片段。
+const kInstanceNotStopped = 'instance not stopped';
+
+/// 启动一次；若内核返回 [kInstanceNotStopped]，先 stop 再启动一次。
+///
+/// 这个重试以前在连接控制器里靠 `e.toString().contains(...)` 做字符串匹配；
+/// 现在属于 FFI 层自己的事（只有它知道这条错误文本从哪来），控制器与端口只
+/// 看到最终结果。返回空字符串表示成功，否则是最后一次的错误文本。
+@visibleForTesting
+Future<String> startWithStopRetry({
+  required String Function() start,
+  required String Function() stop,
+  Future<void> Function(Duration) delay = Future<void>.delayed,
+  Duration settle = const Duration(milliseconds: 500),
+}) async {
+  final first = start();
+  if (!first.contains(kInstanceNotStopped)) return first;
+  final stopErr = stop();
+  if (stopErr.isNotEmpty) {
+    // 停不掉就不再盲目重试：把原始启动错误交给上层。
+    debugPrint('start 重试前 stop 失败: $stopErr');
+    return first;
+  }
+  await delay(settle);
+  return start();
+}
 
 /// FFI 函数签名定义
 typedef SetupNative =
@@ -232,18 +260,20 @@ class FFIBoxService implements BoxService, DisposableBoxService {
 
   @override
   Future<void> start(String configPath, {String name = ''}) async {
-    final err = _start(
-      configPath.toNativeUtf8().cast(),
-      0,
-    ).cast<Utf8>().toDartString();
+    String startOnce() =>
+        _start(configPath.toNativeUtf8().cast(), 0).cast<Utf8>().toDartString();
 
-    if (err.isNotEmpty) throw Exception('start failed: $err');
+    final err = await startWithStopRetry(
+      start: startOnce,
+      stop: () => _stop().cast<Utf8>().toDartString(),
+    );
+    if (err.isNotEmpty) throw BoxServiceException('start', err);
   }
 
   @override
   Future<void> stop() async {
     final err = _stop().cast<Utf8>().toDartString();
-    if (err.isNotEmpty) throw Exception('stop failed: $err');
+    if (err.isNotEmpty) throw BoxServiceException('stop', err);
   }
 
   @override
@@ -253,7 +283,7 @@ class FFIBoxService implements BoxService, DisposableBoxService {
       0,
     ).cast<Utf8>().toDartString();
 
-    if (err.isNotEmpty) throw Exception('restart failed: $err');
+    if (err.isNotEmpty) throw BoxServiceException('restart', err);
   }
 
   @override
@@ -263,7 +293,7 @@ class FFIBoxService implements BoxService, DisposableBoxService {
       outboundTag.toNativeUtf8().cast(),
     ).cast<Utf8>().toDartString();
 
-    if (err.isNotEmpty) throw Exception('selectOutbound failed: $err');
+    if (err.isNotEmpty) throw BoxServiceException('selectOutbound', err);
   }
 
   @override
@@ -271,7 +301,7 @@ class FFIBoxService implements BoxService, DisposableBoxService {
     final err = _urlTest(
       groupTag.toNativeUtf8().cast(),
     ).cast<Utf8>().toDartString();
-    if (err.isNotEmpty) throw Exception('urlTest failed: $err');
+    if (err.isNotEmpty) throw BoxServiceException('urlTest', err);
   }
 
   @override

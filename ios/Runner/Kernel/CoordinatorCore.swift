@@ -146,6 +146,12 @@ final class CoordinatorCore {
     private var launchSubmitted = false
     /// 一次启动被放弃（提交了却迟迟不可见）之后的保护窗：窗口内迟到的启动属于我们，不是外部启动。
     private var adoptGuard = false
+    /// 保护窗内是否已经看到过隧道的实际活动。启动被放弃时隧道本就是 down，紧随其后的 resync 读到的仍是同一个
+    /// down，不能据此认为保护窗该结束——只有「看到过活动之后又 down」才算这次迟到的启动已经收场。
+    private var guardSawActive = false
+    /// 派发当前这次 Connect 的请求归属。启动的失败 / 下线只属于派发它的请求；之后被更新请求取代，
+    /// 旧启动的退场只负责收尾，不得把失败记到新请求头上。
+    private var launchOwner: Owner?
     /// 已知的扩展实例与 service 代次。
     private var knownSession: String?
     private var knownGeneration = 0
@@ -363,6 +369,7 @@ final class CoordinatorCore {
                 launching = false
                 launchSubmitted = false
                 adoptGuard = true
+                guardSawActive = false
                 out.append(.setTimer(TimerKey(.adoptGuard), delayMs: config.adoptGuardMs))
                 if let e { failExec(e, code, message) }
             case (.connect, .failed(let code, let message)), (.reload, .failed(let code, let message)):
@@ -412,6 +419,7 @@ final class CoordinatorCore {
                 }
             case .adoptGuard:
                 adoptGuard = false
+                guardSawActive = false
             case .stopWatchdog:
                 guard key.subject == stopWatchSerial, stopSubmitted, !tunnel.isDown else { return nil }
                 log("stop watchdog: tunnel not disconnected > \(config.stepWatchdogMs)ms")
@@ -444,6 +452,9 @@ final class CoordinatorCore {
     private var stopWatchSerial: Int64 = 0
 
     private func handleTunnel(previous: TunnelStatus, status: TunnelStatus, report: ExtensionState?) {
+        if adoptGuard, status == .connecting || status == .connected || status == .reasserting {
+            guardSawActive = true
+        }
         switch status {
         case .connected:
             handleConnected(report)
@@ -560,9 +571,13 @@ final class CoordinatorCore {
             ($0.sessionId == knownSession || $0.launchId == currentLaunchId || currentLaunchId == nil) ? $0 : nil
         }
         stopSubmitted = false
-        adoptGuard = false
         out.append(.cancelTimer(TimerKey(.stopWatchdog)))
-        out.append(.cancelTimer(TimerKey(.adoptGuard)))
+        if adoptGuard, guardSawActive {
+            adoptGuard = false
+            guardSawActive = false
+            out.append(.cancelTimer(TimerKey(.adoptGuard)))
+        }
+        let launchBelongsToCurrent = launchOwner == nil || launchOwner == owner
         guard desired == .on, wasUp, !expected else {
             // 预期中的下线 / 本来就不在 / desired 已是 off：只是收尾，不改任何意图。
             kernelGone()
@@ -574,6 +589,11 @@ final class CoordinatorCore {
         }
         // 隧道在我们不要它消失的时候消失了。
         kernelGone()
+        if wasLaunching, !launchBelongsToCurrent {
+            // 被更新请求取代的旧启动退场了：它的失败不是新请求的失败，收尾后由 reconcile 为新请求重新启动。
+            log("superseded launch ended (\(relevant?.phase.rawValue ?? "no state")); current request continues")
+            return
+        }
         guard let r = relevant else {
             fail(wasLaunching ? .startService : .kernelExited,
                  wasLaunching ? "tunnel stopped during start" : "tunnel ended unexpectedly", attempt)
@@ -677,8 +697,15 @@ final class CoordinatorCore {
 
     /// 运行中的内核满足当前意图。`spec` 为空只会发生在接管外部启动、尚无 Dart 请求时：没有可比较的 revision，
     /// 视为满足（Dart 的请求带着 spec 来了再比较）。
+    /// 当前隧道事实确认内核在跑：系统层面 connected，且扩展 state 声明 running、属于我们记着的那个扩展实例。
+    /// 缓存的 `activeRev` 只是上一次确认的结果，不能压过新读到的非 running 事实（重载中、state 缺失 / 损坏）。
+    private var factsConfirmRunning: Bool {
+        guard tunnel == .connected, let r = lastReport, r.phase == .running else { return false }
+        return r.sessionId == knownSession
+    }
+
     private func kernelMatchesIntent() -> Bool {
-        guard desired == .on, let rev = activeRev, !stopSubmitted else { return false }
+        guard desired == .on, let rev = activeRev, !stopSubmitted, factsConfirmRunning else { return false }
         guard let s = spec else { return true }
         return rev == s.configRevision
     }
@@ -690,6 +717,7 @@ final class CoordinatorCore {
         reloadRequested = false
         launching = false
         launchSubmitted = false
+        launchOwner = nil
         runningRefUnknown = false
         knownSession = nil
         knownGeneration = 0
@@ -757,12 +785,12 @@ final class CoordinatorCore {
         case .reasserting:
             break // 内核正在（被扩展）重建，等它回到 connected；30 s 启动超时兜底
         case .connected:
-            if activeRev != nil, let s = spec {
-                // 内核在跑但 revision 不同 / 被要求重载：就地重载，不断开 VPN。
+            if activeRev != nil, factsConfirmRunning, let s = spec {
+                // 内核确认在跑但 revision 不同 / 被要求重载：就地重载，不断开 VPN。
                 e.isReload = true
                 dispatchReload(e, s)
             } else {
-                ensureAttempt(e) // 等扩展 state 声明 running（resync 会补）
+                ensureAttempt(e) // 等扩展 state 声明 running（resync 会补）；30 s 启动超时兜底
             }
         case .disconnecting:
             break
@@ -800,6 +828,7 @@ final class CoordinatorCore {
         currentLaunchId = launchId
         launching = true
         launchSubmitted = false
+        launchOwner = e.owner
         pendingActivePath = s.runtimeConfigPath
         pendingActiveRev = s.configRevision
         out.append(.runConnect(token: j.token, spec: s, launchId: launchId))

@@ -38,14 +38,26 @@ final class KernelHost {
             log: { NSLog("[ClashMiao] %@", $0) }
         )
         coordinator = KernelCoordinator(adapter: controller, store: store, builder: builder)
-        // 偏好加载完成、事实读入核心之后才允许发布快照。
-        controller.loadExisting { [coordinator] in coordinator.markReady() }
+        // 偏好加载成功、事实读入核心之后才允许发布快照；加载失败不能当作「已确认没有隧道」，退避重试。
+        loadManager()
 
         NotificationCenter.default.addObserver(
             forName: UIApplication.didBecomeActiveNotification, object: nil, queue: nil
         ) { [coordinator] _ in coordinator.resync() }
 
         startNetworkMonitor()
+    }
+
+    private func loadManager() {
+        controller.loadExisting { [weak self] ok in
+            guard let self else { return }
+            if ok {
+                self.coordinator.markReady()
+            } else {
+                NSLog("[ClashMiao] loading VPN preferences failed; retrying")
+                DispatchQueue.global().asyncAfter(deadline: .now() + 2) { self.loadManager() }
+            }
+        }
     }
 
     // MARK: - 网络变化

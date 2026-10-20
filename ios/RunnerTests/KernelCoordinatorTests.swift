@@ -14,9 +14,12 @@ final class KernelCoordinatorTests: XCTestCase {
         var startError: TunnelAdapterError?
         /// 提交 start 后是否让状态可见地变成 connecting（false = 模拟系统没接这次提交）。
         var startMakesTunnelVisible = true
-        var startCalls = 0
-        var stopCalls = 0
-        var messages: [ExtensionRequest] = []
+        private var _startCalls = 0
+        private var _stopCalls = 0
+        private var _messages: [ExtensionRequest] = []
+        var startCalls: Int { lock.lock(); defer { lock.unlock() }; return _startCalls }
+        var stopCalls: Int { lock.lock(); defer { lock.unlock() }; return _stopCalls }
+        var messages: [ExtensionRequest] { lock.lock(); defer { lock.unlock() }; return _messages }
         var reply: (ExtensionRequest) throws -> ExtensionReply = { _ in ExtensionReply(ok: true) }
 
         var currentStatus: TunnelStatus {
@@ -36,26 +39,30 @@ final class KernelCoordinatorTests: XCTestCase {
         }
         func ensureConfigured() throws { if let e = configureError { throw e } }
         func startTunnel() throws {
-            startCalls += 1
+            lock.lock(); _startCalls += 1; lock.unlock()
             if let e = startError { throw e }
             if startMakesTunnelVisible { set(.connecting) }
         }
-        func stopTunnel() { stopCalls += 1 }
+        func stopTunnel() { lock.lock(); _stopCalls += 1; lock.unlock() }
         func sendMessage(_ request: ExtensionRequest, timeout: TimeInterval) throws -> ExtensionReply {
-            lock.lock(); messages.append(request); lock.unlock()
+            lock.lock(); _messages.append(request); lock.unlock()
             return try reply(request)
         }
     }
 
     final class FakeBuilder: ConfigBuilding {
         var error: ConfigBuildError?
-        var built: [Int64] = []
+        private let lock = NSLock()
+        private var _built: [Int64] = []
+        private var _pruned: [Set<Int64>] = []
+        var built: [Int64] { lock.lock(); defer { lock.unlock() }; return _built }
+        var pruned: [Set<Int64>] { lock.lock(); defer { lock.unlock() }; return _pruned }
         func build(spec: LaunchSpec) throws -> BuiltConfig {
             if let error { throw error }
-            built.append(spec.configRevision)
+            lock.lock(); _built.append(spec.configRevision); lock.unlock()
             return BuiltConfig(path: "/final/final-\(spec.configRevision).json", revision: spec.configRevision)
         }
-        func prune(keepRevisions: Set<Int64>) {}
+        func prune(keepRevisions: Set<Int64>) { lock.lock(); _pruned.append(keepRevisions); lock.unlock() }
     }
 
     final class ManualScheduler: CoordinatorScheduler {
@@ -96,7 +103,7 @@ final class KernelCoordinatorTests: XCTestCase {
         let scheduler = ManualScheduler(queue: queue)
         let c = KernelCoordinator(
             adapter: adapter, store: store, builder: builder,
-            scheduler: { _ in scheduler }, epoch: "epoch-1", queue: queue, log: { _ in }
+            scheduler: { _ in scheduler }, epoch: "epoch-1", tunnelVisibleTimeout: 0.3, queue: queue, log: { _ in }
         )
         return Rig(coordinator: c, adapter: adapter, builder: builder, scheduler: scheduler, store: store, stateURL: stateURL)
     }
@@ -164,7 +171,7 @@ final class KernelCoordinatorTests: XCTestCase {
         let r = makeRig()
         r.adapter.startMakesTunnelVisible = false
         _ = r.coordinator.request(epoch: "epoch-1", seq: 1, desired: .on, launch: spec(1))
-        waitFor("failure", timeout: KernelExecutor.tunnelVisibleTimeout + 3) { r.coordinator.snapshot.lastFailure != nil }
+        waitFor("failure") { r.coordinator.snapshot.lastFailure != nil }
         XCTAssertEqual(r.coordinator.snapshot.lastFailure?.code, .startService)
         XCTAssertEqual(r.coordinator.snapshot.desired, .off)
         XCTAssertGreaterThanOrEqual(r.adapter.stopCalls, 1, "放弃的启动要补发 stop，撤销可能迟到的启动")
@@ -238,7 +245,7 @@ final class KernelCoordinatorTests: XCTestCase {
         guard case .stale = got else { return XCTFail("expected stale, got \(String(describing: got))") }
     }
 
-    func testSnapshotIsNotPublishedBeforeReadyAndWhenReadyWaitsBounded() {
+    func testWhenReadyWaitsBoundedThenFiresOnMarkReady() {
         let r = makeRig()
         var results: [Bool] = []
         let exp = expectation(description: "timeout false")
@@ -274,5 +281,56 @@ final class KernelCoordinatorTests: XCTestCase {
         let receipt = r.coordinator.request(epoch: "epoch-1", seq: 4, desired: .off, launch: nil)
         XCTAssertEqual(receipt.reason, .stale)
         XCTAssertEqual(r.coordinator.snapshot.version, before.version)
+    }
+}
+
+// MARK: - 评审补充用例
+extension KernelCoordinatorTests {
+
+    func testPruneKeepsNewPreviousAndExtensionReportedRevisions() {
+        let r = makeRig()
+        _ = r.coordinator.request(epoch: "epoch-1", seq: 1, desired: .on, launch: spec(1))
+        waitFor("first prune") { r.builder.pruned.count == 1 }
+        XCTAssertEqual(r.builder.pruned[0], [1])
+        waitFor("visible") { r.adapter.currentStatus == .connecting }
+        bringTunnelUp(r, rev: 1)
+        waitFor("started") { r.coordinator.snapshot.status == .started }
+        // 第二次发布（重载到 rev 2）：必须保留上一份（rev 1，也是扩展报告的运行中那份）与新的 rev 2。
+        // 真实扩展在回复前先写 state（新 revision），回执带实例标识。
+        r.adapter.reply = { [stateURL = r.stateURL] req in
+            KernelFile.write(
+                ExtensionState(sessionId: "S1", launchId: req.launchId ?? "", phase: .running, generation: 2, revision: 2),
+                to: stateURL
+            )
+            return ExtensionReply(ok: true, sessionId: "S1", generation: 2)
+        }
+        let rec2 = r.coordinator.request(epoch: "epoch-1", seq: 2, desired: .on, launch: spec(2))
+        XCTAssertTrue(rec2.accepted, "\(rec2)")
+        waitFor("second prune") { r.builder.pruned.count == 2 }
+        XCTAssertEqual(r.builder.pruned[1], [1, 2])
+    }
+
+    func testSelectTimesOutFromAcceptanceEvenIfExecutionQueueIsBlockedAndNeverWritesLate() {
+        let r = makeRig()
+        _ = r.coordinator.request(epoch: "epoch-1", seq: 1, desired: .on, launch: spec(1))
+        waitFor("visible") { r.adapter.currentStatus == .connecting }
+        bringTunnelUp(r, rev: 1)
+        waitFor("started") { r.coordinator.snapshot.status == .started }
+        // 让执行队列被一个长任务占住：选择在它后面排队。
+        let blocked = DispatchSemaphore(value: 0)
+        r.coordinator.blockExecutionQueueForTesting { blocked.wait() }
+        let exp = expectation(description: "select done")
+        var results: [SelectResult] = []
+        r.coordinator.selectOutbound(group: "g", outbound: "o", expectedAttempt: nil, timeout: 0.2) {
+            results.append($0)
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 3)
+        XCTAssertEqual(results.count, 1)
+        guard case .failed = results[0] else { return XCTFail("expected timeout failure, got \(results[0])") }
+        blocked.signal() // 放行：排队的写入此时必须被丢弃
+        Thread.sleep(forTimeInterval: 0.3)
+        XCTAssertTrue(r.adapter.messages.isEmpty, "超时之后排队的选择不得迟到写入")
+        XCTAssertEqual(results.count, 1, "done 恰好一次")
     }
 }

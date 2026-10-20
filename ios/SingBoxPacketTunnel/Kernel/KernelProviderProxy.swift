@@ -64,7 +64,15 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         startMemorySampling()
 
         do {
-            try await onOpQueue { try self.bringUp(intent) }
+            // 成功收口（停止复查、发布 running、采样）与 bringUp 在同一个 opQueue 操作里完成：
+            // 排队中的重载不会被一个已出队的旧启动把 starting 覆盖成 running。
+            try await onOpQueue {
+                let effective = try self.bringUp(intent)
+                if self.isStopping { throw KernelStartFailure(code: .startService, message: "stopped during start") }
+                self.currentLaunchId = effective.launchId
+                w.markRunning(launchId: effective.launchId, revision: effective.finalRevision)
+                self.sampleMemory("started")
+            }
         } catch let f as KernelStartFailure {
             await onOpQueue { self.teardownLocked() }
             throw fail(f, launchId: intent.launchId)
@@ -72,8 +80,6 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
             await onOpQueue { self.teardownLocked() }
             throw fail(KernelStartFailure(code: .startService, message: error.localizedDescription), launchId: intent.launchId)
         }
-        w.markRunning(launchId: intent.launchId, revision: intent.finalRevision)
-        sampleMemory("started")
     }
 
     override open func stopTunnel(with reason: NEProviderStopReason) async {
@@ -167,9 +173,11 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
 
     /// 读配置、起命令服务器、建 service、start、绑定。任何一步失败抛 `KernelStartFailure`，
     /// 已创建的资源已经登记在 provider 名下，由调用方统一 `teardownLocked`。
-    private func bringUp(_ intent: KernelIntent) throws {
+    /// 返回**实际使用**的 intent：final 读不到而重读了更新的 intent 时，上报的 launchId / revision 必须是它的。
+    private func bringUp(_ intent: KernelIntent) throws -> KernelIntent {
         if isStopping { throw KernelStartFailure(code: .startService, message: "stopped during start") }
-        var config = try Self.loadFinalConfig(intent)
+        let (effective, loaded) = try Self.loadFinalConfig(intent)
+        var config = loaded
         sampleMemory("config-read")
 
         try Self.processSetupOnce()
@@ -211,6 +219,7 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         }
         commandServer?.setService(service)
         sampleMemory("service-started")
+        return effective
     }
 
     /// 就地重载：先完整释放旧 service（保留命令服务器），再按最新 intent 建新的。
@@ -229,25 +238,42 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         defer { if !terminatedFlag { reasserting = false } }
         teardownService()
         sampleMemory("reload-released")
+        let effective: KernelIntent
         do {
-            try bringUp(intent)
+            effective = try bringUp(intent)
         } catch let f as KernelStartFailure {
             return failReload(f, selfInitiated)
         } catch {
             return failReload(KernelStartFailure(code: .startService, message: error.localizedDescription), selfInitiated)
         }
-        w.markRunning(launchId: intent.launchId, revision: intent.finalRevision)
+        if isStopping { return failReload(KernelStartFailure(code: .startService, message: "stopped during reload"), selfInitiated) }
+        currentLaunchId = effective.launchId
+        w.markRunning(launchId: effective.launchId, revision: effective.finalRevision)
         sampleMemory("reload-done")
+        if requested != nil, effective.launchId != intent.launchId {
+            // 重读到了更新的意图：内核现在跑的是更新的那份（generation 已推进），这条旧操作的回执是 stale，
+            // 更新的操作自己的 reload 随后到达。
+            return ExtensionReply(ok: false, code: ExtensionReply.staleCode, message: "intent moved on during reload")
+        }
         return ExtensionReply(ok: true, sessionId: w.sessionId, generation: w.current.generation)
     }
 
+    /// 不可恢复的重载失败：回收、写 `failed`、取消隧道。应用消息路径要**先送出失败回执**再取消，
+    /// 否则 IPC 回执可能丢失，Runner 只会看到超时；自发重载没有回执，直接取消。
     private func failReload(_ f: KernelStartFailure, _ selfInitiated: Bool) -> ExtensionReply {
         teardownLocked()
         writer?.markFailed(code: f.code, message: f.message)
         flagLock.lock(); terminated = true; flagLock.unlock()
-        cancelTunnelWithError(NSError(domain: "ClashMiaoTunnel", code: 1, userInfo: [
+        let error = NSError(domain: "ClashMiaoTunnel", code: 1, userInfo: [
             NSLocalizedDescriptionKey: f.message, "code": f.code.rawValue,
-        ]))
+        ])
+        if selfInitiated {
+            cancelTunnelWithError(error)
+        } else {
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.cancelTunnelWithError(error)
+            }
+        }
         return ExtensionReply(ok: false, code: f.code.rawValue, message: f.message)
     }
 
@@ -310,11 +336,11 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
     }
 
     /// 读 intent 引用的最终配置。读不到（Runner 恰好发布了新的并清理了旧的）则重读一次 intent 再试，仍失败 = `emptyConfiguration`。
-    private static func loadFinalConfig(_ intent: KernelIntent) throws -> String {
+    private static func loadFinalConfig(_ intent: KernelIntent) throws -> (KernelIntent, String) {
         var candidate = intent
         for attempt in 0..<2 {
             if let path = candidate.finalConfigPath, let text = try? String(contentsOfFile: path, encoding: .utf8), !text.isEmpty {
-                return text
+                return (candidate, text)
             }
             if attempt == 0, let again = readIntent() { candidate = again }
         }
@@ -369,11 +395,25 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
 
     private func sampleMemory(_ stage: String?) {
         let available = Int64(os_proc_available_memory())
+        writer?.noteFootprint(Self.physFootprint())
         if writer?.noteAvailableMemory(available) == true || stage != nil {
             if let stage {
-                NSLog("[ClashMiao.Tunnel] memory %@: available=%lld KB", stage, available / 1024)
+                NSLog("[ClashMiao.Tunnel] memory %@: available=%lld KB footprint=%lld KB",
+                      stage, available / 1024, Self.physFootprint() / 1024)
             }
         }
+    }
+
+    /// 进程的 `phys_footprint`（jetsam 判定用的口径）；取不到返回 0。
+    private static func physFootprint() -> Int64 {
+        var info = task_vm_info_data_t()
+        var count = mach_msg_type_number_t(MemoryLayout<task_vm_info_data_t>.size / MemoryLayout<integer_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(TASK_VM_INFO), $0, &count)
+            }
+        }
+        return kr == KERN_SUCCESS ? Int64(info.phys_footprint) : 0
     }
 
     // MARK: - opQueue 桥

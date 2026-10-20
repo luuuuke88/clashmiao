@@ -39,6 +39,8 @@ public struct ExtensionState: Codable, Equatable {
     public var stopReason: Int?
     /// 扩展内内存余量（`os_proc_available_memory()`）的历史最低值（字节），诊断用；未采样为 nil。
     public var availableMemoryMin: Int64?
+    /// 进程 `phys_footprint` 的历史最高值（字节），诊断用。
+    public var footprintMax: Int64?
     public var updatedAt: Double
 
     public init(
@@ -51,6 +53,7 @@ public struct ExtensionState: Codable, Equatable {
         message: String? = nil,
         stopReason: Int? = nil,
         availableMemoryMin: Int64? = nil,
+        footprintMax: Int64? = nil,
         updatedAt: Double = Date().timeIntervalSince1970
     ) {
         self.sessionId = sessionId
@@ -62,6 +65,7 @@ public struct ExtensionState: Codable, Equatable {
         self.message = message
         self.stopReason = stopReason
         self.availableMemoryMin = availableMemoryMin
+        self.footprintMax = footprintMax
         self.updatedAt = updatedAt
     }
 }

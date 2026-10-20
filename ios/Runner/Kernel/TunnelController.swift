@@ -42,13 +42,18 @@ final class TunnelController: TunnelAdapter {
 
     // MARK: - 启动时加载（不创建偏好，避免在没有连接意图时弹系统授权）
 
-    /// 读取已有的隧道偏好（没有则保持为空）。完成后调用 `completion`（主线程之外的任意线程）。
-    func loadExisting(completion: @escaping () -> Void) {
-        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, _ in
+    /// 读取已有的隧道偏好（没有则保持为空）。`completion(true)` = 加载成功（含「确实没有偏好」）；
+    /// `completion(false)` = 加载失败——调用方不能把它当作「已确认没有隧道」。任意线程回调。
+    func loadExisting(completion: @escaping (Bool) -> Void) {
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, error in
+            if error != nil {
+                completion(false)
+                return
+            }
             if let self, let first = managers?.first(where: { Self.isOurs($0) }) ?? managers?.first {
                 self.lock.lock(); self.manager = first; self.lock.unlock()
             }
-            completion()
+            completion(true)
         }
     }
 

@@ -87,6 +87,17 @@ public final class ExtensionStateWriter {
         return flushLocked()
     }
 
+    /// 记录 `phys_footprint` 的历史最高值；只在更高时才写盘。
+    @discardableResult
+    public func noteFootprint(_ bytes: Int64) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if Self.isTerminal(state.phase) || bytes <= 0 { return false }
+        if let max = state.footprintMax, max >= bytes { return false }
+        state.footprintMax = bytes
+        state.updatedAt = Date().timeIntervalSince1970
+        return flushLocked()
+    }
+
     // MARK: - 内部
 
     private func mutate(_ body: (inout ExtensionState) -> Void) -> Bool {

@@ -43,8 +43,14 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------- 固定参数
-# 内核上游仓库与提交（该提交的 go.mod / go.sum 锁定了现发布版的全部依赖版本）
-UPSTREAM_REPO="${LIBCORE_UPSTREAM_REPO:?需要设置 LIBCORE_UPSTREAM_REPO}"
+# 内核上游仓库与提交（该提交的 go.mod / go.sum 锁定了现发布版的全部依赖版本）。
+# 仓库地址不写进公开仓库：从环境变量 LIBCORE_UPSTREAM_REPO 读取，或放在
+# 不入 git 的 tools/libcore/upstream.local（一行地址）。克隆后会校验 HEAD 必须
+# 等于下面固定的提交，地址给错也编不出东西。
+UPSTREAM_REPO="${LIBCORE_UPSTREAM_REPO:-}"
+if [ -z "$UPSTREAM_REPO" ] && [ -f "$(dirname "$0")/upstream.local" ]; then
+  UPSTREAM_REPO="$(head -n 1 "$(dirname "$0")/upstream.local")"
+fi
 UPSTREAM_COMMIT="5098951147c4208d79c57dbbc059b5b4a8e67624"
 
 # 1.22 系列的最后一个补丁版：语言与运行时语义与原发布版（1.22.0）相同，
@@ -568,6 +574,10 @@ export PATH="$GOBIN:$GOROOT/bin:$JAVA_HOME/bin:$PATH"
 # ---------------------------------------------------------------- 源码
 log "获取内核源码 @ ${UPSTREAM_COMMIT}"
 git init -q "$WORK/src"
+if [ -z "$UPSTREAM_REPO" ]; then
+  echo "缺少内核上游仓库地址：设置 LIBCORE_UPSTREAM_REPO 或写入 tools/libcore/upstream.local" >&2
+  exit 1
+fi
 git -C "$WORK/src" remote add origin "$UPSTREAM_REPO"
 git -C "$WORK/src" fetch -q --depth 1 origin "$UPSTREAM_COMMIT"
 git -C "$WORK/src" checkout -q --detach FETCH_HEAD

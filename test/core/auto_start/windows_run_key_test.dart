@@ -74,10 +74,10 @@ void main() {
     expect(launcher.isEnabled(), isFalse);
   });
 
-  test('enable 写入不带引号的路径和 12 字节、首字节为 2 的启用标记', () {
+  test('enable 写入带引号的命令行和 12 字节、首字节为 2 的启用标记', () {
     launcher.enable();
 
-    expect(reg.keys[_run], {'ClashMiao': _exe});
+    expect(reg.keys[_run], {'ClashMiao': '"$_exe"'});
     final marker = reg.keys[_approved]!['ClashMiao']! as Uint8List;
     expect(marker.length, 12);
     expect(marker[0], 2);
@@ -86,7 +86,7 @@ void main() {
   });
 
   test('只有 Run 值、没有 StartupApproved 标记（旧版或手工添加）视为已启用', () {
-    reg.setString(_run, 'ClashMiao', _exe);
+    reg.setString(_run, 'ClashMiao', '"$_exe"');
     expect(launcher.isEnabled(), isTrue);
   });
 
@@ -115,9 +115,80 @@ void main() {
     expect(launcher.isEnabled(), isFalse);
   });
 
-  test('Run 里的路径带引号时逐字比较，与旧实现一样视为不一致', () {
-    reg.setString(_run, 'ClashMiao', '"$_exe"');
-    expect(launcher.isEnabled(), isFalse);
+  group('Run 值兼容：只认指向同一个可执行文件', () {
+    WindowsRunKeyLauncher at(String exe) => WindowsRunKeyLauncher(
+      appName: 'ClashMiao',
+      appPath: exe,
+      registry: reg,
+    );
+
+    for (final exe in const [
+      r'C:\Program Files\ClashMiao\clashmiao.exe', // 含空格
+      r'D:\软件\喵速 ClashMiao\clashmiao.exe', // 中文 + 空格
+      r'C:\ClashMiao\clashmiao.exe', // 无空格
+    ]) {
+      test('旧包写下的裸路径仍视为已启用：$exe', () {
+        reg.setString(_run, 'ClashMiao', exe);
+        expect(at(exe).isEnabled(), isTrue);
+      });
+
+      test('带引号的命令行视为已启用：$exe', () {
+        reg.setString(_run, 'ClashMiao', '"$exe"');
+        expect(at(exe).isEnabled(), isTrue);
+      });
+
+      test('enable 后读回为已启用，且写的是带引号的形式：$exe', () {
+        final launcher = at(exe)..enable();
+        expect(reg.getString(_run, 'ClashMiao'), '"$exe"');
+        expect(launcher.isEnabled(), isTrue);
+      });
+    }
+
+    test('大小写不同的同一路径视为同一个程序（Windows 路径不区分大小写）', () {
+      reg.setString(
+        _run,
+        'ClashMiao',
+        r'"c:\program files\CLASHMIAO\ClashMiao.EXE"',
+      );
+      expect(launcher.isEnabled(), isTrue);
+    });
+
+    test('带引号的程序后面跟参数：程序相同即视为已启用', () {
+      reg.setString(_run, 'ClashMiao', '"$_exe" --silent');
+      expect(launcher.isEnabled(), isTrue);
+    });
+
+    test('指向别的程序一律不算：不同目录、同目录不同文件名、带引号的别处路径', () {
+      for (final other in const [
+        r'D:\old\clashmiao.exe',
+        r'C:\Program Files\ClashMiao\updater.exe',
+        r'"C:\Program Files\Other App\clashmiao.exe"',
+        r'"C:\Program Files\ClashMiao\clashmiao.exe.bak"',
+      ]) {
+        reg.setString(_run, 'ClashMiao', other);
+        expect(launcher.isEnabled(), isFalse, reason: other);
+      }
+    });
+
+    test('裸路径后面多了参数：无法确定是同一个程序，不算', () {
+      reg.setString(_run, 'ClashMiao', '$_exe --silent');
+      expect(launcher.isEnabled(), isFalse);
+    });
+
+    test('缺右引号、空串、只有空白：视为损坏，不算', () {
+      for (final broken in ['"$_exe', '', '   ', '""']) {
+        reg.setString(_run, 'ClashMiao', broken);
+        expect(launcher.isEnabled(), isFalse, reason: broken);
+      }
+    });
+  });
+
+  test('executableOf：带引号取引号内、裸值整体即路径', () {
+    expect(WindowsRunKeyLauncher.executableOf('"$_exe" -a'), _exe);
+    expect(WindowsRunKeyLauncher.executableOf('  "$_exe"  '), _exe);
+    expect(WindowsRunKeyLauncher.executableOf(_exe), _exe);
+    expect(WindowsRunKeyLauncher.executableOf('"$_exe'), isNull);
+    expect(WindowsRunKeyLauncher.executableOf(''), isNull);
   });
 
   test('Run 里同名值不是字符串类型时视为未启用', () {

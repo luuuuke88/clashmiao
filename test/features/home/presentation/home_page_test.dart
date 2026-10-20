@@ -37,6 +37,7 @@ import 'package:toastification/toastification.dart';
 
 import '../../../support/fake_connection_controller.dart';
 import '../../../support/profile_store_support.dart';
+import '../../../support/toast_pump.dart';
 
 /// 手写的假 [HttpClientAdapter]，跟
 /// `test/domain/connection/application/egress_ip_service_test.dart` 里的同名类同一个写法——
@@ -917,10 +918,9 @@ void main() {
     // 模拟 ConnectionController 检测到"配置变更触发的自动重连"
     // （configChangeReconnectNoticeProvider 是它和 HomePage 之间唯一的信号）。
     container.read(configChangeReconnectNoticeProvider.notifier).state++;
-    // toastification 首次弹出时，实际的 toast item 要等 overlay entry 创建完
-    // 之后再延迟 100ms 才插入动画列表（见 ToastificationManager
-    // `_createOverlayDelay`），这里 pump 超过这个延迟才能让文字真正出现。
+    // toast 入列要等下一帧的 post-frame 回调，再一帧才渲染（见 pumpToast）。
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
 
     expect(find.text('重新连接以使更改生效'), findsOneWidget);
 

@@ -25,6 +25,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/temp_dirs.dart';
+import '../../../support/toast_pump.dart';
 
 /// 可控行为的假 BoxService，只重写 generateWarpConfig，其余沿用
 /// StubBoxService 的安全空实现。native 不支持的失败路径直接用真实的
@@ -710,6 +711,7 @@ void main() {
       await tester.tap(find.text('分享链接'));
       await tester.pump(const Duration(milliseconds: 200));
       await tester.pump(const Duration(milliseconds: 300));
+      await pumpToast(tester);
 
       final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
       expect(

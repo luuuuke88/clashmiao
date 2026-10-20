@@ -18,6 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../../../support/scripted_profile_repository.dart';
+import '../../../support/toast_pump.dart';
 
 /// 首页的订阅刷新按钮：只读给出升级提示、刷新被取代（stale）静默、普通失败照旧。
 const _profile = ProfileEntity(
@@ -83,12 +84,14 @@ void main() {
     repo.updateError = const StoreReadOnlyException(9);
     await tester.tap(refresh);
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('请升级 App 后再修改订阅'), findsOneWidget);
     await _drainToasts(tester);
 
     repo.updateError = const ProfileUpdateStaleException('profile-1');
     await tester.tap(refresh);
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(repo.updateCalls, 2);
     expect(find.textContaining('失败'), findsNothing);
     expect(find.textContaining('成功'), findsNothing);
@@ -98,6 +101,7 @@ void main() {
     repo.updateError = Exception('network down');
     await tester.tap(refresh);
     await tester.pump(const Duration(milliseconds: 300));
+    await pumpToast(tester);
     expect(find.text('更新配置文件失败'), findsOneWidget);
     await _drainToasts(tester);
   });

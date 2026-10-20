@@ -20,6 +20,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
 
 import '../support/fake_box_service.dart';
+import '../support/toast_pump.dart';
 
 /// 正常手机视口（不是 4000 高的整页）下，2.0× 文字、RTL 的真实滚动验收：
 /// 用手势（drag / fling）滚到末项，末项可见且点得到，全程没有异常（含溢出）。
@@ -201,6 +202,7 @@ void main() {
         _expectReachable(tester, lastFinder, view);
         await tester.tap(lastFinder);
         await tester.pump(const Duration(milliseconds: 300));
+        await pumpToast(tester);
         // 未连接时点节点会弹一条提示 toast：确认点击真的落到了节点上，再收掉它。
         final t = (locale == 'ar' ? AppLocale.ar : AppLocale.zhCn).buildSync();
         expect(find.text(t.proxies.connectBeforeSwitch), findsOneWidget);

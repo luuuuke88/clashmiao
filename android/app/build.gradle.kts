@@ -34,13 +34,15 @@ android {
 
     defaultConfig {
         applicationId = "com.clashmiao.clashmiao"
-        minSdk = flutter.minSdkVersion
+        // Android 8.0。sentry_flutter 10 的 Android 库要求 minSdk ≥ 26，低于它
+        // manifest 合并直接失败（Flutter 模板默认是 24）。
+        minSdk = 26
         targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
         ndk {
-            // 只出 arm64-v8a。minSdk 是 24（Android 7.0，2016 年），能跑本应用的
+            // 只出 arm64-v8a。minSdk 是 26（Android 8.0，2017 年），能跑本应用的
             // 设备基本都是 64 位；32 位包在新的 ARMv9 芯片上反而根本执行不了。
             //
             // 注意 AGP 里 buildType 的 abiFilters 是和这里**取并集**，不是覆盖，

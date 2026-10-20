@@ -325,6 +325,9 @@ void main() {
   test('性能事务走同一套规则（经真实 Hub 的 beforeSendTransaction）', () async {
     SentryTransaction? captured;
     final options = SentryOptions(dsn: 'https://public@example.test/1')
+      // 与生产配置一致（configureSentryOptions）：sentry 10 默认的 stream 模式下
+      // 事务不经过 beforeSendTransaction，见 sentry_options_test。
+      ..traceLifecycle = SentryTraceLifecycle.static
       ..tracesSampleRate = 1
       ..transport = _DiscardingTransport()
       ..beforeSendTransaction = (transaction, hint) =>

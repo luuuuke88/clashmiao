@@ -79,7 +79,7 @@ dependencies:
   intl: ^0.20.2
 
   # 监控、分享、文件、权限、加密
-  sentry_flutter: ^9.0.0
+  sentry_flutter: ^10.1.0
   share_plus: ^13.3.1
   file_picker: ^13.1.0
   permission_handler: ^11.3.0

@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 class ProfilesPage extends ConsumerStatefulWidget {
   const ProfilesPage({
@@ -821,7 +822,7 @@ class _HeaderButton extends StatelessWidget {
       child: Semantics(
         label: tooltip,
         button: true,
-        child: GestureDetector(
+        child: PressFeedback(
           onTap: onTap,
           child: Container(
             width: 40,
@@ -884,7 +885,7 @@ class _ProfileCard extends ConsumerWidget {
     final isLight = theme.brightness == Brightness.light;
     final isRemote = _isRemoteProfile(profile);
 
-    return GestureDetector(
+    return PressFeedback(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
@@ -941,7 +942,8 @@ class _ProfileCard extends ConsumerWidget {
                   ),
                 if (isRemote) ...[
                   const SizedBox(width: 12),
-                  GestureDetector(
+                  PressFeedback(
+                    pressedScale: PressFeedback.iconPressedScale,
                     onTap: onUpdate,
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -1093,7 +1095,7 @@ class _ActionButton extends StatelessWidget {
     final aiUi = theme.aiUi;
     final isLight = theme.brightness == Brightness.light;
 
-    return GestureDetector(
+    return PressFeedback(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),

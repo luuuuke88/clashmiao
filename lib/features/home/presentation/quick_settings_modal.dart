@@ -9,6 +9,7 @@ import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 // 档位、选中态与写入都走 service_mode.dart 的唯一口径（与配置选项页一致）：
 // 某个平台上不能生效的档位不出现（iOS 只有 VPN，桌面没有 TUN）。
@@ -116,7 +117,7 @@ class QuickSettingsModal extends ConsumerWidget {
                       button: selectable,
                       selected: isSelected,
                       inMutuallyExclusiveGroup: selectable,
-                      child: GestureDetector(
+                      child: PressFeedback(
                         behavior: HitTestBehavior.opaque,
                         onTap: selectable
                             ? () => _changeServiceMode(ref, mode)
@@ -284,7 +285,7 @@ class _SettingTile extends StatelessWidget {
     return MergeSemantics(
       child: Semantics(
         button: !hasSwitch,
-        child: GestureDetector(
+        child: PressFeedback(
           // 开关行的点击语义交给里面的 Switch，免得同一动作暴露两次。
           excludeFromSemantics: hasSwitch,
           onTap:

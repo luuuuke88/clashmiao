@@ -38,6 +38,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 class ProxiesPage extends ConsumerStatefulWidget {
   const ProxiesPage({super.key, this.debugOpenProxyNameModal = false});
@@ -917,7 +918,7 @@ class _AutoSelectCard extends HookConsumerWidget {
     final subTextColor = theme.colorScheme.onSurfaceVariant;
     final accent = theme.colorScheme.primary;
 
-    return GestureDetector(
+    return PressFeedback(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),

@@ -43,6 +43,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
+import 'package:clashmiao/shared/components/press_feedback.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
@@ -275,7 +276,7 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
     final total = subInfo?.total ?? 0;
     final percent = total > 0 ? subInfo!.usageRatio.clamp(0.0, 1.0) : 0.0;
 
-    return GestureDetector(
+    return PressFeedback(
       onTap: () {
         showAiUiModal<void>(
           context: context,
@@ -689,7 +690,7 @@ class _EgressIpTile extends StatelessWidget {
     if (!tappable) return card;
     return Semantics(
       button: true,
-      child: GestureDetector(onTap: onTap, child: card),
+      child: PressFeedback(onTap: onTap, child: card),
     );
   }
 }
@@ -850,7 +851,7 @@ class _ConnectionInfo extends ConsumerWidget {
       // 小尺寸下还像一部手机。点了直接跳线路页换节点。
       return Semantics(
         button: true,
-        child: GestureDetector(
+        child: PressFeedback(
           onTap: () =>
               ref.read(selectedTabProvider.notifier).state = AppTab.proxies,
           child: Container(
@@ -979,7 +980,7 @@ class _SegmentTab extends StatelessWidget {
       button: true,
       selected: isSelected,
       inMutuallyExclusiveGroup: true,
-      child: GestureDetector(
+      child: PressFeedback(
         onTap: onTap,
         child: AnimatedContainer(
           duration: Motion.duration(context, Motion.short),
@@ -1195,7 +1196,7 @@ class _EmptyProfileBody extends ConsumerWidget {
               style: TextStyle(fontSize: 14, color: aiUi.secondaryTextColor),
             ),
             const SizedBox(height: 40),
-            GestureDetector(
+            PressFeedback(
               onTap: onAdd,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -1283,7 +1284,7 @@ class _EmptyActiveProfileBody extends ConsumerWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
-            GestureDetector(
+            PressFeedback(
               onTap: () {
                 showAiUiModal<void>(
                   context: context,

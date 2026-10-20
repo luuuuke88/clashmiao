@@ -26,6 +26,8 @@ import Libcore
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
     ) -> Bool {
         seedSharedFilesystem()
+        // 尽早装配协调器：加载 NE 偏好、读入隧道事实，之后才允许向 Dart 发布快照。
+        _ = KernelHost.shared
         // The explicit-engine path (used by hot-reload + most Flutter
         // template flows) registers plugins via the root
         // FlutterViewController – we forward to that. The implicit
@@ -73,6 +75,8 @@ import Libcore
         guard !clashMiaoHandlersRegistered else { return }
         ChannelMethodHandler.register(with: registry.registrar(forPlugin: "ChannelMethodHandler")!)
         TunnelStatusStream.register(with: registry.registrar(forPlugin: "TunnelStatusStream")!)
+        KernelSnapshotStream.register(with: registry.registrar(forPlugin: "KernelSnapshotStream")!)
+        NetworkStream.register(with: registry.registrar(forPlugin: "NetworkStream")!)
         BoxAlertsStream.register(with: registry.registrar(forPlugin: "BoxAlertsStream")!)
         TrafficStatsStream.register(with: registry.registrar(forPlugin: "TrafficStatsStream")!)
         ProxyGroupsStream.register(with: registry.registrar(forPlugin: "ProxyGroupsStream")!)

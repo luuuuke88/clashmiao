@@ -58,10 +58,24 @@ public enum ProfilePathResolver {
     public static let runtimeWorkingDirectory = cacheDirectory
         .appendingPathComponent("Runtime", isDirectory: true)
 
-    /// File the extension writes a fatal error to before terminating.
-    /// Runner can read this on next launch to surface what went wrong.
-    public static let extensionErrorMarker = runtimeWorkingDirectory
-        .appendingPathComponent("last_tunnel_error.txt")
+    /// Runner 与扩展交换意图 / 事实的目录。不放 `Library/Caches`（系统可能清理），
+    /// 也不放 Dart 的 `Runtime/`（Dart 启动器会清理 `runtime-*.json`）。
+    public static let kernelDirectory = sharedContainer
+        .appendingPathComponent("Library", isDirectory: true)
+        .appendingPathComponent("Application Support", isDirectory: true)
+        .appendingPathComponent("ClashMiao", isDirectory: true)
+        .appendingPathComponent("kernel", isDirectory: true)
+
+    /// Runner 写、扩展读：当前意图与启动 / 重载产物引用。
+    public static let intentFile = kernelDirectory.appendingPathComponent("intent.json")
+
+    /// 扩展写、Runner 读：扩展对自己所处阶段的如实记录。
+    public static let extensionStateFile = kernelDirectory.appendingPathComponent("extension-state.json")
+
+    /// 已拼好的最终配置文件路径（按 revision 命名，原生独占；Dart 的清理不会碰它）。
+    public static func finalConfig(revision: Int64) -> URL {
+        kernelDirectory.appendingPathComponent("final-\(revision).json")
+    }
 }
 
 public extension URL {

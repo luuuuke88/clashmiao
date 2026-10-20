@@ -338,25 +338,40 @@ Kotlin 的 `TunnelService.buildTunFd` 只换数据来源（从 `TunOptions` gett
 | 业务出口 `egress` / `route.final` | `select` | `warp` | `select` |
 | `select`、`auto` 成员 | `auto` + 订阅节点 | 同左（**不含** `warp`） | 同左（**不含** `warp`） |
 | `warp` 端点的拨号 | — | `detour: select`（WG 的外层 UDP 经用户所选节点；`select` 里没有 `warp`，所以无环） | 无 `detour`（直连，**拨号域名由 `dns-direct` 解析**） |
-| 订阅节点（含订阅端点）的拨号 | 直连 | 直连（它们就是载体） | **每个订阅节点 / 端点的拨号链终点必须是 `warp`**：无 `detour` → `detour: warp`；已有 `detour` 链按其终点改写（见表后「既有 detour 链」）；`direct` / `bypass` / `direct-fragment` 这几个预置出站本身不改（规则命中仍直连） |
+| 订阅节点（含订阅端点）的拨号 | 直连 | 保持订阅原样：无 `detour` 的直连拨号；**已有 `detour` 链原样保留，末端是直连类也合法**（载体拨号直连不等于业务绕过 WARP——业务流量的第一跳是 `warp`） | **每个订阅节点 / 端点的拨号链终点必须是 `warp`**：无 `detour` → `detour: warp`；已有 `detour` 链按其终点改写（见表后「既有 detour 链」）；`direct` / `bypass` / `direct-fragment` 这几个预置出站本身不改（规则命中仍直连） |
 | `dns-remote.detour` | `select` | `warp`（DNS 与业务同出口；U13 先用真 `Start` 验证端点可作 DNS `detour`，不可则在附录补证据并把本格改写为 `select`，不得静默改路径） | `select` |
 | `urltest auto` 的测速路径 | 节点直连 | 节点直连（测的是载体） | 节点经 `warp`（测的是整条链） |
 | 受保护的性质 | — | 没有任何路径使「业务流量从 `select`/`auto` 的成员直接出去而不经 `warp`」；`warp.detour` 链以节点终止 | 没有任何路径使「`select`/`auto` 的成员绕过 `warp`」；`warp` 本身以直连终止 |
 
-**`proxy_over_warp` 下既有 `detour` 链的处理**（保证「每个订阅节点的拨号路径终点是 `warp`」与装配规则一致，不留例外）：对每个订阅节点 / 端点，在**完整实体集合**（所有出站与端点，含分组）里沿 `detour` 走到末端，按末端类型改写：
+**`proxy_over_warp` 下既有 `detour` 链的处理**（保证「每个订阅节点的拨号路径终点是 `warp`」与装配规则一致，不留例外）：**在归一化之后**，对每个订阅节点 / 端点，在**完整实体集合**（所有出站与端点）里沿 `detour` 走到末端，按末端类型改写：
 
 | 末端 | 改写 |
 |---|---|
 | 没有 `detour` 的节点本身（链长 0） | 该节点 `detour: warp` |
 | 代理类（`vmess` / `vless` / `trojan` / `shadowsocks` / `socks` / … 非直连类） | 把**最后那个代理**的 `detour` 设为 `warp` |
-| 直连类（类型为 `direct` 的出站，含预置 `direct` / `direct-fragment` / `bypass` 与订阅里自带的同类） | 把指向该末端的那一跳的 `detour` **替换**为 `warp`（分片在 WARP 隧道里没有意义）；**不修改**被引用的预置出站本身，别的规则 / 节点仍可直连 |
+| 直连类（类型为 `direct` 的出站：预置 `direct` / `direct-fragment` / `bypass`；订阅里自带的直连类出站在归一化阶段已被删除，指向它们的引用已重映射为 `warp`，§6.3，所以走不到这一行） | 把指向该末端的那一跳的 `detour` **替换**为 `warp`（分片在 WARP 隧道里没有意义）；**不修改**被引用的预置出站本身，别的规则 / 节点仍可直连 |
 | 成环（`a → b → a`） | 类型化错误 `ErrDetourCycle`，`BuildConfig` 返回 `build-failed: detour cycle: a -> b -> a`，不产出配置 |
-| 悬空（`detour` 指向不存在的 tag、或指向订阅里被丢弃的分组） | 类型化错误 `ErrDetourDangling` |
+| 悬空（`detour` 指向**从未存在**的 tag、或指向被丢弃的分组 / `block` / `dns`；指向订阅自带直连类出站的引用**不算**悬空，见 §6.3） | 类型化错误 `ErrDetourDangling`（**所有模式都报**，不限 WARP） |
 | 末端已是 `warp` | 不变 |
 
-每条**被改写的既有链**记**一条** warning（含节点 tag、旧终点、新终点；直连类被替换时注明「分片被丢弃」）；没有既有 `detour` 的节点不产生 warning。被多个节点共享的代理末端只改一次（幂等）。`warp_over_proxy` 下既有 `detour` 一律不动（节点只是载体）。
+每条**被改写的既有链**记**一条** warning（含节点 tag、旧终点、新终点；直连类被替换时注明「分片被丢弃」）；没有既有 `detour` 的节点不产生 warning。被多个节点共享的代理末端只改一次（幂等）。`warp_over_proxy` 下既有 `detour` 链原样保留。
 
-验证分两层（都在 U13，不得只留其一）：（1）**图单元测试**：对每种模式，从 `route.final`、每条规则目标、`dns-remote.detour` 出发枚举全部 `detour` 路径，断言 ①无环 ②`warp` 不在 `select` / `auto` 成员里 ③`warp_over_proxy` 下所有业务路径都经过 `warp`、`proxy_over_warp` 下所有订阅节点的拨号链最后一跳都是 `warp`（`warp` 自身直连终止） ④直连类出站（`direct` / `bypass` / `direct-fragment`）只能由规则显式选中；（2）**真流量验证**：用本地假节点与本地 WireGuard 对端（均为测试进程里再起的一个 sing-box 实例，带计数与请求记录）驱动整条链，断言路径：`warp_over_proxy` 时假节点收到 WG 外层 UDP 且目标 HTTP 服务的请求来自 WG 对端；`proxy_over_warp` 时假节点只通过 WG 隧道被访问（来源是隧道内地址），目标请求经假节点；直连规则命中的流量两处记录都为空（§7.1）。
+**两种模式的装配规则与图断言出自同一张表**（`internal/build/warp_policy.go` 是唯一事实来源，`ApplyWarp` 与图断言都读它，不允许各写一份）：
+
+| | `warp_over_proxy` | `proxy_over_warp` |
+|---|---|---|
+| 装配 | `warp.detour = select`；`egress = warp`；订阅节点的拨号链**原样保留** | `warp` 无 `detour`；`egress = select`；每个订阅节点的拨号链按上表改写到终点 `warp` |
+| 断言 A：业务入口 | 从 `route.final`、每条 `proxy` 规则目标、`dns-remote.detour` 出发，**第一跳是 `warp`** | 从 `route.final`（= `select`）经任一成员出发，每个成员的拨号链**最后一跳是 `warp`** |
+| 断言 B：链的形状 | `warp → select → 载体链`；载体链**允许以直连类终止** | `warp` 自身无 `detour`；订阅节点的链里**没有**直连类出站（已被替换） |
+| 断言 C：成员与环 | `select` / `auto` 不含 `warp`；`warp.detour == select`；无环、无悬空 | `select` / `auto` 不含 `warp`；无环、无悬空 |
+| 直连类出站的出现位置 | 只允许：规则显式目标（如 `bypass`）；`warp` **之后**的载体链终点。**不允许**出现在 `warp` 之前的任何业务路径 | 只允许：规则显式目标 |
+| 输入 `node-a → direct-fragment` | **保持不变**；业务路径 `warp → select → node-a → direct-fragment`，合法；无 warning | **改写**为 `node-a → warp`；业务路径 `select → node-a → warp`；记 1 条 warning（「分片被丢弃」）；预置 `direct-fragment` 本身不变 |
+| 输入 `node-a → custom-direct`（订阅自带直连类，经 Parse → BuildConfig） | 归一化重映射为 `node-a → direct`；链保持，合法 | 归一化重映射为 `node-a → warp`；记 1 条 warning |
+| 输入 `node-b → ghost`（从未存在） | `ErrDetourDangling` | `ErrDetourDangling` |
+
+（无 WARP 时：不改写任何链；成环 / 悬空照样报错。）
+
+验证分两层（都在 U13，不得只留其一）：（1）**图单元测试**：断言**按上面那张表按模式逐条**执行（不再有「对两种模式都禁止直连类出现」这类跨模式的一刀切断言），覆盖「`node-a → direct-fragment`」「`node-a → custom-direct`」「`node-b → ghost`」「成环」四类输入，并各给一个跳过装配步骤的反例使对应断言失败；（2）**真流量验证**：用本地假节点与本地 WireGuard 对端（均为测试进程里再起的一个 sing-box 实例，带计数与请求记录）驱动整条链，断言路径：`warp_over_proxy` 时假节点收到 WG 外层 UDP 且目标 HTTP 服务的请求来自 WG 对端；`proxy_over_warp` 时假节点只通过 WG 隧道被访问（来源是隧道内地址），目标请求经假节点；直连规则命中的流量两处记录都为空（§7.1）。
 
 ### 5.3 智能分流数据
 
@@ -416,11 +431,13 @@ Android 与 `kernelEnableTun` 的关系不变：`enable-tun = false`（「仅线
 | 旧 | 新 |
 |---|---|
 | `type: wireguard` 出站 | 转成 `endpoints[]` 的 `wireguard` 端点（`server` / `server_port` → `peers[0].address/port`，`peer_public_key` → `public_key`，`local_address` → `address`，`reserved` 保留，`mtu` 保留） |
-| `type: block` / `dns` / `selector` / `urltest` / `direct`（订阅自带的） | 丢弃（`dns` / `block` 实测不能留） |
+| `type: block` / `dns` / `selector` / `urltest` / `direct`（订阅自带的） | 丢弃（`dns` / `block` 实测不能留）；**丢弃前先记账**，并重映射指向被丢弃直连类出站的 `detour` 引用（见下） |
 | 出站上的 `tls_fragment` / `tls.tls_tricks` | 删除字段 |
 | `domain_strategy`（dial 字段） | 删除（1.14 仍接受但已弃用；新构建器用 `default_domain_resolver`） |
 | 出站上的 `sniff*` 等入站字段 | 删除 |
 | `tcp_fast_open`、`udp_fragment` 等仍有效字段 | 保留 |
+
+**归一化的顺序与引用重映射（同一个函数里一次做完，不留悬空引用）**：`legacy.Clean` 的步骤固定为：①**记账**——在删除任何实体之前，记下将被丢弃的实体 `tag → type`；②丢弃（上表）；③**重映射**——对所有出站与端点的 `detour` 字段，凡指向「被丢弃的**直连类**（`type: direct`）tag」的，改指**重映射目标**；④返回清洗后的实体、warning 与「已重映射清单」。重映射目标：`Parse`（此时还不知道 WARP 模式）一律用构建器的规范直连 `direct`；`BuildConfig` 在 `proxy_over_warp` 下用 `warp`，其余情形用 `direct`。两条路径殊途同归：`Parse` 先落成 `direct`，`BuildConfig` 的 `proxy_over_warp` 装配（§5.2.2）再把以 `direct` 终止的链替换为 `warp`；对尚未经新 `Parse` 的旧落盘文件，`BuildConfig` 直接重映射到 `warp`，结果相同。**不重映射的引用**：指向被丢弃的 `selector` / `urltest` / `block` / `dns`，或指向**从未存在**的 tag——这些在构建器的引用校验里（所有模式，不限 WARP）报 `ErrDetourDangling`；成环报 `ErrDetourCycle`。
 
 每条清洗在 `testdata/legacy/` 有「旧夹具 → 新输出」黄金文件，且新输出必须通过 `CheckConfig`。
 
@@ -444,8 +461,10 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 | `lib/domain/config/data/runtime_config_builder.dart` | `runtimeSelectorDefaults` 扫 `§default§`；`hideSubscriptionInfoOutbounds` 只遍历出站并改名 | `runtimeSelectorDefaults` 用**叶子视图**（`§default§` 标在端点上也识别，默认值取其真实 tag）；`hideSubscriptionInfoOutbounds` 用**完整集合**：遍历 `outbounds` ∪ `endpoints`，改名时更新 `tag` / `detour` / `default` / 分组成员，**唯一性集合 `allTags` 也包含端点 tag**，`route` / `dns` 引用照旧更新 |
 | `lib/domain/config/model/subscription_info_node.dart`（`candidateLeafTags`，L170） | 只列出站 tag | **叶子视图**（含端点 tag） |
 | `lib/domain/routing/data/config_parser.dart`（L15–L40） | 遍历 `outbounds` 取分组，并在 `outbounds` 里查成员类型 | **完整集合**：分组遍历与成员类型索引都用它（`select` 里的 `auto` 成员应识别为 `urltest`、WireGuard 端点成员识别为 `wireguard`，而不是 `unknown`）；**不能**用叶子视图——那会丢掉全部分组 |
-| `lib/domain/profile/data/profile_repository.dart` | `_normalizeAndWrite` 的 JSON 直通判据要求 `outbounds` 非空；`_ensureMinimalProfileStructure` 假定出站数组存在 | 判据改为「叶子视图非空」，旧形态检测（`wireguard` 出站 / `dns` / `block`）用**完整集合**，含则走 `validateConfig` 清洗；`_ensureMinimalProfileStructure` 不因 `outbounds: []` 而失败 |
-| `lib/features/config/data/backup_codec.dart`（L286） | 恢复时只校验「含 `outbounds` 数组」 | 「`outbounds` 或 `endpoints` 任一为非空数组」 |
+| `lib/domain/profile/data/profile_repository.dart` | `_normalizeAndWrite` 的 JSON 直通判据要求 `outbounds` 非空；`_ensureMinimalProfileStructure` 假定出站数组存在 | 直通判据改为下面的**唯一口径**；`_ensureMinimalProfileStructure` 不因 `outbounds: []` 而失败 |
+| `lib/features/config/data/backup_codec.dart`（L286） | 恢复时只校验「含 `outbounds` 数组」 | 「叶子视图非空」（备份里是已落盘的订阅，旧形态由读时清洗处理，所以这里**不**要求无旧形态） |
+
+**JSON 直通判据（Dart 各入口唯一口径）**：`addByUrl` / `update` / `_refresh` / `addByContent` 拿到 `{` 开头的 sing-box JSON 时，**当且仅当「叶子视图非空，且不含需要清洗的旧形态」才直接落盘**，否则一律交给 `validateConfig`（= 新 `Parse`）。「需要清洗的旧形态」是一份**固定清单**：`type: wireguard` 的出站、`type: dns` / `block` 的出站、任一出站上出现 `tls_fragment` / `tls.tls_tricks` / `domain_strategy` / `sniff` / `sniff_override_destination` 字段；订阅自带的 `selector` / `urltest` / `direct` **不在清单里**（它们由构建器重建，不阻止直通）。这份清单是 Go 与 Dart 的共享夹具 `kernel/testdata/shared/legacy-shapes.json`（每行 `{name, json, needsCleaning}`）：Go 测试断言 `legacy.Clean` 对每行的判断与 `needsCleaning` 一致，Dart 测试断言直通判定函数与之一致，防止两边漂移。由此：**direct-only JSON**（叶子视图空）与 **group-only JSON**（只有 `selector` / `urltest`，叶子视图空）都**不直通**，进入 `Parse` 得到 `no-outbounds`；**endpoint-only JSON**（叶子视图非空，端点是新形态）**直通被接受**；含 `wireguard` 出站的 JSON 不直通，经 `Parse` 转成端点。
 
 **端到端测试（U16，下列形态缺一不可）**：用 Go 侧产出并入库的共享夹具 `kernel/testdata/shared/profiles/{endpoint-only,mixed,endpoint-default,groups-with-endpoint}.json`（`outbounds: []` 只有端点 / 出站与端点混合 / `§default§` 标在端点上 / **一个 `selector` 同时含 `auto`、一个 WireGuard 端点成员和一个会被隐藏的订阅信息节点引用**）：Dart 侧断言节点计数（叶子视图，分组不计入）、`runtimeSelectorDefaults`、信息节点筛选、`config_parser` 保留全部分组且成员类型正确（`auto` → `urltest`、端点 → `wireguard`）、`hideSubscriptionInfoOutbounds` 改名后分组成员与 `default` 的引用同步更新、`_normalizeAndWrite` 落盘不被判空；同一批夹具在 Go 侧走 `BuildConfig` → `CheckConfig` → 真 `Start`，断言端点出现在 `select` / `auto` 成员里、默认值正确（U9 / U7）。
 
@@ -480,7 +499,7 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 
 - URI 列表：vmess（base64-JSON，含 `ps` 中文 / emoji、`net=ws/grpc/h2`、`tls`、`alpn`）、vless（reality + `flow` + `fp`；ws + tls；grpc；httpupgrade）、trojan（ws / grpc / tls 参数）、ss（SIP002 带 / 不带插件、旧式整体 base64、IPv6 地址）、hy2（带 `obfs` / `pinSHA256` / `mport`）、tuic（`congestion_control` / `udp_relay_mode`）、anytls、socks、http、混合列表、含空行 / CRLF / BOM / urlsafe 无 padding 的 base64。
 - Clash YAML：`proxies` 含 ss / ssr（应报不支持）/ vmess / vless-reality / trojan / hysteria2 / tuic / wireguard；带 `proxy-groups` 与 `rules`（应被忽略）；`proxies: []`；YAML 锚点 / 合并键。
-- sing-box JSON：完整配置（含 selector / urltest / 旧 dns / route / inbounds，应只取出站）、纯出站数组、单出站对象、**1.8 时代形态**（wireguard 出站、`tls_tricks`、`tls_fragment`、`domain_strategy`、`dns` / `block` 出站）。
+- sing-box JSON：**direct-only**（只有 `direct` 出站 → `no-outbounds`）、**group-only**（只有 `selector` / `urltest` → `no-outbounds`）、**endpoint-only**（直通被接受）、完整配置（含 selector / urltest / 旧 dns / route / inbounds，应只取出站）、纯出站数组、单出站对象、**1.8 时代形态**（wireguard 出站、`tls_tricks`、`tls_fragment`、`domain_strategy`、`dns` / `block` 出站）。
 - 订阅信息节点（「剩余流量」之类）原样保留（隐藏标记由 Dart 打，沿用 `subscription_info_node.dart` 的规则）。
 - 异常：HTML 拒绝页、空 `proxies`、整份不是已知格式、部分节点损坏（应部分成功并计 warning）、重复 tag、5000 节点规模（耗时与内存上限断言，防回退）。
 - 往返性质：`Parse(x)` 的输出再喂给 `Parse` 与 `BuildConfig` 结果不变（幂等）。
@@ -524,7 +543,7 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 - **`configOptions`**：键名不变，旧存档直接可用；无行为的键按 §3.4 / §5.6 处理。
 - **手选节点 / 延迟缓存**：键是 `proxy_selection_<id>`，值是 tag；`select` / `auto` tag 与节点 tag 不变，沿用。
 - **`cache.db`**：旧 `clash.db`（bbolt）可留可删；新文件名不同，不读旧文件。
-- **备份**：备份只含订阅文件与偏好，格式不变；恢复时 Dart 的校验改为「`outbounds` 或 `endpoints` 任一为非空数组」（§6.5，U16），新旧形态都放行。
+- **备份**：备份只含订阅文件与偏好，格式不变；恢复时 Dart 的校验改为「叶子视图非空」（§6.5，U16），新旧形态都放行。
 
 ### 8.2 回滚
 

@@ -120,8 +120,13 @@ class AiUiModalWrapper extends StatelessWidget {
                       ),
                     )
                     .animateWithMotion(context)
-                    .fadeIn(duration: 300.ms)
-                    .slideY(begin: 0.2, end: 0, curve: Curves.easeOutCubic),
+                    .fadeIn(duration: Motion.medium)
+                    .slideY(
+                      begin: 0.2,
+                      end: 0,
+                      duration: Motion.medium,
+                      curve: Motion.emphasized,
+                    ),
           ),
         ),
       ),
@@ -162,6 +167,7 @@ Future<T?> showAiUiModal<T>({
     barrierColor: Colors.transparent,
     isScrollControlled: isScrollControlled,
     useRootNavigator: useRootNavigator,
+    sheetAnimationStyle: Motion.sheetAnimation(context),
     builder: builder,
   );
 }

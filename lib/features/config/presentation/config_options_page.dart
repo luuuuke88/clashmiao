@@ -1243,6 +1243,7 @@ class _ChoiceTile<T> extends StatelessWidget {
           barrierColor: Colors.transparent,
           useRootNavigator: true,
           isScrollControlled: true,
+          sheetAnimationStyle: Motion.sheetAnimation(context),
           builder: (context) => SettingsSelectionModal<T>(
             title: title,
             items: choices,

@@ -1,0 +1,21 @@
+{
+  "domain": [
+    "www.baidu.com",
+    "www.google.cn",
+    "fonts.googleapis.cn",
+    "csi.gstatic.com",
+    "www.gov.cn",
+    "map.qq.com"
+  ],
+  "domain_suffix": [
+    ".baidu",
+    "baidu.com",
+    "cn",
+    "g.cn",
+    "google.cn",
+    "googleapis.cn",
+    "gstatic.com",
+    "qq.com",
+    "taobao.com"
+  ]
+}

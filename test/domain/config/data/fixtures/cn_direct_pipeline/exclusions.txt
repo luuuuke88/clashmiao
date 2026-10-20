@@ -1,0 +1,12 @@
+# 端到端测试专用的排除表（不是 tools/srsdump/cn_direct_exclusions.txt）：
+# 固定内容，金样输出随它固定。
+
+# 谷歌北京地址段
+203.208.32.0/19
+2401:3800::/32
+
+# 谷歌系域名
+google.cn
+g.cn
+googleapis.cn
+gstatic.com

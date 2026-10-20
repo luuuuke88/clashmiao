@@ -366,7 +366,7 @@ Kotlin 的 `TunnelService.buildTunFd` 只换数据来源（从 `TunOptions` gett
 | 断言 C：成员与环 | `select` / `auto` 不含 `warp`；`warp.detour == select`；无环、无悬空 | `select` / `auto` 不含 `warp`；无环、无悬空 |
 | 直连类出站的出现位置 | 只允许：规则显式目标（如 `bypass`）；`warp` **之后**的载体链终点。**不允许**出现在 `warp` 之前的任何业务路径 | 只允许：规则显式目标 |
 | 输入 `node-a → direct-fragment` | **保持不变**；业务路径 `warp → select → node-a → direct-fragment`，合法；无 warning | **改写**为 `node-a → warp`；业务路径 `select → node-a → warp`；记 1 条 warning（「分片被丢弃」）；预置 `direct-fragment` 本身不变 |
-| 输入 `node-a → custom-direct`（订阅自带直连类，经 Parse → BuildConfig） | 归一化重映射为 `node-a → direct`；链保持，合法 | 归一化重映射为 `node-a → warp`；记 1 条 warning |
+| 输入 `node-a → custom-direct`（订阅自带直连类，经 Parse → BuildConfig） | 归一化重映射为 `node-a → direct`，再因「空 direct 不能作 detour」在输出里省略该 detour（链等价，见附录 A.5）；合法 | 归一化重映射为 `node-a → warp`；记 1 条 warning |
 | 输入 `node-b → ghost`（从未存在） | `ErrDetourDangling` | `ErrDetourDangling` |
 
 （无 WARP 时：不改写任何链；成环 / 悬空照样报错。）
@@ -616,3 +616,13 @@ Go 侧让 WireGuard 节点进入 `endpoints` 之后，Dart 侧所有只读 `outb
 | 放行：`block` 出站与 `outbound: block` 规则、出站 `domain_strategy`、`reject` / `predefined` / `hijack-dns` / `sniff` / `resolve` 动作、本地 `.srs` 规则集（现有 `geoip-cn.srs` / `geosite-cn.srs`）、`fakeip` 服务器、`https` / `h3` / `tls` / `quic` / `tcp` 服务器、`tls.fragment` + `record_fragment`、`multiplex`、WireGuard 端点（含 `reserved`）、无 `clash_api` 的 `cache_file` | `<nil>` |
 
 **A.4 上游 core v5.0.3 的要点（2026-10-18）**：`go 1.26.3`；`go.mod` 依赖 `sing-box v1.13.0` 并 `replace` 到本地子模块；两个子模块（其一为 SSH 地址）；`platform/mobile` 导出 `Setup` / `Start` / `Stop` / `GetServerPublicKey` / `AddGrpcClientPublicKey` / `Close` / `Pause` / `Wake`；gRPC 服务含 `Parse`、改设置、`Start` / `StartService` / `Restart` / `HotReload`、`SelectOutbound`、`UrlTest`、`GenerateWarpConfig`；构建 tag 含 `with_embedded_tor`、`with_awg`、`with_conntrack` 等；安卓绑定用 `gomobile bind … libbox ./platform/mobile`。其 sing-box 分叉的 `REBASE_NOTES.md` 自述 205 提交领先、454 提交落后，并列出已知构建缺口。
+
+**A.5 WARP 出站图的两项假设（U13 实测，v1.14.3；R12）**
+
+| 假设 | 结论 | 证据 |
+|---|---|---|
+| WireGuard 端点可作 DNS 服务器的 `detour`（`warp_over_proxy` 下 `dns-remote.detour = warp`） | 成立 | 适配副本真 `Start` 通过；真流量里远程 DNS 的 TCP 连接出现在假 WARP 对端的出口记录里（`warp_e2e_test.go`） |
+| 订阅端点 / 节点可带 `detour: warp`（`proxy_over_warp`） | 成立 | 真 `Start` 通过；节点自己的地址是只能经隧道到达的保留地址，业务请求成功即证明链经过 `warp` |
+| （附带发现）`detour` 指向**没有任何选项的预置 `direct` / `bypass`** | `Start` 拒绝，`CheckConfig` 放行 | 与 DNS 服务器同一条规则；因此装配阶段把这类 detour 省略（链等价），`direct-fragment` 带 `udp_fragment` 选项不受影响；`proxy_over_warp` 下由 `RedirectToWarp` 把它们替换为 `warp` 并记 warning |
+
+真流量验证用测试进程里再起的 sing-box 实例当假 WARP 对端（WireGuard 端点，回环 UDP），出口接到带记录的假节点；`warp_over_proxy` 下假节点收到的是发往对端的 UDP 关联数据报，业务目标只出现在对端出口的记录里；`proxy_over_warp` 下节点自己的地址只经隧道可达，业务目标经节点；直连规则命中的目标两处记录都为空；关闭 WARP 后隧道出口与 UDP 关联都没有记录。

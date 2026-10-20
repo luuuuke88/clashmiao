@@ -266,3 +266,76 @@ func TestNodeLatencyIsInjected(t *testing.T) {
 		t.Errorf("慢节点应至少多 120ms：fast=%v slow=%v", f, s)
 	}
 }
+
+// 假节点的 UDP ASSOCIATE：数据报经节点转到目标，应答经节点包回来；每个目标记一条 socks-udp；
+// 域名按 Hosts 映射；控制连接关闭后关联结束。
+func TestNodeRelaysUDPAssociate(t *testing.T) {
+	// 本地 UDP 回声目标
+	echo, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = echo.Close() })
+	go func() {
+		buf := make([]byte, 2048)
+		for {
+			n, from, err := echo.ReadFrom(buf)
+			if err != nil {
+				return
+			}
+			_, _ = echo.WriteTo(append([]byte("echo:"), buf[:n]...), from)
+		}
+	}()
+	echoPort := echo.LocalAddr().(*net.UDPAddr).Port
+
+	node := NewNode(t, "n", map[string]string{"udp.example.net": "127.0.0.1"})
+	ctl, err := net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", node.Port))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ctl.Close()
+	_ = ctl.SetDeadline(time.Now().Add(30 * time.Second)) // 失败兜底
+	if _, err := ctl.Write([]byte{5, 1, 0}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := io.ReadFull(ctl, make([]byte, 2)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ctl.Write([]byte{5, 3, 0, 1, 0, 0, 0, 0, 0, 0}); err != nil {
+		t.Fatal(err)
+	}
+	rep := make([]byte, 10)
+	if _, err := io.ReadFull(ctl, rep); err != nil || rep[1] != 0 {
+		t.Fatalf("UDP ASSOCIATE 应答 = %v (%v)", rep, err)
+	}
+	relay := &net.UDPAddr{IP: net.IP(rep[4:8]), Port: int(binary.BigEndian.Uint16(rep[8:10]))}
+
+	cli, err := net.DialUDP("udp", nil, relay)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cli.Close()
+	_ = cli.SetDeadline(time.Now().Add(30 * time.Second))
+	host := "udp.example.net"
+	pkt := append([]byte{0, 0, 0, 3, byte(len(host))}, host...)
+	pkt = append(pkt, byte(echoPort>>8), byte(echoPort))
+	pkt = append(pkt, "ping"...)
+	if _, err := cli.Write(pkt); err != nil {
+		t.Fatal(err)
+	}
+	buf := make([]byte, 2048)
+	n, err := cli.Read(buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, gh, gp, ok := buf[:n], "", 0, false
+	if h, p, payload, k := parseUDPRequest(got); k {
+		gh, gp, got, ok = h, p, payload, true
+	}
+	if !ok || gh != host || gp != echoPort || string(got) != "echo:ping" {
+		t.Fatalf("应答 = host %q port %d payload %q ok=%v", gh, gp, got, ok)
+	}
+	node.Log.MustWaitMatch(t, "socks-udp 记录", func(e Entry) bool {
+		return e.Kind == "socks-udp" && e.Target == fmt.Sprintf("%s:%d", host, echoPort)
+	})
+}

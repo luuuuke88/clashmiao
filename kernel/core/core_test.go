@@ -185,12 +185,6 @@ func buildErr(profile, opts string) error {
 	return err
 }
 
-func TestGenerateWarpConfigUnsupportedUntilU13(t *testing.T) {
-	if _, err := core.GenerateWarpConfig("", "", ""); err == nil || !strings.HasPrefix(err.Error(), "unsupported:") {
-		t.Fatalf("err = %v", err)
-	}
-}
-
 func TestSetupRejectsNil(t *testing.T) {
 	if err := core.Setup(nil); err == nil {
 		t.Fatal("nil SetupOptions 必须报错")

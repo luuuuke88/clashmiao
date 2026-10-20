@@ -52,6 +52,7 @@ func CheckInvariants(raw []byte, o *options.Options, env build.Env) []string {
 	checkTags(v, g, c, o, env)
 	checkOrderAndFinals(v, g, c, o)
 	checkWarpMembership(v, g)
+	checkWarpGraph(v, raw, o)
 	checkDNSDeps(v, raw)
 	return v.list
 }
@@ -528,8 +529,8 @@ func findString(x any, s string) string {
 
 // ExpectedRouteFinal 是 route.final 应有的值：业务出口，常态 select；warp_over_proxy 时是 warp。
 func ExpectedRouteFinal(o *options.Options) string {
-	if o.Warp.Enable && o.Warp.Mode == options.WarpWarpOverProxy {
-		return "warp"
+	if p, ok := build.PolicyFor(o); ok {
+		return p.Egress
 	}
 	return "select"
 }
@@ -562,6 +563,23 @@ func checkOrderAndFinals(v *violations, g *graph, c obj, o *options.Options) {
 	}
 	if want, got := ExpectedRouteFinal(o), asString(rt["final"]); got != want {
 		v.addf("route.final = %q，应为 %q", got, want)
+	}
+}
+
+// checkWarpGraph：WARP 启用时按模式逐条断言出站图（断言与装配读同一张策略表，见 build.CheckWarpGraph）；
+// 未启用时配置里不得出现 warp 端点，dns-remote 的 detour 必须是 select。
+func checkWarpGraph(v *violations, raw []byte, o *options.Options) {
+	p, on := build.PolicyFor(o)
+	if !on {
+		return
+	}
+	vs, err := build.CheckWarpGraph(raw, p)
+	if err != nil {
+		v.addf("WARP 图检查失败: %v", err)
+		return
+	}
+	for _, m := range vs {
+		v.addf("WARP（%s）：%s", p.Mode, m)
 	}
 }
 

@@ -40,7 +40,12 @@ func server(t testing.TB, c *cfg.Config, tag string) *cfg.DNSServer {
 func TestDNSDetourRules(t *testing.T) {
 	for _, name := range gate.OptionNames() {
 		t.Run(name, func(t *testing.T) {
-			c, _ := buildCfg(t, gate.LoadProfile(t, "P2"), gate.Option(name))
+			o := gate.Option(name)
+			wantDetour := "select"
+			if p, on := build.PolicyFor(o); on {
+				wantDetour = p.Egress // warp_over_proxy 时业务出口是 warp
+			}
+			c, _ := buildCfg(t, gate.LoadProfile(t, "P2"), o)
 			remote := server(t, c, "dns-remote")
 			if remote == nil {
 				t.Fatal("没有 dns-remote")
@@ -49,8 +54,8 @@ func TestDNSDetourRules(t *testing.T) {
 				if remote.Detour != "" {
 					t.Errorf("local 类型不拨号，不该写 detour: %q", remote.Detour)
 				}
-			} else if remote.Detour != "select" {
-				t.Errorf("dns-remote.detour = %q，期望业务出口 select", remote.Detour)
+			} else if remote.Detour != wantDetour {
+				t.Errorf("dns-remote.detour = %q，期望业务出口 %s", remote.Detour, wantDetour)
 			}
 			for _, tag := range []string{"dns-direct", "dns-local", "dns-bootstrap", "dns-fake"} {
 				if s := server(t, c, tag); s != nil && s.Detour != "" {

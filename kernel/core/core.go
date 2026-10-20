@@ -6,14 +6,18 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/luuuuke88/clashmiao/kernel/engine"
 	"github.com/luuuuke88/clashmiao/kernel/internal/build"
 	"github.com/luuuuke88/clashmiao/kernel/internal/options"
 	"github.com/luuuuke88/clashmiao/kernel/internal/subscription"
+	"github.com/luuuuke88/clashmiao/kernel/internal/warp"
 )
 
 // SetupOptions 是 Setup 的参数。
@@ -79,7 +83,15 @@ func BuildConfig(profilePath, optionsJSON string) (string, error) {
 // CheckConfig 只构造、不启动地检查配置。
 func CheckConfig(content string) error { return engine.CheckConfig(content) }
 
-// GenerateWarpConfig 注册 / 绑定 WARP 账号并返回与旧 Dart 解析兼容的 JSON（U13 实现）。
+// warpClient 是 WARP 注册用的 HTTP 客户端（测试里换成改道到本地假服务器的客户端）。
+var warpClient = &http.Client{Timeout: 45 * time.Second}
+
+// GenerateWarpConfig 向 Cloudflare 注册一台 WARP 设备（licenseKey 非空时绑定 license），
+// 成功后（若给了旧的 accountID / accessToken）再删除旧设备，返回与旧 Dart 解析兼容的 JSON：
+// {"account-id","access-token","log","config":{"private-key","local-address-ipv4","local-address-ipv6","peer-public-key","client-id"}}。
+// 失败的错误以 warp-network: / warp-license-invalid: / warp-register-failed: 开头。
 func GenerateWarpConfig(licenseKey, accountID, accessToken string) (string, error) {
-	return "", errors.New("unsupported: warp account generation is not available yet")
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	return warp.Generate(ctx, warpClient, licenseKey, accountID, accessToken)
 }

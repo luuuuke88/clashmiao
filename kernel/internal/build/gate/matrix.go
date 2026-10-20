@@ -46,6 +46,13 @@ var Matrix = []Case{
 	{"outbounds-P4c-O1", "P4c", "O1"},
 	{"outbounds-P5-O4", "P5", "O4"},
 	{"outbounds-P6-O4", "P6", "O4"},
+	// U13：WARP 两种模式 × 无 detour / 端点 / 既有 detour 链三类 profile。
+	{"warp-P1-O5a", "P1", "O5a"},
+	{"warp-P1-O5b", "P1", "O5b"},
+	{"warp-P4b-O5a", "P4b", "O5a"},
+	{"warp-P4b-O5b", "P4b", "O5b"},
+	{"warp-P8-O5a", "P8", "O5a"},
+	{"warp-P8-O5b", "P8", "O5b"},
 }
 
 // BuildCase 构建一个矩阵格子的原始（Android）配置，并返回它用的选项。

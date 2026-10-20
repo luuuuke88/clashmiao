@@ -558,12 +558,3 @@ func TestValidateGraphCatchesWhatAssemblySkipped(t *testing.T) {
 		})
 	}
 }
-
-// 把 PatchWarp 钩子钉住：WARP 未启用时原样返回。
-func TestPatchWarpIsNoOpWhenDisabled(t *testing.T) {
-	in := []cfg.Endpoint{{"type": "wireguard", "tag": "wg-1"}}
-	out, err := build.PatchWarp(in, gate.Option("O1"))
-	if err != nil || len(out) != 1 || out[0].Tag() != "wg-1" {
-		t.Fatalf("out=%v err=%v", out, err)
-	}
-}

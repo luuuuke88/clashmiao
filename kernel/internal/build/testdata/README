@@ -6,7 +6,7 @@ UUID、密钥、密码都是随机生成的，不对应任何真实服务器与�
 
 目录
 ----
-profiles/   订阅解析后的产物（只含 outbounds / endpoints）。P1–P7，其中端点有三种形态（P4a / P4b / P4c）。
+profiles/   订阅解析后的产物（只含 outbounds / endpoints）。P1–P8，其中端点有三种形态（P4a / P4b / P4c），P8 是带既有 detour 链的订阅。
 golden/     构建器对「profile × 选项夹具」的产出，逐字节比较。重新生成：
               cd kernel && source ../tools/kernel/env.sh &&
               go test -tags "$KERNEL_TAGS" -ldflags "$KERNEL_LDFLAGS_LINK" ./internal/build/gate -update
@@ -67,6 +67,12 @@ O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽
 | outbounds-P4c-O1 | P4c | O1（端点带 §default§：默认值取端点的真实 tag） | U7 |
 | outbounds-P5-O4 | P5 | O4（hysteria2 / tuic 是 UDP 类：不加分片也不加 mux） | U7 |
 | outbounds-P6-O4 | P6 | O4（reality 出站跳过分片与 mux） | U7 |
+| warp-P1-O5a | P1 | O5a（proxy_over_warp：节点拨号链终止于 warp，warp 无 detour，业务出口 select） | U13 |
+| warp-P1-O5b | P1 | O5b（warp_over_proxy：warp.detour=select，route.final / dns-remote 指向 warp） | U13 |
+| warp-P4b-O5a | P4b | O5a（订阅端点也要终止于 warp） | U13 |
+| warp-P4b-O5b | P4b | O5b | U13 |
+| warp-P8-O5a | P8 | O5a（既有链：direct-fragment 被替换、多跳代理链改最后一跳、共享末端只改一次、端点链同样处理） | U13 |
+| warp-P8-O5b | P8 | O5b（既有链原样保留，载体链可以以直连类终止） | U13 |
 
 后续任务往表里加格子（U13：O5a / O5b）。
 

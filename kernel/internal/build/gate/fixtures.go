@@ -45,6 +45,10 @@ func ProfileNames(t testing.TB) []string {
 	return names
 }
 
+// SyntheticWarpConfig 是合成的 wireguard-config（GenerateWarpConfig 产出里 config 那一段）：
+// 密钥是 0..31 / 32..63 的字节序列的 base64，地址取文档保留段，不对应任何真实账号。
+const SyntheticWarpConfig = `{"private-key":"AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=","local-address-ipv4":"172.16.0.2","local-address-ipv6":"2001:db8::2","peer-public-key":"ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=","client-id":"AQID"}`
+
 // 选项夹具 O1–O9 的构造器。都从 Android 口径的 Default() 起步，只改该夹具关心的键。
 var optionFixtures = map[string]func(o *options.Options){
 	// O1：Android VPN 智能分流（默认）。
@@ -63,9 +67,13 @@ var optionFixtures = map[string]func(o *options.Options){
 	},
 	// O4：mux + 分片。
 	"O4": func(o *options.Options) { o.Mux.Enable, o.TLSTricks.EnableFragment = true, true },
-	// O5a / O5b：WARP 两种模式（U13 才有实际行为；这里只定义选项）。
-	"O5a": func(o *options.Options) { o.Warp.Enable, o.Warp.Mode = true, options.WarpProxyOverWarp },
-	"O5b": func(o *options.Options) { o.Warp.Enable, o.Warp.Mode = true, options.WarpWarpOverProxy },
+	// O5a / O5b：WARP 两种模式（带合成的 wireguard-config）。
+	"O5a": func(o *options.Options) {
+		o.Warp.Enable, o.Warp.Mode, o.Warp.WireguardConfig = true, options.WarpProxyOverWarp, SyntheticWarpConfig
+	},
+	"O5b": func(o *options.Options) {
+		o.Warp.Enable, o.Warp.Mode, o.Warp.WireguardConfig = true, options.WarpWarpOverProxy, SyntheticWarpConfig
+	},
 	// O6-*：远程与直连 DNS 各地址形态（U5 才有实际行为）。
 	"O6-ip":                func(o *options.Options) { o.RemoteDNSAddress, o.DirectDNSAddress = "1.1.1.1", "223.5.5.5" },
 	"O6-https-domain":      func(o *options.Options) { o.RemoteDNSAddress = "https://doh.example.net/dns-query" },

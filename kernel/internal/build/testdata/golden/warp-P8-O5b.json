@@ -1,0 +1,249 @@
+{
+  "log": {
+    "level": "warn",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "https",
+        "tag": "dns-remote",
+        "server": "1.1.1.1",
+        "path": "/dns-query",
+        "detour": "warp"
+      },
+      {
+        "type": "udp",
+        "tag": "dns-direct",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "local",
+        "tag": "dns-local"
+      }
+    ],
+    "rules": [
+      {
+        "domain": [
+          "a.example.net",
+          "b.example.net",
+          "c1.example.net",
+          "c2.example.net",
+          "wg3.example.net"
+        ],
+        "action": "route",
+        "server": "dns-direct"
+      },
+      {
+        "domain": [
+          "cp.cloudflare.com"
+        ],
+        "action": "route",
+        "server": "dns-remote",
+        "rewrite_ttl": 3000
+      }
+    ],
+    "final": "dns-remote",
+    "strategy": "ipv4_only"
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "address": [
+        "172.19.0.1/28"
+      ],
+      "mtu": 9000,
+      "auto_route": true,
+      "strict_route": true,
+      "stack": "mixed",
+      "endpoint_independent_nat": true
+    },
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 2080
+    },
+    {
+      "type": "direct",
+      "tag": "dns-in",
+      "listen": "127.0.0.1",
+      "listen_port": 6450
+    }
+  ],
+  "outbounds": [
+    {
+      "default": "auto",
+      "outbounds": [
+        "auto",
+        "node-a",
+        "node-b",
+        "carrier-1",
+        "carrier-2",
+        "node-c",
+        "wg-1"
+      ],
+      "tag": "select",
+      "type": "selector"
+    },
+    {
+      "idle_timeout": "6000s",
+      "interval": "600s",
+      "outbounds": [
+        "node-a",
+        "node-b",
+        "carrier-1",
+        "carrier-2",
+        "node-c",
+        "wg-1"
+      ],
+      "tag": "auto",
+      "type": "urltest",
+      "url": "http://connectivitycheck.gstatic.com/generate_204"
+    },
+    {
+      "detour": "direct-fragment",
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6",
+      "server": "a.example.net",
+      "server_port": 8388,
+      "tag": "node-a",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "carrier-1",
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6",
+      "server": "b.example.net",
+      "server_port": 8388,
+      "tag": "node-b",
+      "type": "shadowsocks"
+    },
+    {
+      "detour": "carrier-2",
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6",
+      "server": "c1.example.net",
+      "server_port": 8388,
+      "tag": "carrier-1",
+      "type": "shadowsocks"
+    },
+    {
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6",
+      "server": "c2.example.net",
+      "server_port": 8388,
+      "tag": "carrier-2",
+      "type": "shadowsocks"
+    },
+    {
+      "method": "aes-128-gcm",
+      "password": "glgsj0/S32/e1jl6",
+      "server": "198.51.100.30",
+      "server_port": 8388,
+      "tag": "node-c",
+      "type": "shadowsocks"
+    },
+    {
+      "tag": "direct",
+      "type": "direct"
+    },
+    {
+      "tag": "direct-fragment",
+      "type": "direct",
+      "udp_fragment": true
+    },
+    {
+      "tag": "bypass",
+      "type": "direct"
+    }
+  ],
+  "endpoints": [
+    {
+      "address": [
+        "10.8.1.2/32"
+      ],
+      "detour": "carrier-1",
+      "peers": [
+        {
+          "address": "wg3.example.net",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ],
+          "port": 51820,
+          "public_key": "q/a2p0GEygHK4Y3HwaMlwq21obY0H0YLghGwPNKSHBo="
+        }
+      ],
+      "private_key": "mIJf8rJz/g4nYz/ER0omXXKitRdGdeCmUyu8OVMMNl4=",
+      "tag": "wg-1",
+      "type": "wireguard"
+    },
+    {
+      "address": [
+        "172.16.0.2/24",
+        "2001:db8::2/128"
+      ],
+      "detour": "select",
+      "mtu": 1280,
+      "peers": [
+        {
+          "address": "162.159.192.1",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ],
+          "port": 2408,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+          "reserved": [
+            1,
+            2,
+            3
+          ]
+        }
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "tag": "warp",
+      "type": "wireguard"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": [
+          "dns"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": [
+          "dns-in"
+        ],
+        "action": "hijack-dns"
+      },
+      {
+        "port": [
+          53
+        ],
+        "action": "hijack-dns"
+      }
+    ],
+    "final": "warp",
+    "auto_detect_interface": true,
+    "override_android_vpn": true,
+    "default_domain_resolver": {
+      "server": "dns-direct",
+      "strategy": "ipv4_only"
+    }
+  },
+  "experimental": {
+    "cache_file": {
+      "enabled": true,
+      "path": "cache.db"
+    }
+  }
+}

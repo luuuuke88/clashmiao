@@ -22,6 +22,11 @@ func BuildJSON(rawProfile []byte, o *options.Options, env Env) ([]byte, []string
 	return raw, append(append([]string{}, res.Warnings...), warnings...), nil
 }
 
-// remapTarget 是「指向被丢弃的直连类出站」的 detour 的新目标。
-// 目前恒为 direct；U13 落地 WARP 后，proxy_over_warp 下改为 warp。
-func remapTarget(*options.Options) string { return TagDirect }
+// remapTarget 是「指向被丢弃的直连类出站」的 detour 的新目标（spec §6.3）：
+// proxy_over_warp 下直接指向 warp（该模式要求每条拨号链终止于 warp），其余情形指向规范直连 direct。
+func remapTarget(o *options.Options) string {
+	if warpTerminates(o) {
+		return TagWarp
+	}
+	return TagDirect
+}

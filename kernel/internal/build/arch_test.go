@@ -10,7 +10,7 @@ import (
 	"testing"
 )
 
-// 架构约束：internal/{build,subscription,uri,legacy,options} 不 import sing-box，也不 import engine。
+// 架构约束：internal/{build,subscription,uri,legacy,options,warp} 不 import sing-box，也不 import engine。
 // 只有 engine、core，以及只被 _test.go 使用的测试支持包 internal/build/gate、internal/build/e2e 可以。
 // （这样升级 sing-box 时，纯数据层不会被编译器悄悄绑进去；变化靠黄金文件与闸门发现。）
 

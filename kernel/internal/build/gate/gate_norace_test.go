@@ -166,3 +166,32 @@ func TestRealStartLineOnly(t *testing.T) {
 		t.Fatalf("Stop: %v", err)
 	}
 }
+
+// WARP 两种模式 × 无 detour / 端点 / 既有 detour 链：适配副本真起得来（spec R12 的两个假设在这里用真 Start 验证：
+// WireGuard 端点可作 DNS 服务器的 detour——warp_over_proxy 的 dns-remote.detour = warp；订阅端点 / 节点可带 detour: warp
+// ——proxy_over_warp 的 wg-1 → carrier-1 → carrier-2 → warp）。
+func TestRealStartWarpMatrix(t *testing.T) {
+	for _, c := range Matrix {
+		if !strings.HasPrefix(c.Name, "warp-") {
+			continue
+		}
+		t.Run(c.Name, func(t *testing.T) {
+			l, adapted, _ := buildLive(t, c, nil)
+			if err := l.start(t, adapted); err != nil {
+				t.Fatalf("Start: %v", err)
+			}
+			sel := FirstGroups(t, l.Engine).Find("select")
+			if sel == nil {
+				t.Fatal("没有 select 组")
+			}
+			for _, m := range sel.ItemTags() {
+				if m == "warp" {
+					t.Fatal("warp 不得是 select 的成员")
+				}
+			}
+			if err := l.Engine.Stop(); err != nil {
+				t.Fatalf("Stop: %v", err)
+			}
+		})
+	}
+}

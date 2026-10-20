@@ -55,7 +55,7 @@ type assembled struct {
 //
 // 没有可用节点（出站与端点都为空，或只剩隐藏节点）→ `no-outbounds:`。端点独占的订阅合法。
 func assembleOutbounds(p Profile, o *options.Options, warnings *[]string) (*assembled, error) {
-	nodes, endpoints, err := normalizeEntities(p, warnings)
+	nodes, endpoints, err := normalizeEntities(p, !warpTerminates(o), warnings)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func assembleOutbounds(p Profile, o *options.Options, warnings *[]string) (*asse
 }
 
 // normalizeEntities 丢弃订阅自带的分组 / 直连类，给与预置 tag 冲突或重复的节点改名，并同步改写别的节点对它的 detour 引用。
-func normalizeEntities(p Profile, warnings *[]string) ([]cfg.Outbound, []cfg.Endpoint, error) {
+func normalizeEntities(p Profile, dropEmptyDirectDetour bool, warnings *[]string) ([]cfg.Outbound, []cfg.Endpoint, error) {
 	type item struct {
 		m        map[string]any
 		endpoint bool
@@ -189,9 +189,12 @@ func normalizeEntities(p Profile, warnings *[]string) ([]cfg.Outbound, []cfg.End
 	// detour 指向预置的空 direct（direct / bypass）等价于没有 detour，而新内核在启动时拒绝「detour 指向空 direct」
 	// （CheckConfig 放行）。旧订阅清洗后常有这种引用（订阅自带的 direct 被丢弃后重映射到 direct），这里去掉它。
 	// direct-fragment 带选项，不是空 direct，保留。
-	for _, it := range items {
-		if d, _ := it.m["detour"].(string); d == TagDirect || d == TagBypass {
-			delete(it.m, "detour")
+	// proxy_over_warp 例外：那里整条链都要改写到 warp，指向预置直连类的 detour 由 RedirectToWarp 替换并记 warning。
+	if dropEmptyDirectDetour {
+		for _, it := range items {
+			if d, _ := it.m["detour"].(string); d == TagDirect || d == TagBypass {
+				delete(it.m, "detour")
+			}
 		}
 	}
 
@@ -230,10 +233,4 @@ func copyValue(v any) any {
 		return out
 	}
 	return v
-}
-
-// PatchWarp 是 WARP 的装配钩子（U13 实现）：warp.enable=false 时必须原样返回、无副作用。
-func PatchWarp(endpoints []cfg.Endpoint, o *options.Options) ([]cfg.Endpoint, error) {
-	_ = o
-	return endpoints, nil
 }

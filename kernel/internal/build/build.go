@@ -54,25 +54,28 @@ func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, erro
 		Inbounds:     buildInbounds(o, env),
 		Experimental: buildExperimental(o),
 	}
-	// 业务出口：常态 select；warp_over_proxy 时是 warp（U13 在这里按选项算出）。
-	// dns-remote 的 detour、route.final、proxy 规则的目标都取这一个变量。
-	egress := TagSelect
-
 	asm, err := assembleOutbounds(profile, o, &warnings)
 	if err != nil {
 		return nil, nil, err
 	}
-	endpoints, err := PatchWarp(asm.Endpoints, o)
+	// 业务出口：常态 select；warp_over_proxy 时是 warp（见 warp_policy.go）。
+	// dns-remote 的 detour、route.final、proxy 规则的目标都取这一个变量。
+	egress, warpEp, err := ApplyWarp(asm, o, &warnings)
 	if err != nil {
 		return nil, nil, err
 	}
-	c.Outbounds, c.Endpoints = asm.Outbounds, endpoints
+	c.Outbounds, c.Endpoints = asm.Outbounds, asm.Endpoints
 
+	// WARP 对端的域名（若 clean-ip 写成域名）与各节点的服务器域名一样，必须直连解析。
+	dialers := asm.Entities
+	if warpEp != nil {
+		dialers = append(append([]map[string]any{}, dialers...), warpEp)
+	}
 	c.DNS, err = BuildDNS(dnsInput{
 		Options:       o,
 		Egress:        egress,
 		HasTun:        o.EnableTun,
-		DirectDomains: nodeHostnames(asm.Entities...),
+		DirectDomains: nodeHostnames(dialers...),
 	}, &warnings)
 	if err != nil {
 		return nil, nil, err

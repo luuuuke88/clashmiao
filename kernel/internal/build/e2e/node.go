@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// Node 是假节点：本地 SOCKS5 上游（无认证，支持 CONNECT）。被测配置把它当作订阅里的一个 socks 节点；
+// Node 是假节点：本地 SOCKS5 上游（无认证，支持 CONNECT 与 UDP ASSOCIATE）。被测配置把它当作订阅里的一个 socks 节点；
 // 每个经它转出的连接都记入 Log（Source 是来者，Target 是请求的 host:port）。
 // 可以起多个，各有各的记录。
 type Node struct {
@@ -23,7 +23,7 @@ type Node struct {
 
 	ln      net.Listener
 	mu      sync.Mutex
-	conns   map[net.Conn]struct{}
+	conns   map[io.Closer]struct{}
 	latency time.Duration
 }
 
@@ -42,7 +42,7 @@ func NewNode(t testing.TB, name string, hosts map[string]string) *Node {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n := &Node{Name: name, Port: ln.Addr().(*net.TCPAddr).Port, Log: NewLog("node " + name), Hosts: hosts, ln: ln, conns: map[net.Conn]struct{}{}}
+	n := &Node{Name: name, Port: ln.Addr().(*net.TCPAddr).Port, Log: NewLog("node " + name), Hosts: hosts, ln: ln, conns: map[io.Closer]struct{}{}}
 	go n.serve()
 	t.Cleanup(n.Close)
 	return n
@@ -63,13 +63,13 @@ func (n *Node) Outbound(tag string) map[string]any {
 	return map[string]any{"type": "socks", "tag": tag, "server": "127.0.0.1", "server_port": n.Port, "version": "5"}
 }
 
-func (n *Node) track(c net.Conn) {
+func (n *Node) track(c io.Closer) {
 	n.mu.Lock()
 	n.conns[c] = struct{}{}
 	n.mu.Unlock()
 }
 
-func (n *Node) untrack(c net.Conn) {
+func (n *Node) untrack(c io.Closer) {
 	n.mu.Lock()
 	delete(n.conns, c)
 	n.mu.Unlock()
@@ -136,7 +136,12 @@ func (n *Node) handle(c net.Conn) {
 		return
 	}
 	port := int(binary.BigEndian.Uint16(pb))
-	if req[1] != 1 { // 只支持 CONNECT
+	switch req[1] {
+	case 1: // CONNECT
+	case 3: // UDP ASSOCIATE
+		n.handleUDP(c)
+		return
+	default:
 		_, _ = c.Write([]byte{5, 7, 0, 1, 0, 0, 0, 0, 0, 0})
 		return
 	}
@@ -168,4 +173,142 @@ func (n *Node) handle(c net.Conn) {
 	go func() { _, _ = io.Copy(up, c); done <- struct{}{} }()
 	go func() { _, _ = io.Copy(c, up); done <- struct{}{} }()
 	<-done
+}
+
+// handleUDP 处理 UDP ASSOCIATE：开一个回环 UDP 口，按 SOCKS5 的 UDP 封装收发数据报，
+// 每个目标记一条 socks-udp 记录（Target 是请求的 host:port）。控制连接关闭时整个关联结束。
+func (n *Node) handleUDP(ctl net.Conn) {
+	pc, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		_, _ = ctl.Write([]byte{5, 1, 0, 1, 0, 0, 0, 0, 0, 0})
+		return
+	}
+	n.track(pc)
+	defer func() { n.untrack(pc); _ = pc.Close() }()
+	port := pc.LocalAddr().(*net.UDPAddr).Port
+	if _, err := ctl.Write([]byte{5, 0, 0, 1, 127, 0, 0, 1, byte(port >> 8), byte(port)}); err != nil {
+		return
+	}
+	// 控制连接一断，关联结束。
+	go func() { _, _ = io.Copy(io.Discard, ctl); _ = pc.Close() }()
+
+	var (
+		mu       sync.Mutex
+		client   net.Addr
+		upstream = map[string]net.Conn{}
+	)
+	defer func() {
+		mu.Lock()
+		for _, u := range upstream {
+			_ = u.Close()
+		}
+		mu.Unlock()
+	}()
+	buf := make([]byte, 64*1024)
+	for {
+		nr, from, err := pc.ReadFrom(buf)
+		if err != nil {
+			return
+		}
+		mu.Lock()
+		if client == nil {
+			client = from
+		}
+		isClient := from.String() == client.String()
+		mu.Unlock()
+		if !isClient {
+			continue
+		}
+		host, tport, payload, ok := parseUDPRequest(buf[:nr])
+		if !ok {
+			continue
+		}
+		target := net.JoinHostPort(host, fmt.Sprint(tport))
+		n.Log.Add(Entry{Kind: "socks-udp", Source: from.String(), Target: target, Detail: n.Name})
+
+		dialHost := host
+		if ip, ok := n.Hosts[strings.ToLower(host)]; ok {
+			dialHost = ip
+		}
+		mu.Lock()
+		up := upstream[target]
+		if up == nil {
+			up, err = net.Dial("udp", net.JoinHostPort(dialHost, fmt.Sprint(tport)))
+			if err != nil {
+				mu.Unlock()
+				continue
+			}
+			upstream[target] = up
+			go func(up net.Conn, host string, tport int) {
+				rb := make([]byte, 64*1024)
+				for {
+					m, err := up.Read(rb)
+					if err != nil {
+						return
+					}
+					mu.Lock()
+					cl := client
+					mu.Unlock()
+					_, _ = pc.WriteTo(wrapUDPReply(host, tport, rb[:m]), cl)
+				}
+			}(up, host, tport)
+		}
+		mu.Unlock()
+		_, _ = up.Write(payload)
+	}
+}
+
+// parseUDPRequest 解 SOCKS5 的 UDP 封装：RSV(2) FRAG(1) ATYP ADDR PORT DATA。不支持分片。
+func parseUDPRequest(b []byte) (host string, port int, payload []byte, ok bool) {
+	if len(b) < 4 || b[0] != 0 || b[1] != 0 || b[2] != 0 {
+		return
+	}
+	i := 4
+	switch b[3] {
+	case 1:
+		if len(b) < i+4 {
+			return
+		}
+		host = net.IP(b[i : i+4]).String()
+		i += 4
+	case 4:
+		if len(b) < i+16 {
+			return
+		}
+		host = net.IP(b[i : i+16]).String()
+		i += 16
+	case 3:
+		if len(b) < i+1 || len(b) < i+1+int(b[i]) {
+			return
+		}
+		l := int(b[i])
+		host = string(b[i+1 : i+1+l])
+		i += 1 + l
+	default:
+		return
+	}
+	if len(b) < i+2 {
+		return
+	}
+	port = int(binary.BigEndian.Uint16(b[i : i+2]))
+	return host, port, b[i+2:], true
+}
+
+// wrapUDPReply 把上游的应答按 SOCKS5 的 UDP 封装包回去（来源地址写成请求时的目标）。
+func wrapUDPReply(host string, port int, payload []byte) []byte {
+	out := []byte{0, 0, 0}
+	if ip := net.ParseIP(host); ip != nil {
+		if v4 := ip.To4(); v4 != nil {
+			out = append(out, 1)
+			out = append(out, v4...)
+		} else {
+			out = append(out, 4)
+			out = append(out, ip.To16()...)
+		}
+	} else {
+		out = append(out, 3, byte(len(host)))
+		out = append(out, host...)
+	}
+	out = append(out, byte(port>>8), byte(port))
+	return append(out, payload...)
 }

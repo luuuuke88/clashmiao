@@ -267,3 +267,38 @@ func TestStartErrorPrefixThroughFacade(t *testing.T) {
 		t.Fatal("unreachable")
 	}
 }
+
+// WARP 两种模式（与无 WARP）经门面真起：BuildConfig → 适配副本 → NewEngine + Start，select 里没有 warp。
+func TestWarpFlowRealStart(t *testing.T) {
+	dir := t.TempDir()
+	profile := filepath.Join(dir, "profile.json")
+	if err := core.Parse(profile, writeFile(t, dir, "sub.json", customDirectSub), false); err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range flowModes(t) {
+		t.Run(m.name, func(t *testing.T) {
+			content, err := core.BuildConfig(profile, m.opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			adapted := checkBuilt(t, content, m.opts)
+			e := newCoreEngine(t, newTestHost())
+			if err := e.Start(string(adapted)); err != nil {
+				t.Fatalf("Start: %v", err)
+			}
+			gch := make(groupsCh, 16)
+			sub, err := e.SubscribeGroups(gch)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer sub.Close()
+			frame := recvString(t, gch, "分组首帧")
+			if strings.Contains(frame, `"tag":"warp"`) || strings.Contains(frame, `"warp"`) {
+				t.Errorf("分组里不该出现 warp: %s", frame)
+			}
+			if err := e.Stop(); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

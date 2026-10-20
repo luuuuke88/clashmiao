@@ -675,3 +675,45 @@ final class CoordinatorCoreTests: XCTestCase {
         XCTAssertEqual(h.snap.attempt, 2)
     }
 }
+
+// MARK: - 评审补充用例
+extension CoordinatorCoreTests {
+
+    /// 旧启动（rev1）还在 connecting 时又来了新请求（rev2）：旧启动随后失败，不能记到新请求头上。
+    func testOldLaunchFailureDoesNotFailTheSupersedingRequest() {
+        let h = Harness()
+        h.tunnel(.disconnected)
+        _ = h.request(seq: 1, .on, spec: spec(1))
+        let old = h.lastConnect()!
+        h.finish(old.token, .launched)
+        h.tunnel(.connecting)
+        _ = h.request(seq: 2, .on, spec: spec(2))
+        h.tunnel(.disconnected, stopped(old.launchId, reason: 2)) // 旧启动失败退出（原因 2 = 失败类）
+        XCTAssertNil(h.snap.lastFailure, "旧启动的失败不属于 seq 2")
+        XCTAssertEqual(h.snap.desired, .on)
+        XCTAssertEqual(h.snap.appliedSeq, 2)
+    }
+
+    /// 放弃启动后外壳立即 resync：读到的仍是启动前就存在的 disconnected，不能提前撤掉保护窗。
+    func testAdoptGuardSurvivesAnImmediateResyncOfTheUnchangedDownState() {
+        let h = Harness()
+        h.tunnel(.disconnected)
+        _ = h.request(seq: 1, .on, spec: spec(1))
+        h.finish(h.lastConnect()!.token, .abandoned(.startService, "x"))
+        h.tunnel(.disconnected) // resync，状态没变
+        h.tunnel(.connecting) // 迟到的启动
+        XCTAssertEqual(h.snap.desired, .off, "迟到的启动不能被当成系统 on 接管")
+        XCTAssertNotNil(h.lastTeardown())
+    }
+
+    /// 已 started 后读到 connected 但扩展 state 不再是 running：缓存的 revision 不能压过新事实。
+    func testStartedIsRevokedWhenFreshFactsSayExtensionIsNotRunning() {
+        let h = Harness()
+        let launchId = bringUp(h)
+        XCTAssertEqual(h.snap.status, .started)
+        h.tunnel(.connected, ExtensionState(sessionId: "S1", launchId: launchId, phase: .starting))
+        XCTAssertNotEqual(h.snap.status, .started)
+        h.tunnel(.connected, nil)
+        XCTAssertNotEqual(h.snap.status, .started)
+    }
+}

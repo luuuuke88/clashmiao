@@ -44,11 +44,17 @@ final class KernelExecutor {
     private let store: KernelStore
     private let builder: ConfigBuilding
     private let log: (String) -> Void
+    private let tunnelVisibleTimeout: TimeInterval
     private let queue = DispatchQueue(label: "com.clashmiao.kernel.exec", qos: .userInitiated)
     private let lock = NSLock()
     private var contexts: [Int64: ExecContext] = [:]
 
-    init(adapter: TunnelAdapter, store: KernelStore, builder: ConfigBuilding, log: @escaping (String) -> Void) {
+    init(
+        adapter: TunnelAdapter, store: KernelStore, builder: ConfigBuilding,
+        tunnelVisibleTimeout: TimeInterval = KernelExecutor.tunnelVisibleTimeout,
+        log: @escaping (String) -> Void
+    ) {
+        self.tunnelVisibleTimeout = tunnelVisibleTimeout
         self.adapter = adapter
         self.store = store
         self.builder = builder
@@ -82,7 +88,7 @@ final class KernelExecutor {
             }
             // 等隧道在系统层面可见地离开 disconnected，之后的 off 才一定有东西可以停。
             ctx.step("awaitTunnel")
-            let deadline = Date().addingTimeInterval(Self.tunnelVisibleTimeout)
+            let deadline = Date().addingTimeInterval(tunnelVisibleTimeout)
             while adapter.currentStatus.isDown {
                 if Date() >= deadline {
                     // 撤销可能迟到的启动：提交了却不可见，不能让它之后悄悄冒出来。
@@ -110,7 +116,10 @@ final class KernelExecutor {
                 guard reply.ok else {
                     return .failed(reply.failureCode ?? .startService, reply.message ?? "reload failed")
                 }
-                return .reloaded(sessionId: reply.sessionId ?? "", generation: reply.generation ?? 0)
+                guard let session = reply.sessionId, !session.isEmpty, let generation = reply.generation else {
+                    return .failed(.startService, "reload reply missing instance identity")
+                }
+                return .reloaded(sessionId: session, generation: generation)
             } catch {
                 return .failed(.startService, (error as? TunnelAdapterError)?.message ?? error.localizedDescription)
             }
@@ -156,10 +165,15 @@ final class KernelExecutor {
         }
         if ctx.cancelled { return .cancelled }
         ctx.step("commitIntent")
+        let previous = store.current.finalRevision
         guard store.commitLaunch(launchId: launchId, spec: spec, built: built) else {
             return .failed(.startService, "cannot persist launch intent")
         }
-        builder.prune(keepRevisions: [built.revision])
+        // 仍被引用的 final 一律保留：新发布的、上一份（扩展可能刚读了旧 intent）、扩展 state 报告的运行中那份。
+        var keep: Set<Int64> = [built.revision]
+        if let previous { keep.insert(previous) }
+        if let running = store.readExtensionState()?.revision { keep.insert(running) }
+        builder.prune(keepRevisions: keep)
         return nil
     }
 

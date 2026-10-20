@@ -56,6 +56,25 @@ final class DispatchScheduler: CoordinatorScheduler {
     }
 }
 
+/// 恰好一次的完成门。
+final class OneShot {
+    private let lock = NSLock()
+    private var done = false
+
+    /// 第一次调用返回 true，之后都是 false。
+    func claim() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if done { return false }
+        done = true
+        return true
+    }
+
+    var isDone: Bool {
+        lock.lock(); defer { lock.unlock() }
+        return done
+    }
+}
+
 final class KernelCoordinator {
     private let queue: DispatchQueue
     private static let queueKey = DispatchSpecificKey<Void>()
@@ -86,6 +105,7 @@ final class KernelCoordinator {
         scheduler: ((DispatchQueue) -> CoordinatorScheduler)? = nil,
         epoch: String = UUID().uuidString,
         config: CoordinatorCore.Config = CoordinatorCore.Config(),
+        tunnelVisibleTimeout: TimeInterval = KernelExecutor.tunnelVisibleTimeout,
         queue: DispatchQueue = DispatchQueue(label: "com.clashmiao.kernel.command"),
         log: @escaping (String) -> Void = { NSLog("[ClashMiao] %@", $0) }
     ) {
@@ -95,7 +115,9 @@ final class KernelCoordinator {
         self.store = store
         self.logSink = log
         self.scheduler = scheduler?(queue) ?? DispatchScheduler(queue: queue)
-        self.executor = KernelExecutor(adapter: adapter, store: store, builder: builder, log: log)
+        self.executor = KernelExecutor(
+            adapter: adapter, store: store, builder: builder, tunnelVisibleTimeout: tunnelVisibleTimeout, log: log
+        )
         self.core = CoordinatorCore(
             epoch: epoch, config: config,
             storedSpec: store.loadedSpec, storedSpecKnown: store.loadedKnown
@@ -188,24 +210,36 @@ final class KernelCoordinator {
     ///  2. 写入在执行层队列上与生命周期任务串行，执行前再按栅栏复查——期间若已为该实例派发回收 / 重载，
     ///     栅栏已清空，返回 stale 且不写入。新实例永远不会收到旧 attempt 的写入。
     /// `done` 恰好一次，在命令队列上回调。
-    func selectOutbound(group: String, outbound: String, expectedAttempt: Int64?, done: @escaping (SelectResult) -> Void) {
+    func selectOutbound(
+        group: String, outbound: String, expectedAttempt: Int64?,
+        timeout: TimeInterval = KernelCoordinator.selectTimeout,
+        done: @escaping (SelectResult) -> Void
+    ) {
+        // 截止时间从受理起算（不是从开始发送起算）：排在阻塞的授权 / 配置任务后面的选择也必须在期限内返回，
+        // 且超时之后排队的写入不会迟到执行。完成门保证 `done` 恰好一次。
+        let gate = OneShot()
+        let finish: (SelectResult) -> Void = { result in
+            if gate.claim() { done(result) }
+        }
+        queue.asyncAfter(deadline: .now() + timeout) { finish(.failed("select timed out")) }
         async {
             var target: (sessionId: String, generation: Int)?
             if let expected = expectedAttempt {
                 guard let live = self.core.liveInstance, live.attempt == expected else {
-                    done(.stale(self.staleMessage(expected)))
+                    finish(.stale(self.staleMessage(expected)))
                     return
                 }
                 target = (live.sessionId, live.generation)
             }
             self.executor.runSerialized {
+                if gate.isDone { return } // 已超时：不再写入
                 let result: SelectResult
                 if let expected = expectedAttempt, self.fence() != expected {
                     result = .stale(self.staleMessage(expected))
                 } else {
                     result = self.sendSelect(group, outbound, target)
                 }
-                self.queue.async { done(result) }
+                self.queue.async { finish(result) }
             }
         }
     }
@@ -227,6 +261,11 @@ final class KernelCoordinator {
     }
 
     static let selectTimeout: TimeInterval = 10
+
+    /// 仅测试用：把一段工作塞进执行层队列，模拟被阻塞的授权 / 配置任务。
+    func blockExecutionQueueForTesting(_ work: @escaping () -> Void) {
+        executor.runSerialized(work)
+    }
 
     private func fence() -> Int64? {
         fenceLock.lock(); defer { fenceLock.unlock() }

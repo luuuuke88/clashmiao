@@ -1,0 +1,7 @@
+// 合成数据
+{
+  /* 带注释的订阅 */
+  "outbounds": [
+    {"type": "shadowsocks", "tag": "url//in-string", "server": "192.0.2.40", "server_port": 8388, "method": "aes-128-gcm", "password": "p/*not-a-comment*/w"} // 行尾注释
+  ]
+}

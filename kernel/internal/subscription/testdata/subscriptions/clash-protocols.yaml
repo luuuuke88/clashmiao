@@ -1,0 +1,79 @@
+# 合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+port: 7890
+mode: rule
+proxies:
+  - name: "香港 ss"
+    type: ss
+    server: 192.0.2.10
+    port: 8388
+    cipher: aes-128-gcm
+    password: synthetic-pw
+  - name: "美国 vmess ws"
+    type: vmess
+    server: us.example.net
+    port: 443
+    uuid: 11111111-2222-4333-8444-555555555555
+    alterId: 0
+    cipher: auto
+    tls: true
+    servername: us.example.net
+    network: ws
+    ws-opts:
+      path: /ws
+      headers:
+        Host: us.example.net
+  - name: "日本 vless reality"
+    type: vless
+    server: 192.0.2.11
+    port: 443
+    uuid: 22222222-3333-4444-8555-666666666666
+    flow: xtls-rprx-vision
+    tls: true
+    servername: www.example.com
+    client-fingerprint: chrome
+    reality-opts:
+      public-key: ivDROKaq354cSx7DJ6wLY49DSI3S8pMXN47fhzmty4Y
+      short-id: 0123abcd
+  - name: "新加坡 trojan"
+    type: trojan
+    server: sg.example.net
+    port: 443
+    password: synthetic-pw
+    sni: sg.example.net
+  - name: "韩国 hy2"
+    type: hysteria2
+    server: kr.example.net
+    port: 443
+    password: synthetic-pw
+    sni: kr.example.net
+  - name: "台湾 tuic"
+    type: tuic
+    server: tw.example.net
+    port: 443
+    uuid: 33333333-4444-4555-8666-777777777777
+    password: synthetic-pw
+    sni: tw.example.net
+    congestion-controller: bbr
+  - name: "德国 wireguard"
+    type: wireguard
+    server: de.example.net
+    port: 51820
+    ip: 10.9.0.2
+    private-key: AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=
+    public-key: ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=
+    udp: true
+  - name: "不支持 ssr"
+    type: ssr
+    server: 192.0.2.99
+    port: 8388
+    cipher: aes-128-cfb
+    password: synthetic-pw
+    obfs: plain
+    protocol: origin
+proxy-groups:
+  - name: PROXY
+    type: select
+    proxies: ["香港 ss", "美国 vmess ws"]
+rules:
+  - DOMAIN-SUFFIX,example.com,PROXY
+  - MATCH,DIRECT

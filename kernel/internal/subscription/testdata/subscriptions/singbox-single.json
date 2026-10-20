@@ -1,0 +1,8 @@
+{
+  "type": "shadowsocks",
+  "tag": "single",
+  "server": "192.0.2.10",
+  "server_port": 8388,
+  "method": "aes-128-gcm",
+  "password": "synthetic-pw"
+}

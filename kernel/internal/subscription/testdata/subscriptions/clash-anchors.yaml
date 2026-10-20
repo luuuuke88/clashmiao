@@ -1,0 +1,14 @@
+# 合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+x-base: &base
+  type: ss
+  port: 8388
+  cipher: aes-128-gcm
+  password: synthetic-pw
+proxies:
+  - <<: *base
+    name: anchor-a
+    server: 192.0.2.21
+  - <<: *base
+    name: anchor-b
+    server: 192.0.2.22
+    port: 9443

@@ -7,6 +7,7 @@ require (
 	github.com/sagernet/gomobile v0.1.13
 	github.com/sagernet/sing-box v1.14.3
 	github.com/xmdhs/clash2singbox v0.2.1-0.20260907044029-b9cc86ef2299
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -182,7 +183,6 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	google.golang.org/grpc v1.79.1 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.3.0 // indirect
 	zombiezen.com/go/capnproto2 v2.18.2+incompatible // indirect
 )

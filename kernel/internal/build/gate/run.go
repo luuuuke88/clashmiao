@@ -214,3 +214,5 @@ func (w *GroupWatcher) Wait(what string, pred func(Groups) bool) Groups {
 		}
 	}
 }
+
+func jsonUnmarshal(raw []byte, v any) error { return json.Unmarshal(raw, v) }

@@ -1,0 +1,23 @@
+{
+  "outbounds": [],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-only",
+      "address": [
+        "10.1.0.2/32"
+      ],
+      "private_key": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=",
+      "peers": [
+        {
+          "address": "192.0.2.30",
+          "port": 51820,
+          "public_key": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8=",
+          "allowed_ips": [
+            "0.0.0.0/0"
+          ]
+        }
+      ]
+    }
+  ]
+}

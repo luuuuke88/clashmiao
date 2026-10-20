@@ -109,7 +109,7 @@ Future<_Host> _host({
       isConnectedProvider.overrideWith((_) => connected),
       latencyClockProvider.overrideWithValue(() => _now),
       if (locale != null)
-        translationsProvider.overrideWithValue(locale.build()),
+        translationsProvider.overrideWithValue(locale.buildSync()),
       if (connected)
         outboundGroupsProvider.overrideWith(
           (_) => liveGroups ?? Stream.value(groups),
@@ -574,7 +574,7 @@ void main() {
       AppLocale? best;
       var bestWidth = -1.0;
       for (final locale in AppLocale.values) {
-        final text = locale.build().proxies.delayTimeout;
+        final text = locale.buildSync().proxies.delayTimeout;
         final painter = TextPainter(
           text: TextSpan(
             text: text,
@@ -589,7 +589,7 @@ void main() {
         }
         painter.dispose();
       }
-      return (best!, best.build().proxies.delayTimeout);
+      return (best!, best.buildSync().proxies.delayTimeout);
     }
 
     const node = '香港 01 | 一个相当长的节点名称用来换行';

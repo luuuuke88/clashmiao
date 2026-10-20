@@ -74,8 +74,8 @@ dependencies:
 
   # 通知
   toastification: ^2.1.0
-  slang: ^3.32.0
-  slang_flutter: ^3.32.0
+  slang: ^4.19.2
+  slang_flutter: ^4.19.0
   intl: ^0.20.2
 
   # 监控、分享、文件、权限、加密

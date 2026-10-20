@@ -100,7 +100,7 @@ void main() {
     Widget host(LatencyDisplayState state, int? ms, Brightness b) =>
         ProviderScope(
           overrides: [
-            translationsProvider.overrideWithValue(AppLocale.zhCn.build()),
+            translationsProvider.overrideWithValue(AppLocale.zhCn.buildSync()),
           ],
           child: MaterialApp(
             theme: b == Brightness.light

@@ -18,7 +18,9 @@ Widget _host(
   Brightness brightness = Brightness.light,
 }) {
   return ProviderScope(
-    overrides: [translationsProvider.overrideWithValue(AppLocale.zhCn.build())],
+    overrides: [
+      translationsProvider.overrideWithValue(AppLocale.zhCn.buildSync()),
+    ],
     child: MaterialApp(
       theme: _appTheme(brightness),
       home: Scaffold(
@@ -138,7 +140,7 @@ void main() {
       expect(find.bySemanticsLabel(RegExp('120')), findsNothing);
       expect(
         LatencyLabel.displayText(
-          AppLocale.zhCn.build(),
+          AppLocale.zhCn.buildSync(),
           LatencyDisplayState.untested,
           120,
         ),
@@ -156,7 +158,7 @@ void main() {
       await tester.pumpWidget(_host(LatencyDisplayState.untested));
       final context = tester.element(find.byType(LatencyLabel));
       for (final locale in AppLocale.values) {
-        final t = locale.build();
+        final t = locale.buildSync();
         final budget = LatencyLabel.budget(context, t);
         for (final text in [
           '—',

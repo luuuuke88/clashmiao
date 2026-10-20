@@ -31,7 +31,7 @@ import 'package:tray_manager/tray_manager.dart';
 void main() {
   group('buildTrayMenuLabels', () {
     test('英文：各阶段下 toggle 文案 + 固定的 show/hide/quit', () {
-      final t = AppLocale.en.build();
+      final t = AppLocale.en.buildSync();
 
       expect(
         buildTrayMenuLabels(ConnectionPhase.disconnected, t).toggle,
@@ -57,7 +57,7 @@ void main() {
     });
 
     test('简体中文：各阶段下 toggle 文案 + 固定的 show/hide/quit', () {
-      final t = AppLocale.zhCn.build();
+      final t = AppLocale.zhCn.buildSync();
 
       expect(buildTrayMenuLabels(ConnectionPhase.disconnected, t).toggle, '连接');
       expect(buildTrayMenuLabels(ConnectionPhase.connecting, t).toggle, '正在连接');
@@ -78,7 +78,7 @@ void main() {
       // fallback_strategy: base_locale 兜底英文"——那是把翻译缺口当成预期行为
       // 记了下来。现在 10 个语言的 UI key 已全部补齐（见
       // translations_completeness_test.dart 的门禁），兜底路径不再被触发。
-      final t = AppLocale.ar.build();
+      final t = AppLocale.ar.buildSync();
       final hide = buildTrayMenuLabels(ConnectionPhase.disconnected, t).hide;
       expect(hide, isNotEmpty);
       expect(
@@ -227,7 +227,7 @@ void main() {
 
   group('buildTrayMenu', () {
     test('英文：顶层结构不变——toggle/分隔线/show/hide/分隔线/打开子菜单/模式子菜单/分隔线/quit', () {
-      final t = AppLocale.en.build();
+      final t = AppLocale.en.buildSync();
       final menu = buildTrayMenu(
         phase: ConnectionPhase.disconnected,
         t: t,
@@ -250,7 +250,7 @@ void main() {
     });
 
     test('toggle/show/hide/quit 文案跟 buildTrayMenuLabels 保持一致（不破坏既有回归）', () {
-      final t = AppLocale.zhCn.build();
+      final t = AppLocale.zhCn.buildSync();
       final labels = buildTrayMenuLabels(ConnectionPhase.connected, t);
       final menu = buildTrayMenu(
         phase: ConnectionPhase.connected,
@@ -265,7 +265,7 @@ void main() {
     });
 
     test('过渡期 toggle 也可点（spec §10.9：连接中点 = 取消，断开中点 = 重新连接）', () {
-      final t = AppLocale.en.build();
+      final t = AppLocale.en.buildSync();
       for (final phase in ConnectionPhase.values) {
         final menu = buildTrayMenu(phase: phase, t: t, proxyMode: 1);
         expect(
@@ -277,7 +277,7 @@ void main() {
     });
 
     test('"打开..."子菜单：至少包含首页/线路(订阅列表对应的持久化页面)/设置三个跳转项', () {
-      final t = AppLocale.en.build();
+      final t = AppLocale.en.buildSync();
       final menu = buildTrayMenu(
         phase: ConnectionPhase.disconnected,
         t: t,
@@ -301,7 +301,7 @@ void main() {
     });
 
     test('"服务模式"子菜单：列出智能/全局两个模式，且当前生效的模式带勾选', () {
-      final t = AppLocale.en.build();
+      final t = AppLocale.en.buildSync();
       final menuGlobal = buildTrayMenu(
         phase: ConnectionPhase.disconnected,
         t: t,
@@ -335,7 +335,7 @@ void main() {
     });
 
     test('简体中文：子菜单标题和子项文案都过 i18n，不是硬编码中文', () {
-      final t = AppLocale.zhCn.build();
+      final t = AppLocale.zhCn.buildSync();
       final menu = buildTrayMenu(
         phase: ConnectionPhase.disconnected,
         t: t,

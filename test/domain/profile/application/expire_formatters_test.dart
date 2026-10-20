@@ -4,8 +4,8 @@ import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  final en = Translations.build();
-  final zhCn = TranslationsZhCn.build();
+  final en = AppLocale.en.buildSync();
+  final zhCn = AppLocale.zhCn.buildSync();
 
   group('formatExpireDate', () {
     test('null → Unlimited (en)', () {
@@ -52,7 +52,7 @@ void main() {
 // ===========================================================
 void _expiryConsistencyTests() {
   group('到期展示：两种形态共用同一条"无限期"判定', () {
-    final t = Translations.build();
+    final t = AppLocale.en.buildSync();
 
     test('两年后到期：两种展示都判为无限期（此前详情页会显示具体日期）', () {
       final expire = DateTime.now().add(const Duration(days: 730));

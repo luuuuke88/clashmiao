@@ -202,7 +202,7 @@ void main() {
         await tester.tap(lastFinder);
         await tester.pump(const Duration(milliseconds: 300));
         // 未连接时点节点会弹一条提示 toast：确认点击真的落到了节点上，再收掉它。
-        final t = (locale == 'ar' ? AppLocale.ar : AppLocale.zhCn).build();
+        final t = (locale == 'ar' ? AppLocale.ar : AppLocale.zhCn).buildSync();
         expect(find.text(t.proxies.connectBeforeSwitch), findsOneWidget);
         await tester.pump(const Duration(seconds: 6));
         toastification.dismissAll(delayForAnimation: false);
@@ -235,7 +235,7 @@ void main() {
         await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
 
-        final t = (locale == 'ar' ? AppLocale.ar : AppLocale.zhCn).build();
+        final t = (locale == 'ar' ? AppLocale.ar : AppLocale.zhCn).buildSync();
         final last = find.text(t.config.allAdvancedOptions);
         expect(find.byType(QuickSettingsModal), findsOneWidget);
 

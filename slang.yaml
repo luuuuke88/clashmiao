@@ -6,3 +6,4 @@ output_directory: lib/core/localization/gen
 output_file_name: translations.g.dart
 translation_class_visibility: public
 locale_handling: false
+lazy: false

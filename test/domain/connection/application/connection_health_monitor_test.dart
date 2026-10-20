@@ -11,6 +11,7 @@ import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:dio/dio.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -245,6 +246,100 @@ void main() {
     // 静默地不工作，而所有其它测试仍然全绿**（它们都自己调 start()）。
     // main() 里混着一堆平台初始化，没法在单测里真的跑一遍，所以这里退而求
     // 其次直接检查源码里这条接线还在。
+    group('VPN 形态：经 tun 探测（真机验收 BUG-B）', () {
+      Future<(ProviderContainer, _SwitchableAdapter, FakeConnectionController)>
+      vpnContainer(Future<bool> Function() tunnelProbe) async {
+        SharedPreferences.setMockInitialValues({'clashmiao_enable_tun': true});
+        final prefs = await SharedPreferences.getInstance();
+        final adapter = _SwitchableAdapter(); // 经本地代理端口：一直是通的
+        final dio = Dio()..httpClientAdapter = adapter;
+        final container = ProviderContainer(
+          overrides: [
+            sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
+            boxServiceProvider.overrideWithValue(const StubBoxService()),
+            egressIpServiceProvider.overrideWith(
+              (ref) => EgressIpService(ref, dio: dio),
+            ),
+            tunnelProbeProvider.overrideWithValue(tunnelProbe),
+            connectionControllerProvider.overrideWith(
+              FakeConnectionController.new,
+            ),
+          ],
+        );
+        await container.read(sharedPreferencesProvider.future);
+        final controller =
+            container.read(connectionControllerProvider.notifier)
+                as FakeConnectionController;
+        return (container, adapter, controller);
+      }
+
+      test('tun 转发全部被拒、经代理端口却正常：仍判 degraded，且在半分钟内', () {
+        fakeAsync((fa) {
+          var tunnelProbes = 0;
+          late ProviderContainer container;
+          late _SwitchableAdapter adapter;
+          late FakeConnectionController controller;
+          vpnContainer(() async {
+            tunnelProbes++;
+            return false; // connection refused
+          }).then((r) => (container, adapter, controller) = r);
+          fa.flushMicrotasks();
+          container.read(connectionHealthProvider.notifier).start();
+          controller.emit(ConnectionPhase.connected);
+          fa.flushMicrotasks();
+
+          fa.elapse(
+            ConnectionHealthMonitor.firstProbeDelay +
+                ConnectionHealthMonitor.retryInterval * 2 +
+                const Duration(seconds: 1),
+          );
+
+          expect(tunnelProbes, ConnectionHealthMonitor.failureThreshold);
+          expect(adapter.requestCount, 0, reason: 'VPN 形态不经代理端口探测');
+          expect(
+            container.read(connectionHealthProvider),
+            ConnectionHealth.degraded,
+          );
+          expect(
+            ConnectionHealthMonitor.firstProbeDelay +
+                ConnectionHealthMonitor.retryInterval * 2,
+            lessThan(const Duration(seconds: 30)),
+          );
+          container.dispose();
+        });
+      });
+
+      test('tun 通：healthy，之后按常规间隔复查', () {
+        fakeAsync((fa) {
+          var tunnelProbes = 0;
+          late ProviderContainer container;
+          late FakeConnectionController controller;
+          vpnContainer(() async {
+            tunnelProbes++;
+            return true;
+          }).then((r) => (container, _, controller) = r);
+          fa.flushMicrotasks();
+          container.read(connectionHealthProvider.notifier).start();
+          controller.emit(ConnectionPhase.connected);
+          fa.flushMicrotasks();
+
+          fa.elapse(
+            ConnectionHealthMonitor.firstProbeDelay +
+                const Duration(seconds: 1),
+          );
+          expect(
+            container.read(connectionHealthProvider),
+            ConnectionHealth.healthy,
+          );
+          fa.elapse(ConnectionHealthMonitor.retryInterval * 2);
+          expect(tunnelProbes, 1, reason: '成功后不走快速重试');
+          fa.elapse(ConnectionHealthMonitor.probeInterval);
+          expect(tunnelProbes, 2);
+          container.dispose();
+        });
+      });
+    });
+
     test('启动流程必须激活周期探测（接线不能被悄悄删掉）', () {
       final source = File('lib/main.dart').readAsStringSync();
       expect(

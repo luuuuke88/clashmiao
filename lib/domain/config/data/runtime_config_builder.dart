@@ -4,9 +4,6 @@ import 'dart:io';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:flutter/foundation.dart';
 
-bool get _isDesktop =>
-    Platform.isMacOS || Platform.isWindows || Platform.isLinux;
-
 /// Connect 时组装 runtime sing-box config：只处理 inbounds/dns/mux 这些
 /// 会真正生效的部分。
 ///
@@ -35,15 +32,12 @@ class RuntimeConfigBuilder {
   /// import 阶段写进 profile 的 fallback 值（profile_repository._ensureMinimal...）
   /// 无法跟随 NetworkSettings 变更，所以每次 connect 都在这里现拼。
   ///
-  /// [keepTunInbound] 为 null 时按平台默认（桌面剥、移动端留）；调用方按服务模式
-  /// 传入（见 `runtimeKeepsTunInbound`）。
   Future<File> build({
     required File baseProfile,
     required Directory workingDir,
     String? remoteDnsAddress,
     AdvancedConfig? advancedConfig,
     String outputFileName = _runtimeFileName,
-    bool? keepTunInbound,
   }) async {
     final raw = await baseProfile.readAsString();
     final cfg = jsonDecode(raw) as Map<String, dynamic>;
@@ -53,12 +47,16 @@ class RuntimeConfigBuilder {
     //   mixed:MixedPort（默认 2080），profile 自带 mixed 必然撞端口
     //   → sing-box 启动直接 `listen tcp 127.0.0.1:2080: bind: address already in use`。
     //
-    // tun inbound：
-    //   - 桌面端剥 —— 用户进程没 root 建不了 tun，service 会 "operation not permitted"。
-    //   - 移动端 VPN 模式留（tun 就是流量入口）；
-    //   - Android「仅线路」剥 —— 纯代理 Service 不是 VpnService，配置里留着 tun 内核
-    //     启动就失败（openTun called on a non-VPN service）。
-    _stripConflictingInbounds(cfg, stripTun: !(keepTunInbound ?? !_isDesktop));
+    // tun inbound 也永远剥（所有平台、所有服务模式）：
+    //   tun 只由启动参数 `enable-tun` 交给内核配置构建器创建——它会自己 append
+    //   一个 tag 为 tun-in 的 tun inbound（地址 / MTU / 栈 / 严格路由取自网络设置）。
+    //   订阅里再留一个，运行配置就有两个 tun inbound：VPN 每次启动都调两次
+    //   VpnService.Builder.establish()，第二次把第一个 VPN 接口替换掉，两套 tun
+    //   协议栈抢同一个地址 172.19.0.1；被替换接口的拆除与新协议栈的 TCP 转发监听
+    //   赛跑，输了的那次启动 tun 转发监听不存在，所有经 tun 的 TCP 约 2 ms 内被拒
+    //   （真机验收 BUG-B）。Android「仅线路」不起 tun（纯代理 Service 不是
+    //   VpnService，留着它内核启动即失败）；桌面没开 TUN 时同理。
+    _stripConflictingInbounds(cfg, stripTun: true);
 
     final effectiveDns = (advancedConfig?.remoteDnsOverride?.isNotEmpty == true)
         ? advancedConfig!.remoteDnsOverride!

@@ -6,6 +6,7 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
@@ -155,6 +156,36 @@ void main() {
         );
       },
     );
+
+    // 真机验收 BUG-B：Android VPN 档曾保留订阅里的 tun inbound，内核配置构建器
+    // 又按 enable-tun 再 append 一个 → 每次启动 establish() 两次（tun0 被 tun1
+    // 替换），偶发 tun 转发监听缺失、经 tun 的 TCP 全被拒。tun 只能有一个来源。
+    test('Android VPN 档：运行配置不带订阅里的 tun inbound，tun 只由 enable-tun 创建', () async {
+      debugServiceModePlatformOverride = ServiceModePlatform.android;
+      addTearDown(() => debugServiceModePlatformOverride = null);
+      await addProfile('p1', config: false);
+      await writeConfig('p1', {
+        'outbounds': [
+          {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
+        ],
+        'inbounds': [
+          {'type': 'tun', 'tag': 'tun-in', 'stack': 'mixed'},
+          {'type': 'mixed', 'tag': 'mixed-in', 'listen_port': 2080},
+        ],
+      });
+      await repo.setActive('p1');
+
+      final spec = await launcher().prepare(1);
+
+      final options = jsonDecode(spec.optionsJson) as Map<String, dynamic>;
+      expect(options['enable-tun'], isTrue, reason: '默认设置在 Android 上就是 VPN 档');
+      final cfg =
+          jsonDecode(File(spec.runtimeConfigPath).readAsStringSync())
+              as Map<String, dynamic>;
+      final inbounds = (cfg['inbounds'] as List<dynamic>? ?? const [])
+          .cast<Map<dynamic, dynamic>>();
+      expect(inbounds.where((i) => i['type'] == 'tun'), isEmpty);
+    });
 
     test('相同输入 → 相同 revision（不触发重载）、同一份文件，且不被重写', () async {
       await addProfile('p1');

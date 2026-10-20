@@ -93,9 +93,11 @@ void main() {
       expect(inbounds.any((i) => i['type'] == 'socks'), isTrue);
     });
 
-    // 真机验收 BUG-3：切到「仅线路」后协调器换成纯代理 Service，但运行时配置里
-    // 仍带着 tun inbound，内核启动失败（openTun called on a non-VPN service）。
-    test('按服务模式：不保留 tun 时剥掉 tun，保留时留下（mixed 始终剥）', () async {
+    // 真机验收 BUG-B：订阅里的 tun inbound 留在运行配置里，内核配置构建器又按
+    // enable-tun 再 append 一个，VPN 每次启动 establish() 两次，tun 转发偶发全拒。
+    // 真机验收 BUG-3：「仅线路」跑在纯代理 Service 里，留着 tun 内核启动即失败。
+    // 所以 tun 与 mixed 一律剥，tun 只由 enable-tun 交给内核创建（恰好一个）。
+    test('tun 与 mixed inbound 一律剥掉：tun 只由 enable-tun 交给内核创建', () async {
       final base = await _writeProfile(tmp, {
         'outbounds': [
           {'type': 'selector', 'tag': 'proxy', 'outbounds': <String>[]},
@@ -103,22 +105,18 @@ void main() {
         'inbounds': [
           {'type': 'tun', 'tag': 'tun-in'},
           {'type': 'mixed', 'tag': 'mixed-in', 'listen_port': 2080},
+          {'type': 'socks', 'tag': 'keep-me', 'listen_port': 1080},
         ],
       });
 
-      Future<List<Map<dynamic, dynamic>>> inbounds(bool keepTun) async {
-        final out = await RuntimeConfigBuilder().build(
-          baseProfile: base,
-          workingDir: tmp,
-          keepTunInbound: keepTun,
-        );
-        final cfg =
-            jsonDecode(await out.readAsString()) as Map<String, dynamic>;
-        return (cfg['inbounds'] as List<dynamic>).cast<Map<dynamic, dynamic>>();
-      }
-
-      expect((await inbounds(false)).map((i) => i['type']), isEmpty);
-      expect((await inbounds(true)).map((i) => i['type']), ['tun']);
+      final out = await RuntimeConfigBuilder().build(
+        baseProfile: base,
+        workingDir: tmp,
+      );
+      final cfg = jsonDecode(await out.readAsString()) as Map<String, dynamic>;
+      final inbounds = (cfg['inbounds'] as List<dynamic>)
+          .cast<Map<dynamic, dynamic>>();
+      expect(inbounds.map((i) => i['type']), ['socks']);
     });
 
     test('输出文件名固定 runtime-config.json', () async {

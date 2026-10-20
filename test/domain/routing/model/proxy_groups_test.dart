@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,7 +23,38 @@ const _runtime = [
   ),
 ];
 
+/// 按这些分组拼成的配置（全部叶子节点）算排除集——与线路页同一个函数。
+Set<String> subscriptionInfoExclusions(List<OutboundGroup> groups) =>
+    subscriptionInfoExclusionsForConfig({
+      'outbounds': [
+        for (final g in groups)
+          for (final item in g.items) {'tag': item.tag, 'type': item.type},
+      ],
+    });
+
 void main() {
+  group('primaryDisplayGroup', () {
+    const empty = OutboundGroup(
+      tag: 'info',
+      type: 'selector',
+      selected: '',
+      items: [],
+    );
+    const real = OutboundGroup(
+      tag: 'real',
+      type: 'selector',
+      selected: 'hk',
+      items: [OutboundProxy(tag: 'hk', type: 'vless')],
+    );
+    test('跳过排除后为空的分组', () {
+      expect(primaryDisplayGroup([empty, real])?.tag, 'real');
+    });
+    test('都为空时退回第一个；没有分组为 null', () {
+      expect(primaryDisplayGroup([empty])?.tag, 'info');
+      expect(primaryDisplayGroup(const []), isNull);
+    });
+  });
+
   group('信息条目排除（线路页 / 自动测速的条目口径）', () {
     test('去掉隐藏标记节点与订阅信息条目，保留真实节点（含关键词的）与嵌套分组，顺序不变', () {
       const items = [

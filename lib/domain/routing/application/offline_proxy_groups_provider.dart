@@ -7,10 +7,12 @@
 // 选中项、存储里的手选、连接后的实时分组说的是同一组 tag。编译不可用或失败时
 // 才退回直接解析订阅配置（只用于展示，内核操作一律只对实时分组发起）。
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/routing/data/config_parser.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:flutter/foundation.dart';
@@ -83,4 +85,23 @@ final offlineProxyGroupsProvider = FutureProvider<List<OutboundGroup>>((
     configPath,
     compile: ref.read(runtimeConfigCompilerProvider),
   );
+});
+
+/// 当前订阅配置的信息条目排除集（`subscriptionInfoExclusionsForConfig`，按整份
+/// 配置的全部候选叶子节点算，与运行时配置构建器同一口径）。线路页用它过滤
+/// 离线分组。读不到或解析不了时为空集（不排除任何东西）。
+final offlineInfoExclusionsProvider = FutureProvider<Set<String>>((ref) async {
+  final profile = await ref.watch(activeProfileProvider.future);
+  if (profile == null) return const {};
+  try {
+    final repo = await ref.read(profileRepositoryProvider.future);
+    final file = File(repo.configFilePath(profile.id));
+    if (!await file.exists()) return const {};
+    final cfg = jsonDecode(await file.readAsString());
+    if (cfg is! Map<String, dynamic>) return const {};
+    return subscriptionInfoExclusionsForConfig(cfg);
+  } catch (e) {
+    debugPrint('离线信息条目排除集：读取订阅配置失败: $e');
+    return const {};
+  }
 });

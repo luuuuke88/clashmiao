@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/routing/data/config_parser.dart';
 import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -69,7 +70,7 @@ void main() {
     expect(members, realNodes);
 
     final groups = ConfigParser.parseConfig(raw);
-    final exclusions = subscriptionInfoExclusions(groups);
+    final exclusions = subscriptionInfoExclusionsForConfig(subscription);
     final visibleByGroup = {
       for (final g in groups)
         g.tag: [
@@ -82,5 +83,82 @@ void main() {
     expect(visibleByGroup['自动选择'], realNodes);
     final allVisible = {for (final v in visibleByGroup.values) ...v};
     expect(allVisible, members.toSet());
+  });
+
+  /// 同一份订阅：构建后的内核成员，以及线路页（离线分组 + 整份配置的排除集）
+  /// 在每个分组里看得到的叶子节点。
+  Future<({List<String> members, Map<String, List<String>> page})> both(
+    Map<String, dynamic> sub,
+  ) async {
+    final raw = jsonEncode(sub);
+    final profile = File('${tmp.path}/p-${sub.hashCode}.json')
+      ..writeAsStringSync(raw);
+    final built = await RuntimeConfigBuilder().build(
+      baseProfile: profile,
+      workingDir: tmp,
+      outputFileName: 'r-${sub.hashCode}.json',
+    );
+    final cfg = jsonDecode(await built.readAsString()) as Map<String, dynamic>;
+    final exclusions = subscriptionInfoExclusionsForConfig(
+      jsonDecode(raw) as Map<String, dynamic>,
+    );
+    return (
+      members: _kernelMembers(cfg),
+      page: {
+        for (final g in ConfigParser.parseConfig(raw))
+          g.tag: [
+            for (final item in selectableGroupItems(g.items, exclusions))
+              if (!isGroupProxyType(item.type)) item.tag,
+          ],
+      },
+    );
+  }
+
+  Map<String, dynamic> vless(String tag) => {
+    'type': 'vless',
+    'tag': tag,
+    'server': 'a.example',
+    'server_port': 1,
+  };
+
+  test('只有信息代理 + direct：两边都按订阅级保护保留信息条目（direct 不算真实节点）', () async {
+    final r = await both({
+      'outbounds': [
+        {
+          'type': 'selector',
+          'tag': 'proxy',
+          'outbounds': [...infoNodes, 'direct'],
+        },
+        for (final t in infoNodes) vless(t),
+        {'type': 'direct', 'tag': 'direct'},
+        {'type': 'block', 'tag': 'block'},
+        {'type': 'dns', 'tag': 'dns-out'},
+      ],
+    });
+    expect(r.members, infoNodes);
+    expect(r.page['proxy'], [...infoNodes, 'direct']);
+  });
+
+  test('没被任何分组引用的真实叶子节点也算候选：信息条目两边都被排除', () async {
+    final r = await both({
+      'outbounds': [
+        {'type': 'selector', 'tag': 'proxy', 'outbounds': infoNodes},
+        for (final t in infoNodes) vless(t),
+        vless('孤立的真实节点'),
+      ],
+    });
+    expect(r.members, ['孤立的真实节点'], reason: '构建器：信息条目被隐藏');
+    expect(r.page['proxy'], isEmpty, reason: '线路页：同一份排除集，信息条目同样隐藏');
+  });
+
+  test('整份订阅全是信息条目：两边都保留', () async {
+    final r = await both({
+      'outbounds': [
+        {'type': 'selector', 'tag': 'proxy', 'outbounds': infoNodes},
+        for (final t in infoNodes) vless(t),
+      ],
+    });
+    expect(r.members, infoNodes);
+    expect(r.page['proxy'], infoNodes);
   });
 }

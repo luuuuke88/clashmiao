@@ -9,6 +9,7 @@ import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -496,6 +497,15 @@ Future<(Widget, ProviderContainer, _SpyBoxService)> _hostWithGroups({
       kernelPortProvider.overrideWithValue(_SpyPort(spy)),
       connectionControllerProvider.overrideWith(FakeConnectionController.new),
       offlineProxyGroupsProvider.overrideWith((_) async => groups),
+      // 离线排除集：按这份分组拼成的配置（全部叶子节点）算，与生产同一函数。
+      offlineInfoExclusionsProvider.overrideWith(
+        (_) async => subscriptionInfoExclusionsForConfig({
+          'outbounds': [
+            for (final g in groups)
+              for (final item in g.items) {'tag': item.tag, 'type': item.type},
+          ],
+        }),
+      ),
       if (connected && liveGroups)
         outboundGroupsProvider.overrideWith((_) => Stream.value(groups)),
       isConnectedProvider.overrideWith((_) => connected),
@@ -863,18 +873,25 @@ void _addProxiesPageExtraTests() {
   for (final connected in [true, false]) {
     testWidgets('订阅信息条目不作为节点展示（${connected ? '实时' : '离线'}分组）', (tester) async {
       const info = '🌐 官网地址：ncink.cc';
+      // 实时分组来自内核：构建器已给信息条目打上隐藏标记。离线分组解析自订阅
+      // 配置：信息条目原样在里面，由整份配置算出的排除集过滤。
+      final shownInfo = connected ? '$info §hide§' : info;
       final (widget, container, _) = await _hostWithGroups(
         connected: connected,
-        groups: const [
+        groups: [
           OutboundGroup(
             tag: 'select',
             type: 'selector',
             selected: 'auto',
             items: [
-              OutboundProxy(tag: 'auto', type: 'urltest'),
-              OutboundProxy(tag: info, type: 'vless', delay: 80),
-              OutboundProxy(tag: '香港 01', type: 'vless', delay: 120),
-              OutboundProxy(tag: '香港02 官网优化 IEPL', type: 'vless', delay: 130),
+              const OutboundProxy(tag: 'auto', type: 'urltest'),
+              OutboundProxy(tag: shownInfo, type: 'vless', delay: 80),
+              const OutboundProxy(tag: '香港 01', type: 'vless', delay: 120),
+              const OutboundProxy(
+                tag: '香港02 官网优化 IEPL',
+                type: 'vless',
+                delay: 130,
+              ),
             ],
           ),
         ],
@@ -897,6 +914,44 @@ void _addProxiesPageExtraTests() {
       await tester.pump(const Duration(seconds: 30));
     });
   }
+
+  testWidgets('只有信息条目的分组排在前面：主组取后面有真实节点的分组，不显示空列表', (tester) async {
+    final (widget, container, _) = await _hostWithGroups(
+      connected: false,
+      groups: const [
+        OutboundGroup(
+          tag: '订阅信息',
+          type: 'selector',
+          selected: '官网地址：a.cc',
+          items: [
+            OutboundProxy(tag: '官网地址：a.cc', type: 'vless'),
+            OutboundProxy(tag: '剩余流量：1 GB', type: 'vless'),
+          ],
+        ),
+        OutboundGroup(
+          tag: '节点选择',
+          type: 'selector',
+          selected: '香港 01',
+          items: [
+            OutboundProxy(tag: '香港 01', type: 'vless'),
+            OutboundProxy(tag: '日本 02', type: 'vless'),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text('无可用的线路'), findsNothing);
+    expect(find.text('香港 01'), findsOneWidget);
+    expect(find.text('日本 02'), findsOneWidget);
+    expect(find.textContaining('官网地址'), findsNothing);
+
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+    await tester.pump(const Duration(seconds: 30));
+  });
 
   testWidgets('线路节点隐藏内部标记并保留原始 tag 选择', (tester) async {
     const taggedNode = '香港 01 §proxy§';

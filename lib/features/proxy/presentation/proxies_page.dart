@@ -193,9 +193,12 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     // 后一个分组不会覆盖前一个分组里这个节点的状态。
     final Map<String, Map<String, NodeLatency>> latenciesByGroup = {};
     // 带隐藏标记的节点与订阅信息条目（「官网地址：…」「剩余流量：…」）一律
-    // 不展示：离线分组解析自订阅配置，信息条目还在里面。排除集按整份订阅算
-    // 一次，套用到每个分组。
-    final infoExclusions = subscriptionInfoExclusions(displayGroups);
+    // 不展示。实时分组里信息条目已被构建器打上隐藏标记；离线分组解析自订阅
+    // 配置，信息条目还在，用整份配置算出的排除集（与构建器同一口径）过滤。
+    final infoExclusions = isLiveData
+        ? const <String>{}
+        : ref.watch(offlineInfoExclusionsProvider).valueOrNull ??
+              const <String>{};
     for (final group in displayGroups) {
       final sortedItems = selectableGroupItems(group.items, infoExclusions);
       final latencies = latenciesByGroup[group.tag] = {
@@ -261,7 +264,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
     }
     _shownSort = sortBy;
 
-    final primaryGroup = groups.firstOrNull;
+    // 排除之后可能有整组为空（只有信息条目的分组）：主组取第一个还有条目的。
+    final primaryGroup = primaryDisplayGroup(groups);
 
     // 背景晕染统一由 ShellPage 底下那层 BrandBackdrop 画，页面自己保持透明。
     return Scaffold(

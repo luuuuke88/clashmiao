@@ -1,0 +1,50 @@
+构建器测试数据
+==============
+
+全部数据为合成：主机用 example.com / *.example.net / RFC 5737 / RFC 3849 保留地址，
+UUID、密钥、密码都是随机生成的，不对应任何真实服务器与凭据。
+
+目录
+----
+profiles/   订阅解析后的产物（只含 outbounds / endpoints）。P1–P7，其中端点有三种形态（P4a / P4b / P4c）。
+golden/     构建器对「profile × 选项夹具」的产出，逐字节比较。重新生成：
+              cd kernel && source ../tools/kernel/env.sh &&
+              go test -tags "$KERNEL_TAGS" -ldflags "$KERNEL_LDFLAGS_LINK" ./internal/build/gate -update
+            （gotest.sh 把包路径放在参数最后，-update 传不进去，所以这里直接调 go test）
+            生成后必须在评审里看 diff；文件名 = 下表的名字。目录里不允许有表之外的文件。
+
+profile 夹具
+------------
+| 名字 | 内容 |
+|------|------|
+| P1  | 单节点 |
+| P2  | 多节点，含订阅信息节点（剩余流量） |
+| P3  | 含 §default§ 标记的节点（U7 起有黄金文件） |
+| P4a | WireGuard 端点独占（outbounds 为空） |
+| P4b | 出站与 WireGuard 端点混合 |
+| P4c | 端点带 §default§ 标记（U7 起有黄金文件） |
+| P5  | hysteria2 + tuic |
+| P6  | vless + reality |
+| P7  | 1.8 时代形态；是 Parse / legacy 的输入，不是构建器的输入（U8 / U9 起使用） |
+
+选项夹具（gate/fixtures.go）
+----------------------------
+O1 Android VPN 智能分流 / O2 仅线路 / O3 fake DNS + DNS 路由 + 绕过局域网 / O4 mux + 分片 /
+O5a、O5b WARP 两种模式 / O6-* 远程与直连 DNS 各地址形态（含直连 DNS 为域名型 DoH）/
+O7-ipv4、O7-prefer、O7-only IPv6 三种模式 / O8 允许局域网 / O9 屏蔽广告。
+
+矩阵（并非全笛卡尔积）
+----------------------
+一格 = 一个黄金文件。「任务」列是该格的行为由哪个任务落地；本任务（U4）的脚手架只保证这些格子结构自洽、能启动。
+测试 TestMatrixMatchesGoldenFilesAndReadme 保证「矩阵代码 ↔ 黄金文件 ↔ 这张表」三者一致。
+
+| 格子 | profile | 选项 | 任务 |
+|------|---------|------|------|
+| P1-O1 | P1 | O1 | U4 |
+| P1-O2 | P1 | O2（仅线路，黄金文件里没有 tun-in） | U4 |
+| P1-O7-prefer | P1 | O7-prefer | U4 |
+| P1-O8 | P1 | O8 | U4 |
+| P2-O1 | P2 | O1 | U4 |
+| P4b-O1 | P4b | O1 | U4 |
+
+后续任务往表里加格子（U5：O3 / O6-*；U6：O3 / O9；U7：P3 / P4a / P4c / O4 / P5 / P6；U13：O5a / O5b）。

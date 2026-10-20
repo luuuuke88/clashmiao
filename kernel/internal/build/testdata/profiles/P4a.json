@@ -1,0 +1,25 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P4a：WireGuard 端点独占（outbounds 为空）。",
+  "outbounds": [],
+  "endpoints": [
+    {
+      "type": "wireguard",
+      "tag": "wg-hk",
+      "address": [
+        "10.8.0.2/32"
+      ],
+      "private_key": "NKcDKFSOq65EpLrGnZkHzBKzQ4Y9vp5T8kFQtS0LhkU=",
+      "peers": [
+        {
+          "address": "wg.example.net",
+          "port": 51820,
+          "public_key": "60AVhF+4EZu2jjRIqzo3DtD2AY13Ny4mIbiD1Pfmx3g=",
+          "allowed_ips": [
+            "0.0.0.0/0",
+            "::/0"
+          ]
+        }
+      ]
+    }
+  ]
+}

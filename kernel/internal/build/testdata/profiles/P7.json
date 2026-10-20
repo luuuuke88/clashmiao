@@ -1,0 +1,36 @@
+{
+  "_comment": "合成数据：主机用 example.net / RFC 5737 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。 P7：1.8 时代形态（旧 wireguard 出站、dns / block 出站、tls_tricks、domain_strategy）。它是 Parse / legacy 的输入，不是构建器的输入：U4 的矩阵不含它，U8 / U9 接上。",
+  "outbounds": [
+    {
+      "type": "shadowsocks",
+      "tag": "旧-ss",
+      "server": "old.example.net",
+      "server_port": 8388,
+      "method": "aes-128-gcm",
+      "password": "gOeS543uB97KHaJt",
+      "domain_strategy": "prefer_ipv4",
+      "tls_tricks": {
+        "enable_fragment": true
+      }
+    },
+    {
+      "type": "wireguard",
+      "tag": "旧-wg",
+      "server": "wg.example.net",
+      "server_port": 51820,
+      "local_address": [
+        "10.9.0.2/32"
+      ],
+      "private_key": "I0QGz2b4Xx+WdOi2+c5GlVaDrpYcOW8/uErMRROKfzc=",
+      "peer_public_key": "UnLYqsv88f2br62/okWB4GfpL0eUahMU28lGGSmrUZc="
+    },
+    {
+      "type": "dns",
+      "tag": "dns-out"
+    },
+    {
+      "type": "block",
+      "tag": "block"
+    }
+  ]
+}

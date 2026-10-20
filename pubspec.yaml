@@ -60,7 +60,7 @@ dependencies:
   meta: any
 
   # 深链（sing-box:// clash:// clashmeta:// clashmiao:// 导入订阅）
-  app_links: ^6.3.2
+  app_links: ^7.2.2
 
   # 桌面端
   window_manager: ^0.3.9

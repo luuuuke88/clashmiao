@@ -33,7 +33,11 @@ android {
         // Android 8.0。sentry_flutter 10 的 Android 库要求 minSdk ≥ 26，低于它
         // manifest 合并直接失败（Flutter 模板默认是 24）。
         minSdk = 26
-        targetSdk = 35
+        // Android 16。按 API 36 的行为变更逐项核对过（预测性返回：manifest 早已开启
+        // enableOnBackInvokedCallback，原生侧没有 onBackPressed / KEYCODE_BACK；大屏
+        // 不再允许锁方向 / 禁止缩放：本应用本来就没锁；边到边：35 起已强制；前台服务
+        // 与 VPN 服务、广播接收器、Intent 转发规则均无受影响的用法）。
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true

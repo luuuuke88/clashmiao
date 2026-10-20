@@ -36,6 +36,8 @@ import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/app/restore_recovery_notice.dart';
 import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
 import 'package:clashmiao/shared/components/press_feedback.dart';
+import 'package:clashmiao/core/theme/motion.dart';
+import 'package:clashmiao/shared/navigation/animated_tab_stack.dart';
 
 class ShellPage extends ConsumerStatefulWidget {
   const ShellPage({super.key});
@@ -361,19 +363,10 @@ class _ShellPageState extends ConsumerState<ShellPage> {
                 children: [
                   if (topPad > 0) SizedBox(height: topPad),
                   Expanded(
-                    // 非当前 tab 虽然被 IndexedStack 藏起来了，但里面的 Ticker
-                    // （循环动画、flutter_animate）照跑不误，白白耗帧。TickerMode
-                    // 把它们静音；切回来时自动恢复。
-                    child: IndexedStack(
+                    // 保活各页 + 非当前页静音 Ticker + 切换时淡入，见 AnimatedTabStack。
+                    child: AnimatedTabStack(
                       index: selectedIndex,
-                      children: [
-                        for (var i = 0; i < _pages.length; i++)
-                          TickerMode(
-                            key: ValueKey('tab_ticker_$i'),
-                            enabled: i == selectedIndex,
-                            child: _pages[i],
-                          ),
-                      ],
+                      children: _pages,
                     ),
                   ),
                 ],
@@ -542,10 +535,11 @@ class _GlassBottomNav extends ConsumerWidget {
                         // 选中态只靠颜色（图标换成 filled + 品牌蓝），不再垫
                         // 一块色块——整条已经是个胶囊，里面再套一个小方块是
                         // 两层容器打架。
-                        child: Icon(
-                          isSelected ? selectedIcon : icon,
+                        child: _NavIcon(
+                          icon: icon,
+                          selectedIcon: selectedIcon,
+                          selected: isSelected,
                           color: color,
-                          size: 28,
                         ),
                       ),
                     ),
@@ -554,6 +548,44 @@ class _GlassBottomNav extends ConsumerWidget {
               }).toList(),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 底部导航的图标：选中时轮廓图标与实心图标交叉淡入淡出、颜色渐变，而不是
+/// 一帧之内换掉（切 tab 时整条导航会「跳」一下）。时长走 [Motion.short]，减少
+/// 动画时瞬时切换。
+class _NavIcon extends StatelessWidget {
+  const _NavIcon({
+    required this.icon,
+    required this.selectedIcon,
+    required this.selected,
+    required this.color,
+  });
+
+  final IconData icon;
+  final IconData selectedIcon;
+  final bool selected;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = Motion.duration(context, Motion.short);
+    return TweenAnimationBuilder<Color?>(
+      tween: ColorTween(end: color),
+      duration: duration,
+      curve: Motion.standard,
+      builder: (context, animated, _) => AnimatedSwitcher(
+        duration: duration,
+        switchInCurve: Motion.standard,
+        switchOutCurve: Motion.standard,
+        child: Icon(
+          selected ? selectedIcon : icon,
+          key: ValueKey(selected),
+          color: animated ?? color,
+          size: 28,
         ),
       ),
     );

@@ -3,7 +3,115 @@ import 'package:clashmiao/domain/config/data/default_config_options.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+/// 按内核 BuildConfig 的口径推出「某个域名由哪台 DNS 服务器解析」。
+///
+/// 内核丢弃 profile 自带的 dns 块，自己建 dns-remote（remote-dns-address，经主
+/// 选择组走代理）、dns-direct（direct-dns-address，经 direct 出站）等服务器；
+/// `enable-dns-routing` 为真时，`outbound: bypass` 的规则逐条变成指向 dns-direct
+/// 的 DNS 规则（`full:` → domain，`domain:` → domain_suffix，`regexp:` →
+/// domain_regex），其余一律落到 final：dns-remote。返回 (服务器 tag, 地址)。
+(String, String) _kernelDnsFor(Map<String, dynamic> options, String domain) {
+  final direct = ('dns-direct', options['direct-dns-address'] as String);
+  final remote = ('dns-remote', options['remote-dns-address'] as String);
+  if (options['enable-dns-routing'] != true) return remote;
+  for (final rule in options['rules'] as List) {
+    final r = rule as Map<String, dynamic>;
+    if (r['outbound'] != 'bypass') continue;
+    final domains = (r['domains'] as String?) ?? '';
+    if (domains.isEmpty) continue;
+    for (final item in domains.split(',')) {
+      final matched = switch (item) {
+        _ when item.startsWith('full:') => domain == item.substring(5),
+        _ when item.startsWith('domain:') =>
+          domain == item.substring(7) ||
+              domain.endsWith('.${item.substring(7)}'),
+        _ when item.startsWith('regexp:') => RegExp(
+          item.substring(7),
+        ).hasMatch(domain),
+        _ => false,
+      };
+      if (matched) return direct;
+    }
+  }
+  return remote;
+}
+
 void main() {
+  group('DNS：直连域名由国内解析器解析，代理域名走远程 DNS', () {
+    const cnDomains = [
+      'www.baidu.com',
+      'www.taobao.com',
+      'g.alicdn.com',
+      'www.qq.com',
+      'www.gov.cn',
+    ];
+    const proxiedDomains = [
+      'www.google.com',
+      'www.youtube.com',
+      'www.gstatic.com',
+      'www.google.cn',
+      'github.com',
+    ];
+
+    test('默认设置：直连 DNS 是 AliDNS 223.5.5.5，远程 DNS 不变', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      expect(options['direct-dns-address'], '223.5.5.5');
+      expect(options['remote-dns-address'], 'https://1.1.1.1/dns-query');
+      expect(options['enable-dns-routing'], isTrue);
+    });
+
+    test('智能分流：国内直连域名 → dns-direct（223.5.5.5）', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      for (final d in cnDomains) {
+        expect(_kernelDnsFor(options, d), (
+          'dns-direct',
+          '223.5.5.5',
+        ), reason: d);
+      }
+    });
+
+    test('智能分流：代理域名 → dns-remote（经代理，不泄漏给国内解析器）', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(),
+      );
+      for (final d in proxiedDomains) {
+        expect(_kernelDnsFor(options, d), (
+          'dns-remote',
+          'https://1.1.1.1/dns-query',
+        ), reason: d);
+      }
+    });
+
+    test('全局模式：没有直连规则，所有域名都走远程 DNS', () {
+      final options = getDefaultConfigOptions(
+        isSmart: false,
+        settings: const NetworkSettings(),
+      );
+      for (final d in [...cnDomains, ...proxiedDomains]) {
+        expect(_kernelDnsFor(options, d).$1, 'dns-remote', reason: d);
+      }
+    });
+
+    test('用户手动设置的直连 DNS 原样生效', () {
+      final options = getDefaultConfigOptions(
+        isSmart: true,
+        settings: const NetworkSettings(directDnsAddress: '119.29.29.29'),
+      );
+      expect(options['direct-dns-address'], '119.29.29.29');
+      expect(_kernelDnsFor(options, 'www.baidu.com'), (
+        'dns-direct',
+        '119.29.29.29',
+      ));
+    });
+  });
+
   group('getDefaultConfigOptions warp 字段映射', () {
     test('默认 NetworkSettings 下 warp 块保持关闭 + 对齐推荐默认值', () {
       final options = getDefaultConfigOptions(

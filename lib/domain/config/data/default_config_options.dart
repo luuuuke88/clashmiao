@@ -58,8 +58,10 @@ Map<String, dynamic> getDefaultConfigOptions({
     // Keep this aligned with the UI/upstream meaning:
     // global = raw/as-is, smart = let libcore generate bypass rules.
     'execute-config-as-is': executeConfigAsIs,
-    // 关键：让 fork 用 profile 自带的 inbounds/dns/route，而不是自己 rebuild
-    // 一份强制走 udp://1.1.1.1 / 强制 append remote rule-set 的 DNS 配置。
+    // 只让内核沿用 profile 自带的 inbounds。dns 与 route 块内核一律丢弃重建
+    // （BuildConfig 先按这个开关拷过去，随后整块覆盖）：真正生效的 DNS 是下面
+    // 的 remote-/direct-dns-address 加分流规则推出的 DNS 规则——智能分流里命中
+    // 国内直连规则的域名走 dns-direct，地址就是 direct-dns-address。
     'enable-full-config': true,
     'block-ads': s.blockAds,
     'log-level': s.logLevel,

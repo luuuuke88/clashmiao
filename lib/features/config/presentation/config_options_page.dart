@@ -7,6 +7,7 @@ import 'dart:convert';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/warp_config_service.dart';
@@ -540,7 +541,12 @@ String _domainStrategyLabel(String value) {
 Future<void> _setRegion(WidgetRef ref, String value) async {
   final notifier = ref.read(networkSettingsProvider.notifier);
   await notifier.setRegion(value);
-  await notifier.setDirectDnsAddress(value == 'cn' ? '223.5.5.5' : '1.1.1.1');
+  // 选中国时顺手把直连 DNS 设成国内解析器。选别的地区不再把它改成 1.1.1.1：
+  // 智能分流的直连规则始终是中国大陆的域名 / IP 表，与这里的地区无关，直连
+  // 域名必须由国内解析器解析，改成境外 DNS 只会把国内站点解析到海外 IP。
+  if (value == 'cn') {
+    await notifier.setDirectDnsAddress(kDefaultDirectDnsAddress);
+  }
 }
 
 void _showPortEditor(BuildContext context, WidgetRef ref, TranslationsEn t) {
@@ -603,7 +609,7 @@ void _showDirectDnsEditor(
     title: t.config.directDnsAddress,
     controller: controller,
     icon: FluentIcons.link_24_regular,
-    hintText: '1.1.1.1',
+    hintText: kDefaultDirectDnsAddress,
     onConfirm: () async {
       final address = controller.text.trim();
       if (address.isEmpty) {

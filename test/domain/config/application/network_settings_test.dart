@@ -5,6 +5,39 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  group('直连 DNS 默认值（国内解析器）', () {
+    test('没动过这项：默认 AliDNS 223.5.5.5', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      expect(const NetworkSettings().directDnsAddress, '223.5.5.5');
+      expect(
+        NetworkSettingsNotifier(prefs).state.directDnsAddress,
+        '223.5.5.5',
+      );
+    });
+
+    test('手动设置过（包括旧默认 1.1.1.1）：原样保留，不被新默认覆盖', () async {
+      for (final explicit in ['1.1.1.1', 'https://dns.example/dns-query']) {
+        SharedPreferences.setMockInitialValues({
+          'clashmiao_direct_dns_address': explicit,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        expect(NetworkSettingsNotifier(prefs).state.directDnsAddress, explicit);
+      }
+    });
+
+    test('恢复默认：回到 223.5.5.5 并清掉存储', () async {
+      SharedPreferences.setMockInitialValues({
+        'clashmiao_direct_dns_address': '8.8.8.8',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final notifier = NetworkSettingsNotifier(prefs);
+      await notifier.reset();
+      expect(notifier.state.directDnsAddress, '223.5.5.5');
+      expect(prefs.containsKey('clashmiao_direct_dns_address'), isFalse);
+    });
+  });
+
   group('NetworkSettings WARP 凭证字段', () {
     test('默认值均为空字符串', () {
       const settings = NetworkSettings();

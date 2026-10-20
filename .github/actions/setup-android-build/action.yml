@@ -28,4 +28,4 @@ runs:
         # `yes |` 喂许可协议；sdkmanager 收完就关管道，yes 吃到 SIGPIPE。
         # 关掉 pipefail 否则这条正常结束的管道会被判失败。
         set +o pipefail
-        yes | sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.2.13676358"
+        yes | sdkmanager "platforms;android-37.0" "build-tools;36.0.0" "ndk;28.2.13676358"

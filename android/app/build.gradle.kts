@@ -2,7 +2,6 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -20,16 +19,13 @@ if (hasKeystore) {
 
 android {
     namespace = "com.clashmiao.clashmiao"
-    compileSdk = 36
+    // permission_handler 13 的 Android 库要求 compileSdk 37。
+    compileSdk = 37
     ndkVersion = "28.2.13676358"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
     defaultConfig {
@@ -147,6 +143,14 @@ dependencies {
     // android.jar 里的 org.json 在 host JVM 上只是桩（isReturnDefaultValues 下静默返回
     // 默认值），解析 JSON 的单测要用真实实现。
     testImplementation("org.json:json:20250517")
+}
+
+kotlin {
+    compilerOptions {
+        // 显式指定：不写的话在 JDK 21 的机器上 Kotlin 会按 21 编译，与上面 Java 的
+        // 17 不一致，compileReleaseKotlin 直接报 "Inconsistent JVM-target"。
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
 }
 
 flutter {

@@ -21,8 +21,8 @@ dependencies:
     sdk: flutter
 
   # 状态管理
-  hooks_riverpod: ^2.5.0
-  flutter_hooks: ^0.20.5
+  hooks_riverpod: ^3.4.3
+  flutter_hooks: ^0.21.3
 
   # 路由
   go_router: ^14.2.0
@@ -97,6 +97,8 @@ dev_dependencies:
   pigeon: ^26.1.0
   analyzer: ^7.6.0
   fake_async: ^1.3.3
+  # 仅测试用：box_providers_groups_test 要实现 Riverpod 的调度接口来模拟「后台没有帧」
+  riverpod: ^3.4.3
 
 flutter:
   uses-material-design: true

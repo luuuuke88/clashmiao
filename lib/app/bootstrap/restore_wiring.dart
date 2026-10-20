@@ -2,7 +2,7 @@ import 'package:clashmiao/features/config/application/restore_refresher.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/settings/application/app_filter_notifier.dart';
 import 'package:clashmiao/features/settings/application/setting_toggles.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/misc.dart';
 
 /// 备份恢复后需要失效、但属于其它 feature 的 provider。
 ///

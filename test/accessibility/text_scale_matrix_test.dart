@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -17,6 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/misc.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:toastification/toastification.dart';
@@ -70,11 +72,20 @@ const _variants = <(String, String, TextDirection)>[
 
 /// 一个被测页面：怎样搭 provider 覆盖与根 widget。
 class _Page {
-  const _Page(this.name, this.build, {this.overrides = _noOverrides});
+  const _Page(
+    this.name,
+    this.build, {
+    this.overrides = _noOverrides,
+    this.boxService = const StubBoxService(),
+  });
 
   final String name;
   final Widget Function() build;
   final List<Override> Function() overrides;
+
+  // 内核服务替身单独成参：Riverpod 3 下同一个容器里重复 override 同一个
+  // provider 是断言失败，要换替身就替换默认值，而不是再追加一条 override。
+  final BoxService boxService;
 }
 
 List<Override> _noOverrides() => const [];
@@ -100,7 +111,7 @@ Future<Widget> _host(
   final container = ProviderContainer(
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
-      boxServiceProvider.overrideWithValue(const StubBoxService()),
+      boxServiceProvider.overrideWithValue(page.boxService),
       ...page.overrides(),
     ],
   );
@@ -149,9 +160,9 @@ final _homeEmpty = _Page(
 final _proxies = _Page(
   '代理页',
   () => const ProxiesPage(),
+  boxService: const FakeBoxService(),
   overrides: () => [
     activeProfileProvider.overrideWith((_) async => _profile),
-    boxServiceProvider.overrideWithValue(const FakeBoxService()),
     isConnectedProvider.overrideWith((_) => false),
     offlineProxyGroupsProvider.overrideWith(
       (_) async => const [

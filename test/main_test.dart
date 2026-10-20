@@ -1,7 +1,18 @@
+import 'package:clashmiao/app/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
+import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
+import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
 import 'package:clashmiao/main.dart'
-    show DesktopShutdownGuard, bootstrapSentryGatedApp;
+    show
+        DesktopShutdownGuard,
+        bootstrapSentryGatedApp,
+        listenResidentServices,
+        residentServiceProviders;
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 回归测试：桌面端点击窗口关闭按钮曾经会直接 disconnect() + destroy()，
 /// 断开 VPN 并彻底退出进程，而不是按系统托盘应用的标准行为隐藏到托盘。
@@ -114,4 +125,63 @@ void main() {
       expect(appRunnerCalls, 1);
     });
   });
+
+  group('常驻服务（Riverpod 3 暂停语义）', () {
+    test('启动时常驻的 provider 清单：内部靠 ref.listen 驱动的服务一个不能少', () {
+      expect(
+        residentServiceProviders,
+        containsAll(<Object>[
+          deepLinkServiceProvider,
+          connectionControllerProvider,
+          egressIpProbeProvider,
+          connectionHealthProvider,
+          latencyTestCoordinatorProvider,
+          boxStatsProvider,
+        ]),
+      );
+    });
+
+    // 用最小的 provider 链复现生产里的结构：服务在 build 里 ref.listen 一个
+    // 派生 provider（对应 activeProfileProvider），派生值变化时做事（对应
+    // 「删除激活订阅 → 断开」）。派生 provider 只有在被活跃监听时才会重算。
+    final source = NotifierProvider<_Counter, int>(_Counter.new);
+    final derived = Provider<int>((ref) => ref.watch(source));
+    late List<int> seen;
+    final service = Provider<Object>((ref) {
+      ref.listen<int>(derived, (_, next) => seen.add(next));
+      return Object();
+    });
+
+    setUp(() => seen = []);
+
+    test('只 read 一次的服务处于暂停状态，内部 ref.listen 收不到上游变化', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      container.read(service);
+      container.read(source.notifier).bump();
+      await pumpEventQueue();
+
+      expect(seen, isEmpty, reason: '这正是 main() 不能只 read 的原因');
+    });
+
+    test('listenResidentServices 建的容器级监听让服务保持活跃', () async {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+
+      final subs = listenResidentServices(container, [service]);
+      container.read(source.notifier).bump();
+      await pumpEventQueue();
+
+      expect(seen, [1]);
+      expect(subs.single.isPaused, isFalse);
+    });
+  });
+}
+
+class _Counter extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void bump() => state++;
 }

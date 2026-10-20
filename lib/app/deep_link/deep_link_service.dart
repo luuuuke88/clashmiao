@@ -11,6 +11,7 @@ import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 深链导入结果，供 UI 层（`ShellPage`）用 `ref.listen` 订阅后弹 toast。
 ///

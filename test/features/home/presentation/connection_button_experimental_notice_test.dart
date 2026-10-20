@@ -62,7 +62,7 @@ Future<void> _seedActiveProfile(ProviderContainer container) async {
     }),
   );
   // 强制 activeProfileProvider resolve，这样 ConnectionButton 内部
-  // `ref.read(activeProfileProvider).valueOrNull` 才能同步拿到值
+  // `ref.read(activeProfileProvider).value` 才能同步拿到值
   // （生产环境里 ConnectionButton 总是在 activeProfile.when(data: ...) 内部
   // 渲染，此时也已经 resolve 过一次）。
   await container.read(activeProfileProvider.future);

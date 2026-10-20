@@ -1,4 +1,4 @@
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 底部导航当前选中的 tab 索引。
 /// 0 = Home, 1 = Proxies, 2 = Settings, 3 = About

@@ -244,7 +244,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
     // 致命 alert 属于生命周期失败，已经由上面的连接失败监听统一弹窗，这里跳过，
     // 避免同一个故障提示两次。
     ref.listen<AsyncValue<BoxAlert>>(boxAlertsProvider, (_, next) {
-      final alert = next.valueOrNull;
+      final alert = next.value;
       if (alert == null || alert.type.isFatal) return;
       final t = ref.read(translationsProvider);
       AppToast.error(context, classifyBoxAlertMessage(alert, t));

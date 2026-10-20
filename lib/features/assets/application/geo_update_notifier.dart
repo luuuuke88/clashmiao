@@ -6,6 +6,7 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:path_provider/path_provider.dart';
 
 class GeoUpdateState {

@@ -14,6 +14,8 @@ import 'package:clashmiao/features/config/data/backup_codec.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
+import 'package:hooks_riverpod/misc.dart';
 
 /// 备份恢复进行中。为 true 期间订阅定时刷新暂停（由 `main.dart` 把它接给
 /// `ProfileUpdateScheduler.isPaused`）。恢复结束、界面刷新完成后才回到 false。
@@ -70,11 +72,7 @@ class RestoreRefresher {
   };
 
   static String? Function() _defaultActiveId(ProviderContainer container) =>
-      () => container
-          .read(profileRepositoryProvider)
-          .valueOrNull
-          ?.getActive()
-          ?.id;
+      () => container.read(profileRepositoryProvider).value?.getActive()?.id;
 
   /// 补拉到激活订阅的新配置后：已连接 / 连接中则以新配置重新应用一次
   /// （`applyConfig` 未连接时无副作用）。控制器还没建出来就说明没有连接可重载。

@@ -37,10 +37,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('boxLogStreamProvider is autoDispose', () {
-    expect(
-      boxLogStreamProvider,
-      isA<AutoDisposeStreamProvider<List<String>>>(),
-    );
+    expect(boxLogStreamProvider, isA<StreamProvider<List<String>>>());
+    expect(boxLogStreamProvider.isAutoDispose, isTrue);
   });
 
   test('离开日志页（最后一个 listener 消失）后，桌面端文件轮询循环应该真正停止，'

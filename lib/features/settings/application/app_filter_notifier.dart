@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 持久化 key 必须跟 Android 侧 `PrefsKey.APP_FILTER_*` 对齐

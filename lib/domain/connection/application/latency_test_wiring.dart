@@ -12,6 +12,7 @@ import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 协调器的 Riverpod 接线。
 ///
@@ -22,8 +23,7 @@ final latencyTestCoordinatorProvider =
       final coordinator = LatencyTestCoordinator(
         urlTest: (groupTag) => ref.read(boxServiceProvider).urlTest(groupTag),
         liveGroups: () =>
-            ref.read(outboundGroupsProvider).valueOrNull ??
-            const <OutboundGroup>[],
+            ref.read(outboundGroupsProvider).value ?? const <OutboundGroup>[],
         cache: () => ref.read(proxyDelayCacheProvider),
         recordMeasured: (msByTag, at) => ref
             .read(proxyDelayCacheProvider.notifier)
@@ -37,10 +37,10 @@ final latencyTestCoordinatorProvider =
       );
       ref.listen<AsyncValue<List<OutboundGroup>>>(
         outboundGroupsProvider,
-        (_, next) => coordinator.onGroups(next.valueOrNull ?? const []),
+        (_, next) => coordinator.onGroups(next.value ?? const []),
       );
       ref.listen<String?>(
-        activeProfileProvider.select((profile) => profile.valueOrNull?.id),
+        activeProfileProvider.select((profile) => profile.value?.id),
         (previous, next) {
           // previous 为空是首次加载出订阅，不是「切订阅」。
           if (previous != null && previous != next) {

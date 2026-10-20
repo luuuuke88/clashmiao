@@ -16,6 +16,7 @@ import 'package:clashmiao/features/config/data/backup_engine.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/misc.dart';
 
 import '../../../support/gate_adapter.dart';
 import '../../../support/restore_harness.dart';

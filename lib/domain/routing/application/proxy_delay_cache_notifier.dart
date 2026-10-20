@@ -8,6 +8,7 @@ import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/model/cached_delay.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 final proxyDelayCacheProvider =
@@ -15,11 +16,11 @@ final proxyDelayCacheProvider =
       ref,
     ) {
       final prefs = ref.watch(sharedPreferencesProvider).requireValue;
-      final store = ref.watch(profileStoreProvider).valueOrNull;
+      final store = ref.watch(profileStoreProvider).value;
       // 只关心「哪一代的哪个订阅」：订阅元数据变化（刷新、改名）不该重建 notifier。
       final active = ref.watch(
         activeProfileProvider.select((value) {
-          final profile = value.valueOrNull;
+          final profile = value.value;
           return profile == null ? null : (profile.id, profile.inc);
         }),
       );

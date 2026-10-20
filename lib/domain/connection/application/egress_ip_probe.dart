@@ -26,6 +26,7 @@ import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:hooks_riverpod/legacy.dart';
 
 /// 探测节奏常量（spec §6）。
 abstract final class EgressProbeTiming {
@@ -116,7 +117,7 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
     );
     _groupsSub = _ref.listen<AsyncValue<LiveGroups?>>(
       liveGroupsProvider,
-      (_, next) => _onGroups(next.valueOrNull),
+      (_, next) => _onGroups(next.value),
       fireImmediately: true,
     );
   }
@@ -174,7 +175,7 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       _dropQueuedManual();
       state = const EgressIpState(EgressIpStatus.idle);
       // 这个实例的实时分组可能先于 connected 到达：作为基线带进来。
-      _onGroups(_ref.read(liveGroupsProvider).valueOrNull);
+      _onGroups(_ref.read(liveGroupsProvider).value);
     }
     if (c.replayPending) return; // 统一门槛：重放确认前，自动 / 手动都不查
 

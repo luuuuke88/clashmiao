@@ -65,7 +65,7 @@ final boxAlertsProvider = StreamProvider<BoxAlert>((ref) {
 /// 流量统计 — 仅在已连接时才订阅
 final boxStatsProvider = StreamProvider<BoxStats>((ref) {
   final status = ref.watch(boxStatusProvider);
-  if (status.valueOrNull is! BoxStarted) {
+  if (status.value is! BoxStarted) {
     return Stream.value(BoxStats.empty);
   }
   final service = ref.read(boxServiceProvider);
@@ -118,7 +118,7 @@ class LiveGroups {
 /// 每次换实例都是「取消（监听数归 0）→ 重新监听 → 原生重连、推当前分组」，最新
 /// 值由本 provider 的状态保存，后来者直接读到。
 final liveGroupsProvider = StreamProvider<LiveGroups?>((ref) {
-  final instance = ref.watch(runningKernelInstanceProvider).valueOrNull;
+  final instance = ref.watch(runningKernelInstanceProvider).value;
   if (instance == null) return Stream.value(null);
   final service = ref.read(boxServiceProvider);
   return service

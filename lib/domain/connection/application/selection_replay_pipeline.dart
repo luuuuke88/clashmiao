@@ -129,7 +129,7 @@ class SelectionReplayPipeline {
     }
     // 激活订阅在第一个 await 之前就切换了也无妨：归属在这里才捕获。
 
-    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    final profile = _ref.read(activeProfileProvider).value;
     final ReplayOwner owner = _owner = (
       profileId: profile?.id,
       profileInc: profile?.inc,
@@ -315,14 +315,14 @@ class SelectionReplayPipeline {
   bool _owns(ReplayOwner owner) {
     if (!_isCurrentInstance(owner.epoch, owner.attempt)) return false;
     if (_ownerUnsettled()) return false;
-    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    final profile = _ref.read(activeProfileProvider).value;
     return profile?.id == owner.profileId && profile?.inc == owner.profileInc;
   }
 
   ReplayPipelineOutcome _drop(ReplayOwner owner, _Stage stage) {
     // 只有「实例仍是当前的、且激活订阅确实换了」才算归属变化——调用方据此重新
     // 调度；归属没变却被丢弃（不应发生）按 dropped 处理，避免原地空转。
-    final profile = _ref.read(activeProfileProvider).valueOrNull;
+    final profile = _ref.read(activeProfileProvider).value;
     final profileChanged =
         profile?.id != owner.profileId || profile?.inc != owner.profileInc;
     final current =
@@ -348,7 +348,7 @@ class SelectionReplayPipeline {
     bool mine(LiveGroups? g) =>
         g != null && g.instance.epoch == epoch && g.instance.attempt == attempt;
 
-    final current = _ref.read(liveGroupsProvider).valueOrNull;
+    final current = _ref.read(liveGroupsProvider).value;
     if (mine(current)) return Future.value(current);
 
     final done = Completer<LiveGroups?>();
@@ -356,7 +356,7 @@ class SelectionReplayPipeline {
       _,
       next,
     ) {
-      final g = next.valueOrNull;
+      final g = next.value;
       if (mine(g) && !done.isCompleted) done.complete(g);
     });
     // 等待期间激活订阅变了：不必干等到超时，立刻醒来，由调用方按归属丢弃。

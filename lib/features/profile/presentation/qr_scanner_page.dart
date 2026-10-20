@@ -211,7 +211,7 @@ class _ScannerView extends StatelessWidget {
           MobileScanner(
             controller: controller,
             onDetect: onDetect,
-            errorBuilder: (_, error, __) {
+            errorBuilder: (_, error) {
               final message =
                   error.errorCode == MobileScannerErrorCode.permissionDenied
                   ? permissionError

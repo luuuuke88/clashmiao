@@ -92,6 +92,9 @@ class GlassIconButton extends StatelessWidget {
     // 居中，所以点圆外那一圈 4 dp 也算点中。
     final Widget tappable = PressFeedback(
       pressedScale: PressFeedback.iconPressedScale,
+      // 热区是 48 的方块、视觉是里面的圆：描边画成整圆。
+      focusBorderRadius: BorderRadius.circular(kMinInteractiveDimension),
+      semanticLabel: tooltip,
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: ConstrainedBox(
@@ -107,19 +110,12 @@ class GlassIconButton extends StatelessWidget {
       ),
     );
 
-    // 真正构建 Tooltip：长按出可见的文字提示。无障碍标签由外层 Semantics 的
-    // label 提供（Tooltip 的 excludeFromSemantics 打开，免得读屏把同一句话念
-    // 两遍）。
+    // 真正构建 Tooltip：长按出可见的文字提示。无障碍标签与按钮 / 可用语义由
+    // PressFeedback 提供（Tooltip 的 excludeFromSemantics 打开，免得读屏把同一句话
+    // 念两遍）。
     final label = tooltip;
-    final Widget labelled = label == null
+    return label == null
         ? tappable
         : Tooltip(message: label, excludeFromSemantics: true, child: tappable);
-
-    return Semantics(
-      label: label,
-      button: true,
-      enabled: onTap != null,
-      child: labelled,
-    );
   }
 }

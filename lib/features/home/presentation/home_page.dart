@@ -277,6 +277,7 @@ class _ActiveProfileCardState extends ConsumerState<_ActiveProfileCard> {
     final percent = total > 0 ? subInfo!.usageRatio.clamp(0.0, 1.0) : 0.0;
 
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(14),
       onTap: () {
         showAiUiModal<void>(
           context: context,
@@ -688,9 +689,10 @@ class _EgressIpTile extends StatelessWidget {
     );
 
     if (!tappable) return card;
-    return Semantics(
-      button: true,
-      child: PressFeedback(onTap: onTap, child: card),
+    return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(14),
+      onTap: onTap,
+      child: card,
     );
   }
 }
@@ -849,49 +851,43 @@ class _ConnectionInfo extends ConsumerWidget {
     Widget pill() {
       // 做成带箭头的胶囊而不是一行字：原来那样看不出能点，左边的服务器图标在
       // 小尺寸下还像一部手机。点了直接跳线路页换节点。
-      return Semantics(
-        button: true,
-        child: PressFeedback(
-          onTap: () =>
-              ref.read(selectedTabProvider.notifier).state = AppTab.proxies,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
-            decoration: BoxDecoration(
-              color: theme.aiUi.softBackgroundColor,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: theme.aiUi.borderColor),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 200),
-                  child: Text(
-                    nodeName,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+      return PressFeedback(
+        focusBorderRadius: BorderRadius.circular(22),
+        onTap: () =>
+            ref.read(selectedTabProvider.notifier).state = AppTab.proxies,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.fromLTRB(16, 10, 10, 10),
+          decoration: BoxDecoration(
+            color: theme.aiUi.softBackgroundColor,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: theme.aiUi.borderColor),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 200),
+                child: Text(
+                  nodeName,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(width: 12),
-                // 延迟只是一行文字：不再配 Wi-Fi 图标，状态靠数字与颜色表达。
-                LatencyLabel(
-                  state: latency.state,
-                  ms: latency.ms,
-                  fontSize: 14,
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  FluentIcons.chevron_right_16_regular,
-                  size: 16,
-                  color: theme.aiUi.secondaryTextColor,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 12),
+              // 延迟只是一行文字：不再配 Wi-Fi 图标，状态靠数字与颜色表达。
+              LatencyLabel(state: latency.state, ms: latency.ms, fontSize: 14),
+              const SizedBox(width: 6),
+              Icon(
+                FluentIcons.chevron_right_16_regular,
+                size: 16,
+                color: theme.aiUi.secondaryTextColor,
+              ),
+            ],
           ),
         ),
       );
@@ -977,10 +973,10 @@ class _SegmentTab extends StatelessWidget {
 
     // 分段控件的每一段：按钮 + 选中语义（读屏念「已选择」），互斥组。
     return Semantics(
-      button: true,
       selected: isSelected,
       inMutuallyExclusiveGroup: true,
       child: PressFeedback(
+        focusBorderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: AnimatedContainer(
           duration: Motion.duration(context, Motion.short),
@@ -1197,6 +1193,7 @@ class _EmptyProfileBody extends ConsumerWidget {
             ),
             const SizedBox(height: 40),
             PressFeedback(
+              focusBorderRadius: BorderRadius.circular(30),
               onTap: onAdd,
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -1285,6 +1282,7 @@ class _EmptyActiveProfileBody extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
             PressFeedback(
+              focusBorderRadius: BorderRadius.circular(30),
               onTap: () {
                 showAiUiModal<void>(
                   context: context,

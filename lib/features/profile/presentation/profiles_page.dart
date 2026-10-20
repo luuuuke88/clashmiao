@@ -853,8 +853,8 @@ class _HeaderButton extends StatelessWidget {
       message: tooltip,
       child: Semantics(
         label: tooltip,
-        button: true,
         child: PressFeedback(
+          focusBorderRadius: BorderRadius.circular(20),
           onTap: onTap,
           child: Container(
             width: 40,
@@ -918,6 +918,7 @@ class _ProfileCard extends ConsumerWidget {
     final isRemote = _isRemoteProfile(profile);
 
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(24),
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
@@ -976,6 +977,7 @@ class _ProfileCard extends ConsumerWidget {
                   const SizedBox(width: 12),
                   PressFeedback(
                     pressedScale: PressFeedback.iconPressedScale,
+                    focusBorderRadius: BorderRadius.circular(20),
                     onTap: onUpdate,
                     child: Container(
                       padding: const EdgeInsets.all(8),
@@ -1128,6 +1130,7 @@ class _ActionButton extends StatelessWidget {
     final isLight = theme.brightness == Brightness.light;
 
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(20),
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),

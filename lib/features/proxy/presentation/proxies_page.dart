@@ -921,6 +921,7 @@ class _AutoSelectCard extends HookConsumerWidget {
     final accent = theme.colorScheme.primary;
 
     return PressFeedback(
+      focusBorderRadius: BorderRadius.circular(14),
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),

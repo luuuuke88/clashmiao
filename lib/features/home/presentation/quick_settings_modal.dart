@@ -106,11 +106,12 @@ class QuickSettingsModal extends ConsumerWidget {
                   final selectable = !serviceModeIsFixed;
                   return Expanded(
                     child: Semantics(
-                      button: selectable,
                       selected: isSelected,
                       inMutuallyExclusiveGroup: selectable,
                       child: PressFeedback(
                         behavior: HitTestBehavior.opaque,
+                        // 固定档位不是可选控件：本组件也不提供按钮语义。
+                        excludeFromSemantics: !selectable,
                         onTap: selectable
                             ? () => _changeServiceMode(ref, mode)
                             : null,
@@ -275,86 +276,82 @@ class _SettingTile extends StatelessWidget {
     // 整行是一个语义节点：开关行读作「标题、开关、已开启/已关闭」，点哪都能切；
     // 入口行读作按钮。不合并的话读屏会把标题、开关、箭头拆成三四个焦点。
     return MergeSemantics(
-      child: Semantics(
-        button: !hasSwitch,
-        child: PressFeedback(
-          // 开关行的点击语义交给里面的 Switch，免得同一动作暴露两次。
-          excludeFromSemantics: hasSwitch,
-          onTap:
-              onTap ?? (onChanged != null ? () => onChanged!(!value!) : null),
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 56),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: theme.aiUi.softBackgroundColor,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.aiUi.borderColor),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final inline =
-                    status != null &&
-                    !hasSwitch &&
-                    _statusFitsBesideLabel(context, constraints.maxWidth);
-                final stacked = status != null && !hasSwitch && !inline;
-                final statusStyle = TextStyle(
-                  fontSize: 12,
-                  color: theme.aiUi.secondaryTextColor,
-                );
-                return Row(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        // 图标统一用品牌 primary 的低饱和底：绿/橙/红只留给状态。
-                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        icon,
-                        color: theme.colorScheme.primary,
-                        size: 16,
-                      ),
+      child: PressFeedback(
+        // 开关行的点击语义交给里面的 Switch，免得同一动作暴露两次。
+        excludeFromSemantics: hasSwitch,
+        onTap: onTap ?? (onChanged != null ? () => onChanged!(!value!) : null),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 56),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: theme.aiUi.softBackgroundColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: theme.aiUi.borderColor),
+          ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final inline =
+                  status != null &&
+                  !hasSwitch &&
+                  _statusFitsBesideLabel(context, constraints.maxWidth);
+              final stacked = status != null && !hasSwitch && !inline;
+              final statusStyle = TextStyle(
+                fontSize: 12,
+                color: theme.aiUi.secondaryTextColor,
+              );
+              return Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      // 图标统一用品牌 primary 的低饱和底：绿/橙/红只留给状态。
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(label, style: _labelStyle),
-                          if (stacked) ...[
-                            const SizedBox(height: 2),
-                            Text(status, style: statusStyle),
-                          ],
+                    child: Icon(
+                      icon,
+                      color: theme.colorScheme.primary,
+                      size: 16,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(label, style: _labelStyle),
+                        if (stacked) ...[
+                          const SizedBox(height: 2),
+                          Text(status, style: statusStyle),
                         ],
-                      ),
-                    ),
-                    if (hasSwitch)
-                      SizedBox(
-                        height: 32,
-                        child: Switch.adaptive(
-                          value: value!,
-                          onChanged: onChanged,
-                        ),
-                      )
-                    else ...[
-                      if (inline) ...[
-                        const SizedBox(width: 8),
-                        Text(status, style: statusStyle),
-                        const SizedBox(width: 4),
                       ],
-                      Icon(
-                        FluentIcons.chevron_right_24_regular,
-                        size: 16,
-                        color: theme.aiUi.secondaryTextColor,
+                    ),
+                  ),
+                  if (hasSwitch)
+                    SizedBox(
+                      height: 32,
+                      child: Switch.adaptive(
+                        value: value!,
+                        onChanged: onChanged,
                       ),
+                    )
+                  else ...[
+                    if (inline) ...[
+                      const SizedBox(width: 8),
+                      Text(status, style: statusStyle),
+                      const SizedBox(width: 4),
                     ],
+                    Icon(
+                      FluentIcons.chevron_right_24_regular,
+                      size: 16,
+                      color: theme.aiUi.secondaryTextColor,
+                    ),
                   ],
-                );
-              },
-            ),
+                ],
+              );
+            },
           ),
         ),
       ),

@@ -30,7 +30,7 @@ lib/
 └─ shared/<模块>/        不懂业务的通用 UI 与导航状态：components navigation
 ```
 
-`*.g.dart`、`*.freezed.dart` 等生成文件跟随所在目录，算作那一层，不单独豁免。
+`*.g.dart` 等生成文件跟随所在目录，算作那一层，不单独豁免。
 
 ### 依赖规则
 
@@ -363,7 +363,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 
 ## 已知技术债
 
-- `*.g.dart` / `*.freezed.dart` 提交进了 git（避免 fresh clone 跑 build_runner）。CI 接入后应该改回 ignore + CI 生成。
+- `*.g.dart` 提交进了 git（避免 fresh clone 跑 build_runner）。CI 接入后应该改回 ignore + CI 生成。
 - `core/build.sh` 不是发布用 libcore 的来源（见「内核版本」）。libcore 二进制目前由外部构建后挂到 GitHub Release tag，CI / release flow 已通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 libcore tag，并让 tag 名反映真实内核版本。
 - 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。

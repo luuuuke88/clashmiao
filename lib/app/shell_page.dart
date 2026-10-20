@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
+import 'package:clashmiao/app/system_ui.dart';
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
@@ -318,18 +319,7 @@ class _ShellPageState extends ConsumerState<ShellPage> {
       topPad = 0;
     }
 
-    final isLight = Theme.of(context).brightness == Brightness.light;
-    final overlayStyle = SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
-      statusBarBrightness: isLight ? Brightness.light : Brightness.dark,
-      systemNavigationBarColor: isLight
-          ? Colors.white
-          : const Color(0xFF16161A),
-      systemNavigationBarIconBrightness: isLight
-          ? Brightness.dark
-          : Brightness.light,
-    );
+    final overlayStyle = appSystemUiOverlayStyle(Theme.of(context).brightness);
 
     // Android 系统返回：停在非首页 tab 时先回首页，首页再按才退出。
     //

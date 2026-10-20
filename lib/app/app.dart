@@ -2,6 +2,7 @@ import 'package:clashmiao/core/localization/locale_extensions.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/app/router/app_router.dart';
+import 'package:clashmiao/app/system_ui.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -33,6 +34,8 @@ class ClashMiaoApp extends ConsumerWidget {
         darkTheme: theme.darkTheme(),
         themeMode: themeMode.flutterThemeMode,
         routerConfig: appRouter,
+        // 系统栏：全 App 兜底样式 + edge-to-edge（见 system_ui.dart）。
+        builder: (context, child) => SystemUiScope(child: child!),
       ),
     );
   }

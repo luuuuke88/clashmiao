@@ -1,3 +1,5 @@
+import 'package:clashmiao/shared/components/animated_mark.dart';
+
 import 'dart:math' as math;
 
 import 'package:clashmiao/core/logger/app_logger.dart';
@@ -924,12 +926,16 @@ class _AutoSelectCard extends HookConsumerWidget {
         margin: const EdgeInsets.only(bottom: 8),
         child: GlassCard(
           borderRadius: 14,
-          padding: const EdgeInsets.all(14),
+          // 选中描边 1.5 dp、未选中 1 dp：差的 0.5 dp 从内边距里扣掉，选中与否
+          // 整张卡一样高（与节点行同一做法），点选时下面的列表不会跳 1 dp。
+          padding: EdgeInsets.all(isSelected ? 13.5 : 14),
           borderColor: isSelected ? theme.colorScheme.primary : null,
           borderWidth: isSelected ? 1.5 : 1,
           child: Row(
             children: [
-              Container(
+              AnimatedContainer(
+                duration: Motion.duration(context, Motion.short),
+                curve: Motion.standard,
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
@@ -967,14 +973,28 @@ class _AutoSelectCard extends HookConsumerWidget {
                   ],
                 ),
               ),
-              if (isSelected)
-                Icon(FluentIcons.checkmark_24_filled, color: accent, size: 20)
-              else
-                Icon(
-                  FluentIcons.chevron_right_24_regular,
-                  size: 16,
-                  color: aiUi.secondaryTextColor,
+              // 对勾与箭头互换：交叉淡入淡出，占位固定 20 dp，文字不位移。
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Center(
+                  child: AnimatedMark(
+                    child: isSelected
+                        ? Icon(
+                            FluentIcons.checkmark_24_filled,
+                            key: const ValueKey('auto-check'),
+                            color: accent,
+                            size: 20,
+                          )
+                        : Icon(
+                            FluentIcons.chevron_right_24_regular,
+                            key: const ValueKey('auto-chevron'),
+                            size: 16,
+                            color: aiUi.secondaryTextColor,
+                          ),
+                  ),
                 ),
+              ),
             ],
           ),
         ),
@@ -1066,8 +1086,14 @@ class _ProxyTile extends ConsumerWidget {
             padding: EdgeInsets.zero,
             borderColor: isSelected ? primary : null,
             borderWidth: isSelected ? 1.5 : 1,
-            child: Ink(
-              color: isSelected ? primary.withValues(alpha: 0.08) : null,
+            // 选中底色渐变：选中 / 取消选中不是一帧之内换掉。
+            child: TweenAnimationBuilder<Color?>(
+              tween: ColorTween(
+                end: primary.withValues(alpha: isSelected ? 0.08 : 0),
+              ),
+              duration: Motion.duration(context, Motion.short),
+              curve: Motion.standard,
+              builder: (context, tint, inner) => Ink(color: tint, child: inner),
               child: InkWell(
                 onTap: onTap,
                 onLongPress: () => _showProxyNameModal(
@@ -1194,13 +1220,16 @@ class _ProxyTile extends ConsumerWidget {
                             SizedBox(
                               width: 18,
                               height: 18,
-                              child: isSelected
-                                  ? Icon(
-                                      FluentIcons.checkmark_24_filled,
-                                      size: 18,
-                                      color: primary,
-                                    )
-                                  : null,
+                              child: AnimatedMark(
+                                child: isSelected
+                                    ? Icon(
+                                        FluentIcons.checkmark_24_filled,
+                                        key: const ValueKey('tile-check'),
+                                        size: 18,
+                                        color: primary,
+                                      )
+                                    : null,
+                              ),
                             ),
                           ],
                         );

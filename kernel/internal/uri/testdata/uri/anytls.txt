@@ -1,0 +1,12 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 anytls 的表驱动测试生成（go test ./internal/uri -update）。
+anytls://pw1@a1.example.net:443?sni=a1.example.net#a1
+anytls://pw2@a2.example.net:443#a2
+anytls://pw3@a3.example.net:443?insecure=1#a3
+anytls://pw4@a4.example.net:443?alpn=h2&fp=chrome#a4
+anytls://p%3Aw%40@a5.example.net:443#a5
+anytls://u:p@a6.example.net:443#a6
+anytls://pw7@[2001:db8::13]:443?sni=v6.example.net#v6
+anytls://pw8@a8.example.net:8443
+anytls://pw9@a9.example.net:443#%E6%96%B0%E5%8A%A0%E5%9D%A1
+anytls://pw10@a10.example.net:443?peer=p.example.net#a10

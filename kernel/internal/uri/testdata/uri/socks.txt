@@ -1,0 +1,14 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 socks 的表驱动测试生成（go test ./internal/uri -update）。
+socks5://user:pass@s1.example.net:1080#s1
+socks5://s2.example.net:1080#s2
+socks://dXNlcjM6cGFzczM@s3.example.net:1080#s3
+socks://user4:pass4@s4.example.net:1080#s4
+socks5h://s5.example.net:1080#s5
+socks4://s6.example.net:1080#s6
+socks4a://s7.example.net:1080#s7
+socks5://onlyuser@s8.example.net:1080#s8
+socks5://u:p%40ss@s9.example.net:1080#s9
+socks5://[2001:db8::14]:1080#v6
+socks5://192.0.2.15:1080
+socks://name!@s12.example.net:1080#s12

@@ -1,0 +1,12 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 hysteria 的表驱动测试生成（go test ./internal/uri -update）。
+hysteria://h1.example.net:443?auth=a1&upmbps=50&downmbps=100&peer=h1.example.net#h1
+hysteria://h2.example.net:443?auth=a2&upmbps=10&downmbps=20&insecure=1&alpn=hysteria#h2
+hysteria://h3.example.net:443?auth=a3&upmbps=10&downmbps=20&obfs=xplus&obfsParam=op3#h3
+hysteria://h4.example.net:443?auth=a4&upmbps=10&downmbps=20&mport=10000-20000#h4
+hysteria://h5.example.net:443?protocol=udp&auth=a5&upmbps=10&downmbps=20#h5
+hysteria://h6.example.net:443?auth=a6&upmbps=10&downmbps=20&sni=front.example.net#h6
+hysteria://h7.example.net:443?auth=a7&upmbps=10%20mbps&downmbps=1%20gbps#h7
+hysteria://[2001:db8::11]:443?auth=a8&upmbps=10&downmbps=20&peer=v6.example.net#v6
+hysteria://h9.example.net:443?upmbps=10&downmbps=20#h9
+hysteria://h10.example.net:8443?auth=a10&upmbps=10&downmbps=20

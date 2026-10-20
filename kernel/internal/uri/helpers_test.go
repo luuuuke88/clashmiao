@@ -31,6 +31,8 @@ type convCase struct {
 	want     map[string]any
 	endpoint bool   // 期望是端点
 	err      string // 非空：期望 Convert 失败且错误含这段文字（并满足 ErrInvalid）
+	// noSample：输入里的值是占位（例如不是真的 SSH 私钥），能转换但过不了内核的 CheckConfig，所以不进样例文件。
+	noSample bool
 }
 
 // m 是写期望 map 的简写。
@@ -113,7 +115,7 @@ func runCases(t *testing.T, group string, cases []convCase) {
 				t.Errorf("legacy.Clean 改动了 Convert 的输出:\n%s\n%s", jsonOf(ent.Map), jsonOf(after))
 			}
 		})
-		if tc.err == "" {
+		if tc.err == "" && !tc.noSample {
 			valid = append(valid, tc.in)
 		}
 	}

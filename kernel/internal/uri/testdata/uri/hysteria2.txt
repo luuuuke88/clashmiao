@@ -1,0 +1,13 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 hysteria2 的表驱动测试生成（go test ./internal/uri -update）。
+hysteria2://pw1@h.example.net:443?sni=h.example.net#h1
+hy2://pw2@h2.example.net:443#h2
+hysteria2://pw3@h3.example.net:443?obfs=salamander&obfs-password=op3&sni=h3.example.net#h3
+hysteria2://pw4@h4.example.net:8443?insecure=1&alpn=h3&sni=front.example.net#h4
+hysteria2://pw5@h5.example.net:443?mport=20000-30000&sni=h5.example.net#h5
+hysteria2://pw6@h6.example.net:443?mport=20000-30000,40000-50000,60000#h6
+hysteria2://pw7@h7.example.net?mport=30000-31000#h7
+hysteria2://pw8@h8.example.net:443?up=50%20mbps&down=1%20gbps#h8
+hysteria2://user:secret@h9.example.net:443#h9
+hysteria2://pw10@[2001:db8::10]:443?sni=v6.example.net#v6
+hysteria2://pw11@n.example.net:443#%E6%97%A5%E6%9C%AC%2001

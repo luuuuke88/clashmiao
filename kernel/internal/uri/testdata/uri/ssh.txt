@@ -1,0 +1,13 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 ssh 的表驱动测试生成（go test ./internal/uri -update）。
+ssh://user:pass@h1.example.net:22#h1
+ssh://:pass@h2.example.net#h2
+ssh://user:pass@h6.example.net:22?client_version=SSH-2.0-test#h6
+ssh://u:p%40ss@h7.example.net:22#h7
+ssh://u:p@[2001:db8::16]:22#v6
+ssh://u:p@h9.example.net
+ssh://u:p@h10.example.net:22#%E8%B7%B3%E6%9D%BF
+ssh://root:pw@h11.example.net:2200#h11
+ssh://deploy.user:pw@h12.example.net:22#h12
+ssh://u:p%3Aw@h13.example.net:22#h13
+ssh://u:p@h14.example.net:22?client_version=SSH-2.0-OpenSSH_9.0#h14

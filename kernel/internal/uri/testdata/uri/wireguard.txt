@@ -1,0 +1,14 @@
+# 合成数据：主机用 example.net / RFC 5737 / RFC 3849 保留地址，UUID、密钥、密码均为随机生成，不对应任何真实服务器与凭据。
+# 每行是一个能成功转换的分享链接；由 wireguard 的表驱动测试生成（go test ./internal/uri -update）。
+wg://w1.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&address=10.0.0.2%2F32#w1
+wireguard://AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D@w2.example.net:51820?publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.3#w2
+wg://w3.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&address=10.0.0.4,fd00::4#w3
+wg://w4.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.5&ipv6=fd00::5#w4
+wg://w5.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.6&reserved=1,2,3#w5
+wg://w6.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.7&reserved=AQID#w6
+wg://w7.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.8&mtu=1280&presharedKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D#w7
+wg://w8.example.net:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.9&allowedIPs=10.0.0.0/8,192.168.0.0/16#w8
+wg://[2001:db8::17]:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.10#v6
+wg://192.0.2.18:51820?privateKey=AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.11
+wg://w12.example.net:51820?privateKey=%2B%2Fv7%2B%2Fv7%2B%2Fv7%2B%2Fv7%2B%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F%2F8%3D&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.12#w12
+wg://w13.example.net:51820?privateKey=+/v7+/v7+/v7+/v7+/////////////////////8=&publicKey=ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8%3D&ip=10.0.0.13#w13

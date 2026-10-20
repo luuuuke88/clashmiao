@@ -35,10 +35,32 @@ docker run --rm -v "$PWD/core/sing-box:/src" \
 {"domain": ["265.com", ...], "domain_suffix": [".baidu", ...], "ip_cidr": ["1.0.1.0/24", ...]}
 ```
 
-再据此重新生成 `lib/domain/config/data/cn_direct_rules.dart`：`ip_cidr` 进
-`cnDirectCidrRanges`，`domain` 进 `cnDirectDomains`（注入时加 `full:` 前缀），
-`domain_suffix` 进 `cnDirectDomainSuffixes`（加 `domain:` 前缀）。两个前缀
-语义不同不能混用。
+再跑生成器，据此重新生成 `lib/domain/config/data/cn_direct_rules.dart`：
+
+```bash
+dart tools/srsdump/gen_cn_direct_rules.dart out/site.json out/ip.json
+```
+
+生成器做两件事：
+
+1. **应用排除表** [`cn_direct_exclusions.txt`](cn_direct_exclusions.txt)：
+   geosite-cn 里带着一批谷歌系域名（当年谷歌北京节点还在时可直连），现在在
+   大陆网络下直连全部超时。排除表里的域名连同子域从精确/后缀清单里删掉，
+   排除表里的地址段（谷歌北京 GOOGLECN 段）从 CIDR 清单里挖掉。仍会盖住被
+   排除域名的更宽后缀（顶级域 `cn` 盖住 `google.cn`）改写成一条"同样的后缀
+   匹配、但跳过被排除域名"的正则，进 `cnDirectDomainRegexes`——否则删掉的
+   条目会被 `cn` 重新捞回直连。排除逻辑在 [`cn_direct_filter.dart`](cn_direct_filter.dart)，
+   单元测试和生成器共用同一份。
+2. **写出 Dart 文件**：`ip_cidr` 进 `cnDirectCidrRanges`，`domain` 进
+   `cnDirectDomains`（注入时加 `full:` 前缀），`domain_suffix` 进
+   `cnDirectDomainSuffixes`（加 `domain:` 前缀），改写出的正则进
+   `cnDirectDomainRegexes`（加 `regexp:` 前缀）。几个前缀语义不同不能混用。
+   这次排除了哪些条目会打印到 stderr，提交前核对一遍。
+
+规则库升级或排除表改动后，重跑上面两步即可，排除表每次都会自动重新应用；
+`test/domain/config/data/cn_direct_rules_test.dart` 里有一条按谷歌系关键词
+兜底的测试，新数据冒出排除表没覆盖的谷歌域名会直接失败，届时补进排除表再
+重新生成。
 
 ## 原理
 

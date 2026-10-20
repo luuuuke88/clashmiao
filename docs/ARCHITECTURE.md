@@ -195,7 +195,7 @@ native 层依赖 `android/app/libs/libcore.aar`（gomobile 生成的 libbox 包�
 
 当前打包的内核是 **sing-box v1.8.9**，由 Go 1.22 系列编译。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libbox.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.8.9`，Go 版本为 `go1.22.0`；macOS 的 `libcore/bin/libcore.dylib` 用同样方法读到同样的 sing-box 版本（Go 为 `go1.22.3`）。
 
-`bin/fetch-libcore.sh` 与 CI 里默认拉取的 Release tag 叫 `libcore-v1.11.0`（可用环境变量 `LIBCORE_TAG` 覆盖）。**这只是打包用的 tag 名，不是 sing-box 的版本号。** `core/build.sh` 里的 `SINGBOX_VERSION="1.11.0"` 同理不代表实际内核：该脚本克隆上游 sing-box 源码，而它构建移动端用的 `./mobile` 包在那份源码里并不存在，所以当前发布的 libcore 并不是它产出的。
+`bin/fetch-libcore.sh` 与 CI 里默认拉取的 Release tag 叫 `libcore-v1.8.9-16k`（可用环境变量 `LIBCORE_TAG` 覆盖），对应实际内核 sing-box 1.8.9 分支；其中 Android aar 由 `tools/libcore/build-android.sh` 从源码重编、按 16 KB 页对齐。更早的 `libcore-v1.11.0` **只是打包用的 tag 名，不是 sing-box 的版本号。** `core/build.sh` 里的 `SINGBOX_VERSION="1.11.0"` 同理不代表实际内核：该脚本克隆上游 sing-box 源码，而它构建移动端用的 `./mobile` 包在那份源码里并不存在，所以当前发布的 libcore 并不是它产出的。
 
 ### 桌面侧（FFI）
 

@@ -84,7 +84,7 @@ flutter build linux --release
 
 ### libcore 二进制分发 ✅
 
-5 个平台的 libcore 走 GitHub Release tag（当前为 `libcore-v1.11.0`，只是打包标签名，不等于内核版本），`bin/fetch-libcore.sh` 统一拉取。详见 README + ARCHITECTURE。
+5 个平台的 libcore 走 GitHub Release tag（当前为 `libcore-v1.8.9-16k`：内核 sing-box 1.8.9 分支，Android aar 按 16 KB 页对齐重编），`bin/fetch-libcore.sh` 统一拉取。详见 README + ARCHITECTURE。
 
 ### CI/CD ✅
 
@@ -106,6 +106,6 @@ flutter build linux --release
 
 ### 已知风险
 
-- **核心库版本**：当前打包的内核是 sing-box `v1.8.9`（读 `libbox.so` 的构建信息核实）。Release tag 名 `libcore-v1.11.0` 只是打包标签，不是内核版本；上游升级后要重 build，并让 tag 名反映真实内核版本
+- **核心库版本**：当前打包的内核是 sing-box `v1.8.9`（读 `libbox.so` 的构建信息核实）。当前 Release tag `libcore-v1.8.9-16k` 已反映真实内核版本（旧 tag `libcore-v1.11.0` 只是打包标签）；Android aar 用 `tools/libcore/build-android.sh` 可复现重编
 - **Apple 政策**：iOS NetworkExtension 在 App Store 审核越来越严，VPN 类需证明合理用途
 - **协议**：当前 GPL-3.0；若日后闭源 / 商业化，需重新评估各平台 native 实现的协议出处

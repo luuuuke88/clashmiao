@@ -221,6 +221,48 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
     });
 
+    testWidgets('检查中：箭头与转圈淡入淡出互换，结束后箭头回来', (tester) async {
+      tester.view.physicalSize = const Size(430, 932);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        await _host(
+          extraOverrides: [
+            updateCheckProvider.overrideWith(
+              (_) => Future<UpdateCheckResult>.delayed(
+                const Duration(seconds: 1),
+                () => const UpdateCheckResult.failed(),
+              ),
+            ),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const ValueKey('update-chevron')), findsOneWidget);
+
+      await tester.tap(find.text('检查更新'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      // 过渡中：箭头还在淡出，转圈已出现。
+      expect(find.byKey(const ValueKey('update-checking')), findsOneWidget);
+      expect(find.byKey(const ValueKey('update-chevron')), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.byKey(const ValueKey('update-chevron')), findsNothing);
+
+      // 检查结束（失败）：转圈淡出，箭头回来。
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+      expect(find.byKey(const ValueKey('update-checking')), findsNothing);
+      expect(find.byKey(const ValueKey('update-chevron')), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+      toastification.dismissAll(delayForAnimation: false);
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
     testWidgets('provider 自己抛异常也按失败处理，加载态会恢复', (tester) async {
       tester.view.physicalSize = const Size(430, 932);
       tester.view.devicePixelRatio = 1;

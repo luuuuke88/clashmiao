@@ -1,3 +1,4 @@
+import 'package:clashmiao/shared/components/animated_mark.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 
 import 'dart:async';
@@ -114,17 +115,28 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                             icon: FluentIcons.arrow_sync_24_regular,
                             iconColor: brandIconColor,
                             label: t.about.checkForUpdate,
-                            trailing: _checkingUpdate
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: MotionProgress(),
-                                  )
-                                : _Chevron(
-                                    color: Theme.of(context)
-                                        .aiUi
-                                        .secondaryTextColor,
-                                  ),
+                            // 箭头 ↔ 转圈：固定 20 dp 占位，淡入淡出互换，不是硬换。
+                            trailing: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Center(
+                                child: AnimatedMark(
+                                  child: _checkingUpdate
+                                      ? const SizedBox(
+                                          key: ValueKey('update-checking'),
+                                          width: 20,
+                                          height: 20,
+                                          child: MotionProgress(),
+                                        )
+                                      : _Chevron(
+                                          key: const ValueKey('update-chevron'),
+                                          color: Theme.of(context)
+                                              .aiUi
+                                              .secondaryTextColor,
+                                        ),
+                                ),
+                              ),
+                            ),
                             onTap: _checkingUpdate
                                 ? null
                                 : () => _checkForUpdate(context, t),
@@ -339,7 +351,7 @@ class _AboutTile extends StatelessWidget {
 }
 
 class _Chevron extends StatelessWidget {
-  const _Chevron({required this.color});
+  const _Chevron({super.key, required this.color});
 
   final Color color;
 

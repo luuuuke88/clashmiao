@@ -87,3 +87,7 @@ docs/superpowers/
 .flutter-plugins
 .flutter-plugins-dependencies
 /tools/libcore/upstream.local
+
+# 内核名称守卫的词表（不入库；CI 里由 secret KERNEL_DENYLIST 写入）
+/tools/kernel/denylist.local
+/kernel/build/

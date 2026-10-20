@@ -1,0 +1,5 @@
+# 允许出现的完整 token（Java 包名；Kotlin 的 import 与文档代码段里不可避免）。
+# 守卫在比对词表前先把这些完整 token 从行里剔除；token 以外的出现照常失败。
+# 本文件按精确路径从扫描中排除。
+io.nekohasekai.libbox
+io.nekohasekai.mobile

@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/shared/components/page_header.dart';
+import 'package:clashmiao/shared/components/sub_page_scaffold.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
@@ -130,362 +130,332 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
       });
     }
 
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+    // 与日志、分应用线路同一个二级页外框：页头固定、右侧玻璃胶囊（更多 + 关闭）。
+    return SubPageScaffold(
+      title: t.config.pageTitle,
+      closeLabel: t.general.close,
+      actions: [
+        HeaderPillButton(
+          icon: resolveAdaptiveIcon(
+            apple: FluentIcons.more_horizontal_24_regular,
+            other: FluentIcons.more_vertical_24_regular,
+          ),
+          label: t.general.showMore,
+          onTap: () => showAiUiModal<void>(
+            context: context,
+            builder: (_) => const _ConfigOptionsActionsModal(),
+          ),
+        ),
+      ],
+      body: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: SingleChildScrollView(
+          controller: _scrollController,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 24),
-              // 与其它页同一个 PageHeader：标题可折行，大字号 / 窄屏下右侧胶囊
-              // 按钮不被挤出屏。
-              PageHeader(
-                title: t.config.pageTitle,
-                actions: [
-                  _HeaderControlPill(
-                    onMore: () => showAiUiModal<void>(
-                      context: context,
-                      builder: (_) => const _ConfigOptionsActionsModal(),
-                    ),
-                    onClose: () => Navigator.of(context).maybePop(),
-                    moreLabel: t.general.showMore,
-                    closeLabel: t.general.close,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Expanded(
-                child: SingleChildScrollView(
-                  controller: _scrollController,
-                  child: Column(
+              TipCard(message: t.settings.experimentalMsg)
+                  .animateWithMotion(context)
+                  .fadeIn(duration: Motion.long)
+                  .slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 16),
+              _ConfigGroup(
+                    title: t.config.section.route,
+                    icon: FluentIcons.router_24_regular,
+                    iconColor: Colors.blue,
                     children: [
-                      TipCard(message: t.settings.experimentalMsg)
-                          .animateWithMotion(context)
-                          .fadeIn(duration: Motion.long)
-                          .slideY(begin: 0.1, end: 0),
-                      const SizedBox(height: 16),
-                      _ConfigGroup(
-                            title: t.config.section.route,
-                            icon: FluentIcons.router_24_regular,
-                            iconColor: Colors.blue,
-                            children: [
-                              _ChoiceTile<String>(
-                                title: t.config.logLevel,
-                                subtitle: settings.logLevel.toUpperCase(),
-                                icon: FluentIcons.document_text_24_regular,
-                                selected: settings.logLevel,
-                                choices: _logLevelChoices,
-                                itemLabel: (value) => value.toUpperCase(),
-                                itemIcon: (value) => switch (value) {
-                                  'trace' =>
-                                    FluentIcons.text_bullet_list_24_regular,
-                                  'debug' => FluentIcons.bug_24_regular,
-                                  'info' => FluentIcons.info_24_regular,
-                                  _ => FluentIcons.warning_24_regular,
-                                },
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setLogLevel(value),
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.settings.general.region,
-                                subtitle: _regionLabel(t, settings.region),
-                                icon: FluentIcons.globe_24_regular,
-                                selected: settings.region,
-                                choices: _regionChoices,
-                                itemLabel: (value) => _regionLabel(t, value),
-                                itemIcon: (_) => FluentIcons.globe_24_regular,
-                                onSelected: (value) => _setRegion(ref, value),
-                              ),
-                              _ConfigSwitchTile(
-                                title: _experimental(t, t.config.blockAds),
-                                value: settings.blockAds,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setBlockAds(value),
-                                icon: FluentIcons.shield_dismiss_24_regular,
-                              ),
-                              _ConfigSwitchTile(
-                                title: _experimental(t, t.config.bypassLan),
-                                value: settings.bypassLan,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setBypassLan(value),
-                                icon: FluentIcons.cloud_off_24_regular,
-                              ),
-                              _ConfigSwitchTile(
-                                title: t.config.resolveDestination,
-                                value: settings.resolveDestination,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setResolveDestination(value),
-                                icon: FluentIcons.search_24_regular,
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.config.ipv6Mode,
-                                subtitle: _ipv6ModeLabel(t, settings.ipv6Mode),
-                                icon: FluentIcons.data_usage_24_regular,
-                                selected: settings.ipv6Mode,
-                                choices: _ipv6ModeChoices,
-                                itemLabel: (value) => _ipv6ModeLabel(t, value),
-                                itemIcon: (_) =>
-                                    FluentIcons.data_usage_24_regular,
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setIpv6Mode(value),
-                              ),
-                            ],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 100.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      _ConfigGroup(
-                            title: t.config.section.dns,
-                            icon: FluentIcons.earth_24_regular,
-                            iconColor: Colors.teal,
-                            children: [
-                              _ValueTile(
-                                title: t.config.remoteDnsAddress,
-                                subtitle: settings.remoteDnsAddress,
-                                icon: FluentIcons.cloud_link_24_regular,
-                                onTap: () => _showDnsEditor(context, ref, t),
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.config.remoteDnsDomainStrategy,
-                                subtitle: _domainStrategyLabel(
-                                  settings.remoteDnsDomainStrategy,
-                                ),
-                                icon: FluentIcons.branch_24_regular,
-                                selected: settings.remoteDnsDomainStrategy,
-                                choices: _domainStrategyChoices,
-                                itemLabel: _domainStrategyLabel,
-                                itemIcon: (_) => FluentIcons.branch_24_regular,
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setRemoteDnsDomainStrategy(value),
-                              ),
-                              _ValueTile(
-                                title: t.config.directDnsAddress,
-                                subtitle: settings.directDnsAddress,
-                                icon: FluentIcons.link_24_regular,
-                                onTap: () =>
-                                    _showDirectDnsEditor(context, ref, t),
-                              ),
-                              _ChoiceTile<String>(
-                                title: t.config.directDnsDomainStrategy,
-                                subtitle: _domainStrategyLabel(
-                                  settings.directDnsDomainStrategy,
-                                ),
-                                icon: FluentIcons.branch_24_regular,
-                                selected: settings.directDnsDomainStrategy,
-                                choices: _domainStrategyChoices,
-                                itemLabel: _domainStrategyLabel,
-                                itemIcon: (_) => FluentIcons.branch_24_regular,
-                                onSelected: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setDirectDnsDomainStrategy(value),
-                              ),
-                              _ConfigSwitchTile(
-                                title: t.config.enableDnsRouting,
-                                value: settings.enableDnsRouting,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setEnableDnsRouting(value),
-                                icon: FluentIcons.directions_24_regular,
-                              ),
-                            ],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 200.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      _ConfigGroup(
-                            title: t.config.section.inbound,
-                            icon: FluentIcons.box_arrow_left_24_regular,
-                            iconColor: Colors.orange,
-                            children: [
-                              // 只有一档的平台（iOS 恒为 VPN）不给选择器，只展示
-                              // 当前值并说明边界——点开一个只有一个选项的列表
-                              // 本身就是假入口。
-                              if (serviceModeIsFixed) ...[
-                                _BasePreferenceTile(
-                                  title: t.config.serviceMode,
-                                  subtitle: _presentServiceMode(t, settings),
-                                  icon: FluentIcons.settings_24_regular,
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    8,
-                                  ),
-                                  child: TipCard(
-                                    message: t.config.serviceModeIosVpnOnly,
-                                  ),
-                                ),
-                              ] else
-                                _ChoiceTile<ServiceMode>(
-                                  title: t.config.serviceMode,
-                                  subtitle: _presentServiceMode(t, settings),
-                                  icon: FluentIcons.settings_24_regular,
-                                  selected: serviceModeOf(settings),
-                                  choices: serviceModeChoices(settings),
-                                  itemLabel: (value) =>
-                                      _serviceModeLabel(t, value),
-                                  itemIcon: (value) => switch (value) {
-                                    ServiceMode.proxyOnly =>
-                                      FluentIcons.plug_disconnected_24_regular,
-                                    ServiceMode.systemProxy =>
-                                      FluentIcons.globe_search_24_regular,
-                                    ServiceMode.vpn =>
-                                      FluentIcons.arrow_routing_24_regular,
-                                  },
-                                  onSelected: (value) => applyServiceMode(
-                                    ref.read(networkSettingsProvider.notifier),
-                                    value,
-                                  ),
-                                ),
-                              // 桌面端（未开 TUN 时）只做到"系统代理级接管"，
-                              // 不遵循系统代理的程序会直连、暴露真实 IP。这是
-                              // 当前架构的边界，作为 VPN 产品必须让用户知道。
-                              if (serviceModePlatform ==
-                                      ServiceModePlatform.desktop &&
-                                  !kernelEnableTun(settings))
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    16,
-                                    0,
-                                    16,
-                                    8,
-                                  ),
-                                  child: TipCard(
-                                    message: t.config.desktopProxyScopeNotice,
-                                  ),
-                                ),
-                              // 严格路由与 TUN 实现只对 TUN 起作用：内核不以 TUN
-                              // 运行时（Android「仅线路」、桌面未开 TUN）不展示。
-                              if (tunSettingsTakeEffect(settings)) ...[
-                                _ConfigSwitchTile(
-                                  title: t.config.strictRoute,
-                                  value: settings.strictRoute,
-                                  onChanged: (value) => ref
-                                      .read(networkSettingsProvider.notifier)
-                                      .setStrictRoute(value),
-                                  icon: FluentIcons.prohibited_24_regular,
-                                ),
-                                _ChoiceTile<String>(
-                                  title: t.config.tunImplementation,
-                                  subtitle: settings.tunImplementation,
-                                  icon: FluentIcons.keyboard_24_regular,
-                                  selected: settings.tunImplementation,
-                                  choices: _tunImplementationChoices,
-                                  itemLabel: (value) => value,
-                                  itemIcon: (_) =>
-                                      FluentIcons.keyboard_24_regular,
-                                  onSelected: (value) => ref
-                                      .read(networkSettingsProvider.notifier)
-                                      .setTunImplementation(value),
-                                ),
-                              ],
-                              _ValueTile(
-                                title: t.config.mixedPort,
-                                subtitle: '${settings.mixedPort}',
-                                icon: FluentIcons.connector_24_regular,
-                                onTap: () => _showPortEditor(context, ref, t),
-                              ),
-                              _ConfigSwitchTile(
-                                title: _experimental(
-                                  t,
-                                  t.config.allowConnectionFromLan,
-                                ),
-                                value: settings.allowConnectionFromLan,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setAllowLan(value),
-                                icon: FluentIcons.wifi_1_24_regular,
-                              ),
-                            ],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 300.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      _ConfigGroup(
-                            title: _experimental(t, t.config.section.tlsTricks),
-                            icon: FluentIcons.lock_shield_24_regular,
-                            iconColor: Colors.purple,
-                            children: [
-                              _ConfigSwitchTile(
-                                title: t.config.enableTlsFragment,
-                                value: settings.enableTlsFragment,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setEnableTlsFragment(value),
-                                icon: FluentIcons.puzzle_piece_24_regular,
-                              ),
-                              _ValueTile(
-                                title: t.config.tlsFragmentSize,
-                                subtitle: settings.tlsFragmentSize,
-                                icon: FluentIcons.resize_24_regular,
-                                onTap: () =>
-                                    _showTlsFragmentSizeEditor(context, ref, t),
-                              ),
-                              _ConfigSwitchTile(
-                                title: t.config.enableTlsPadding,
-                                value: settings.enableTlsPadding,
-                                onChanged: (value) => ref
-                                    .read(networkSettingsProvider.notifier)
-                                    .setEnableTlsPadding(value),
-                                icon: FluentIcons.shield_keyhole_24_regular,
-                              ),
-                            ],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 400.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      _ConfigGroup(
-                            title: _experimental(t, t.config.section.warp),
-                            icon: FluentIcons.shield_keyhole_24_regular,
-                            iconColor: Colors.indigo,
-                            children: const [_WarpOptionsTiles()],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 500.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      _ConfigGroup(
-                            title: t.config.section.misc,
-                            icon: FluentIcons.app_folder_24_regular,
-                            iconColor: Colors.grey,
-                            children: [
-                              _ValueTile(
-                                title: t.config.connectionTestUrl,
-                                subtitle: settings.connectionTestUrl,
-                                icon: FluentIcons.globe_24_regular,
-                                onTap: () => _showConnectionTestUrlEditor(
-                                  context,
-                                  ref,
-                                  t,
-                                ),
-                              ),
-                              _ValueTile(
-                                title: t.config.urlTestInterval,
-                                subtitle: _formatInterval(
-                                  settings.urlTestIntervalSeconds,
-                                ),
-                                icon: FluentIcons.timer_24_regular,
-                                onTap: () =>
-                                    _showUrlTestIntervalEditor(context, ref, t),
-                              ),
-                            ],
-                          )
-                          .animateWithMotion(context)
-                          .fadeIn(delay: 600.ms)
-                          .slideY(begin: 0.1, end: 0),
-                      const SizedBox(height: 120),
+                      _ChoiceTile<String>(
+                        title: t.config.logLevel,
+                        subtitle: settings.logLevel.toUpperCase(),
+                        icon: FluentIcons.document_text_24_regular,
+                        selected: settings.logLevel,
+                        choices: _logLevelChoices,
+                        itemLabel: (value) => value.toUpperCase(),
+                        itemIcon: (value) => switch (value) {
+                          'trace' => FluentIcons.text_bullet_list_24_regular,
+                          'debug' => FluentIcons.bug_24_regular,
+                          'info' => FluentIcons.info_24_regular,
+                          _ => FluentIcons.warning_24_regular,
+                        },
+                        onSelected: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setLogLevel(value),
+                      ),
+                      _ChoiceTile<String>(
+                        title: t.settings.general.region,
+                        subtitle: _regionLabel(t, settings.region),
+                        icon: FluentIcons.globe_24_regular,
+                        selected: settings.region,
+                        choices: _regionChoices,
+                        itemLabel: (value) => _regionLabel(t, value),
+                        itemIcon: (_) => FluentIcons.globe_24_regular,
+                        onSelected: (value) => _setRegion(ref, value),
+                      ),
+                      _ConfigSwitchTile(
+                        title: _experimental(t, t.config.blockAds),
+                        value: settings.blockAds,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setBlockAds(value),
+                        icon: FluentIcons.shield_dismiss_24_regular,
+                      ),
+                      _ConfigSwitchTile(
+                        title: _experimental(t, t.config.bypassLan),
+                        value: settings.bypassLan,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setBypassLan(value),
+                        icon: FluentIcons.cloud_off_24_regular,
+                      ),
+                      _ConfigSwitchTile(
+                        title: t.config.resolveDestination,
+                        value: settings.resolveDestination,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setResolveDestination(value),
+                        icon: FluentIcons.search_24_regular,
+                      ),
+                      _ChoiceTile<String>(
+                        title: t.config.ipv6Mode,
+                        subtitle: _ipv6ModeLabel(t, settings.ipv6Mode),
+                        icon: FluentIcons.data_usage_24_regular,
+                        selected: settings.ipv6Mode,
+                        choices: _ipv6ModeChoices,
+                        itemLabel: (value) => _ipv6ModeLabel(t, value),
+                        itemIcon: (_) => FluentIcons.data_usage_24_regular,
+                        onSelected: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setIpv6Mode(value),
+                      ),
                     ],
-                  ),
-                ),
-              ),
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 100.ms)
+                  .slideY(begin: 0.1, end: 0),
+              _ConfigGroup(
+                    title: t.config.section.dns,
+                    icon: FluentIcons.earth_24_regular,
+                    iconColor: Colors.teal,
+                    children: [
+                      _ValueTile(
+                        title: t.config.remoteDnsAddress,
+                        subtitle: settings.remoteDnsAddress,
+                        icon: FluentIcons.cloud_link_24_regular,
+                        onTap: () => _showDnsEditor(context, ref, t),
+                      ),
+                      _ChoiceTile<String>(
+                        title: t.config.remoteDnsDomainStrategy,
+                        subtitle: _domainStrategyLabel(
+                          settings.remoteDnsDomainStrategy,
+                        ),
+                        icon: FluentIcons.branch_24_regular,
+                        selected: settings.remoteDnsDomainStrategy,
+                        choices: _domainStrategyChoices,
+                        itemLabel: _domainStrategyLabel,
+                        itemIcon: (_) => FluentIcons.branch_24_regular,
+                        onSelected: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setRemoteDnsDomainStrategy(value),
+                      ),
+                      _ValueTile(
+                        title: t.config.directDnsAddress,
+                        subtitle: settings.directDnsAddress,
+                        icon: FluentIcons.link_24_regular,
+                        onTap: () => _showDirectDnsEditor(context, ref, t),
+                      ),
+                      _ChoiceTile<String>(
+                        title: t.config.directDnsDomainStrategy,
+                        subtitle: _domainStrategyLabel(
+                          settings.directDnsDomainStrategy,
+                        ),
+                        icon: FluentIcons.branch_24_regular,
+                        selected: settings.directDnsDomainStrategy,
+                        choices: _domainStrategyChoices,
+                        itemLabel: _domainStrategyLabel,
+                        itemIcon: (_) => FluentIcons.branch_24_regular,
+                        onSelected: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setDirectDnsDomainStrategy(value),
+                      ),
+                      _ConfigSwitchTile(
+                        title: t.config.enableDnsRouting,
+                        value: settings.enableDnsRouting,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setEnableDnsRouting(value),
+                        icon: FluentIcons.directions_24_regular,
+                      ),
+                    ],
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 200.ms)
+                  .slideY(begin: 0.1, end: 0),
+              _ConfigGroup(
+                    title: t.config.section.inbound,
+                    icon: FluentIcons.box_arrow_left_24_regular,
+                    iconColor: Colors.orange,
+                    children: [
+                      // 只有一档的平台（iOS 恒为 VPN）不给选择器，只展示
+                      // 当前值并说明边界——点开一个只有一个选项的列表
+                      // 本身就是假入口。
+                      if (serviceModeIsFixed) ...[
+                        _BasePreferenceTile(
+                          title: t.config.serviceMode,
+                          subtitle: _presentServiceMode(t, settings),
+                          icon: FluentIcons.settings_24_regular,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: TipCard(
+                            message: t.config.serviceModeIosVpnOnly,
+                          ),
+                        ),
+                      ] else
+                        _ChoiceTile<ServiceMode>(
+                          title: t.config.serviceMode,
+                          subtitle: _presentServiceMode(t, settings),
+                          icon: FluentIcons.settings_24_regular,
+                          selected: serviceModeOf(settings),
+                          choices: serviceModeChoices(settings),
+                          itemLabel: (value) => _serviceModeLabel(t, value),
+                          itemIcon: (value) => switch (value) {
+                            ServiceMode.proxyOnly =>
+                              FluentIcons.plug_disconnected_24_regular,
+                            ServiceMode.systemProxy =>
+                              FluentIcons.globe_search_24_regular,
+                            ServiceMode.vpn =>
+                              FluentIcons.arrow_routing_24_regular,
+                          },
+                          onSelected: (value) => applyServiceMode(
+                            ref.read(networkSettingsProvider.notifier),
+                            value,
+                          ),
+                        ),
+                      // 桌面端（未开 TUN 时）只做到"系统代理级接管"，
+                      // 不遵循系统代理的程序会直连、暴露真实 IP。这是
+                      // 当前架构的边界，作为 VPN 产品必须让用户知道。
+                      if (serviceModePlatform == ServiceModePlatform.desktop &&
+                          !kernelEnableTun(settings))
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: TipCard(
+                            message: t.config.desktopProxyScopeNotice,
+                          ),
+                        ),
+                      // 严格路由与 TUN 实现只对 TUN 起作用：内核不以 TUN
+                      // 运行时（Android「仅线路」、桌面未开 TUN）不展示。
+                      if (tunSettingsTakeEffect(settings)) ...[
+                        _ConfigSwitchTile(
+                          title: t.config.strictRoute,
+                          value: settings.strictRoute,
+                          onChanged: (value) => ref
+                              .read(networkSettingsProvider.notifier)
+                              .setStrictRoute(value),
+                          icon: FluentIcons.prohibited_24_regular,
+                        ),
+                        _ChoiceTile<String>(
+                          title: t.config.tunImplementation,
+                          subtitle: settings.tunImplementation,
+                          icon: FluentIcons.keyboard_24_regular,
+                          selected: settings.tunImplementation,
+                          choices: _tunImplementationChoices,
+                          itemLabel: (value) => value,
+                          itemIcon: (_) => FluentIcons.keyboard_24_regular,
+                          onSelected: (value) => ref
+                              .read(networkSettingsProvider.notifier)
+                              .setTunImplementation(value),
+                        ),
+                      ],
+                      _ValueTile(
+                        title: t.config.mixedPort,
+                        subtitle: '${settings.mixedPort}',
+                        icon: FluentIcons.connector_24_regular,
+                        onTap: () => _showPortEditor(context, ref, t),
+                      ),
+                      _ConfigSwitchTile(
+                        title: _experimental(
+                          t,
+                          t.config.allowConnectionFromLan,
+                        ),
+                        value: settings.allowConnectionFromLan,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setAllowLan(value),
+                        icon: FluentIcons.wifi_1_24_regular,
+                      ),
+                    ],
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 300.ms)
+                  .slideY(begin: 0.1, end: 0),
+              _ConfigGroup(
+                    title: _experimental(t, t.config.section.tlsTricks),
+                    icon: FluentIcons.lock_shield_24_regular,
+                    iconColor: Colors.purple,
+                    children: [
+                      _ConfigSwitchTile(
+                        title: t.config.enableTlsFragment,
+                        value: settings.enableTlsFragment,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setEnableTlsFragment(value),
+                        icon: FluentIcons.puzzle_piece_24_regular,
+                      ),
+                      _ValueTile(
+                        title: t.config.tlsFragmentSize,
+                        subtitle: settings.tlsFragmentSize,
+                        icon: FluentIcons.resize_24_regular,
+                        onTap: () =>
+                            _showTlsFragmentSizeEditor(context, ref, t),
+                      ),
+                      _ConfigSwitchTile(
+                        title: t.config.enableTlsPadding,
+                        value: settings.enableTlsPadding,
+                        onChanged: (value) => ref
+                            .read(networkSettingsProvider.notifier)
+                            .setEnableTlsPadding(value),
+                        icon: FluentIcons.shield_keyhole_24_regular,
+                      ),
+                    ],
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 400.ms)
+                  .slideY(begin: 0.1, end: 0),
+              _ConfigGroup(
+                    title: _experimental(t, t.config.section.warp),
+                    icon: FluentIcons.shield_keyhole_24_regular,
+                    iconColor: Colors.indigo,
+                    children: const [_WarpOptionsTiles()],
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 500.ms)
+                  .slideY(begin: 0.1, end: 0),
+              _ConfigGroup(
+                    title: t.config.section.misc,
+                    icon: FluentIcons.app_folder_24_regular,
+                    iconColor: Colors.grey,
+                    children: [
+                      _ValueTile(
+                        title: t.config.connectionTestUrl,
+                        subtitle: settings.connectionTestUrl,
+                        icon: FluentIcons.globe_24_regular,
+                        onTap: () =>
+                            _showConnectionTestUrlEditor(context, ref, t),
+                      ),
+                      _ValueTile(
+                        title: t.config.urlTestInterval,
+                        subtitle: _formatInterval(
+                          settings.urlTestIntervalSeconds,
+                        ),
+                        icon: FluentIcons.timer_24_regular,
+                        onTap: () =>
+                            _showUrlTestIntervalEditor(context, ref, t),
+                      ),
+                    ],
+                  )
+                  .animateWithMotion(context)
+                  .fadeIn(delay: 600.ms)
+                  .slideY(begin: 0.1, end: 0),
+              const SizedBox(height: 120),
             ],
           ),
         ),
@@ -1002,104 +972,6 @@ class _WarpOptionsTilesState extends ConsumerState<_WarpOptionsTiles> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _HeaderControlPill extends StatelessWidget {
-  const _HeaderControlPill({
-    required this.onMore,
-    required this.onClose,
-    required this.moreLabel,
-    required this.closeLabel,
-  });
-
-  final VoidCallback onMore;
-  final VoidCallback onClose;
-
-  /// 两颗图标按钮的无障碍标签 / 提示文字（i18n）。
-  final String moreLabel;
-  final String closeLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      // 48 dp 高：两颗按钮各有 ≥48×48 的交互区（Android 最小触控目标）。
-      // 外框含上下各 1 dp 描边，所以外框 50、内部按钮 48。
-      height: kMinInteractiveDimension + 2,
-      decoration: BoxDecoration(
-        color: Theme.of(context).aiUi.glassColor,
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Theme.of(context).aiUi.borderColor),
-        boxShadow: Theme.of(context).aiUi.cardShadow,
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _PillButton(
-            icon: resolveAdaptiveIcon(
-              apple: FluentIcons.more_horizontal_24_regular,
-              other: FluentIcons.more_vertical_24_regular,
-            ),
-            label: moreLabel,
-            onTap: onMore,
-          ),
-          Container(
-            width: 1,
-            height: 20,
-            color: Theme.of(context).aiUi.borderColor.withValues(alpha: 0.5),
-          ),
-          _PillButton(
-            icon: FluentIcons.dismiss_24_regular,
-            label: closeLabel,
-            onTap: onClose,
-            isDestructive: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PillButton extends StatelessWidget {
-  const _PillButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isDestructive = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: label,
-      button: true,
-      excludeSemantics: true,
-      onTap: onTap,
-      child: Tooltip(
-        message: label,
-        excludeFromSemantics: true,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: SizedBox(
-            width: 52,
-            height: kMinInteractiveDimension,
-            child: Icon(
-              icon,
-              size: 20,
-              color: isDestructive
-                  ? Colors.red.withValues(alpha: 0.8)
-                  : Theme.of(context).aiUi.secondaryTextColor,
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/tip_card.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
@@ -110,6 +111,11 @@ void main() {
   group('ConfigOptionsPage smoke', () {
     testWidgets('渲染分组的配置选项列表', (tester) async {
       await _pumpPage(tester);
+
+      // 二级页统一外框：PageHeader + 右侧胶囊（更多、关闭），没有 AppBar。
+      expect(find.byType(PageHeader), findsOneWidget);
+      expect(find.byType(AppBar), findsNothing);
+      expect(find.byIcon(FluentIcons.dismiss_24_regular), findsOneWidget);
 
       // 顶部的实验性功能提示应该用共享的 TipCard 组件（跟 assets_page 用
       // 的是同一个组件，风格统一——见 tip_card_test.dart）。桌面端在服务模式

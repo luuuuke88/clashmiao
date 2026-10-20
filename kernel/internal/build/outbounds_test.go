@@ -186,6 +186,45 @@ func TestAssemblyRewritesDetourReferencesToRenamedNodes(t *testing.T) {
 	}
 }
 
+// detour 指向预置的空 direct（direct / bypass）等价于没有 detour：去掉它（新内核启动时拒绝指向空 direct 的 detour）；
+// 指向 direct-fragment（带选项）的保留。
+func TestAssemblyDropsRedundantDirectDetours(t *testing.T) {
+	mk := func(tag, detour string) map[string]any {
+		n := ssNode(tag)
+		n["detour"] = detour
+		return n
+	}
+	ep := wgEndpoint("wg-1")
+	ep["detour"] = "direct"
+	c, _, err := buildProfile(t, build.Profile{
+		Outbounds: []map[string]any{mk("a", "direct"), mk("b", "bypass"), mk("c", "direct-fragment"), ssNode("d")},
+		Endpoints: []map[string]any{ep},
+	}, gate.Option("O1"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for tag, want := range map[string]any{"a": nil, "b": nil, "c": "direct-fragment", "d": nil} {
+		if got := outbound(t, c, tag)["detour"]; got != want {
+			t.Errorf("%s.detour = %v，期望 %v", tag, got, want)
+		}
+	}
+	if _, ok := c.Endpoints[0]["detour"]; ok {
+		t.Error("端点指向 direct 的 detour 也应去掉")
+	}
+	if vs := gate.CheckInvariants(mustMarshal(t, c), gate.Option("O1"), build.AndroidEnv()); len(vs) != 0 {
+		t.Errorf("不变量违规: %v", vs)
+	}
+}
+
+func mustMarshal(t testing.TB, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 // 不修改调用方的 profile（构建器要在节点上改 tls / multiplex）。
 func TestAssemblyDoesNotMutateProfile(t *testing.T) {
 	p := build.Profile{Outbounds: []map[string]any{trojanNode("t")}}
@@ -493,6 +532,10 @@ func TestValidateGraphCatchesWhatAssemblySkipped(t *testing.T) {
 		{"成员不存在", func(c *cfg.Config) { c.Outbounds[0]["outbounds"] = []any{"a", "ghost"} }, nil, "does not exist"},
 		{"重复 tag", func(c *cfg.Config) { c.Outbounds[2]["tag"] = "a" }, nil, "duplicate tag"},
 		{"route.final 不存在", func(c *cfg.Config) { c.Route = &cfg.Route{Final: "ghost"} }, nil, "route.final"},
+		{"节点 detour 指向空 direct", func(c *cfg.Config) {
+			c.Outbounds = append(c.Outbounds, cfg.Outbound{"type": "direct", "tag": "direct"})
+			c.Outbounds[1]["detour"] = "direct"
+		}, nil, "empty direct"},
 		{"DNS detour 指向空 direct", func(c *cfg.Config) {
 			c.Outbounds = append(c.Outbounds, cfg.Outbound{"type": "direct", "tag": "direct"})
 			c.DNS = &cfg.DNS{Servers: []cfg.DNSServer{{Type: "udp", Tag: "dns-direct", Server: "223.5.5.5", Detour: "direct"}}}

@@ -54,7 +54,12 @@ func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, erro
 		Inbounds:     buildInbounds(o, env),
 		Experimental: buildExperimental(o),
 	}
-	scaffold(c, profile, o, env, &warnings)
+	if err := scaffold(c, profile, o, env, &warnings); err != nil {
+		return nil, nil, err
+	}
+	if err := CheckDNSDeps(c); err != nil {
+		return nil, nil, err
+	}
 
 	// 配置里永远没有 clash_api；用户动过相关选项时给一条警告，让「选项被忽略」可见。
 	if o.ClashAPINonDefault() {

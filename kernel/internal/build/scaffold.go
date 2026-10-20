@@ -18,22 +18,9 @@ const (
 	TagDirect         = "direct"
 	TagDirectFragment = "direct-fragment"
 	TagBypass         = "bypass"
-	TagDNSRemote      = "dns-remote"
-	TagDNSDirect      = "dns-direct"
-	TagDNSLocal       = "dns-local"
 )
 
-func scaffold(c *cfg.Config, p Profile, o *options.Options, env Env, warnings *[]string) {
-	c.DNS = &cfg.DNS{
-		Servers: []cfg.DNSServer{
-			{Type: "udp", Tag: TagDNSRemote, Server: "1.1.1.1", Detour: TagSelect},
-			{Type: "udp", Tag: TagDNSDirect, Server: "223.5.5.5"},
-			{Type: "local", Tag: TagDNSLocal},
-		},
-		Final:    TagDNSRemote,
-		Strategy: o.IPv6Mode,
-	}
-
+func scaffold(c *cfg.Config, p Profile, o *options.Options, env Env, warnings *[]string) error {
 	var nodeTags []string
 	var nodes []cfg.Outbound
 	for _, n := range p.Outbounds {
@@ -64,14 +51,38 @@ func scaffold(c *cfg.Config, p Profile, o *options.Options, env Env, warnings *[
 		cfg.Outbound{"type": "direct", "tag": TagBypass},
 	)
 
+	var entities []map[string]any
+	for _, n := range nodes {
+		entities = append(entities, n)
+	}
+	for _, e := range c.Endpoints {
+		entities = append(entities, e)
+	}
+	dns, err := BuildDNS(dnsInput{
+		Options:       o,
+		Egress:        TagSelect,
+		HasTun:        o.EnableTun,
+		DirectDomains: nodeHostnames(entities...),
+	}, warnings)
+	if err != nil {
+		return err
+	}
+	c.DNS = dns
+
+	rules := []cfg.RouteRule{
+		{Action: "sniff"},
+		{Protocol: []string{"dns"}, Action: "hijack-dns"},
+	}
+	if o.LocalDNSPort != 0 {
+		rules = append(rules, cfg.RouteRule{Inbound: []string{TagDNSIn}, Action: "hijack-dns"})
+	}
+	rules = append(rules, cfg.RouteRule{Port: []uint16{53}, Action: "hijack-dns"})
 	c.Route = &cfg.Route{
-		Rules: []cfg.RouteRule{
-			{Action: "sniff"},
-			{Protocol: []string{"dns"}, Action: "hijack-dns"},
-		},
+		Rules:                 rules,
 		Final:                 TagSelect,
 		AutoDetectInterface:   true,
 		OverrideAndroidVPN:    env.GOOS == "android",
 		DefaultDomainResolver: TagDNSDirect,
 	}
+	return nil
 }

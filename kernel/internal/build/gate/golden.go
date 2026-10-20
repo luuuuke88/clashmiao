@@ -5,13 +5,26 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 var update = flag.Bool("update", false, "重写黄金文件（改动要在评审里看 diff）")
 
-// GoldenDir 是黄金文件目录（相对 gate 包的测试工作目录）。
-const GoldenDir = "../testdata/golden"
+// testdataDir 由本文件的源码位置推出（不依赖调用方测试的工作目录，build 包与 gate 包的测试共用同一份数据）。
+var testdataDir = func() string {
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		panic("gate: cannot locate source dir")
+	}
+	return filepath.Join(filepath.Dir(file), "..", "testdata")
+}()
+
+// TestdataDir 是 internal/build/testdata 的绝对路径。
+func TestdataDir() string { return testdataDir }
+
+// GoldenDir 是黄金文件目录。
+var GoldenDir = filepath.Join(testdataDir, "golden")
 
 // Golden 把 got 与 GoldenDir/<name>.json 逐字节比较；带 -update 则重写。
 // 缺文件不会自动创建：新增矩阵项必须显式 -update 并把文件放进评审。

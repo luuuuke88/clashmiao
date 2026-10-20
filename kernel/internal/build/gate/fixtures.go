@@ -12,8 +12,8 @@ import (
 	"github.com/luuuuke88/clashmiao/kernel/internal/options"
 )
 
-// ProfileDir 是 profile 夹具目录（相对 gate 包的测试工作目录）。
-const ProfileDir = "../testdata/profiles"
+// ProfileDir 是 profile 夹具目录。
+var ProfileDir = filepath.Join(testdataDir, "profiles")
 
 // LoadProfile 读取 P1..P7 之一（测试数据全合成，见各文件头的 `_comment`）。
 func LoadProfile(t testing.TB, name string) build.Profile {
@@ -52,7 +52,15 @@ var optionFixtures = map[string]func(o *options.Options){
 	// O2：Android 仅线路（无 tun）。
 	"O2": func(o *options.Options) { o.EnableTun = false },
 	// O3：fake DNS + DNS 路由 + 绕过局域网。
-	"O3": func(o *options.Options) { o.EnableFakeDNS, o.EnableDNSRouting, o.BypassLAN = true, true, true },
+	"O3": func(o *options.Options) {
+		o.EnableFakeDNS, o.EnableDNSRouting, o.BypassLAN = true, true, true
+		o.Rules = []options.Rule{
+			{Domains: "domain:example.cn,full:direct.example.net", Outbound: options.TargetBypass},
+			{Domains: "keyword:ads", Outbound: options.TargetBlock},
+			{IP: "198.51.100.0/24", Outbound: options.TargetBypass},              // 只有 IP 条件：DNS 规则表达不了，必须被跳过
+			{Domains: "domain:proxy.example.com", Outbound: options.TargetProxy}, // 走代理的规则不产生 DNS 规则
+		}
+	},
 	// O4：mux + 分片。
 	"O4": func(o *options.Options) { o.Mux.Enable, o.TLSTricks.EnableFragment = true, true },
 	// O5a / O5b：WARP 两种模式（U13 才有实际行为；这里只定义选项）。

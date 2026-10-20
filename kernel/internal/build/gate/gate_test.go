@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -11,39 +12,11 @@ import (
 	"github.com/luuuuke88/clashmiao/kernel/internal/options"
 )
 
-// Case 是矩阵里的一格：profile × 选项夹具。名字同时是黄金文件名与 testdata/README 表里的键。
-type Case struct {
-	Name    string
-	Profile string
-	Option  string
-}
-
-// matrix 是本任务落地的格子；后续任务（U5–U7、U13）往这里加格子，并在 README 的表里登记。
-var matrix = []Case{
-	{"P1-O1", "P1", "O1"},
-	{"P1-O2", "P1", "O2"},
-	{"P1-O7-prefer", "P1", "O7-prefer"},
-	{"P1-O8", "P1", "O8"},
-	{"P2-O1", "P2", "O1"},
-	{"P4b-O1", "P4b", "O1"},
-}
-
-func buildCase(t testing.TB, c Case) ([]byte, *options.Options) {
-	t.Helper()
-	o := Option(c.Option)
-	if err := o.Validate(); err != nil {
-		t.Fatalf("选项夹具 %s 不合法: %v", c.Option, err)
-	}
-	raw, _, err := build.Build(LoadProfile(t, c.Profile), o, build.AndroidEnv())
-	if err != nil {
-		t.Fatalf("Build(%s): %v", c.Name, err)
-	}
-	return raw, o
-}
+func buildCase(t testing.TB, c Case) ([]byte, *options.Options) { return BuildCase(t, c) }
 
 // 原始（Android）配置上的断言：黄金文件 + 不变量。
 func TestMatrixGoldenAndInvariants(t *testing.T) {
-	for _, c := range matrix {
+	for _, c := range Matrix {
 		t.Run(c.Name, func(t *testing.T) {
 			raw, o := buildCase(t, c)
 			Golden(t, c.Name, raw)
@@ -56,7 +29,7 @@ func TestMatrixGoldenAndInvariants(t *testing.T) {
 
 // 构建器输出对同一输入是确定的（黄金文件稳定的前提）。
 func TestBuildIsDeterministic(t *testing.T) {
-	for _, c := range matrix {
+	for _, c := range Matrix {
 		a, _ := buildCase(t, c)
 		b, _ := buildCase(t, c)
 		if !bytes.Equal(a, b) {
@@ -67,7 +40,7 @@ func TestBuildIsDeterministic(t *testing.T) {
 
 // 适配副本上的断言（不启动）：差异在白名单内，且 libbox.CheckConfig 放行。
 func TestMatrixHostAdaptedConfigChecks(t *testing.T) {
-	for _, c := range matrix {
+	for _, c := range Matrix {
 		t.Run(c.Name, func(t *testing.T) {
 			raw, _ := buildCase(t, c)
 			adapted, ap, err := HostAdapt(raw, AdaptOptions{})
@@ -86,12 +59,12 @@ func TestMatrixHostAdaptedConfigChecks(t *testing.T) {
 
 // 矩阵、黄金文件、README 三者保持一致：少一个都不行。
 func TestMatrixMatchesGoldenFilesAndReadme(t *testing.T) {
-	readme, err := os.ReadFile("../testdata/README")
+	readme, err := os.ReadFile(filepath.Join(TestdataDir(), "README"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := map[string]bool{}
-	for _, c := range matrix {
+	for _, c := range Matrix {
 		want[c.Name] = true
 		if !strings.Contains(string(readme), "| "+c.Name+" |") {
 			t.Errorf("testdata/README 的矩阵表里没有登记 %s", c.Name)

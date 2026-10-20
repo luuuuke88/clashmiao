@@ -338,7 +338,8 @@ EOF
 #!/bin/sh
 # 用法同 javap -public -cp <jar> <class...>；输出取自 jar 里类文件的内容
 # FAKE_JAVAP=fail|empty：两侧都失败/为空；FAKE_FAIL_MATCH / FAKE_EMPTY_MATCH：
-# 只有 jar 路径含该子串的一侧失败/为空（用来单独打坏新侧）
+# 只有 jar 路径含该子串的一侧失败/为空（用来单独打坏新侧）；
+# FAKE_PRINT_THEN_FAIL_MATCH：该侧输出完整、与参考一致，但退出状态非零
 case "$FAKE_JAVAP" in
   fail)  exit 1 ;;
   empty) exit 0 ;;
@@ -347,6 +348,8 @@ jar="$3"; shift 3
 if [ -n "$FAKE_FAIL_MATCH" ]; then case "$jar" in *"$FAKE_FAIL_MATCH"*) exit 1 ;; esac; fi
 if [ -n "$FAKE_EMPTY_MATCH" ]; then case "$jar" in *"$FAKE_EMPTY_MATCH"*) exit 0 ;; esac; fi
 for c in "$@"; do unzip -p "$jar" "$(echo "$c" | tr . /).class"; done
+# FAKE_PRINT_THEN_FAIL_MATCH：先把完整 API 原样打印出来，再以非零状态退出
+if [ -n "$FAKE_PRINT_THEN_FAIL_MATCH" ]; then case "$jar" in *"$FAKE_PRINT_THEN_FAIL_MATCH"*) exit 1 ;; esac; fi
 EOF
   chmod +x "$t/javap"
   expect_ok   "公共 API 相同" env FAKE_JAVAP=ok bash -c "$(declare -f die log javap_public_to compare_public_api); compare_public_api '$t/javap' '$t/ref.jar' '$t/same.jar' '$t/w1'"
@@ -397,6 +400,7 @@ EOF
   expect_ok "放行门：哈希一致但参考 aar API 有差异 → 失败且不写产物" gate_fail g8 diff.jar diff.jar 1 0 FAKE_JAVAP=ok
   expect_ok "放行门：参考侧 javap 成功、新侧 javap 失败 → 失败且不写产物" gate_fail g9 same.jar same.jar 1 0 FAKE_JAVAP=ok FAKE_FAIL_MATCH=/new/
   expect_ok "放行门：参考侧成功、新侧 javap 输出为空 → 失败且不写产物" gate_fail g10 same.jar same.jar 1 0 FAKE_JAVAP=ok FAKE_EMPTY_MATCH=/new/
+  expect_ok "放行门：新侧 javap 打印出与参考完全相同的 API 后以非零状态退出 → 失败且不写产物" gate_fail g12 same.jar same.jar 1 0 FAKE_JAVAP=ok FAKE_PRINT_THEN_FAIL_MATCH=/new/
   expect_ok "放行门：开关 + 参考 aar，新侧 javap 失败 → 失败且不写产物" gate_fail g11 apisame.jar ref.jar 1 1 FAKE_JAVAP=ok FAKE_FAIL_MATCH=/new/
 
   # --- BUILD_ROOT 规范化与目录锁（rm / chmod 全部换成只记日志的桩，不会真删任何东西）

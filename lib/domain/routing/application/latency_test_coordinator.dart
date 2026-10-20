@@ -182,7 +182,6 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   /// 切换了订阅：旧订阅的在途任务与超时标记都作废。
   void onProfileChanged() => _reset();
 
-  /// 分组流推来了新数据。
   /// 参与「是否测完」判断的节点：实时分组里的叶子节点，排除带隐藏标记的节点
   /// 与嵌套分组——它们的延迟不是这一轮 `urlTest` 的结果。订阅信息条目已经由
   /// 构建器打上隐藏标记、不在内核的分组里（整份订阅只有信息条目时按保护留下，
@@ -193,6 +192,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
         const {},
       ).where((item) => !isGroupProxyType(item.type));
 
+  /// 分组流推来了新数据。
   void onGroups(List<OutboundGroup> groups) {
     if (!_connected) return;
     if (_warmupPending) {

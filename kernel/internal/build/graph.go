@@ -113,8 +113,13 @@ func ValidateGraph(c *cfg.Config) error {
 			}
 		}
 		if d := strVal(m["detour"]); d != "" {
-			if _, ok := tags[d]; !ok {
+			target, ok := tags[d]
+			if !ok {
 				return fmt.Errorf("%s %w: %q detours to %q which does not exist", PrefixBuildFailed, ErrDetourDangling, tag, d)
+			}
+			// 出站 / 端点的 detour 指向空 direct 同样在启动时被拒绝（CheckConfig 放行）。
+			if isEmptyDirectOutbound(target) {
+				return fmt.Errorf("%s %q detours to the empty direct outbound %q (rejected at start)", PrefixBuildFailed, tag, d)
 			}
 		}
 	}

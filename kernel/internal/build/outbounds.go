@@ -186,6 +186,15 @@ func normalizeEntities(p Profile, warnings *[]string) ([]cfg.Outbound, []cfg.End
 		}
 	}
 
+	// detour 指向预置的空 direct（direct / bypass）等价于没有 detour，而新内核在启动时拒绝「detour 指向空 direct」
+	// （CheckConfig 放行）。旧订阅清洗后常有这种引用（订阅自带的 direct 被丢弃后重映射到 direct），这里去掉它。
+	// direct-fragment 带选项，不是空 direct，保留。
+	for _, it := range items {
+		if d, _ := it.m["detour"].(string); d == TagDirect || d == TagBypass {
+			delete(it.m, "detour")
+		}
+	}
+
 	var nodes []cfg.Outbound
 	var endpoints []cfg.Endpoint
 	for _, it := range items {

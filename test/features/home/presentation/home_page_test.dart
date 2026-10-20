@@ -436,6 +436,63 @@ void main() {
     await _drainLatency(tester);
   });
 
+  // 真机验收 BUG-C：默认选中自动选择组、内核没推自动选择组本身时，胶囊曾显示
+  // 原始 tag「auto」。
+  testWidgets('默认选中自动选择组：胶囊显示「自动选择」，不显示原始 tag auto', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: 'auto',
+            items: [
+              OutboundProxy(tag: 'auto', type: 'urltest'),
+              OutboundProxy(tag: 'shadowsocks § 0', type: 'shadowsocks'),
+            ],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('自动选择'), findsOneWidget);
+    expect(find.text('auto'), findsNothing);
+
+    await _drainLatency(tester);
+  });
+
+  testWidgets('自动选择组报了选中的节点：胶囊显示「自动选择 · 节点名」', (tester) async {
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'select',
+            type: 'selector',
+            selected: 'auto',
+            items: [
+              OutboundProxy(tag: 'auto', type: 'urltest'),
+              OutboundProxy(tag: 'ThrowawayQA § 0', type: 'shadowsocks'),
+            ],
+          ),
+          OutboundGroup(
+            tag: 'auto',
+            type: 'urltest',
+            selected: 'ThrowawayQA § 0',
+            items: [OutboundProxy(tag: 'ThrowawayQA § 0', type: 'shadowsocks')],
+          ),
+        ],
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('自动选择 · ThrowawayQA'), findsOneWidget);
+
+    await _drainLatency(tester);
+  });
+
   testWidgets('连接态中间信息保持单行节点和延迟，不显示连接时长', (tester) async {
     await tester.pumpWidget(
       await _hostConnectionInfo(

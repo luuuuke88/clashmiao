@@ -14,8 +14,11 @@ import (
 )
 
 // parseClash：Clash YAML 交给 clash2singbox（MIT，纯转换库，不依赖 sing-box；不引入它的 Patch 模板）。
-// proxy-groups 与 rules 一律忽略（构建器重建分组与路由）；单个节点失败只记警告，全部失败才报错并带首个原因。
+// proxy-groups 与 rules 一律忽略（构建器重建分组与路由；分组在转换前就去掉，relay 不会被展开成额外节点）；单个节点失败只记警告，全部失败才报错并带首个原因。
 func parseClash(in []byte) (Profile, Warnings, error) {
+	if err := checkYAMLBudget(in); err != nil {
+		return Profile{}, nil, err
+	}
 	var c clash.Clash
 	if err := yaml.Unmarshal(in, &c); err != nil {
 		return Profile{}, nil, fail(CodeFormatUnknown, "invalid Clash YAML: %v", err)
@@ -23,6 +26,12 @@ func parseClash(in []byte) (Profile, Warnings, error) {
 	if len(c.Proxies) == 0 {
 		return Profile{}, nil, fail(CodeNoOutbounds, "the Clash config has no proxies")
 	}
+	if len(c.Proxies) > MaxNodes {
+		return Profile{}, nil, fail(CodeLimitExceeded, "the Clash config has %d proxies, more than the limit %d", len(c.Proxies), MaxNodes)
+	}
+	// 订阅自带的分组一律不要（构建器重建分组）：Clash2sing 会把 relay 分组展开成额外代理与 detour 链，
+	// 它们会混进候选节点，所以转换之前就去掉。
+	c.ProxyGroup = nil
 	outs, eps, err := convert.Clash2sing(c, model.SINGLATEST)
 
 	var warnings Warnings

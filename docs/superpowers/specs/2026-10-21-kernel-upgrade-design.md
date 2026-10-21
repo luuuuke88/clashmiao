@@ -443,10 +443,22 @@ Android 与 `kernelEnableTun` 的关系不变：`enable-tun = false`（「仅线
 
 ### 6.4 错误分类
 
-`Parse` / `BuildConfig` 的错误带稳定前缀码（`format-unknown:` / `no-outbounds:` / `uri-invalid:` / `option-invalid:` / `build-failed:`），不再靠 `e.message` 子串猜。映射**只发生在允许改动的边界，不碰 `connection_error_classifier`（冻结，且它按 `BoxAlertType` 归类，从来不看消息文本）**：
+`Parse` / `BuildConfig` 的错误带稳定前缀码（`format-unknown:` / `no-outbounds:` / `uri-invalid:` / `option-invalid:` / `build-failed:` / `limit-exceeded:`），不再靠 `e.message` 子串猜。映射**只发生在允许改动的边界，不碰 `connection_error_classifier`（冻结，且它按 `BoxAlertType` 归类，从来不看消息文本）**：
 
 - **`Parse`（订阅导入 / 刷新）**：Kotlin 把原生异常消息原样带回；`ProfileRepository` 在 `validateConfig` 失败处把它包成 `ProfileValidationException`，**增加一个可空的 `code` 字段**（取自消息前缀，向后兼容；构造函数其余不变）；`profile_failures.dart` 的 `_profileFailureReason` 按 `code` 映射文案：`no-outbounds` → `t.proxies.emptyProxiesMsg`，`format-unknown` / `uri-invalid` / 其余 → `t.failure.profiles.invalidConfig`。两个文件都在 U16 的允许清单里。
 - **`BuildConfig`（启动 / 离线分组）**：启动路径上由 Kotlin `CoreKernelRuntime` 沿用现有对 `Mobile.buildConfig` 异常的 `FailureCode` 映射（不新增失败码），走既有 `BoxAlert` → `classifyBoxAlert` → 既有文案；离线分组（`generateFullConfig`）失败沿用现有降级。消息前缀只用于日志与诊断，不驱动界面分支。
+
+**解析预算（`limit-exceeded:`）**：订阅入口处理的是不可信的远程内容，所以输入、节点数、输出与嵌套深度都有上界，超出即以 `limit-exceeded:` 失败（Dart 侧落到 `invalidConfig`，不新增文案）。上界按 5000 节点的真实订阅（约 2–5 MB）留足数倍余量：
+
+| 项 | 上限 | 说明 |
+|---|---|---|
+| 输入字节（解码前） | 16 MiB | 有界读取：先看文件大小，再用带上限的读兜底 |
+| 节点条目数 | 20000 | 出站 + 端点、Clash `proxies`、链接行数（逐行计，不等转换） |
+| 输出字节 | 32 MiB | 写盘前检查，超限不落盘 |
+| 嵌套深度 | 100 | JSON 括号深度（跳过字符串）；YAML 在节点树上量（含别名） |
+| YAML 展开后节点数 | 2,000,000 | 在 `yaml.Node` 上记忆化计算别名展开规模，挡别名炸弹，通过才真正解码 |
+
+另：sing-box JSON 的出站 / 端点要通过基本字段与值域校验（`type` / `tag` 的类型、`server` 非空、`server_port` 为 1–65535 的整数或改用 `server_ports`、各协议的凭据字段；WireGuard 端点要有 `private_key` 与带 `address` / `public_key` 的 `peers`），不合格的节点以 `node-skipped:` 跳过，其余节点与未知字段原样保留，全部不合格报 `no-outbounds:`。Clash 的 `proxy-groups` 在转换前就去掉（relay 分组不会被展开成额外节点）。
 
 ### 6.5 端点贯通 Dart 消费链路
 

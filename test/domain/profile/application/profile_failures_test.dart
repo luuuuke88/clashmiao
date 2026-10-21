@@ -55,6 +55,7 @@ void main() {
       'uri-invalid: vless: bad uuid',
       'option-invalid: mixed-port',
       'build-failed: boom',
+      'limit-exceeded: the subscription is larger than 16777216 bytes',
       'something else entirely',
       '',
     ]) {
@@ -71,6 +72,10 @@ void main() {
     expect(
       ProfileValidationException.fromParseError('uri-invalid: x').code,
       'uri-invalid',
+    );
+    expect(
+      ProfileValidationException.fromParseError('limit-exceeded: x').code,
+      'limit-exceeded',
     );
     expect(ProfileValidationException.fromParseError('weird: x').code, isNull);
     expect(ProfileValidationException.fromParseError('no colon').code, isNull);

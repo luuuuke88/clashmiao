@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -59,6 +60,9 @@ func Parse(in []byte) (Profile, Warnings, error) {
 }
 
 func parse(in []byte, depth int) (Profile, Warnings, error) {
+	if len(in) > MaxInputBytes {
+		return Profile{}, nil, fail(CodeLimitExceeded, "the subscription is larger than %d bytes", MaxInputBytes)
+	}
 	in = normalizeInput(in)
 	if len(in) == 0 {
 		return Profile{}, nil, fail(CodeFormatUnknown, "empty input")
@@ -159,9 +163,9 @@ func finalize(outbounds, endpoints []map[string]any, warnings Warnings, emptyRea
 // ParseFile 是门面 Core.Parse 的实现：读 inPath，解析，把 {"outbounds":[…],"endpoints":[…]} 原子地写到 outPath。
 // debug 为真时输出缩进的 JSON（便于人读）。
 func ParseFile(outPath, inPath string, debug bool) error {
-	raw, err := os.ReadFile(inPath)
+	raw, err := readBounded(inPath)
 	if err != nil {
-		return fail(CodeBuildFailed, "read %s: %v", filepath.Base(inPath), err)
+		return err
 	}
 	p, _, err := Parse(raw)
 	if err != nil {
@@ -175,6 +179,9 @@ func ParseFile(outPath, inPath string, debug bool) error {
 	}
 	if err != nil {
 		return fail(CodeBuildFailed, "marshal: %v", err)
+	}
+	if len(out) > maxOutputBytes {
+		return fail(CodeLimitExceeded, "the parsed profile is larger than %d bytes", MaxOutputBytes)
 	}
 	out = append(bytes.TrimSpace(out), '\n')
 	tmp, err := os.CreateTemp(filepath.Dir(outPath), ".parse-*")
@@ -196,6 +203,26 @@ func ParseFile(outPath, inPath string, debug bool) error {
 		return fail(CodeBuildFailed, "write output: %v", err)
 	}
 	return nil
+}
+
+// readBounded 读订阅文件，最多读 MaxInputBytes：先看文件大小，再用带上限的读取兜底（文件可能在两步之间变大）。
+func readBounded(path string) ([]byte, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, fail(CodeBuildFailed, "read %s: %v", filepath.Base(path), err)
+	}
+	defer f.Close()
+	if st, err := f.Stat(); err == nil && st.Size() > MaxInputBytes {
+		return nil, fail(CodeLimitExceeded, "the subscription is larger than %d bytes", MaxInputBytes)
+	}
+	raw, err := io.ReadAll(io.LimitReader(f, MaxInputBytes+1))
+	if err != nil {
+		return nil, fail(CodeBuildFailed, "read %s: %v", filepath.Base(path), err)
+	}
+	if len(raw) > MaxInputBytes {
+		return nil, fail(CodeLimitExceeded, "the subscription is larger than %d bytes", MaxInputBytes)
+	}
+	return raw, nil
 }
 
 // defaultWireguardPeers 给没写 allowed_ips 的 WireGuard 对端补默认值 ["0.0.0.0/0","::/0"]：

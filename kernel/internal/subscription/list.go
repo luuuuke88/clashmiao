@@ -22,6 +22,9 @@ func parseList(text string) (Profile, Warnings, error) {
 			continue
 		}
 		attempted++
+		if attempted > MaxNodes {
+			return Profile{}, warnings, fail(CodeLimitExceeded, "the list has more than %d links", MaxNodes)
+		}
 		skip := func(reason string) {
 			msg := fmt.Sprintf("line %d: %s", i+1, reason)
 			if firstReason == "" {

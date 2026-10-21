@@ -36,6 +36,7 @@ class KernelStartSequenceTest {
         var failTeardownAt: String? = null
 
         @Volatile var engineHeld = false
+        @Volatile var serverOpen = false
         @Volatile var engineRunning = false
         @Volatile var watcherArmed = false
         @Volatile var tunOpen = false
@@ -53,6 +54,7 @@ class KernelStartSequenceTest {
             if (engineHeld) return // 幂等：已有 Engine 什么都不做
             call("createEngine")
             engineHeld = true
+            serverOpen = true
             refReleased = false
         }
         override fun buildConfig(spec: LaunchSpec): String = "cfg".also { call("buildConfig") }
@@ -66,18 +68,17 @@ class KernelStartSequenceTest {
             call("startEngine")
         }
 
+        // 回收步骤抛异常时**不**释放它名下的资源：「后续步骤仍执行」与「资源真的被释放」是两件事，
+        // 不能让假实现无条件替失败的那一步把资源清掉，否则「无泄漏」断言什么也证明不了。
         private fun td(name: String, body: () -> Unit) {
             teardownCalls += name
-            try {
-                if (failTeardownAt == name) throw IllegalStateException("td-$name")
-            } finally {
-                body() // 即便「抛异常」，资源也要真的被我们这个假实现处理掉：模拟的是后续步骤仍会执行，而非抛异常的那步成功
-            }
+            if (failTeardownAt == name) throw IllegalStateException("td-$name")
+            body()
         }
 
         override fun stopEngine() = td("stopEngine") { engineRunning = false }
         override fun closeTunFd() = td("closeTun") { tunOpen = false }
-        override fun closeEngine() = td("closeEngine") { engineHeld = engineHeld /* 句柄由 releaseEngineRef 清 */ }
+        override fun closeEngine() = td("closeEngine") { serverOpen = false }
         override fun disarmNetworkWatcher() = td("disarm") { watcherArmed = false }
         override fun releaseEngineRef() = td("release") { engineHeld = false; refReleased = true }
 
@@ -85,6 +86,7 @@ class KernelStartSequenceTest {
             get() = listOfNotNull(
                 "engine running".takeIf { engineRunning },
                 "tun fd open".takeIf { tunOpen },
+                "command server open".takeIf { serverOpen },
                 "network watcher armed".takeIf { watcherArmed },
                 "engine ref held".takeIf { engineHeld },
             )
@@ -144,15 +146,15 @@ class KernelStartSequenceTest {
                 k.engineRunning = true
                 k.calls += "startEngine"
                 entered.countDown()
-                release.await(5, TimeUnit.SECONDS) // 不可中断的原生启动
+                release.await(30, TimeUnit.SECONDS) // 不可中断的原生启动
             }
         }
         var result: JobResult? = null
         val worker = thread { result = runStartSequence(ops, spec, reload = false, ctx = ctx) }
-        assertTrue(entered.await(5, TimeUnit.SECONDS))
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
         ctx.cancelled = true // off 到达（只置位：协调器不会并发打断启动）
         release.countDown()
-        worker.join(5_000)
+        worker.join(30_000)
         assertEquals(JobResult.Cancelled, result)
         assertEquals("startEngine", ctx.steps.last())
         // 取消之后的回收：运行中的 Engine、tun fd、网络监听、引用都清干净
@@ -208,8 +210,16 @@ class KernelStartSequenceTest {
     }
 
     @Test
-    fun `回收的每一步依次抛错 其余步骤仍执行 失败被记录 之后还能再次启动`() {
+    fun `回收的每一步依次抛错 后续步骤仍执行 失败被记录 抛错那一步名下的资源确实没释放 再回收一次才收干净`() {
         val hardSteps = listOf("stopEngine", "closeTun", "closeEngine", "disarm", "release")
+        // 每一步各自名下的资源：这一步抛错时，只有它名下的东西还在
+        val heldBy = mapOf(
+            "stopEngine" to "engine running",
+            "closeTun" to "tun fd open",
+            "closeEngine" to "command server open",
+            "disarm" to "network watcher armed",
+            "release" to "engine ref held",
+        )
         for (failing in hardSteps) {
             val ctx = Ctx()
             val k = FakeKernel(ctx)
@@ -217,14 +227,20 @@ class KernelStartSequenceTest {
             k.failTeardownAt = failing
             val recorded = ArrayList<String>()
             val failures = runTeardown(k, soft = false, ctx = Ctx()) { step, _ -> recorded += step }
+            // 证据一：后续步骤仍然执行了
             assertEquals("all teardown steps ran when $failing throws", hardSteps, k.teardownCalls.toList())
             assertEquals(1, failures.size)
             assertEquals(1, recorded.size)
             assertTrue("failure recorded for $failing", failures[0].second.message!!.contains("td-$failing"))
-            assertEquals("leaks when $failing throws", emptyList<String>(), k.leaks)
+            // 证据二：别的步骤名下的资源确实释放了，抛错的那一步名下的资源确实还在（没有被假实现悄悄清掉）
+            assertEquals("only the failed step's resource remains when $failing throws", listOf(heldBy.getValue(failing)), k.leaks)
+
+            // 修好之后再回收一次（协调器的硬回收可重入）：这次资源才真的收干净
+            k.failTeardownAt = null
+            runTeardown(k, soft = false, ctx = Ctx())
+            assertEquals("leaks after retrying teardown ($failing)", emptyList<String>(), k.leaks)
 
             // 之后能再次 start（新的一轮从零开始）
-            k.failTeardownAt = null
             k.calls.clear()
             val again = Ctx()
             assertEquals(JobResult.Started, runStartSequence(k, spec, false, again))

@@ -34,7 +34,9 @@ class CoreStream internal constructor(
     private val scope: CoroutineScope,
     private val newClient: () -> Client,
     private val dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val backoff: suspend (attempt: Int) -> Unit = { delay(BASE_BACKOFF_MS + it * BACKOFF_STEP_MS) },
+    private val backoff: suspend (attempt: Int) -> Unit = { delay(backoffMillis(it)) },
+    /** 每次连接尝试任务收尾时调用（[adopted] 为是否被采用）；测试用它做事件同步，生产不传。 */
+    private val onAttemptFinished: (adopted: Boolean) -> Unit = {},
 ) {
 
     constructor(scope: CoroutineScope, kind: StreamKind, subscriber: Subscriber) :
@@ -97,6 +99,7 @@ class CoreStream internal constructor(
                     if (!ok) Log.w(TAG, "stream client gave up after $MAX_ATTEMPTS attempts")
                 } finally {
                     if (!adopted) runCatching { candidate.abandon() }
+                    onAttemptFinished(adopted)
                 }
             }
         }
@@ -183,11 +186,14 @@ class CoreStream internal constructor(
         }
     }
 
-    private companion object {
+    internal companion object {
+        /** 第 [attempt]（从 1 起）次尝试前的退避：线性递增。 */
+        internal fun backoffMillis(attempt: Int): Long = BASE_BACKOFF_MS + attempt * BACKOFF_STEP_MS
+
+        internal const val MAX_ATTEMPTS = 10
         private const val TAG = "engine/CoreStream"
         // 统计推送间隔：2 秒。
         private const val STATS_INTERVAL_MILLIS: Long = 2_000
-        private const val MAX_ATTEMPTS = 10
         private const val BASE_BACKOFF_MS = 100L
         private const val BACKOFF_STEP_MS = 50L
     }

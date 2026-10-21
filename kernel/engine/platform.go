@@ -63,6 +63,13 @@ type platformAdapter struct {
 	// stopErr 暂存宿主 StopInterfaceMonitor 的错误：libbox 在关服务时调用我们，并会吞掉返回值，
 	// 所以留给 Engine 的「stop-interface-monitor」清理步骤取走并上报。
 	stopErr error
+
+	// hostMu 串行化「宿主的停止」与「新一轮启动的开始」：迟到的收尾在它之内完成「复核代次 + 调宿主停止」，
+	// 新一轮启动要在它之内加代次。这样 A 一旦通过了代次检查，B 就只能等 A 的宿主停止做完才开始——
+	// 不会出现 A 通过检查、B 启动成功、A 才停掉 B 的窗口。
+	hostMu sync.Mutex
+	// onHostBarrier 仅供测试：启动因 hostMu 被占用而要排队时回调一次。
+	onHostBarrier func()
 }
 
 type monitorState int
@@ -172,11 +179,18 @@ func (b listenerBridge) Update(name string, index int32, expensive, constrained 
 }
 
 func (p *platformAdapter) StartDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
+	if !p.hostMu.TryLock() {
+		if p.onHostBarrier != nil {
+			p.onHostBarrier()
+		}
+		p.hostMu.Lock()
+	}
 	p.mu.Lock()
 	p.monitorGen++
 	gen := p.monitorGen
 	p.monitor = monitorStarting
 	p.mu.Unlock()
+	p.hostMu.Unlock()
 	_, err := callCancelable(p, func() (struct{}, error) {
 		return struct{}{}, p.host.StartInterfaceMonitor(listenerBridge{listener})
 	}, func(_ struct{}, startErr error) {
@@ -203,6 +217,9 @@ func (p *platformAdapter) StartDefaultInterfaceMonitor(listener libbox.Interface
 // 旧代次迟到返回时，监视可能已经被新一代接管（B 启动成功后 A 才返回），此时把状态置回 idle、
 // 再调宿主的停止，就把 B 的监视停掉了。
 func (p *platformAdapter) finishLateMonitor(gen uint64, startErr error) {
+	// 复核代次与调宿主停止放在同一个 hostMu 临界区里：新一轮启动加代次要先拿这把锁。
+	p.hostMu.Lock()
+	defer p.hostMu.Unlock()
 	p.mu.Lock()
 	if p.monitorGen != gen {
 		p.mu.Unlock()
@@ -232,7 +249,9 @@ func (p *platformAdapter) stopMonitor() error {
 	if state != monitorStarted {
 		return nil
 	}
+	p.hostMu.Lock()
 	err := p.host.StopInterfaceMonitor()
+	p.hostMu.Unlock()
 	if err != nil {
 		p.mu.Lock()
 		p.stopErr = errors.Join(p.stopErr, err)

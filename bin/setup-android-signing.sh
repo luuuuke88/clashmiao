@@ -47,7 +47,7 @@ if [ -f "$KEYSTORE" ]; then
     log "已存在可用的 keystore + 密码文件，复用它们（不重新生成）"
     REUSED=1
   else
-    warn "发现残缺/密码不匹配的 $KEYSTORE（上次可能中断了），移到备份并重新生成"
+    warn "发现残缺/密码不匹配的 ${KEYSTORE}（上次可能中断了），移到备份并重新生成"
     mv "$KEYSTORE" "$KEYSTORE.broken.$(date +%s)"
     REUSED=0
   fi

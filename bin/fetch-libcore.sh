@@ -184,4 +184,4 @@ case "${1:-default}" in
     ;;
 esac
 
-log "done. tag: $TAG（Android: $ANDROID_TAG）"
+log "done. tag: ${TAG}（Android: ${ANDROID_TAG}）"

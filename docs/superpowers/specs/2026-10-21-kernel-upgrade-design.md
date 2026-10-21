@@ -453,12 +453,12 @@ Android 与 `kernelEnableTun` 的关系不变：`enable-tun = false`（「仅线
 | 项 | 上限 | 说明 |
 |---|---|---|
 | 输入字节（解码前） | 16 MiB | 有界读取：先看文件大小，再用带上限的读兜底 |
-| 节点条目数 | 20000 | 出站 + 端点、Clash `proxies`、链接行数（逐行计，不等转换） |
+| 节点条目数 | 20000 | 出站 + 端点、Clash `proxies`、链接行数（逐行计，不等转换）；JSON 按**原始条目数**计（含非对象与将被过滤的条目），先于任何校验与警告 |
 | 输出字节 | 32 MiB | 写盘前检查，超限不落盘 |
 | 嵌套深度 | 100 | JSON 括号深度（跳过字符串）；YAML 在节点树上量（含别名） |
 | YAML 展开后节点数 | 2,000,000 | 在 `yaml.Node` 上记忆化计算别名展开规模，挡别名炸弹，通过才真正解码 |
 
-另：sing-box JSON 的出站 / 端点要通过基本字段与值域校验（`type` / `tag` 的类型、`server` 非空、`server_port` 为 1–65535 的整数或改用 `server_ports`、各协议的凭据字段；WireGuard 端点要有 `private_key` 与带 `address` / `public_key` 的 `peers`），不合格的节点以 `node-skipped:` 跳过，其余节点与未知字段原样保留，全部不合格报 `no-outbounds:`。Clash 的 `proxy-groups` 在转换前就去掉（relay 分组不会被展开成额外节点）。
+另：sing-box JSON 的出站 / 端点要通过基本字段与值域校验（`type` / `tag` 的类型、`server` 非空、`server_port` 为 1–65535 的整数，或（仅 hysteria / hysteria2）改用格式合法的 `server_ports`（每项 `起:止`，止可省略；其它协议带该字段会让内核解码失败，所以直接跳过）、各协议的凭据字段；WireGuard 端点要有 `private_key` 与带 `address` / `public_key` 的 `peers`），不合格的节点以 `node-skipped:` 跳过，其余节点与未知字段原样保留，全部不合格报 `no-outbounds:`。Clash 的 `proxy-groups` 在转换前就去掉（relay 分组不会被展开成额外节点）。
 
 ### 6.5 端点贯通 Dart 消费链路
 

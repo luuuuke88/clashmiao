@@ -48,14 +48,28 @@ func TestJSONBrokenNodesAreSkippedValidOnesKept(t *testing.T) {
 	  {"type":"trojan","tag":"no-server","server_port":443,"password":"p"},
 	  {"type":7,"tag":"bad-type"},
 	  {"type":"trojan","tag":123,"server":"192.0.2.5","server_port":443,"password":"p"},
-	  {"type":"trojan","tag":"hop","server":"192.0.2.6","server_ports":["20000:30000"],"password":"p"}
+	  {"type":"trojan","tag":"trojan-hop","server":"192.0.2.6","server_ports":["20000:30000"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop","server":"192.0.2.7","server_ports":["20000:30000","40000:"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-single-string","server":"192.0.2.7","server_ports":"20000:30000","password":"p"},
+	  {"type":"hysteria2","tag":"hop-bad-range","server":"192.0.2.7","server_ports":["30000:20000"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-no-colon","server":"192.0.2.7","server_ports":["20000"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-zero","server":"192.0.2.7","server_ports":["0:10"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-big","server":"192.0.2.7","server_ports":["1:70000"],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-empty","server":"192.0.2.7","server_ports":[],"password":"p"},
+	  {"type":"hysteria2","tag":"hop-nonstring","server":"192.0.2.7","server_ports":[20000],"password":"p"},
+	  {"type":"tuic","tag":"tuic-hop","server":"192.0.2.8","server_ports":["20000:30000"],"uuid":"u"}
 	]}`
 	p, w := mustParse(t, []byte(in))
-	if got := strings.Join(tags(p.Outbounds), ","); got != "good,hop" {
-		t.Fatalf("保留的节点 = %s，期望 good,hop", got)
+	if got := strings.Join(tags(p.Outbounds), ","); got != "good,hop,hop-single-string" {
+		t.Fatalf("保留的节点 = %s，期望 good,hop,hop-single-string", got)
 	}
-	if w.Count("node-skipped:") != 9 {
-		t.Errorf("node-skipped 警告 = %d，期望 9: %v", w.Count("node-skipped:"), w)
+	if w.Count("node-skipped:") != 17 {
+		t.Errorf("node-skipped 警告 = %d，期望 17: %v", w.Count("node-skipped:"), w)
+	}
+	for _, proto := range []string{"trojan", "tuic"} {
+		if !strings.Contains(strings.Join(w, "\n"), "server_ports is not supported by "+proto) {
+			t.Errorf("%s 不支持端口跳跃，带 server_ports 的节点应被跳过: %v", proto, w)
+		}
 	}
 	if !reflect.DeepEqual(find(p.Outbounds, "good")["x_custom"], map[string]any{"keep": true}) {
 		t.Errorf("未知但合法的字段应原样保留: %v", find(p.Outbounds, "good"))
@@ -188,3 +202,31 @@ func TestVMessUnknownTLSInMixedList(t *testing.T) {
 
 func base64NoPad(s string) string { return base64.RawURLEncoding.EncodeToString([]byte(s)) }
 func base64Std(s string) string   { return base64.StdEncoding.EncodeToString([]byte(s)) }
+
+// 预算按原始条目数计，先于校验与过滤：被过滤掉的条目也算数，不能靠「全是废条目」绕过上限，
+// 也不能先产生海量警告再成功。
+func TestJSONEntryBudgetCountsRawEntries(t *testing.T) {
+	good := `{"type":"shadowsocks","tag":"good","server":"192.0.2.1","server_port":1,"method":"aes-128-gcm","password":"p"}`
+	repeat := func(entry string, n int) string { return strings.TrimSuffix(strings.Repeat(entry+",", n), ",") }
+	cases := map[string]string{
+		"混合：一个有效节点 + 超限的 {}":               `{"outbounds":[` + good + `,` + repeat("{}", MaxNodes) + `]}`,
+		"全坏：超限的 {}（不能先于预算返回 no-outbounds）": `{"outbounds":[` + repeat("{}", MaxNodes+1) + `]}`,
+		"非对象条目超限":                          `{"outbounds":[` + repeat("7", MaxNodes+1) + `]}`,
+		"顶层数组":                             `[` + good + `,` + repeat("null", MaxNodes) + `]`,
+		"出站与端点合计超限":                        `{"outbounds":[` + repeat("{}", MaxNodes) + `],"endpoints":[{}]}`,
+	}
+	for name, in := range cases {
+		t.Run(name, func(t *testing.T) {
+			_, warnings, err := Parse([]byte(in))
+			wantCode(t, err, CodeLimitExceeded)
+			if len(warnings) != 0 {
+				t.Errorf("超限应在逐条校验之前拒绝，实际已产生 %d 条警告", len(warnings))
+			}
+		})
+	}
+	// 恰好等于上限不算超限（有效节点照常解析）。
+	in := `{"outbounds":[` + good + `,` + repeat("{}", MaxNodes-1) + `]}`
+	if p, _, err := Parse([]byte(in)); err != nil || len(p.Outbounds) != 1 {
+		t.Fatalf("恰好 %d 条应放行并只保留有效节点: %v %v", MaxNodes, p.Outbounds, err)
+	}
+}

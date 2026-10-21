@@ -86,7 +86,7 @@ Future<_SpyBoxService> _pumpPage(
 
 Future<void> _drainToasts(WidgetTester tester) async {
   // 已连接、有实时分组时测速协调器有 2 s 预热与 10 s 一轮的定时器：推过去。
-  await tester.pump(const Duration(seconds: 13));
+  await tester.pump(const Duration(seconds: 21));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }

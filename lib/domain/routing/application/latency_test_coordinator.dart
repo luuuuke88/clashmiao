@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/latency/latency_rules.dart';
@@ -12,26 +13,32 @@ const Duration kLatencyWarmupDelay = Duration(seconds: 2);
 /// 同一个分组两次自动测速的最小间隔。手动测速不受它约束。
 const Duration kLatencyAutoCooldown = Duration(seconds: 30);
 
-/// 一轮测速最短等多久：到点就收尾。到点仍没有有效结果的节点判为失败（超时）
-/// ——只有实时值仍然有效、无从分辨「没测完」还是「恰好同值」的节点保留为历史值。
-/// 大分组按 [latencyRoundTimeoutFor] 多等一会儿。
-const Duration kLatencyRoundTimeout = Duration(seconds: 10);
-
-/// 内核对一个分组测速时的并发数，与每个死节点最长占一路的时间（TCP 连接
-/// 超时）。节点多的分组要分好几批测：25 个节点、全是死的，第三批要到 15 s
-/// 才结束——10 s 就收尾会把还在测的节点误判成失败。
+/// 内核对一个分组测速时的并发数，与每一路探测最长占用的时间（锁定内核的
+/// `TCPTimeout`，15 s）。节点多的分组要分批测：一批 10 个全是死的，就要占满
+/// 15 s 下一批才开始——25 个节点最坏要 45 s，末批可达的节点前面两批不结束就
+/// 没机会开始测。
 const int kLatencyKernelConcurrency = 10;
-const Duration kLatencyKernelWave = Duration(seconds: 5);
+const Duration kLatencyKernelWave = Duration(seconds: 15);
 
-/// [nodeCount] 个节点的一轮测速最长等多久：至少 [kLatencyRoundTimeout]，节点
-/// 多时按内核分批数放宽（每批 [kLatencyKernelWave]，再留 2 s 余量），封顶 60 s。
+/// 在内核最坏耗时之外留给分组流推送与调度的余量。
+const Duration kLatencyRoundMargin = Duration(seconds: 2);
+
+/// 单轮预算的封顶：节点再多也不让用户等过 60 s。
+const Duration kLatencyRoundCap = Duration(seconds: 60);
+
+/// 一批（至多 [kLatencyKernelConcurrency] 个节点）的一轮测速预算。
+const Duration kLatencyRoundTimeout = Duration(seconds: 17);
+
+/// [nodeCount] 个节点的一轮测速最长等多久：`ceil(n / 10) × 15 s + 2 s`，封顶
+/// [kLatencyRoundCap]。到点仍没有有效结果的节点判为失败（超时）；超过封顶
+/// 才测完的结果由 [LatencyTestCoordinator] 在分组流里继续接收。
 Duration latencyRoundTimeoutFor(int nodeCount) {
-  final waves =
-      (nodeCount + kLatencyKernelConcurrency - 1) ~/ kLatencyKernelConcurrency;
-  final needed = kLatencyKernelWave * waves + const Duration(seconds: 2);
-  if (needed <= kLatencyRoundTimeout) return kLatencyRoundTimeout;
-  const cap = Duration(seconds: 60);
-  return needed > cap ? cap : needed;
+  final batches = math.max(
+    1,
+    (nodeCount + kLatencyKernelConcurrency - 1) ~/ kLatencyKernelConcurrency,
+  );
+  final needed = kLatencyKernelWave * batches + kLatencyRoundMargin;
+  return needed > kLatencyRoundCap ? kLatencyRoundCap : needed;
 }
 
 /// 协调器对外暴露的状态：哪些组在测、在测的组里哪些节点还没有本轮结果、
@@ -58,12 +65,14 @@ class LatencyTestState {
   /// 新的测量结果）就会被移出。
   final Set<String> timedOutNodes;
 
-  /// 最近一轮到点收尾时**没确认**出结果、但手上有旧值（实时或缓存）的节点
-  /// tag（展示为「历史值」，带旧值和旧的测量时间，不显示超时）。
+  /// 最近一轮到点收尾时**没确认**出结果、但**实时值仍然有效**的节点 tag
+  /// （展示为「历史值」，带这个实时旧值，不显示超时）。只有缓存里有旧数字、
+  /// 实时没有值的节点不在这里——那是失败，在 [timedOutNodes]。
   ///
-  /// 内核回复 `urlTest` 时测试只是**开始**了，结果陆续写进分组流；到点仍没
-  /// 变化的节点无从判断是没测完还是恰好测出同一个数，所以既不能当新结果，
-  /// 也不能判超时。实时值之后一变就会被移出。
+  /// 内核回复 `urlTest` 时测试只是**开始**了，结果陆续写进分组流；实时值到点
+  /// 仍没变化的节点无从判断是没测完还是恰好测出同一个数，所以既不能当新结果，
+  /// 也不能判超时。实时值之后一变就会被移出：变成另一个有效值是新结果；变成
+  /// 无效值（0 或超时哨兵）是迟到的失败，改记入 [timedOutNodes] 并写进失败缓存。
   final Set<String> unconfirmedNodes;
 
   bool get isTesting => testingGroups.isNotEmpty;
@@ -148,7 +157,7 @@ class _Round {
 /// - 同组自动测速 [kLatencyAutoCooldown] 内去重；
 /// - 手动测速绕过冷却，但在途时复用同一个任务；
 /// - 断开、重连、切订阅取消旧任务；
-/// - 一轮的完成条件 = 组内所有节点都有了本轮结果，或 [kLatencyRoundTimeout]。
+/// - 一轮的完成条件 = 组内所有节点都有了本轮结果，或到 [latencyRoundTimeoutFor] 的预算。
 ///   收尾时只刷新本轮**确认**出了结果的节点的测量时间；实时没有有效值的节点
 ///   （测失败 / 超时）一律标超时并把失败写进缓存，不论缓存里有没有旧的成功值；
 ///   只有实时值仍有效、没确认的节点保留为历史值。
@@ -370,18 +379,41 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   void _releaseTimeouts(List<OutboundGroup> groups) {
     if (_markedAt.isEmpty) return;
     final released = <String>{};
+    final lateFailed = <String>{};
     for (final group in groups) {
       for (final item in group.items) {
         final markedAt = _markedAt[item.tag];
-        if (markedAt != null && item.delay != markedAt) released.add(item.tag);
+        if (markedAt == null || item.delay == markedAt) continue;
+        if (isMeasurableDelay(markedAt) && !isMeasurableDelay(item.delay)) {
+          // 收尾时被标成历史值的节点，之后才测完、而且失败了：内核删了它的
+          // 测速历史，实时值从有效变成 0。这是迟到的失败，不是新结果。
+          lateFailed.add(item.tag);
+        } else {
+          released.add(item.tag);
+        }
       }
     }
-    if (released.isEmpty) return;
+    // 同一节点出现在几个分组里时，只要有一处是有效的新结果就按新结果算。
+    lateFailed.removeAll(released);
+    if (released.isEmpty && lateFailed.isEmpty) return;
     released.forEach(_markedAt.remove);
+    if (lateFailed.isNotEmpty) {
+      for (final group in groups) {
+        for (final item in group.items) {
+          if (lateFailed.contains(item.tag)) _markedAt[item.tag] = item.delay;
+        }
+      }
+      _recordFailed(lateFailed, _now());
+    }
     _emit(
       state.copyWith(
-        timedOutNodes: state.timedOutNodes.difference(released),
-        unconfirmedNodes: state.unconfirmedNodes.difference(released),
+        timedOutNodes: {
+          ...state.timedOutNodes.difference(released),
+          ...lateFailed,
+        },
+        unconfirmedNodes: state.unconfirmedNodes
+            .difference(released)
+            .difference(lateFailed),
       ),
     );
   }

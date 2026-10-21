@@ -148,15 +148,15 @@ void main() {
       rig.elapse(const Duration(seconds: 2));
       expect(rig.urlTests, hasLength(1));
 
-      // 第一轮超时结束（10 s）。
-      rig.elapse(const Duration(seconds: 10));
+      // 第一轮超时结束（17 s）。
+      rig.elapse(kLatencyRoundTimeout);
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
 
-      rig.coordinator.requestAuto('proxy'); // 距首次开测 10 s
+      rig.coordinator.requestAuto('proxy'); // 距首次开测 17 s
       expect(rig.urlTests, hasLength(1));
 
       // 首次开测发生在 t=2 s，冷却到 t=32 s 才结束。
-      rig.elapse(const Duration(milliseconds: 19999)); // t = 31.999 s
+      rig.elapse(const Duration(milliseconds: 12999)); // t = 31.999 s
       rig.coordinator.requestAuto('proxy');
       expect(rig.urlTests, hasLength(1));
 
@@ -194,7 +194,7 @@ void main() {
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
-      rig.elapse(const Duration(seconds: 10)); // 第一轮超时收尾
+      rig.elapse(kLatencyRoundTimeout); // 第一轮超时收尾
       expect(rig.urlTests, hasLength(1));
 
       unawaited(rig.coordinator.manualTest('proxy'));
@@ -214,7 +214,7 @@ void main() {
       expect(rig.urlTests, ['proxy']);
       expect(first || second, isFalse);
 
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       expect(first && second, isTrue);
     });
 
@@ -240,7 +240,7 @@ void main() {
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
       expect(rig.coordinator.state.timedOutNodes, isEmpty);
 
-      // 失败那一轮的 10 s 超时定时器已被取消：之后什么都不会被标成超时。
+      // 失败那一轮的超时定时器已被取消：之后什么都不会被标成超时。
       rig.elapse(const Duration(seconds: 20));
       expect(rig.coordinator.state.timedOutNodes, isEmpty);
     });
@@ -314,7 +314,7 @@ void main() {
       async.flushMicrotasks();
       expect(done, isTrue, reason: '等待中的调用方被放行而不是永远挂起');
       expect(rig.coordinator.state.testingGroups, isEmpty);
-      expect(async.nonPeriodicTimerCount, 0, reason: '10 s 超时定时器也被清掉');
+      expect(async.nonPeriodicTimerCount, 0, reason: '超时定时器也被清掉');
 
       // 断开后再过多久都不会冒出新的测速。
       rig.elapse(const Duration(minutes: 1));
@@ -353,7 +353,7 @@ void main() {
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
-      rig.elapse(const Duration(seconds: 10)); // 超时，a 被标超时
+      rig.elapse(kLatencyRoundTimeout); // 超时，a 被标超时
       expect(rig.coordinator.state.timedOutNodes, {'a'});
       unawaited(rig.coordinator.manualTest('proxy'));
 
@@ -364,8 +364,8 @@ void main() {
     });
   });
 
-  group('完成条件：所有节点都有本轮结果，或 10 s 超时', () {
-    _fake('全部节点都出了结果就立即收尾，不等 10 s', (rig, async) {
+  group('完成条件：所有节点都有本轮结果，或到预算超时', () {
+    _fake('全部节点都出了结果就立即收尾，不等超时', (rig, async) {
       rig.groups = [
         _group({'a': 0, 'b': 0}),
       ];
@@ -386,7 +386,7 @@ void main() {
       expect(rig.recorded.single.$1, {'a': 120, 'b': 300});
     });
 
-    _fake('10 s 到点：还没结果的节点标为超时，有结果的写进缓存', (rig, async) {
+    _fake('17 s 到点：还没结果的节点标为超时，有结果的写进缓存', (rig, async) {
       rig.groups = [
         _group({'a': 0, 'b': 0}),
       ];
@@ -396,7 +396,7 @@ void main() {
         _group({'a': 150, 'b': 0}),
       ]);
 
-      rig.elapse(const Duration(milliseconds: 9999));
+      rig.elapse(kLatencyRoundTimeout - const Duration(milliseconds: 1));
       expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
       rig.elapse(const Duration(milliseconds: 1));
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
@@ -433,7 +433,7 @@ void main() {
       rig.push([
         _group({'a': 100}),
       ]);
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       expect(rig.recorded, isEmpty, reason: '没确认的旧值不能记成本轮结果');
       expect(rig.cache['a'], CachedDelay(100, measuredAt));
       expect(rig.coordinator.state.unconfirmedNodes, {'a'});
@@ -459,7 +459,7 @@ void main() {
       unawaited(rig.coordinator.manualTest('proxy').then((_) => done = true));
       expect(rig.urlTests, ['proxy']);
 
-      rig.elapse(const Duration(milliseconds: 9999));
+      rig.elapse(kLatencyRoundTimeout - const Duration(milliseconds: 1));
       expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
       expect(rig.coordinator.state.pendingNodes['proxy'], {'a', 'b', 'c'});
       rig.elapse(const Duration(milliseconds: 1));
@@ -496,7 +496,7 @@ void main() {
       rig.push([
         _group({'old-sentinel': 65535, 'fails-now': 65535, 'kept': 80}),
       ]);
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
 
       expect(rig.recorded, isEmpty);
       expect(rig.cache['old-sentinel']!.isFailed, isTrue);
@@ -516,7 +516,7 @@ void main() {
       ];
       rig.coordinator.onConnectionChanged(true);
       unawaited(rig.coordinator.manualTest('proxy'));
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       expect(rig.coordinator.state.timedOutNodes, {'a'});
       expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
     });
@@ -537,10 +537,10 @@ void main() {
       ]);
       expect(rig.coordinator.state.pendingNodes['proxy'], {'same', 'none'});
 
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       final (ms, at) = rig.recorded.single;
       expect(ms, {'ok': 140});
-      expect(at, _t0.add(const Duration(seconds: 12)));
+      expect(at, _t0.add(const Duration(seconds: 19)));
       expect(rig.cache['same'], CachedDelay(200, oldAt));
       expect(rig.coordinator.state.unconfirmedNodes, {'same'});
       expect(rig.coordinator.state.timedOutNodes, {'dead', 'none'});
@@ -564,7 +564,7 @@ void main() {
       rig.push([
         _group({'泰国': 0, '香港01': 0, '香港直连': 190}),
       ]);
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
 
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
       expect(rig.coordinator.state.timedOutNodes, {'泰国', '香港01'});
@@ -579,7 +579,7 @@ void main() {
       expect(rig.recorded.single.$1, {'香港直连': 190});
       expect(
         rig.cache['香港直连'],
-        CachedDelay(190, _t0.add(const Duration(seconds: 12))),
+        CachedDelay(190, _t0.add(const Duration(seconds: 19))),
       );
     });
 
@@ -619,20 +619,160 @@ void main() {
       expect(rig.cache['a'], CachedDelay(98, _t0));
     });
 
-    _fake('大分组按内核并发（10 路、每路最长 5 s）多等一会儿，不在 10 s 把还在测的节点判死', (rig, async) {
+    // ---- 预算：内核 10 路并发，每路最长 15 s（TCP 超时） ----
+
+    _fake('预算公式：每批 15 s + 2 s 余量，按 10 个一批向上取整，封顶 60 s', (rig, async) {
+      expect(latencyRoundTimeoutFor(1), const Duration(seconds: 17));
+      expect(latencyRoundTimeoutFor(10), const Duration(seconds: 17));
+      expect(latencyRoundTimeoutFor(11), const Duration(seconds: 32));
+      expect(latencyRoundTimeoutFor(20), const Duration(seconds: 32));
+      expect(latencyRoundTimeoutFor(21), const Duration(seconds: 47));
+      expect(latencyRoundTimeoutFor(25), const Duration(seconds: 47));
+      expect(latencyRoundTimeoutFor(31), const Duration(seconds: 60));
+      expect(latencyRoundTimeoutFor(5000), const Duration(seconds: 60));
+      expect(kLatencyRoundTimeout, latencyRoundTimeoutFor(1));
+    });
+
+    for (final (n, budget) in [(10, 17), (11, 32)]) {
+      _fake('批次边界：$n 个节点全是死的，恰好等 $budget s 才判失败', (rig, async) {
+        rig.urlTestResult = () => Completer<void>().future;
+        final dead = {for (var i = 0; i < n; i++) 'n$i': 0};
+        rig.groups = [_group(dead)];
+        rig.coordinator.onConnectionChanged(true);
+        unawaited(rig.coordinator.manualTest('proxy'));
+
+        rig.elapse(Duration(seconds: budget) - const Duration(milliseconds: 1));
+        expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
+        expect(rig.coordinator.state.timedOutNodes, isEmpty);
+        rig.elapse(const Duration(milliseconds: 1));
+        expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+        expect(rig.coordinator.state.timedOutNodes, dead.keys.toSet());
+        expect(rig.failed.single.$1, dead.keys.toSet());
+      });
+    }
+
+    _fake('前两批被死节点占满、末批可达：末批的值在第 31 s 到，必须拿到值而不是超时', (rig, async) {
       rig.urlTestResult = () => Completer<void>().future;
-      final dead = {for (var i = 0; i < 25; i++) 'n$i': 0};
+      final all = {for (var i = 0; i < 25; i++) 'n$i': 0};
+      rig.groups = [_group(all)];
+      rig.coordinator.onConnectionChanged(true);
+      unawaited(rig.coordinator.manualTest('proxy'));
+
+      // n0..n19 是死节点：前两批各占满 15 s；n20..n24 在第三批，30 s 后才开始，
+      // 第 31 s 测出结果。
+      rig.elapse(const Duration(seconds: 31));
+      rig.push([
+        _group({...all, for (var i = 20; i < 25; i++) 'n$i': 100 + i}),
+      ]);
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {
+        for (var i = 0; i < 20; i++) 'n$i',
+      });
+      expect(rig.recorded, isEmpty, reason: '还没收尾');
+
+      // 预算是 47 s：到点前一刻仍在等，到点才把死节点判失败。
+      rig.elapse(const Duration(seconds: 15, milliseconds: 999));
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
+      rig.elapse(const Duration(milliseconds: 1));
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      expect(rig.recorded.single.$1, {
+        for (var i = 20; i < 25; i++) 'n$i': 100 + i,
+      });
+      expect(rig.coordinator.state.timedOutNodes, {
+        for (var i = 0; i < 20; i++) 'n$i',
+      });
+      expect(
+        rig.cache['n20'],
+        CachedDelay(120, _t0.add(const Duration(seconds: 47))),
+      );
+      expect(rig.cache['n0']!.isFailed, isTrue);
+    });
+
+    _fake('封顶：节点再多一轮也只等 60 s', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      final dead = {for (var i = 0; i < 100; i++) 'n$i': 0};
       rig.groups = [_group(dead)];
       rig.coordinator.onConnectionChanged(true);
       unawaited(rig.coordinator.manualTest('proxy'));
 
-      rig.elapse(kLatencyRoundTimeout);
+      rig.elapse(const Duration(seconds: 59, milliseconds: 999));
       expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
-      expect(rig.coordinator.state.timedOutNodes, isEmpty);
-
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(const Duration(milliseconds: 1));
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
       expect(rig.coordinator.state.timedOutNodes, dead.keys.toSet());
+    });
+
+    // ---- 迟到失败：收尾时标成历史值的节点，之后才失败 ----
+
+    _fake('收尾时历史值、之后实时值有效→0：改记超时并写失败，缓存的旧成功值被覆盖', (rig, async) {
+      final at = _t0.subtract(const Duration(minutes: 1));
+      rig.cache['a'] = CachedDelay(98, at);
+      rig.cache['b'] = CachedDelay(120, at);
+      rig.groups = [
+        _group({'a': 98, 'b': 120}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(2));
+      expect(rig.coordinator.state.unconfirmedNodes, {'a', 'b'});
+      expect(rig.failed, isEmpty);
+      expect(rig.coordinator.state.isTesting, isFalse, reason: '这一轮已经没了');
+
+      // 内核第 N 秒才测完 a，失败：历史被删，实时值变 0。
+      rig.elapse(const Duration(seconds: 5));
+      rig.push([
+        _group({'a': 0, 'b': 120}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.coordinator.state.unconfirmedNodes, {'b'});
+      expect(rig.failed.single.$1, {'a'});
+      expect(rig.cache['a']!.isFailed, isTrue);
+      expect(rig.cache['b'], CachedDelay(120, at));
+
+      // 同一个失败不重复写。
+      rig.push([
+        _group({'a': 0, 'b': 120}),
+      ]);
+      expect(rig.failed, hasLength(1));
+    });
+
+    _fake('超过 60 s 封顶才失败的节点同样记成超时并落盘', (rig, async) {
+      rig.cache['slow'] = CachedDelay(98, _t0);
+      final nodes = {for (var i = 0; i < 100; i++) 'n$i': 90};
+      rig.groups = [
+        _group({...nodes, 'slow': 98}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(const Duration(seconds: 60));
+      expect(rig.coordinator.state.unconfirmedNodes, contains('slow'));
+
+      rig.elapse(const Duration(seconds: 30));
+      rig.push([
+        _group({...nodes, 'slow': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'slow'});
+      expect(rig.failed.single.$1, {'slow'});
+      expect(rig.cache['slow']!.isFailed, isTrue);
+    });
+
+    _fake('迟到失败之后又测通：成功值照常记，超时标记撤掉', (rig, async) {
+      rig.cache['a'] = CachedDelay(98, _t0);
+      rig.groups = [
+        _group({'a': 98}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(1));
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      rig.push([
+        _group({'a': 140}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
     });
 
     _fake('确认是累积的：先出结果的节点不会因为后续事件变回没结果', (rig, async) {
@@ -659,7 +799,7 @@ void main() {
         _group({'a': 100, 'b': 0}),
       ];
       rig.coordinator.onConnectionChanged(true);
-      rig.elapse(const Duration(seconds: 12));
+      rig.elapse(kLatencyWarmupDelay + kLatencyRoundTimeout);
       expect(rig.coordinator.state.unconfirmedNodes, {'a'});
       expect(rig.coordinator.state.timedOutNodes, {'b'});
 
@@ -681,7 +821,7 @@ void main() {
         _group({'a': 100}),
       ];
       rig.coordinator.onConnectionChanged(true);
-      rig.elapse(const Duration(seconds: 12));
+      rig.elapse(kLatencyWarmupDelay + kLatencyRoundTimeout);
       expect(rig.coordinator.state.unconfirmedNodes, {'a'});
       unawaited(rig.coordinator.manualTest('proxy'));
       expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
@@ -693,7 +833,7 @@ void main() {
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       expect(rig.coordinator.state.timedOutNodes, {'a'});
 
       unawaited(rig.coordinator.manualTest('proxy'));
@@ -820,7 +960,7 @@ void main() {
         g({'a': 0}),
       ];
       rig.coordinator.onProxiesPageOpened();
-      rig.elapse(const Duration(seconds: 10));
+      rig.elapse(kLatencyRoundTimeout);
       rig.coordinator.onProxiesPageOpened();
       expect(rig.urlTests, hasLength(1));
     });

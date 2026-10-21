@@ -1,4 +1,6 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:clashmiao/core/latency/latency_rules.dart';
+import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 
 import 'dart:async';
@@ -207,6 +209,7 @@ Future<Widget> _hostConnectionInfo({
   required List<OutboundGroup> groups,
   void Function(ProviderContainer)? onContainer,
   Future<List<Override>> Function(SharedPreferences prefs)? extraOverrides,
+  Stream<List<OutboundGroup>>? groupsStream,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   final prefs = await SharedPreferences.getInstance();
@@ -216,7 +219,7 @@ Future<Widget> _hostConnectionInfo({
       ...extra,
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       outboundGroupsProvider.overrideWith(
-        (_) => Stream<List<OutboundGroup>>.value(groups),
+        (_) => groupsStream ?? Stream<List<OutboundGroup>>.value(groups),
       ),
       // 节点胶囊的延迟读测速协调器，协调器跟着连接阶段走：给它同一个阶段。
       boxServiceProvider.overrideWithValue(const StubBoxService()),
@@ -683,6 +686,91 @@ void main() {
       isTrue,
       reason: '失败写进缓存，重开 App 也不会复活 98 ms',
     );
+  });
+
+  testWidgets('迟到失败的完整时间线：历史值 → 实时值变 0 → 胶囊超时 → 失败落盘 → 重开不复活 98 ms', (
+    tester,
+  ) async {
+    const profile = ProfileEntity(
+      id: 'p1',
+      name: 'p1',
+      url: 'https://example.com/p1',
+      active: true,
+    );
+    late ProviderContainer container;
+    late SharedPreferences prefsRef;
+    late ProfileStore storeRef;
+    final stream = StreamController<List<OutboundGroup>>();
+    addTearDown(stream.close);
+    List<OutboundGroup> groups(int thailand) => [
+      OutboundGroup(
+        tag: 'proxy',
+        type: 'selector',
+        selected: '泰国',
+        items: [
+          OutboundProxy(tag: '泰国', type: 'vmess', delay: thailand),
+          const OutboundProxy(tag: '香港直连', type: 'vmess', delay: 190),
+        ],
+      ),
+    ];
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [],
+        groupsStream: stream.stream,
+        onContainer: (c) => container = c,
+        extraOverrides: (prefs) async {
+          prefsRef = prefs;
+          storeRef = await seededProfileStore(prefs, [profile]);
+          return [
+            profileStoreProvider.overrideWith((_) => Future.value(storeRef)),
+            activeProfileProvider.overrideWith((_) => Future.value(profile)),
+          ];
+        },
+      ),
+    );
+    // 泰国当年测过 98 ms，缓存里也是；开测前实时值同样是 98。
+    stream.add(groups(98));
+    await tester.pump(const Duration(milliseconds: 250));
+    container.read(proxyDelayCacheProvider.notifier).recordMeasured({
+      '泰国': 98,
+    }, at: DateTime.now());
+    await tester.pump(const Duration(milliseconds: 250));
+
+    LatencyLabel capsule() =>
+        tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+
+    // 一轮测速收尾：泰国的实时值没变，无从分辨，保留为历史值。
+    await _drainLatency(tester);
+    expect(capsule().state, LatencyDisplayState.stale);
+    expect(capsule().ms, 98);
+    expect(container.read(proxyDelayCacheProvider)['泰国']!.ms, 98);
+
+    // 内核事后才测完泰国：失败，历史被删，实时值变 0。
+    stream.add(groups(0));
+    await tester.pump(const Duration(milliseconds: 250));
+    expect(capsule().state, LatencyDisplayState.timeout);
+    expect(find.text('98ms'), findsNothing);
+    expect(container.read(proxyDelayCacheProvider)['泰国']!.isFailed, isTrue);
+
+    // 失败落了盘：重开一个容器，缓存里是失败记录，不是 98 ms。
+    await storeRef.commit<void>((_) => const Plan<void>.unchanged());
+    final reopened = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWith((_) => Future.value(prefsRef)),
+        profileStoreProvider.overrideWith((_) => Future.value(storeRef)),
+        activeProfileProvider.overrideWith((_) => Future.value(profile)),
+      ],
+    );
+    addTearDown(reopened.dispose);
+    await reopened.read(sharedPreferencesProvider.future);
+    await reopened.read(profileStoreProvider.future);
+    await reopened.read(activeProfileProvider.future);
+    final revived = reopened.read(proxyDelayCacheProvider)['泰国']!;
+    expect(revived.isFailed, isTrue);
+    expect(isMeasurableDelay(revived.ms), isFalse);
+
+    await tester.pump(const Duration(seconds: 1));
   });
 
   testWidgets('上一次会话记下的失败：还没测速时胶囊就是超时，不显示 98 ms', (tester) async {

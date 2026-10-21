@@ -1,13 +1,13 @@
 # App Store 上架材料清单（iOS，首发美国 / 香港）
 
-状态：草稿（2026-10-20）。每项标注当前状态：✅ 仓库里已核实 · ⚠️ 需要动手 · ❓ 需要账号持有人决定 · 📱 需要真机。
+状态：草稿（2026-10-20，2026-10-22 更新：构建与签名已验证，见 §1；元数据定稿见 `app-store-metadata.md`）。每项标注当前状态：✅ 仓库里已核实 · ⚠️ 需要动手 · ❓ 需要账号持有人决定 · 📱 需要真机。
 仓库里能核实的事实写出了来源；App Store Connect 里的操作、截图、测试订阅需要人来做。
 
 ## 0. 先决条件（账号 / 标识）
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 组织类型 Apple Developer 账号 | ✅ | 审核指南 5.4 要求 VPN 类 App 由组织账号提交（`docs/ROADMAP.md` 里程碑 3） |
+| 组织类型 Apple Developer 账号 | ❌ **阻塞** | 审核指南 5.4 要求 VPN 类 App 由组织账号提交。2026-10-22 实查：本机签名用的团队 `V7HGHN6K8T` 在 Xcode 里是 `teamType = Individual`，团队名与 Distribution 描述文件的 `TeamName` 都是个人姓名——**用这个账号提交会按 5.4 被拒**。解决：注册组织账号（需要法人实体 + D-U-N-S 编号），或联系 Apple 把现有个人会员转为组织（保留 Team ID，App 记录不用迁移）。转好后无需改代码，重新 Archive 即可 |
 | App ID（主 App `com.clashmiao.clashmiao`）与扩展 `com.clashmiao.clashmiao.SingBoxPacketTunnel` | ✅ | Bundle id 来自 `ios/Runner.xcodeproj`；扩展 id 必须以主 App id 为前缀 |
 | App Group `group.com.clashmiao.shared` | ✅ | 两个 target 的 entitlements 都声明（`Runner.entitlements`） |
 | Network Extension 能力（`packet-tunnel-provider`） | ✅ | entitlements 里已有；**发布用的 Distribution 描述文件必须包含该能力**，首次 Archive 上传前确认 | 
@@ -23,6 +23,7 @@ flutter build ipa --release            # 需要本机登录组织账号的 Distr
 - ⚠️ 上传前跑一遍全量门：`flutter analyze --fatal-warnings`、`flutter test`、`xcodebuild test`（见 `docs/ARCHITECTURE.md`「测试」）。
 - ⚠️ 先发 TestFlight 内部测试，真机走完 `docs/superpowers/research/2026-10-20-ios-device-smoke.md` 的清单再提审。
 - 📱 `Libcore.xcframework` 不在 git 里，Archive 前 `bin/fetch-libcore.sh ios`。
+- ✅ 2026-10-22 实测：`flutter build ipa --release --build-name 0.3.0 --build-number 1` 一次通过，Xcode 自动签名用云端管理的 Apple Distribution 证书导出了 App Store IPA（`build/ios/ipa/`，60 MB）。主 App 与扩展都是 “iOS Team Store Provisioning Profile”，权限含 `packet-tunnel-provider` 与 `group.com.clashmiao.shared`，`get-task-allow = false`。本机没有 App Store Connect API key，上传用 Transporter 或 Xcode Organizer。
 
 ## 2. 出口合规（Export Compliance）
 
@@ -33,8 +34,8 @@ flutter build ipa --release            # 需要本机登录组织账号的 Distr
 
 | 项 | 状态 | 说明 |
 |---|---|---|
-| 隐私政策 URL | ⚠️ | 站点已有 `https://clashmiao.com/privacy`（`ClashMiaoWeb/src/pages/privacy.astro`）。**但正文与 App 实际行为不一致，提审前必须改**：正文写“不收集任何数据”，而 App 含**用户主动开启**的崩溃 / 性能上报（Sentry，设置页 `clashmiao_analytics_enabled`，默认关；`lib/core/logger/sentry_options.dart` 已脱敏订阅凭据、不带 PII、不截屏）。政策需要如实写出：默认不上报；开启后上报哪些（崩溃堆栈、设备型号 / 系统版本、5% 采样的性能事务）、不含什么（订阅地址、节点配置、流量内容、DNS 查询）、如何关闭。另外政策里的“通知（可选）”在 iOS 上并没有对应功能，应按平台区分或删除 |
-| `PrivacyInfo.xcprivacy`（主 App 与扩展） | ⚠️ | 现有两份只声明了 Required-Reason API（文件时间戳 / 磁盘空间 / 启动时间 / UserDefaults）。`NSPrivacyTracking`、`NSPrivacyCollectedDataTypes` 都没写：若按下面的“App 隐私问卷”申报了崩溃 / 性能数据，清单里要对应加上 `NSPrivacyCollectedDataTypes`（Crash Data、Performance Data，Not linked to identity，不用于跟踪，目的 App Functionality / Analytics），并保持 `NSPrivacyTracking = false` |
+| 隐私政策 URL | ⚠️ 待上线 | 正文已按 App 实际行为重写（官网仓库 `ClashMiaoWeb` 分支 `feat/website-overhaul`，提交 fae720e，10 种语言）：列出 App 自己发出的请求（订阅、节点检测、出口 IP 查询 ipwho.is、检查更新、WARP）、可选崩溃报告的内容与开关、按平台区分的权限。**该分支尚未部署，线上 `https://clashmiao.com/privacy` 仍是旧文**，提审前必须合并上线 |
+| `PrivacyInfo.xcprivacy`（主 App 与扩展） | ✅ | 主 App 声明 `NSPrivacyTracking = false`、Crash Data / Performance Data（不关联身份、不跟踪，用途 App Functionality / Analytics）；扩展声明不收集。与 `app-store-metadata.md` 的隐私问卷答法一致 |
 | App 隐私问卷（Nutrition Label） | ❓ | 建议口径：不用于跟踪；**Diagnostics → Crash Data、Performance Data**：收集（仅用户开启后）、不关联身份、不用于跟踪。订阅地址 / 节点 / DNS / 浏览记录：不收集（只存本机）。以账号持有人确认为准 |
 | 第三方 SDK 隐私清单 | ⚠️ | 上传后看 App Store Connect 的 “Missing privacy manifest” 邮件；Sentry 自带清单 |
 | 相机 / 相册用途文案 | ✅ | `NSCameraUsageDescription`（扫订阅二维码）、`NSPhotoLibraryUsageDescription` 已有 |
@@ -104,6 +105,8 @@ App 同时支持 iPhone 与 iPad（`TARGETED_DEVICE_FAMILY = "1,2"`），所以�
 6. （可选）iPad 横屏的首页
 
 ⚠️ 截图里**不要出现真实订阅地址、真实出口 IP 之外的个人信息**；演示订阅用审核专用订阅。
+
+2026-10-22 已在模拟器上拍好一组（`build/store-screenshots/`，不进 git）：`iphone-zh` / `iphone-en`（1320 × 2868：首页、线路、添加订阅）、`ipad-zh` / `ipad-en`（2064 × 2752：首页、线路）。用 debug 演示数据（`--dart-define=CLASHMIAO_DEBUG_HOME_PROFILE=true --dart-define=CLASHMIAO_DEBUG_PROXY_FIXTURE=true`），订阅名是中性的 “My Subscription”，节点是演示节点，不含私人订阅。**模拟器无法建立 VPN，“已连接”状态的首页截图需要真机补拍**；不补也能提审（首页未连接态足以展示功能）。
 
 ## 8. 提审前总检
 

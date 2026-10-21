@@ -300,7 +300,6 @@
       "autoStartPermissionStatus": {
         "allowed": "Açık",
         "denied": "Kapalı",
-        "pending": "…",
         "unknown": "Bilinmiyor"
       },
       "batteryOptimizationStatus": {

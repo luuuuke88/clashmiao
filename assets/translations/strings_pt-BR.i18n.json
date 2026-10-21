@@ -300,7 +300,6 @@
       "autoStartPermissionStatus": {
         "allowed": "Ativado",
         "denied": "Desativado",
-        "pending": "…",
         "unknown": "Desconhecido"
       },
       "batteryOptimizationStatus": {

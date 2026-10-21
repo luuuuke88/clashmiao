@@ -335,7 +335,6 @@
       "autoStartPermissionStatus": {
         "allowed": "چالاک",
         "denied": "ناچالاک",
-        "pending": "…",
         "unknown": "نەزانراو"
       },
       "batteryOptimizationStatus": {

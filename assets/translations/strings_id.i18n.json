@@ -300,7 +300,6 @@
       "autoStartPermissionStatus": {
         "allowed": "Aktif",
         "denied": "Nonaktif",
-        "pending": "…",
         "unknown": "Tidak diketahui"
       },
       "batteryOptimizationStatus": {

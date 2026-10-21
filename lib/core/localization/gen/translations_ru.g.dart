@@ -1089,7 +1089,6 @@ class Translations$settings$general$autoStartPermissionStatus$ru extends Transla
 	// Translations
 	@override String get allowed => 'Включено';
 	@override String get denied => 'Выключено';
-	@override String get pending => '…';
 	@override String get unknown => 'Неизвестно';
 }
 
@@ -1399,7 +1398,6 @@ extension on TranslationsRu {
 			'settings.general.autoStartPermissionMsg' => 'Если включено, подключение автоматически восстановится после перезагрузки телефона или обновления приложения',
 			'settings.general.autoStartPermissionStatus.allowed' => 'Включено',
 			'settings.general.autoStartPermissionStatus.denied' => 'Выключено',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'Неизвестно',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Исключено',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Не исключено',

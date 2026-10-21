@@ -1089,7 +1089,6 @@ class Translations$settings$general$autoStartPermissionStatus$id extends Transla
 	// Translations
 	@override String get allowed => 'Aktif';
 	@override String get denied => 'Nonaktif';
-	@override String get pending => '…';
 	@override String get unknown => 'Tidak diketahui';
 }
 
@@ -1368,7 +1367,6 @@ extension on TranslationsId {
 			'settings.general.autoStartPermissionMsg' => 'Jika aktif, koneksi pulih otomatis setelah ponsel dihidupkan ulang atau aplikasi diperbarui',
 			'settings.general.autoStartPermissionStatus.allowed' => 'Aktif',
 			'settings.general.autoStartPermissionStatus.denied' => 'Nonaktif',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'Tidak diketahui',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Dikecualikan',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Tidak Dikecualikan',

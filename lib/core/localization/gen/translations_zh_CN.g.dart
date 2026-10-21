@@ -1088,7 +1088,6 @@ class Translations$settings$general$autoStartPermissionStatus$zh_CN extends Tran
 	// Translations
 	@override String get allowed => '已开启';
 	@override String get denied => '未开启';
-	@override String get pending => '…';
 	@override String get unknown => '未知';
 }
 
@@ -1400,7 +1399,6 @@ extension on TranslationsZhCn {
 			'settings.general.autoStartPermissionMsg' => '开启后，手机重启或 App 更新后能自动恢复连接',
 			'settings.general.autoStartPermissionStatus.allowed' => '已开启',
 			'settings.general.autoStartPermissionStatus.denied' => '未开启',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => '未知',
 			'settings.general.batteryOptimizationStatus.exempted' => '已豁免',
 			'settings.general.batteryOptimizationStatus.notExempted' => '未豁免',

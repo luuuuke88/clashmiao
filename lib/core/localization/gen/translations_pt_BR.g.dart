@@ -1089,7 +1089,6 @@ class Translations$settings$general$autoStartPermissionStatus$pt_BR extends Tran
 	// Translations
 	@override String get allowed => 'Ativado';
 	@override String get denied => 'Desativado';
-	@override String get pending => '…';
 	@override String get unknown => 'Desconhecido';
 }
 
@@ -1368,7 +1367,6 @@ extension on TranslationsPtBr {
 			'settings.general.autoStartPermissionMsg' => 'Quando ativado, a conexão é restabelecida automaticamente após reiniciar o celular ou atualizar o app',
 			'settings.general.autoStartPermissionStatus.allowed' => 'Ativado',
 			'settings.general.autoStartPermissionStatus.denied' => 'Desativado',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'Desconhecido',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Isento',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Não isento',

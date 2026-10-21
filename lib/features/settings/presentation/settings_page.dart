@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/auto_start/auto_start_notifier.dart';
+import 'package:clashmiao/core/auto_start_permission/auto_start_permission_service.dart';
 import 'package:clashmiao/core/battery_optimization/battery_optimization_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
@@ -159,6 +160,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           subtitle:
                               t.settings.general.ignoreBatteryOptimizationsMsg,
                         ),
+                        // 仅 MIUI / HyperOS 才会渲染（其它系统整行不出现，连分隔线都没有）。
+                        _MiuiAutoStartTile(
+                          label: t.settings.general.autoStartPermission,
+                          subtitle: t.settings.general.autoStartPermissionMsg,
+                        ),
                         _SettingsTile(
                           icon: FluentIcons.phone_tablet_24_regular,
                           label: t.settings.network.perAppProxyPageTitle,
@@ -315,7 +321,11 @@ class _SettingsGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     final rows = <Widget>[];
     for (final child in children) {
-      if (rows.isNotEmpty) rows.add(const _Divider());
+      // 自带分隔线的行（可能整行不渲染）自己决定要不要画前导分隔线，
+      // 否则它藏起来时会留下一条多余的线。
+      if (rows.isNotEmpty && child is! _OwnsLeadingDivider) {
+        rows.add(const _Divider());
+      }
       rows.add(child);
     }
     return Column(
@@ -472,6 +482,95 @@ class _BatteryOptimizationTileState
           onTap: _onTap,
         );
       },
+    );
+  }
+}
+
+/// 标记接口：实现它的行自己负责前导分隔线，[_SettingsGroup] 不再替它补。
+abstract interface class _OwnsLeadingDivider {}
+
+/// MIUI / HyperOS「自启动」权限入口（仅 Android 段内、且仅这两个系统上才会渲染）。
+///
+/// MIUI 会在开机、应用更新的广播派发阶段就拦掉被禁止自启动的应用，进程都起不来，
+/// 持久化的 VPN 意图也就无从恢复。这里如实展示当前开关状态，点击跳系统的自启动管理页。
+/// 非 MIUI（状态为 unsupported）时整行不渲染——不给用户摆点了没用的选项。
+///
+/// 用户在系统设置里改完返回时（[AppLifecycleState.resumed]）重新查询，状态文案才会跟上；
+/// 重新查询期间保留旧值，不闪回占位符。
+class _MiuiAutoStartTile extends ConsumerStatefulWidget
+    implements _OwnsLeadingDivider {
+  const _MiuiAutoStartTile({required this.label, required this.subtitle});
+
+  final String label;
+  final String subtitle;
+
+  @override
+  ConsumerState<_MiuiAutoStartTile> createState() => _MiuiAutoStartTileState();
+}
+
+class _MiuiAutoStartTileState extends ConsumerState<_MiuiAutoStartTile>
+    with WidgetsBindingObserver {
+  /// null 表示首次查询还没返回。
+  MiuiAutoStartStatus? _status;
+
+  /// 查询代数：连续触发多次查询时，只认最新一次的结果，晚到的旧结果直接丢弃。
+  int _generation = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    final generation = ++_generation;
+    final status = await ref.read(autoStartPermissionServiceProvider).status();
+    if (!mounted || generation != _generation) return;
+    setState(() => _status = status);
+  }
+
+  Future<void> _onTap() async {
+    await ref.read(autoStartPermissionServiceProvider).openSettings();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    if (status == MiuiAutoStartStatus.unsupported) {
+      return const SizedBox.shrink();
+    }
+    final texts = ref.watch(translationsProvider).settings.general;
+    final statusText = switch (status) {
+      null => texts.autoStartPermissionStatus.pending,
+      MiuiAutoStartStatus.allowed => texts.autoStartPermissionStatus.allowed,
+      MiuiAutoStartStatus.denied => texts.autoStartPermissionStatus.denied,
+      MiuiAutoStartStatus.unknown => texts.autoStartPermissionStatus.unknown,
+      MiuiAutoStartStatus.unsupported => '',
+    };
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const _Divider(),
+        _SettingsTile(
+          icon: FluentIcons.power_24_regular,
+          label: widget.label,
+          subtitle: widget.subtitle,
+          trailing: _TrailingValue(value: statusText),
+          onTap: _onTap,
+        ),
+      ],
     );
   }
 }

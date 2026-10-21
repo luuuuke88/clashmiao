@@ -778,6 +778,9 @@ class Translations$settings$general$fa extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'نمایش سرعت در نوار اعلان';
 	@override String get hapticFeedback => 'بازخورد لمسی';
 	@override String get autoIpCheck => 'بررسی خودکار آی‌پی اتصال';
+	@override String get autoStartPermission => 'اجازه به اجرای خودکار';
+	@override String get autoStartPermissionMsg => 'در صورت فعال بودن، اتصال پس از راه‌اندازی مجدد گوشی یا به‌روزرسانی برنامه به‌طور خودکار برقرار می‌شود';
+	@override late final Translations$settings$general$autoStartPermissionStatus$fa autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$fa._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$fa batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$fa._(_root);
 }
 
@@ -1076,6 +1079,19 @@ class Translations$settings$general$themeModes$fa extends Translations$settings$
 	@override String get dark => 'حالت تیره';
 	@override String get light => 'حالت روشن';
 	@override String get black => 'حالت سیاه';
+}
+
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$fa extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$fa._(TranslationsFa root) : this._root = root, super.internal(root);
+
+	final TranslationsFa _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'فعال';
+	@override String get denied => 'غیرفعال';
+	@override String get pending => '…';
+	@override String get unknown => 'نامشخص';
 }
 
 // Path: settings.general.batteryOptimizationStatus
@@ -1382,6 +1398,12 @@ extension on TranslationsFa {
 			'settings.general.dynamicNotification' => 'نمایش سرعت در نوار اعلان',
 			'settings.general.hapticFeedback' => 'بازخورد لمسی',
 			'settings.general.autoIpCheck' => 'بررسی خودکار آی‌پی اتصال',
+			'settings.general.autoStartPermission' => 'اجازه به اجرای خودکار',
+			'settings.general.autoStartPermissionMsg' => 'در صورت فعال بودن، اتصال پس از راه‌اندازی مجدد گوشی یا به‌روزرسانی برنامه به‌طور خودکار برقرار می‌شود',
+			'settings.general.autoStartPermissionStatus.allowed' => 'فعال',
+			'settings.general.autoStartPermissionStatus.denied' => 'غیرفعال',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'نامشخص',
 			'settings.general.batteryOptimizationStatus.exempted' => 'مستثنی',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'مستثنی نشده',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

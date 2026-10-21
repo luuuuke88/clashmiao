@@ -328,6 +328,14 @@
       "dynamicNotification": "Отображение скорости в уведомлении",
       "autoIpCheck": "Автоматически проверять IP-адрес соединения",
       "hapticFeedback": "Тактильная отдача",
+      "autoStartPermission": "Разрешить автозапуск",
+      "autoStartPermissionMsg": "Если включено, подключение автоматически восстановится после перезагрузки телефона или обновления приложения",
+      "autoStartPermissionStatus": {
+        "allowed": "Включено",
+        "denied": "Выключено",
+        "pending": "…",
+        "unknown": "Неизвестно"
+      },
       "batteryOptimizationStatus": {
         "exempted": "Исключено",
         "notExempted": "Не исключено",

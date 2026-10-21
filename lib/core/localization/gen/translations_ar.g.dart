@@ -777,6 +777,9 @@ class Translations$settings$general$ar extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'عرض السرعة في الإشعار';
 	@override String get hapticFeedback => 'ردود فعل اللمس';
 	@override String get autoIpCheck => 'التحقق من عنوان IP للاتصال تلقائيًا';
+	@override String get autoStartPermission => 'السماح بالتشغيل التلقائي';
+	@override String get autoStartPermissionMsg => 'عند تفعيله، يُستأنف الاتصال تلقائيًا بعد إعادة تشغيل الهاتف أو تحديث التطبيق';
+	@override late final Translations$settings$general$autoStartPermissionStatus$ar autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$ar._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$ar batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$ar._(_root);
 }
 
@@ -1075,6 +1078,19 @@ class Translations$settings$general$themeModes$ar extends Translations$settings$
 	@override String get dark => 'الوضع الداكن';
 	@override String get light => 'الوضع الفاتح';
 	@override String get black => 'الوضع الأسود';
+}
+
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$ar extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$ar._(TranslationsAr root) : this._root = root, super.internal(root);
+
+	final TranslationsAr _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'مفعّل';
+	@override String get denied => 'معطّل';
+	@override String get pending => '…';
+	@override String get unknown => 'غير معروف';
 }
 
 // Path: settings.general.batteryOptimizationStatus
@@ -1381,6 +1397,12 @@ extension on TranslationsAr {
 			'settings.general.dynamicNotification' => 'عرض السرعة في الإشعار',
 			'settings.general.hapticFeedback' => 'ردود فعل اللمس',
 			'settings.general.autoIpCheck' => 'التحقق من عنوان IP للاتصال تلقائيًا',
+			'settings.general.autoStartPermission' => 'السماح بالتشغيل التلقائي',
+			'settings.general.autoStartPermissionMsg' => 'عند تفعيله، يُستأنف الاتصال تلقائيًا بعد إعادة تشغيل الهاتف أو تحديث التطبيق',
+			'settings.general.autoStartPermissionStatus.allowed' => 'مفعّل',
+			'settings.general.autoStartPermissionStatus.denied' => 'معطّل',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'غير معروف',
 			'settings.general.batteryOptimizationStatus.exempted' => 'مُستثنى',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'غير مُستثنى',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

@@ -281,6 +281,14 @@
       "dynamicNotification": "Mostrar velocidad en la notificación",
       "hapticFeedback": "Respuesta háptica",
       "autoIpCheck": "Comprobar automáticamente la IP de conexión",
+      "autoStartPermission": "Permitir inicio automático",
+      "autoStartPermissionMsg": "Si se activa, la conexión se restablece automáticamente tras reiniciar el teléfono o actualizar la app",
+      "autoStartPermissionStatus": {
+        "allowed": "Activado",
+        "denied": "Desactivado",
+        "pending": "…",
+        "unknown": "Desconocido"
+      },
       "batteryOptimizationStatus": {
         "exempted": "Exento",
         "notExempted": "No exento",

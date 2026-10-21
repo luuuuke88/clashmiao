@@ -295,6 +295,14 @@
       "dynamicNotification": "Tampilkan Kecepatan di notifikasi",
       "hapticFeedback": "Umpan Balik Haptik",
       "autoIpCheck": "Periksa IP Koneksi Otomatis",
+      "autoStartPermission": "Izinkan mulai otomatis",
+      "autoStartPermissionMsg": "Jika aktif, koneksi pulih otomatis setelah ponsel dihidupkan ulang atau aplikasi diperbarui",
+      "autoStartPermissionStatus": {
+        "allowed": "Aktif",
+        "denied": "Nonaktif",
+        "pending": "…",
+        "unknown": "Tidak diketahui"
+      },
       "batteryOptimizationStatus": {
         "exempted": "Dikecualikan",
         "notExempted": "Tidak Dikecualikan",

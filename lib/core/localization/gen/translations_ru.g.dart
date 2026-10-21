@@ -777,6 +777,9 @@ class Translations$settings$general$ru extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'Отображение скорости в уведомлении';
 	@override String get autoIpCheck => 'Автоматически проверять IP-адрес соединения';
 	@override String get hapticFeedback => 'Тактильная отдача';
+	@override String get autoStartPermission => 'Разрешить автозапуск';
+	@override String get autoStartPermissionMsg => 'Если включено, подключение автоматически восстановится после перезагрузки телефона или обновления приложения';
+	@override late final Translations$settings$general$autoStartPermissionStatus$ru autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$ru._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$ru batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$ru._(_root);
 }
 
@@ -1075,6 +1078,19 @@ class Translations$settings$general$themeModes$ru extends Translations$settings$
 	@override String get dark => 'Тёмная тема';
 	@override String get light => 'Светлая тема';
 	@override String get black => 'Чёрная тема';
+}
+
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$ru extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$ru._(TranslationsRu root) : this._root = root, super.internal(root);
+
+	final TranslationsRu _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'Включено';
+	@override String get denied => 'Выключено';
+	@override String get pending => '…';
+	@override String get unknown => 'Неизвестно';
 }
 
 // Path: settings.general.batteryOptimizationStatus
@@ -1379,6 +1395,12 @@ extension on TranslationsRu {
 			'settings.general.dynamicNotification' => 'Отображение скорости в уведомлении',
 			'settings.general.autoIpCheck' => 'Автоматически проверять IP-адрес соединения',
 			'settings.general.hapticFeedback' => 'Тактильная отдача',
+			'settings.general.autoStartPermission' => 'Разрешить автозапуск',
+			'settings.general.autoStartPermissionMsg' => 'Если включено, подключение автоматически восстановится после перезагрузки телефона или обновления приложения',
+			'settings.general.autoStartPermissionStatus.allowed' => 'Включено',
+			'settings.general.autoStartPermissionStatus.denied' => 'Выключено',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Неизвестно',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Исключено',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Не исключено',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

@@ -330,6 +330,14 @@
       "dynamicNotification": "Display Speed in Notification",
       "hapticFeedback": "Haptic Feedback",
       "autoIpCheck": "Automatically Check Connection IP",
+      "autoStartPermission": "Allow Auto-Start",
+      "autoStartPermissionMsg": "When enabled, the connection resumes automatically after the phone restarts or the app updates",
+      "autoStartPermissionStatus": {
+        "allowed": "On",
+        "denied": "Off",
+        "pending": "…",
+        "unknown": "Unknown"
+      },
       "batteryOptimizationStatus": {
         "exempted": "Exempted",
         "notExempted": "Not Exempted",

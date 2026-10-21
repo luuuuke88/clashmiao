@@ -739,6 +739,9 @@ class Translations$settings$general$es extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'Mostrar velocidad en la notificación';
 	@override String get hapticFeedback => 'Respuesta háptica';
 	@override String get autoIpCheck => 'Comprobar automáticamente la IP de conexión';
+	@override String get autoStartPermission => 'Permitir inicio automático';
+	@override String get autoStartPermissionMsg => 'Si se activa, la conexión se restablece automáticamente tras reiniciar el teléfono o actualizar la app';
+	@override late final Translations$settings$general$autoStartPermissionStatus$es autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$es._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$es batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$es._(_root);
 }
 
@@ -1077,6 +1080,19 @@ class Translations$settings$general$themeModes$es extends Translations$settings$
 	@override String get black => 'Modo Negro';
 }
 
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$es extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'Activado';
+	@override String get denied => 'Desactivado';
+	@override String get pending => '…';
+	@override String get unknown => 'Desconocido';
+}
+
 // Path: settings.general.batteryOptimizationStatus
 class Translations$settings$general$batteryOptimizationStatus$es extends Translations$settings$general$batteryOptimizationStatus$en {
 	Translations$settings$general$batteryOptimizationStatus$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1336,6 +1352,12 @@ extension on TranslationsEs {
 			'settings.general.dynamicNotification' => 'Mostrar velocidad en la notificación',
 			'settings.general.hapticFeedback' => 'Respuesta háptica',
 			'settings.general.autoIpCheck' => 'Comprobar automáticamente la IP de conexión',
+			'settings.general.autoStartPermission' => 'Permitir inicio automático',
+			'settings.general.autoStartPermissionMsg' => 'Si se activa, la conexión se restablece automáticamente tras reiniciar el teléfono o actualizar la app',
+			'settings.general.autoStartPermissionStatus.allowed' => 'Activado',
+			'settings.general.autoStartPermissionStatus.denied' => 'Desactivado',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Desconocido',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Exento',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'No exento',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

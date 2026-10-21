@@ -330,6 +330,14 @@
       "dynamicNotification": "在通知中显示网络速度",
       "hapticFeedback": "触觉反馈",
       "autoIpCheck": "自动检查连接的 IP",
+      "autoStartPermission": "允许自启动",
+      "autoStartPermissionMsg": "开启后，手机重启或 App 更新后能自动恢复连接",
+      "autoStartPermissionStatus": {
+        "allowed": "已开启",
+        "denied": "未开启",
+        "pending": "…",
+        "unknown": "未知"
+      },
       "batteryOptimizationStatus": {
         "exempted": "已豁免",
         "notExempted": "未豁免",

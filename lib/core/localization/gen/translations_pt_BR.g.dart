@@ -739,6 +739,9 @@ class Translations$settings$general$pt_BR extends Translations$settings$general$
 	@override String get dynamicNotification => 'Exibir velocidade na notificação';
 	@override String get hapticFeedback => 'Feedback tátil';
 	@override String get autoIpCheck => 'Verifique automaticamente o IP da conexão';
+	@override String get autoStartPermission => 'Permitir inicialização automática';
+	@override String get autoStartPermissionMsg => 'Quando ativado, a conexão é restabelecida automaticamente após reiniciar o celular ou atualizar o app';
+	@override late final Translations$settings$general$autoStartPermissionStatus$pt_BR autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$pt_BR._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$pt_BR batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$pt_BR._(_root);
 }
 
@@ -1077,6 +1080,19 @@ class Translations$settings$general$themeModes$pt_BR extends Translations$settin
 	@override String get black => 'Modo Preto';
 }
 
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$pt_BR extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
+
+	final TranslationsPtBr _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'Ativado';
+	@override String get denied => 'Desativado';
+	@override String get pending => '…';
+	@override String get unknown => 'Desconhecido';
+}
+
 // Path: settings.general.batteryOptimizationStatus
 class Translations$settings$general$batteryOptimizationStatus$pt_BR extends Translations$settings$general$batteryOptimizationStatus$en {
 	Translations$settings$general$batteryOptimizationStatus$pt_BR._(TranslationsPtBr root) : this._root = root, super.internal(root);
@@ -1348,6 +1364,12 @@ extension on TranslationsPtBr {
 			'settings.general.dynamicNotification' => 'Exibir velocidade na notificação',
 			'settings.general.hapticFeedback' => 'Feedback tátil',
 			'settings.general.autoIpCheck' => 'Verifique automaticamente o IP da conexão',
+			'settings.general.autoStartPermission' => 'Permitir inicialização automática',
+			'settings.general.autoStartPermissionMsg' => 'Quando ativado, a conexão é restabelecida automaticamente após reiniciar o celular ou atualizar o app',
+			'settings.general.autoStartPermissionStatus.allowed' => 'Ativado',
+			'settings.general.autoStartPermissionStatus.denied' => 'Desativado',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Desconhecido',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Isento',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Não isento',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

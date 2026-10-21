@@ -330,6 +330,14 @@
       "dynamicNotification": "عرض السرعة في الإشعار",
       "hapticFeedback": "ردود فعل اللمس",
       "autoIpCheck": "التحقق من عنوان IP للاتصال تلقائيًا",
+      "autoStartPermission": "السماح بالتشغيل التلقائي",
+      "autoStartPermissionMsg": "عند تفعيله، يُستأنف الاتصال تلقائيًا بعد إعادة تشغيل الهاتف أو تحديث التطبيق",
+      "autoStartPermissionStatus": {
+        "allowed": "مفعّل",
+        "denied": "معطّل",
+        "pending": "…",
+        "unknown": "غير معروف"
+      },
       "batteryOptimizationStatus": {
         "exempted": "مُستثنى",
         "notExempted": "غير مُستثنى",

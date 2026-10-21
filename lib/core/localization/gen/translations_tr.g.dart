@@ -740,6 +740,9 @@ class Translations$settings$general$tr extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'Bildirimde hızı göster';
 	@override String get hapticFeedback => 'Dokunsal Geri Bildirim';
 	@override String get autoIpCheck => 'Bağlantı IP’sini Otomatik Denetle';
+	@override String get autoStartPermission => 'Otomatik başlatmaya izin ver';
+	@override String get autoStartPermissionMsg => 'Açıksa, telefon yeniden başlatıldığında veya uygulama güncellendiğinde bağlantı otomatik olarak geri gelir';
+	@override late final Translations$settings$general$autoStartPermissionStatus$tr autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$tr._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$tr batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$tr._(_root);
 }
 
@@ -1078,6 +1081,19 @@ class Translations$settings$general$themeModes$tr extends Translations$settings$
 	@override String get black => 'Siyah mod';
 }
 
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$tr extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$tr._(TranslationsTr root) : this._root = root, super.internal(root);
+
+	final TranslationsTr _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'Açık';
+	@override String get denied => 'Kapalı';
+	@override String get pending => '…';
+	@override String get unknown => 'Bilinmiyor';
+}
+
 // Path: settings.general.batteryOptimizationStatus
 class Translations$settings$general$batteryOptimizationStatus$tr extends Translations$settings$general$batteryOptimizationStatus$en {
 	Translations$settings$general$batteryOptimizationStatus$tr._(TranslationsTr root) : this._root = root, super.internal(root);
@@ -1349,6 +1365,12 @@ extension on TranslationsTr {
 			'settings.general.dynamicNotification' => 'Bildirimde hızı göster',
 			'settings.general.hapticFeedback' => 'Dokunsal Geri Bildirim',
 			'settings.general.autoIpCheck' => 'Bağlantı IP’sini Otomatik Denetle',
+			'settings.general.autoStartPermission' => 'Otomatik başlatmaya izin ver',
+			'settings.general.autoStartPermissionMsg' => 'Açıksa, telefon yeniden başlatıldığında veya uygulama güncellendiğinde bağlantı otomatik olarak geri gelir',
+			'settings.general.autoStartPermissionStatus.allowed' => 'Açık',
+			'settings.general.autoStartPermissionStatus.denied' => 'Kapalı',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Bilinmiyor',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Muaf',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Muaf Değil',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

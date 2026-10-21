@@ -1520,6 +1520,13 @@ class Translations$settings$general$en {
 	/// en: 'Automatically Check Connection IP'
 	String get autoIpCheck => 'Automatically Check Connection IP';
 
+	/// en: 'Allow Auto-Start'
+	String get autoStartPermission => 'Allow Auto-Start';
+
+	/// en: 'When enabled, the connection resumes automatically after the phone restarts or the app updates'
+	String get autoStartPermissionMsg => 'When enabled, the connection resumes automatically after the phone restarts or the app updates';
+
+	late final Translations$settings$general$autoStartPermissionStatus$en autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$en.internal(_root);
 	late final Translations$settings$general$batteryOptimizationStatus$en batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$en.internal(_root);
 }
 
@@ -2041,6 +2048,27 @@ class Translations$settings$general$themeModes$en {
 	String get black => 'Black Mode';
 }
 
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'On'
+	String get allowed => 'On';
+
+	/// en: 'Off'
+	String get denied => 'Off';
+
+	/// en: '…'
+	String get pending => '…';
+
+	/// en: 'Unknown'
+	String get unknown => 'Unknown';
+}
+
 // Path: settings.general.batteryOptimizationStatus
 class Translations$settings$general$batteryOptimizationStatus$en {
 	Translations$settings$general$batteryOptimizationStatus$en.internal(this._root);
@@ -2363,6 +2391,12 @@ extension on Translations {
 			'settings.general.dynamicNotification' => 'Display Speed in Notification',
 			'settings.general.hapticFeedback' => 'Haptic Feedback',
 			'settings.general.autoIpCheck' => 'Automatically Check Connection IP',
+			'settings.general.autoStartPermission' => 'Allow Auto-Start',
+			'settings.general.autoStartPermissionMsg' => 'When enabled, the connection resumes automatically after the phone restarts or the app updates',
+			'settings.general.autoStartPermissionStatus.allowed' => 'On',
+			'settings.general.autoStartPermissionStatus.denied' => 'Off',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Unknown',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Exempted',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Not Exempted',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

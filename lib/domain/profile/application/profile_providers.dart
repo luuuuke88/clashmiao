@@ -119,7 +119,7 @@ final activeProfileProvider = FutureProvider<ProfileEntity?>((ref) async {
 
 final _debugHomeProfile = ProfileEntity(
   id: 'debug-home-profile',
-  name: 'ClashMiao Pro',
+  name: 'My Subscription',
   url: 'https://example.com/debug-sub',
   active: true,
   subInfo: SubscriptionInfo(
@@ -151,7 +151,7 @@ final _debugProfileList = [
 final _debugNoActiveProfileList = [
   ProfileEntity(
     id: 'debug-no-active-remote',
-    name: 'ClashMiao Pro',
+    name: 'My Subscription',
     url: 'https://example.com/debug-sub',
     active: false,
     lastUpdate: DateTime(2026, 6, 12, 1, 20),

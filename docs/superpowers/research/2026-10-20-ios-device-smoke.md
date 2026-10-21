@@ -49,3 +49,21 @@ xcrun devicectl device copy from --device <UDID> \
   --domain-type appGroupDataContainer --domain-identifier group.com.clashmiao.shared \
   --source "Library/Application Support/ClashMiao/kernel/extension-state.json" --destination /tmp/ext-state.json
 ```
+
+## 2026-10-22 补充：模拟器全流程（release 候选 0.3.0）
+
+设备：iPhone 17 Pro Max 模拟器、iPad Pro 13" 模拟器，debug 包。
+
+| 项 | 结果 |
+|---|---|
+| 首次启动、空状态 | ✅ |
+| 新的配置文件 → 从剪贴板添加（系统粘贴授权 → 允许） | ✅ 导入成功，订阅流量 / 到期信息正确；面板按 UA 白名单发内容的回退生效 |
+| 失效订阅（HTTP 403） | ✅ 报错提示，不崩溃 |
+| 添加订阅弹窗没有「添加 WARP」、快速设置没有 WARP 行 | ✅ |
+| 线路页列出全部节点；未连接时点测速提示「请连接后测速」 | ✅ |
+| 设置页无「隐私 / 启用分析」（本构建没有上报 DSN） | ✅ |
+| 关于页无「检查更新」，有「隐私政策」 | ✅ |
+| 点连接 | ⚠️ 模拟器限制：模拟器里没有 `nehelper`，`NETunnelProviderManager` 读写配置报 `NEConfigurationErrorDomain Code=11 IPC failed`，App 提示「与后台服务失去联系」。**VPN 隧道只能在真机验证** |
+| iPad 布局（首页 / 线路） | ✅ 无溢出 |
+
+iOS 原生层（`ios/`）自 10-20 真机冒烟以来没有改动（只补了隐私清单），隧道链路沿用当日真机结论。仍未在真机上验证的项见上文「未完成 / 未验证」。

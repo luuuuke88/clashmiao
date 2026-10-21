@@ -55,7 +55,7 @@ for dir in "$ARTIFACTS"/release-*/; do
   while IFS= read -r -d '' f; do
     base="$(basename "$f")"
     # 重名会让后一个悄悄盖掉前一个，发出去的包少一个而没有任何提示。
-    [ -e "$STAGING/$base" ] && die "两个 artifact 里都有 $base，重名会互相覆盖"
+    [ -e "$STAGING/$base" ] && die "两个 artifact 里都有 ${base}，重名会互相覆盖"
     cp "$f" "$STAGING/$base"
   done < <(find "$dir" -type f -print0)
 done

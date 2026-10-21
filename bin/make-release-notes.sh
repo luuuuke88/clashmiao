@@ -34,7 +34,7 @@ if [ ${#MISSING[@]} -gt 0 ]; then
   # 不用 `IFS=、` 拼接：IFS 只取第一个**字节**，而「、」是多字节字符，
   # 结果会拼出乱码（实跑验证过：Android?Linux）。手动拼。
   joined="${MISSING[0]}"
-  for m in "${MISSING[@]:1}"; do joined="$joined、$m"; done
+  for m in "${MISSING[@]:1}"; do joined="${joined}、$m"; done
 
   echo "> [!WARNING]"
   echo "> **本次发布缺少以下平台的安装包：$joined**"

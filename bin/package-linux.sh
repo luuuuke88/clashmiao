@@ -23,7 +23,7 @@ APP_ID="clashmiao"
 log() { printf '\033[0;32m[package-linux]\033[0m %s\n' "$*"; }
 die() { printf '\033[0;31m[package-linux]\033[0m %s\n' "$*" >&2; exit 1; }
 
-[ -d "$BUNDLE" ] || die "找不到 $BUNDLE，先跑 flutter build linux --release"
+[ -d "$BUNDLE" ] || die "找不到 ${BUNDLE}，先跑 flutter build linux --release"
 [ -x "$BUNDLE/clashmiao" ] || die "$BUNDLE/clashmiao 不存在或不可执行"
 
 mkdir -p "$OUT"

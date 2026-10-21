@@ -45,6 +45,7 @@ object NetworkWatcher {
         data class Subscribe(val key: Any, val cb: (Network?) -> Unit) : Op
         data class Unsubscribe(val key: Any) : Op
         data class Resolved(val n: Network) : Op
+        class Forget(val out: CompletableDeferred<Network>) : Op
         data class Refreshed(val n: Network) : Op
         data class Lost(val n: Network) : Op
         class FetchCurrent(val out: CompletableDeferred<Network>) : Op
@@ -85,21 +86,23 @@ object NetworkWatcher {
                 val c = current
                 if (c != null) op.out.complete(c) else waiters += op.out
             }
+            // 等待方被取消了：登记不能留下（否则一直没有网络事件时，取消过的等待会越积越多）。
+            is Op.Forget -> waiters.remove(op.out)
         }
     }
 
     // === 内核的 interface listener ========================================
 
-    @Volatile private var coreListener: InterfaceListener? = null
+    private val listenerGate = InterfaceListenerGate<InterfaceListener>()
 
     /**
      * 让内核的 [InterfaceListener] 接到 default-interface 变化通知；传 null 即停止。
      *
-     * 停止之后不再发起新的回调；回调期间**不持锁**（内核在回调里可能回头调平台接口，持锁会和内核自己的锁互相等死）。
-     * 所以与本方法并发、已经在途的那一次回调仍可能在返回之后才结束——这是已知的、良性的窗口。
+     * 换监听 / 停止时按「代次 + 排空屏障」处理（见 [InterfaceListenerGate]）：返回之后旧监听不会再被调用，
+     * 也没有仍在途的旧回调，所以新一轮启动不会与旧回调交错；回调期间**不持锁**（内核在回调里可能回头调平台接口）。
      */
     fun attachInterfaceListener(listener: InterfaceListener?) {
-        coreListener = listener
+        listenerGate.attach(listener)
         if (listener != null) emitInterfaceUpdate(currentNetwork)
     }
 
@@ -134,15 +137,25 @@ object NetworkWatcher {
         Application.connectivity.activeNetwork ?: throw UnknownHostException()
     } else {
         val pending = CompletableDeferred<Network>()
-        actor.send(Op.FetchCurrent(pending))
-        pending.await()
+        try {
+            actor.send(Op.FetchCurrent(pending))
+            pending.await()
+        } finally {
+            // 被取消（内核放弃这次 DNS 调用）：撤销登记；已经完成的不用管。
+            if (!pending.isCompleted) {
+                pending.cancel()
+                actor.trySend(Op.Forget(pending))
+            }
+        }
     }
 
     /** 把 default network 翻译成 (interface-name, index, expensive, constrained) 推给内核。 */
     private fun emitInterfaceUpdate(network: Network?) {
-        if (coreListener == null) return
+        // 这一轮准备工作（含最多约 1 s 的重试）属于取这一刻的代次：中途换了监听就丢弃，不把旧网络状态喂给新一轮。
+        if (!listenerGate.hasListener()) return
+        val gen = listenerGate.generation()
         if (network == null) {
-            notifyListener("", -1, expensive = false, constrained = false)
+            notifyListener(gen, "", -1, expensive = false, constrained = false)
             return
         }
         val name = Application.connectivity.getLinkProperties(network)?.interfaceName ?: return
@@ -152,15 +165,15 @@ object NetworkWatcher {
         repeat(10) {
             val ifc = runCatching { NetworkInterface.getByName(name) }.getOrNull()
             if (ifc != null) {
-                notifyListener(ifc.name, ifc.index, expensive, constrained = false)
+                notifyListener(gen, ifc.name, ifc.index, expensive, constrained = false)
                 return
             }
             Thread.sleep(100)
         }
     }
 
-    private fun notifyListener(name: String, index: Int, expensive: Boolean, constrained: Boolean) {
-        coreListener?.update(name, index, expensive, constrained)
+    private fun notifyListener(gen: Long, name: String, index: Int, expensive: Boolean, constrained: Boolean) {
+        listenerGate.dispatch(gen) { it.update(name, index, expensive, constrained) }
     }
 
     // === Android ConnectivityManager 注册路径（按 API level 分叉） ============

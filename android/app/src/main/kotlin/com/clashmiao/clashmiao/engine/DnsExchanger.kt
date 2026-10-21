@@ -1,5 +1,6 @@
 package com.clashmiao.clashmiao.engine
 
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -13,6 +14,7 @@ import java.util.concurrent.RejectedExecutionException
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 /** 内核给一次本地 DNS 调用的回复通道（生产是 `DNSCall`，测试是假的）。 */
 internal interface DnsReply {
@@ -86,7 +88,8 @@ internal class DnsExchanger(
         if (!async) {
             // API 26–28 只有同步的 Network.getAllByName，它不响应中断、也没有时限。
             // 所以放到有界的工作线程上跑，调用线程只等「结果 / 取消 / 时限」三者先到的一个：
-            // 取消或超时时调用线程立刻返回（JNI 引用随之释放），工作线程在后台自行结束，结果丢弃，不再回复。
+            // 取消或超时时调用线程立刻返回，工作线程在后台自行结束，结果丢弃，不再回复；
+            // 工作线程经可清空的结果槽交回结果，不持有这次调用（见 [lookupBlocking]），所以 JNI 引用随调用线程返回而可回收。
             when (val r = lookupBlocking(net, domain)) {
                 is BlockingLookup.Answer -> reply.success(r.addresses.joinToString("\n"))
                 BlockingLookup.NxDomain -> reply.errorCode(DNS_RCODE_NXDOMAIN)
@@ -120,6 +123,9 @@ internal class DnsExchanger(
     private suspend fun lookupBlocking(net: Any, domain: String): BlockingLookup =
         withTimeoutOrNull(blockingTimeoutMillis) {
             suspendCancellableCoroutine<BlockingLookup> { cont ->
+                // 工作线程只持有这个槽，不直接持有 continuation：取消 / 超时时槽被清空，
+                // 仍卡在系统调用里的工作线程就不再经 continuation 间接持有这次调用（生产里是内核的 DNSCall 的 JNI 引用）。
+                val slot = AtomicReference<CancellableContinuation<BlockingLookup>?>(cont)
                 val future = try {
                     blockingExecutor.submit {
                         val result = try {
@@ -129,14 +135,18 @@ internal class DnsExchanger(
                         } catch (e: Throwable) {
                             BlockingLookup.Failed(e)
                         }
-                        // 协程已取消 / 超时则这次 resume 被忽略：迟到的结果没有人接收，更不会回复内核。
-                        cont.resumeWith(Result.success(result))
+                        // 槽已清空（取消 / 超时）则没有人接收：迟到的结果丢弃，更不会回复内核。
+                        slot.getAndSet(null)?.resumeWith(Result.success(result))
                     }
                 } catch (_: RejectedExecutionException) {
+                    slot.set(null)
                     cont.resumeWith(Result.success(BlockingLookup.Unavailable))
                     return@suspendCancellableCoroutine
                 }
-                cont.invokeOnCancellation { future.cancel(true) }
+                cont.invokeOnCancellation {
+                    slot.set(null)
+                    future.cancel(true)
+                }
             }
         } ?: BlockingLookup.Unavailable
 

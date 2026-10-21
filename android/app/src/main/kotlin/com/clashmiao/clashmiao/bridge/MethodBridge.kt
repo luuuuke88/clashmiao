@@ -68,6 +68,8 @@ class MethodBridge(
     private val platformOps: Map<String, PlatformOp> = buildMap {
         put("is_ignoring_battery_optimizations", ::opIsIgnoringBattery)
         put("request_ignore_battery_optimizations", ::opRequestIgnoreBattery)
+        put("get_miui_autostart_status", ::opGetMiuiAutoStartStatus)
+        put("open_miui_autostart_settings", ::opOpenMiuiAutoStartSettings)
         put("get_installed_packages", ::opGetInstalledPackages)
         put("get_package_icon", ::opGetPackageIcon)
     }
@@ -223,6 +225,14 @@ class MethodBridge(
             pendingBatteryResult = null
             result.success(false)
         }
+    }
+
+    private fun opGetMiuiAutoStartStatus(@Suppress("UNUSED_PARAMETER") call: MethodCall, result: MethodChannel.Result) {
+        result.success(MiuiAutoStart.status(Application.application))
+    }
+
+    private fun opOpenMiuiAutoStartSettings(@Suppress("UNUSED_PARAMETER") call: MethodCall, result: MethodChannel.Result) {
+        result.success(MiuiAutoStart.openSettings(activity, Application.application))
     }
 
     @OptIn(DelicateCoroutinesApi::class)

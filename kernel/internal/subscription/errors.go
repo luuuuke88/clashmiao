@@ -12,6 +12,8 @@ const (
 	CodeNoOutbounds   = "no-outbounds:"
 	CodeURIInvalid    = "uri-invalid:"
 	CodeBuildFailed   = "build-failed:"
+	// CodeLimitExceeded：输入、节点数、输出或嵌套深度超出解析预算（见 limits.go）。
+	CodeLimitExceeded = "limit-exceeded:"
 )
 
 // Error 是带稳定码的订阅解析错误；Error() 以 Code 开头。
@@ -41,7 +43,7 @@ func Is(err error, code string) bool { return CodeOf(err) == code }
 // CodeFromMessage 从原生异常消息里取码（Kotlin 把消息原样带回时用）；没有稳定前缀返回空串。
 func CodeFromMessage(msg string) string {
 	msg = strings.TrimSpace(msg)
-	for _, c := range []string{CodeFormatUnknown, CodeNoOutbounds, CodeURIInvalid, CodeBuildFailed} {
+	for _, c := range []string{CodeFormatUnknown, CodeNoOutbounds, CodeURIInvalid, CodeBuildFailed, CodeLimitExceeded} {
 		if strings.HasPrefix(msg, c) {
 			return c
 		}

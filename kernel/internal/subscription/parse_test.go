@@ -391,7 +391,7 @@ func TestTagDedupeAndFill(t *testing.T) {
 // 端点与出站之间的 tag 也要唯一。
 func TestTagDedupeAcrossOutboundsAndEndpoints(t *testing.T) {
 	in := `{"outbounds":[{"type":"shadowsocks","tag":"x","server":"192.0.2.1","server_port":1,"method":"aes-128-gcm","password":"p"}],
-	        "endpoints":[{"type":"wireguard","tag":"x","address":["10.0.0.2/32"],"private_key":"k","peers":[]}]}`
+	        "endpoints":[{"type":"wireguard","tag":"x","address":["10.0.0.2/32"],"private_key":"k","peers":[{"address":"192.0.2.9","port":51820,"public_key":"pk"}]}]}`
 	p, _ := mustParse(t, []byte(in))
 	if p.Outbounds[0]["tag"] != "x" || p.Endpoints[0]["tag"] != "x (2)" {
 		t.Errorf("%v %v", p.Outbounds, p.Endpoints)

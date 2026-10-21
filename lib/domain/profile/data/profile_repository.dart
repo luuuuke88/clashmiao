@@ -719,6 +719,7 @@ const Set<String> kParseErrorCodes = {
   'uri-invalid',
   'option-invalid',
   'build-failed',
+  'limit-exceeded',
 };
 
 /// 订阅内容无法落成可用配置。

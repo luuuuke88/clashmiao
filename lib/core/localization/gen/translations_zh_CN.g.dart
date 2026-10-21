@@ -777,6 +777,9 @@ class Translations$settings$general$zh_CN extends Translations$settings$general$
 	@override String get dynamicNotification => '在通知中显示网络速度';
 	@override String get hapticFeedback => '触觉反馈';
 	@override String get autoIpCheck => '自动检查连接的 IP';
+	@override String get autoStartPermission => '允许自启动';
+	@override String get autoStartPermissionMsg => '开启后，手机重启或 App 更新后能自动恢复连接';
+	@override late final Translations$settings$general$autoStartPermissionStatus$zh_CN autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$zh_CN.internal(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$zh_CN batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$zh_CN.internal(_root);
 }
 
@@ -1074,6 +1077,19 @@ class Translations$settings$general$themeModes$zh_CN extends Translations$settin
 	@override String get dark => '暗色';
 	@override String get light => '浅色';
 	@override String get black => '黑色';
+}
+
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$zh_CN extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$zh_CN.internal(TranslationsZhCn root) : this._root = root, super.internal(root);
+
+	final TranslationsZhCn _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => '已开启';
+	@override String get denied => '未开启';
+	@override String get pending => '…';
+	@override String get unknown => '未知';
 }
 
 // Path: settings.general.batteryOptimizationStatus
@@ -1380,6 +1396,12 @@ extension on TranslationsZhCn {
 			'settings.general.dynamicNotification' => '在通知中显示网络速度',
 			'settings.general.hapticFeedback' => '触觉反馈',
 			'settings.general.autoIpCheck' => '自动检查连接的 IP',
+			'settings.general.autoStartPermission' => '允许自启动',
+			'settings.general.autoStartPermissionMsg' => '开启后，手机重启或 App 更新后能自动恢复连接',
+			'settings.general.autoStartPermissionStatus.allowed' => '已开启',
+			'settings.general.autoStartPermissionStatus.denied' => '未开启',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => '未知',
 			'settings.general.batteryOptimizationStatus.exempted' => '已豁免',
 			'settings.general.batteryOptimizationStatus.notExempted' => '未豁免',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

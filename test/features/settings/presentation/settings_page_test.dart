@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
@@ -90,10 +92,16 @@ void main() {
   const platformChannel = MethodChannel('com.clashmiao.app/platform');
   final platformCalls = <MethodCall>[];
   var batteryExempted = false;
+  // MIUI 自启动 tile 的原生返回值；null 模拟平台未实现（默认：非 MIUI 不渲染）。
+  String? miuiAutoStart;
+  // 非空时，状态查询会一直挂起到它完成，用来钉住「查询中」占位符。
+  Completer<void>? miuiGate;
 
   setUp(() {
     platformCalls.clear();
     batteryExempted = false;
+    miuiAutoStart = null;
+    miuiGate = null;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(platformChannel, (call) async {
           platformCalls.add(call);
@@ -102,6 +110,11 @@ void main() {
               return batteryExempted;
             case 'request_ignore_battery_optimizations':
               batteryExempted = true;
+              return true;
+            case 'get_miui_autostart_status':
+              await miuiGate?.future;
+              return miuiAutoStart;
+            case 'open_miui_autostart_settings':
               return true;
             default:
               return null;
@@ -492,6 +505,148 @@ void main() {
       expect(find.text('Exempted'), findsOneWidget);
       expect(find.text('Not Exempted'), findsNothing);
       expect(find.text('已豁免'), findsNothing);
+    });
+
+    group('MIUI 自启动入口', () {
+      testWidgets('unsupported（非 MIUI）时整行不渲染', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'unsupported';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+
+        expect(find.text('允许自启动'), findsNothing);
+        expect(find.text('开启后，手机重启或 App 更新后能自动恢复连接'), findsNothing);
+        expect(find.byIcon(FluentIcons.power_24_regular), findsNothing);
+      });
+
+      testWidgets('非 Android 不渲染也不查询', (tester) async {
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(await _host());
+        await tester.pump(const Duration(milliseconds: 200));
+
+        expect(find.text('允许自启动'), findsNothing);
+        expect(
+          platformCalls.where((c) => c.method == 'get_miui_autostart_status'),
+          isEmpty,
+        );
+      });
+
+      testWidgets('denied 显示「未开启」', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+
+        expect(find.text('允许自启动'), findsOneWidget);
+        expect(find.text('开启后，手机重启或 App 更新后能自动恢复连接'), findsOneWidget);
+        expect(find.text('未开启'), findsOneWidget);
+      });
+
+      testWidgets('allowed 显示「已开启」', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'allowed';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+
+        expect(find.text('已开启'), findsOneWidget);
+        expect(find.text('未开启'), findsNothing);
+      });
+
+      testWidgets('unknown 显示「未知」', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'unknown';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+
+        expect(find.text('允许自启动'), findsOneWidget);
+        expect(find.text('未知'), findsOneWidget);
+      });
+
+      testWidgets('英文 locale 下文案走 i18n', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(
+          await _host(debugIsAndroid: true, locale: 'en'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Allow Auto-Start'), findsOneWidget);
+        expect(find.text('Off'), findsOneWidget);
+        expect(find.text('允许自启动'), findsNothing);
+      });
+
+      testWidgets('查询返回前显示占位符', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        final gate = miuiGate = Completer<void>();
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.text('允许自启动'), findsOneWidget);
+        expect(find.text('未开启'), findsNothing);
+
+        gate.complete();
+        await tester.pumpAndSettle();
+        expect(find.text('未开启'), findsOneWidget);
+      });
+
+      testWidgets('点击调用 open_miui_autostart_settings', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.text('允许自启动'));
+        await tester.pumpAndSettle();
+
+        expect(
+          platformCalls.where(
+            (c) => c.method == 'open_miui_autostart_settings',
+          ),
+          hasLength(1),
+        );
+      });
+
+      testWidgets('从系统设置返回（resumed）后重新查询并刷新状态', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+        expect(find.text('未开启'), findsOneWidget);
+        int queries() => platformCalls
+            .where((c) => c.method == 'get_miui_autostart_status')
+            .length;
+        final before = queries();
+
+        // 用户在系统设置里打开了开关，然后切回 App。
+        miuiAutoStart = 'allowed';
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(queries(), before + 1);
+        expect(find.text('已开启'), findsOneWidget);
+        expect(find.text('未开启'), findsNothing);
+      });
+
+      testWidgets('resumed 后发现变成 unsupported 时整行消失', (tester) async {
+        _useTallView(tester);
+        miuiAutoStart = 'denied';
+        await tester.pumpWidget(await _host(debugIsAndroid: true));
+        await tester.pumpAndSettle();
+        expect(find.text('允许自启动'), findsOneWidget);
+
+        miuiAutoStart = 'unsupported';
+        tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+        tester.binding.handleAppLifecycleStateChanged(
+          AppLifecycleState.resumed,
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('允许自启动'), findsNothing);
+      });
     });
 
     testWidgets('iOS 上显示重置 VPN 配置文件入口', (tester) async {

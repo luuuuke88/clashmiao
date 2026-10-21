@@ -330,6 +330,14 @@
       "dynamicNotification": "پیشاندانی خێرایی لە باری ئاگادارکردنەوەدا",
       "hapticFeedback": "پاشخورد بە دەست لێدان",
       "autoIpCheck": "پشکنینی ئۆتۆماتیکی ip پەیوەندی ",
+      "autoStartPermission": "ڕێگەدان بە دەستپێکردنی خۆکار",
+      "autoStartPermissionMsg": "کاتێک چالاک بێت، پەیوەندی دوای ڕێستارتکردنی تەلەفۆن یان نوێکردنەوەی ئەپ بە خۆکاری دەگەڕێتەوە",
+      "autoStartPermissionStatus": {
+        "allowed": "چالاک",
+        "denied": "ناچالاک",
+        "pending": "…",
+        "unknown": "نەزانراو"
+      },
       "batteryOptimizationStatus": {
         "exempted": "بەخشراو",
         "notExempted": "نەبەخشراو",

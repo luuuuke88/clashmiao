@@ -739,6 +739,9 @@ class Translations$settings$general$id extends Translations$settings$general$en 
 	@override String get dynamicNotification => 'Tampilkan Kecepatan di notifikasi';
 	@override String get hapticFeedback => 'Umpan Balik Haptik';
 	@override String get autoIpCheck => 'Periksa IP Koneksi Otomatis';
+	@override String get autoStartPermission => 'Izinkan mulai otomatis';
+	@override String get autoStartPermissionMsg => 'Jika aktif, koneksi pulih otomatis setelah ponsel dihidupkan ulang atau aplikasi diperbarui';
+	@override late final Translations$settings$general$autoStartPermissionStatus$id autoStartPermissionStatus = Translations$settings$general$autoStartPermissionStatus$id._(_root);
 	@override late final Translations$settings$general$batteryOptimizationStatus$id batteryOptimizationStatus = Translations$settings$general$batteryOptimizationStatus$id._(_root);
 }
 
@@ -1077,6 +1080,19 @@ class Translations$settings$general$themeModes$id extends Translations$settings$
 	@override String get black => 'Tema Hitam';
 }
 
+// Path: settings.general.autoStartPermissionStatus
+class Translations$settings$general$autoStartPermissionStatus$id extends Translations$settings$general$autoStartPermissionStatus$en {
+	Translations$settings$general$autoStartPermissionStatus$id._(TranslationsId root) : this._root = root, super.internal(root);
+
+	final TranslationsId _root; // ignore: unused_field
+
+	// Translations
+	@override String get allowed => 'Aktif';
+	@override String get denied => 'Nonaktif';
+	@override String get pending => '…';
+	@override String get unknown => 'Tidak diketahui';
+}
+
 // Path: settings.general.batteryOptimizationStatus
 class Translations$settings$general$batteryOptimizationStatus$id extends Translations$settings$general$batteryOptimizationStatus$en {
 	Translations$settings$general$batteryOptimizationStatus$id._(TranslationsId root) : this._root = root, super.internal(root);
@@ -1348,6 +1364,12 @@ extension on TranslationsId {
 			'settings.general.dynamicNotification' => 'Tampilkan Kecepatan di notifikasi',
 			'settings.general.hapticFeedback' => 'Umpan Balik Haptik',
 			'settings.general.autoIpCheck' => 'Periksa IP Koneksi Otomatis',
+			'settings.general.autoStartPermission' => 'Izinkan mulai otomatis',
+			'settings.general.autoStartPermissionMsg' => 'Jika aktif, koneksi pulih otomatis setelah ponsel dihidupkan ulang atau aplikasi diperbarui',
+			'settings.general.autoStartPermissionStatus.allowed' => 'Aktif',
+			'settings.general.autoStartPermissionStatus.denied' => 'Nonaktif',
+			'settings.general.autoStartPermissionStatus.pending' => '…',
+			'settings.general.autoStartPermissionStatus.unknown' => 'Tidak diketahui',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Dikecualikan',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Tidak Dikecualikan',
 			'settings.general.batteryOptimizationStatus.pending' => '…',

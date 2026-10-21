@@ -295,6 +295,14 @@
       "dynamicNotification": "Bildirimde hızı göster",
       "hapticFeedback": "Dokunsal Geri Bildirim",
       "autoIpCheck": "Bağlantı IP’sini Otomatik Denetle",
+      "autoStartPermission": "Otomatik başlatmaya izin ver",
+      "autoStartPermissionMsg": "Açıksa, telefon yeniden başlatıldığında veya uygulama güncellendiğinde bağlantı otomatik olarak geri gelir",
+      "autoStartPermissionStatus": {
+        "allowed": "Açık",
+        "denied": "Kapalı",
+        "pending": "…",
+        "unknown": "Bilinmiyor"
+      },
       "batteryOptimizationStatus": {
         "exempted": "Muaf",
         "notExempted": "Muaf Değil",

@@ -330,6 +330,14 @@
       "dynamicNotification": "نمایش سرعت در نوار اعلان",
       "hapticFeedback": "بازخورد لمسی",
       "autoIpCheck": "بررسی خودکار آی‌پی اتصال",
+      "autoStartPermission": "اجازه به اجرای خودکار",
+      "autoStartPermissionMsg": "در صورت فعال بودن، اتصال پس از راه‌اندازی مجدد گوشی یا به‌روزرسانی برنامه به‌طور خودکار برقرار می‌شود",
+      "autoStartPermissionStatus": {
+        "allowed": "فعال",
+        "denied": "غیرفعال",
+        "pending": "…",
+        "unknown": "نامشخص"
+      },
       "batteryOptimizationStatus": {
         "exempted": "مستثنی",
         "notExempted": "مستثنی نشده",

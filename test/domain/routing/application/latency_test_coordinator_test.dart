@@ -889,7 +889,7 @@ void main() {
       expect(rig.failed, isEmpty);
     });
 
-    _fake('内核调用失败的一轮：开测时清掉的超时 / 未确认标记原样还回去', (rig, async) {
+    _fake('内核调用失败的一轮：已知的失败（缓存里有失败记录）不被抹掉，也不重复写', (rig, async) {
       rig.groups = [
         _group({'dead': 0, 'slow': 120}),
       ];
@@ -897,7 +897,6 @@ void main() {
       rig.elapse(const Duration(seconds: 2));
       rig.elapse(latencyRoundTimeoutFor(2));
       expect(rig.coordinator.state.timedOutNodes, {'dead'});
-      expect(rig.coordinator.state.unconfirmedNodes, {'slow'});
       final failedBefore = rig.failed.length;
 
       rig.urlTestResult = () async => throw StateError('kernel down');
@@ -907,14 +906,102 @@ void main() {
       async.flushMicrotasks();
       expect(rig.coordinator.state.isTesting, isFalse);
       expect(rig.coordinator.state.timedOutNodes, {'dead'});
-      expect(rig.coordinator.state.unconfirmedNodes, {'slow'});
-      expect(rig.failed, hasLength(failedBefore), reason: '还回去的不重复写失败');
+      expect(rig.failed, hasLength(failedBefore));
 
-      // 标记的实时值也还原了：之后 dead 测通仍能撤标记。
+      // 之后 dead 测通：标记照常撤掉。
       rig.push([
         _group({'dead': 90, 'slow': 120}),
       ]);
       expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
+    _fake('错误轮次不覆盖别的轮次较新的判定：共享节点之后测回旧值也能撤标记，超时与未确认互斥', (rig, async) {
+      final kernel = Completer<void>();
+      rig.urlTestResult = () => kernel.future;
+      rig.groups = [
+        _group({'x': 100, 'y': 0}, tag: 'g1'),
+        _group({'x': 100}, tag: 'g2'),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(2));
+      expect(rig.coordinator.state.unconfirmedNodes, {'x'});
+
+      // g1、g2 同时重测；x 变 0：g2 收尾（x 判超时），g1 还在等 y。
+      unawaited(rig.coordinator.manualTest('g1').then((_) {}, onError: (_) {}));
+      unawaited(rig.coordinator.manualTest('g2').then((_) {}, onError: (_) {}));
+      rig.push([
+        _group({'x': 0, 'y': 0}, tag: 'g1'),
+        _group({'x': 0}, tag: 'g2'),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'x'});
+      expect(rig.coordinator.state.isGroupTesting('g1'), isTrue);
+
+      // g1 的内核调用报错。
+      kernel.completeError(StateError('kernel down'));
+      async.flushMicrotasks();
+      expect(rig.coordinator.state.isTesting, isFalse);
+      // y 上一轮就判了超时、缓存里有失败记录：重新标回，不重复写。
+      expect(rig.coordinator.state.timedOutNodes, {'x', 'y'});
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
+
+      // x 又测出 100（恰好与最早那次标记同值）：必须能撤掉超时。
+      rig.push([
+        _group({'x': 100, 'y': 0}, tag: 'g1'),
+        _group({'x': 100}, tag: 'g2'),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'y'});
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
+    });
+
+    _fake('带历史标记的节点遇到分组流清空：回来时的 0 不是迟到失败', (rig, async) {
+      rig.groups = [
+        _group({'a': 120}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(1));
+      expect(rig.coordinator.state.unconfirmedNodes, {'a'});
+
+      rig.push(const []);
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+    });
+
+    _fake('在途轮次里已确认的失败：内核调用报错的异常收尾也要保留（超时 + 写失败）', (rig, async) {
+      final kernel = Completer<void>();
+      rig.urlTestResult = () => kernel.future;
+      rig.groups = [
+        _group({'a': 0, 'b': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 3786, 'b': 0}),
+      ]);
+      rig.push([
+        _group({'a': 0, 'b': 0}),
+      ]);
+      expect(rig.failed, isEmpty);
+
+      kernel.completeError(StateError('kernel down'));
+      async.flushMicrotasks();
+      expect(rig.coordinator.state.isTesting, isFalse);
+      // a 本轮测出过有效值、随后失败：已观察到的失败；b 还没有任何结果：不判。
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.failed.single.$1, {'a'});
+      expect(rig.cache['a']!.isFailed, isTrue);
+      expect(rig.cache.containsKey('b'), isFalse);
+
+      // 之后一直是 0，没有新的转变，也保持超时。
+      rig.push([
+        _group({'a': 0, 'b': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
     });
 
     _fake('在途轮次里的节点：有效变 0 由收尾判定，不提前记失败', (rig, async) {

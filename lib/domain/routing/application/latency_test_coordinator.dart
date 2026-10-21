@@ -146,11 +146,6 @@ class _Round {
   /// 既不把旧值记成新结果，也不判它超时。实时没有有效值的节点收尾时判失败。
   final Set<String> confirmed = {};
 
-  /// 开测前这些节点身上的超时 / 未确认标记。内核调用本身失败时一轮没有测出
-  /// 任何东西，要原样还回去，不能因为「开了一轮」就把已知的失败抹掉。
-  final Set<String> priorTimedOut = {};
-  final Set<String> priorUnconfirmed = {};
-  final Map<String, int> priorMarkedAt = {};
   final Completer<void> done = Completer<void>();
   Timer? timeout;
   Object? error;
@@ -332,12 +327,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     final ownTags = {
       for (final item in live?.items ?? const <OutboundProxy>[]) item.tag,
     };
-    round.priorTimedOut.addAll(state.timedOutNodes.intersection(ownTags));
-    round.priorUnconfirmed.addAll(state.unconfirmedNodes.intersection(ownTags));
-    for (final tag in ownTags) {
-      final marked = _markedAt.remove(tag);
-      if (marked != null) round.priorMarkedAt[tag] = marked;
-    }
+    ownTags.forEach(_markedAt.remove);
     _emit(
       state.copyWith(
         testingGroups: {...state.testingGroups, groupTag},
@@ -392,6 +382,24 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   /// 实时值从有效直接变 0，这是失败结果，不论有没有在途轮次。
   final Map<String, int> _lastLive = {};
 
+  /// 观察连续性中断（分组流清空、节点从分组里消失）：这些节点之前的观察、
+  /// 标记和在本轮里的「已确认」都作废。它们回来时的值从头算——内核换了实例或
+  /// 清了历史，回来的 0 不能当成「刚测失败」；确实失败过的，缓存里的失败记录
+  /// 仍在，线路页照样显示超时。
+  void _breakContinuity(Set<String> tags) {
+    tags.forEach(_lastLive.remove);
+    tags.forEach(_markedAt.remove);
+    for (final round in _rounds.values) {
+      round.confirmed.removeAll(tags);
+    }
+    _emit(
+      state.copyWith(
+        timedOutNodes: state.timedOutNodes.difference(tags),
+        unconfirmedNodes: state.unconfirmedNodes.difference(tags),
+      ),
+    );
+  }
+
   /// 实时值变化之后更新超时 / 未确认标记，并发现不在任何轮次里的失败。
   ///
   /// - 带标记的节点实时值变成**有效**的新值：新结果，撤掉标记；
@@ -417,7 +425,11 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     }
     // 只有「连续观察到」的有效 → 无效才算失败：分组流中途空了（重载、换实例）
     // 之后再出现的节点从头算，不能把「历史被清空」误判成失败。
-    _lastLive.removeWhere((tag, _) => !live.containsKey(tag));
+    final vanished = <String>{
+      for (final tag in {..._lastLive.keys, ..._markedAt.keys})
+        if (!live.containsKey(tag)) tag,
+    };
+    if (vanished.isNotEmpty) _breakContinuity(vanished);
     final inRound = <String>{
       for (final round in _rounds.values)
         for (final item
@@ -477,15 +489,21 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   /// 收尾一轮：取消超时定时器、把**本轮确认的**结果写进缓存、更新状态、
   /// 放行等待者。
   ///
-  /// - 确认了且有效：写缓存（刷新测量时间），展示成功；
+  /// - 确认了且有效：写缓存（刷新测量时间），展示成功，撤掉这个节点身上
+  ///   任何超时 / 未确认标记；
   /// - 实时没有有效值（确认失败，或到点一直是 0——内核测失败会删历史，两者
   ///   在分组流里分不开，结果都是没通）：标超时，并把失败写进缓存覆盖旧的
   ///   成功值；
   /// - 没确认但实时值仍有效：不写缓存，保留原值与原测量时间，标为未确认
   ///   （展示历史值）——可能还没测完，也可能恰好同值，无从分辨。
   ///
-  /// 内核调用失败时（[markTimeouts] 为假）只写确认的结果，不打任何标记——那
-  /// 不是节点的问题。
+  /// 内核调用失败时（[markTimeouts] 为假）这一轮可能什么都没测出来，所以只留
+  /// **已经观察到**的结果：确认的有效值照常写缓存；确认的失败（本轮出过结果、
+  /// 随后实时值无效）记超时并写失败；还没有结果的节点不判，只把缓存里本来就
+  /// 有失败记录、实时值仍无效的重新标回超时（不重复写）。不整体恢复开测前的
+  /// 标记——那会盖掉别的轮次刚做出的较新判定。
+  ///
+  /// 超时与未确认两个集合始终互斥。
   void _end(_Round round, {required bool markTimeouts}) {
     if (!identical(_rounds[round.group], round)) return;
     _rounds.remove(round.group);
@@ -493,16 +511,29 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
 
     final group = _find(_liveGroups(), round.group);
     final timedOut = <String>{};
+    final reasserted = <String>{};
     final unconfirmed = <String>{};
     final measured = <String, int>{};
     if (group != null) {
+      final cache = _cache();
       for (final item in _testableItems(group)) {
         final confirmed = round.confirmed.contains(item.tag);
         if (confirmed && isMeasurableDelay(item.delay)) {
           measured[item.tag] = item.delay;
           continue;
         }
-        if (!markTimeouts) continue;
+        if (!markTimeouts) {
+          if (confirmed) {
+            timedOut.add(item.tag);
+          } else if (!isMeasurableDelay(item.delay) &&
+              (cache[item.tag]?.isFailed ?? false)) {
+            reasserted.add(item.tag);
+          } else {
+            continue;
+          }
+          _markedAt[item.tag] = item.delay;
+          continue;
+        }
         if (!confirmed && isMeasurableDelay(item.delay)) {
           unconfirmed.add(item.tag);
         } else {
@@ -511,37 +542,24 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
         _markedAt[item.tag] = item.delay;
       }
     }
-    // 内核调用失败：这一轮什么都没测出来，开测时清掉的标记原样还回去（本轮
-    // 已经确认出有效值的节点除外）。
-    final restoredTimedOut = markTimeouts
-        ? const <String>{}
-        : round.priorTimedOut.difference(measured.keys.toSet());
-    final restoredUnconfirmed = markTimeouts
-        ? const <String>{}
-        : round.priorUnconfirmed.difference(measured.keys.toSet());
-    for (final entry in round.priorMarkedAt.entries) {
-      if (!markTimeouts && !measured.containsKey(entry.key)) {
-        _markedAt[entry.key] = entry.value;
-      }
-    }
+    measured.keys.forEach(_markedAt.remove);
     final at = _now();
     if (measured.isNotEmpty) _recordMeasured(measured, at);
     if (timedOut.isNotEmpty) _recordFailed(timedOut, at);
 
+    final nowTimedOut = {...timedOut, ...reasserted};
     _emit(
       state.copyWith(
         testingGroups: {...state.testingGroups}..remove(round.group),
         pendingNodes: {...state.pendingNodes}..remove(round.group),
         timedOutNodes: {
           ...state.timedOutNodes,
-          ...timedOut,
-          ...restoredTimedOut,
-        },
+          ...nowTimedOut,
+        }.difference(measured.keys.toSet()).difference(unconfirmed),
         unconfirmedNodes: {
           ...state.unconfirmedNodes,
           ...unconfirmed,
-          ...restoredUnconfirmed,
-        },
+        }.difference(measured.keys.toSet()).difference(nowTimedOut),
       ),
     );
     if (!round.done.isCompleted) round.done.complete();

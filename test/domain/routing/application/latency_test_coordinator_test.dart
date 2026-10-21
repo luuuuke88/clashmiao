@@ -775,6 +775,194 @@ void main() {
       expect(rig.coordinator.state.unconfirmedNodes, isEmpty);
     });
 
+    // ---- 真机「阿根廷-边缘节点」：一轮之后、没有任何在途轮次时，节点的实时值
+    // 从有效变成 0（内核自己的后台检测测失败、删了测速历史）。这是失败，不是
+    // 「没测过」，必须记成超时并落盘；否则它既不在超时集合里、缓存里也没有失败
+    // 记录，线路页就稳定显示「—」。 ----
+
+    _fake('一轮里测通、之后（没有在途轮次）内核后台检测测失败：记成超时并写失败', (rig, async) {
+      rig.groups = [
+        _group({'a': 0, 'b': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 300, 'b': 120}),
+      ]);
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(
+        rig.cache['a'],
+        CachedDelay(300, _t0.add(const Duration(seconds: 2))),
+      );
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+
+      // 10 分钟后自动选择组的后台检测：a 这次没通。
+      rig.elapse(const Duration(minutes: 10));
+      rig.push([
+        _group({'a': 0, 'b': 120}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.failed.single.$1, {'a'});
+      expect(rig.cache['a']!.isFailed, isTrue);
+      expect(rig.cache['b']!.ms, 120);
+
+      // 同一个失败不重复写；之后又测通则恢复。
+      rig.push([
+        _group({'a': 0, 'b': 120}),
+      ]);
+      expect(rig.failed, hasLength(1));
+      rig.push([
+        _group({'a': 210, 'b': 120}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
+    _fake('收尾时已判超时的节点偶尔测通一次、随后又失败：重新记成超时并写失败', (rig, async) {
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(1));
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.failed, hasLength(1));
+
+      rig.push([
+        _group({'a': 400}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      // 页面把这次有效值写进缓存（覆盖失败记录）。
+      rig.cache['a'] = CachedDelay(400, _t0.add(async.elapsed));
+
+      rig.elapse(const Duration(minutes: 10));
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.failed, hasLength(2));
+      expect(rig.cache['a']!.isFailed, isTrue);
+    });
+
+    _fake('没有任何轮次：自动选择组后台测通又测失败的节点同样记成超时', (rig, async) {
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      // 还没到预热：没有在途轮次。
+      rig.push([
+        _group({'a': 250}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      expect(rig.failed.single.$1, {'a'});
+    });
+
+    _fake('断开重连 / 分组流中途清空：历史被清掉的 0 不是失败', (rig, async) {
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.push([
+        _group({'a': 250}),
+      ]);
+      // 分组流空了一下，再回来时内核换了实例：全是 0。
+      rig.push(const []);
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+
+      // 断开再连上：同样从头算。
+      rig.push([
+        _group({'a': 250}),
+      ]);
+      rig.coordinator.onConnectionChanged(false);
+      rig.coordinator.onConnectionChanged(true);
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+    });
+
+    _fake('内核调用失败的一轮：开测时清掉的超时 / 未确认标记原样还回去', (rig, async) {
+      rig.groups = [
+        _group({'dead': 0, 'slow': 120}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(2));
+      expect(rig.coordinator.state.timedOutNodes, {'dead'});
+      expect(rig.coordinator.state.unconfirmedNodes, {'slow'});
+      final failedBefore = rig.failed.length;
+
+      rig.urlTestResult = () async => throw StateError('kernel down');
+      unawaited(
+        rig.coordinator.manualTest('proxy').then((_) {}, onError: (_) {}),
+      );
+      async.flushMicrotasks();
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(rig.coordinator.state.timedOutNodes, {'dead'});
+      expect(rig.coordinator.state.unconfirmedNodes, {'slow'});
+      expect(rig.failed, hasLength(failedBefore), reason: '还回去的不重复写失败');
+
+      // 标记的实时值也还原了：之后 dead 测通仍能撤标记。
+      rig.push([
+        _group({'dead': 90, 'slow': 120}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
+    _fake('在途轮次里的节点：有效变 0 由收尾判定，不提前记失败', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      rig.groups = [
+        _group({'a': 0, 'b': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 200, 'b': 0}),
+      ]);
+      rig.push([
+        _group({'a': 0, 'b': 0}),
+      ]);
+      expect(rig.failed, isEmpty);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      rig.elapse(latencyRoundTimeoutFor(2));
+      expect(rig.coordinator.state.timedOutNodes, {'a', 'b'});
+    });
+
+    _fake('超时标记之后实时值在 0 与超时哨兵之间来回：仍是超时，不撤标记', (rig, async) {
+      rig.groups = [
+        _group({'a': 65535}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.elapse(latencyRoundTimeoutFor(1));
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      rig.push([
+        _group({'a': 65535}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      rig.push([
+        _group({'a': 0}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, {'a'});
+      rig.push([
+        _group({'a': 180}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
     _fake('确认是累积的：先出结果的节点不会因为后续事件变回没结果', (rig, async) {
       rig.groups = [
         _group({'a': 0, 'b': 0}),

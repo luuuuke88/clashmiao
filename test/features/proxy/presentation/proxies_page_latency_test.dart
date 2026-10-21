@@ -1221,6 +1221,62 @@ void main() {
       await _drain(tester);
     });
 
+    testWidgets('真机「阿根廷-边缘节点」：一轮里先测出 3786 ms，随后内核又把它清回 0 → 超时、沉底、缓存记成失败', (
+      tester,
+    ) async {
+      final stream = StreamController<List<OutboundGroup>>();
+      addTearDown(stream.close);
+      final host = await _host(
+        connected: true,
+        groups: const [],
+        liveGroups: stream.stream,
+      );
+      await host.container
+          .read(proxiesSortProvider.notifier)
+          .updateSort(ProxiesSort.delay);
+      await tester.pumpWidget(host.widget);
+      List<OutboundGroup> groups(int argentina) => [
+        _group([
+          _node('阿根廷-边缘节点', delay: argentina),
+          _node('香港直连', delay: 190),
+        ]),
+      ];
+      stream.add([
+        _group([_node('阿根廷-边缘节点'), _node('香港直连')]),
+      ]);
+      await _settle(tester);
+      await tester.pump(kLatencyWarmupDelay); // 预热后自动开测
+      expect(host.box.urlTests, ['proxy']);
+
+      LatencyLabel labelOf(String node) => tester.widget<LatencyLabel>(
+        find.descendant(of: _tileOf(node), matching: find.byType(LatencyLabel)),
+      );
+      // 内核先推出两个有效值：这一轮全部确认、收尾。
+      stream.add(groups(3786));
+      await _settle(tester);
+      expect(labelOf('阿根廷-边缘节点').ms, 3786);
+
+      // 之后（没有在途轮次）同一出站又有一次失败探测，历史被删：实时值回到 0。
+      stream.add(groups(0));
+      await _settle(tester);
+      await _settle(tester);
+      expect(labelOf('阿根廷-边缘节点').state, LatencyDisplayState.timeout);
+      expect(find.text('—'), findsNothing);
+      expect(find.text('3786ms'), findsNothing);
+      expect(order(tester, ['阿根廷-边缘节点', '香港直连']), ['香港直连', '阿根廷-边缘节点']);
+      expect(
+        host.container.read(proxyDelayCacheProvider)['阿根廷-边缘节点']!.isFailed,
+        isTrue,
+      );
+
+      // 之后真测通了：恢复成数值。
+      stream.add(groups(420));
+      await _settle(tester);
+      expect(labelOf('阿根廷-边缘节点').state, LatencyDisplayState.success);
+      expect(labelOf('阿根廷-边缘节点').ms, 420);
+      await _drain(tester);
+    });
+
     testWidgets('重开 App：上次记下的失败不会复活 98 ms，死节点从一开始就排在最后', (tester) async {
       final host = await _host(
         connected: true,

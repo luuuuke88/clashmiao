@@ -402,7 +402,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 
 ### 备份 v2
 
-导出 `{version: 2, schema, createdAt, profiles, activeProfileId, profileConfigs, preferences}`：在 Store 锁内取一致快照；偏好只含注册表 `include` 的键，机密（WARP 凭证）与运行时键一律不导出，`inc` 不导出。导入接受 `1.0` 与 `2`：先完整校验、不写任何东西（id 合法且不重复、配置是含 `outbounds` 的 JSON 对象、偏好类型与值域、`enableWarp` 导入为 false 并提示），语义是**整表替换**（导入前确认会移除的本机订阅），远程订阅缺配置的导入后后台补拉。
+导出 `{version: 2, schema, createdAt, profiles, activeProfileId, profileConfigs, preferences}`：在 Store 锁内取一致快照；偏好只含注册表 `include` 的键，机密（WARP 凭证）与运行时键一律不导出，`inc` 不导出。导入接受 `1.0` 与 `2`：先完整校验、不写任何东西（id 合法且不重复、配置是 JSON 对象且叶子视图非空（至少一个真实可连的节点，只有端点的订阅合法，只有 direct / 分组的不合法）、偏好类型与值域、`enableWarp` 导入为 false 并提示），语义是**整表替换**（导入前确认会移除的本机订阅），远程订阅缺配置的导入后后台补拉。
 
 ### 恢复：快照与标记
 

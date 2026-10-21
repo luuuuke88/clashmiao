@@ -1,11 +1,48 @@
 {
-  "artifacts": [],
-  "jobs": {},
+  "artifacts": [
+    {
+      "path": "artifacts/release-android/ClashMiao-Android-arm64-v8a-0.3.0.apk",
+      "size": 78813973
+    },
+    {
+      "path": "artifacts/release-linux/ClashMiao-Linux-x86_64-0.3.0.tar.gz",
+      "size": 30637623
+    },
+    {
+      "path": "artifacts/release-linux/clashmiao_0.3.0_amd64.deb",
+      "size": 24250734
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.3.0.dmg",
+      "size": 62130636
+    },
+    {
+      "path": "artifacts/release-macos/ClashMiao-macOS-universal-0.3.0.zip",
+      "size": 62385280
+    },
+    {
+      "path": "artifacts/release-windows/ClashMiao-Windows-x64-0.3.0-Setup.exe",
+      "size": 26186224
+    },
+    {
+      "path": "artifacts/release-windows/ClashMiao-Windows-x64-0.3.0.zip",
+      "size": 35358934
+    },
+    {
+      "path": "artifacts/store-android-aab/ClashMiao-Android-0.3.0.aab",
+      "size": 87158660
+    }
+  ],
+  "jobs": {
+    "android": "success",
+    "macos": "success",
+    "publish": "success",
+    "quality": "success",
+    "windows": "success"
+  },
   "run_attempt": "1",
   "run_id": "39532237563",
   "run_url": "https://github.com/luuuuke88/clashmiao/actions/runs/39532237563",
   "sha": "2b976d6eb550093558ac5ea912332a8e7cd2d283",
-  "status": "started",
-  "tag": "v0.3.0-rehearsal1",
-  "updated_at": "2026-10-21T02:18:06.679548+00:00"
+  "tag": "v0.3.0-rehearsal1"
 }

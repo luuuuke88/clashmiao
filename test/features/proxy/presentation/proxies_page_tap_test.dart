@@ -40,9 +40,9 @@ import '../../../support/toast_pump.dart';
 /// timer 还活着会让 flutter_test 报 "A Timer is still pending"。
 /// pump 一段足够长的假时钟把 timer 烧完，再 dismiss + 再 pump 一帧让动画收尾。
 Future<void> _drainToasts(WidgetTester tester) async {
-  // 已连接时协调器有 2 s 预热定时器与 10 s 测速超时定时器；容器由测试自己持有、
+  // 已连接时协调器有 2 s 预热定时器与 17 s 测速超时定时器；容器由测试自己持有、
   // 要到 tearDown 才销毁，所以这里把假时钟推过去，让它们自然跑完。
-  await tester.pump(const Duration(seconds: 13));
+  await tester.pump(const Duration(seconds: 21));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -848,7 +848,7 @@ void _addProxiesPageExtraTests() {
     expect(find.text('—'), findsOneWidget, reason: '没有旧值的行保持占位，不闪烁');
 
     completer.complete();
-    await tester.pump(const Duration(seconds: 10));
+    await tester.pump(const Duration(seconds: 18));
 
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byIcon(FluentIcons.flash_24_regular), findsOneWidget);

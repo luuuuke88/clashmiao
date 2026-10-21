@@ -173,7 +173,7 @@ Future<void> _teardown(WidgetTester tester, _Rig rig) async {
   await tester.pumpWidget(const SizedBox());
   rig.container.dispose();
   await rig.groups.close();
-  await tester.pump(const Duration(seconds: 15));
+  await tester.pump(const Duration(seconds: 25));
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -761,7 +761,7 @@ void main() {
       final (:round) = await startFrozenRound(tester, rig);
       var done = false;
       unawaited(round.then((_) => done = true));
-      await tester.pump(const Duration(seconds: 11));
+      await tester.pump(const Duration(seconds: 18));
       expect(done, isTrue, reason: '超时收尾');
 
       await expectUnfrozen(

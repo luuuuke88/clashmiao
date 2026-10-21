@@ -159,7 +159,9 @@ Future<void> _settle(WidgetTester tester) async {
 
 /// 把假时钟推过协调器的 2 s 预热与 10 s 测速超时，让定时器自然跑完。
 Future<void> _drain(WidgetTester tester) async {
-  await tester.pump(const Duration(seconds: 13));
+  await tester.pump(
+    kLatencyWarmupDelay + kLatencyRoundTimeout + const Duration(seconds: 1),
+  );
   toastification.dismissAll(delayForAnimation: false);
   await tester.pump(const Duration(milliseconds: 500));
 }
@@ -315,7 +317,7 @@ void main() {
       // 内核一直没推来新值：10 s 到点，两个节点都没确认出本轮结果。
       // b 的实时值还在（内核没删它的历史），显示历史值（旧数字 + 中性色）；
       // a 实时没有值——内核测失败会删历史——缓存里的 150 不能顶替，显示超时。
-      await tester.pump(const Duration(seconds: 10));
+      await tester.pump(const Duration(seconds: 17));
       expect(labelOf('a').state, LatencyDisplayState.timeout);
       expect(labelOf('a').ms, isNull);
       expect(labelOf('b').state, LatencyDisplayState.stale);
@@ -1148,7 +1150,7 @@ void main() {
         _group([_node('泰国'), _node('香港01'), _node('香港直连', delay: 190)]),
       ]);
       await tester.pump(const Duration(milliseconds: 100));
-      await tester.pump(const Duration(seconds: 11));
+      await tester.pump(const Duration(seconds: 18));
       await _settle(tester);
       await _settle(tester); // 重排动画
 
@@ -1169,6 +1171,53 @@ void main() {
       final cache = host.container.read(proxyDelayCacheProvider);
       expect(cache['泰国']!.isFailed, isTrue);
       expect(cache['香港直连']!.ms, 190);
+      await _drain(tester);
+    });
+
+    testWidgets('迟到失败：收尾时是历史值，内核事后才测完并失败 → 列表改显示超时、沉到最后，缓存记成失败', (
+      tester,
+    ) async {
+      final stream = StreamController<List<OutboundGroup>>();
+      addTearDown(stream.close);
+      final host = await _host(
+        connected: true,
+        groups: const [],
+        liveGroups: stream.stream,
+        prefsValues: {
+          'proxy_delays_profile-1': seed({'"泰国"': ok(98), '"香港直连"': ok(190)}),
+        },
+      );
+      await host.container
+          .read(proxiesSortProvider.notifier)
+          .updateSort(ProxiesSort.delay);
+      await tester.pumpWidget(host.widget);
+      List<OutboundGroup> groups(int thailand) => [
+        _group([_node('泰国', delay: thailand), _node('香港直连', delay: 190)]),
+      ];
+      stream.add(groups(98));
+      await _settle(tester);
+
+      LatencyLabel labelOf(String node) => tester.widget<LatencyLabel>(
+        find.descendant(of: _tileOf(node), matching: find.byType(LatencyLabel)),
+      );
+      // 一轮收尾：两个节点实时值都没变，保留为历史值。
+      await tester.pump(kLatencyWarmupDelay + kLatencyRoundTimeout);
+      await _settle(tester);
+      expect(labelOf('泰国').state, LatencyDisplayState.stale);
+      expect(labelOf('泰国').ms, 98);
+
+      // 事后失败：实时值变 0。
+      stream.add(groups(0));
+      await _settle(tester);
+      await _settle(tester);
+      expect(labelOf('泰国').state, LatencyDisplayState.timeout);
+      expect(labelOf('香港直连').state, LatencyDisplayState.stale);
+      expect(find.text('98ms'), findsNothing);
+      expect(order(tester, ['泰国', '香港直连']), ['香港直连', '泰国']);
+      expect(
+        host.container.read(proxyDelayCacheProvider)['泰国']!.isFailed,
+        isTrue,
+      );
       await _drain(tester);
     });
 

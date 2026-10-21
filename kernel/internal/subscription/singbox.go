@@ -29,6 +29,9 @@ func parseJSON(in []byte) (Profile, Warnings, error) {
 
 	switch t := top.(type) {
 	case []any:
+		if err := checkEntryBudget(len(t)); err != nil {
+			return Profile{}, nil, err
+		}
 		outbounds = objects(t, "outbounds", &warnings, false)
 		if len(outbounds) == 0 {
 			return Profile{}, warnings, fail(CodeNoOutbounds, "the JSON array has no usable outbound objects")
@@ -38,6 +41,9 @@ func parseJSON(in []byte) (Profile, Warnings, error) {
 		_, hasEP := t["endpoints"]
 		switch {
 		case hasOut || hasEP:
+			if err := checkEntryBudget(len(asList(t["outbounds"])) + len(asList(t["endpoints"]))); err != nil {
+				return Profile{}, nil, err
+			}
 			outbounds = objects(asList(t["outbounds"]), "outbounds", &warnings, false)
 			endpoints = objects(asList(t["endpoints"]), "endpoints", &warnings, true)
 		case t["proxies"] != nil:
@@ -51,14 +57,20 @@ func parseJSON(in []byte) (Profile, Warnings, error) {
 		return Profile{}, nil, fail(CodeFormatUnknown, "unable to determine config format")
 	}
 
-	if n := len(outbounds) + len(endpoints); n > MaxNodes {
-		return Profile{}, warnings, fail(CodeLimitExceeded, "the JSON has %d nodes, more than the limit %d", n, MaxNodes)
-	}
 	res := legacy.Clean(outbounds, endpoints, legacy.CleanOptions{RemapTarget: "direct"})
 	for _, w := range res.Warnings {
 		warnings = append(warnings, w)
 	}
 	return finalize(res.Outbounds, res.Endpoints, warnings, "profile has no usable outbound")
+}
+
+// checkEntryBudget：节点预算按原始条目数计，在任何校验、过滤、产生警告之前检查——
+// 否则「一个有效节点 + 二十万个 {}」会先生成海量警告再成功，全坏数组则在预算前就返回 no-outbounds。
+func checkEntryBudget(n int) error {
+	if n > MaxNodes {
+		return fail(CodeLimitExceeded, "the JSON has %d entries, more than the limit %d", n, MaxNodes)
+	}
+	return nil
 }
 
 func asList(x any) []any { l, _ := x.([]any); return l }

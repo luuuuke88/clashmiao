@@ -8,12 +8,18 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicInteger
 
 /** 接口监听的代次与排空屏障：换监听返回之后，旧监听不会再被调用，也没有在途的旧回调。事件同步，30 s 只作兜底。 */
 class InterfaceListenerGateTest {
 
     private val pool = Executors.newCachedThreadPool()
+
+    companion object {
+        /** 反向探测窗口：只在「不该发生的事」上等，通过路径要耗满它，所以保持很短。 */
+        private const val PROBE_MS = 300L
+    }
 
     private class Listener(val name: String) {
         val calls = CopyOnWriteArrayList<String>()
@@ -98,16 +104,69 @@ class InterfaceListenerGateTest {
         val resultC = pool.submit<InterfaceListenerGate.AttachResult> { gate.attach(c) }
         spinUntil("C to supersede B") { gate.generation() != genB }
 
-        // B 被取代：不等旧回调就返回，且不发布 b。
-        assertEquals(InterfaceListenerGate.AttachResult.Superseded, resultB.get(30, TimeUnit.SECONDS))
-        assertFalse(resultC.isDone) // C 仍在等旧回调排空
+        // B 被取代：不发布 b；但旧回调还没返回，B 与 C 一样要等排空。
+        assertFalse(resultB.isDone)
+        assertFalse(resultC.isDone)
         release.countDown()
         inFlight.get(30, TimeUnit.SECONDS)
+        assertEquals(InterfaceListenerGate.AttachResult.Superseded, resultB.get(30, TimeUnit.SECONDS))
         assertEquals(InterfaceListenerGate.AttachResult.Installed, resultC.get(30, TimeUnit.SECONDS))
 
         assertTrue(gate.dispatch { it.calls += "x" })
         assertEquals(listOf("x"), c.calls.toList())
         assertTrue(b.calls.isEmpty() && old.calls.isEmpty())
+    }
+
+    @Test
+    fun `被取代的撤下也要等旧回调排空 并发撤下与安装时停止结果在旧回调退出之后才到`() {
+        val gate = InterfaceListenerGate<Listener>()
+        val old = Listener("old")
+        val fresh = Listener("fresh")
+        gate.attach(old)
+
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val seq = AtomicInteger()
+        val oldExit = AtomicInteger()
+        val inFlight = pool.submit {
+            gate.dispatch { _ ->
+                entered.countDown()
+                release.await(30, TimeUnit.SECONDS)
+                oldExit.set(seq.incrementAndGet()) // 回调末尾、仍计入在途时记录
+            }
+        }
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+
+        // 停止：撤下监听（detach），等旧回调排空。
+        val stopReturned = AtomicInteger()
+        val gen0 = gate.generation()
+        val stop = pool.submit<InterfaceListenerGate.AttachResult> {
+            gate.attach(null).also { stopReturned.set(seq.incrementAndGet()) }
+        }
+        spinUntil("detach to revoke the old listener") { gate.generation() != gen0 }
+        // 并发的新一轮启动：安装新监听，取代了上面的撤下。
+        val genStop = gate.generation()
+        val install = pool.submit<InterfaceListenerGate.AttachResult> { gate.attach(fresh) }
+        spinUntil("install to supersede the detach") { gate.generation() != genStop }
+
+        // 停止被取代，但旧回调还在跑，它不能此刻就报告完成。取代发生后给它一个返回的机会：
+        // 这是个有界的反向探测（真实实现里它永远不会返回，修复前几毫秒内就返回了）。
+        try {
+            stop.get(PROBE_MS, TimeUnit.MILLISECONDS)
+            throw AssertionError("被取代的撤下在旧回调仍在途时就返回了")
+        } catch (_: TimeoutException) {
+        }
+        assertFalse(install.isDone)
+
+        release.countDown()
+        inFlight.get(30, TimeUnit.SECONDS)
+        assertEquals(InterfaceListenerGate.AttachResult.Superseded, stop.get(30, TimeUnit.SECONDS))
+        assertEquals(InterfaceListenerGate.AttachResult.Installed, install.get(30, TimeUnit.SECONDS))
+        assertTrue("停止结果必须在旧回调退出之后才到", oldExit.get() in 1 until stopReturned.get())
+
+        assertTrue(gate.dispatch { it.calls += "x" })
+        assertEquals(listOf("x"), fresh.calls.toList())
+        assertTrue(old.calls.isEmpty())
     }
 
     @Test

@@ -81,6 +81,17 @@ class DnsExchangerTest {
         override fun blockingLookup(network: Any, domain: String): List<String> = blocking(domain)
     }
 
+    /** 像原生的 getAllByName 一样：中断它没有用，只有被放行才返回（30 s 兜底）。 */
+    private fun uninterruptibleAwait(latch: CountDownLatch) {
+        val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30)
+        while (latch.count > 0 && System.nanoTime() < deadline) {
+            try {
+                latch.await(1, TimeUnit.SECONDS)
+            } catch (_: InterruptedException) {
+            }
+        }
+    }
+
     private fun Future<*>.finish() {
         try {
             get(30, TimeUnit.SECONDS)
@@ -189,5 +200,81 @@ class DnsExchangerTest {
         backend.blocking = { listOf("192.0.2.1", "2001:db8::1") }
         DnsExchanger(backend).lookup(reply2, async = false, family = "udp", domain = "a.example.net")
         assertEquals(listOf("ok:192.0.2.1\n2001:db8::1"), reply2.events.toList())
+    }
+
+    // ---- API 26–28 的阻塞解析：Network.getAllByName 不响应中断、没有时限 ----
+
+    @Test
+    fun `阻塞解析卡住时内核取消 调用线程立即返回 工作线程之后返回也不回复`() {
+        val backend = FakeBackend()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val workerDone = CountDownLatch(1)
+        backend.blocking = {
+            entered.countDown()
+            uninterruptibleAwait(release) // 不响应中断的系统调用
+            workerDone.countDown()
+            listOf("192.0.2.1")
+        }
+        val reply = FakeReply()
+        val call = pool.submit { DnsExchanger(backend).lookup(reply, async = false, family = "udp", domain = "slow.example.net") }
+
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+        reply.cancel!!.invoke()
+        call.finish() // 阻塞调用还卡着，调用线程已经回来了
+
+        release.countDown()
+        assertTrue(workerDone.await(30, TimeUnit.SECONDS))
+        assertTrue("取消之后不得再回复内核: ${reply.events}", reply.events.isEmpty())
+    }
+
+    @Test
+    fun `阻塞解析超时 调用线程按时限返回 回 SERVFAIL 迟到的结果丢弃`() {
+        val backend = FakeBackend()
+        val release = CountDownLatch(1)
+        val workerDone = CountDownLatch(1)
+        backend.blocking = {
+            uninterruptibleAwait(release)
+            workerDone.countDown()
+            listOf("192.0.2.1")
+        }
+        val reply = FakeReply()
+        val exchanger = DnsExchanger(backend, blockingTimeoutMillis = 100)
+        pool.submit { exchanger.lookup(reply, async = false, family = "udp", domain = "slow.example.net") }.finish()
+        assertEquals(listOf("rcode:2"), reply.events.toList())
+
+        release.countDown()
+        assertTrue(workerDone.await(30, TimeUnit.SECONDS))
+        assertEquals("迟到的结果不得再回复", listOf("rcode:2"), reply.events.toList())
+    }
+
+    @Test
+    fun `阻塞解析的工作线程池有界 满了直接拒绝并回 SERVFAIL`() {
+        val backend = FakeBackend()
+        val release = CountDownLatch(1)
+        val running = CountDownLatch(1)
+        backend.blocking = {
+            running.countDown()
+            release.await(30, TimeUnit.SECONDS)
+            listOf("192.0.2.1")
+        }
+        // 1 个工作线程、不排队：第一个请求占住它，第二个必须被拒绝而不是再起线程。
+        val tiny = java.util.concurrent.ThreadPoolExecutor(1, 1, 1, TimeUnit.SECONDS, java.util.concurrent.SynchronousQueue())
+        try {
+            val first = FakeReply()
+            val firstCall = pool.submit { DnsExchanger(backend, tiny).lookup(first, async = false, family = "udp", domain = "a.example.net") }
+            assertTrue(running.await(30, TimeUnit.SECONDS))
+
+            val second = FakeReply()
+            DnsExchanger(backend, tiny).lookup(second, async = false, family = "udp", domain = "b.example.net")
+            assertEquals(listOf("rcode:2"), second.events.toList())
+
+            release.countDown()
+            firstCall.finish()
+            assertEquals(listOf("ok:192.0.2.1"), first.events.toList())
+        } finally {
+            release.countDown()
+            tiny.shutdownNow()
+        }
     }
 }

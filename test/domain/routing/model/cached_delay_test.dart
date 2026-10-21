@@ -84,6 +84,34 @@ void main() {
     });
   });
 
+  group('失败记录（测过但没通）', () {
+    test('失败条目编码后再解码仍是失败，不是成功，也不会被丢掉', () {
+      final src = {'dead': CachedDelay.failed(at), 'ok': CachedDelay(90, at)};
+      final back = decodeDelayCache(encodeDelayCache(src));
+      expect(back['dead'], CachedDelay.failed(at));
+      expect(back['dead']!.isFailed, isTrue);
+      expect(back['dead']!.measuredAt, at);
+      expect(back['ok']!.isFailed, isFalse);
+    });
+
+    test('失败条目的毫秒数落在超时哨兵之外，不是可展示的延迟', () {
+      final failed = CachedDelay.failed(at);
+      expect(failed.ms, greaterThan(kDelayTimeoutSentinelMs));
+      expect(isMeasurableDelay(failed.ms), isFalse);
+      expect(const CachedDelay(98, null).isFailed, isFalse);
+    });
+
+    test('旧版本留下的哨兵值仍被丢掉（不会被误读成失败记录）', () {
+      final map = decodeDelayCache(
+        jsonEncode({
+          'a': 65535,
+          'b': {'ms': 65535, 'measuredAt': 1},
+        }),
+      );
+      expect(map, isEmpty);
+    });
+  });
+
   group('isMeasurableDelay', () {
     test('1..65000 是有效延迟，0 与哨兵值（>65000）不是', () {
       expect(isMeasurableDelay(1), isTrue);

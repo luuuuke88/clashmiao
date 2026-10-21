@@ -625,6 +625,80 @@ void main() {
     );
   }
 
+  // 用户在真机上踩过的坑：提供商那头节点全挂了，缓存里还留着当年的 98 ms，
+  // 胶囊却照旧显示这个数字，用户以为这个节点能用。
+  Future<ProviderContainer> pumpDeadSelectedNode(WidgetTester tester) async {
+    late ProviderContainer container;
+    const profile = ProfileEntity(
+      id: 'p1',
+      name: 'p1',
+      url: 'https://example.com/p1',
+      active: true,
+    );
+    await tester.pumpWidget(
+      await _hostConnectionInfo(
+        phase: ConnectionPhase.connected,
+        groups: const [
+          OutboundGroup(
+            tag: 'proxy',
+            type: 'selector',
+            selected: '泰国',
+            items: [
+              OutboundProxy(tag: '泰国', type: 'vmess'),
+              OutboundProxy(tag: '香港直连', type: 'vmess', delay: 190),
+            ],
+          ),
+        ],
+        onContainer: (c) => container = c,
+        extraOverrides: (prefs) async {
+          final store = await seededProfileStore(prefs, [profile]);
+          return [
+            profileStoreProvider.overrideWith((_) => Future.value(store)),
+            activeProfileProvider.overrideWith((_) => Future.value(profile)),
+          ];
+        },
+      ),
+    );
+    await tester.pump(const Duration(milliseconds: 250));
+    return container;
+  }
+
+  testWidgets('选中的节点测失败：胶囊显示超时，不再显示缓存里的 98 ms', (tester) async {
+    final container = await pumpDeadSelectedNode(tester);
+    container.read(proxyDelayCacheProvider.notifier).recordMeasured({
+      '泰国': 98,
+    }, at: DateTime.now());
+    await tester.pump(const Duration(milliseconds: 250));
+
+    // 一轮测速结束（预热 + 到点）：泰国没有任何结果。
+    await _drainLatency(tester);
+
+    final label = tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+    expect(label.state, LatencyDisplayState.timeout);
+    expect(label.ms, isNull);
+    expect(find.text('98ms'), findsNothing);
+    expect(find.text('超时'), findsOneWidget);
+    expect(
+      container.read(proxyDelayCacheProvider)['泰国']!.isFailed,
+      isTrue,
+      reason: '失败写进缓存，重开 App 也不会复活 98 ms',
+    );
+  });
+
+  testWidgets('上一次会话记下的失败：还没测速时胶囊就是超时，不显示 98 ms', (tester) async {
+    final container = await pumpDeadSelectedNode(tester);
+    final cache = container.read(proxyDelayCacheProvider.notifier);
+    cache.recordMeasured({'泰国': 98}, at: DateTime.now());
+    cache.recordFailed({'泰国'}, at: DateTime.now());
+    await tester.pump(const Duration(milliseconds: 250));
+
+    final label = tester.widget<LatencyLabel>(find.byType(LatencyLabel));
+    expect(label.state, LatencyDisplayState.timeout);
+    expect(find.text('98ms'), findsNothing);
+
+    await _drainLatency(tester);
+  });
+
   testWidgets('节点行看得出能点：带箭头，点了跳到线路页', (tester) async {
     late ProviderContainer container;
     await tester.pumpWidget(

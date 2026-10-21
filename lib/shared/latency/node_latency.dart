@@ -48,12 +48,17 @@ class NodeLatency {
 /// 2. 本轮明确判定的超时（[timedOut]：确认失败，或没确认且没有任何旧值）→ 超时；
 /// 3. 上一轮到点没确认出结果但有有效旧值（[unconfirmed]）→ 历史值，带旧值
 ///    （实时值有效用实时值，否则用缓存值）：不能当成新结果，也不能判超时。
-///    这一条排在裸哨兵前面：开测前就留在实时值里的超时哨兵不能证明本轮失败；
+///    协调器只对**实时值仍有效**的节点这样标；实时没有值的节点测完一律是
+///    失败（内核测失败会删掉测速历史，分组流里表现为 0），缓存里的旧数字
+///    顶替不了它。这一条排在裸哨兵前面：开测前就留在实时值里的超时哨兵
+///    不能证明本轮失败；
 /// 4. 实时值是内核的超时哨兵 → 超时；
 /// 5. 实时值有效 → 成功；缓存里是同一个数且测量时间未知或已超过 5 分钟 →
 ///    历史值（旧版本留下的无时间缓存在确认出新结果前一直算历史值）；
-/// 6. 缓存有值且允许兜底 → 成功 / 历史值（按测量时间）；
-/// 7. 否则未测。
+/// 6. 缓存里记着这个节点上次测失败（[cachedFailed]）→ 超时：实时没有值，
+///    缓存也已经被失败记录覆盖，不会再有成功的旧数字冒出来；
+/// 7. 缓存有值且允许兜底 → 成功 / 历史值（按测量时间）；
+/// 8. 否则未测。
 ///
 /// [testing] 要按「分组 + 节点」传：只有这个节点在当前展示的分组里还没出
 /// 本轮结果时才为真；已经出了结果的节点直接展示新值。
@@ -70,6 +75,7 @@ NodeLatency resolveNodeLatency({
   required bool timedOut,
   required DateTime now,
   bool unconfirmed = false,
+  bool cachedFailed = false,
   bool cacheIsFallback = true,
 }) {
   final liveOk = isMeasurableDelay(liveMs);
@@ -104,6 +110,10 @@ NodeLatency resolveNodeLatency({
       stale ? LatencyDisplayState.stale : LatencyDisplayState.success,
       liveMs,
     );
+  }
+  // 缓存里记着上次测失败：不再往下拿别的缓存数字兜底。
+  if (cachedFailed) {
+    return const NodeLatency(LatencyDisplayState.timeout);
   }
   if (cachedOk && cacheIsFallback) {
     return NodeLatency(

@@ -15,6 +15,7 @@ import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
 import 'package:clashmiao/shared/components/latency_label.dart';
@@ -58,6 +59,7 @@ class _PresetCoordinator extends LatencyTestCoordinator {
         liveGroups: () => const [],
         cache: () => const {},
         recordMeasured: (_, _) {},
+        recordFailed: (_, _) {},
         now: () => _now,
       ) {
     state = preset;
@@ -192,11 +194,12 @@ void main() {
       await _settle(tester);
 
       final labels = _labels(tester);
+      // 默认按延迟排序：有数字的 < 未测 < 超时（死节点最后）。
       expect(labels.map((l) => l.state), [
         LatencyDisplayState.success,
         LatencyDisplayState.stale,
-        LatencyDisplayState.timeout,
         LatencyDisplayState.untested,
+        LatencyDisplayState.timeout,
       ]);
       expect(labels[0].ms, 120);
       expect(labels[1].ms, 450);
@@ -279,7 +282,7 @@ void main() {
       expect(find.text('88ms'), findsOneWidget);
     });
 
-    testWidgets('真实连接状态下重测：测量中保留旧值，到点没确认的显示历史值而非超时', (tester) async {
+    testWidgets('真实连接状态下重测：测量中保留旧值，到点实时有值的显示历史值、实时没有值的显示超时', (tester) async {
       final host = await _host(
         connected: true,
         groups: [
@@ -309,14 +312,15 @@ void main() {
       expect(labelOf('b').ms, 100, reason: '测量中保留实时旧值');
       expect(find.text('150ms'), findsOneWidget);
 
-      // 内核一直没推来新值：10 s 到点，两个节点都没确认出本轮结果。它们手上
-      // 有旧值，所以显示历史值（旧数字 + 中性色），而不是超时或成功。
+      // 内核一直没推来新值：10 s 到点，两个节点都没确认出本轮结果。
+      // b 的实时值还在（内核没删它的历史），显示历史值（旧数字 + 中性色）；
+      // a 实时没有值——内核测失败会删历史——缓存里的 150 不能顶替，显示超时。
       await tester.pump(const Duration(seconds: 10));
-      expect(labelOf('a').state, LatencyDisplayState.stale);
-      expect(labelOf('a').ms, 150);
+      expect(labelOf('a').state, LatencyDisplayState.timeout);
+      expect(labelOf('a').ms, isNull);
       expect(labelOf('b').state, LatencyDisplayState.stale);
       expect(labelOf('b').ms, 100);
-      expect(find.text('超时'), findsNothing, reason: '稳定节点不能被标成超时');
+      expect(find.text('150ms'), findsNothing, reason: '失败不能显示成功的旧值');
       await _drain(tester);
     });
 
@@ -686,7 +690,12 @@ void main() {
 
             expect(tester.takeException(), isNull, reason: '不应有任何溢出');
 
-            final label = _labels(tester).first;
+            final label = tester.widget<LatencyLabel>(
+              find.descendant(
+                of: _tileOf(node).first,
+                matching: find.byType(LatencyLabel),
+              ),
+            );
             expect(label.state, c.expected, reason: '用例要真的落在 ${c.name}');
             final shown = c.expected == LatencyDisplayState.timeout
                 ? timeoutText
@@ -819,7 +828,11 @@ void main() {
               if (staleCachedMs != null) {
                 cache.recordMeasured({node: staleCachedMs}, at: longAgo);
               }
-              coordinator.set(state);
+              // 邻居节点一直是超时：死节点排在最后，这个用例量的是行布局不跳动，
+              // 不能让被测节点超时那一步把两行换位。
+              coordinator.set(
+                state.copyWith(timedOutNodes: {...state.timedOutNodes, next}),
+              );
               live.add(groupsWith(delay));
               await _settle(tester);
             }
@@ -921,7 +934,12 @@ void main() {
             for (final (label, delay, state, stale, expected, text) in steps) {
               await step(delay, state, staleCachedMs: stale);
               expect(tester.takeException(), isNull, reason: '$label：不应溢出');
-              final shown = _labels(tester).first;
+              final shown = tester.widget<LatencyLabel>(
+                find.descendant(
+                  of: _tileOf(node).first,
+                  matching: find.byType(LatencyLabel),
+                ),
+              );
               expect(shown.state, expected, reason: '$label：状态要真的切到');
               // 名称那一行的延迟文字确实变了（只在这一行里找）。
               expect(
@@ -1081,6 +1099,142 @@ void main() {
       host.container.read(selectedTabProvider.notifier).state = AppTab.proxies;
       await tester.pump(const Duration(seconds: 5));
       expect(host.box.urlTests, isEmpty);
+    });
+  });
+
+  group('测速失败的节点（用户真机上踩过的坑）', () {
+    // 提供商那头 24 个节点挂了：内核测失败会删掉测速历史，分组流里是 0；
+    // 缓存里却还留着当年的 98 ms。结果：死节点显示着 98 ms 排在唯一的活节点前面。
+    final minuteAgo = _now.subtract(const Duration(minutes: 1));
+    String seed(Map<String, String> entries) =>
+        '{${entries.entries.map((e) => '${e.key}:${e.value}').join(',')}}';
+    String ok(int ms) =>
+        '{"ms":$ms,"measuredAt":${minuteAgo.millisecondsSinceEpoch}}';
+
+    List<String> order(WidgetTester tester, List<String> tags) {
+      final ys = {for (final t in tags) t: tester.getCenter(find.text(t)).dy};
+      return [...tags]..sort((a, b) => ys[a]!.compareTo(ys[b]!));
+    }
+
+    testWidgets('一轮测速后：缓存里有 98 ms 的死节点显示超时并排在活节点之后，活节点是新值', (tester) async {
+      final stream = StreamController<List<OutboundGroup>>();
+      addTearDown(stream.close);
+      final host = await _host(
+        connected: true,
+        groups: const [],
+        liveGroups: stream.stream,
+        prefsValues: {
+          'proxy_delays_profile-1': seed({
+            '"泰国"': ok(98),
+            '"香港01"': ok(123),
+            '"香港直连"': ok(300),
+          }),
+        },
+      );
+      await host.container
+          .read(proxiesSortProvider.notifier)
+          .updateSort(ProxiesSort.delay);
+      await tester.pumpWidget(host.widget);
+      // 死节点排在名单最前、实时没有值（内核已删历史）。
+      stream.add([
+        _group([_node('泰国'), _node('香港01'), _node('香港直连')]),
+      ]);
+      await _settle(tester);
+
+      await tester.pump(const Duration(seconds: 2)); // 预热后自动开测
+      expect(host.box.urlTests, ['proxy']);
+      // 活节点测出新值（190，与缓存的 300 不同）。
+      stream.add([
+        _group([_node('泰国'), _node('香港01'), _node('香港直连', delay: 190)]),
+      ]);
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(seconds: 11));
+      await _settle(tester);
+      await _settle(tester); // 重排动画
+
+      LatencyLabel labelOf(String node) => tester.widget<LatencyLabel>(
+        find.descendant(of: _tileOf(node), matching: find.byType(LatencyLabel)),
+      );
+      expect(labelOf('泰国').state, LatencyDisplayState.timeout);
+      expect(labelOf('香港01').state, LatencyDisplayState.timeout);
+      expect(labelOf('香港直连').state, LatencyDisplayState.success);
+      expect(labelOf('香港直连').ms, 190);
+      expect(find.text('98ms'), findsNothing);
+      expect(find.text('123ms'), findsNothing);
+      expect(find.text('300ms'), findsNothing);
+      expect(find.text('超时'), findsNWidgets(2));
+      expect(order(tester, ['泰国', '香港01', '香港直连']).first, '香港直连');
+
+      // 缓存里：失败记录覆盖了旧成功值。
+      final cache = host.container.read(proxyDelayCacheProvider);
+      expect(cache['泰国']!.isFailed, isTrue);
+      expect(cache['香港直连']!.ms, 190);
+      await _drain(tester);
+    });
+
+    testWidgets('重开 App：上次记下的失败不会复活 98 ms，死节点从一开始就排在最后', (tester) async {
+      final host = await _host(
+        connected: true,
+        groups: [
+          _group([_node('泰国'), _node('香港直连', delay: 190)]),
+        ],
+        prefsValues: {
+          'proxy_delays_profile-1': seed({
+            '"泰国"':
+                '{"ms":65001,"failed":true,"measuredAt":${minuteAgo.millisecondsSinceEpoch}}',
+            '"香港直连"': ok(190),
+          }),
+        },
+      );
+      await host.container
+          .read(proxiesSortProvider.notifier)
+          .updateSort(ProxiesSort.delay);
+      await tester.pumpWidget(host.widget);
+      await _settle(tester);
+
+      LatencyLabel labelOf(String node) => tester.widget<LatencyLabel>(
+        find.descendant(of: _tileOf(node), matching: find.byType(LatencyLabel)),
+      );
+      expect(labelOf('泰国').state, LatencyDisplayState.timeout);
+      expect(labelOf('香港直连').state, LatencyDisplayState.success);
+      expect(order(tester, ['泰国', '香港直连']), ['香港直连', '泰国']);
+      await _drain(tester);
+    });
+
+    testWidgets('按延迟排序：有数字的按毫秒在前，未测其次，超时最后', (tester) async {
+      final host = await _host(
+        connected: true,
+        groups: [
+          _group([
+            _node('t-timeout'),
+            _node('t-untested'),
+            _node('t-stale', delay: 20),
+            _node('t-fresh', delay: 300),
+          ]),
+        ],
+        prefsValues: {
+          'proxy_delays_profile-1': seed({
+            '"t-stale"':
+                '{"ms":20,"measuredAt":${_now.subtract(const Duration(minutes: 30)).millisecondsSinceEpoch}}',
+            '"t-fresh"':
+                '{"ms":300,"measuredAt":${minuteAgo.millisecondsSinceEpoch}}',
+          }),
+        },
+        preset: const LatencyTestState(timedOutNodes: {'t-timeout'}),
+      );
+      await host.container
+          .read(proxiesSortProvider.notifier)
+          .updateSort(ProxiesSort.delay);
+      await tester.pumpWidget(host.widget);
+      await _settle(tester);
+
+      expect(order(tester, ['t-timeout', 't-untested', 't-stale', 't-fresh']), [
+        't-stale',
+        't-fresh',
+        't-untested',
+        't-timeout',
+      ]);
+      await _drain(tester);
     });
   });
 }

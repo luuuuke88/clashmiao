@@ -304,7 +304,7 @@
       "sectionTitle": "一般选项",
       "locale": "语言",
       "region": "地区",
-      "regionMsg": "帮助设置默认选项以绕过国内地址",
+      "regionMsg": "按所在地区设置默认规则，本地网站直接连接",
       "regions": {
         "ir": "伊朗 (ir)",
         "cn": "中国 (cn)",

@@ -2,6 +2,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -66,6 +67,29 @@ void main() {
     expect(find.text('有可用更新'), findsOneWidget);
     expect(find.textContaining('1.0.0'), findsOneWidget);
     expect(find.textContaining('9.9.9'), findsOneWidget);
+  });
+
+  testWidgets('iOS 上不检查更新：更新由 App Store 负责，不能引导去站外下载', (tester) async {
+    final (container, context) = await _harness(tester);
+    addTearDown(container.dispose);
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+
+    var called = false;
+    await runStartupUpdateCheck(
+      container,
+      initialDelay: Duration.zero,
+      contextProvider: () => context,
+      checkOnce: (prefs, {dio, mixedPort = 0}) async {
+        called = true;
+        return 'v9.9.9';
+      },
+    );
+    debugDefaultTargetPlatformOverride = null;
+    await tester.pumpAndSettle();
+
+    expect(called, isFalse);
+    expect(find.text('有可用更新'), findsNothing);
   });
 
   testWidgets('没有新版本时什么都不做：不弹窗、无视觉噪音', (tester) async {

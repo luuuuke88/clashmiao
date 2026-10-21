@@ -9,6 +9,7 @@ import 'package:clashmiao/features/about/presentation/about_page.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/brand_mark.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -19,7 +20,10 @@ import 'package:toastification/toastification.dart';
 
 import '../../../support/toast_pump.dart';
 
-Future<Widget> _host({List<Override> extraOverrides = const []}) async {
+Future<Widget> _host({
+  List<Override> extraOverrides = const [],
+  bool updateCheck = true,
+}) async {
   SharedPreferences.setMockInitialValues({'locale': 'zhCn'});
   PackageInfo.setMockInitialValues(
     appName: 'ClashMiao',
@@ -33,6 +37,7 @@ Future<Widget> _host({List<Override> extraOverrides = const []}) async {
     overrides: [
       sharedPreferencesProvider.overrideWith((_) => Future.value(prefs)),
       boxServiceProvider.overrideWithValue(const StubBoxService()),
+      updateCheckAvailableProvider.overrideWithValue(updateCheck),
       ...extraOverrides,
     ],
   );
@@ -126,6 +131,30 @@ void main() {
       hasTelegramChannel ? findsOneWidget : findsNothing,
     );
     expect(find.text('隐私政策'), hasPrivacyPolicy ? findsOneWidget : findsNothing);
+    // 隐私政策是上架必需项，有兜底默认值，任何构建都必须有入口。
+    expect(hasPrivacyPolicy, isTrue);
+  });
+
+  testWidgets('构建不能检查更新时（iOS / 没有更新来源）不显示「检查更新」', (tester) async {
+    tester.view.physicalSize = const Size(430, 932);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(await _host(updateCheck: false));
+    await tester.pumpAndSettle();
+
+    expect(find.text('检查更新'), findsNothing);
+    // 其它入口照常显示，列表第一项变成开源许可。
+    expect(find.text('开源许可'), findsOneWidget);
+    expect(find.text('源代码'), findsOneWidget);
+  });
+
+  test('iOS 上 hasUpdateCheck 恒为 false', () {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    expect(updatesManagedByStore, isTrue);
+    expect(hasUpdateCheck, isFalse);
   });
 
   // 「检查更新」的点击交互此前零测试覆盖（parity 追踪表里记为 Important

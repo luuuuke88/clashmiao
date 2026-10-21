@@ -763,7 +763,7 @@ class Translations$settings$general$zh_CN extends Translations$settings$general$
 	@override String get sectionTitle => '一般选项';
 	@override String get locale => '语言';
 	@override String get region => '地区';
-	@override String get regionMsg => '帮助设置默认选项以绕过国内地址';
+	@override String get regionMsg => '按所在地区设置默认规则，本地网站直接连接';
 	@override late final Translations$settings$general$regions$zh_CN regions = Translations$settings$general$regions$zh_CN.internal(_root);
 	@override String get themeMode => '主题模式';
 	@override late final Translations$settings$general$themeModes$zh_CN themeModes = Translations$settings$general$themeModes$zh_CN.internal(_root);
@@ -1373,7 +1373,7 @@ extension on TranslationsZhCn {
 			'settings.general.sectionTitle' => '一般选项',
 			'settings.general.locale' => '语言',
 			'settings.general.region' => '地区',
-			'settings.general.regionMsg' => '帮助设置默认选项以绕过国内地址',
+			'settings.general.regionMsg' => '按所在地区设置默认规则，本地网站直接连接',
 			'settings.general.regions.ir' => '伊朗 (ir)',
 			'settings.general.regions.cn' => '中国 (cn)',
 			'settings.general.regions.ru' => '俄罗斯 (ru)',

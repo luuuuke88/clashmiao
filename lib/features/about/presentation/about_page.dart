@@ -33,6 +33,7 @@ class _AboutPageState extends ConsumerState<AboutPage> {
   @override
   Widget build(BuildContext context) {
     final t = ref.watch(translationsProvider);
+    final showUpdateCheck = ref.watch(updateCheckAvailableProvider);
     // 入口图标统一用品牌色，不再各染一色（绿/橙/红留给状态）。
     final brandIconColor = Theme.of(context).colorScheme.primary;
 
@@ -111,37 +112,43 @@ class _AboutPageState extends ConsumerState<AboutPage> {
                       padding: EdgeInsets.zero,
                       child: Column(
                         children: [
-                          _AboutTile(
-                            icon: FluentIcons.arrow_sync_24_regular,
-                            iconColor: brandIconColor,
-                            label: t.about.checkForUpdate,
-                            // 箭头 ↔ 转圈：固定 20 dp 占位，淡入淡出互换，不是硬换。
-                            trailing: SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: Center(
-                                child: AnimatedMark(
-                                  child: _checkingUpdate
-                                      ? const SizedBox(
-                                          key: ValueKey('update-checking'),
-                                          width: 20,
-                                          height: 20,
-                                          child: MotionProgress(),
-                                        )
-                                      : _Chevron(
-                                          key: const ValueKey('update-chevron'),
-                                          color: Theme.of(context)
-                                              .aiUi
-                                              .secondaryTextColor,
-                                        ),
+                          // 商店分发的平台（iOS）和没有更新来源的构建不显示：
+                          // 点了必定失败的入口不如没有。
+                          if (showUpdateCheck) ...[
+                            _AboutTile(
+                              icon: FluentIcons.arrow_sync_24_regular,
+                              iconColor: brandIconColor,
+                              label: t.about.checkForUpdate,
+                              // 箭头 ↔ 转圈：固定 20 dp 占位，淡入淡出互换，不是硬换。
+                              trailing: SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Center(
+                                  child: AnimatedMark(
+                                    child: _checkingUpdate
+                                        ? const SizedBox(
+                                            key: ValueKey('update-checking'),
+                                            width: 20,
+                                            height: 20,
+                                            child: MotionProgress(),
+                                          )
+                                        : _Chevron(
+                                            key: const ValueKey(
+                                              'update-chevron',
+                                            ),
+                                            color: Theme.of(context)
+                                                .aiUi
+                                                .secondaryTextColor,
+                                          ),
+                                  ),
                                 ),
                               ),
+                              onTap: _checkingUpdate
+                                  ? null
+                                  : () => _checkForUpdate(context, t),
                             ),
-                            onTap: _checkingUpdate
-                                ? null
-                                : () => _checkForUpdate(context, t),
-                          ),
-                          const _Divider(),
+                            const _Divider(),
+                          ],
                           _AboutTile(
                             icon: FluentIcons.document_bullet_list_24_regular,
                             iconColor: brandIconColor,

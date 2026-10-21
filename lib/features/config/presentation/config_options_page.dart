@@ -4,6 +4,7 @@ import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
 import 'package:clashmiao/core/localization/translations.dart';
+import 'package:clashmiao/domain/config/application/warp_availability.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
@@ -454,15 +455,16 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                   .animateWithMotion(context)
                   .fadeIn(delay: 400.ms)
                   .slideY(begin: 0.1, end: 0),
-              _ConfigGroup(
-                    title: _experimental(t, t.config.section.warp),
-                    icon: FluentIcons.shield_keyhole_24_regular,
-                    iconColor: Colors.indigo,
-                    children: const [_WarpOptionsTiles()],
-                  )
-                  .animateWithMotion(context)
-                  .fadeIn(delay: 500.ms)
-                  .slideY(begin: 0.1, end: 0),
+              if (isWarpAvailable)
+                _ConfigGroup(
+                      title: _experimental(t, t.config.section.warp),
+                      icon: FluentIcons.shield_keyhole_24_regular,
+                      iconColor: Colors.indigo,
+                      children: const [_WarpOptionsTiles()],
+                    )
+                    .animateWithMotion(context)
+                    .fadeIn(delay: 500.ms)
+                    .slideY(begin: 0.1, end: 0),
               _ConfigGroup(
                     title: t.config.section.misc,
                     icon: FluentIcons.app_folder_24_regular,

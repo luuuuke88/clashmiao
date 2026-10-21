@@ -185,15 +185,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  _SettingsGroup(
-                    title: t.settings.groups.privacy,
-                    children: [
-                      _AnalyticsToggle(
-                        label: t.settings.general.enableAnalytics,
-                      ),
-                    ],
-                  ),
+                  // 隐私组只有「数据分析」一项；构建里没编进上报时整组不显示。
+                  if (ref.watch(crashReportingAvailableProvider)) ...[
+                    const SizedBox(height: 24),
+                    _SettingsGroup(
+                      title: t.settings.groups.privacy,
+                      children: [
+                        _AnalyticsToggle(
+                          label: t.settings.general.enableAnalytics,
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
               const SliverToBoxAdapter(child: SizedBox(height: 100)),

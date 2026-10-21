@@ -15,6 +15,8 @@
 /// 做到**没配置就不显示入口**，而不是显示一个死链。
 library;
 
+import 'package:flutter/foundation.dart';
+
 /// Sentry 上报地址。空 = 完全不初始化 Sentry SDK。
 ///
 /// 注意这只是"编译期有没有 DSN"，是否真的上报还要看用户的数据分析开关
@@ -48,8 +50,13 @@ const telegramChannelUrl = String.fromEnvironment('TELEGRAM_CHANNEL_URL');
 
 /// 隐私政策页面地址。空 = 关于页不显示这一项。
 ///
-/// **上架必需**：Google Play 与 App Store 都要求提供可访问的隐私政策链接。
-const privacyPolicyUrl = String.fromEnvironment('PRIVACY_POLICY_URL');
+/// **上架必需**：Google Play 与 App Store 都要求 App 内能打开隐私政策，所以
+/// 给官网地址做兜底默认值——发布流水线从没配过这个变量，没有兜底时所有正式包
+/// 都缺这一项。兜底值的可达性同样由 `bin/check-public-links.sh` 验证。
+const privacyPolicyUrl = String.fromEnvironment(
+  'PRIVACY_POLICY_URL',
+  defaultValue: 'https://clashmiao.com/privacy',
+);
 
 /// 服务条款页面地址。保留为发布构建可注入的公共配置。
 ///
@@ -73,6 +80,22 @@ bool get hasPrivacyPolicy => privacyPolicyUrl.isNotEmpty;
 /// 是否配置了服务条款链接。
 bool get hasTermsAndConditions => termsAndConditionsUrl.isNotEmpty;
 
-/// 是否能做更新检查。两条来源任意一条可用即可。
+/// 构建期关掉更新检查（如商店渠道包）。
+const updateCheckDisabled = bool.fromEnvironment(
+  'CLASHMIAO_DISABLE_UPDATE_CHECK',
+);
+
+/// 更新只能由应用商店分发的平台。iOS 包只能从 App Store / TestFlight 安装，
+/// App 自己检查更新、再引导去站外下载，既做不到也违反审核指南，所以这类平台
+/// 不提供更新检查。
+bool get updatesManagedByStore => defaultTargetPlatform == TargetPlatform.iOS;
+
+/// 是否能做更新检查：平台允许、构建没关掉，且两条来源任意一条可用。
 bool get hasUpdateCheck =>
-    updateManifestUrl.isNotEmpty || githubRepoSlug.isNotEmpty;
+    !updatesManagedByStore &&
+    !updateCheckDisabled &&
+    (updateManifestUrl.isNotEmpty || githubRepoSlug.isNotEmpty);
+
+/// 是否编进了崩溃 / 性能上报。没有 DSN 时 Sentry 永不初始化，设置页的
+/// 「数据分析」开关打开也什么都不会发生，所以不显示这个开关。
+bool get hasCrashReporting => sentryDsn.isNotEmpty;

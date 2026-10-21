@@ -1,3 +1,4 @@
+import 'package:clashmiao/domain/config/application/warp_availability.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
 import 'package:clashmiao/core/localization/translations.dart';
@@ -169,23 +170,29 @@ class QuickSettingsModal extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
             child: Column(
               children: [
-                _SettingTile(
-                  label: settings.warpConsentGiven
-                      ? t.config.enableWarp
-                      : t.config.setUpWarp,
-                  trailingText: settings.warpConsentGiven
-                      ? null
-                      : t.config.warpNotConfigured,
-                  value: settings.warpConsentGiven ? settings.enableWarp : null,
-                  icon: FluentIcons.shield_24_regular,
-                  onChanged: settings.warpConsentGiven
-                      ? ref.read(networkSettingsProvider.notifier).setEnableWarp
-                      : null,
-                  onTap: settings.warpConsentGiven
-                      ? null
-                      : () => _pushConfigOptions(context),
-                ),
-                const SizedBox(height: 12),
+                if (isWarpAvailable) ...[
+                  _SettingTile(
+                    label: settings.warpConsentGiven
+                        ? t.config.enableWarp
+                        : t.config.setUpWarp,
+                    trailingText: settings.warpConsentGiven
+                        ? null
+                        : t.config.warpNotConfigured,
+                    value: settings.warpConsentGiven
+                        ? settings.enableWarp
+                        : null,
+                    icon: FluentIcons.shield_24_regular,
+                    onChanged: settings.warpConsentGiven
+                        ? ref
+                              .read(networkSettingsProvider.notifier)
+                              .setEnableWarp
+                        : null,
+                    onTap: settings.warpConsentGiven
+                        ? null
+                        : () => _pushConfigOptions(context),
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _SettingTile(
                   label: t.config.enableTlsFragment,
                   value: settings.enableTlsFragment,

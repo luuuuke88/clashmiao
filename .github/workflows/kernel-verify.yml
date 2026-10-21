@@ -1,0 +1,55 @@
+name: Kernel verify
+
+# 自有 Go 内核模块 kernel/ 的验证，CI 与发版共用（reusable workflow）：
+# 发版（release.yml）把它当成 Android 构建与发布的必需依赖，不能绕过。
+# tags 与链接参数只来自 tools/kernel/env.sh，这里不手写 go test 与 tags；
+# 名称守卫的词表来自仓库 secret KERNEL_DENYLIST（需要维护者配置一次，未配置则该步骤失败）。
+
+on:
+  workflow_call:
+    secrets:
+      KERNEL_DENYLIST:
+        required: false   # 缺失时由下面的步骤报明确的错误，而不是在调用处被静默跳过
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.26.x', '1.27.x']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 名称守卫要扫 origin/main..HEAD 的提交信息
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache-dependency-path: kernel/go.sum
+      - name: Go 验证（vet + race 测试，共享 tags 与链接参数）
+        run: tools/kernel/gotest.sh
+      - name: 构建脚本自测（故障注入）
+        run: tools/kernel/build-android.sh --self-test
+      - name: tags 单一来源（自测 + 真扫描）
+        run: |
+          tools/kernel/check-tags-single-source.test.sh
+          tools/kernel/check-tags-single-source.sh
+      - name: 发版闸门（内核验证是 Android 构建与发布的必需依赖）
+        run: |
+          tools/kernel/check-release-gates.test.sh
+          tools/kernel/check-release-gates.sh
+      - name: 测试里不得用 time.Sleep
+        run: tools/kernel/check-no-sleep.sh
+      - name: 名称守卫（自测 + 真扫描 + 提交信息）
+        env:
+          KERNEL_DENYLIST: ${{ secrets.KERNEL_DENYLIST }}
+        run: |
+          if [ -z "$KERNEL_DENYLIST" ]; then
+            echo "::error::仓库 secret KERNEL_DENYLIST 未配置，名称守卫无法运行"
+            exit 1
+          fi
+          printf '%s\n' "$KERNEL_DENYLIST" > tools/kernel/denylist.local
+          tools/kernel/check-public-names.test.sh
+          tools/kernel/check-public-names.sh
+          git fetch origin main --depth=1000 || true
+          tools/kernel/check-public-names.sh --commits origin/main..HEAD

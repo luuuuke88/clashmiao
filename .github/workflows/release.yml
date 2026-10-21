@@ -121,9 +121,14 @@ jobs:
       - run: flutter analyze --fatal-warnings
       - run: flutter test test/ --reporter expanded
 
+  # 内核验证是 Android 构建与发布的必需依赖（与 CI 共用 kernel-verify.yml）：直接打 tag 或手动发版都绕不过它。
+  kernel:
+    uses: ./.github/workflows/kernel-verify.yml
+    secrets: inherit
+
   android:
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: [quality, kernel]
     steps:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
@@ -694,12 +699,14 @@ jobs:
 
 
   publish:
-    needs: [android, macos, windows, linux]
+    needs: [kernel, android, macos, windows, linux]
     # always()：某个平台缺签名密钥或构建失败时，**其余平台的包照样要发出去**。
     # 之前是硬 needs，结果 Android 缺 keystore 就一个包都不发、连桌面端都没有——
     # 用户打开 release 页面看到的是空的。缺哪个平台会在 release 正文里显式警告
     # （见 bin/make-release-notes.sh），整个 run 仍然标记为失败，不会掩盖问题。
-    if: always()
+    #
+    # 内核验证是硬闸门，不适用上面的「尽量发」：kernel 没通过就一个包都不发。
+    if: ${{ always() && needs.kernel.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
@@ -766,7 +773,7 @@ jobs:
           echo "已发布：$(gh release view "$RELEASE_TAG" --json url --jq .url)"
 
   report:
-    needs: [quality, android, macos, windows, publish]
+    needs: [quality, kernel, android, macos, windows, publish]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:

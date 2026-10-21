@@ -20,7 +20,9 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.47.7'
+  # 桌面 / iOS 仍用旧 tag；Android 用自有内核模块构建的 aar（只有 Android 资产）。
   LIBCORE_TAG: libcore-v1.8.9-16k
+  ANDROID_LIBCORE_TAG: libcore-v1.14.3-r1
   LIBCORE_REPO: luuuuke88/clashmiao
 
 jobs:

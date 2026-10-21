@@ -15,7 +15,10 @@
 
 set -euo pipefail
 
+# Android 用自有内核模块（kernel/，官方 sing-box 1.14.3）构建的 aar；桌面与 iOS 本期不动，
+# 仍用旧 tag 的外部构建产物。两个 tag 分开：升级 Android 内核不影响其它平台的下载。
 TAG="${LIBCORE_TAG:-libcore-v1.8.9-16k}"
+ANDROID_TAG="${ANDROID_LIBCORE_TAG:-libcore-v1.14.3-r1}"
 LIBCORE_REPO="${LIBCORE_REPO:-luuuuke88/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -31,18 +34,18 @@ require_gh() {
 }
 
 dl() {
-  local asset="$1" dest="$2"
+  local asset="$1" dest="$2" tag="${3:-$TAG}"
   mkdir -p "$(dirname "$dest")"
   if [ -s "$dest" ] && [ "${FORCE:-}" != "1" ]; then
     log "$dest 已存在，跳过（FORCE=1 强制覆盖）"
     return
   fi
   log "下载 $asset → $dest"
-  gh release download "$TAG" -p "$asset" -O "$dest" --clobber --repo "$LIBCORE_REPO"
+  gh release download "$tag" -p "$asset" -O "$dest" --clobber --repo "$LIBCORE_REPO"
 }
 
 fetch_android() {
-  dl libcore.aar android/app/libs/libcore.aar
+  dl libcore.aar android/app/libs/libcore.aar "$ANDROID_TAG"
 }
 fetch_macos() {
   dl libcore.dylib libcore/bin/libcore.dylib
@@ -181,4 +184,4 @@ case "${1:-default}" in
     ;;
 esac
 
-log "done. tag: $TAG"
+log "done. tag: $TAG（Android: $ANDROID_TAG）"

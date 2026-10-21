@@ -158,44 +158,78 @@ clashmiao/
 ├── ShortcutActivity.kt        — 桌面快捷方式入口（经协调器提交外部请求）
 ├── core/
 │   ├── Constants.kt           — wire-format 常量（KernelStatus / AlertCode / EngineMode / AppFilterMode / PrefsKey）
-│   ├── LibboxAdapters.kt      — libbox 类型 → Kotlin 适配辅助
+│   ├── NetAdapters.kt         — CIDR / 网络前缀等 Android 网络类型适配
 │   └── Prefs.kt               — SharedPreferences 分组与 StringList 解码
 ├── bridge/
 │   ├── MethodBridge.kt        — 两条 MethodChannel：`/method`（仅 generate_warp_config）与 `/platform`
-│   ├── StreamBridge.kt        — EventChannel：kernel.snapshot / status / alerts / stats / groups / active-groups / logs / network
+│   ├── StreamBridge.kt        — EventChannel：kernel.snapshot / status / alerts / stats / groups / logs / network（统计与分组是内核推来的 JSON，原样或按显式键名转成 Dart 模型）
 │   └── PigeonBridge.kt        — Pigeon BoxHostApi 的实现（生命周期调用转给协调器）
 ├── engine/
 │   ├── KernelCoordinator.kt   — 进程级协调器的命令层外壳：主线程上把核心的动作落成副作用
 │   ├── CoordinatorCore.kt     — 命令层纯状态机（事件 → 动作 + 快照），JVM 单测的主体
 │   ├── KernelModel.kt         — 快照 / LaunchSpec / Service 形态等模型与显式键名的线上编码
 │   ├── KernelStore.kt         — 持久化最近被受理的 LaunchSpec 与 desired（外部入口冷启动用）
-│   ├── KernelExecutor.kt      — 执行层：唯一后台线程，串行执行阻塞的 libbox 调用
-│   ├── KernelRuntime.kt / KernelStartSequence.kt / LibboxKernelRuntime.kt — 启动链与回收（可注入、可测）
+│   ├── KernelExecutor.kt      — 执行层：唯一后台线程，串行执行阻塞的内核调用
+│   ├── KernelRuntime.kt / KernelStartSequence.kt / CoreKernelRuntime.kt — 启动链（5 步）与回收（可注入、可测）；`CoreKernelRuntime` 是接内核门面的实现，`EngineRegistry` 持有当前实例
 │   ├── AndroidCoordinatorPlatform.kt — 定时器、VPN 授权、拉起 Service 的 Android 实现
 │   ├── VpnConsentBroker.kt    — 每个授权对话框一个唯一 requestCode，结果只归弹出它的请求
 │   ├── KernelHost.kt          — Service 实例与协调器之间的薄适配层（生命周期上报、按实例 stopSelfResult）
 │   ├── TunnelService.kt       — VPN 模式前台 Service（VpnService 子类，建 TUN）
 │   ├── PlainService.kt        — 纯代理模式前台 Service，不申请 VPN 权限
-│   ├── LibboxHost.kt          — libbox PlatformInterface 的抽象基类
-│   ├── LibboxCommandStream.kt — libbox CommandClient 流式推送的连接管理
+│   ├── CorePlatform.kt        — 内核门面 `Platform` 回调的抽象基类（TUN、保护、网络接口、查属主）
+│   ├── TunSpec.kt             — 内核请求的 TUN 规格（地址、路由、DNS、HTTP 代理）解析
+│   ├── ByteFormat.kt          — 通知里的流量字节格式化
+│   ├── CoreStream.kt          — 统计 / 分组流式推送的连接管理（代际、重试、断线回调）
 │   ├── ForegroundNotice.kt / NoticeUpdates.kt — 前台通知与动态通知的代际归属
 │   ├── NetworkWatcher.kt      — 默认网络监听
 │   ├── SystemDnsBridge.kt     — 系统 DNS 透传
 │   ├── LogBuffer.kt           — 线程安全的定长日志缓冲
 │   ├── PermissionGate.kt      — 通知权限申请（VPN 授权不经这里）
-│   ├── OutboundSnapshot.kt    — 出站组只读快照（显式键名编码给 Dart）
 │   ├── BootReceiver.kt        — 开机 / 升级后按持久化的 desired 与 spec 提交外部请求
 │   └── QuickSettingsTileService.kt — 快捷设置磁贴
 └── pigeon/BoxApi.g.kt         — Pigeon 生成代码
 ```
 
-native 层依赖 `android/app/libs/libcore.aar`（gomobile 生成的 libbox 包）。aar **不在 git tracking**，CI / fresh clone 用 `bin/fetch-libcore.sh android` 从 GitHub Release 拉取（见下文「内核版本」）。
+native 层依赖 `android/app/libs/libcore.aar`（由仓库内的 Go 模块 `kernel/` 经 gomobile 生成，Java 包 `com.clashmiao.libcore`）。aar **不在 git tracking**，CI / fresh clone 用 `bin/fetch-libcore.sh android` 从 GitHub Release 拉取（见下文「内核版本」）；本地改了 `kernel/` 用 `tools/kernel/build-android.sh` 现编。
 
 ### 内核版本
 
-当前打包的内核是 **sing-box v1.8.9**，由 Go 1.22 系列编译。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libbox.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.8.9`，Go 版本为 `go1.22.0`；macOS 的 `libcore/bin/libcore.dylib` 用同样方法读到同样的 sing-box 版本（Go 为 `go1.22.3`）。
+Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由仓库内的 Go 模块 `kernel/` 包装成 gomobile 门面。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libclashmiao.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.14.3`。`libclashmiao.so` 所有 LOAD 段按 16 KB（`2**14`）对齐，构建脚本逐项校验。
 
-`bin/fetch-libcore.sh` 与 CI 里默认拉取的 Release tag 叫 `libcore-v1.8.9-16k`（可用环境变量 `LIBCORE_TAG` 覆盖），对应实际内核 sing-box 1.8.9 分支；其中 Android aar 由 `tools/libcore/build-android.sh` 从源码重编、按 16 KB 页对齐。更早的 `libcore-v1.11.0` **只是打包用的 tag 名，不是 sing-box 的版本号。** `core/build.sh` 里的 `SINGBOX_VERSION="1.11.0"` 同理不代表实际内核：该脚本克隆上游 sing-box 源码，而它构建移动端用的 `./mobile` 包在那份源码里并不存在，所以当前发布的 libcore 并不是它产出的。
+`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r1`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/libcore/build-android.sh` 保留，只用于回滚（见「升级与回滚」）。
+
+### 内核模块 `kernel/`
+
+`kernel/` 是独立的 Go 模块（`github.com/luuuuke88/clashmiao/kernel`），分层如下，依赖方向只能向下：
+
+| 层 | 包 | 职责 |
+|---|---|---|
+| 门面 | `core` | gomobile 绑定的唯一入口：`Setup` / `Parse` / `BuildConfig` / `CheckConfig` / `GenerateWarpConfig` / `Version`，以及 `Engine`（启动、热重载、停止、手选、测速、统计 / 分组 / 日志订阅）与平台回调接口 `Platform` / `LocalDNS` / `InterfaceListener`。**只有这一层暴露给 Kotlin** |
+| 引擎 | `engine` | 官方 `libbox`（sing-box 的移动端包）的唯一使用点：把平台回调、命令服务、订阅流包成稳定接口。升级 sing-box 时 API 变化只落在这里 |
+| 纯数据层 | `internal/options`、`internal/build`、`internal/subscription`、`internal/uri`、`internal/legacy`、`internal/warp` | 不 import sing-box（架构测试扫描全部 `internal/`，只有测试支撑的 `build/gate` 与 `build/e2e` 例外）：选项解码与校验、运行配置构建（DNS / 路由 / 出站 / WARP 图）、订阅解析（sing-box JSON / Clash YAML / URI 列表）、各协议 URI 转换、旧 1.8 形态的读时清洗、WARP 账号注册与端点生成 |
+
+契约要点（Kotlin / Dart 侧都不用变）：
+
+- `BuildConfig(profilePath, optionsJSON)` 读订阅落盘文件 + `configOptions`，产出新 schema 的运行配置；订阅自带的 `dns` / `route` / `inbounds` / `selector` / `urltest` / `direct` 一律丢弃重建，主选择组 `select`、自动选择组 `auto`、域名解析器与规则顺序由构建器决定。WireGuard 节点是 `endpoints`，与出站一起参与选择组。
+- 错误带稳定前缀码（`format-unknown:` / `no-outbounds:` / `uri-invalid:` / `option-invalid:` / `build-failed:`），Dart 只在订阅导入边界按前缀映射文案。
+- 统计与分组是 JSON 线格式（统计键为连字符 `uplink-total` 等；分组是 `{tag,type,selected,items:[{tag,type,url-test-delay}]}` 数组），线格式黄金文件在 `kernel/testdata/wire/`，Kotlin 与 Dart 两侧都有契约测试读它。
+- 跨语言夹具由 Dart 测试生成并入库（`kernel/testdata/options`、`rules`、`dart`），Go 测试消费：Dart 产生任何 Go 不认识的选项键即失败。重新生成：`UPDATE_GOLDEN=1 flutter test <对应测试>`。
+
+共享构建参数（build tags 与链接参数）只在 `tools/kernel/env.sh` 一处定义，测试、`build-android.sh` 与 CI 都 source 它；不要在别处手抄。守卫脚本：`check-tags-single-source.sh`（tags 只有一个来源）、`check-no-sleep.sh`（测试里禁止裸 `time.Sleep`）、`check-public-names.sh`（公开文件与提交信息的名称守卫，`--commits <范围>` 查提交信息）。
+
+验证入口只有 `tools/kernel/gotest.sh`（裸 `go test` 会让 QUIC / WireGuard 变成桩实现，不是合法验证）：先 `go vet` 与 gofmt 检查，再跑两遍——带 `-race` 一遍，再无 `-race` 一遍（带 urltest 的真启动用例放在 `!race` 文件里，官方 urltest 自身有数据竞争）。闸门包括：黄金文件逐字节比对、构建结果不变量（引用、成环、规则顺序、禁用键）、`CheckConfig`、真 `Start`、本地假节点与本地目标上的真流量对等测试、WARP 出站图断言、`gomobile bind` 后的 Java API 快照（`kernel/api/java-api.txt`，缺失也失败）。
+
+#### 升级与回滚
+
+升级 sing-box 的 runbook：
+
+1. 改 `kernel/go.mod` 里的 sing-box 版本（精确 tag），`go mod tidy`；
+2. 跑 `tools/kernel/gotest.sh` 全部闸门——schema 变化会表现为黄金文件 diff、`CheckConfig` 或真 `Start` 失败，逐项修，不放宽闸门；
+3. 跑 `tools/kernel/build-android.sh`，API 有变化时核对差异后 `UPDATE_API=1` 更新 `kernel/api/java-api.txt`；
+4. 按 `docs/superpowers/specs/2026-10-21-kernel-upgrade-design.md` §7.3 的清单真机验收（先录旧包基线，再装新包逐行对比，不边改边测）；
+5. 发 Release `libcore-v<sing-box 版本>-r<序号>`，只上传 Android 资产，修改 `bin/fetch-libcore.sh` 与两个 workflow 里的 `ANDROID_LIBCORE_TAG`。
+
+回滚：发一个把 aar 与 Kotlin 绑定层换回旧版的 hotfix（旧 aar 在 Release `libcore-v1.8.9-16k`，`tools/libcore/build-android.sh` 可复现重编）。已被新 `Parse` 重写、含 `endpoints` 的订阅文件旧内核读不了，下一次刷新即恢复。
 
 ### 桌面侧（FFI）
 
@@ -282,7 +316,9 @@ ios/
 
 服务模式的可选档位同样只列能生效的：Android「仅线路 / VPN」，iOS 只有 VPN（界面说明「iOS 仅支持 VPN 模式」，不给选择器），桌面「仅线路 / 系统线路」（已持久化 `enableTun = true` 时额外显示选中的 VPN 档，可切走）；界面能力与启动参数分开算：界面只藏不能生效的档位，不改写持久化的显式设置。只对 TUN 起作用的设置（严格路由、TUN 实现）在内核不以 TUN 运行时不展示。
 
-智能模式（`isSmart`，即模式索引不为 0）下，中国大陆 IP 段与域名（`cn_direct_rules.dart`，由 `assets/rule-sets/` 里的 `.srs` 反编译生成）作为 `rules` 字段注入、走 `bypass` 直连；全局模式不注入。原因是当前打包的内核在 `region: "other"` 下不支持任何 rule-set，分流数据只能以明文列表经 `rules` 注入——详见 `default_config_options.dart` 与 `cn_direct_rules.dart` 文件头的注释。
+智能模式（`isSmart`，即模式索引不为 0）下，中国大陆 IP 段与域名（`cn_direct_rules.dart`，由 `assets/rule-sets/` 里的 `.srs` 反编译生成）作为 `rules` 字段注入、走 `bypass` 直连；全局模式不注入。内核只认 `region: "other"`，分流数据以明文列表经 `rules` 注入、不依赖任何远程规则集——详见 `default_config_options.dart` 与 `cn_direct_rules.dart` 文件头的注释。订阅级的 `remoteDnsOverride` 在这里写进 `remote-dns-address`。
+
+界面能力按新内核裁剪（只隐藏入口，不改持久化值，备份导出导入不受影响）：TLS 分片只保留开关（新内核没有 size / sleep 参数）；TLS 填充、混合大小写 SNI、WARP 噪声四项、广告拦截开关不再展示——选项键仍照常产出，内核只给警告。
 
 ## 连接生命周期
 
@@ -395,9 +431,9 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 ## 已知技术债
 
 - 生成物（slang 的 `lib/core/localization/gen/`、Pigeon 的三端 `*.g.*`）提交进了 git，fresh clone 不用先跑生成器（本仓库不用 build_runner，见 `bin/regen-i18n.sh`、`bin/regen-pigeon.sh`）。CI 目前不校验生成物与源文件是否一致，后续可加一步「重新生成后 diff 为空」。
-- `core/build.sh` 不是发布用 libcore 的来源（见「内核版本」）。libcore 二进制目前由外部构建后挂到 GitHub Release tag，CI / release flow 已通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 libcore tag，并让 tag 名反映真实内核版本。
+- `core/build.sh` 不是发布用 libcore 的来源。Android 的内核由 `kernel/` 经 `tools/kernel/build-android.sh` 构建后手动挂到 GitHub Release tag；桌面与 iOS 仍用旧 tag 的外部构建产物，CI / release flow 通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 Android 的 tag；桌面（cgo 导出）与 Apple（gomobile ios / macos）两个门面另立设计，让包内逻辑零重复。
 - 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
-- 原生层的 libbox 真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。
+- 原生层的内核真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。
 - 桌面的连接生命周期是降级契约（见「桌面：降级契约」）：FFI 调用移出 UI isolate 尚未完成。
 - 功能之间还有 5 条页面跳转依赖留在架构测试白名单里，等路由统一后清零（见「白名单：只减不增」）。

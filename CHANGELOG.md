@@ -4,6 +4,31 @@ ClashMiao（喵速）版本变更记录。遵循 [Keep a Changelog](https://keep
 
 ## [Unreleased]
 
+### Android：内核升级到官方 sing-box 1.14.3
+
+Android 的内核从 sing-box 1.8.9（外部构建的分叉）换成**官方 sing-box v1.14.3**，由仓库内的 Go 模块
+`kernel/` 包装：选项解码、配置构建、订阅解析、URI 转换、WARP 账号注册都在这里实现并有测试闸门，
+Kotlin 与 Dart 的对外契约（Pigeon、EventChannel、`configOptions` 键名）保持不变。桌面与 iOS 本期不动。
+
+- 订阅里的 WireGuard 节点现在是配置里的**端点**（`endpoints`），与出站一起进入选择组；只有端点的订阅合法
+- 订阅标记 `§default§` 现在取该节点的**真实 tag** 作为默认选择（含标在端点上的），不再是标记字面量
+- 订阅解析错误带稳定前缀码，「没有可用节点」给出对应提示
+- 新增 `kernel/` 的跨语言契约测试：Dart 产生的选项键与运行配置、Kotlin 编出的统计 / 分组信封，都由 Go 或 Dart 侧读回验证
+
+**行为变更**（逐项，不是「行为对等」）：
+
+- 停用 Clash API：App 从未使用它，开着只增加本机攻击面；`enable-clash-api` 等键仍可读写但不生效
+- 完整配置里订阅自带的入站（mixed / tun 等）被忽略，入站只由设置决定
+- 嗅探语义变化：官方内核没有 `sniff_override_destination`，目标域名由 fake DNS / 域名解析器与嗅探共同决定；个别站点的分流结果可能与旧内核不同，需要时开启 fake DNS（真机对比 25 个常用站点，仅 1 个站点的返回码不同）
+- 取消旧内核的 45 MiB 连接杀手（内存过大时强断连接）；内存上限只在进程启动时生效，改后需要重启 App
+- 重载不再固定等待 1 秒（真机连续 20 次重载全部可用，从提交到内核就绪约 0.9 秒）
+- 订阅里的 `selector` / `urltest` / `direct` / `block` / `dns` 与旧字段（`tls_fragment`、`tls_tricks`、出站上的 `domain_strategy` / `sniff`）由读时清洗丢弃或改写；旧订阅文件不需要重新导入，下一次刷新落盘为新形态
+- 配置选项里隐藏了新内核兑现不了的入口：TLS 分片大小 / 休眠、TLS 填充、混合大小写 SNI、WARP 噪声四项、广告拦截开关（存档里的值保留，备份导出导入不受影响；TLS 分片开关保留）
+- WARP：账号注册由 App 自己完成（先注册新设备、成功后再删旧设备），出站图按 `proxy_over_warp` / `warp_over_proxy` 两种模式装配；启用 WARP 但没有生成过账号时启动会明确报错，不会静默裸连
+- 旧的 `stderr.log` 重定向不再有；APK 体积增加约 12 MB（`libclashmiao.so` 57.8 MB，对旧 `libbox.so` 45.6 MB）
+
+**回滚**：保留旧 aar（Release `libcore-v1.8.9-16k`）与 `tools/libcore/build-android.sh`。已被新版重写、含 `endpoints` 的订阅文件，旧内核读不了，回滚后下一次刷新即恢复。
+
 ### iOS：连接生命周期对齐 Android 的原生协调器
 
 iOS 的开 / 关 / 重载 / 手选重放原来由 Dart 侧模拟（看不到系统设置里的开关、冷启动挂接拿不到真实状态、

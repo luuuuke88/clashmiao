@@ -45,16 +45,17 @@ object NetworkWatcher {
         data class Subscribe(val key: Any, val cb: (Network?) -> Unit) : Op
         data class Unsubscribe(val key: Any) : Op
         data class Resolved(val n: Network) : Op
-        class Forget(val out: CompletableDeferred<Network>) : Op
         data class Refreshed(val n: Network) : Op
         data class Lost(val n: Network) : Op
         class FetchCurrent(val out: CompletableDeferred<Network>) : Op
     }
 
+    /** 等默认网络的登记表：登记 / 撤销在锁里直接做，不依赖 actor 有空处理消息（见 [NetworkWaiters]）。 */
+    private val waiters = NetworkWaiters<Network>()
+
     private val actor = GlobalScope.actor<Op>(Dispatchers.Unconfined) {
         val subs = HashMap<Any, (Network?) -> Unit>()
         var current: Network? = null
-        val waiters = ArrayList<CompletableDeferred<Network>>()
 
         for (op in channel) when (op) {
             is Op.Subscribe -> {
@@ -71,8 +72,7 @@ object NetworkWatcher {
             }
             is Op.Resolved -> {
                 current = op.n
-                waiters.forEach { it.complete(op.n) }
-                waiters.clear()
+                waiters.completeAll(op.n)
                 subs.values.forEach { it(op.n) }
                 // 网络切换后是否重载由协调器决定：它按句柄去重、吸收初始事件并去抖。
                 KernelCoordinator.instance.onNetworkResolved(op.n.networkHandle)
@@ -84,10 +84,8 @@ object NetworkWatcher {
             }
             is Op.FetchCurrent -> {
                 val c = current
-                if (c != null) op.out.complete(c) else waiters += op.out
+                if (c != null) op.out.complete(c) else waiters.add(op.out)
             }
-            // 等待方被取消了：登记不能留下（否则一直没有网络事件时，取消过的等待会越积越多）。
-            is Op.Forget -> waiters.remove(op.out)
         }
     }
 
@@ -102,8 +100,15 @@ object NetworkWatcher {
      * 也没有仍在途的旧回调，所以新一轮启动不会与旧回调交错；回调期间**不持锁**（内核在回调里可能回头调平台接口）。
      */
     fun attachInterfaceListener(listener: InterfaceListener?) {
-        listenerGate.attach(listener)
-        if (listener != null) emitInterfaceUpdate(currentNetwork)
+        when (listenerGate.attach(listener)) {
+            InterfaceListenerGate.AttachResult.Installed ->
+                if (listener != null) emitInterfaceUpdate(currentNetwork)
+            // 有更新的一次 attach 接管了，监听归它管。
+            InterfaceListenerGate.AttachResult.Superseded -> Unit
+            // 旧回调迟迟不返回：不装新监听，让这次启动 / 停止明确失败，而不是与旧回调交错。
+            InterfaceListenerGate.AttachResult.DrainTimeout ->
+                throw IllegalStateException("interface listener: previous callbacks did not drain in time")
+        }
     }
 
     private val watcherKey = Any()
@@ -141,11 +146,10 @@ object NetworkWatcher {
             actor.send(Op.FetchCurrent(pending))
             pending.await()
         } finally {
-            // 被取消（内核放弃这次 DNS 调用）：撤销登记；已经完成的不用管。
-            if (!pending.isCompleted) {
-                pending.cancel()
-                actor.trySend(Op.Forget(pending))
-            }
+            // 被取消（内核放弃这次 DNS 调用）：先结束自己、再直接从登记表摘掉——
+            // 不走 actor 消息（它忙时投递会失败）；排在队列里还没处理的登记，加入时看到已结束就不登记。
+            if (!pending.isCompleted) pending.cancel()
+            waiters.forget(pending)
         }
     }
 

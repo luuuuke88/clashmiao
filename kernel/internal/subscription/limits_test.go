@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -169,3 +170,21 @@ func TestOutputOverLimitIsRejected(t *testing.T) {
 		t.Error("输出超限时不该落盘")
 	}
 }
+
+// 混合列表里一条 vmess 的 tls 值未知：这一条被跳过并警告，其余照常解析；单独一条时报 uri-invalid。
+func TestVMessUnknownTLSInMixedList(t *testing.T) {
+	good := "ss://" + base64NoPad("aes-128-gcm:p") + "@192.0.2.1:8388#good"
+	bad := "vmess://" + base64Std(`{"ps":"bad","add":"a.example.net","port":"443","id":"11111111-1111-4111-8111-111111111111","tls":"xtls"}`)
+	p, w := mustParse(t, []byte(good+"\n"+bad+"\n"))
+	if got := strings.Join(tags(p.Outbounds), ","); got != "good" {
+		t.Fatalf("节点 = %s，期望只剩 good", got)
+	}
+	if w.Count("node-skipped:") != 1 || !strings.Contains(strings.Join(w, "\n"), "unsupported tls value") {
+		t.Errorf("warnings = %v", w)
+	}
+	_, _, err := Parse([]byte(bad))
+	wantCode(t, err, CodeURIInvalid)
+}
+
+func base64NoPad(s string) string { return base64.RawURLEncoding.EncodeToString([]byte(s)) }
+func base64Std(s string) string   { return base64.StdEncoding.EncodeToString([]byte(s)) }

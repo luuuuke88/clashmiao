@@ -192,6 +192,12 @@ func Decode(raw []byte) (*Options, Warnings, error) {
 	if err := json.Unmarshal(raw, &top); err != nil {
 		return nil, nil, invalid("options is not a JSON object: %v", err)
 	}
+	if top == nil {
+		return nil, nil, invalid("options is not a JSON object: got null")
+	}
+	if path := nullKnownKey(top, reflect.TypeOf(Options{}), ""); path != "" {
+		return nil, nil, invalid("%s: must not be null", path)
+	}
 	var warns Warnings
 	for _, key := range unknownKeys(top, reflect.TypeOf(Options{}), "") {
 		warns = append(warns, Warning{WarnUnknownKey, "unknown option key " + key})
@@ -224,6 +230,46 @@ func Decode(raw []byte) (*Options, Warnings, error) {
 // ClashAPINonDefault 报告用户是否动过 Clash API 相关选项（内核不内置 clash_api，这些选项只会被忽略）。
 func (o *Options) ClashAPINonDefault() bool {
 	return o.WebSecret != "" || (o.EnableClashAPI && o.ClashAPIPort != defaultClashAPIPort)
+}
+
+// nullKnownKey 找已知的标量 / 结构体键上的 null（json.Unmarshal 对它们静默保留默认值，等于吞掉类型错误）。
+// 切片与 map 允许 null（按空处理）。返回第一个命中的键路径，没有返回空串。
+func nullKnownKey(raw map[string]json.RawMessage, t reflect.Type, prefix string) string {
+	known := map[string]reflect.Type{}
+	for i := 0; i < t.NumField(); i++ {
+		tag := strings.Split(t.Field(i).Tag.Get("json"), ",")[0]
+		if tag != "" && tag != "-" {
+			known[tag] = t.Field(i).Type
+		}
+	}
+	keys := make([]string, 0, len(raw))
+	for k := range raw {
+		keys = append(keys, k)
+	}
+	sortStrings(keys)
+	for _, k := range keys {
+		ft, ok := known[k]
+		if !ok {
+			continue
+		}
+		if bytes.Equal(bytes.TrimSpace(raw[k]), []byte("null")) {
+			switch ft.Kind() {
+			case reflect.Slice, reflect.Map, reflect.Pointer, reflect.Interface:
+			default:
+				return prefix + k
+			}
+			continue
+		}
+		if ft.Kind() == reflect.Struct {
+			var nested map[string]json.RawMessage
+			if json.Unmarshal(raw[k], &nested) == nil && nested != nil {
+				if p := nullKnownKey(nested, ft, prefix+k+"."); p != "" {
+					return p
+				}
+			}
+		}
+	}
+	return ""
 }
 
 // unknownKeys 用结构体的 json 标签反射出已知键，列出 raw 里多出来的（嵌套对象带路径前缀）。

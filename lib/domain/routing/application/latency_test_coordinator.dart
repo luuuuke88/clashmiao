@@ -327,6 +327,12 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     });
     _rounds[groupTag] = round;
     _lastStart[groupTag] = _now();
+    // 基线也是一次观察：开测早于第一次分组事件时，之后的清空要能发现这些节点，
+    // 作废它们的基线，否则回来的 0 会被当成本轮测出的失败。
+    for (final item in live?.items ?? const <OutboundProxy>[]) {
+      if (item.tag.isEmpty) continue;
+      _lastLive.putIfAbsent(item.tag, () => item.delay);
+    }
 
     final ownTags = {
       for (final item in live?.items ?? const <OutboundProxy>[]) item.tag,

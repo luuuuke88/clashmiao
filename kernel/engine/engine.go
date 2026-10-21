@@ -77,6 +77,9 @@ type hooks struct {
 	closeService func(*libbox.CommandServer) error
 	closeServer  func(*libbox.CommandServer) error
 	removeSocket func(path string) error
+	// 订阅的「注册之后、Connect 之前」暂停点与 Connect 本身（测试用：卡住竞态窗口、注入连接失败）。
+	beforeConnect func(*Subscription)
+	connect       func(*Subscription) error
 }
 
 func defaultHooks() hooks {

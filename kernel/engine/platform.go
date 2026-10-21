@@ -58,6 +58,8 @@ type platformAdapter struct {
 	mu      sync.Mutex
 	cancel  <-chan struct{} // 当前这一代的取消信号
 	monitor monitorState
+	// monitorGen 是接口监视的启动代次：每次 Start 加一。迟到的收尾只认自己那一代，旧启动不能清理新一轮的监视。
+	monitorGen uint64
 	// stopErr 暂存宿主 StopInterfaceMonitor 的错误：libbox 在关服务时调用我们，并会吞掉返回值，
 	// 所以留给 Engine 的「stop-interface-monitor」清理步骤取走并上报。
 	stopErr error
@@ -171,30 +173,41 @@ func (b listenerBridge) Update(name string, index int32, expensive, constrained 
 
 func (p *platformAdapter) StartDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
 	p.mu.Lock()
+	p.monitorGen++
+	gen := p.monitorGen
 	p.monitor = monitorStarting
 	p.mu.Unlock()
 	_, err := callCancelable(p, func() (struct{}, error) {
 		return struct{}{}, p.host.StartInterfaceMonitor(listenerBridge{listener})
 	}, func(_ struct{}, startErr error) {
 		// 宿主那次调用在取消之后才返回：没人再会来关它，这里撤销。
-		p.finishLateMonitor(startErr)
+		p.finishLateMonitor(gen, startErr)
 	})
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.monitorGen != gen {
+		// 已经有更新的一次启动接管了状态；这一次的结果（成败都一样）与它无关。
+		return err
+	}
 	if err != nil {
 		if !errors.Is(err, ErrCanceled) {
-			p.mu.Lock()
 			p.monitor = monitorIdle
-			p.mu.Unlock()
 		}
 		return err
 	}
-	p.mu.Lock()
 	p.monitor = monitorStarted
-	p.mu.Unlock()
 	return nil
 }
 
-func (p *platformAdapter) finishLateMonitor(startErr error) {
+// finishLateMonitor 收尾「取消之后才返回」的那一次启动。只有它仍是最新一代时才动状态与宿主：
+// 旧代次迟到返回时，监视可能已经被新一代接管（B 启动成功后 A 才返回），此时把状态置回 idle、
+// 再调宿主的停止，就把 B 的监视停掉了。
+func (p *platformAdapter) finishLateMonitor(gen uint64, startErr error) {
 	p.mu.Lock()
+	if p.monitorGen != gen {
+		p.mu.Unlock()
+		return
+	}
 	state := p.monitor
 	p.monitor = monitorIdle
 	p.mu.Unlock()

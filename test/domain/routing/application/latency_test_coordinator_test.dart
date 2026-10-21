@@ -972,6 +972,59 @@ void main() {
       expect(rig.failed, isEmpty);
     });
 
+    // ---- 在途轮次遇到分组流清空：旧基线与旧确认一并作废 ----
+
+    /// x=120、y=0 开测 → x=130（确认，等 y）→ 分组流清空 → 回来 x=0、y=0。
+    Completer<void> clearedMidRound(_Rig rig, FakeAsync async) {
+      final kernel = Completer<void>();
+      rig.urlTestResult = () => kernel.future;
+      rig.groups = [
+        _group({'x': 120, 'y': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'x': 130, 'y': 0}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'y'});
+      rig.push(const []);
+      rig.push([
+        _group({'x': 0, 'y': 0}),
+      ]);
+      // 回来的 0 不是本轮的结果：两个都还在等。
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'x', 'y'});
+      return kernel;
+    }
+
+    _fake('在途 -> 清空 -> 返回 0 -> 旧调用报错：回来的 0 不判失败', (rig, async) {
+      final kernel = clearedMidRound(rig, async);
+      kernel.completeError(StateError('kernel down'));
+      async.flushMicrotasks();
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+    });
+
+    _fake('在途 -> 清空 -> 返回 0 -> 预算到点：本轮没测出结果，按到点规则判超时', (rig, async) {
+      clearedMidRound(rig, async);
+      rig.elapse(latencyRoundTimeoutFor(2));
+      expect(rig.coordinator.state.timedOutNodes, {'x', 'y'});
+    });
+
+    _fake('在途 -> 清空 -> 返回有效值：确认为新结果', (rig, async) {
+      clearedMidRound(rig, async);
+      rig.push([
+        _group({'x': 0, 'y': 80}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'x'});
+      rig.push([
+        _group({'x': 120, 'y': 80}),
+      ]);
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(rig.recorded.single.$1, {'x': 120, 'y': 80});
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+    });
+
     _fake('在途轮次里已确认的失败：内核调用报错的异常收尾也要保留（超时 + 写失败）', (rig, async) {
       final kernel = Completer<void>();
       rig.urlTestResult = () => kernel.future;

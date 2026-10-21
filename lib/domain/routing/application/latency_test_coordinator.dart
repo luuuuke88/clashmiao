@@ -146,6 +146,10 @@ class _Round {
   /// 既不把旧值记成新结果，也不判它超时。实时没有有效值的节点收尾时判失败。
   final Set<String> confirmed = {};
 
+  /// 观察连续性中断（节点从分组里消失）过的节点：旧基线作废，回来时用它当时的
+  /// 实时值重新作基线，之后只有相对新基线的变化才算本轮的结果。
+  final Set<String> rebase = {};
+
   final Completer<void> done = Completer<void>();
   Timer? timeout;
   Object? error;
@@ -356,10 +360,17 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     return round;
   }
 
-  /// 把值与开测基线不同的节点记为本轮已确认。确认是累积的：一个节点出过
+  /// 把值与开测基线不同的节点记为本轮已确认（连续性中断过的节点先重设基线）。确认是累积的：一个节点出过
   /// 结果，后面的分组事件不会再把它变回「没结果」。
   void _confirm(_Round round, OutboundGroup group) {
     for (final item in _testableItems(group)) {
+      if (round.rebase.remove(item.tag)) {
+        // 历史被清空后回来：无效值就是新基线；有效值一定是清空之后测出来的，
+        // 基线取 0，下面照常确认为新结果。
+        round.baseline[item.tag] = isMeasurableDelay(item.delay)
+            ? 0
+            : item.delay;
+      }
       if (item.delay != (round.baseline[item.tag] ?? 0)) {
         round.confirmed.add(item.tag);
       }
@@ -391,6 +402,8 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     tags.forEach(_markedAt.remove);
     for (final round in _rounds.values) {
       round.confirmed.removeAll(tags);
+      round.baseline.removeWhere((tag, _) => tags.contains(tag));
+      round.rebase.addAll(tags);
     }
     _emit(
       state.copyWith(

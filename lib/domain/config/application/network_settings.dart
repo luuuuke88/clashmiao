@@ -848,8 +848,10 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   }
 
   Future<void> setEnableWarp(bool value) async {
-    state = state.copyWith(enableWarp: value);
-    await prefs.setBool(_kEnableWarp, value);
+    // 所有写入（开关、配置导入、恢复）都走这里：平台不提供 WARP 时一律落成关闭。
+    final effective = isWarpAvailable && value;
+    state = state.copyWith(enableWarp: effective);
+    await prefs.setBool(_kEnableWarp, effective);
   }
 
   Future<void> setWarpConsentGiven(bool value) async {

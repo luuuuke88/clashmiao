@@ -48,15 +48,22 @@ const githubRepoUrl = String.fromEnvironment(
 /// Telegram 频道地址。空 = 关于页不显示这一项。
 const telegramChannelUrl = String.fromEnvironment('TELEGRAM_CHANNEL_URL');
 
-/// 隐私政策页面地址。空 = 关于页不显示这一项。
+/// 隐私政策页面地址，永不为空。
 ///
 /// **上架必需**：Google Play 与 App Store 都要求 App 内能打开隐私政策，所以
-/// 给官网地址做兜底默认值——发布流水线从没配过这个变量，没有兜底时所有正式包
-/// 都缺这一项。兜底值的可达性同样由 `bin/check-public-links.sh` 验证。
-const privacyPolicyUrl = String.fromEnvironment(
-  'PRIVACY_POLICY_URL',
-  defaultValue: 'https://clashmiao.com/privacy',
-);
+/// 没配置时回退到官网地址，见 [resolvePrivacyPolicyUrl]。
+String get privacyPolicyUrl => resolvePrivacyPolicyUrl(_privacyPolicyUrlDefine);
+const _privacyPolicyUrlDefine = String.fromEnvironment('PRIVACY_POLICY_URL');
+
+/// 官网隐私政策地址（[privacyPolicyUrl] 的兜底值）。可达性由
+/// `bin/check-public-links.sh` 验证。
+const kDefaultPrivacyPolicyUrl = 'https://clashmiao.com/privacy';
+
+/// 构建期注入值为空时回退到 [kDefaultPrivacyPolicyUrl]。发布流水线会显式传
+/// `PRIVACY_POLICY_URL=`（变量没配置时是空串），而 `String.fromEnvironment`
+/// 的默认值只在**没传这个键**时生效，所以空串必须在这里处理。
+String resolvePrivacyPolicyUrl(String injected) =>
+    injected.isEmpty ? kDefaultPrivacyPolicyUrl : injected;
 
 /// 服务条款页面地址。保留为发布构建可注入的公共配置。
 ///

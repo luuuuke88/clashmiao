@@ -150,6 +150,15 @@ void main() {
     expect(find.text('源代码'), findsOneWidget);
   });
 
+  test('隐私政策地址：没传、传空串都回退到官网，传了有效地址就用它', () {
+    expect(resolvePrivacyPolicyUrl(''), 'https://clashmiao.com/privacy');
+    expect(
+      resolvePrivacyPolicyUrl('https://example.test/p'),
+      'https://example.test/p',
+    );
+    expect(privacyPolicyUrl, isNotEmpty);
+  });
+
   test('iOS 上 hasUpdateCheck 恒为 false', () {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     addTearDown(() => debugDefaultTargetPlatformOverride = null);

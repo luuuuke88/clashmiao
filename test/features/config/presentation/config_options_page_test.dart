@@ -109,6 +109,15 @@ Future<void> _enableWarp(WidgetTester tester) async {
 
 void main() {
   group('ConfigOptionsPage smoke', () {
+    testWidgets('iOS 不显示 WARP 选项组', (tester) async {
+      await _pumpPage(tester);
+      await tester.scrollUntilVisible(find.text('其它选项'), 600);
+      await tester.pumpAndSettle();
+
+      expect(find.text('WARP 选项 (实验性选项)'), findsNothing);
+      expect(find.text('启用 WARP'), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
     testWidgets('渲染分组的配置选项列表', (tester) async {
       await _pumpPage(tester);
 

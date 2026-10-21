@@ -6,7 +6,6 @@ import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/shared/components/modal_tokens.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -79,7 +78,6 @@ Future<(Widget, ProviderContainer)> _host({
 void main() {
   group('QuickSettingsModal smoke', () {
     testWidgets('iOS 不显示 WARP 入口，其它行照常', (tester) async {
-      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       final (widget, _) = await _host();
       await tester.pumpWidget(widget);
       await tester.pump(const Duration(milliseconds: 500));
@@ -88,8 +86,7 @@ void main() {
       expect(find.text('启用 WARP'), findsNothing);
       expect(find.text('启用 TLS 数据分段'), findsOneWidget);
       expect(find.text('所有进阶选项'), findsOneWidget);
-      debugDefaultTargetPlatformOverride = null;
-    });
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('渲染快速设置面板', (tester) async {
       final (widget, _) = await _host();

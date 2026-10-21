@@ -5,6 +5,7 @@ import 'package:clashmiao/core/theme/motion.dart';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/model/warp_terms.dart';
+import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
@@ -14,6 +15,7 @@ import 'package:clashmiao/features/assets/presentation/assets_page.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
 import 'package:clashmiao/features/config/data/backup_service.dart';
 import 'package:clashmiao/features/config/presentation/backup_messages.dart';
+import 'package:clashmiao/features/config/presentation/dns_strategy_messages.dart';
 import 'package:clashmiao/shared/components/adaptive_icon.dart';
 import 'package:clashmiao/shared/components/agreement_modal.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
@@ -71,10 +73,58 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
   bool _debugActionsOpened = false;
   bool _debugInitialScrollApplied = false;
 
+  /// 最近一次被拦下的修改（IPv6 模式与 DNS 域名策略冲突）：就地常驻显示，
+  /// 不只是一闪而过的 toast；下一次成功修改相关项时清除。
+  DnsStrategyConflict? _blocked;
+
+  /// 调 [apply]；被冲突拦下时记下并提示，不改任何值。
+  Future<void> _applyChecked(Future<void> Function() apply) async {
+    try {
+      await apply();
+      if (mounted && _blocked != null) setState(() => _blocked = null);
+    } on DnsStrategyConflictException catch (e) {
+      if (!mounted) return;
+      setState(() => _blocked = e.conflict);
+      AppToast.error(
+        context,
+        DnsStrategyMessages.blocked(ref.read(translationsProvider), e.conflict),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// 页首的冲突提示：刚被拦下的修改，以及已存设置里被重置过、用户还没确认的项。
+  List<Widget> _dnsStrategyBanners(Translations t, WidgetRef ref) {
+    final notice = ref
+        .read(networkSettingsProvider.notifier)
+        .normalizationNotice;
+    return [
+      if (_blocked != null)
+        TipCard(
+          icon: FluentIcons.warning_24_regular,
+          message: DnsStrategyMessages.blocked(t, _blocked!),
+        ),
+      if (notice.isNotEmpty) ...[
+        TipCard(
+          icon: FluentIcons.warning_24_regular,
+          message: DnsStrategyMessages.reset(t, notice),
+        ),
+        Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: TextButton(
+            onPressed: () => ref
+                .read(networkSettingsProvider.notifier)
+                .dismissNormalizationNotice(),
+            child: Text(t.general.confirm),
+          ),
+        ),
+      ],
+    ];
   }
 
   @override
@@ -157,6 +207,7 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                   .animateWithMotion(context)
                   .fadeIn(duration: Motion.long)
                   .slideY(begin: 0.1, end: 0),
+              ..._dnsStrategyBanners(t, ref),
               const SizedBox(height: 16),
               _ConfigGroup(
                     title: t.config.section.route,
@@ -214,9 +265,11 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                         choices: _ipv6ModeChoices,
                         itemLabel: (value) => _ipv6ModeLabel(t, value),
                         itemIcon: (_) => FluentIcons.data_usage_24_regular,
-                        onSelected: (value) => ref
-                            .read(networkSettingsProvider.notifier)
-                            .setIpv6Mode(value),
+                        onSelected: (value) => _applyChecked(
+                          () => ref
+                              .read(networkSettingsProvider.notifier)
+                              .setIpv6Mode(value),
+                        ),
                       ),
                     ],
                   )
@@ -244,9 +297,11 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                         choices: _domainStrategyChoices,
                         itemLabel: _domainStrategyLabel,
                         itemIcon: (_) => FluentIcons.branch_24_regular,
-                        onSelected: (value) => ref
-                            .read(networkSettingsProvider.notifier)
-                            .setRemoteDnsDomainStrategy(value),
+                        onSelected: (value) => _applyChecked(
+                          () => ref
+                              .read(networkSettingsProvider.notifier)
+                              .setRemoteDnsDomainStrategy(value),
+                        ),
                       ),
                       _ValueTile(
                         title: t.config.directDnsAddress,
@@ -264,9 +319,11 @@ class _ConfigOptionsPageState extends ConsumerState<ConfigOptionsPage> {
                         choices: _domainStrategyChoices,
                         itemLabel: _domainStrategyLabel,
                         itemIcon: (_) => FluentIcons.branch_24_regular,
-                        onSelected: (value) => ref
-                            .read(networkSettingsProvider.notifier)
-                            .setDirectDnsDomainStrategy(value),
+                        onSelected: (value) => _applyChecked(
+                          () => ref
+                              .read(networkSettingsProvider.notifier)
+                              .setDirectDnsDomainStrategy(value),
+                        ),
                       ),
                       _ConfigSwitchTile(
                         title: t.config.enableDnsRouting,
@@ -1301,6 +1358,13 @@ Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
     final outcome = await BackupService.apply(container, prepared);
     if (navContext.mounted) {
       AppToast.success(navContext, BackupMessages.report(t, outcome.report));
+      // 恢复后设置重新读入：IPv6 模式与 DNS 域名策略互相矛盾的组合已被重置，如实告知。
+      final notice = container
+          .read(networkSettingsProvider.notifier)
+          .normalizationNotice;
+      if (notice.isNotEmpty) {
+        AppToast.error(navContext, DnsStrategyMessages.reset(t, notice));
+      }
     }
   } catch (e, st) {
     logAppFailure('backup.apply', e, st);
@@ -1346,6 +1410,12 @@ Future<void> _importNetworkSettingsFromClipboard(
           skipped: result.skippedKeys.length,
         );
   AppToast.success(context, message);
+  if (result.normalizedConflicts.isNotEmpty) {
+    AppToast.error(
+      context,
+      DnsStrategyMessages.reset(t, result.normalizedConflicts),
+    );
+  }
 }
 
 String _networkSettingsJson(WidgetRef ref) =>

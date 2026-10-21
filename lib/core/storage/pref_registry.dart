@@ -112,6 +112,8 @@ class PrefRegistry {
       PrefType.string,
       _inc,
     ),
+    // 「DNS 域名策略与 IPv6 模式冲突，已重置」的待确认提示：本机状态，不进备份。
+    const PrefSpec('clashmiao_dns_strategy_notice', PrefType.string, _exc),
     const PrefSpec('clashmiao_tun_implementation', PrefType.string, _inc),
     const PrefSpec('clashmiao_strict_route', PrefType.boolean, _inc),
     const PrefSpec('clashmiao_mtu', PrefType.integer, _inc),

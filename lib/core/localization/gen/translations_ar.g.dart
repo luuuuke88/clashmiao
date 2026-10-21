@@ -383,6 +383,9 @@ class Translations$config$ar extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'استراتيجية مجال DNS البعيد';
 	@override String get directDnsAddress => 'DNS المباشر';
 	@override String get directDnsDomainStrategy => 'استراتيجية مجال DNS المباشر';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'لم يتم التطبيق: توجيه IPv6 معطّل لكن "${field}" هو IPv6 فقط، لذا لا يمكن حل أي نطاق. فعّل توجيه IPv6 أولاً أو اختر استراتيجية أخرى.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'لم يتم التطبيق: توجيه IPv6 هو IPv6 فقط لكن "${field}" هو IPv4 فقط، لذا لا يمكن حل أي نطاق. عدّل أحدهما أولاً.';
+	@override String dnsStrategyReset({required Object field}) => 'تعارض "${field}" مع إعداد توجيه IPv6 (لا يمكن حل أي نطاق) وتمت إعادته إلى تلقائي.';
 	@override String get mixedPort => 'منفذ مُختلط';
 	@override String get tproxyPort => 'منفذ الوكيل الشفاف';
 	@override String get localDnsPort => 'منفذ DNS المحلي';
@@ -1538,6 +1541,9 @@ extension on TranslationsAr {
 			'config.remoteDnsDomainStrategy' => 'استراتيجية مجال DNS البعيد',
 			'config.directDnsAddress' => 'DNS المباشر',
 			'config.directDnsDomainStrategy' => 'استراتيجية مجال DNS المباشر',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'لم يتم التطبيق: توجيه IPv6 معطّل لكن "${field}" هو IPv6 فقط، لذا لا يمكن حل أي نطاق. فعّل توجيه IPv6 أولاً أو اختر استراتيجية أخرى.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'لم يتم التطبيق: توجيه IPv6 هو IPv6 فقط لكن "${field}" هو IPv4 فقط، لذا لا يمكن حل أي نطاق. عدّل أحدهما أولاً.',
+			'config.dnsStrategyReset' => ({required Object field}) => 'تعارض "${field}" مع إعداد توجيه IPv6 (لا يمكن حل أي نطاق) وتمت إعادته إلى تلقائي.',
 			'config.mixedPort' => 'منفذ مُختلط',
 			'config.tproxyPort' => 'منفذ الوكيل الشفاف',
 			'config.localDnsPort' => 'منفذ DNS المحلي',

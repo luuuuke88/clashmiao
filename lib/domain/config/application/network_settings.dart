@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
 import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -273,6 +275,9 @@ const _kRemoteDnsDomainStrategy = 'clashmiao_remote_dns_domain_strategy';
 // 与 dns_defaults.dart 的 kDirectDnsAddressPrefKey 同值（存储迁移 v2 用它）。
 const _kDirectDnsAddress = 'clashmiao_direct_dns_address';
 const _kDirectDnsDomainStrategy = 'clashmiao_direct_dns_domain_strategy';
+// 「DNS 域名策略与 IPv6 模式冲突，已重置」的待确认提示：逗号分隔的 `字段:方向`。
+// 本机状态，不进备份；用户确认或再次修改相关设置后清除。
+const _kDnsStrategyNotice = 'clashmiao_dns_strategy_notice';
 const _kTunImplementation = 'clashmiao_tun_implementation';
 const _kStrictRoute = 'clashmiao_strict_route';
 const _kMtu = 'clashmiao_mtu';
@@ -416,6 +421,7 @@ class NetworkSettingsImportResult {
   const NetworkSettingsImportResult({
     required this.appliedKeys,
     required this.skippedKeys,
+    this.normalizedConflicts = const [],
     this.parseError,
   });
 
@@ -424,6 +430,10 @@ class NetworkSettingsImportResult {
 
   /// JSON 里存在但类型不对 / 未通过校验，因而被跳过（旧值保留）的字段。
   final List<String> skippedKeys;
+
+  /// 导入后 IPv6 模式与 DNS 域名策略互相矛盾，已把对应策略重置为自动的项
+  /// （不静默：界面必须告诉用户）。
+  final List<DnsStrategyConflict> normalizedConflicts;
 
   /// 顶层 JSON 解析失败（非法 JSON 或不是对象）时的类型；成功解析则为
   /// null，即便 [appliedKeys] 为空。界面按类型给本地化文案，解析细节只进日志。
@@ -439,9 +449,80 @@ final networkSettingsProvider =
     });
 
 class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
-  NetworkSettingsNotifier(this.prefs) : super(_read(prefs));
+  NetworkSettingsNotifier(this.prefs) : super(_read(prefs)) {
+    _normalizeStored();
+  }
 
   final SharedPreferences prefs;
+
+  /// 待用户确认的「已重置」提示（见 [dnsStrategyConflicts]）。持久化在
+  /// [_kDnsStrategyNotice]，所以重启后也还在，不会被悄悄吞掉。
+  List<DnsStrategyConflict> get normalizationNotice =>
+      _decodeNotice(prefs.getString(_kDnsStrategyNotice));
+
+  /// 用户已看到提示：清除。
+  Future<void> dismissNormalizationNotice() async {
+    await prefs.remove(_kDnsStrategyNotice);
+    state = state.copyWith();
+  }
+
+  /// 读到的已存设置里 IPv6 模式与 DNS 域名策略冲突（旧版本、手改、备份恢复都可能写出
+  /// 这种组合）：把冲突的策略重置为自动，并留下待确认的提示——不静默改。
+  void _normalizeStored() {
+    final conflicts = dnsStrategyConflicts(
+      ipv6Mode: state.ipv6Mode,
+      remoteStrategy: state.remoteDnsDomainStrategy,
+      directStrategy: state.directDnsDomainStrategy,
+    );
+    if (conflicts.isEmpty) return;
+    _resetConflicting(conflicts);
+  }
+
+  void _resetConflicting(List<DnsStrategyConflict> conflicts) {
+    final remote = conflicts.any((c) => c.field == DnsStrategyField.remote);
+    final direct = conflicts.any((c) => c.field == DnsStrategyField.direct);
+    state = state.copyWith(
+      remoteDnsDomainStrategy: remote ? '' : null,
+      directDnsDomainStrategy: direct ? '' : null,
+    );
+    // 先排队写盘；写失败不影响内存里已经是正确值。提示与新值同一批落盘。
+    final merged = {...normalizationNotice, ...conflicts}.toList();
+    unawaited(
+      Future.wait([
+        if (remote) prefs.setString(_kRemoteDnsDomainStrategy, ''),
+        if (direct) prefs.setString(_kDirectDnsDomainStrategy, ''),
+        prefs.setString(_kDnsStrategyNotice, _encodeNotice(merged)),
+      ]),
+    );
+  }
+
+  static String _encodeNotice(List<DnsStrategyConflict> list) =>
+      list.map((c) => '${c.field.name}:${c.kind.name}').join(',');
+
+  static List<DnsStrategyConflict> _decodeNotice(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    final out = <DnsStrategyConflict>[];
+    for (final part in raw.split(',')) {
+      final bits = part.split(':');
+      if (bits.length != 2) continue;
+      final field = DnsStrategyField.values.asNameMap()[bits[0]];
+      final kind = DnsStrategyConflictKind.values.asNameMap()[bits[1]];
+      if (field != null && kind != null) {
+        out.add(DnsStrategyConflict(field, kind));
+      }
+    }
+    return out;
+  }
+
+  /// 配置导入时置位：先把各字段原样写进来，最后统一做一次冲突归一（带提示）。
+  bool _importing = false;
+
+  /// 用户明确改了 IPv6 / DNS 策略：旧的「已重置」提示作废。
+  void _clearNotice() {
+    if (prefs.containsKey(_kDnsStrategyNotice)) {
+      unawaited(prefs.remove(_kDnsStrategyNotice));
+    }
+  }
 
   static NetworkSettings _read(SharedPreferences p) {
     return NetworkSettings(
@@ -559,9 +640,42 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     await prefs.setBool(_kResolveDestination, value);
   }
 
+  /// 这次修改会让 IPv6 模式与 DNS 域名策略互相矛盾：不写入，抛
+  /// [DnsStrategyConflictException]，由界面给出明确说明。
+  ///
+  /// 只拦「这次修改造成的」冲突：当前状态已经冲突（理论上不会，构造时已归一）时，
+  /// 把它改成不冲突的值必须放行，否则用户被锁死。
+  void _rejectConflict({
+    required String ipv6Mode,
+    required String remote,
+    required String direct,
+  }) {
+    final before = dnsStrategyConflicts(
+      ipv6Mode: state.ipv6Mode,
+      remoteStrategy: state.remoteDnsDomainStrategy,
+      directStrategy: state.directDnsDomainStrategy,
+    ).toSet();
+    final after = dnsStrategyConflicts(
+      ipv6Mode: ipv6Mode,
+      remoteStrategy: remote,
+      directStrategy: direct,
+    );
+    for (final c in after) {
+      if (!before.contains(c)) throw DnsStrategyConflictException(c);
+    }
+  }
+
   Future<void> setIpv6Mode(String value) async {
     if (!_validIpv6Modes.contains(value)) {
       throw ArgumentError('invalid ipv6 mode: $value');
+    }
+    if (!_importing) {
+      _rejectConflict(
+        ipv6Mode: value,
+        remote: state.remoteDnsDomainStrategy,
+        direct: state.directDnsDomainStrategy,
+      );
+      _clearNotice();
     }
     state = state.copyWith(ipv6Mode: value);
     await prefs.setString(_kIpv6Mode, value);
@@ -606,6 +720,14 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     if (!_validDomainStrategies.contains(value)) {
       throw ArgumentError('invalid remote DNS domain strategy: $value');
     }
+    if (!_importing) {
+      _rejectConflict(
+        ipv6Mode: state.ipv6Mode,
+        remote: value,
+        direct: state.directDnsDomainStrategy,
+      );
+      _clearNotice();
+    }
     state = state.copyWith(remoteDnsDomainStrategy: value);
     await prefs.setString(_kRemoteDnsDomainStrategy, value);
   }
@@ -618,6 +740,14 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
   Future<void> setDirectDnsDomainStrategy(String value) async {
     if (!_validDomainStrategies.contains(value)) {
       throw ArgumentError('invalid direct DNS domain strategy: $value');
+    }
+    if (!_importing) {
+      _rejectConflict(
+        ipv6Mode: state.ipv6Mode,
+        remote: state.remoteDnsDomainStrategy,
+        direct: value,
+      );
+      _clearNotice();
     }
     state = state.copyWith(directDnsDomainStrategy: value);
     await prefs.setString(_kDirectDnsDomainStrategy, value);
@@ -897,6 +1027,9 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
 
     final applied = <String>[];
     final skipped = <String>[];
+    // 三个相互制约的字段（ipv6Mode + 两个 DNS 域名策略）逐个写入时，中间态可能冲突，
+    // 所以导入期间不逐个拦；写完后统一归一并报告。
+    _importing = true;
 
     Future<void> apply(
       String key,
@@ -988,9 +1121,18 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
     await applyString('warpNoiseMode', setWarpNoiseMode);
     await applyString('warpNoiseDelay', setWarpNoiseDelay);
 
+    _importing = false;
+    final conflicts = dnsStrategyConflicts(
+      ipv6Mode: state.ipv6Mode,
+      remoteStrategy: state.remoteDnsDomainStrategy,
+      directStrategy: state.directDnsDomainStrategy,
+    );
+    if (conflicts.isNotEmpty) _resetConflicting(conflicts);
+
     return NetworkSettingsImportResult(
       appliedKeys: applied,
       skippedKeys: skipped,
+      normalizedConflicts: conflicts,
     );
   }
 
@@ -1004,6 +1146,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
       prefs.remove(_kBypassLan),
       prefs.remove(_kResolveDestination),
       prefs.remove(_kIpv6Mode),
+      prefs.remove(_kDnsStrategyNotice),
       prefs.remove(_kSetSystemProxy),
       prefs.remove(_kEnableTun),
       prefs.remove(_kAllowLan),

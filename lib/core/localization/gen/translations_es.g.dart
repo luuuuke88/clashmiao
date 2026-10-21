@@ -355,6 +355,9 @@ class Translations$config$es extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'Estrategia de dominio DNS remoto';
 	@override String get directDnsAddress => 'DNS Directo';
 	@override String get directDnsDomainStrategy => 'Estrategia de dominio DNS directo';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'No aplicado: el enrutamiento IPv6 está desactivado pero "${field}" es solo IPv6, así que no se podría resolver ningún dominio. Activa primero el enrutamiento IPv6 o elige otra estrategia.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'No aplicado: el enrutamiento IPv6 es solo IPv6 pero "${field}" es solo IPv4, así que no se podría resolver ningún dominio. Ajusta primero uno de los dos.';
+	@override String dnsStrategyReset({required Object field}) => '"${field}" entraba en conflicto con el enrutamiento IPv6 (no se podría resolver ningún dominio) y se restableció a automático.';
 	@override String get mixedPort => 'Puerto Mixto';
 	@override String get localDnsPort => 'Puerto DNS local';
 	@override String get allowConnectionFromLan => 'Permitir conexión desde LAN';
@@ -1516,6 +1519,9 @@ extension on TranslationsEs {
 			'config.remoteDnsDomainStrategy' => 'Estrategia de dominio DNS remoto',
 			'config.directDnsAddress' => 'DNS Directo',
 			'config.directDnsDomainStrategy' => 'Estrategia de dominio DNS directo',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'No aplicado: el enrutamiento IPv6 está desactivado pero "${field}" es solo IPv6, así que no se podría resolver ningún dominio. Activa primero el enrutamiento IPv6 o elige otra estrategia.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'No aplicado: el enrutamiento IPv6 es solo IPv6 pero "${field}" es solo IPv4, así que no se podría resolver ningún dominio. Ajusta primero uno de los dos.',
+			'config.dnsStrategyReset' => ({required Object field}) => '"${field}" entraba en conflicto con el enrutamiento IPv6 (no se podría resolver ningún dominio) y se restableció a automático.',
 			'config.mixedPort' => 'Puerto Mixto',
 			'config.localDnsPort' => 'Puerto DNS local',
 			'config.allowConnectionFromLan' => 'Permitir conexión desde LAN',

@@ -385,6 +385,9 @@ class Translations$config$fa extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'استراتژی دامنه DNS خارجی';
 	@override String get directDnsAddress => 'DNS مستقیم';
 	@override String get directDnsDomainStrategy => 'استراتژی دامنه DNS مستقیم';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'اعمال نشد: مسیریابی IPv6 غیرفعال است اما «${field}» فقط IPv6 است، پس هیچ دامنه‌ای حل نمی‌شود. ابتدا مسیریابی IPv6 را فعال کنید یا راهبرد دیگری انتخاب کنید.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'اعمال نشد: مسیریابی IPv6 فقط IPv6 است اما «${field}» فقط IPv4 است، پس هیچ دامنه‌ای حل نمی‌شود. ابتدا یکی از آن‌ها را تغییر دهید.';
+	@override String dnsStrategyReset({required Object field}) => '«${field}» با تنظیم مسیریابی IPv6 تعارض داشت (هیچ دامنه‌ای حل نمی‌شد) و به خودکار بازنشانی شد.';
 	@override String get mixedPort => 'پورت چندمنظوره';
 	@override String get tproxyPort => 'پورت پروکسی نامرئی';
 	@override String get localDnsPort => 'پورت DNS داخلی';
@@ -1540,6 +1543,9 @@ extension on TranslationsFa {
 			'config.remoteDnsDomainStrategy' => 'استراتژی دامنه DNS خارجی',
 			'config.directDnsAddress' => 'DNS مستقیم',
 			'config.directDnsDomainStrategy' => 'استراتژی دامنه DNS مستقیم',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'اعمال نشد: مسیریابی IPv6 غیرفعال است اما «${field}» فقط IPv6 است، پس هیچ دامنه‌ای حل نمی‌شود. ابتدا مسیریابی IPv6 را فعال کنید یا راهبرد دیگری انتخاب کنید.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'اعمال نشد: مسیریابی IPv6 فقط IPv6 است اما «${field}» فقط IPv4 است، پس هیچ دامنه‌ای حل نمی‌شود. ابتدا یکی از آن‌ها را تغییر دهید.',
+			'config.dnsStrategyReset' => ({required Object field}) => '«${field}» با تنظیم مسیریابی IPv6 تعارض داشت (هیچ دامنه‌ای حل نمی‌شد) و به خودکار بازنشانی شد.',
 			'config.mixedPort' => 'پورت چندمنظوره',
 			'config.tproxyPort' => 'پورت پروکسی نامرئی',
 			'config.localDnsPort' => 'پورت DNS داخلی',

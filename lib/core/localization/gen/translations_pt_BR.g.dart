@@ -379,6 +379,9 @@ class Translations$config$pt_BR extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'Estratégia de Domínio DNS Remoto';
 	@override String get directDnsAddress => 'DNS direto';
 	@override String get directDnsDomainStrategy => 'Estratégia de Domínio DNS Direto';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'Não aplicado: o roteamento IPv6 está desativado, mas "${field}" é somente IPv6, então nenhum domínio seria resolvido. Ative primeiro o roteamento IPv6 ou escolha outra estratégia.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'Não aplicado: o roteamento IPv6 é somente IPv6, mas "${field}" é somente IPv4, então nenhum domínio seria resolvido. Ajuste primeiro um dos dois.';
+	@override String dnsStrategyReset({required Object field}) => '"${field}" entrava em conflito com o roteamento IPv6 (nenhum domínio seria resolvido) e foi redefinido para automático.';
 	@override String get mixedPort => 'Porta Mista';
 	@override String get localDnsPort => 'Porta DNS local';
 	@override String get allowConnectionFromLan => 'Permitir conexão da LAN';
@@ -1531,6 +1534,9 @@ extension on TranslationsPtBr {
 			'config.remoteDnsDomainStrategy' => 'Estratégia de Domínio DNS Remoto',
 			'config.directDnsAddress' => 'DNS direto',
 			'config.directDnsDomainStrategy' => 'Estratégia de Domínio DNS Direto',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'Não aplicado: o roteamento IPv6 está desativado, mas "${field}" é somente IPv6, então nenhum domínio seria resolvido. Ative primeiro o roteamento IPv6 ou escolha outra estratégia.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'Não aplicado: o roteamento IPv6 é somente IPv6, mas "${field}" é somente IPv4, então nenhum domínio seria resolvido. Ajuste primeiro um dos dois.',
+			'config.dnsStrategyReset' => ({required Object field}) => '"${field}" entrava em conflito com o roteamento IPv6 (nenhum domínio seria resolvido) e foi redefinido para automático.',
 			'config.mixedPort' => 'Porta Mista',
 			'config.localDnsPort' => 'Porta DNS local',
 			'config.allowConnectionFromLan' => 'Permitir conexão da LAN',

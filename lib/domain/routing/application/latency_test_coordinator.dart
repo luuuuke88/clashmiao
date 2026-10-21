@@ -375,7 +375,8 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     return items.every((item) => round.confirmed.contains(item.tag));
   }
 
-  /// 超时 / 未确认标记之后实时值变了：出了新结果，撤掉标记。
+  /// 超时 / 未确认标记之后实时值变了：变成有效的新结果就撤掉标记；历史值变成
+  /// 无效值（迟到的失败）则转为超时并写进失败缓存。
   void _releaseTimeouts(List<OutboundGroup> groups) {
     if (_markedAt.isEmpty) return;
     final released = <String>{};

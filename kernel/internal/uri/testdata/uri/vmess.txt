@@ -15,3 +15,4 @@ vmess://eyJhZGQiOiJ4LmV4YW1wbGUubmV0IiwiaWQiOiIxMTExMTExMS0yMjIyLTQzMzMtODQ0NC01
 vmess://11111111-2222-4333-8444-555555555555@w.example.net:443?type=ws&security=tls&host=cdn.example.net&path=%2Fws&sni=w.example.net&encryption=auto#%E7%BE%8E%E5%9B%BD
 vmess://11111111-2222-4333-8444-555555555555@g2.example.net:443?type=grpc&serviceName=svc2&security=tls#g
 vmess://11111111-2222-4333-8444-555555555555@[2001:db8::7]:443#v6
+vmess://eyJhZGQiOiJhLmV4YW1wbGUubmV0IiwiaWQiOiIxMTExMTExMS0yMjIyLTQzMzMtODQ0NC01NTU1NTU1NTU1NTUiLCJwb3J0IjoiNDQzIiwicHMiOiJuIiwidGxzIjoibm9uZSJ9

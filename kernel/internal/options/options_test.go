@@ -127,6 +127,12 @@ func TestDecodeErrors(t *testing.T) {
 		{"bool as number", `{"strict-route": 1}`, "strict-route"},
 		{"nested type", `{"mux": {"enable": "yes"}}`, "enable"},
 		{"rules as object", `{"rules": {}}`, "rules"},
+		{"top-level null", `null`, "got null"},
+		{"null for a known number", `{"mixed-port": null}`, "mixed-port: must not be null"},
+		{"null for a known bool", `{"strict-route": null}`, "strict-route: must not be null"},
+		{"null for a known string", `{"remote-dns-address": null}`, "remote-dns-address: must not be null"},
+		{"null for a nested key", `{"mux": {"enable": null}}`, "mux.enable: must not be null"},
+		{"null for a nested object", `{"mux": null}`, "mux: must not be null"},
 	}
 	for _, c := range cases {
 		_, _, err := Decode([]byte(c.in))
@@ -268,5 +274,13 @@ func TestValidateBoundaries(t *testing.T) {
 				t.Errorf("%s: not an option error: %v", c.name, err)
 			}
 		}
+	}
+}
+
+// 切片键的 null 仍按「空」处理（App 以前可能这么发），不属于类型错误。
+func TestDecodeNullRulesIsEmpty(t *testing.T) {
+	o, _, err := Decode([]byte(`{"rules": null}`))
+	if err != nil || o.Rules == nil || len(o.Rules) != 0 {
+		t.Fatalf("rules:null = %v %v", o.Rules, err)
 	}
 }

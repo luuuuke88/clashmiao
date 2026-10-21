@@ -59,6 +59,10 @@ func TestVMess(t *testing.T) {
 		{name: "xhttp 传输不支持", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "net", "xhttp")), err: `unsupported transport "xhttp"`},
 		{name: "tcp 的未知伪装头", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "net", "tcp", "type", "srtp")), err: "unsupported tcp header type"},
 		{name: "URL 形式的 xtls 不支持", in: "vmess://" + testUUID + "@a.example.net:443?security=xtls", err: `unsupported security "xtls"`},
+		{name: "未知 tls 值不静默降级成明文", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "tls", "xtls")), err: `unsupported tls value "xtls"`},
+		{name: "reality 写在 tls 字段里同样拒绝", in: vmessLink(m("add", "a.example.net", "port", "443", "id", testUUID, "tls", "reality")), err: `unsupported tls value "reality"`},
+		{name: "tls 写 none 就是关闭", in: vmessLink(m("ps", "n", "add", "a.example.net", "port", "443", "id", testUUID, "tls", "none")),
+			want: m("type", "vmess", "tag", "n", "server", "a.example.net", "server_port", 443, "uuid", testUUID, "security", "auto")},
 		{name: "URL 形式缺端口", in: "vmess://" + testUUID + "@a.example.net", err: "missing port"},
 	}
 	runCases(t, "vmess", cases)

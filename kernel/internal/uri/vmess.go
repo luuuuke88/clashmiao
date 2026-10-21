@@ -74,9 +74,14 @@ func vmessFromJSON(b64, fragmentName string) (Entity, error) {
 			p[k] = v
 		}
 	}
-	tlsOn := strings.EqualFold(str("tls"), "tls") || str("tls") == "1" || strings.EqualFold(str("tls"), "true")
-	if tlsOn {
+	// tls 字段是枚举：空 / none / 0 / false 为关，tls / 1 / true 为开；别的值（xtls、reality……）
+	// 不能静默当成「无 TLS」——那会把本该加密的连接降级成明文。
+	switch tv := strings.ToLower(strings.TrimSpace(str("tls"))); tv {
+	case "", "none", "0", "false":
+	case "tls", "1", "true":
 		p["security"] = "tls"
+	default:
+		return Entity{}, invalidf("vmess", "unsupported tls value %q", tv)
 	}
 	setIf("sni", str("sni"))
 	setIf("alpn", str("alpn"))

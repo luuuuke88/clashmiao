@@ -1011,6 +1011,30 @@ void main() {
       expect(rig.coordinator.state.timedOutNodes, {'x', 'y'});
     });
 
+    _fake('在途 -> 清空 -> 首帧直接返回有效值：重设基线时直接确认，轮次结束并写成功缓存', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      rig.groups = [
+        _group({'x': 120, 'y': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'x': 130, 'y': 0}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'y'});
+      rig.push(const []);
+      // 回来的第一帧两个节点都已有有效值（与旧基线 120 相同也算新结果）。
+      rig.push([
+        _group({'x': 120, 'y': 80}),
+      ]);
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(rig.recorded.single.$1, {'x': 120, 'y': 80});
+      expect(rig.cache['x']!.ms, 120);
+      expect(rig.cache['y']!.ms, 80);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+    });
+
     _fake('在途 -> 清空 -> 返回有效值：确认为新结果', (rig, async) {
       clearedMidRound(rig, async);
       rig.push([

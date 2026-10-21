@@ -7,11 +7,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Test
 import java.net.UnknownHostException
+import java.lang.ref.WeakReference
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 
 /**
@@ -89,6 +92,21 @@ class DnsExchangerTest {
                 latch.await(1, TimeUnit.SECONDS)
             } catch (_: InterruptedException) {
             }
+        }
+    }
+
+    /**
+     * 任务整体退出后才发信号的线程池：afterExecute 在工作线程跑完整个任务（含 resume 与收尾）之后才调，
+     * 比在 fake 的阻塞函数里计数更晚——测试据此断言「迟到的结果」确实已经被处理过。
+     */
+    private class ExitSignallingExecutor : ThreadPoolExecutor(
+        1, 1, 30L, TimeUnit.SECONDS, ArrayBlockingQueue(4),
+        { r -> Thread(r, "dns-test-worker").apply { isDaemon = true } },
+    ) {
+        val taskExited = CountDownLatch(1)
+
+        override fun afterExecute(r: Runnable?, t: Throwable?) {
+            taskExited.countDown()
         }
     }
 
@@ -209,44 +227,107 @@ class DnsExchangerTest {
         val backend = FakeBackend()
         val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val workerDone = CountDownLatch(1)
         backend.blocking = {
             entered.countDown()
             uninterruptibleAwait(release) // 不响应中断的系统调用
-            workerDone.countDown()
             listOf("192.0.2.1")
         }
+        val executor = ExitSignallingExecutor()
         val reply = FakeReply()
-        val call = pool.submit { DnsExchanger(backend).lookup(reply, async = false, family = "udp", domain = "slow.example.net") }
+        try {
+            val call = pool.submit { DnsExchanger(backend, executor).lookup(reply, async = false, family = "udp", domain = "slow.example.net") }
 
-        assertTrue(entered.await(30, TimeUnit.SECONDS))
-        reply.cancel!!.invoke()
-        call.finish() // 阻塞调用还卡着，调用线程已经回来了
+            assertTrue(entered.await(30, TimeUnit.SECONDS))
+            reply.cancel!!.invoke()
+            call.finish() // 阻塞调用还卡着，调用线程已经回来了
+            assertEquals("工作线程应仍卡在阻塞解析里", 1L, executor.taskExited.count)
 
-        release.countDown()
-        assertTrue(workerDone.await(30, TimeUnit.SECONDS))
-        assertTrue("取消之后不得再回复内核: ${reply.events}", reply.events.isEmpty())
+            release.countDown()
+            // 整个任务（含对 continuation 的 resume）都退出之后再断言，这时「不回复」才真正被检验过。
+            assertTrue(executor.taskExited.await(30, TimeUnit.SECONDS))
+            assertTrue("取消之后不得再回复内核: ${reply.events}", reply.events.isEmpty())
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
     }
 
     @Test
     fun `阻塞解析超时 调用线程按时限返回 回 SERVFAIL 迟到的结果丢弃`() {
         val backend = FakeBackend()
+        val entered = CountDownLatch(1)
         val release = CountDownLatch(1)
-        val workerDone = CountDownLatch(1)
         backend.blocking = {
+            entered.countDown()
             uninterruptibleAwait(release)
-            workerDone.countDown()
             listOf("192.0.2.1")
         }
+        val executor = ExitSignallingExecutor()
         val reply = FakeReply()
-        val exchanger = DnsExchanger(backend, blockingTimeoutMillis = 100)
-        pool.submit { exchanger.lookup(reply, async = false, family = "udp", domain = "slow.example.net") }.finish()
-        assertEquals(listOf("rcode:2"), reply.events.toList())
+        val exchanger = DnsExchanger(backend, executor, blockingTimeoutMillis = 100)
+        try {
+            val call = pool.submit { exchanger.lookup(reply, async = false, family = "udp", domain = "slow.example.net") }
+            // 先确认任务已经进入阻塞解析，再看超时：否则「超时」可能发生在任务启动之前，测的就不是迟到的结果。
+            assertTrue(entered.await(30, TimeUnit.SECONDS))
+            call.finish()
+            assertEquals(listOf("rcode:2"), reply.events.toList())
+            assertEquals("工作线程应仍卡在阻塞解析里", 1L, executor.taskExited.count)
 
-        release.countDown()
-        assertTrue(workerDone.await(30, TimeUnit.SECONDS))
-        assertEquals("迟到的结果不得再回复", listOf("rcode:2"), reply.events.toList())
+            release.countDown()
+            assertTrue(executor.taskExited.await(30, TimeUnit.SECONDS))
+            assertEquals("迟到的结果不得再回复", listOf("rcode:2"), reply.events.toList())
+        } finally {
+            release.countDown()
+            executor.shutdownNow()
+        }
     }
+
+    /** 启动一次阻塞解析并让它被放弃（[cancelByCore] 为真是内核取消，否则等超时）；返回时本函数不再持有回复对象。 */
+    private fun startAndAbandon(backend: FakeBackend, executor: ThreadPoolExecutor, entered: CountDownLatch, cancelByCore: Boolean): WeakReference<FakeReply> {
+        val reply = FakeReply()
+        val exchanger = DnsExchanger(backend, executor, blockingTimeoutMillis = if (cancelByCore) 30_000 else 100)
+        val call = pool.submit { exchanger.lookup(reply, async = false, family = "udp", domain = "slow.example.net") }
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+        if (cancelByCore) reply.cancel!!.invoke()
+        call.finish()
+        return WeakReference(reply)
+    }
+
+    private fun assertCollectedWhileWorkerBlocked(cancelByCore: Boolean) {
+        val backend = FakeBackend()
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        backend.blocking = {
+            entered.countDown()
+            uninterruptibleAwait(release)
+            listOf("192.0.2.1")
+        }
+        val executor = ExitSignallingExecutor()
+        try {
+            val weak = startAndAbandon(backend, executor, entered, cancelByCore)
+            assertEquals("工作线程应仍卡在阻塞解析里", 1L, executor.taskExited.count)
+            // 有界重试：GC 不保证一次就回收。
+            var cleared = false
+            repeat(50) {
+                if (!cleared) {
+                    System.gc()
+                    cleared = weak.get() == null
+                    if (!cleared) Thread.onSpinWait()
+                }
+            }
+            assertTrue("调用已被放弃、工作线程仍在阻塞解析时，回复对象（生产里是内核的 DNSCall）不应被工作线程间接持有", cleared)
+        } finally {
+            release.countDown()
+            assertTrue(executor.taskExited.await(30, TimeUnit.SECONDS))
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `内核取消后工作线程仍卡在阻塞解析 回复对象可被回收`() = assertCollectedWhileWorkerBlocked(cancelByCore = true)
+
+    @Test
+    fun `超时后工作线程仍卡在阻塞解析 回复对象可被回收`() = assertCollectedWhileWorkerBlocked(cancelByCore = false)
 
     @Test
     fun `阻塞解析的工作线程池有界 满了直接拒绝并回 SERVFAIL`() {

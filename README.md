@@ -102,7 +102,7 @@ TUN 隧道的必要授权。
 
 ### sing-box 核心
 
-预编译库通过 GitHub Release 分发：Android 的 aar 用 tag `libcore-v1.14.3-r1`（自有内核模块构建），桌面与 iOS 暂用 `libcore-v1.8.9-16k`。fresh clone 后跑：
+预编译库通过 GitHub Release 分发：Android 的 aar 用 tag `libcore-v1.14.3-r2`（自有内核模块构建），桌面与 iOS 暂用 `libcore-v1.8.9-16k`。fresh clone 后跑：
 
 ```bash
 bin/fetch-libcore.sh          # 默认拉 Android + 当前 host 平台的 lib

@@ -18,7 +18,7 @@ set -euo pipefail
 # Android 用自有内核模块（kernel/，官方 sing-box 1.14.3）构建的 aar；桌面与 iOS 本期不动，
 # 仍用旧 tag 的外部构建产物。两个 tag 分开：升级 Android 内核不影响其它平台的下载。
 TAG="${LIBCORE_TAG:-libcore-v1.8.9-16k}"
-ANDROID_TAG="${ANDROID_LIBCORE_TAG:-libcore-v1.14.3-r1}"
+ANDROID_TAG="${ANDROID_LIBCORE_TAG:-libcore-v1.14.3-r2}"
 LIBCORE_REPO="${LIBCORE_REPO:-luuuuke88/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"

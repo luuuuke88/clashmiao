@@ -196,7 +196,7 @@ native 层依赖 `android/app/libs/libcore.aar`（由仓库内的 Go 模块 `ker
 
 Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由仓库内的 Go 模块 `kernel/` 包装成 gomobile 门面。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libclashmiao.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.14.3`。`libclashmiao.so` 所有 LOAD 段按 16 KB（`2**14`）对齐，构建脚本逐项校验。
 
-`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r1`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/libcore/build-android.sh` 保留，只用于回滚（见「升级与回滚」）。
+`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r2`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/libcore/build-android.sh` 保留，只用于回滚（见「升级与回滚」）。
 
 ### 内核模块 `kernel/`
 

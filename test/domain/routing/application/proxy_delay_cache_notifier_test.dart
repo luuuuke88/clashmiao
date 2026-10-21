@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/box_service/model/outbound.dart';
+import 'package:clashmiao/core/latency/latency_rules.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
@@ -292,6 +293,85 @@ void main() {
       expect(
         container.read(proxyDelayCacheProvider)['a'],
         CachedDelay(100, t0),
+      );
+    });
+
+    test('recordFailed：缓存里原有 98 ms 的节点被记成失败，成功值不再残留', () async {
+      SharedPreferences.setMockInitialValues({
+        'proxy_delays_p':
+            '{"dead":{"ms":98,"measuredAt":${t0.millisecondsSinceEpoch}},"live":{"ms":190,"measuredAt":${t0.millisecondsSinceEpoch}}}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = await open(prefs);
+      final later = t0.add(const Duration(minutes: 3));
+
+      container.read(proxyDelayCacheProvider.notifier).recordFailed({
+        'dead',
+      }, at: later);
+
+      final cache = container.read(proxyDelayCacheProvider);
+      expect(cache['dead'], CachedDelay.failed(later));
+      expect(cache['dead']!.isFailed, isTrue);
+      expect(cache['live'], CachedDelay(190, t0), reason: '没失败的节点不动');
+    });
+
+    test('失败记录落盘后重开容器：不复活旧的成功值', () async {
+      SharedPreferences.setMockInitialValues({
+        'proxy_delays_p':
+            '{"dead":{"ms":98,"measuredAt":${t0.millisecondsSinceEpoch}}}',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = await open(prefs);
+      container.read(proxyDelayCacheProvider.notifier).recordFailed({
+        'dead',
+      }, at: t0.add(const Duration(minutes: 1)));
+      await flush();
+
+      final reopened = await open(prefs);
+      final reloaded = reopened.read(proxyDelayCacheProvider)['dead']!;
+      expect(reloaded.isFailed, isTrue);
+      expect(isMeasurableDelay(reloaded.ms), isFalse);
+
+      // 之后分组流里该节点没有实时值（内核测失败会删历史）：同样不会复活。
+      reopened.read(proxyDelayCacheProvider.notifier).persistFromGroups([
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'dead',
+          items: [OutboundProxy(tag: 'dead', type: 'vmess', delay: 0)],
+        ),
+      ]);
+      expect(reopened.read(proxyDelayCacheProvider)['dead']!.isFailed, isTrue);
+    });
+
+    test('失败之后又测通：成功值覆盖失败记录', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+      var clock = t0;
+      final container = await open(prefs, now: () => clock);
+      final notifier = container.read(proxyDelayCacheProvider.notifier);
+      notifier.recordFailed({'a'}, at: t0);
+      expect(container.read(proxyDelayCacheProvider)['a']!.isFailed, isTrue);
+
+      clock = t0.add(const Duration(minutes: 1));
+      notifier.persistFromGroups([
+        const OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'a',
+          items: [OutboundProxy(tag: 'a', type: 'vmess', delay: 150)],
+        ),
+      ]);
+      expect(
+        container.read(proxyDelayCacheProvider)['a'],
+        CachedDelay(150, clock),
+      );
+
+      notifier.recordFailed({'a'}, at: clock);
+      notifier.recordMeasured({'a': 160}, at: clock);
+      expect(
+        container.read(proxyDelayCacheProvider)['a'],
+        CachedDelay(160, clock),
       );
     });
 

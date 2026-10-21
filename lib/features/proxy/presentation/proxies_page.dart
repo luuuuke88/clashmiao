@@ -199,6 +199,7 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         testing: latencyState.isNodePending(group.tag, proxy.tag),
         timedOut: latencyState.timedOutNodes.contains(proxy.tag),
         unconfirmed: latencyState.unconfirmedNodes.contains(proxy.tag),
+        cachedFailed: cached?.isFailed ?? false,
         now: now,
         cacheIsFallback: !isLiveData,
       );
@@ -234,11 +235,15 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
         sortedItems.sort((a, b) {
           final groupFirst = _compareGroupFirst(a, b);
           if (groupFirst != 0) return groupFirst;
-          final ai = latencies[a.tag]?.ms ?? 0;
-          final bi = latencies[b.tag]?.ms ?? 0;
-          if (ai <= 0 && bi <= 0) return 0;
-          if (ai <= 0 && bi > 0) return 1;
-          if (ai > 0 && bi <= 0) return -1;
+          final la = latencies[a.tag];
+          final lb = latencies[b.tag];
+          // 先分档（有数字 < 未测 < 超时），再在档内按毫秒：
+          // 死节点（超时）一定排在活节点之后。
+          final rankCompare = _latencyRank(la).compareTo(_latencyRank(lb));
+          if (rankCompare != 0) return rankCompare;
+          final ai = la?.ms ?? 0;
+          final bi = lb?.ms ?? 0;
+          if (ai <= 0 || bi <= 0) return 0;
           return ai.compareTo(bi);
         });
       }
@@ -551,6 +556,18 @@ int _compareGroupFirst(OutboundProxy a, OutboundProxy b) {
   final bIsGroup = isGroupProxyType(b.type);
   if (aIsGroup == bIsGroup) return 0;
   return aIsGroup ? -1 : 1;
+}
+
+/// 按延迟排序时的分档：有数字的（新鲜 / 历史值 / 测量中保留的旧值）< 未测
+/// < 超时。超时的节点是死的，一定排在活节点之后。
+int _latencyRank(NodeLatency? latency) {
+  if (latency == null) return 1;
+  return switch (latency.state) {
+    LatencyDisplayState.success || LatencyDisplayState.stale => 0,
+    LatencyDisplayState.testing => latency.ms == null ? 1 : 0,
+    LatencyDisplayState.untested => 1,
+    LatencyDisplayState.timeout => 2,
+  };
 }
 
 class ProxiesSortModal extends HookConsumerWidget {

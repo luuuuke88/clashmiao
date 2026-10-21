@@ -72,6 +72,7 @@ class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
     for (final group in groups) {
       for (final item in group.items) {
         if (item.tag.isEmpty || !isMeasurableDelay(item.delay)) continue;
+        // 失败记录的 ms 不会等于有效延迟：节点又测通了，成功值覆盖失败。
         if (next[item.tag]?.ms == item.delay) continue;
         next[item.tag] = CachedDelay(item.delay, at);
         changed = true;
@@ -92,6 +93,24 @@ class ProxyDelayCacheNotifier extends StateNotifier<Map<String, CachedDelay>> {
       final value = CachedDelay(entry.value, stamp);
       if (next[entry.key] == value) continue;
       next[entry.key] = value;
+      changed = true;
+    }
+    if (changed) _commit(next);
+  }
+
+  /// 一轮测速结束时调用：这些节点在 [at] 测了没通（失败 / 超时）。把它们记成
+  /// 失败并落盘，缓存里更早的成功值就不会再冒出来——不论是本次会话里的显示，
+  /// 还是重启之后。之后节点又测通，成功值（[recordMeasured] /
+  /// [persistFromGroups]）会覆盖它。
+  void recordFailed(Iterable<String> tags, {DateTime? at}) {
+    final stamp = at ?? _now();
+    final next = Map<String, CachedDelay>.from(state);
+    var changed = false;
+    for (final tag in tags) {
+      if (tag.isEmpty) continue;
+      final value = CachedDelay.failed(stamp);
+      if (next[tag] == value) continue;
+      next[tag] = value;
       changed = true;
     }
     if (changed) _commit(next);

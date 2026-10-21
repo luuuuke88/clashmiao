@@ -28,6 +28,9 @@ final latencyTestCoordinatorProvider =
         recordMeasured: (msByTag, at) => ref
             .read(proxyDelayCacheProvider.notifier)
             .recordMeasured(msByTag, at: at),
+        recordFailed: (tags, at) => ref
+            .read(proxyDelayCacheProvider.notifier)
+            .recordFailed(tags, at: at),
         now: ref.read(latencyClockProvider),
       );
       ref.listen<bool>(

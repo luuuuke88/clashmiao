@@ -12,9 +12,27 @@ const Duration kLatencyWarmupDelay = Duration(seconds: 2);
 /// 同一个分组两次自动测速的最小间隔。手动测速不受它约束。
 const Duration kLatencyAutoCooldown = Duration(seconds: 30);
 
-/// 一轮测速最长等多久：到点就收尾。没确认出结果、但有旧值的节点显示历史值；
-/// 连旧值都没有的节点标为超时。
+/// 一轮测速最短等多久：到点就收尾。到点仍没有有效结果的节点判为失败（超时）
+/// ——只有实时值仍然有效、无从分辨「没测完」还是「恰好同值」的节点保留为历史值。
+/// 大分组按 [latencyRoundTimeoutFor] 多等一会儿。
 const Duration kLatencyRoundTimeout = Duration(seconds: 10);
+
+/// 内核对一个分组测速时的并发数，与每个死节点最长占一路的时间（TCP 连接
+/// 超时）。节点多的分组要分好几批测：25 个节点、全是死的，第三批要到 15 s
+/// 才结束——10 s 就收尾会把还在测的节点误判成失败。
+const int kLatencyKernelConcurrency = 10;
+const Duration kLatencyKernelWave = Duration(seconds: 5);
+
+/// [nodeCount] 个节点的一轮测速最长等多久：至少 [kLatencyRoundTimeout]，节点
+/// 多时按内核分批数放宽（每批 [kLatencyKernelWave]，再留 2 s 余量），封顶 60 s。
+Duration latencyRoundTimeoutFor(int nodeCount) {
+  final waves =
+      (nodeCount + kLatencyKernelConcurrency - 1) ~/ kLatencyKernelConcurrency;
+  final needed = kLatencyKernelWave * waves + const Duration(seconds: 2);
+  if (needed <= kLatencyRoundTimeout) return kLatencyRoundTimeout;
+  const cap = Duration(seconds: 60);
+  return needed > cap ? cap : needed;
+}
 
 /// 协调器对外暴露的状态：哪些组在测、在测的组里哪些节点还没有本轮结果、
 /// 哪些节点上一轮没测出结果、哪些节点上一轮没确认而保留着旧值。
@@ -113,9 +131,9 @@ class _Round {
   final Map<String, int> baseline;
 
   /// 本轮已确认出了结果的节点（值与开测基线不同）。只有它们会在收尾时
-  /// 刷新测量时间；没确认的节点保留原来的值与测量时间，展示为历史值——它
-  /// 可能还没测完，也可能恰好被重测成同一个毫秒数，无从分辨，所以既不把旧值
-  /// 记成新结果，也不判它超时。
+  /// 刷新测量时间；实时值仍有效但没确认的节点保留原来的值与测量时间，展示为
+  /// 历史值——它可能还没测完，也可能恰好被重测成同一个毫秒数，无从分辨，所以
+  /// 既不把旧值记成新结果，也不判它超时。实时没有有效值的节点收尾时判失败。
   final Set<String> confirmed = {};
   final Completer<void> done = Completer<void>();
   Timer? timeout;
@@ -131,8 +149,9 @@ class _Round {
 /// - 手动测速绕过冷却，但在途时复用同一个任务；
 /// - 断开、重连、切订阅取消旧任务；
 /// - 一轮的完成条件 = 组内所有节点都有了本轮结果，或 [kLatencyRoundTimeout]。
-///   收尾时只刷新本轮**确认**出了结果的节点的测量时间；没确认的保留旧值
-///   显示历史值，连旧值都没有的才标超时。
+///   收尾时只刷新本轮**确认**出了结果的节点的测量时间；实时没有有效值的节点
+///   （测失败 / 超时）一律标超时并把失败写进缓存，不论缓存里有没有旧的成功值；
+///   只有实时值仍有效、没确认的节点保留为历史值。
 ///
 /// 依赖全部通过构造函数注入（回调），时间只读 [Timer] 与 `now`，所以可以用
 /// fake_async 完整驱动。Riverpod 接线见 [latencyTestCoordinatorProvider]。
@@ -142,6 +161,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     required this._liveGroups,
     required this._cache,
     required this._recordMeasured,
+    required this._recordFailed,
     required this._now,
   }) : super(const LatencyTestState());
 
@@ -149,6 +169,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   final List<OutboundGroup> Function() _liveGroups;
   final Map<String, CachedDelay> Function() _cache;
   final void Function(Map<String, int> msByTag, DateTime at) _recordMeasured;
+  final void Function(Set<String> tags, DateTime at) _recordFailed;
   final DateTime Function() _now;
 
   bool _connected = false;
@@ -185,6 +206,9 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
         group.items,
         const {},
       ).where((item) => !isGroupProxyType(item.type));
+
+  int _testableCount(OutboundGroup? group) =>
+      group == null ? 0 : _testableItems(group).length;
 
   /// 分组流推来了新数据。
   void onGroups(List<OutboundGroup> groups) {
@@ -305,7 +329,10 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
       ),
     );
 
-    round.timeout = Timer(kLatencyRoundTimeout, () => _finish(round));
+    round.timeout = Timer(
+      latencyRoundTimeoutFor(_testableCount(live)),
+      () => _finish(round),
+    );
     Future<void>.sync(() => _urlTest(groupTag)).then<void>(
       (_) {},
       onError: (Object error, StackTrace stackTrace) {
@@ -365,9 +392,11 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
   /// 放行等待者。
   ///
   /// - 确认了且有效：写缓存（刷新测量时间），展示成功；
-  /// - 确认了但没有有效值（测失败）：标超时；
-  /// - 没确认：不写缓存，保留原值与原测量时间。[markTimeouts] 为真时，手上
-  ///   有旧值（实时或缓存）的标为未确认（展示历史值），一点旧值都没有的标超时。
+  /// - 实时没有有效值（确认失败，或到点一直是 0——内核测失败会删历史，两者
+  ///   在分组流里分不开，结果都是没通）：标超时，并把失败写进缓存覆盖旧的
+  ///   成功值；
+  /// - 没确认但实时值仍有效：不写缓存，保留原值与原测量时间，标为未确认
+  ///   （展示历史值）——可能还没测完，也可能恰好同值，无从分辨。
   ///
   /// 内核调用失败时（[markTimeouts] 为假）只写确认的结果，不打任何标记——那
   /// 不是节点的问题。
@@ -377,7 +406,6 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
     round.timeout?.cancel();
 
     final group = _find(_liveGroups(), round.group);
-    final cache = _cache();
     final timedOut = <String>{};
     final unconfirmed = <String>{};
     final measured = <String, int>{};
@@ -389,10 +417,7 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
           continue;
         }
         if (!markTimeouts) continue;
-        final hasOldValue =
-            isMeasurableDelay(item.delay) ||
-            isMeasurableDelay(cache[item.tag]?.ms);
-        if (!confirmed && hasOldValue) {
+        if (!confirmed && isMeasurableDelay(item.delay)) {
           unconfirmed.add(item.tag);
         } else {
           timedOut.add(item.tag);
@@ -400,7 +425,9 @@ class LatencyTestCoordinator extends StateNotifier<LatencyTestState> {
         _markedAt[item.tag] = item.delay;
       }
     }
-    if (measured.isNotEmpty) _recordMeasured(measured, _now());
+    final at = _now();
+    if (measured.isNotEmpty) _recordMeasured(measured, at);
+    if (timedOut.isNotEmpty) _recordFailed(timedOut, at);
 
     _emit(
       state.copyWith(

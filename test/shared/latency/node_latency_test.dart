@@ -12,6 +12,7 @@ void main() {
     bool testing = false,
     bool timedOut = false,
     bool unconfirmed = false,
+    bool cachedFailed = false,
     bool cacheIsFallback = true,
   }) => resolveNodeLatency(
     liveMs: liveMs,
@@ -20,6 +21,7 @@ void main() {
     testing: testing,
     timedOut: timedOut,
     unconfirmed: unconfirmed,
+    cachedFailed: cachedFailed,
     now: now,
     cacheIsFallback: cacheIsFallback,
   );
@@ -253,6 +255,38 @@ void main() {
       );
       expect(r.state, LatencyDisplayState.stale);
       expect(r.ms, 120);
+    });
+  });
+
+  group('缓存里记着失败', () {
+    test('实时没有值、缓存记着失败：超时，不是未测', () {
+      for (final fallback in [true, false]) {
+        final r = resolve(cachedFailed: true, cacheIsFallback: fallback);
+        expect(r.state, LatencyDisplayState.timeout);
+        expect(r.ms, isNull);
+      }
+    });
+
+    test('实时值有效（之后又测通了）：以实时值为准，失败记录不压它', () {
+      final r = resolve(liveMs: 190, cachedFailed: true);
+      expect(r.state, LatencyDisplayState.success);
+      expect(r.ms, 190);
+    });
+
+    test('测量中：不显示失败记录的数字，也不显示超时', () {
+      final r = resolve(testing: true, cachedFailed: true);
+      expect(r.state, LatencyDisplayState.testing);
+      expect(r.ms, isNull);
+    });
+
+    test('本轮失败（timedOut）永远压过缓存里的 98 ms 成功值', () {
+      final r = resolve(
+        cachedMs: 98,
+        cachedAt: ago(const Duration(seconds: 5)),
+        timedOut: true,
+      );
+      expect(r.state, LatencyDisplayState.timeout);
+      expect(r.ms, isNull);
     });
   });
 }

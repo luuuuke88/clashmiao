@@ -844,6 +844,7 @@ class _ConnectionInfo extends ConsumerWidget {
       unconfirmed:
           activeItem != null &&
           latencyState.unconfirmedNodes.contains(activeItem.tag),
+      cachedFailed: cachedDelay?.isFailed ?? false,
       now: ref.watch(latencyClockProvider)(),
       cacheIsFallback: !isLiveData,
     );

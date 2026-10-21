@@ -52,6 +52,12 @@ class _Rig {
           this.cache[e.key] = CachedDelay(e.value, at);
         }
       },
+      recordFailed: (tags, at) {
+        failed.add((Set.of(tags), at));
+        for (final tag in tags) {
+          this.cache[tag] = CachedDelay.failed(at);
+        }
+      },
       now: () => _t0.add(async.elapsed),
     );
   }
@@ -61,6 +67,7 @@ class _Rig {
   late final LatencyTestCoordinator coordinator;
   final List<String> urlTests = [];
   final List<(Map<String, int>, DateTime)> recorded = [];
+  final List<(Set<String>, DateTime)> failed = [];
   Future<void> Function()? urlTestResult;
   List<OutboundGroup> groups = [];
 
@@ -395,6 +402,7 @@ void main() {
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
       expect(rig.coordinator.state.timedOutNodes, {'b'});
       expect(rig.recorded.single.$1, {'a': 150});
+      expect(rig.failed.single.$1, {'b'}, reason: '超时的节点记成失败，写进缓存');
     });
 
     _fake('开测前就有旧值的节点：数值变化算出结果；失败变 0 也算出结果并标超时', (rig, async) {
@@ -436,7 +444,7 @@ void main() {
       );
     });
 
-    _fake('内核悬挂且没有任何分组事件：旧值保留旧时间、显示历史值，没有任何节点标超时', (rig, async) {
+    _fake('内核悬挂且没有任何分组事件：实时值有效的保留旧时间、显示历史值；实时值缺席的（只剩缓存旧数）标超时', (rig, async) {
       final hung = Completer<void>();
       rig.urlTestResult = () => hung.future;
       final aAt = _t0.subtract(const Duration(minutes: 2));
@@ -466,33 +474,39 @@ void main() {
         const CachedDelay(250, null),
         reason: '旧格式历史值仍是历史值',
       );
-      expect(rig.cache['c'], CachedDelay(180, aAt));
-      expect(rig.coordinator.state.unconfirmedNodes, {'a', 'b', 'c'});
-      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.cache['c']!.isFailed, isTrue, reason: '缓存里的旧数不能顶替失败');
+      expect(rig.coordinator.state.unconfirmedNodes, {'a', 'b'});
+      expect(rig.coordinator.state.timedOutNodes, {'c'});
       expect(async.nonPeriodicTimerCount, 0);
       hung.complete();
     });
 
-    _fake('开测前遗留超时哨兵 + 有效缓存 + 本轮无事件：未确认（历史值），不标超时；本轮确认失败仍标超时', (rig, async) {
+    _fake('开测前遗留超时哨兵 + 有效缓存 + 本轮无事件：失败压过缓存旧值，标超时；实时值有效的才算未确认', (rig, async) {
       rig.urlTestResult = () => Completer<void>().future;
       final oldAt = _t0.subtract(const Duration(minutes: 1));
       rig.cache['old-sentinel'] = CachedDelay(150, oldAt);
       rig.cache['fails-now'] = CachedDelay(120, oldAt);
+      rig.cache['kept'] = CachedDelay(80, oldAt);
       rig.groups = [
-        _group({'old-sentinel': 65535, 'fails-now': 120}),
+        _group({'old-sentinel': 65535, 'fails-now': 120, 'kept': 80}),
       ];
       rig.coordinator.onConnectionChanged(true);
       rig.elapse(const Duration(seconds: 2));
       // 只有 fails-now 在本轮出了结果：测失败，变成哨兵。
       rig.push([
-        _group({'old-sentinel': 65535, 'fails-now': 65535}),
+        _group({'old-sentinel': 65535, 'fails-now': 65535, 'kept': 80}),
       ]);
       rig.elapse(const Duration(seconds: 10));
 
       expect(rig.recorded, isEmpty);
-      expect(rig.cache['old-sentinel'], CachedDelay(150, oldAt));
-      expect(rig.coordinator.state.unconfirmedNodes, {'old-sentinel'});
-      expect(rig.coordinator.state.timedOutNodes, {'fails-now'});
+      expect(rig.cache['old-sentinel']!.isFailed, isTrue);
+      expect(rig.cache['fails-now']!.isFailed, isTrue);
+      expect(rig.cache['kept'], CachedDelay(80, oldAt));
+      expect(rig.coordinator.state.unconfirmedNodes, {'kept'});
+      expect(rig.coordinator.state.timedOutNodes, {
+        'old-sentinel',
+        'fails-now',
+      });
     });
 
     _fake('内核悬挂、一点旧值都没有的节点：到点标超时（本轮测了没结果）', (rig, async) {
@@ -530,6 +544,95 @@ void main() {
       expect(rig.cache['same'], CachedDelay(200, oldAt));
       expect(rig.coordinator.state.unconfirmedNodes, {'same'});
       expect(rig.coordinator.state.timedOutNodes, {'dead', 'none'});
+      expect(rig.failed.single.$1, {'dead', 'none'});
+    });
+
+    _fake('内核测失败会删掉测速历史（分组流里是 0）：缓存里有 98 ms 的死节点到点标超时并记成失败，活节点刷新', (
+      rig,
+      async,
+    ) {
+      final oldAt = _t0.subtract(const Duration(days: 1));
+      rig.cache['泰国'] = CachedDelay(98, oldAt);
+      rig.cache['香港01'] = CachedDelay(123, oldAt);
+      rig.cache['香港直连'] = CachedDelay(300, oldAt);
+      // 死节点的历史早就被内核删了，开测前后都是 0。
+      rig.groups = [
+        _group({'泰国': 0, '香港01': 0, '香港直连': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'泰国': 0, '香港01': 0, '香港直连': 190}),
+      ]);
+      rig.elapse(const Duration(seconds: 10));
+
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      expect(rig.coordinator.state.timedOutNodes, {'泰国', '香港01'});
+      expect(
+        rig.coordinator.state.unconfirmedNodes,
+        isEmpty,
+        reason: '缓存里的 98 ms 不能让死节点变成「历史值」',
+      );
+      expect(rig.failed.single.$1, {'泰国', '香港01'});
+      expect(rig.cache['泰国']!.isFailed, isTrue);
+      expect(rig.cache['香港01']!.isFailed, isTrue);
+      expect(rig.recorded.single.$1, {'香港直连': 190});
+      expect(
+        rig.cache['香港直连'],
+        CachedDelay(190, _t0.add(const Duration(seconds: 12))),
+      );
+    });
+
+    _fake('成功的节点更新数值：旧失败记录被成功覆盖', (rig, async) {
+      rig.cache['a'] = CachedDelay.failed(
+        _t0.subtract(const Duration(hours: 1)),
+      );
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      rig.push([
+        _group({'a': 77}),
+      ]);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(
+        rig.cache['a'],
+        CachedDelay(77, _t0.add(const Duration(seconds: 2))),
+      );
+      expect(rig.failed, isEmpty);
+    });
+
+    _fake('内核调用本身失败：不是节点的问题，不记任何失败', (rig, async) {
+      rig.urlTestResult = () async => throw StateError('kernel down');
+      rig.cache['a'] = CachedDelay(98, _t0);
+      rig.groups = [
+        _group({'a': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      unawaited(
+        rig.coordinator.manualTest('proxy').then((_) {}, onError: (_) {}),
+      );
+      async.flushMicrotasks();
+      expect(rig.failed, isEmpty);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.cache['a'], CachedDelay(98, _t0));
+    });
+
+    _fake('大分组按内核并发（10 路、每路最长 5 s）多等一会儿，不在 10 s 把还在测的节点判死', (rig, async) {
+      rig.urlTestResult = () => Completer<void>().future;
+      final dead = {for (var i = 0; i < 25; i++) 'n$i': 0};
+      rig.groups = [_group(dead)];
+      rig.coordinator.onConnectionChanged(true);
+      unawaited(rig.coordinator.manualTest('proxy'));
+
+      rig.elapse(kLatencyRoundTimeout);
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isTrue);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+
+      rig.elapse(const Duration(seconds: 10));
+      expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
+      expect(rig.coordinator.state.timedOutNodes, dead.keys.toSet());
     });
 
     _fake('确认是累积的：先出结果的节点不会因为后续事件变回没结果', (rig, async) {

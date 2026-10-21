@@ -284,3 +284,41 @@ func containsAny(list []string, substr string) bool {
 	}
 	return false
 }
+
+// (e) 远程 DNS 域名策略要管到普通域名的远程兜底查询（dns.final），不只是探测域名的那条规则。
+// 全局 IPv6 档是 prefer_ipv6、远程策略是 ipv4_only：AAAA 查询必须得到空答案；不设远程策略时（对照）AAAA 有答案。
+func TestE2ERemoteStrategyAppliesToOrdinaryDomains(t *testing.T) {
+	const dual = "dual.example.net"
+	run := func(strategy string) (aaaa, a int) {
+		w := newDNSWorld(t)
+		w.remoteDNS.Records.Set(dual, "192.0.2.60", "2001:db8::60")
+		o := gate.Option("O1")
+		o.RemoteDNSAddress = "tcp://" + addrOf(w.remoteDNS)
+		o.DirectDNSAddress = "udp://" + addrOf(w.directDNS)
+		o.IPv6Mode = "prefer_ipv6"
+		o.RemoteDNSDomainStrategy = strategy
+		mixed, eng, err := w.start(t, o, nil)
+		if err != nil {
+			t.Fatalf("Start: %v", err)
+		}
+		defer eng.Stop()
+		r6, err := gate.QueryDNSViaMixed(t, mixed, dual, mdns.TypeAAAA)
+		if err != nil {
+			t.Fatalf("AAAA 查询: %v", err)
+		}
+		r4, err := gate.QueryDNSViaMixed(t, mixed, dual, mdns.TypeA)
+		if err != nil {
+			t.Fatalf("A 查询: %v", err)
+		}
+		return len(r6.Answer), len(r4.Answer)
+	}
+	if aaaa, a := run(""); aaaa != 1 || a != 1 {
+		t.Fatalf("对照（不设远程策略）: AAAA=%d A=%d，期望都是 1", aaaa, a)
+	}
+	if aaaa, a := run("ipv4_only"); aaaa != 0 || a != 1 {
+		t.Fatalf("远程策略 ipv4_only: AAAA=%d A=%d，期望 0 与 1", aaaa, a)
+	}
+	if aaaa, a := run("ipv6_only"); aaaa != 1 || a != 0 {
+		t.Fatalf("远程策略 ipv6_only: AAAA=%d A=%d，期望 1 与 0", aaaa, a)
+	}
+}

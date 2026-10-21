@@ -122,6 +122,22 @@ func BuildDNS(in dnsInput, warnings *[]string) (*cfg.DNS, error) {
 		Domain: []string{connectivityDomain}, Action: "route", Server: TagDNSRemote, RewriteTTL: &ttl,
 	}, o))
 
+	// ⑤ 远程兜底：dns.final 走的普通域名查询也要遵守「远程 DNS 域名策略」。strategy 只能挂在规则动作上，
+	// 而 1.14 不允许它与 query_type / ip_version 同处一份配置，所以用「查询来自我们自己的入站」当兜底条件：
+	// 客户端的查询都经 tun-in / mixed-in / dns-in 进来，前面都没命中的才落到这里，与 final 等价。
+	if o.RemoteDNSDomainStrategy != "" {
+		inbound := []string{TagMixedIn}
+		if in.HasTun {
+			inbound = append([]string{TagTunIn}, inbound...)
+		}
+		if o.LocalDNSPort != 0 {
+			inbound = append(inbound, TagDNSIn)
+		}
+		rules = append(rules, withRemoteStrategy(cfg.DNSRule{
+			Inbound: inbound, Action: "route", Server: TagDNSRemote,
+		}, o))
+	}
+
 	if o.IndependentDNSCache != options.Default().IndependentDNSCache {
 		*warnings = append(*warnings, "independent-dns-cache-ignored: independent_cache is deprecated in sing-box 1.14 and not written")
 	}

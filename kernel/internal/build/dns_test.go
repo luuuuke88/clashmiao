@@ -336,3 +336,21 @@ func TestDNSIndependentCacheWarning(t *testing.T) {
 		t.Error("配置里不该写 independent_cache")
 	}
 }
+
+// 远程域名策略有值时，最后补一条只管地址查询的远程兜底规则；没设就不生成（保持 dns.final 原样）。
+func TestRemoteStrategyFallbackRule(t *testing.T) {
+	o := gate.Option("O1")
+	c, _ := buildCfg(t, gate.LoadProfile(t, "P1"), o)
+	for _, r := range c.DNS.Rules {
+		if r.Server == build.TagDNSRemote && len(r.Inbound) > 0 && r.Strategy != "" {
+			t.Fatalf("没设远程策略不该有带策略的兜底规则: %+v", r)
+		}
+	}
+	o = gate.Option("O1")
+	o.RemoteDNSDomainStrategy = "ipv4_only"
+	c, _ = buildCfg(t, gate.LoadProfile(t, "P1"), o)
+	last := c.DNS.Rules[len(c.DNS.Rules)-1]
+	if last.Server != build.TagDNSRemote || last.Strategy != "ipv4_only" || len(last.Inbound) == 0 {
+		t.Fatalf("最后一条规则 = %+v，期望远程兜底（按入站匹配、ipv4_only）", last)
+	}
+}

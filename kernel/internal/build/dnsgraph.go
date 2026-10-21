@@ -13,7 +13,8 @@ import (
 //
 //	边 1：DNS 服务器 → 它的 domain_resolver 服务器
 //	边 2：DNS 服务器 → 它的 detour 出站 / 端点
-//	边 3：地址是域名的出站 / 端点 → route.default_domain_resolver 服务器
+//	边 3：地址是域名的出站 / 端点 → 它实际生效的解析器：自己写的 domain_resolver（字符串或 {"server": …} 对象），
+//	      没写才是 route.default_domain_resolver
 //
 // 要求：图无环；并且凡地址是域名的 DNS 服务器都必须有 domain_resolver，沿 domain_resolver 走到的终点
 // 必须是地址为 IP 字面量的服务器（域名不能自己解析自己，也不能绕一圈再解析自己）。
@@ -51,7 +52,16 @@ func CheckDNSDeps(c *cfg.Config) error {
 		}
 	}
 	for tag, e := range entities {
-		if defaultResolver != "" && entityNeedsResolver(e) {
+		// 节点自己指定的解析器优先于默认解析器：边必须按实际生效的那个建，否则
+		// dns-remote → select → node → dns-remote 这类环会被按 node → default 放行。
+		if r := entityResolver(e); r != "" {
+			if _, ok := servers[r]; !ok {
+				return fmt.Errorf("%s %s: domain_resolver %q is not a dns server", PrefixBuildFailed, tag, r)
+			}
+			if entityNeedsResolver(e) {
+				edges[outPrefix+tag] = append(edges[outPrefix+tag], dnsPrefix+r)
+			}
+		} else if defaultResolver != "" && entityNeedsResolver(e) {
 			edges[outPrefix+tag] = append(edges[outPrefix+tag], dnsPrefix+defaultResolver)
 		}
 		// 分组把「走到它」传递给成员：dns-remote → select → 域名型节点 → default_domain_resolver。
@@ -172,6 +182,18 @@ func serverAddressIsDomain(s cfg.DNSServer) bool {
 	}
 	_, err := netip.ParseAddr(s.Server)
 	return err != nil
+}
+
+// entityResolver 取出站 / 端点自己写的 domain_resolver：字符串，或 {"server": "…", "strategy": …} 对象。
+func entityResolver(e map[string]any) string {
+	switch v := e["domain_resolver"].(type) {
+	case string:
+		return v
+	case map[string]any:
+		s, _ := v["server"].(string)
+		return s
+	}
+	return ""
 }
 
 // entityNeedsResolver：出站 / 端点的拨号地址是域名（保守地：任何非 IP 字面量的 server / peers.address）。

@@ -154,3 +154,74 @@ func TestInvariantsReuseDNSDepsCheck(t *testing.T) {
 		t.Error("不变量没有抓住 DNS 依赖环")
 	}
 }
+
+// 节点自己写的 domain_resolver（字符串或对象形式）才是它实际生效的解析器：
+// dns-remote → select → node → dns-remote 在默认解析器是 dns-direct 时同样是环。
+func TestCheckDNSDepsHonoursNodeDomainResolver(t *testing.T) {
+	c := baseConfig()
+	c.Outbounds[1]["domain_resolver"] = "dns-remote"
+	wantDepError(t, c, "dns dependency cycle: dns-remote -> select -> node -> dns-remote")
+
+	c = baseConfig()
+	c.Outbounds[1]["domain_resolver"] = map[string]any{"server": "dns-remote", "strategy": "ipv4_only"}
+	wantDepError(t, c, "dns dependency cycle: dns-remote -> select -> node -> dns-remote")
+
+	// 指向直连 DNS（不经 select）合法，不能因为写了 domain_resolver 就误报。
+	c = baseConfig()
+	c.Outbounds[1]["domain_resolver"] = map[string]any{"server": "dns-direct"}
+	if err := build.CheckDNSDeps(c); err != nil {
+		t.Fatalf("节点显式用 dns-direct 应合法: %v", err)
+	}
+}
+
+// 节点的 domain_resolver 指向不存在的服务器（订阅自己的 dns 块被丢弃后留下的悬空引用）。
+func TestCheckDNSDepsNodeResolverMustExist(t *testing.T) {
+	c := baseConfig()
+	c.Outbounds[1]["domain_resolver"] = "sub-dns"
+	wantDepError(t, c, `domain_resolver "sub-dns" is not a dns server`)
+
+	c = baseConfig()
+	c.Outbounds[1]["domain_resolver"] = map[string]any{"server": "sub-dns"}
+	wantDepError(t, c, `domain_resolver "sub-dns" is not a dns server`)
+}
+
+// Build 端：订阅节点自带的 domain_resolver 一律去掉并给警告，运行配置里不会悬空，也不会被它改写解析路径。
+func TestBuildDropsSubscriptionDomainResolvers(t *testing.T) {
+	p := gate.LoadProfile(t, "P1")
+	p.Outbounds = append([]map[string]any{}, p.Outbounds...)
+	hit := false
+	for i, n := range p.Outbounds {
+		if _, ok := n["server"].(string); !ok {
+			continue
+		}
+		m := map[string]any{}
+		for k, v := range n {
+			m[k] = v
+		}
+		m["domain_resolver"] = map[string]any{"server": "sub-dns", "strategy": "ipv4_only"}
+		p.Outbounds[i] = m
+		hit = true
+		break
+	}
+	if !hit {
+		t.Fatal("夹具里没有带 server 的节点")
+	}
+	c, warnings := buildCfg(t, p, gate.Option("O1"))
+	for _, o := range c.Outbounds {
+		if _, ok := o["domain_resolver"]; ok {
+			t.Fatalf("%s 仍带 domain_resolver", o.Tag())
+		}
+	}
+	found := false
+	for _, w := range warnings {
+		if strings.HasPrefix(w, "domain-resolver-dropped:") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("缺少 domain-resolver-dropped 警告: %v", warnings)
+	}
+	if err := build.CheckDNSDeps(c); err != nil {
+		t.Fatal(err)
+	}
+}

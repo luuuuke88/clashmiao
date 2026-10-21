@@ -2,6 +2,7 @@ package build
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/luuuuke88/clashmiao/kernel/internal/build/cfg"
@@ -28,6 +29,16 @@ const (
 var reservedTags = map[string]bool{
 	TagSelect: true, TagAuto: true, TagDirect: true, TagDirectFragment: true,
 	TagBypass: true, TagBlock: true, TagWarp: true,
+}
+
+// ReservedTags 返回预置 / 保留 tag 清单（测试用：钉住它与 legacy.ReservedTags 一致）。
+func ReservedTags() []string {
+	out := make([]string, 0, len(reservedTags))
+	for t := range reservedTags {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // droppedType：订阅自带的分组 / 直连 / 屏蔽 / dns 出站一律丢弃（与 Dart 的 isCandidateLeafType 同一口径）。

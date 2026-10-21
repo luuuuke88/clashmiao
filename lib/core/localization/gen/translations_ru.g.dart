@@ -383,6 +383,9 @@ class Translations$config$ru extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'Стратегия удалённого домена DNS';
 	@override String get directDnsAddress => 'Прямой DNS';
 	@override String get directDnsDomainStrategy => 'Стратегия прямого домена DNS';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'Не применено: маршрутизация IPv6 отключена, а «${field}» — только IPv6, поэтому ни один домен не разрешится. Сначала включите маршрутизацию IPv6 или выберите другую стратегию.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'Не применено: маршрутизация IPv6 — только IPv6, а «${field}» — только IPv4, поэтому ни один домен не разрешится. Сначала измените один из параметров.';
+	@override String dnsStrategyReset({required Object field}) => '«${field}» конфликтовала с настройкой маршрутизации IPv6 (ни один домен не разрешился бы) и сброшена на авто.';
 	@override String get mixedPort => 'Смешанный порт';
 	@override String get tproxyPort => 'Прозрачный прокси порт';
 	@override String get localDnsPort => 'Локальный порт DNS';
@@ -1538,6 +1541,9 @@ extension on TranslationsRu {
 			'config.remoteDnsDomainStrategy' => 'Стратегия удалённого домена DNS',
 			'config.directDnsAddress' => 'Прямой DNS',
 			'config.directDnsDomainStrategy' => 'Стратегия прямого домена DNS',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'Не применено: маршрутизация IPv6 отключена, а «${field}» — только IPv6, поэтому ни один домен не разрешится. Сначала включите маршрутизацию IPv6 или выберите другую стратегию.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'Не применено: маршрутизация IPv6 — только IPv6, а «${field}» — только IPv4, поэтому ни один домен не разрешится. Сначала измените один из параметров.',
+			'config.dnsStrategyReset' => ({required Object field}) => '«${field}» конфликтовала с настройкой маршрутизации IPv6 (ни один домен не разрешился бы) и сброшена на авто.',
 			'config.mixedPort' => 'Смешанный порт',
 			'config.tproxyPort' => 'Прозрачный прокси порт',
 			'config.localDnsPort' => 'Локальный порт DNS',

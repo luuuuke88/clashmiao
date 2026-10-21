@@ -386,6 +386,9 @@ class Translations$config$zh_CN extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => '远程 DNS 域名策略';
 	@override String get directDnsAddress => '直连 DNS';
 	@override String get directDnsDomainStrategy => '直连 DNS 域名策略';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => '未应用：IPv6 路由已禁用，但「${field}」为仅 IPv6，会导致域名无法解析。请先启用 IPv6 路由，或换一个策略。';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => '未应用：IPv6 路由为仅限 IPv6，但「${field}」为仅 IPv4，会导致域名无法解析。请先调整其中一项。';
+	@override String dnsStrategyReset({required Object field}) => '「${field}」与 IPv6 路由设置冲突（会导致域名无法解析），已重置为自动。';
 	@override String get mixedPort => '混合端口';
 	@override String get tproxyPort => '透明线路端口';
 	@override String get localDnsPort => '本地 DNS 端口';
@@ -1540,6 +1543,9 @@ extension on TranslationsZhCn {
 			'config.remoteDnsDomainStrategy' => '远程 DNS 域名策略',
 			'config.directDnsAddress' => '直连 DNS',
 			'config.directDnsDomainStrategy' => '直连 DNS 域名策略',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => '未应用：IPv6 路由已禁用，但「${field}」为仅 IPv6，会导致域名无法解析。请先启用 IPv6 路由，或换一个策略。',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => '未应用：IPv6 路由为仅限 IPv6，但「${field}」为仅 IPv4，会导致域名无法解析。请先调整其中一项。',
+			'config.dnsStrategyReset' => ({required Object field}) => '「${field}」与 IPv6 路由设置冲突（会导致域名无法解析），已重置为自动。',
 			'config.mixedPort' => '混合端口',
 			'config.tproxyPort' => '透明线路端口',
 			'config.localDnsPort' => '本地 DNS 端口',

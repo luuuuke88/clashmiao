@@ -729,6 +729,15 @@ class Translations$config$en {
 	/// en: 'Direct DNS Domain Strategy'
 	String get directDnsDomainStrategy => 'Direct DNS Domain Strategy';
 
+	/// en: 'Not applied: IPv6 routing is disabled but "${field}" is IPv6-only, so no domain could be resolved. Enable IPv6 routing first, or choose another strategy.'
+	String dnsStrategyBlockedIpv6Off({required Object field}) => 'Not applied: IPv6 routing is disabled but "${field}" is IPv6-only, so no domain could be resolved. Enable IPv6 routing first, or choose another strategy.';
+
+	/// en: 'Not applied: IPv6 routing is IPv6-only but "${field}" is IPv4-only, so no domain could be resolved. Adjust one of them first.'
+	String dnsStrategyBlockedIpv6Only({required Object field}) => 'Not applied: IPv6 routing is IPv6-only but "${field}" is IPv4-only, so no domain could be resolved. Adjust one of them first.';
+
+	/// en: '"${field}" conflicted with the IPv6 routing setting (no domain could be resolved) and was reset to auto.'
+	String dnsStrategyReset({required Object field}) => '"${field}" conflicted with the IPv6 routing setting (no domain could be resolved) and was reset to auto.';
+
 	/// en: 'Mixed Port'
 	String get mixedPort => 'Mixed Port';
 
@@ -2517,6 +2526,9 @@ extension on Translations {
 			'config.remoteDnsDomainStrategy' => 'Remote DNS Domain Strategy',
 			'config.directDnsAddress' => 'Direct DNS',
 			'config.directDnsDomainStrategy' => 'Direct DNS Domain Strategy',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'Not applied: IPv6 routing is disabled but "${field}" is IPv6-only, so no domain could be resolved. Enable IPv6 routing first, or choose another strategy.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'Not applied: IPv6 routing is IPv6-only but "${field}" is IPv4-only, so no domain could be resolved. Adjust one of them first.',
+			'config.dnsStrategyReset' => ({required Object field}) => '"${field}" conflicted with the IPv6 routing setting (no domain could be resolved) and was reset to auto.',
 			'config.mixedPort' => 'Mixed Port',
 			'config.tproxyPort' => 'Transparent Line Port',
 			'config.localDnsPort' => 'Local DNS Port',

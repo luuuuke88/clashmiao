@@ -377,6 +377,9 @@ class Translations$config$tr extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'Uzak DNS Domain Stratejisi';
 	@override String get directDnsAddress => 'Doğrudan DNS';
 	@override String get directDnsDomainStrategy => 'Doğrudan DNS Domain Stratejisi';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'Uygulanmadı: IPv6 yönlendirme kapalı ancak "${field}" yalnızca IPv6, bu yüzden hiçbir alan adı çözümlenemez. Önce IPv6 yönlendirmeyi açın veya başka bir strateji seçin.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'Uygulanmadı: IPv6 yönlendirme yalnızca IPv6 ancak "${field}" yalnızca IPv4, bu yüzden hiçbir alan adı çözümlenemez. Önce birini değiştirin.';
+	@override String dnsStrategyReset({required Object field}) => '"${field}" IPv6 yönlendirme ayarıyla çakıştı (hiçbir alan adı çözümlenemezdi) ve otomatiğe sıfırlandı.';
 	@override String get mixedPort => 'Mixed Port';
 	@override String get localDnsPort => 'Yerel DNS Bağlantı Noktası';
 	@override String get allowConnectionFromLan => 'Allow Connection from LAN';
@@ -1529,6 +1532,9 @@ extension on TranslationsTr {
 			'config.remoteDnsDomainStrategy' => 'Uzak DNS Domain Stratejisi',
 			'config.directDnsAddress' => 'Doğrudan DNS',
 			'config.directDnsDomainStrategy' => 'Doğrudan DNS Domain Stratejisi',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'Uygulanmadı: IPv6 yönlendirme kapalı ancak "${field}" yalnızca IPv6, bu yüzden hiçbir alan adı çözümlenemez. Önce IPv6 yönlendirmeyi açın veya başka bir strateji seçin.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'Uygulanmadı: IPv6 yönlendirme yalnızca IPv6 ancak "${field}" yalnızca IPv4, bu yüzden hiçbir alan adı çözümlenemez. Önce birini değiştirin.',
+			'config.dnsStrategyReset' => ({required Object field}) => '"${field}" IPv6 yönlendirme ayarıyla çakıştı (hiçbir alan adı çözümlenemezdi) ve otomatiğe sıfırlandı.',
 			'config.mixedPort' => 'Mixed Port',
 			'config.localDnsPort' => 'Yerel DNS Bağlantı Noktası',
 			'config.allowConnectionFromLan' => 'Allow Connection from LAN',

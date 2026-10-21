@@ -376,6 +376,9 @@ class Translations$config$id extends Translations$config$en {
 	@override String get remoteDnsDomainStrategy => 'Remote DNS Domain Strategy';
 	@override String get directDnsAddress => 'Direct DNS';
 	@override String get directDnsDomainStrategy => 'Direct DNS Domain Strategy';
+	@override String dnsStrategyBlockedIpv6Off({required Object field}) => 'Tidak diterapkan: perutean IPv6 dinonaktifkan tetapi "${field}" hanya IPv6, sehingga tidak ada domain yang bisa di-resolve. Aktifkan perutean IPv6 dulu, atau pilih strategi lain.';
+	@override String dnsStrategyBlockedIpv6Only({required Object field}) => 'Tidak diterapkan: perutean IPv6 hanya IPv6 tetapi "${field}" hanya IPv4, sehingga tidak ada domain yang bisa di-resolve. Ubah salah satunya dulu.';
+	@override String dnsStrategyReset({required Object field}) => '"${field}" bertentangan dengan pengaturan perutean IPv6 (tidak ada domain yang bisa di-resolve) dan telah direset ke otomatis.';
 	@override String get mixedPort => 'Mixed Port';
 	@override String get localDnsPort => 'DNS Port Lokal';
 	@override String get allowConnectionFromLan => 'Perbolehkan Sambungan LAN';
@@ -1528,6 +1531,9 @@ extension on TranslationsId {
 			'config.remoteDnsDomainStrategy' => 'Remote DNS Domain Strategy',
 			'config.directDnsAddress' => 'Direct DNS',
 			'config.directDnsDomainStrategy' => 'Direct DNS Domain Strategy',
+			'config.dnsStrategyBlockedIpv6Off' => ({required Object field}) => 'Tidak diterapkan: perutean IPv6 dinonaktifkan tetapi "${field}" hanya IPv6, sehingga tidak ada domain yang bisa di-resolve. Aktifkan perutean IPv6 dulu, atau pilih strategi lain.',
+			'config.dnsStrategyBlockedIpv6Only' => ({required Object field}) => 'Tidak diterapkan: perutean IPv6 hanya IPv6 tetapi "${field}" hanya IPv4, sehingga tidak ada domain yang bisa di-resolve. Ubah salah satunya dulu.',
+			'config.dnsStrategyReset' => ({required Object field}) => '"${field}" bertentangan dengan pengaturan perutean IPv6 (tidak ada domain yang bisa di-resolve) dan telah direset ke otomatis.',
 			'config.mixedPort' => 'Mixed Port',
 			'config.localDnsPort' => 'DNS Port Lokal',
 			'config.allowConnectionFromLan' => 'Perbolehkan Sambungan LAN',

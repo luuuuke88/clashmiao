@@ -41,6 +41,25 @@ void main() {
   });
 
   group('NetworkSettings WARP 凭证字段', () {
+    test('iOS 不提供 WARP：开关和配置导入都写不进开启，Android 照常', () async {
+      SharedPreferences.setMockInitialValues({});
+      final prefs = await SharedPreferences.getInstance();
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final ios = NetworkSettingsNotifier(prefs);
+      await ios.setEnableWarp(true);
+      expect(ios.state.enableWarp, isFalse);
+      await ios.importJson(jsonEncode({'enableWarp': true}));
+      expect(ios.state.enableWarp, isFalse);
+      expect(prefs.getBool('clashmiao_enable_warp'), isFalse);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      final android = NetworkSettingsNotifier(prefs);
+      await android.setEnableWarp(true);
+      expect(android.state.enableWarp, isTrue);
+    });
+
     test('iOS 不提供 WARP：之前存下的启用开关按关闭读出', () async {
       SharedPreferences.setMockInitialValues({
         'clashmiao_warp_consent_given': true,

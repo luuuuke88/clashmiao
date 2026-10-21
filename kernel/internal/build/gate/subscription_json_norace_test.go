@@ -57,3 +57,36 @@ func TestMixedJSONRetainedNodesPassConfigGate(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = eng.Stop() })
 }
+
+// 回归：合法的固定端口节点带着「未启用跳跃」的 server_ports（空列表 / null）不能被丢掉，
+// 保留下来的产物要通过配置闸门——否则整个订阅会变成 no-outbounds。
+func TestFixedPortWithDisabledHoppingPassesConfigGate(t *testing.T) {
+	in := `{"outbounds":[
+	  {"type":"hysteria2","tag":"hy2-empty","server":"192.0.2.2","server_port":443,"server_ports":[],"password":"p","tls":{"enabled":true,"server_name":"h.example.net"}},
+	  {"type":"hysteria2","tag":"hy2-null","server":"192.0.2.3","server_port":443,"server_ports":null,"password":"p","tls":{"enabled":true,"server_name":"h.example.net"}}
+	]}`
+	p, w, err := subscription.Parse([]byte(in))
+	if err != nil {
+		t.Fatalf("Parse: %v（警告 %v）", err, w)
+	}
+	var kept []string
+	for _, o := range p.Outbounds {
+		kept = append(kept, o["tag"].(string))
+	}
+	if got := strings.Join(kept, ","); got != "hy2-empty,hy2-null" {
+		t.Fatalf("保留的节点 = %s（警告 %v）", got, w)
+	}
+	o := Option("O1")
+	o.EnableTun = false
+	raw, _, err := build.Build(toBuildProfile(p), o, build.AndroidEnv())
+	if err != nil {
+		t.Fatalf("Build: %v", err)
+	}
+	adapted, _, err := HostAdapt(raw, AdaptOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := CheckConfig(adapted); err != nil {
+		t.Fatalf("固定端口 + 空 server_ports 没有通过配置闸门: %v", err)
+	}
+}

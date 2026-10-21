@@ -76,6 +76,29 @@ func TestJSONBrokenNodesAreSkippedValidOnesKept(t *testing.T) {
 	}
 }
 
+// 端口跳跃未启用（null / 空列表）等同没带 server_ports：回落到 server_port，节点不能被丢掉；
+// 只有非空合法列表才能代替缺失的 server_port。
+func TestJSONEmptyServerPortsFallsBackToServerPort(t *testing.T) {
+	in := `{"outbounds":[
+	  {"type":"hysteria2","tag":"hy2-empty","server":"192.0.2.1","server_port":443,"server_ports":[],"password":"p"},
+	  {"type":"hysteria2","tag":"hy2-null","server":"192.0.2.2","server_port":443,"server_ports":null,"password":"p"},
+	  {"type":"hysteria","tag":"hy1-empty","server":"192.0.2.3","server_port":443,"server_ports":[],"auth_str":"p"},
+	  {"type":"hysteria2","tag":"empty-no-port","server":"192.0.2.4","server_ports":[],"password":"p"},
+	  {"type":"hysteria2","tag":"null-no-port","server":"192.0.2.5","server_ports":null,"password":"p"},
+	  {"type":"hysteria2","tag":"hop-only","server":"192.0.2.6","server_ports":["20000:30000"],"password":"p"},
+	  {"type":"trojan","tag":"trojan-empty","server":"192.0.2.7","server_port":443,"server_ports":[],"password":"p"}
+	]}`
+	p, w := mustParse(t, []byte(in))
+	if got := strings.Join(tags(p.Outbounds), ","); got != "hy2-empty,hy2-null,hy1-empty,hop-only" {
+		t.Fatalf("保留的节点 = %s（警告 %v）", got, w)
+	}
+	for _, idx := range []string{"outbounds[3]: missing server_port", "outbounds[4]: missing server_port"} {
+		if !strings.Contains(strings.Join(w, "\n"), idx) {
+			t.Errorf("没有 server_port 又没启用跳跃的节点应被跳过（%s）: %v", idx, w)
+		}
+	}
+}
+
 func TestJSONAllNodesBrokenIsNoOutbounds(t *testing.T) {
 	for _, in := range []string{
 		`[{}]`,

@@ -96,7 +96,8 @@ func supportsServerPorts(typ string) bool {
 
 // checkServer：server 必须是非空字符串；server_port 必须是 1–65535 的整数；
 // server_ports 只允许 hysteria / hysteria2，格式与内核一致（每项 "起:止"，止可省略表示到 65535），
-// 此时可以不带 server_port。
+// 此时可以不带 server_port。支持该字段的协议里，null 与空列表等同「没启用端口跳跃」：按没带处理，
+// 回落到 server_port（内核也是这样解码的）；只有非空且合法的列表才能代替缺失的 server_port。
 func checkServer(typ string, m map[string]any) string {
 	if s, ok := m["server"].(string); !ok || strings.TrimSpace(s) == "" {
 		return "missing or invalid server"
@@ -106,7 +107,9 @@ func checkServer(typ string, m map[string]any) string {
 		if !supportsServerPorts(typ) {
 			return fmt.Sprintf("server_ports is not supported by %s", typ)
 		}
-		if reason := checkServerPorts(ports); reason != "" {
+		if hopDisabled(ports) {
+			hasPorts = false
+		} else if reason := checkServerPorts(ports); reason != "" {
 			return reason
 		}
 	}
@@ -121,6 +124,15 @@ func checkServer(typ string, m map[string]any) string {
 		return "server_port is out of range"
 	}
 	return ""
+}
+
+// hopDisabled：null 或空列表表示端口跳跃未启用。
+func hopDisabled(v any) bool {
+	if v == nil {
+		return true
+	}
+	l, ok := v.([]any)
+	return ok && len(l) == 0
 }
 
 // checkServerPorts 校验 server_ports：字符串或字符串列表，每项形如 "20000:30000" / "20000:"。

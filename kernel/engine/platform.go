@@ -64,11 +64,13 @@ type platformAdapter struct {
 	// 所以留给 Engine 的「stop-interface-monitor」清理步骤取走并上报。
 	stopErr error
 
-	// hostMu 串行化「宿主的停止」与「新一轮启动的开始」：迟到的收尾在它之内完成「复核代次 + 调宿主停止」，
+	// hostSem 串行化「宿主的停止」与「新一轮启动的开始」：迟到的收尾在它之内完成「复核代次 + 调宿主停止」，
 	// 新一轮启动要在它之内加代次。这样 A 一旦通过了代次检查，B 就只能等 A 的宿主停止做完才开始——
 	// 不会出现 A 通过检查、B 启动成功、A 才停掉 B 的窗口。
-	hostMu sync.Mutex
-	// onHostBarrier 仅供测试：启动因 hostMu 被占用而要排队时回调一次。
+	// 它是容量 1 的信号量而不是 sync.Mutex：排队的启动要能被取消打断（见 acquireHostCancelable），
+	// 否则 A 的宿主停止卡住时，B 和等着 B 的 Engine.Stop 都会跟着卡死。
+	hostSem chan struct{}
+	// onHostBarrier 仅供测试：启动因 hostSem 被占用而要排队时回调一次。
 	onHostBarrier func()
 }
 
@@ -83,8 +85,32 @@ const (
 var _ libbox.PlatformInterface = (*platformAdapter)(nil)
 
 func newPlatformAdapter(host Platform) *platformAdapter {
-	return &platformAdapter{host: host}
+	return &platformAdapter{host: host, hostSem: make(chan struct{}, 1)}
 }
+
+// acquireHost 无条件等到槽位（清理路径：撤销与停止必须做完，不能被放弃）。
+func (p *platformAdapter) acquireHost() { p.hostSem <- struct{}{} }
+
+// acquireHostCancelable 取得宿主串行化槽位；cancel 先到则放弃并返回 false（此时没有持有槽位）。
+// 槽位空闲时一定成功，即使 cancel 已经关闭——是否取消由调用方在拿到槽位后的调用里判断。
+func (p *platformAdapter) acquireHostCancelable(cancel <-chan struct{}) bool {
+	select {
+	case p.hostSem <- struct{}{}:
+		return true
+	default:
+	}
+	if p.onHostBarrier != nil {
+		p.onHostBarrier()
+	}
+	select {
+	case p.hostSem <- struct{}{}:
+		return true
+	case <-cancel:
+		return false
+	}
+}
+
+func (p *platformAdapter) releaseHost() { <-p.hostSem }
 
 // setCancel 在每次 Start 开始时换上新一代的取消信号。
 func (p *platformAdapter) setCancel(ch <-chan struct{}) {
@@ -179,18 +205,16 @@ func (b listenerBridge) Update(name string, index int32, expensive, constrained 
 }
 
 func (p *platformAdapter) StartDefaultInterfaceMonitor(listener libbox.InterfaceUpdateListener) error {
-	if !p.hostMu.TryLock() {
-		if p.onHostBarrier != nil {
-			p.onHostBarrier()
-		}
-		p.hostMu.Lock()
+	// 排队等 A 的宿主停止时可以被取消打断：B 返回 ErrCanceled，状态与代次都还没动。
+	if !p.acquireHostCancelable(p.cancelCh()) {
+		return ErrCanceled
 	}
 	p.mu.Lock()
 	p.monitorGen++
 	gen := p.monitorGen
 	p.monitor = monitorStarting
 	p.mu.Unlock()
-	p.hostMu.Unlock()
+	p.releaseHost()
 	_, err := callCancelable(p, func() (struct{}, error) {
 		return struct{}{}, p.host.StartInterfaceMonitor(listenerBridge{listener})
 	}, func(_ struct{}, startErr error) {
@@ -217,9 +241,9 @@ func (p *platformAdapter) StartDefaultInterfaceMonitor(listener libbox.Interface
 // 旧代次迟到返回时，监视可能已经被新一代接管（B 启动成功后 A 才返回），此时把状态置回 idle、
 // 再调宿主的停止，就把 B 的监视停掉了。
 func (p *platformAdapter) finishLateMonitor(gen uint64, startErr error) {
-	// 复核代次与调宿主停止放在同一个 hostMu 临界区里：新一轮启动加代次要先拿这把锁。
-	p.hostMu.Lock()
-	defer p.hostMu.Unlock()
+	// 复核代次与调宿主停止放在同一个 hostSem 临界区里：新一轮启动加代次要先拿这把锁。
+	p.acquireHost()
+	defer p.releaseHost()
 	p.mu.Lock()
 	if p.monitorGen != gen {
 		p.mu.Unlock()
@@ -249,9 +273,9 @@ func (p *platformAdapter) stopMonitor() error {
 	if state != monitorStarted {
 		return nil
 	}
-	p.hostMu.Lock()
+	p.acquireHost()
 	err := p.host.StopInterfaceMonitor()
-	p.hostMu.Unlock()
+	p.releaseHost()
 	if err != nil {
 		p.mu.Lock()
 		p.stopErr = errors.Join(p.stopErr, err)

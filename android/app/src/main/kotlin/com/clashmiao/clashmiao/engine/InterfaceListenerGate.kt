@@ -32,17 +32,39 @@ internal class InterfaceListenerGate<L : Any>(private val drainTimeoutMillis: Lo
     /** 当前代次；调用方在开始一轮耗时的准备工作前取一次，之后 [dispatch] 带上它，代次变了就丢弃。 */
     fun generation(): Long = lock.withLock { generation }
 
-    /** 换上 [listener]（null = 撤下）。返回时，所有旧监听的在途回调都已结束（或超时，见 [drainTimeoutMillis]）。 */
-    fun attach(listener: L?) {
+    /** [attach] 的结果。 */
+    enum class AttachResult {
+        /** 旧回调已排空，新监听（或撤下）已生效。 */
+        Installed,
+
+        /** 等待期间有更新的一次 [attach] 接管了：这一次的监听没有被发布，由更新的那次负责。 */
+        Superseded,
+
+        /** 兜底时限内旧回调仍没返回：**没有**安装新监听（当前无监听），调用方必须当作失败处理。 */
+        DrainTimeout,
+    }
+
+    /**
+     * 换上 [listener]（null = 撤下）。返回 [AttachResult.Installed] 时，所有旧监听的在途回调都已结束，新监听已生效。
+     *
+     * 等待期间不占锁，所以可能有并发的 [attach]：每次调用取自己的代次，发布前复核仍是最新一代，
+     * 否则（[AttachResult.Superseded]）不发布——较早的调用不能覆盖较新的监听。
+     * 排空超时（[drainTimeoutMillis]）时不装新监听（[AttachResult.DrainTimeout]）：装上去会让还没返回的旧回调与新一轮交错。
+     */
+    fun attach(listener: L?): AttachResult {
         lock.withLock {
-            generation++
+            val mine = ++generation
             current = null
-            val mine = depth.get()!!
+            drained.signalAll() // 叫醒更早的 attach：它们已被取代
+            val self = depth.get()!!
             var nanos = TimeUnit.MILLISECONDS.toNanos(drainTimeoutMillis)
-            while (inFlight > mine && nanos > 0) {
+            while (inFlight > self && nanos > 0 && generation == mine) {
                 nanos = drained.awaitNanos(nanos)
             }
+            if (generation != mine) return AttachResult.Superseded
+            if (inFlight > self) return AttachResult.DrainTimeout
             current = listener
+            return AttachResult.Installed
         }
     }
 
@@ -63,7 +85,7 @@ internal class InterfaceListenerGate<L : Any>(private val drainTimeoutMillis: Lo
             depth.set(depth.get()!! - 1)
             lock.withLock {
                 inFlight--
-                if (inFlight == 0) drained.signalAll()
+                drained.signalAll() // 回调里 attach 的线程等的是「只剩自己」，不只是 0
             }
         }
         return true

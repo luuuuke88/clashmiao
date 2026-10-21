@@ -46,8 +46,9 @@ class InterfaceListenerGateTest {
                 entered.countDown()
                 release.await(30, TimeUnit.SECONDS)
                 l.calls += "end"
+                // 在回调末尾、仍计入在途数量时记录：dispatch 返回之后才记会让「换监听返回」抢在前面，是测试自己的调度窗口。
+                oldExit.set(seq.incrementAndGet())
             }
-            oldExit.set(seq.incrementAndGet())
         }
         assertTrue(entered.await(30, TimeUnit.SECONDS))
 
@@ -70,6 +71,73 @@ class InterfaceListenerGateTest {
         assertTrue(gate.dispatch { it.calls += "x" })
         assertEquals(listOf("x"), new.calls.toList())
         assertEquals(listOf("start", "end"), old.calls.toList())
+    }
+
+    @Test
+    fun `并发替换 较早的 attach 不能覆盖较新的监听`() {
+        val gate = InterfaceListenerGate<Listener>()
+        val old = Listener("old")
+        val b = Listener("b")
+        val c = Listener("c")
+        gate.attach(old)
+
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val inFlight = pool.submit {
+            gate.dispatch { _ ->
+                entered.countDown()
+                release.await(30, TimeUnit.SECONDS)
+            }
+        }
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+
+        val gen0 = gate.generation()
+        val resultB = pool.submit<InterfaceListenerGate.AttachResult> { gate.attach(b) }
+        spinUntil("B to start waiting") { gate.generation() != gen0 }
+        val genB = gate.generation()
+        val resultC = pool.submit<InterfaceListenerGate.AttachResult> { gate.attach(c) }
+        spinUntil("C to supersede B") { gate.generation() != genB }
+
+        // B 被取代：不等旧回调就返回，且不发布 b。
+        assertEquals(InterfaceListenerGate.AttachResult.Superseded, resultB.get(30, TimeUnit.SECONDS))
+        assertFalse(resultC.isDone) // C 仍在等旧回调排空
+        release.countDown()
+        inFlight.get(30, TimeUnit.SECONDS)
+        assertEquals(InterfaceListenerGate.AttachResult.Installed, resultC.get(30, TimeUnit.SECONDS))
+
+        assertTrue(gate.dispatch { it.calls += "x" })
+        assertEquals(listOf("x"), c.calls.toList())
+        assertTrue(b.calls.isEmpty() && old.calls.isEmpty())
+    }
+
+    @Test
+    fun `排空超时 明确失败 不安装新监听 且之后还能恢复`() {
+        val gate = InterfaceListenerGate<Listener>(drainTimeoutMillis = 100)
+        val old = Listener("old")
+        val new = Listener("new")
+        gate.attach(old)
+
+        val entered = CountDownLatch(1)
+        val release = CountDownLatch(1)
+        val inFlight = pool.submit {
+            gate.dispatch { _ ->
+                entered.countDown()
+                release.await(30, TimeUnit.SECONDS)
+            }
+        }
+        assertTrue(entered.await(30, TimeUnit.SECONDS))
+
+        assertEquals(InterfaceListenerGate.AttachResult.DrainTimeout, gate.attach(new))
+        assertFalse("超时不能把新监听装上去", gate.hasListener())
+        assertFalse(gate.dispatch { it.calls += "x" })
+        assertTrue(new.calls.isEmpty())
+
+        release.countDown()
+        inFlight.get(30, TimeUnit.SECONDS)
+        // 旧回调终于返回之后，重新 attach 正常生效。
+        assertEquals(InterfaceListenerGate.AttachResult.Installed, gate.attach(new))
+        assertTrue(gate.dispatch { it.calls += "y" })
+        assertEquals(listOf("y"), new.calls.toList())
     }
 
     @Test

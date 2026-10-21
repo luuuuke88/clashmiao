@@ -103,7 +103,7 @@ object NetworkWatcher {
         when (listenerGate.attach(listener)) {
             InterfaceListenerGate.AttachResult.Installed ->
                 if (listener != null) emitInterfaceUpdate(currentNetwork)
-            // 有更新的一次 attach 接管了，监听归它管。
+            // 有更新的一次 attach 接管了，监听归它管；但旧回调在返回前已经排空，所以撤下仍然是成功的。
             InterfaceListenerGate.AttachResult.Superseded -> Unit
             // 旧回调迟迟不返回：不装新监听，让这次启动 / 停止明确失败，而不是与旧回调交错。
             InterfaceListenerGate.AttachResult.DrainTimeout ->

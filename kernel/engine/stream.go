@@ -68,27 +68,48 @@ type Subscription struct {
 	client *libbox.CommandClient
 
 	closed   atomic.Bool
-	done     chan struct{} // 流 goroutine 全部结束（每条流结束时都会调一次 Disconnected）
+	done     chan struct{} // 流 goroutine 全部结束（每条流结束时都会调一次 Disconnected）；Connect 失败时也会关闭
+	doneOnce sync.Once
 	pending  atomic.Int32
-	once     sync.Once
-	closeErr error
+	// connectDone 在 Connect 返回（成败都算）时关闭：Close 要等它，才知道有没有流要断开。
+	// 注册进 Engine.subs 与 Connect 之间有一个窗口，Stop 可以在窗口里调 Close；没有这个同步，
+	// Close 先 Disconnect、Connect 随后才建起连接，流就泄漏了（Close 还白等 30 s）。
+	connectDone chan struct{}
+	connectErr  error
+	once        sync.Once
+	closeErr    error
 	// closeStep 只给测试注入失败用。
 	closeStep func() error
 }
 
 var errSubscriptionDrain = errors.New("subscription goroutines did not exit in time")
 
-// Close 断开并等流 goroutine 退出（事件同步，30 s 兜底）。
+// finishDone 关闭 done（幂等：正常结束与 Connect 失败的收尾都可能走到）。
+func (s *Subscription) finishDone() { s.doneOnce.Do(func() { close(s.done) }) }
+
+// Close 断开并等流 goroutine 退出（事件同步，30 s 兜底）。Connect 还在进行时先等它返回，再决定断开什么。
 func (s *Subscription) Close() error {
 	s.once.Do(func() {
 		s.closed.Store(true)
 		var errs []error
-		step := func() error { return s.client.Disconnect() }
-		if s.closeStep != nil {
-			step = s.closeStep
+		if s.connectDone != nil {
+			select {
+			case <-s.connectDone:
+			case <-time.After(30 * time.Second):
+				errs = append(errs, errSubscriptionDrain)
+			}
 		}
-		if err := step(); err != nil {
-			errs = append(errs, err)
+		if s.connectErr != nil {
+			// 没有连上：没有流 goroutine，不会再有 Disconnected。
+			s.finishDone()
+		} else {
+			step := func() error { return s.client.Disconnect() }
+			if s.closeStep != nil {
+				step = s.closeStep
+			}
+			if err := step(); err != nil {
+				errs = append(errs, err)
+			}
 		}
 		select {
 		case <-s.done:
@@ -124,7 +145,7 @@ func (c *clientHandler) Connected() {}
 func (c *clientHandler) Disconnected(message string) {
 	s := c.sub
 	if s.pending.Add(-1) == 0 {
-		close(s.done)
+		s.finishDone()
 	}
 	if s.closed.Load() {
 		return
@@ -172,7 +193,7 @@ func (e *Engine) subscribe(command int32, intervalNanos int64, h *clientHandler)
 	}
 	e.mu.Unlock()
 
-	sub := &Subscription{e: e, done: make(chan struct{})}
+	sub := &Subscription{e: e, done: make(chan struct{}), connectDone: make(chan struct{})}
 	sub.pending.Store(1)
 	h.sub = sub
 	opts := &libbox.CommandClientOptions{StatusInterval: intervalNanos}
@@ -183,12 +204,32 @@ func (e *Engine) subscribe(command int32, intervalNanos int64, h *clientHandler)
 	e.subs[sub] = struct{}{}
 	e.mu.Unlock()
 
-	if err := sub.client.Connect(); err != nil {
-		// 连不上：没有流 goroutine，直接收尾（Disconnected 不会被调到）。
+	e.mu.Lock()
+	beforeConnect, connect := e.hooks.beforeConnect, e.hooks.connect
+	e.mu.Unlock()
+	if beforeConnect != nil {
+		beforeConnect(sub)
+	}
+	var err error
+	if connect != nil {
+		err = connect(sub)
+	} else {
+		err = sub.client.Connect()
+	}
+	sub.connectErr = err
+	close(sub.connectDone)
+	if err != nil {
+		// 连不上：没有流 goroutine（Disconnected 不会被调到），收尾要自己把 done 关上。
 		sub.closed.Store(true)
+		sub.finishDone()
 		_ = sub.client.Disconnect()
 		e.removeSub(sub)
 		return nil, err
+	}
+	if sub.closed.Load() {
+		// Connect 期间 Stop / Close 已经把它标成关闭：断开与等待由 Close 完成，调用方拿不到这条流。
+		_ = sub.Close()
+		return nil, os.ErrClosed
 	}
 	return sub, nil
 }

@@ -150,3 +150,49 @@ func TestStartCancelledWhileOpenTunBlocks(t *testing.T) {
 		t.Fatalf("peer read = %v, want EOF (a leaked copy of the tun fd is still open)", err)
 	}
 }
+
+// 迟到的收尾只认自己那一代：A 的启动被取消、Stop 返回，B 随后启动成功，A 的宿主调用这时才返回——
+// A 的收尾不能把 B 的监视置回 idle、更不能调宿主的停止（那会停掉 B 正在用的监视）。
+func TestLateMonitorStartDoesNotStopNewerMonitor(t *testing.T) {
+	host := newFakeHost()
+	entered, release := make(chan struct{}, 1), make(chan struct{})
+	host.setMonitorBlock(entered, release)
+	e, _ := newTestEngine(t, host)
+	cfg := cancelConfig(t, freePort(t))
+
+	startErr := make(chan error, 1)
+	go func() { startErr <- e.Start(cfg) }()
+	recv(t, entered, "A: interface monitor start")
+	stopErr := make(chan error, 1)
+	go func() { stopErr <- e.Stop() }()
+	if err := recvErr(t, startErr, "A: Start to return"); !errors.Is(err, ErrCanceled) {
+		t.Fatalf("A: Start error = %v, want ErrCanceled", err)
+	}
+	if err := recvErr(t, stopErr, "Stop to return"); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+
+	// B：宿主这次不再阻塞，启动成功并接管监视。A 的宿主调用仍卡在 release 上。
+	host.setMonitorBlock(nil, nil)
+	host.defaultReported = make(chan struct{}, 4)
+	if err := e.Start(cfg); err != nil {
+		t.Fatalf("B: Start: %v", err)
+	}
+	recv(t, host.defaultReported, "B: default interface report")
+
+	close(release) // A 现在才返回
+	waitUntil(t, "A's late cleanup to finish", func() bool {
+		return goroutineCount("kernel/engine.callCancelable") == 0
+	})
+	if got := host.monitorStops.Load(); got != 0 {
+		t.Fatalf("A 迟到的收尾停掉了 B 的监视：StopInterfaceMonitor 调用 %d 次，应为 0", got)
+	}
+
+	// B 的监视仍归引擎管：Stop 正好停一次。
+	if err := e.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if got := host.monitorStops.Load(); got != 1 {
+		t.Fatalf("Stop 后 StopInterfaceMonitor 调用 %d 次，应为 1", got)
+	}
+}

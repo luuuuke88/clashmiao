@@ -1035,6 +1035,28 @@ void main() {
       expect(rig.failed, isEmpty);
     });
 
+    _fake('开测后还没收到任何分组事件就清空 -> 返回 0 -> 旧调用报错：不判失败', (rig, async) {
+      final kernel = Completer<void>();
+      rig.urlTestResult = () => kernel.future;
+      rig.groups = [
+        _group({'x': 120, 'y': 0}),
+      ];
+      rig.coordinator.onConnectionChanged(true);
+      rig.elapse(const Duration(seconds: 2));
+      expect(rig.coordinator.state.isTesting, isTrue);
+      // 第一次分组事件就是清空：开测时的基线也必须随之作废。
+      rig.push(const []);
+      rig.push([
+        _group({'x': 0, 'y': 0}),
+      ]);
+      expect(rig.coordinator.state.pendingNodes['proxy'], {'x', 'y'});
+      kernel.completeError(StateError('kernel down'));
+      async.flushMicrotasks();
+      expect(rig.coordinator.state.isTesting, isFalse);
+      expect(rig.coordinator.state.timedOutNodes, isEmpty);
+      expect(rig.failed, isEmpty);
+    });
+
     _fake('在途 -> 清空 -> 返回有效值：确认为新结果', (rig, async) {
       clearedMidRound(rig, async);
       rig.push([

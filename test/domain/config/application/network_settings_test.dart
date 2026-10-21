@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -40,6 +41,19 @@ void main() {
   });
 
   group('NetworkSettings WARP 凭证字段', () {
+    test('iOS 不提供 WARP：之前存下的启用开关按关闭读出', () async {
+      SharedPreferences.setMockInitialValues({
+        'clashmiao_warp_consent_given': true,
+        'clashmiao_enable_warp': true,
+      });
+      final prefs = await SharedPreferences.getInstance();
+      expect(NetworkSettingsNotifier(prefs).state.enableWarp, isTrue);
+
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      expect(NetworkSettingsNotifier(prefs).state.enableWarp, isFalse);
+    });
+
     test('默认值均为空字符串', () {
       const settings = NetworkSettings();
 

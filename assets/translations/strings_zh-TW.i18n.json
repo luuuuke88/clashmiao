@@ -304,7 +304,7 @@
       "sectionTitle": "一般",
       "locale": "語言",
       "region": "地區",
-      "regionMsg": "幫助設定預設選項以繞過國內地址",
+      "regionMsg": "依所在地區設定預設規則，本地網站直接連線",
       "regions": {
         "ir": "伊朗 (ir)",
         "cn": "中國 (cn)",

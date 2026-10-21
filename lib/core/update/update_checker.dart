@@ -6,7 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// 见 `core/env/build_config.dart`：所有编译期参数集中声明在那里。
 const _repoSlug = githubRepoSlug;
-const _disabled = bool.fromEnvironment('CLASHMIAO_DISABLE_UPDATE_CHECK');
+const _disabled = updateCheckDisabled;
 const _checkIntervalMs = 24 * 60 * 60 * 1000;
 const _lastCheckKey = 'update_last_check_ms';
 const _latestTagKey = 'update_latest_tag';

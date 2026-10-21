@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
@@ -39,6 +40,8 @@ Future<void> runStartupUpdateCheck(
   Future<String?> Function(SharedPreferences prefs, {Dio? dio, int mixedPort})?
   checkOnce,
 }) async {
+  // iOS 的更新由 App Store 负责：不检查，也就不会弹引导去站外下载的对话框。
+  if (updatesManagedByStore) return;
   try {
     if (initialDelay > Duration.zero) {
       await Future<void>.delayed(initialDelay);

@@ -763,7 +763,7 @@ class Translations$settings$general$zh_TW extends Translations$settings$general$
 	@override String get sectionTitle => '一般';
 	@override String get locale => '語言';
 	@override String get region => '地區';
-	@override String get regionMsg => '幫助設定預設選項以繞過國內地址';
+	@override String get regionMsg => '依所在地區設定預設規則，本地網站直接連線';
 	@override late final Translations$settings$general$regions$zh_TW regions = Translations$settings$general$regions$zh_TW.internal(_root);
 	@override String get themeMode => '主題模式';
 	@override late final Translations$settings$general$themeModes$zh_TW themeModes = Translations$settings$general$themeModes$zh_TW.internal(_root);
@@ -1373,7 +1373,7 @@ extension on TranslationsZhTw {
 			'settings.general.sectionTitle' => '一般',
 			'settings.general.locale' => '語言',
 			'settings.general.region' => '地區',
-			'settings.general.regionMsg' => '幫助設定預設選項以繞過國內地址',
+			'settings.general.regionMsg' => '依所在地區設定預設規則，本地網站直接連線',
 			'settings.general.regions.ir' => '伊朗 (ir)',
 			'settings.general.regions.cn' => '中國 (cn)',
 			'settings.general.regions.ru' => '俄羅斯 (ru)',

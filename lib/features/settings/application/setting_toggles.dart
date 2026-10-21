@@ -1,4 +1,6 @@
+import 'package:clashmiao/core/env/build_config.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -27,3 +29,9 @@ class BoolPreferenceNotifier extends StateNotifier<bool> {
     await _prefs.setBool(_key, value);
   }
 }
+
+/// 这个构建有没有编进崩溃 / 性能上报（见 [hasCrashReporting]）。没有时设置页
+/// 不显示「数据分析」开关。做成 provider 是为了测试能覆盖。
+final crashReportingAvailableProvider = Provider<bool>(
+  (ref) => hasCrashReporting,
+);

@@ -1480,8 +1480,8 @@ class Translations$settings$general$en {
 	/// en: 'Region'
 	String get region => 'Region';
 
-	/// en: 'Helps set default options to bypass domestic addresses'
-	String get regionMsg => 'Helps set default options to bypass domestic addresses';
+	/// en: 'Sets default rules for your region so local sites connect directly'
+	String get regionMsg => 'Sets default rules for your region so local sites connect directly';
 
 	late final Translations$settings$general$regions$en regions = Translations$settings$general$regions$en.internal(_root);
 
@@ -2366,7 +2366,7 @@ extension on Translations {
 			'settings.general.sectionTitle' => 'General',
 			'settings.general.locale' => 'Language',
 			'settings.general.region' => 'Region',
-			'settings.general.regionMsg' => 'Helps set default options to bypass domestic addresses',
+			'settings.general.regionMsg' => 'Sets default rules for your region so local sites connect directly',
 			'settings.general.regions.ir' => 'Iran (ir)',
 			'settings.general.regions.cn' => 'China (cn)',
 			'settings.general.regions.ru' => 'Russia (ru)',

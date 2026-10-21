@@ -1,3 +1,4 @@
+import 'package:clashmiao/domain/config/application/warp_availability.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
@@ -238,18 +239,20 @@ class _AddProfileModalState extends ConsumerState<_AddProfileModal> {
                                 ),
                                 child: Column(
                                   children: [
-                                    _LongButton(
-                                      key: const ValueKey('add_warp_button'),
-                                      label: t.profile.add.addWarp,
-                                      description:
-                                          t.profile.add.warpDescription,
-                                      icon: FluentIcons.shield_add_24_regular,
-                                      color: Colors.orange.shade400,
-                                      onTap: _showWarpConsent,
-                                    ),
+                                    if (isWarpAvailable)
+                                      _LongButton(
+                                        key: const ValueKey('add_warp_button'),
+                                        label: t.profile.add.addWarp,
+                                        description:
+                                            t.profile.add.warpDescription,
+                                        icon: FluentIcons.shield_add_24_regular,
+                                        color: Colors.orange.shade400,
+                                        onTap: _showWarpConsent,
+                                      ),
                                     if (Platform.isAndroid ||
                                         Platform.isIOS) ...[
-                                      const SizedBox(height: 12),
+                                      if (isWarpAvailable)
+                                        const SizedBox(height: 12),
                                       _LongButton(
                                         key: const ValueKey(
                                           'add_manually_button',

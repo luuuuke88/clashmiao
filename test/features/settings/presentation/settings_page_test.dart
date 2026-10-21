@@ -5,6 +5,7 @@ import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/settings/application/setting_toggles.dart';
 import 'package:clashmiao/features/settings/presentation/per_app_proxy_page.dart';
 import 'package:clashmiao/features/settings/presentation/settings_page.dart';
 import 'package:clashmiao/shared/components/analytics_toggle_tile.dart';
@@ -26,6 +27,7 @@ Future<Widget> _host({
   bool? debugIsIOS,
   String locale = 'zhCn',
   BoxService? boxService,
+  bool crashReporting = true,
 }) async {
   SharedPreferences.setMockInitialValues({'locale': locale});
   final prefs = await SharedPreferences.getInstance();
@@ -35,6 +37,7 @@ Future<Widget> _host({
       boxServiceProvider.overrideWithValue(
         boxService ?? const StubBoxService(),
       ),
+      crashReportingAvailableProvider.overrideWithValue(crashReporting),
     ],
   );
   await container.read(sharedPreferencesProvider.future);
@@ -128,6 +131,19 @@ void main() {
   });
 
   group('SettingsPage 分组与结构', () {
+    testWidgets('构建里没编进崩溃上报时不显示「隐私」组和「启用分析」', (tester) async {
+      _useTallView(tester);
+      await tester.pumpWidget(
+        await _host(debugIsAndroid: true, crashReporting: false),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('通用'), findsOneWidget);
+      expect(find.text('隐私'), findsNothing);
+      expect(find.text('启用分析'), findsNothing);
+      expect(find.byType(AnalyticsToggleTile), findsNothing);
+    });
+
     testWidgets('渲染 通用 / 连接 / 隐私 三组标题，且按此顺序自上而下', (tester) async {
       _useTallView(tester);
       await tester.pumpWidget(await _host(debugIsAndroid: true));

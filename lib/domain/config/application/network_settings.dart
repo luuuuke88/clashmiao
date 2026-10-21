@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:clashmiao/domain/config/application/warp_availability.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
@@ -573,7 +574,8 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
       enableTlsMixedSniCase: _readBool(p, _kEnableTlsMixedSniCase) ?? false,
       tlsPaddingSize: _readString(p, _kTlsPaddingSize) ?? '100-200',
       muxPadding: _readBool(p, _kMuxPadding) ?? false,
-      enableWarp: _readBool(p, _kEnableWarp) ?? false,
+      // 平台不提供 WARP 时，之前存下的开关也不生效。
+      enableWarp: isWarpAvailable && (_readBool(p, _kEnableWarp) ?? false),
       warpConsentGiven: _readBool(p, _kWarpConsentGiven) ?? false,
       warpDetourMode: _stringChoice(
         p,

@@ -87,7 +87,7 @@ TUN 隧道的必要授权。
 - **UI**: Flutter 3.41+
 - **状态**: Riverpod (hooks_riverpod)
 - **路由**: go_router
-- **代理核心**: sing-box（通过 [libcore](https://github.com/SagerNet/sing-box) gomobile/CGo 绑定）
+- **代理核心**: [sing-box](https://github.com/SagerNet/sing-box)。Android 用仓库内的 Go 模块 `kernel/`（官方 sing-box 1.14.3 + 自有门面，gomobile 绑定）；桌面与 iOS 暂用预编译库
 
 架构细节见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
@@ -96,13 +96,13 @@ TUN 隧道的必要授权。
 ### 前置要求
 
 - Flutter 3.41+
-- Go 1.21+（重新编译 sing-box 核心时需要）
+- Go 1.25+（改 `kernel/` 或重新编译 sing-box 核心时需要；Android 发布构建由脚本自带固定版本的 Go）
 - Xcode 15+（iOS / macOS）
 - Android NDK + SDK
 
 ### sing-box 核心
 
-预编译动态库通过 GitHub Release（tag `libcore-v<sing-box-version>`）分发。fresh clone 后跑：
+预编译库通过 GitHub Release 分发：Android 的 aar 用 tag `libcore-v1.14.3-r1`（自有内核模块构建），桌面与 iOS 暂用 `libcore-v1.8.9-16k`。fresh clone 后跑：
 
 ```bash
 bin/fetch-libcore.sh          # 默认拉 Android + 当前 host 平台的 lib
@@ -117,9 +117,20 @@ bin/fetch-libcore.sh ios      # 单独拉 iOS xcframework
 - `windows/libs/libcore.dll`
 - `linux/libs/libcore.so`
 
-CI 同样走这个脚本。升级 sing-box 版本时另起一个 `libcore-v*` tag 上传新二进制。
+CI 同样走这个脚本（`ANDROID_LIBCORE_TAG` 与 `LIBCORE_TAG` 分别指定 Android 与其它平台的 tag）。升级 sing-box 版本时另起一个 tag 上传新二进制。
 
-#### 从源码重编 Android 内核（16 KB 页对齐）
+#### 构建与验证 Android 内核（`kernel/`）
+
+```bash
+tools/kernel/gotest.sh              # Go 侧唯一合法的验证入口（别用裸 go test）
+tools/kernel/build-android.sh       # 真实 gomobile 构建：产物 build/kernel/libcore.aar（+ .sha256）
+```
+
+构建参数（build tags、链接参数）只在 `tools/kernel/env.sh` 一处定义。构建脚本固定 Go / NDK / gomobile 版本，校验 16 KB 页对齐、proguard 规则与 Java API 快照（`kernel/api/java-api.txt`）。分层、门面接口与升级流程见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 的「内核模块 `kernel/`」。
+
+#### 重编旧 Android 内核（仅用于回滚）
+
+以下是旧内核（sing-box 1.8.9）的可复现重编流程，保留作回滚工具；日常开发用上面的 `tools/kernel/`。
 
 Android 15 起出现 16 KB 内存页设备，Google Play 也要求所有原生库支持 16 KB 页。
 内核库 `libbox.so` 必须让所有 LOAD 段按 16 KB（`2**14`）对齐，否则在这类设备上加载失败。

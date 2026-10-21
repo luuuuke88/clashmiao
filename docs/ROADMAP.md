@@ -86,7 +86,7 @@ flutter build linux --release
 
 ### libcore 二进制分发 ✅
 
-5 个平台的 libcore 走 GitHub Release tag（当前为 `libcore-v1.8.9-16k`：内核 sing-box 1.8.9 分支，Android aar 按 16 KB 页对齐重编），`bin/fetch-libcore.sh` 统一拉取。详见 README + ARCHITECTURE。
+libcore 走 GitHub Release tag，`bin/fetch-libcore.sh` 统一拉取，现有两个 tag：Android 用 `ANDROID_LIBCORE_TAG`（当前 `libcore-v1.14.3-r1`：官方 sing-box 1.14.3 内核，aar 按 16 KB 页对齐），其余平台用 `LIBCORE_TAG`（当前 `libcore-v1.8.9-16k`，尚未升级）。详见 README + ARCHITECTURE。
 
 ### CI/CD ✅
 

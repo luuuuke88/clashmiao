@@ -575,14 +575,14 @@ void main() {
         expect(find.text('允许自启动'), findsNothing);
       });
 
-      testWidgets('查询返回前显示占位符', (tester) async {
+      testWidgets('查询返回前不渲染（非 MIUI 机型不能先闪出一行再消失）', (tester) async {
         _useTallView(tester);
         miuiAutoStart = 'denied';
         final gate = miuiGate = Completer<void>();
         await tester.pumpWidget(await _host(debugIsAndroid: true));
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(find.text('允许自启动'), findsOneWidget);
+        expect(find.text('允许自启动'), findsNothing);
         expect(find.text('未开启'), findsNothing);
 
         gate.complete();

@@ -2062,9 +2062,6 @@ class Translations$settings$general$autoStartPermissionStatus$en {
 	/// en: 'Off'
 	String get denied => 'Off';
 
-	/// en: '…'
-	String get pending => '…';
-
 	/// en: 'Unknown'
 	String get unknown => 'Unknown';
 }
@@ -2395,7 +2392,6 @@ extension on Translations {
 			'settings.general.autoStartPermissionMsg' => 'When enabled, the connection resumes automatically after the phone restarts or the app updates',
 			'settings.general.autoStartPermissionStatus.allowed' => 'On',
 			'settings.general.autoStartPermissionStatus.denied' => 'Off',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'Unknown',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Exempted',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Not Exempted',

@@ -548,12 +548,12 @@ class _MiuiAutoStartTileState extends ConsumerState<_MiuiAutoStartTile>
   @override
   Widget build(BuildContext context) {
     final status = _status;
-    if (status == MiuiAutoStartStatus.unsupported) {
+    // 首次查询返回前也不渲染：非 MIUI 的 Android 上不能先闪出一行再消失。
+    if (status == null || status == MiuiAutoStartStatus.unsupported) {
       return const SizedBox.shrink();
     }
     final texts = ref.watch(translationsProvider).settings.general;
     final statusText = switch (status) {
-      null => texts.autoStartPermissionStatus.pending,
       MiuiAutoStartStatus.allowed => texts.autoStartPermissionStatus.allowed,
       MiuiAutoStartStatus.denied => texts.autoStartPermissionStatus.denied,
       MiuiAutoStartStatus.unknown => texts.autoStartPermissionStatus.unknown,

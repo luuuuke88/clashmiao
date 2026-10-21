@@ -1090,7 +1090,6 @@ class Translations$settings$general$autoStartPermissionStatus$tr extends Transla
 	// Translations
 	@override String get allowed => 'Açık';
 	@override String get denied => 'Kapalı';
-	@override String get pending => '…';
 	@override String get unknown => 'Bilinmiyor';
 }
 
@@ -1369,7 +1368,6 @@ extension on TranslationsTr {
 			'settings.general.autoStartPermissionMsg' => 'Açıksa, telefon yeniden başlatıldığında veya uygulama güncellendiğinde bağlantı otomatik olarak geri gelir',
 			'settings.general.autoStartPermissionStatus.allowed' => 'Açık',
 			'settings.general.autoStartPermissionStatus.denied' => 'Kapalı',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'Bilinmiyor',
 			'settings.general.batteryOptimizationStatus.exempted' => 'Muaf',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'Muaf Değil',

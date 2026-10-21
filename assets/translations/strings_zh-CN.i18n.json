@@ -335,7 +335,6 @@
       "autoStartPermissionStatus": {
         "allowed": "已开启",
         "denied": "未开启",
-        "pending": "…",
         "unknown": "未知"
       },
       "batteryOptimizationStatus": {

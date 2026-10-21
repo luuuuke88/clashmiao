@@ -1090,7 +1090,6 @@ class Translations$settings$general$autoStartPermissionStatus$fa extends Transla
 	// Translations
 	@override String get allowed => 'فعال';
 	@override String get denied => 'غیرفعال';
-	@override String get pending => '…';
 	@override String get unknown => 'نامشخص';
 }
 
@@ -1402,7 +1401,6 @@ extension on TranslationsFa {
 			'settings.general.autoStartPermissionMsg' => 'در صورت فعال بودن، اتصال پس از راه‌اندازی مجدد گوشی یا به‌روزرسانی برنامه به‌طور خودکار برقرار می‌شود',
 			'settings.general.autoStartPermissionStatus.allowed' => 'فعال',
 			'settings.general.autoStartPermissionStatus.denied' => 'غیرفعال',
-			'settings.general.autoStartPermissionStatus.pending' => '…',
 			'settings.general.autoStartPermissionStatus.unknown' => 'نامشخص',
 			'settings.general.batteryOptimizationStatus.exempted' => 'مستثنی',
 			'settings.general.batteryOptimizationStatus.notExempted' => 'مستثنی نشده',

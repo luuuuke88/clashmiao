@@ -86,7 +86,7 @@ flutter build linux --release
 
 ### libcore 二进制分发 ✅
 
-libcore 走 GitHub Release tag，`bin/fetch-libcore.sh` 统一拉取，现有两个 tag：Android 用 `ANDROID_LIBCORE_TAG`（当前 `libcore-v1.14.3-r1`：官方 sing-box 1.14.3 内核，aar 按 16 KB 页对齐），其余平台用 `LIBCORE_TAG`（当前 `libcore-v1.8.9-16k`，尚未升级）。详见 README + ARCHITECTURE。
+libcore 走 GitHub Release tag，`bin/fetch-libcore.sh` 统一拉取，现有两个 tag：Android 用 `ANDROID_LIBCORE_TAG`（当前 `libcore-v1.14.3-r2`：官方 sing-box 1.14.3 内核，aar 按 16 KB 页对齐），其余平台用 `LIBCORE_TAG`（当前 `libcore-v1.8.9-16k`，尚未升级）。详见 README + ARCHITECTURE。
 
 ### CI/CD ✅
 
@@ -108,6 +108,6 @@ libcore 走 GitHub Release tag，`bin/fetch-libcore.sh` 统一拉取，现有两
 
 ### 已知风险
 
-- **核心库版本**：Android 的内核是官方 sing-box `v1.14.3`（仓库内 Go 模块 `kernel/`，读 `libclashmiao.so` 的构建信息核实），Release tag `libcore-v1.14.3-r1`；桌面与 iOS 暂用 sing-box `v1.8.9`（tag `libcore-v1.8.9-16k`），升级到新内核需要为它们各写一个门面（cgo 导出 / gomobile ios），另立设计。旧 tag `libcore-v1.11.0` 只是打包标签。旧 Android 内核可用 `tools/libcore/build-android.sh` 重编（回滚用）
+- **核心库版本**：Android 的内核是官方 sing-box `v1.14.3`（仓库内 Go 模块 `kernel/`，读 `libclashmiao.so` 的构建信息核实），Release tag `libcore-v1.14.3-r2`；桌面与 iOS 暂用 sing-box `v1.8.9`（tag `libcore-v1.8.9-16k`），升级到新内核需要为它们各写一个门面（cgo 导出 / gomobile ios），另立设计。旧 tag `libcore-v1.11.0` 只是打包标签。旧 Android 内核可用 `tools/libcore/build-android.sh` 重编（回滚用）
 - **Apple 政策**：iOS NetworkExtension 在 App Store 审核越来越严，VPN 类需证明合理用途
 - **协议**：当前 GPL-3.0；若日后闭源 / 商业化，需重新评估各平台 native 实现的协议出处

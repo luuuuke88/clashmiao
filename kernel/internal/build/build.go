@@ -80,6 +80,7 @@ func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, erro
 	if err != nil {
 		return nil, nil, err
 	}
+	dropSubscriptionResolvers(c, &warnings)
 	if c.Route, err = BuildRoute(o, env, egress, &warnings); err != nil {
 		return nil, nil, err
 	}
@@ -105,4 +106,23 @@ func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, erro
 // ipv6Enabled：用户选了 v6 档且平台能承载。
 func ipv6Enabled(o *options.Options, env Env) bool {
 	return o.IPv6Mode != "ipv4_only" && env.IPv6Supported
+}
+
+// dropSubscriptionResolvers 去掉订阅节点自带的 domain_resolver：订阅的 dns 块整块丢弃、DNS 服务器由构建器重建，
+// 它写的服务器 tag 在运行配置里要么不存在（悬空引用，启动即失败），要么碰巧与我们的 tag 重名而改变解析路径、
+// 甚至绕成环。域名节点统一用 route.default_domain_resolver 解析。
+func dropSubscriptionResolvers(c *cfg.Config, warnings *[]string) {
+	drop := func(tag string, m map[string]any) {
+		if _, ok := m["domain_resolver"]; !ok {
+			return
+		}
+		delete(m, "domain_resolver")
+		*warnings = append(*warnings, fmt.Sprintf("domain-resolver-dropped: %q uses a subscription-defined domain_resolver, replaced by the default resolver", tag))
+	}
+	for _, o := range c.Outbounds {
+		drop(o.Tag(), o)
+	}
+	for _, e := range c.Endpoints {
+		drop(e.Tag(), e)
+	}
 }

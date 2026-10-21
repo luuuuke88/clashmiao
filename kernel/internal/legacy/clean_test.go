@@ -390,3 +390,32 @@ func TestSharedLegacyShapes(t *testing.T) {
 		t.Error("夹具应两种取值都有")
 	}
 }
+
+// 保留 tag 的避让先于重映射：重映射生成的 detour（指向预置 direct）不会被误当成指向同名代理节点；
+// 引用代理节点 direct 的 detour 才跟着改名。
+func TestCleanRenamesReservedTagBeforeRemap(t *testing.T) {
+	outbounds := []map[string]any{
+		{"type": "shadowsocks", "tag": "a", "detour": "custom-direct"},
+		{"type": "direct", "tag": "custom-direct"},
+		{"type": "shadowsocks", "tag": "direct", "detour": "custom-direct"},
+		{"type": "shadowsocks", "tag": "b", "detour": "direct"},
+	}
+	res := Clean(outbounds, nil, CleanOptions{RemapTarget: "direct"})
+	byTag := map[string]map[string]any{}
+	for _, o := range res.Outbounds {
+		byTag[o["tag"].(string)] = o
+	}
+	if byTag["direct (2)"] == nil || byTag["direct"] != nil {
+		t.Fatalf("代理节点 direct 应改名为 direct (2): %v", res.Outbounds)
+	}
+	if byTag["a"]["detour"] != "direct" || byTag["direct (2)"]["detour"] != "direct" {
+		t.Errorf("重映射结果应指向预置 direct: a=%v direct(2)=%v", byTag["a"]["detour"], byTag["direct (2)"]["detour"])
+	}
+	if byTag["b"]["detour"] != "direct (2)" {
+		t.Errorf("b 引用的是代理节点，应跟着改名: %v", byTag["b"]["detour"])
+	}
+	again := Clean(res.Outbounds, nil, CleanOptions{RemapTarget: "direct"})
+	if len(again.Warnings) != 0 || len(again.Remapped) != 0 {
+		t.Errorf("清洗应当幂等: %v", again.Warnings)
+	}
+}

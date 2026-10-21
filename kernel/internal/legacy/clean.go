@@ -16,6 +16,10 @@ type CleanOptions struct {
 	RemapTarget string
 }
 
+// ReservedTags 是构建器的预置 / 保留 tag（与 build.reservedTags 同一份清单，build 的测试钉住两者一致）：
+// 订阅里的节点不得占用，Clean 在重映射之前先给占用者改名，见 Clean 的第 ③ 步。
+var ReservedTags = []string{"select", "auto", "direct", "direct-fragment", "bypass", "block", "warp"}
+
 // Remap 记录一次 detour 重映射。
 type Remap struct {
 	Node string // 持有 detour 的出站 / 端点的 tag
@@ -54,8 +58,11 @@ func dropKind(t string) string {
 //
 //	①记账：删除任何实体之前，先记下将被丢弃的 tag → type；
 //	②清洗与丢弃：wireguard 出站转端点；丢弃 block / dns / selector / urltest / direct；删除已不存在的字段；
-//	③重映射：所有出站与端点的 detour，凡指向被丢弃的直连类（type: direct）的，改指 RemapTarget；
-//	④返回清洗后的实体、warning 与已重映射清单。
+//	③避让保留 tag：节点 / 端点的 tag 与预置 tag（direct、warp……）冲突的先改名为「tag (2)」，别的节点对它的 detour
+//	  一并改写。必须先于重映射：重映射生成的 detour 才是真正指向预置 direct / warp 的引用，若改名排在它后面，
+//	  这些新引用会被当成「指向那个同名代理节点」而被错误地改走；
+//	④重映射：所有出站与端点的 detour，凡指向被丢弃的直连类（type: direct）的，改指 RemapTarget；
+//	⑤返回清洗后的实体、warning 与已重映射清单。
 //
 // 不重映射的引用：指向被丢弃的 selector / urltest / block / dns，或从未存在的 tag——交给构建器的
 // ValidateDetours 报 ErrDetourDangling，这里不替用户猜。输入不会被修改；未知字段原样保留。
@@ -99,11 +106,20 @@ func Clean(outbounds, endpoints []map[string]any, opt CleanOptions) Result {
 	}
 	res.Endpoints = append(kept, res.Endpoints...)
 
-	// ③ 重映射。
+	// ③ 避让保留 tag（先于重映射，见函数注释）。
+	renamed := avoidReservedTags(&res, removedDirect)
+
+	// ④ 重映射。
 	remap := func(list []map[string]any) {
 		for _, n := range list {
 			d, _ := n["detour"].(string)
-			if d == "" || !removedDirect[d] {
+			if d == "" {
+				continue
+			}
+			if !removedDirect[d] {
+				if nt, ok := renamed[d]; ok {
+					n["detour"] = nt
+				}
 				continue
 			}
 			n["detour"] = target
@@ -114,6 +130,47 @@ func Clean(outbounds, endpoints []map[string]any, opt CleanOptions) Result {
 	remap(res.Outbounds)
 	remap(res.Endpoints)
 	return res
+}
+
+// avoidReservedTags 把占用预置 tag 的节点 / 端点改名，返回「旧 tag → 新 tag」。
+// 被改名的 tag 若同时是被丢弃直连类出站的 tag，引用仍按「指向被丢弃的直连类」处理（removedDirect 优先）。
+func avoidReservedTags(res *Result, removedDirect map[string]bool) map[string]string {
+	reserved := map[string]bool{}
+	for _, t := range ReservedTags {
+		reserved[t] = true
+	}
+	used := map[string]bool{}
+	for t := range reserved {
+		used[t] = true
+	}
+	for t := range res.Removed {
+		used[t] = true
+	}
+	var all []map[string]any
+	all = append(all, res.Outbounds...)
+	all = append(all, res.Endpoints...)
+	for _, n := range all {
+		used[str(n["tag"])] = true
+	}
+	renamed := map[string]string{}
+	for _, n := range all {
+		tag := str(n["tag"])
+		if !reserved[tag] {
+			continue
+		}
+		var nt string
+		for i := 2; ; i++ {
+			if c := fmt.Sprintf("%s (%d)", tag, i); !used[c] {
+				nt = c
+				break
+			}
+		}
+		used[nt] = true
+		renamed[tag] = nt
+		n["tag"] = nt
+		res.Warnings = append(res.Warnings, fmt.Sprintf("tag-renamed: %q conflicts with a built-in tag, renamed to %q", tag, nt))
+	}
+	return renamed
 }
 
 // legacyFields 是旧内核私有、新内核不认的字段（出现在出站 / 端点顶层或 tls 里都删）。

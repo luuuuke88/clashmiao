@@ -417,6 +417,17 @@ void main() {
       ]);
       expect(rig.coordinator.state.isGroupTesting('proxy'), isFalse);
       expect(rig.coordinator.state.timedOutNodes, {'b'});
+      expect(rig.failed.single.$1, {'b'}, reason: '收尾写一次失败，轮次外检测不重复写');
+
+      // 之后同样的 0 再推几次：不是新的失败，写入次数不变。
+      rig.push([
+        _group({'a': 130, 'b': 0}),
+      ]);
+      rig.push([
+        _group({'a': 130, 'b': 0}),
+      ]);
+      expect(rig.failed, hasLength(1));
+      expect(rig.coordinator.state.timedOutNodes, {'b'});
     });
 
     _fake('内核立即回复 urlTest（测试只是开始）、同值且没变化：不刷新测量时间，显示历史值而非超时', (rig, async) {

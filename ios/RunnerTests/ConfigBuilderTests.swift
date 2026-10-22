@@ -103,4 +103,36 @@ final class ConfigBuilderTests: XCTestCase {
         XCTAssertEqual(Set(try FileManager.default.contentsOfDirectory(atPath: dir.path)),
                        ["final-2.json", "final-3.json", "intent.json", "final-notanumber.json"])
     }
+
+    /// iOS 用的是 1.8.9 内核，而 Dart 选项的跨语言契约（`kernel/testdata/options`）只对 Android 的新内核验证过。
+    /// 这里把同一批 Dart 产出的选项逐个交给 iOS 内核组装完整配置：任何一份组装失败、或缺了 dns / route /
+    /// inbounds，iOS 上点连接就会失败。WARP 在 iOS 不提供，跳过。
+    func testIOSKernelAssemblesEveryDartOptionsFixture() throws {
+        let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        let testdata = repo.appendingPathComponent("kernel/testdata")
+        // 订阅形态取共享夹具里的普通出站（iOS 内核不认 endpoints）。
+        let mixed = try JSONSerialization.jsonObject(
+            with: Data(contentsOf: testdata.appendingPathComponent("shared/profiles/mixed.json"))) as! [String: Any]
+        let profile: [String: Any] = ["outbounds": (mixed["outbounds"] as! [Any]) + [["type": "direct", "tag": "direct"]]]
+        let profileURL = tempDir().appendingPathComponent("profile.json")
+        try JSONSerialization.data(withJSONObject: profile).write(to: profileURL)
+
+        let optionsDir = testdata.appendingPathComponent("options")
+        let names = try FileManager.default.contentsOfDirectory(atPath: optionsDir.path)
+            .filter { $0.hasSuffix(".json") && !$0.contains("warp") }
+            .sorted()
+        XCTAssertGreaterThan(names.count, 20)
+        for name in names {
+            let options = try String(contentsOf: optionsDir.appendingPathComponent(name), encoding: .utf8)
+            do {
+                let full = try KernelBridge.buildFullConfig(profilePath: profileURL.path, options: options)
+                let root = try JSONSerialization.jsonObject(with: Data(full.utf8)) as? [String: Any]
+                for key in ["dns", "route", "inbounds", "outbounds"] {
+                    XCTAssertNotNil(root?[key], "\(name): 完整配置缺 \(key)")
+                }
+            } catch {
+                XCTFail("\(name): iOS 内核组装失败：\(error)")
+            }
+        }
+    }
 }

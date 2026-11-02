@@ -24,6 +24,7 @@ void main() {
   });
 
   tearDown(() {
+    Process.runSync('chmod', ['-R', 'u+rwx', repo.path]);
     repo.deleteSync(recursive: true);
   });
 
@@ -180,6 +181,86 @@ void main() {
       expect(status(), isEmpty);
     });
 
+    test('单文件移动：test/<from> 本身也镜像移动', () {
+      _write(repo, 'test/domain/other.dart', 'const helper2 = 1;\n');
+      _git(repo, ['add', '-A']);
+      _git(repo, ['commit', '-qm', 'helper']);
+      final r = move(['domain/other.dart', 'features/misc/other.dart']);
+      expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+      expect(exists('test/features/misc/other.dart'), isTrue);
+      expect(exists('test/domain/other.dart'), isFalse);
+      expect(exists('test/features/misc/other_test.dart'), isTrue);
+    });
+
+    test('单文件移动：test/<to> 已存在则整体拒绝，什么都不动', () {
+      _write(repo, 'test/domain/other.dart', 'const helper2 = 1;\n');
+      _git(repo, ['add', '-A']);
+      _git(repo, ['commit', '-qm', 'helper']);
+      _write(repo, 'test/features/misc/other.dart', '// existing\n');
+      final r = move(['domain/other.dart', 'features/misc/other.dart']);
+      expect(r.exitCode, isNot(0));
+      expect(exists('lib/domain/other.dart'), isTrue);
+      expect(exists('test/domain/other_test.dart'), isTrue);
+      expect(exists('lib/features/misc/other.dart'), isFalse);
+      expect(status().trim(), '?? test/features/');
+    });
+
+    test('目录移动：清单外的 <from>/... 引用也按路径段边界改写，configx 不动', () {
+      _write(repo, 'lib/domain/uses_gen.dart', '''
+import 'package:clashmiao/domain/config/gen/missing.g.dart';
+import 'package:clashmiao/domain/configx/missing.g.dart';
+''');
+      _git(repo, ['add', '-A']);
+      _git(repo, ['commit', '-qm', 'gen']);
+      final r = move(['domain/config', 'features/config']);
+      expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+      final t = read('lib/domain/uses_gen.dart');
+      expect(
+        t,
+        contains("'package:clashmiao/features/config/gen/missing.g.dart'"),
+      );
+      expect(t, contains("'package:clashmiao/domain/configx/missing.g.dart'"));
+    });
+
+    test('相关文件有未暂存修改：拒绝；已暂存的改动允许连续多次运行', () {
+      File(p.join(repo.path, 'lib/domain/other.dart'))
+          .writeAsStringSync('${read('lib/domain/other.dart')}// hand edit\n');
+      var r = move(['domain/other.dart', 'features/other.dart']);
+      expect(r.exitCode, isNot(0));
+      expect(r.stderr, contains('未暂存'));
+      expect(exists('lib/domain/other.dart'), isTrue);
+
+      _git(repo, ['checkout', '--', 'lib/domain/other.dart']);
+      // 不提交，连续两次移动：第二次要处理第一次改写过的文件。
+      r = move(['domain/config/sub/b.dart', 'features/b.dart']);
+      expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+      r = move(['domain/config/a.dart', 'features/a.dart']);
+      expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
+      expect(check('HEAD').exitCode, 0);
+    });
+
+    test('中途失败：回滚已完成的 git mv 与已改写的文件', () {
+      if ((Process.runSync('id', ['-u']).stdout as String).trim() == '0') {
+        return; // root 不受目录权限限制，无法制造失败。
+      }
+      Directory(p.join(repo.path, 'lib/features/config/sub'))
+          .createSync(recursive: true);
+      Process.runSync('chmod', [
+        '555',
+        p.join(repo.path, 'lib/features/config/sub'),
+      ]);
+      final r = move(['domain/config', 'features/config']);
+      expect(r.exitCode, isNot(0));
+      expect(r.stderr, contains('回滚'));
+      expect(exists('lib/domain/config/a.dart'), isTrue);
+      expect(exists('lib/domain/config/sub/b.dart'), isTrue);
+      expect(exists('lib/features/config/a.dart'), isFalse);
+      expect(exists('test/domain/config/a_test.dart'), isTrue);
+      expect(read('lib/domain/other.dart'), contains('domain/config/a.dart'));
+      expect(read('lib/domain/other.dart'), isNot(contains('features/config')));
+      expect(status(), isEmpty);
+    });
+
     test('源路径不存在 / 参数缺失：非 0 退出', () {
       expect(move(['domain/nope', 'features/nope']).exitCode, isNot(0));
       expect(move(['domain/config']).exitCode, isNot(0));
@@ -219,6 +300,101 @@ void main() {
         '${read('lib/domain/other.dart')}const sneaky = 1;\n',
       );
       expect(check('HEAD').exitCode, 1);
+    });
+
+    test('同一行夹带代码（import 行后接 void changed）：退出码 1', () {
+      move(['domain/config', 'features/config']);
+      final f = File(p.join(repo.path, 'lib/features/config/a.dart'));
+      f.writeAsStringSync(
+        f.readAsStringSync().replaceFirst(
+          "sub/b.dart';",
+          "sub/b.dart'; void changed() {}",
+        ),
+      );
+      final r = check('HEAD');
+      expect(r.exitCode, 1);
+      expect('${r.stdout}${r.stderr}', contains('void changed'));
+    });
+
+    test('原地改写的 import 行夹带代码：退出码 1', () {
+      final f = File(p.join(repo.path, 'lib/domain/other.dart'));
+      f.writeAsStringSync(
+        f.readAsStringSync().replaceFirst(
+          "domain/configx/c.dart';",
+          "domain/configx/c.dart'; void changed() {}",
+        ),
+      );
+      expect(check('HEAD').exitCode, 1);
+    });
+
+    test('import 行除路径外还改了 as / show：退出码 1', () {
+      final f = File(p.join(repo.path, 'lib/domain/configx/c.dart'));
+      f.writeAsStringSync(
+        f.readAsStringSync().replaceFirst("other.dart';", "other.dart' as o;"),
+      );
+      final r = check('HEAD');
+      expect(r.exitCode, 1);
+      expect('${r.stdout}${r.stderr}', contains('除路径外'));
+    });
+
+    test('只新增一条 import（没有对应删除）：退出码 1', () {
+      final f = File(p.join(repo.path, 'lib/domain/configx/c.dart'));
+      f.writeAsStringSync(
+        "import 'package:clashmiao/domain/config/a.dart';\n${f.readAsStringSync()}",
+      );
+      final r = check('HEAD');
+      expect(r.exitCode, 1);
+      expect('${r.stdout}${r.stderr}', contains('数量不一致'));
+    });
+
+    test('低相似度的重命名夹带非 import 改动（小文件）：退出码 1', () {
+      _write(
+        repo,
+        'lib/domain/tiny.dart',
+        "import 'package:clashmiao/domain/other.dart';\nconst t = 1;\n",
+      );
+      _git(repo, ['add', '-A']);
+      _git(repo, ['commit', '-qm', 'tiny']);
+      Directory(p.join(repo.path, 'lib/features')).createSync(recursive: true);
+      _git(repo, ['mv', 'lib/domain/tiny.dart', 'lib/features/tiny.dart']);
+      _write(
+        repo,
+        'lib/features/tiny.dart',
+        "import 'package:clashmiao/features/other.dart';\nconst t = 2;\n",
+      );
+      final r = check('HEAD');
+      expect(r.exitCode, 1, reason: '${r.stdout}\n${r.stderr}');
+    });
+
+    test('被识别为重命名、同时改了一行非 import 代码：退出码 1', () {
+      final body = [for (var i = 0; i < 30; i++) 'const v$i = $i;'].join('\n');
+      _write(
+        repo,
+        'lib/domain/big.dart',
+        "import 'package:clashmiao/domain/other.dart';\n$body\n",
+      );
+      _git(repo, ['add', '-A']);
+      _git(repo, ['commit', '-qm', 'big']);
+      Directory(p.join(repo.path, 'lib/features')).createSync(recursive: true);
+      _git(repo, ['mv', 'lib/domain/big.dart', 'lib/features/big.dart']);
+      _write(
+        repo,
+        'lib/features/big.dart',
+        "import 'package:clashmiao/features/other.dart';\n"
+            '${body.replaceFirst('const v7 = 7;', 'const v7 = 8;')}\n',
+      );
+      // 确认这个用例确实走的是"重命名 + 内容改动"路径。
+      final ns = _git(repo, [
+        'diff',
+        '-M',
+        '--find-renames=1%',
+        '--name-status',
+        'HEAD',
+      ]);
+      expect(ns, contains('R'));
+      final r = check('HEAD');
+      expect(r.exitCode, 1, reason: '${r.stdout}\n${r.stderr}');
+      expect('${r.stdout}${r.stderr}', contains('const v7 = 8;'));
     });
 
     test('新增文件（哪怕只有 import）：退出码 1', () {

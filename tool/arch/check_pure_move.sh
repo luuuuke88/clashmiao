@@ -6,7 +6,7 @@
 # "纯移动"的定义：
 #   - 文件只做重命名（git 识别为 R），内容里唯一允许变化的是
 #       import 'package:clashmiao/...'  /  export 'package:clashmiao/...'
-#     这样的行（move.dart 改写的就是这类行）；
+#     这样的整行（move.dart 改写的就是这类行），且删除行与新增行一一对应、只有路径不同；
 #   - 原地修改的文件同样只允许改这类行；
 #   - 不允许新增、删除、改权限、二进制文件变动（哪怕新文件只有 import 也不行，
 #     因为新增文件不是重命名）。
@@ -61,10 +61,29 @@ status=0
 #   - 遇到 "diff --git" 进入文件头，直到第一个 "@@" 之前都是头部行；
 #   - 头部里只放行 index / --- / +++ / similarity / rename / dissimilarity；
 #     new file / deleted file / mode 变化 / 二进制 一律违规；
-#   - "@@" 之后的 +/- 行是内容行，必须匹配 ^[+-](import|export) 'package:clashmiao/ ；
-#     另外放行条件 import 的续行 ^[+-]\s+if \(dart.library.<x>\) 'package:clashmiao/ 。
+#   - "@@" 之后的 +/- 行是内容行，**整行**必须是下面两种形式之一，行里多出任何东西
+#     （例如 `import '...'; void f() {}`）都是违规：
+#       指令行：   [+-](import|export) 'package:clashmiao/<路径>'[ deferred][ as X][ show|hide A, B];
+#                  （行尾分号可省：多行指令的首行；仓库里实际出现的写法都在这个范围内）
+#       条件续行： [+-]<空格>if (dart.library.<x>) 'package:clashmiao/<路径>';
+#   - 每个文件里被删除的指令行与新增的指令行必须一一对应（数量相同、按顺序配对），
+#     并且把 package 路径替换成占位符后两行完全一致：只允许路径变化，
+#     不允许改 as / show / hide 等其他部分。
 violations="$(printf '%s\n' "${diff_out}" | awk '
-  /^diff --git / { file = $0; sub(/^diff --git a\//, "", file); inhdr = 1; next }
+  function flush(   i) {
+    if (file == "") return
+    if (nrem != nadd) {
+      printf "%s: 删除了 %d 条、新增了 %d 条 import/export 行，数量不一致\n", file, nrem, nadd
+    } else {
+      for (i = 1; i <= nrem; i++) {
+        if (rem[i] != add[i]) {
+          printf "%s: import/export 行除路径外还有变化：-%s / +%s\n", file, rem[i], add[i]
+        }
+      }
+    }
+    nrem = 0; nadd = 0
+  }
+  /^diff --git / { flush(); file = $0; sub(/^diff --git a\//, "", file); inhdr = 1; next }
   inhdr && /^@@/ { inhdr = 0; next }
   inhdr {
     if ($0 ~ /^(index |--- |\+\+\+ |similarity index |rename from |rename to )/) next
@@ -75,11 +94,18 @@ violations="$(printf '%s\n' "${diff_out}" | awk '
     next
   }
   /^[+-]/ {
-    if ($0 !~ /^[+-](import|export) \047package:clashmiao\// &&
-        $0 !~ /^[+-][ \t]+if \(dart\.library\.[A-Za-z_]+\) \047package:clashmiao\//) {
+    uri = "package:clashmiao/[^\047]+"
+    dir_re = "^[+-](import|export) \047" uri "\047( (deferred )?as [A-Za-z_][A-Za-z0-9_]*)?( (show|hide) [A-Za-z0-9_, ]+)*;?$"
+    cond_re = "^[+-] +if \\(dart\\.library\\.[A-Za-z_]+\\) \047" uri "\047;?$"
+    if ($0 !~ dir_re && $0 !~ cond_re) {
       printf "%s: %s\n", file, $0
+      next
     }
+    line = substr($0, 2)
+    gsub(/package:clashmiao\/[^\047]+/, "package:clashmiao/X", line)
+    if (substr($0, 1, 1) == "-") rem[++nrem] = line; else add[++nadd] = line
   }
+  END { flush() }
 ')"
 
 if [ -n "${violations}" ]; then

@@ -10,16 +10,21 @@
 //   1. `<from>` 是文件或目录（相对 lib/，目录整体移动并保留子结构）。用 `git mv`，
 //      保留历史。
 //   2. test/ 下的镜像一起移动：目录对应 test/<from>/；文件 x.dart 对应
-//      test/x_test.dart（`_test.dart` 同步处理）。镜像不存在就跳过。
+//      test/x_test.dart 以及 test/<from> 本身（若存在）。镜像不存在就跳过。
 //   3. lib/ test/ integration_test/ tool/ 里所有 `import|export|part` 指令中的
 //      `package:clashmiao/<旧路径>` 改写为新路径。按**完整文件路径**精确匹配，
-//      所以移动 domain/config 不会误伤 domain/configx。条件 import 的
+//      所以移动 domain/config 不会误伤 domain/configx；目录移动另外按路径段边界改写
+//      `<from>/...` 下不在清单里的引用。条件 import 的
 //      `if (...) '...'` 分支同样处理。
 //   4. 相对路径 import / part：移动后相对关系变了（含指向被移动文件的、以及被移动文件
 //      自己的）就报错退出，要求人工处理，不做猜测。
 //
 // 安全：
-//   - 先做完全部检查再动手；任何一项不通过都是"什么都没改"就退出。
+//   - 先做完全部检查再动手（源文件都已跟踪且存在、目标全部空闲、相关已跟踪文件
+//     没有未暂存修改、相对 import 不失效）；任何一项不通过都是"什么都没改"就退出。
+//     动手之后若 git mv / 写文件中途失败，会倒序还原已完成的 git mv 并用内存里的原始
+//     内容还原被改写的文件。
+//   - 改写后的文件会 git add，因此可以不提交、连续多次运行。
 //   - 目标文件已存在 -> 报错，绝不覆盖。目录移动时目标目录可以已存在（合并），
 //     但只要有一个同名文件就整体拒绝。
 //   - 只移动 git 已跟踪的文件；未跟踪 / 被忽略的文件留在原地并提示。
@@ -101,6 +106,8 @@ void _run(List<String> args) {
     if (!isDir) {
       if (trackedSet.contains(oldBase)) {
         moves[oldBase] = newBase;
+      } else if (File('$root/$oldBase').existsSync()) {
+        skipped.add(oldBase);
       }
       return;
     }
@@ -130,6 +137,8 @@ void _run(List<String> args) {
     final fromT = '${from.substring(0, from.length - 5)}_test.dart';
     final toT = '${to.substring(0, to.length - 5)}_test.dart';
     collect('test/$fromT', 'test/$toT', isDir: false);
+    // test/<from> 本身（例如放在 test 下的同名辅助文件）也镜像移动。
+    collect('test/$from', 'test/$to', isDir: false);
   }
   if (!moves.keys.any((k) => k.startsWith('lib/'))) {
     throw _Fail('错误：lib/$from 下没有 git 已跟踪的文件可移动。');
@@ -164,6 +173,18 @@ void _run(List<String> args) {
       libMap[e.key.substring(4)] = e.value.substring(4);
     }
   }
+  // 文件移动：只改写精确匹配的完整 URI。
+  // 目录移动：另外按路径段边界改写 `<from>/...` 下的任何引用，即使该文件不在
+  // 移动清单里（例如未跟踪或尚未生成的文件），避免留下悬空引用。
+  String? mapTarget(String target) {
+    final exact = libMap[target];
+    if (exact != null) return exact;
+    if (libIsDir && target.startsWith('$from/')) {
+      return '$to/${target.substring(from.length + 1)}';
+    }
+    return null;
+  }
+
   final scan =
       <String>{
         ..._gitList(root, ['ls-files', '-z', '-co', '--exclude-standard']),
@@ -190,19 +211,22 @@ void _run(List<String> args) {
       if (inConditional) {
         l = l.replaceAllMapped(_quoted, (m) {
           final q = m[1]!;
-          final uri = m[2]!;
+          final raw = m[2]!;
+          // 去掉 ?query / #fragment 再判断路径，改写后原样接回。
+          final cut = raw.indexOf(RegExp(r'[?#]'));
+          final uri = cut < 0 ? raw : raw.substring(0, cut);
+          final tail = cut < 0 ? '' : raw.substring(cut);
           if (uri.startsWith(_pkgPrefix)) {
-            final target = uri.substring(_pkgPrefix.length);
-            final moved = libMap[target];
+            final moved = mapTarget(uri.substring(_pkgPrefix.length));
             if (moved == null) return m[0]!;
             count++;
-            return '$q$_pkgPrefix$moved$q';
+            return '$q$_pkgPrefix$moved$tail$q';
           }
           if (!uri.contains(':') && uri.endsWith('.dart')) {
             final oldTarget = _resolve(_dirname(f), uri);
             final newTarget = moves[oldTarget] ?? oldTarget;
             if (_resolve(_dirname(newF), uri) != newTarget) {
-              relProblems.add('$f:$uri');
+              relProblems.add('$f:$raw');
             }
           }
           return m[0]!;
@@ -224,7 +248,38 @@ void _run(List<String> args) {
     );
   }
 
-  // ── 4. 打印计划 / 执行 ─────────────────────────────────────────────
+  // ── 4. 动手前的最后一轮校验 ─────────────────────────────────────────
+  final missing = [
+    for (final src in moves.keys)
+      if (!File('$root/$src').existsSync()) src,
+  ];
+  if (missing.isNotEmpty) {
+    throw _Fail(
+      '错误：下列文件在 git 里有记录但工作区里不存在：\n  ${missing.join('\n  ')}\n'
+      '未做任何修改。',
+    );
+  }
+  // 涉及的已跟踪文件不能有未暂存的修改（保证回滚能精确还原）。
+  // 已暂存的改动允许，这样可以不提交、连续多次运行本工具。
+  final involved = <String>{
+    ...moves.keys,
+    ...newContent.keys.where(trackedSet.contains),
+  }.toList();
+  final dirty = _gitList(root, [
+    'diff',
+    '--name-only',
+    '-z',
+    '--',
+    ...involved,
+  ]);
+  if (dirty.isNotEmpty) {
+    throw _Fail(
+      '错误：下列相关文件有未暂存的修改，请先 git add 或提交：\n'
+      '  ${dirty.join('\n  ')}\n未做任何修改。',
+    );
+  }
+
+  // ── 5. 打印计划 / 执行 ─────────────────────────────────────────────
   final plan = moves.entries.toList()..sort((a, b) => a.key.compareTo(b.key));
   stdout.writeln(dryRun ? '计划（--dry-run，不会修改任何文件）：' : '执行：');
   for (final e in plan) {
@@ -240,13 +295,71 @@ void _run(List<String> args) {
   }
   if (dryRun) return;
 
-  for (final e in plan) {
-    Directory('$root/${_dirname(e.value)}').createSync(recursive: true);
-    _git(['mv', e.key, e.value], root);
-  }
-  for (final e in newContent.entries) {
-    final dst = moves[e.key] ?? e.key;
-    File('$root/$dst').writeAsBytesSync(utf8.encode(e.value));
+  // 改写前的原始内容留在内存里，失败时用来还原。
+  final originals = <String, List<int>>{
+    for (final p in newContent.keys) p: File('$root/$p').readAsBytesSync(),
+  };
+  final movedDone = <MapEntry<String, String>>[];
+  final createdDirs = <String>[];
+  try {
+    for (final e in plan) {
+      var d = _dirname(e.value);
+      final chain = <String>[];
+      while (d.isNotEmpty && !Directory('$root/$d').existsSync()) {
+        chain.add(d);
+        d = _dirname(d);
+      }
+      Directory('$root/${_dirname(e.value)}').createSync(recursive: true);
+      createdDirs.addAll(chain);
+      _git(['mv', e.key, e.value], root);
+      movedDone.add(e);
+    }
+    for (final e in newContent.entries) {
+      final dst = moves[e.key] ?? e.key;
+      File('$root/$dst').writeAsBytesSync(utf8.encode(e.value));
+    }
+    final toStage = [
+      for (final p in newContent.keys)
+        if (trackedSet.contains(p)) moves[p] ?? p,
+    ];
+    if (toStage.isNotEmpty) _git(['add', '--', ...toStage], root);
+  } catch (err) {
+    final reason = err is _Fail ? err.message : '$err';
+    final rollbackErrors = <String>[];
+    for (final e in movedDone.reversed) {
+      try {
+        _git(['mv', e.value, e.key], root);
+      } on Object catch (e2) {
+        rollbackErrors.add('$e2');
+      }
+    }
+    for (final entry in originals.entries) {
+      try {
+        File('$root/${entry.key}').writeAsBytesSync(entry.value);
+        if (trackedSet.contains(entry.key)) {
+          _git(['add', '--', entry.key], root);
+        }
+      } on Object catch (e2) {
+        rollbackErrors.add('$e2');
+      }
+    }
+    for (final d
+        in createdDirs.toSet().toList()
+          ..sort((a, b) => b.length.compareTo(a.length))) {
+      try {
+        final dir = Directory('$root/$d');
+        if (dir.existsSync() && dir.listSync().isEmpty) dir.deleteSync();
+      } on Object {
+        // 清理空目录失败不影响正确性。
+      }
+    }
+    if (rollbackErrors.isEmpty) {
+      throw _Fail('$reason\n移动中途失败，已回滚到移动前的状态。');
+    }
+    throw _Fail(
+      '$reason\n移动中途失败，且回滚不完整，请用 git status 检查：\n'
+      '  ${rollbackErrors.join('\n  ')}',
+    );
   }
   // 清掉移空的旧目录（还有别的文件的目录不会被删）。
   final oldDirs = {for (final e in plan) _dirname(e.key)}.toList()

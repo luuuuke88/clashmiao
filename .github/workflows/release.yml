@@ -713,7 +713,7 @@ jobs:
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: artifacts
       - name: Collect release assets
@@ -819,7 +819,7 @@ jobs:
             git checkout --orphan release-status
             git rm -rf . >/dev/null 2>&1 || true
           fi
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           path: artifacts

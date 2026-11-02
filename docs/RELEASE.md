@@ -196,6 +196,25 @@ macOS 产物是 **universal**（`x86_64` + `arm64`），Intel Mac 和 Apple Sili
 校验"宿主架构在不在"，于是一个纯 arm64 的资产在 Apple Silicon 开发机和 arm64
 CI runner 上一路绿灯，直到 release 流水线跑完整个 macOS 构建才在最后一步炸。
 
+### 手动发布 / 升级 libcore tag
+
+libcore 的二进制不在仓库里，走 `libcore-v*` Release tag，由 `bin/fetch-libcore.sh`
+拉取。脚本在下载之后、以及复用本地已有文件之前，都会对照
+`tools/kernel/libcore-checksums.txt` 校验 sha256；不一致、或校验和文件里没有该
+tag/资产，就删掉文件并失败。所以新发（或换）一个 tag 的流程是：
+
+1. 构建产物，上传到新 tag 的 Release。
+2. 在产物目录生成校验和并**一并上传**：`shasum -a 256 * > SHA256SUMS`
+   （`SHA256SUMS` 本身也是 Release 资产）。
+3. 把该 tag 全部资产的校验值按 `<sha256>  <tag>/<asset>` 追加到
+   `tools/kernel/libcore-checksums.txt`（两个空格，每行一条）。
+4. 更新 `ci.yml`、`release.yml` 与 `bin/fetch-libcore.sh` 里的 tag，然后跑
+   `bash tools/kernel/check-libcore-checksums.sh`——它保证用到的每个 tag 都有
+   条目，CI 的 `public-links` job 也会跑它。
+5. `FORCE=1 bin/fetch-libcore.sh all` 真拉一遍，确认全部校验通过。
+
+校验和只证明「拿到的就是登记时的那份」，不证明那份本身可信；登记前要自己核对产物。
+
 ---
 
 ## Windows 代码签名

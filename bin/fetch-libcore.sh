@@ -11,7 +11,11 @@
 #   bin/fetch-libcore.sh windows  # 只拉 Windows dll
 #   bin/fetch-libcore.sh linux    # 只拉 Linux so
 #
-# 依赖：gh CLI（已登录），unzip
+# 完整性：每个资产在下载之后、以及复用本地已存在的文件之前，都要对照
+# tools/kernel/libcore-checksums.txt（路径可用 LIBCORE_CHECKSUMS 覆盖）校验 sha256。
+# 不一致或没有条目一律删掉该文件并以非 0 退出——这些二进制会被直接打进安装包。
+#
+# 依赖：gh CLI（已登录），unzip，shasum 或 sha256sum
 
 set -euo pipefail
 
@@ -22,6 +26,7 @@ ANDROID_TAG="${ANDROID_LIBCORE_TAG:-libcore-v1.14.3-r2}"
 LIBCORE_REPO="${LIBCORE_REPO:-luuuuke88/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
+CHECKSUMS="${LIBCORE_CHECKSUMS:-$REPO_ROOT/tools/kernel/libcore-checksums.txt}"
 
 log()  { printf '\033[0;32m[fetch-libcore]\033[0m %s\n' "$*"; }
 warn() { printf '\033[1;33m[fetch-libcore]\033[0m %s\n' "$*" >&2; }
@@ -33,15 +38,65 @@ require_gh() {
   fi
 }
 
+file_sha256() {
+  if command -v sha256sum >/dev/null; then
+    sha256sum "$1" | awk '{print $1}'
+  elif command -v shasum >/dev/null; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  else
+    warn "需要 sha256sum 或 shasum 来校验下载"
+    return 3
+  fi
+}
+
+# verify_asset <tag> <asset> <file>
+#   0 = 校验通过；1 = 值不一致；2 = 校验和文件里没有这一条。
+#   只返回结果并打印原因，不删文件、不退出——由调用方决定怎么处置。
+verify_asset() {
+  local tag="$1" asset="$2" file="$3" expected actual
+  if [ ! -f "$CHECKSUMS" ]; then
+    warn "缺少校验和文件：${CHECKSUMS}"
+    return 2
+  fi
+  expected="$(awk -v k="$tag/$asset" '$1 !~ /^#/ && $2 == k { print $1; exit }' "$CHECKSUMS")"
+  if [ -z "$expected" ]; then
+    warn "缺少校验和：${tag}/${asset} 不在 ${CHECKSUMS} 里"
+    return 2
+  fi
+  actual="$(file_sha256 "$file")" || exit 1
+  if [ "$actual" != "$expected" ]; then
+    warn "sha256 不一致：${tag}/${asset}"
+    warn "  期望 ${expected}"
+    warn "  实际 ${actual}"
+    return 1
+  fi
+  return 0
+}
+
+# 校验 <file>；任何失败都删掉它并退出，绝不把未经校验的二进制留在构建会读取的路径上。
+verify_or_die() {
+  local rc=0
+  verify_asset "$1" "$2" "$3" || rc=$?
+  if [ "$rc" -ne 0 ]; then
+    rm -f "$3"
+    warn "已删除 ${3}（校验未通过，退出码 ${rc}）"
+    exit 1
+  fi
+}
+
 dl() {
   local asset="$1" dest="$2" tag="${3:-$TAG}"
   mkdir -p "$(dirname "$dest")"
   if [ -s "$dest" ] && [ "${FORCE:-}" != "1" ]; then
-    log "$dest 已存在，跳过（FORCE=1 强制覆盖）"
+    # 复用的文件同样要校验：它可能是上次中断的下载、被改过的、或别的 tag 留下的。
+    verify_or_die "$tag" "$asset" "$dest"
+    log "${dest} 已存在且校验通过，跳过（FORCE=1 强制覆盖）"
     return
   fi
   log "下载 $asset → $dest"
   gh release download "$tag" -p "$asset" -O "$dest" --clobber --repo "$LIBCORE_REPO"
+  verify_or_die "$tag" "$asset" "$dest"
+  log "${asset} sha256 校验通过"
 }
 
 fetch_android() {
@@ -148,7 +203,12 @@ fetch_ios() {
   if [ ! -s "$tmp" ] || [ "${FORCE:-}" = "1" ]; then
     log "下载 Libcore.xcframework.zip"
     gh release download "$TAG" -p Libcore.xcframework.zip -O "$tmp" --clobber --repo "$LIBCORE_REPO"
+  else
+    log "${tmp} 已存在，复用前先校验"
   fi
+  # 缓存复用与新下载一视同仁：校验通过才允许解压；不通过则 zip 被删、Frameworks 不动。
+  verify_or_die "$TAG" Libcore.xcframework.zip "$tmp"
+  log "Libcore.xcframework.zip sha256 校验通过"
   rm -rf ios/Frameworks/Libcore.xcframework
   unzip -q -o "$tmp" -d ios/Frameworks/
   normalize_ios_xcframework

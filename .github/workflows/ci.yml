@@ -33,6 +33,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: bin/check-public-links.sh
+      # libcore 下载校验：校验和文件必须覆盖 ci / release / fetch-libcore.sh 里在用的每个 tag，
+      # 并跑一遍 fetch-libcore.sh 的篡改/缺条目用例（假 gh，不联网）。
+      - name: libcore 校验和覆盖在用的 tag
+        run: bash tools/kernel/check-libcore-checksums.sh
+      - name: fetch-libcore 校验用例
+        run: bash bin/fetch-libcore.test.sh
 
   # 自有 Go 内核模块 kernel/ 的验证：与发版共用同一份 reusable workflow（kernel-verify.yml）。
   # 仓库 secret KERNEL_DENYLIST 需要维护者配置一次（名称守卫的词表），未配置则该步骤失败。

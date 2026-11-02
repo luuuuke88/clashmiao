@@ -101,7 +101,7 @@ jobs:
             }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
       - name: 上传覆盖率原始数据
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: unit-test-coverage
           path: coverage/lcov.info
@@ -136,7 +136,7 @@ jobs:
             sleep 15
           done
           exit 1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: android-unit-test-reports
@@ -164,7 +164,7 @@ jobs:
       - run: flutter build apk --release --target-platform android-arm64
         env:
           ORG_GRADLE_PROJECT_allowDebugSigning: "true"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clashmiao-android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
@@ -199,7 +199,7 @@ jobs:
             --app-drop-link 400 200 \
             "build/ClashMiao-macOS-arm64.dmg" \
             "build/macos/Build/Products/Release/ClashMiao.app"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clashmiao-macos-arm64-dmg
           path: build/ClashMiao-macOS-arm64.dmg
@@ -277,11 +277,11 @@ jobs:
           Write-Host "Verified: $bundled"
           New-Item -ItemType Directory -Force -Path build/release/windows-bundle | Out-Null
           Copy-Item -Path (Join-Path $exe.Directory.FullName '*') -Destination build/release/windows-bundle -Recurse -Force
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clashmiao-windows-release
           path: build/release/windows-bundle/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clashmiao-windows-installer
           path: build/installer/ClashMiao-Windows-x64-Setup.exe
@@ -317,7 +317,7 @@ jobs:
             echo "libcore.so is missing expected FFI symbols"; exit 1
           }
           echo "Verified: $bundled with required FFI exports"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: clashmiao-linux-release
           path: build/linux/x64/release/bundle/

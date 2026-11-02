@@ -250,7 +250,7 @@ jobs:
       # 而 APK 是用户真正要下载的东西；AAB 那步挂掉不该把已经建好的 APK
       # 一起拖下水。这跟 publish 的 `if: always()` 是同一个道理，只是落在
       # step 层面：缺 AAB 时 run 仍然标红，但 release 里照样有 Android 包。
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-android
           path: build/release/ClashMiao-Android-*.apk
@@ -297,7 +297,7 @@ jobs:
             "build/store/ClashMiao-Android-$VERSION.aab"
           find build/store -type f -name '*.aab' -printf '%f %s\n'
       - name: Upload AAB separately (Play Store upload only, not a public download)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: store-android-aab
           path: build/store/ClashMiao-Android-*.aab
@@ -456,7 +456,7 @@ jobs:
           # staple 让用户离线也能通过 Gatekeeper 校验
           xcrun stapler staple "$DMG"
           xcrun stapler validate "$DMG"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-macos
           path: |
@@ -621,7 +621,7 @@ jobs:
           Get-ChildItem build\release\ClashMiao-Windows-x64-* | ForEach-Object {
             "{0}  {1} bytes" -f $_.Name, $_.Length
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-windows
           path: build/release/ClashMiao-Windows-x64-*
@@ -689,7 +689,7 @@ jobs:
             echo "::error::libcore.so 缺少预期的 FFI 导出符号"; exit 1; }
       - name: Package Linux (tar.gz + deb)
         run: bin/package-linux.sh "${{ steps.version.outputs.name }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-linux
           path: |

@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 
 /// 节点名里旗帜的来源。
 enum FlagSource {

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/data/runtime_config_builder.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/temp_dirs.dart';

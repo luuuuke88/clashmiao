@@ -1,10 +1,10 @@
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/application/service_mode.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

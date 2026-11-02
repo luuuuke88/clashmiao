@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
-import 'package:clashmiao/domain/config/model/warp_credential.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/model/warp_credential.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// WARP 配置生成失败的统一错误类型。

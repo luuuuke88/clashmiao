@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:flutter/foundation.dart';
 
 /// Connect 时组装 runtime sing-box config：只处理 inbounds / mux 与信息条目

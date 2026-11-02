@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/backup/application/restore_refresher.dart';

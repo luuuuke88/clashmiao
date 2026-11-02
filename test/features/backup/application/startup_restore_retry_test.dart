@@ -6,7 +6,7 @@ import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/application/profiles_update_scheduler.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';

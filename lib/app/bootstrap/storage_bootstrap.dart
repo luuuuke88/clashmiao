@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
-import 'package:clashmiao/domain/config/data/migrations/v2_direct_dns.dart';
+import 'package:clashmiao/features/config/data/migrations/v2_direct_dns.dart';
 import 'package:clashmiao/domain/profile/data/migrations/v1_profiles.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';

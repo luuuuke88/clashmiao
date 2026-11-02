@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/box_service/model/outbound.dart';
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:collection/collection.dart';
 
 /// 代理页与自动测速共用的「分组」口径：哪些组用户看得到、哪个是主组、

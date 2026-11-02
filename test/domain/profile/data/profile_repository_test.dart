@@ -8,7 +8,7 @@ import 'package:clashmiao/core/box_service/model/box_stats.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

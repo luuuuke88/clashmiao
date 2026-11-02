@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:clashmiao/domain/config/model/warp_credential.dart';
+import 'package:clashmiao/features/config/model/warp_credential.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

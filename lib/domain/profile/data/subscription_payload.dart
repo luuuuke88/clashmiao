@@ -17,7 +17,7 @@ library;
 
 import 'dart:convert';
 
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 
 enum SubscriptionPayloadKind {
   /// sing-box 原生 JSON 配置。

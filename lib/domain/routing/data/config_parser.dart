@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/model/outbound.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 
 /// 从 sing-box 配置文件解析代理分组和节点
 class ConfigParser {

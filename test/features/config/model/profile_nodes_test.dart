@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 Map<String, dynamic> _profile({

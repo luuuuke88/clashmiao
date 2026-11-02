@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/backup/data/backup_codec.dart';
 import 'package:clashmiao/features/backup/model/backup_bundle.dart';
 import 'package:flutter_test/flutter_test.dart';

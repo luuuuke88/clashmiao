@@ -3,10 +3,10 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/data/runtime_config_builder.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/profile/data/profile_repository.dart';
 import 'package:clashmiao/domain/profile/data/subscription_payload.dart';
 import 'package:clashmiao/domain/routing/data/config_parser.dart';

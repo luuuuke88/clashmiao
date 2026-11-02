@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/storage_migrator.dart';
-import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:clashmiao/features/config/model/dns_defaults.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

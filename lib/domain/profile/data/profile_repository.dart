@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/profile/data/profile_parser.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/data/subscription_fetch.dart';

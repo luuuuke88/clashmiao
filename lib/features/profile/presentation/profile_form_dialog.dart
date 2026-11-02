@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/config/application/warp_availability.dart';
+import 'package:clashmiao/features/config/application/warp_availability.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
@@ -6,13 +6,13 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/domain/config/model/warp_terms.dart';
+import 'package:clashmiao/features/config/model/warp_terms.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/config/application/warp_config_service.dart';
+import 'package:clashmiao/features/config/application/warp_config_service.dart';
 import 'package:clashmiao/features/profile/presentation/qr_scanner_page.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/agreement_modal.dart';

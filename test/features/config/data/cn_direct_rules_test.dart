@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/data/cn_direct_rules.dart';
+import 'package:clashmiao/features/config/data/cn_direct_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // 排除步骤的实现在生成管线里（tools/ 不在 lib/ 下，只能相对路径引用）。

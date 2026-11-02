@@ -12,7 +12,7 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:clashmiao/domain/routing/data/config_parser.dart';
 import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:flutter/foundation.dart';

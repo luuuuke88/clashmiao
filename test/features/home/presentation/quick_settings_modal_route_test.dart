@@ -3,7 +3,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/shared/navigation/app_route.dart';

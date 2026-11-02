@@ -1,9 +1,9 @@
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/data/cn_direct_rules.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/application/service_mode.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/data/cn_direct_rules.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/service_mode.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 
 /// 内核配置构建器（`BuildConfig`）的全局选项（`configOptions`）。
 ///

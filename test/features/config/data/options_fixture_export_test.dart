@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/application/service_mode.dart';
-import 'package:clashmiao/domain/config/application/default_config_options.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/service_mode.dart';
+import 'package:clashmiao/features/config/application/default_config_options.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/golden_file.dart';

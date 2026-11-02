@@ -1,7 +1,7 @@
 import 'dart:convert';
 
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/model/dns_defaults.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

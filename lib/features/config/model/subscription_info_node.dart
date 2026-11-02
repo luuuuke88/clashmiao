@@ -16,7 +16,7 @@
 /// （订阅响应头）展示，节点名里的同一份信息不必再占一行。
 library;
 
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 
 /// 节点 tag 带这个标记时，内核不把它放进主选择组 / 自动选择组。
 const String kHideNodeMarker = '§hide§';

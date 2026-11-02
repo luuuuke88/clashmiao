@@ -1,5 +1,5 @@
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
+import 'package:clashmiao/features/config/application/dns_strategy_conflict.dart';
 
 /// IPv6 模式与 DNS 域名策略冲突相关的用户可见文案（纯函数，便于单测）。
 class DnsStrategyMessages {

@@ -4,7 +4,7 @@
 // 要区分「已是最新」和「检查失败」，折成 null 就分不开了。
 
 import 'package:clashmiao/core/env/platform_capabilities.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

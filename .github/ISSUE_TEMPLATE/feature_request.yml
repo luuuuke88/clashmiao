@@ -1,0 +1,23 @@
+name: 功能建议
+description: 希望增加或改进的功能
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 想解决的问题
+      description: 现在遇到了什么不便？
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 期望的做法
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 涉及平台
+      multiple: true
+      options: [Android, iOS, macOS, Windows, Linux]

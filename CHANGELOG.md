@@ -43,6 +43,8 @@ iOS 的开 / 关 / 重载 / 手选重放原来由 Dart 侧模拟（看不到系�
 **行为变更**：扩展启动失败现在会让隧道启动失败（原来写一行日志后仍显示已连接）；iOS 上旧的
 `start/stop/restart` 原生入口不再可用（Dart 早已不调用）。
 
+## [0.2.0] - 2026-07-29
+
 ### 品牌视觉改版
 
 App 图标、启动画面与全局配色统一到新的「闪电猫」品牌标。冷启动加了一段 1.5 秒
@@ -76,6 +78,8 @@ GitHub 降为兜底。地址走编译期参数 `UPDATE_MANIFEST_URL`，不写死
 
 标题原本写死 `About ClashMiao`，没走 i18n，结果中文环境下「线路」「设置」都是
 中文标题，只有关于页顶着英文。改用已有的 `about.pageTitle`（11 种语言都有译文）。
+
+## [0.1.1] - 2026-07-27
 
 ### CI/CD 出包：四平台可下载安装包 + 校验和 + 安装说明
 
@@ -170,6 +174,35 @@ analyze 零告警），真正的坑集中在**发布基建基本是空的**和**
 - 删除三个零引用的数据库依赖（其中 `sqlite3_flutter_libs` 会打进原生库）和
   `notes` 死字段。
 
+### 功能补全与桌面端自愈
+
+- 深链导入订阅；订阅二维码分享；订阅列表排序与触感反馈
+- 真实的 WARP 账号注册与凭据模型；出口 IP 检测（带并发保护）；按时区 / IP 自动识别地区
+- 节点列表延迟缓存与信号强度图标；桌面端全局快捷键；日志页接入应用日志与过滤修复
+- 统一 HTTP 客户端（优先走隧道，失败回退直连）；检查更新弹窗与启动检查；Android 电池优化入口
+- 桌面端启动时自愈上次异常退出残留的系统代理，并告知用户；macOS 退出（Cmd+Q）不再把系统代理留在死端口上导致整机断网
+- Android 内核启动失败时安全拆除 VPN，避免留下半开的隧道
+- 点击连接按钮时抛出的异常现在有人处理，不再变成死按钮
+
+### 修复与工程整理
+
+- 订阅详情的到期信息三处说法统一；事件流只有一个订阅者能收到事件的问题；致命内核告警改为阻塞式弹窗
+- 手选节点在重连后可靠回放；快速断开再连接不再永久卡在「连接中」；代理模式切换不再与内核实际运行的不同步
+- 智能分流真正绕过国内流量；配置选项的备份 / 恢复不再丢失 WARP 设置；首页流量统计不再恒为 0
+- Windows 发布产物的版本号、命名、zip 结构与签名顺序修复；ABI 拆分常开导致 AAB 无法构建的问题
+- 开启严格类型模式与一批修正性 lint 并修完全部命中；`core` 对上层的反向依赖由 17 处降到 4 处
+- 修掉依赖墙钟睡眠的竞态测试与临时目录清理的假阴性
+
+## [0.1.0] - 2026-03-01
+
+### Added
+- Flutter 3.41 + Riverpod + go_router 基础架构
+- sing-box 内核接入（Android VpnService + macOS FFI）
+- 订阅管理（Clash YAML / base64 / sing-box JSON 三种格式）
+- 智能 / 全局两种代理模式
+- 节点列表 + 延迟测试 + 排序
+- 主题（明/暗/跟随系统）+ 10 种语言翻译
+
 ### libcore 二进制分发：LFS → GitHub Release tag
 
 之前所有平台的 libcore 走 Git LFS，仓库 LFS 占 ~420MB。CI 多 job 并行 checkout 拉 LFS 约 3.4GB / run，GitHub Free Plan 1GB/月 bandwidth 配额被打爆，CI 全员 fail in `git lfs fetch`。
@@ -252,7 +285,7 @@ analyze 零告警），真正的坑集中在**发布基建基本是空的**和**
   到单词级（en: "Global"/"Smart"，zh-CN: "全局"/"智能"）。
 - **Git LFS** 入库 `android/app/libs/libcore.aar`（120MB），CI 能编 Android release APK。
 
-### Added
+### Added（发版前累计）
 - iOS NetworkExtension 脚手架（PacketTunnelProvider + Runner VPNManager + Handlers）
 - Windows / Linux libcore 集成的 CMake 配置 + SCAFFOLDING 文档
 - macOS 系统托盘图标 + 连接/断开/退出快捷菜单
@@ -266,7 +299,7 @@ analyze 零告警），真正的坑集中在**发布基建基本是空的**和**
 - ss:// / vless:// 等 7 种代理 URI 直接导入（`addByContent`）
 - 自动 dns.servers + tun inbound 补齐（让 single-URI profile 在 Android 上 TUN 可用）
 
-### Fixed
+### Fixed（发版前累计）
 - `reconnect()` 用 RuntimeConfigBuilder 拼好的 runtime-config（之前用原始 profile 导致分流失效）
 - 切换"全局/智能"模式时如果连着会自动 reconnect
 - connect 失败时把错误写到 `connectionErrorProvider` → HomePage listen 弹 toast
@@ -280,13 +313,3 @@ analyze 零告警），真正的坑集中在**发布基建基本是空的**和**
 - 仓库 luke501/clashmiao (private)，CI Secret CLASHMIAO_TEST_SUB_URL 已配
 - `bin/test-all.sh` 本地一键全套（并行 Android E2E + macOS 烟雾）
 - 公开文档完全脱敏，不出现具体上游项目名
-
-## [0.1.0] - 2026-03-01
-
-### Added
-- Flutter 3.41 + Riverpod + go_router 基础架构
-- sing-box 内核接入（Android VpnService + macOS FFI）
-- 订阅管理（Clash YAML / base64 / sing-box JSON 三种格式）
-- 智能 / 全局两种代理模式
-- 节点列表 + 延迟测试 + 排序
-- 主题（明/暗/跟随系统）+ 10 种语言翻译

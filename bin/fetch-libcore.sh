@@ -62,13 +62,13 @@ fetch_macos() {
     case " $archs " in
       *" x86_64 "*) ;;
       *) warn "libcore.dylib 缺 x86_64，Intel Mac 跑不起来（实际: ${archs:-unknown}）"
-         warn "重新编：core/build.sh macos（它会分别编 amd64/arm64 再 lipo 合成）"
+         warn "重新编：桌面 libcore 需分别编 amd64/arm64 再 lipo 合成 universal"
          exit 1 ;;
     esac
     case " $archs " in
       *" arm64 "*) ;;
       *) warn "libcore.dylib 缺 arm64，Apple Silicon 跑不起来（实际: ${archs:-unknown}）"
-         warn "重新编：core/build.sh macos"
+         warn "重新编：桌面 libcore 需分别编 amd64/arm64 再 lipo 合成 universal"
          exit 1 ;;
     esac
   fi

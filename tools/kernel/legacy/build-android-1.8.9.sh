@@ -9,12 +9,12 @@
 #     满足 Android 15+ 16 KB 页设备与 Google Play 的要求。
 #
 # 用法：
-#   tools/libcore/build-android.sh                 # 产物写到 build/libcore/
-#   OUT_DIR=/some/dir tools/libcore/build-android.sh
-#   REFERENCE_AAR=old/libcore.aar tools/libcore/build-android.sh
+#   tools/kernel/legacy/build-android-1.8.9.sh                 # 产物写到 build/libcore/
+#   OUT_DIR=/some/dir tools/kernel/legacy/build-android-1.8.9.sh
+#   REFERENCE_AAR=old/libcore.aar tools/kernel/legacy/build-android-1.8.9.sh
 #       # 额外与参考 aar 做 Java 公共 API 对比（javap -public，期望零差异）
 #   KEEP_WORK=1 ...                                # 保留构建目录便于排查
-#   tools/libcore/build-android.sh --self-test     # 故障注入自测（不联网、不构建）
+#   tools/kernel/legacy/build-android-1.8.9.sh --self-test     # 故障注入自测（不联网、不构建）
 #
 # 依赖：
 #   - git、curl、unzip、shasum/sha256sum
@@ -45,7 +45,7 @@ set -euo pipefail
 # ---------------------------------------------------------------- 固定参数
 # 内核上游仓库与提交（该提交的 go.mod / go.sum 锁定了现发布版的全部依赖版本）。
 # 仓库地址不写进公开仓库：从环境变量 LIBCORE_UPSTREAM_REPO 读取，或放在
-# 不入 git 的 tools/libcore/upstream.local（一行地址）。克隆后会校验 HEAD 必须
+# 不入 git 的 tools/kernel/legacy/upstream.local（一行地址）。克隆后会校验 HEAD 必须
 # 等于下面固定的提交，地址给错也编不出东西。
 UPSTREAM_REPO="${LIBCORE_UPSTREAM_REPO:-}"
 if [ -z "$UPSTREAM_REPO" ] && [ -f "$(dirname "$0")/upstream.local" ]; then
@@ -502,7 +502,7 @@ if [ "${1:-}" = "--self-test" ]; then
 fi
 
 # ---------------------------------------------------------------- 主流程
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 OUT_DIR="${OUT_DIR:-$REPO_ROOT/build/libcore}"
 host_os="$(uname -s)"
 host_arch="$(uname -m)"
@@ -575,7 +575,7 @@ export PATH="$GOBIN:$GOROOT/bin:$JAVA_HOME/bin:$PATH"
 log "获取内核源码 @ ${UPSTREAM_COMMIT}"
 git init -q "$WORK/src"
 if [ -z "$UPSTREAM_REPO" ]; then
-  echo "缺少内核上游仓库地址：设置 LIBCORE_UPSTREAM_REPO 或写入 tools/libcore/upstream.local" >&2
+  echo "缺少内核上游仓库地址：设置 LIBCORE_UPSTREAM_REPO 或写入 tools/kernel/legacy/upstream.local" >&2
   exit 1
 fi
 git -C "$WORK/src" remote add origin "$UPSTREAM_REPO"

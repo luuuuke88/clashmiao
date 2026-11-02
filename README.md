@@ -134,15 +134,15 @@ tools/kernel/build-android.sh       # 真实 gomobile 构建：产物 build/kern
 
 Android 15 起出现 16 KB 内存页设备，Google Play 也要求所有原生库支持 16 KB 页。
 内核库 `libbox.so` 必须让所有 LOAD 段按 16 KB（`2**14`）对齐，否则在这类设备上加载失败。
-`tools/libcore/build-android.sh` 会从固定的内核上游提交重编 `libcore.aar`：
+`tools/kernel/legacy/build-android-1.8.9.sh` 会从固定的内核上游提交重编 `libcore.aar`：
 
-内核上游仓库地址不放在公开仓库里：构建前设置环境变量 `LIBCORE_UPSTREAM_REPO`，或把地址写进不入 git 的 `tools/libcore/upstream.local`（一行）。脚本克隆后会校验源码提交与固定的提交一致。
+内核上游仓库地址不放在公开仓库里：构建前设置环境变量 `LIBCORE_UPSTREAM_REPO`，或把地址写进不入 git 的 `tools/kernel/legacy/upstream.local`（一行）。脚本克隆后会校验源码提交与固定的提交一致。
 
 ```bash
-tools/libcore/build-android.sh                       # 产物：build/libcore/libcore.aar + .sha256
+tools/kernel/legacy/build-android-1.8.9.sh                       # 产物：build/libcore/libcore.aar + .sha256
 REFERENCE_AAR=android/app/libs/libcore.aar \
-  tools/libcore/build-android.sh                     # 顺便与现有 aar 对比 Java 公共 API
-tools/libcore/build-android.sh --self-test           # 校验逻辑的故障注入自测（不联网、不构建）
+  tools/kernel/legacy/build-android-1.8.9.sh                     # 顺便与现有 aar 对比 Java 公共 API
+tools/kernel/legacy/build-android-1.8.9.sh --self-test           # 校验逻辑的故障注入自测（不联网、不构建）
 ```
 
 固定内容（都写在脚本顶部）：

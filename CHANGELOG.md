@@ -27,7 +27,7 @@ Kotlin 与 Dart 的对外契约（Pigeon、EventChannel、`configOptions` 键名
 - WARP：账号注册由 App 自己完成（先注册新设备、成功后再删旧设备），出站图按 `proxy_over_warp` / `warp_over_proxy` 两种模式装配；启用 WARP 但没有生成过账号时启动会明确报错，不会静默裸连
 - 旧的 `stderr.log` 重定向不再有；APK 体积增加约 12 MB（`libclashmiao.so` 57.8 MB，对旧 `libbox.so` 45.6 MB）
 
-**回滚**：保留旧 aar（Release `libcore-v1.8.9-16k`）与 `tools/libcore/build-android.sh`。已被新版重写、含 `endpoints` 的订阅文件，旧内核读不了，回滚后下一次刷新即恢复。
+**回滚**：保留旧 aar（Release `libcore-v1.8.9-16k`）与 `tools/kernel/legacy/build-android-1.8.9.sh`。已被新版重写、含 `endpoints` 的订阅文件，旧内核读不了，回滚后下一次刷新即恢复。
 
 ### iOS：连接生命周期对齐 Android 的原生协调器
 

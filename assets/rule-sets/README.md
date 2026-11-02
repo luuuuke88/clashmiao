@@ -75,4 +75,4 @@ curl -sSL -o assets/rule-sets/geosite-cn.srs \
 ## 兼容
 
 `.srs` 文件 magic header 是 `SRS\x01`（`0x53 0x52 0x53 0x01`）。
-sing-box 1.8+ 兼容。当前 `core/build.sh` 编译的 sing-box 1.11.0 fork 兼容此格式。
+sing-box 1.8+ 兼容。桌面与 iOS 当前使用的 sing-box 1.8.9 内核（以及 Android 的 1.14 内核）都兼容此格式。

@@ -188,7 +188,7 @@ macOS 产物是 **universal**（`x86_64` + `arm64`），Intel Mac 和 Apple Sili
 都包含这两个架构——只出 arm64 的话 Intel 用户装了也跑不起来
 （Rosetta 只能 x86→arm，反向不行）。
 
-重建 libcore 时必须用 `core/build.sh macos`，它会分别编 amd64/arm64 再
+重建桌面 libcore 时必须分别编 amd64/arm64，再用
 `lipo -create` 合成。上传到 `libcore-v*` tag 的 dylib **必须是 universal**——
 那个 tag 给所有人分发同一个文件，单架构等于直接砍掉一半用户。
 

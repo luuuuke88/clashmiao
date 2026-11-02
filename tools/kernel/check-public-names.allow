@@ -3,3 +3,5 @@
 # 本文件按精确路径从扫描中排除。
 io.nekohasekai.libbox
 io.nekohasekai.mobile
+# 冻结的回滚脚本 tools/kernel/legacy/build-android-1.8.9.sh 里的这一行（Java 包名，ABI 常量）
+JAVA_PKG="io.nekohasekai"

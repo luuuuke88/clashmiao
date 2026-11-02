@@ -133,7 +133,11 @@ jobs:
         run: bin/fetch-libcore.sh android
       - run: flutter pub get
       # 只出 arm64-v8a，和发版产物保持一致（见 android/gradle.properties）
+      # CI 没有签名密钥：显式允许回退 debug 签名，只验证 release 能构建。
+      # 这个开关只能出现在 ci.yml；release.yml 必须保持缺签名即失败。
       - run: flutter build apk --release --target-platform android-arm64
+        env:
+          ORG_GRADLE_PROJECT_allowDebugSigning: "true"
       - uses: actions/upload-artifact@v4
         with:
           name: clashmiao-android-apk

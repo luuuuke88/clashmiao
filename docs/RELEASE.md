@@ -126,6 +126,17 @@ Variables 在同一页的 `Variables` 标签下。
 debug 签名的 AAB 无法上架 Google Play，而且签名 key 一旦确定就不能更换——
 产出一个"构建成功"的废包，比构建直接失败糟糕得多。
 
+本地构建同理：没有 `android/key.properties` 时，`flutter build apk --release`、
+`flutter build appbundle --release` 这类 release 构建会直接失败（debug 构建不受影响）。
+只想本地试包、不打算分发时，显式加开关才会回退 debug 签名：
+
+```bash
+ORG_GRADLE_PROJECT_allowDebugSigning=true flutter build apk --release --target-platform android-arm64
+```
+
+CI 的 `build-android` 因为没有密钥，只验证 release 能构建，所以带着这个开关；
+`release.yml` 不带，缺 Secret 就失败。
+
 需要配置这四个 Secret：
 
 - `ANDROID_KEYSTORE_BASE64`

@@ -11,10 +11,32 @@ val keystoreProperties = Properties()
 val hasKeystore = keystorePropertiesFile.exists()
 if (hasKeystore) {
     keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }
-} else {
-    logger.lifecycle(
-        "No android/key.properties found; release APKs will use the debug signing config.",
-    )
+}
+
+// 本地试包的显式开关：ORG_GRADLE_PROJECT_allowDebugSigning=true（或 -PallowDebugSigning=true）。
+// 缺 key.properties 时，release 构建默认直接失败，不再静默回退 debug 签名——
+// debug 签名的包无法上架，也无法被正式签名的版本覆盖升级。
+val allowDebugSigning = (project.findProperty("allowDebugSigning") as String?) == "true"
+if (!hasKeystore) {
+    if (allowDebugSigning) {
+        logger.lifecycle(
+            "No android/key.properties found; allowDebugSigning=true, release APKs will use the debug signing config.",
+        )
+    }
+    // 只拦会产出/签名发布包的任务；debug 构建、testDebugUnitTest 等不受影响。
+    val releaseArtifactTask =
+        Regex("^(assemble|bundle|package|sign|validateSigning|install)Release")
+    gradle.taskGraph.whenReady {
+        val appReleaseTasks = allTasks.filter {
+            it.project == project && releaseArtifactTask.containsMatchIn(it.name)
+        }
+        if (appReleaseTasks.isNotEmpty() && !allowDebugSigning) {
+            throw GradleException(
+                "缺少 android/key.properties：release 构建不允许回退 debug 签名。" +
+                    "仅本地试包可加 ORG_GRADLE_PROJECT_allowDebugSigning=true",
+            )
+        }
+    }
 }
 
 android {

@@ -22,6 +22,18 @@ Map<String, List<String>> scanLib() {
   return result;
 }
 
+/// 扫描 `lib/` 下全部 `.dart` 的源码：「`lib/` 内相对路径 → 源码」。
+Map<String, String> scanSources() {
+  final sources = <String, String>{};
+  for (final f in Directory(
+    'lib',
+  ).listSync(recursive: true).whereType<File>()) {
+    if (!f.path.endsWith('.dart')) continue;
+    sources[f.path.substring('lib/'.length)] = f.readAsStringSync();
+  }
+  return sources;
+}
+
 /// 连接状态的单一真值（子项目 B）：`boxStatusProvider` 只留在 core，给流量统计
 /// / 代理分组两路订阅做门控；界面层（`features/`、`app/`、`main.dart`）一律读
 /// `connectionControllerProvider` / `isConnectedProvider`。
@@ -51,14 +63,80 @@ void main() {
     expect(uris.length, greaterThan(100));
   });
 
-  test('层间依赖合规（core ← shared ← domain ← features ← app，domain 内部有序）', () {
+  test('层间依赖合规（按逻辑功能判定：能力型有序、页面型互不依赖，core ← shared ← 功能 ← app）', () {
     final violations = checkLayering(uris, allowlist: kAllowlist);
     expect(violations, isEmpty, reason: render(violations));
   });
 
-  test('R1：domain 模型不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application', () {
+  test('R1：所有功能的 model 层不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application', () {
     final violations = checkModelPurity(uris);
     expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('规则 4：同功能内部方向 presentation → application → data → model（扣除已登记欠账）', () {
+    final violations = withoutDebt(
+      checkIntraFeatureDirection(uris),
+      kIntraDirectionDebt,
+    );
+    expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('欠账没有过期条目，且不超上限', () {
+    final stale = staleDebt(
+      checkIntraFeatureDirection(uris),
+      kIntraDirectionDebt,
+    );
+    expect(
+      stale,
+      isEmpty,
+      reason:
+          '以下欠账已还清，请从 allowlist.dart 的 kIntraDirectionDebt 删除：${render(stale)}',
+    );
+    expect(
+      kIntraDirectionDebt.length,
+      lessThanOrEqualTo(kIntraDirectionDebtCeiling),
+      reason:
+          '欠账只减不增：当前 ${kIntraDirectionDebt.length} 条，上限 $kIntraDirectionDebtCeiling',
+    );
+  });
+
+  test('规则 6：页面只在 app 构造（扣除已登记欠账）', () {
+    final violations = withoutDebt(
+      checkPageConstruction(scanSources()),
+      kPageConstructionDebt,
+    );
+    expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('页面构造欠账没有过期条目，且不超上限', () {
+    final stale = staleDebt(
+      checkPageConstruction(scanSources()),
+      kPageConstructionDebt,
+    );
+    expect(
+      stale,
+      isEmpty,
+      reason:
+          '以下欠账已还清，请从 allowlist.dart 的 kPageConstructionDebt 删除：${render(stale)}',
+    );
+    expect(
+      kPageConstructionDebt.length,
+      lessThanOrEqualTo(kPageConstructionDebtCeiling),
+      reason:
+          '欠账只减不增：当前 ${kPageConstructionDebt.length} 条，上限 $kPageConstructionDebtCeiling',
+    );
+  });
+
+  test('features/config 旧映射守卫：没有清单之外的文件会被误归到 backup / options', () {
+    final unexpected = unexpectedLegacyConfigFiles(uris.keys);
+    expect(
+      unexpected,
+      isEmpty,
+      reason:
+          'features/config 下的文件名按旧映射拆分（backup_ / restore_ / startup_restore '
+          '→ backup，config_options_page → options），只对 kLegacyConfigSplitFiles '
+          '里的旧文件成立。新文件请换名字或放进正确的功能目录：${render(unexpected)}',
+    );
   });
 
   test('白名单没有过期条目', () {
@@ -70,21 +148,13 @@ void main() {
     );
   });
 
-  test('白名单合法：条数不超上限，且只含 features → features', () {
+  test('白名单合法：条数不超上限，且只含页面型 → 页面型', () {
     final problems = checkAllowlist(kAllowlist, ceiling: kAllowlistCeiling);
     expect(problems, isEmpty, reason: render(problems));
   });
 
   test('单一真值：features / app / main 不引用 boxStatusProvider', () {
-    final sources = <String, String>{};
-    for (final f in Directory(
-      'lib',
-    ).listSync(recursive: true).whereType<File>()) {
-      if (!f.path.endsWith('.dart')) continue;
-      final rel = f.path.substring('lib/'.length);
-      sources[rel] = f.readAsStringSync();
-    }
-    final offenders = boxStatusProviderUsagesInUiLayers(sources);
+    final offenders = boxStatusProviderUsagesInUiLayers(scanSources());
     expect(
       offenders,
       isEmpty,

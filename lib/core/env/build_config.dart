@@ -15,8 +15,6 @@
 /// 做到**没配置就不显示入口**，而不是显示一个死链。
 library;
 
-import 'package:flutter/foundation.dart';
-
 /// Sentry 上报地址。空 = 完全不初始化 Sentry SDK。
 ///
 /// 注意这只是"编译期有没有 DSN"，是否真的上报还要看用户的数据分析开关
@@ -91,17 +89,6 @@ bool get hasTermsAndConditions => termsAndConditionsUrl.isNotEmpty;
 const updateCheckDisabled = bool.fromEnvironment(
   'CLASHMIAO_DISABLE_UPDATE_CHECK',
 );
-
-/// 更新只能由应用商店分发的平台。iOS 包只能从 App Store / TestFlight 安装，
-/// App 自己检查更新、再引导去站外下载，既做不到也违反审核指南，所以这类平台
-/// 不提供更新检查。
-bool get updatesManagedByStore => defaultTargetPlatform == TargetPlatform.iOS;
-
-/// 是否能做更新检查：平台允许、构建没关掉，且两条来源任意一条可用。
-bool get hasUpdateCheck =>
-    !updatesManagedByStore &&
-    !updateCheckDisabled &&
-    (updateManifestUrl.isNotEmpty || githubRepoSlug.isNotEmpty);
 
 /// 是否编进了崩溃 / 性能上报。没有 DSN 时 Sentry 永不初始化，设置页的
 /// 「数据分析」开关打开也什么都不会发生，所以不显示这个开关。

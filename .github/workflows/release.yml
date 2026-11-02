@@ -792,11 +792,15 @@ jobs:
             "draft=false prerelease=false")
               bin/notify-website.sh "$RELEASE_TAG"
               ;;
-            "draft=true "*)
+            "draft=true prerelease=true" | "draft=true prerelease=false")
               echo "::notice::release ${RELEASE_TAG} 仍是草稿（${STATE}），未对外发布，不通知官网。"
               ;;
-            *)
+            "draft=false prerelease=true")
               echo "::notice::release ${RELEASE_TAG} 是 prerelease（${STATE}），官网只跟踪正式版，不通知。"
+              ;;
+            *)
+              echo "::error::release ${RELEASE_TAG} 的状态无法识别（${STATE}），无法判断是否该通知官网"
+              exit 1
               ;;
           esac
 

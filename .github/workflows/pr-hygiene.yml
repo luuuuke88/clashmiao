@@ -1,0 +1,24 @@
+name: pr-hygiene
+
+# PR 提交信息检查：格式（type(scope): 中文描述）、公网 IPv4、禁用词。
+# 禁用词表来自仓库 secret KERNEL_DENYLIST；fork PR 拿不到 secret，此时跳过禁用词检查。
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  commit-msgs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: 检查脚本自测
+        run: bash bin/check-commit-msgs.test.sh
+      - name: 检查 PR 提交信息
+        env:
+          PUBLIC_NAME_DENYLIST: ${{ secrets.KERNEL_DENYLIST }}
+        run: bash bin/check-commit-msgs.sh "origin/${{ github.base_ref }}" HEAD

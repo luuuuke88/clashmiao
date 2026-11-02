@@ -59,55 +59,15 @@ void main() {
       );
     });
 
-    test('旧路径 features/config 按文件拆成 backup / options / config', () {
-      expectUnit(
+    test('features/config 下一律是 config，不再按文件名拆分', () {
+      for (final f in [
         'features/config/data/backup_engine.dart',
-        'backup',
-        Tier.capability,
-        'data',
-      );
-      expectUnit(
         'features/config/application/restore_refresher.dart',
-        'backup',
-        Tier.capability,
-        'application',
-      );
-      expectUnit(
-        'features/config/application/startup_restore_notice.dart',
-        'backup',
-        Tier.capability,
-        'application',
-      );
-      expectUnit(
-        'features/config/data/restore_recovery.dart',
-        'backup',
-        Tier.capability,
-        'data',
-      );
-      expectUnit(
-        'features/config/model/backup_bundle.dart',
-        'backup',
-        Tier.capability,
-        'model',
-      );
-      expectUnit(
-        'features/config/presentation/backup_messages.dart',
-        'backup',
-        Tier.capability,
-        'presentation',
-      );
-      expectUnit(
         'features/config/presentation/config_options_page.dart',
-        'options',
-        Tier.page,
-        'presentation',
-      );
-      expectUnit(
         'features/config/presentation/dns_strategy_messages.dart',
-        'config',
-        Tier.capability,
-        'presentation',
-      );
+      ]) {
+        expect(logicalUnitOf(f)!.feature, 'config', reason: f);
+      }
     });
 
     test('新路径 features/<f>/<layer>', () {
@@ -251,7 +211,7 @@ void main() {
       test('各层都按 kCapabilityOrder 判：backup 可依赖全部更低者，反之违规', () {
         expect(
           check({
-            'features/config/data/backup_engine.dart': [
+            'features/backup/data/backup_engine.dart': [
               'domain/config/data/a.dart',
               'domain/profile/data/b.dart',
               'domain/routing/data/c.dart',
@@ -264,7 +224,7 @@ void main() {
         expect(
           check({
             'domain/connection/application/a.dart': [
-              'features/config/data/backup_engine.dart',
+              'features/backup/data/backup_engine.dart',
             ],
           }),
           hasLength(1),
@@ -305,7 +265,7 @@ void main() {
             'features/profile/presentation/a.dart': [
               'domain/routing/application/b.dart',
               'domain/connection/model/c.dart',
-              'features/config/data/backup_engine.dart',
+              'features/backup/data/backup_engine.dart',
               'features/profile/presentation/d.dart',
               'shared/components/e.dart',
               'core/f.dart',
@@ -368,7 +328,7 @@ void main() {
       test('页面型之间的跳转写进白名单后合规', () {
         final edges = {
           'features/home/presentation/quick_settings_modal.dart': [
-            'features/config/presentation/config_options_page.dart',
+            'features/options/presentation/config_options_page.dart',
           ],
         };
         expect(check(edges), hasLength(1));
@@ -378,7 +338,7 @@ void main() {
             allowlist: const [
               AllowedEdge(
                 'features/home/presentation/quick_settings_modal.dart',
-                'features/config/presentation/config_options_page.dart',
+                'features/options/presentation/config_options_page.dart',
                 '页面跳转',
               ),
             ],
@@ -616,10 +576,10 @@ void main() {
       );
     });
 
-    test('features/config 拆出的 backup 与 config 是两个功能', () {
+    test('backup 与 config 是两个功能', () {
       expect(
         intra({
-          'features/config/data/backup_engine.dart': [
+          'features/backup/data/backup_engine.dart': [
             'domain/config/application/a.dart',
           ],
         }),
@@ -643,7 +603,8 @@ void main() {
 
   group('checkPageConstruction：规则 6 页面只在 app 构造', () {
     const settingsPage = 'features/settings/presentation/settings_page.dart';
-    const optionsPage = 'features/config/presentation/config_options_page.dart';
+    const optionsPage =
+        'features/options/presentation/config_options_page.dart';
     const defs = {
       settingsPage: 'class SettingsPage extends StatelessWidget {}',
       optionsPage: 'class ConfigOptionsPage extends StatelessWidget {}',
@@ -742,43 +703,6 @@ class MySettingsPageHelper {}
               'SettingsPage(); SettingsPage();',
         }),
         hasLength(1),
-      );
-    });
-  });
-
-  group('features/config 的旧映射（Task 16 搬完文件后删除）', () {
-    test('现状：features/config 下按文件名拆；新建 backup_ 开头的文件会被归到 backup', () {
-      final u = logicalUnitOf('features/config/data/backup_settings.dart');
-      expect(u!.feature, 'backup');
-      expect(
-        logicalUnitOf('features/config/data/other.dart')!.feature,
-        'config',
-      );
-    });
-
-    test('unexpectedLegacyConfigFiles：只放行固定清单里的旧文件名', () {
-      expect(
-        unexpectedLegacyConfigFiles([
-          for (final f in kLegacyConfigSplitFiles) f,
-          'features/config/presentation/dns_strategy_messages.dart',
-          'features/profile/data/backup_x.dart',
-        ]),
-        isEmpty,
-      );
-      expect(
-        unexpectedLegacyConfigFiles([
-          'features/config/data/backup_settings.dart',
-          'features/config/application/restore_x.dart',
-          'features/config/application/startup_restore_y.dart',
-          'features/config/presentation/config_options_page.dart',
-          'features/config/presentation/sub/config_options_page.dart',
-        ]),
-        [
-          'features/config/data/backup_settings.dart',
-          'features/config/application/restore_x.dart',
-          'features/config/application/startup_restore_y.dart',
-          'features/config/presentation/sub/config_options_page.dart',
-        ],
       );
     });
   });
@@ -887,7 +811,6 @@ class MySettingsPageHelper {}
       for (final m in [
         'features/assets/model/geo_asset.dart',
         'features/backup/model/backup_bundle.dart',
-        'features/config/model/backup_bundle.dart',
       ]) {
         expect(
           checkModelPurity({
@@ -900,7 +823,7 @@ class MySettingsPageHelper {}
       for (final target in [
         'features/assets/data/g.dart',
         'features/proxy/application/g.dart',
-        'features/config/data/backup_engine.dart',
+        'features/backup/data/backup_engine.dart',
       ]) {
         final bad = checkModelPurity({
           'features/assets/model/geo_asset.dart': [pkg(target)],
@@ -1018,18 +941,18 @@ class MySettingsPageHelper {}
       }
     });
 
-    test('页面型 → 页面型（新旧路径）的条目：通过', () {
+    test('页面型 → 页面型的条目：通过', () {
       expect(
         checkAllowlist(const [
           AllowedEdge(
             'features/home/presentation/quick_settings_modal.dart',
-            'features/config/presentation/config_options_page.dart',
-            '旧路径',
+            'features/options/presentation/config_options_page.dart',
+            '跳转到 options',
           ),
           AllowedEdge(
             'features/options/presentation/config_options_page.dart',
             'features/logs/presentation/logs_page.dart',
-            '新路径',
+            '跳转到 logs',
           ),
         ], ceiling: 5),
         isEmpty,

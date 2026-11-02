@@ -90,7 +90,7 @@ CI：不跑。原因不是技术上做不到，而是目前没有任何 CI 任�
 
 - 平台：Android 或 iOS，模拟器或真机均可（代码里的判断是「非 Android 且非 iOS 则跳过」），文件名里的 `ios` 只是历史命名。
 - 依赖：用固定的节点数据渲染首页的连接信息，不建立隧道，不需要订阅地址。
-- 流程：断言节点名与延迟按一行布局显示，不出现「已连接 」前缀。
+- 流程：断言节点名与延迟文本都出现，且不出现「已连接 」前缀（不校验布局位置；布局靠可选截图人工确认）。
 - 可选参数 `--dart-define=CLASHMIAO_EMIT_HOME_INFO_SCREENSHOT=true`：截图并以 base64 打印在日志的 `[home-info-ios-base64-begin]` 与 `[home-info-ios-base64-end]` 之间。
 
 ```bash

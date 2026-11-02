@@ -162,7 +162,7 @@ jobs:
             --icon-size 100 \
             --app-drop-link 400 200 \
             "build/ClashMiao-macOS-arm64.dmg" \
-            "build/macos/Build/Products/Release/clashmiao.app"
+            "build/macos/Build/Products/Release/ClashMiao.app"
       - uses: actions/upload-artifact@v4
         with:
           name: clashmiao-macos-arm64-dmg

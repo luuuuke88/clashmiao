@@ -11,11 +11,11 @@ namespace {
 const wchar_t kSingleInstanceMutexName[] = L"ClashMiao_SingleInstance_Mutex";
 
 // 如果已经有一份实例在跑，把它的主窗口拉到前台——按窗口标题查找（下面
-// window.Create(L"clashmiao", ...) 设置的就是这个标题，win32_window.cpp
+// window.Create(L"ClashMiao", ...) 设置的就是这个标题，win32_window.cpp
 // 里直接把 title 传给 CreateWindowExW 作为窗口文本，没有被后续代码改过）。
 // 找不到窗口不算错误，就单纯放弃激活，直接退出当前（重复启动的）进程。
 void ActivateExistingInstance() {
-  HWND existing = ::FindWindowW(nullptr, L"clashmiao");
+  HWND existing = ::FindWindowW(nullptr, L"ClashMiao");
   if (existing == nullptr) {
     return;
   }
@@ -64,7 +64,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"clashmiao", origin, size)) {
+  if (!window.Create(L"ClashMiao", origin, size)) {
     ::CloseHandle(single_instance_mutex);
     return EXIT_FAILURE;
   }

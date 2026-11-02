@@ -39,7 +39,7 @@ cleanup() {
     kill -9 "$APP_PID" 2>/dev/null || true
   fi
   case "$OS" in
-    Darwin) pkill -x clashmiao 2>/dev/null || true ;;
+    Darwin) pkill -x ClashMiao 2>/dev/null || true ;;
     Linux)  pkill -f bundle/clashmiao 2>/dev/null || true ;;
   esac
 }
@@ -47,14 +47,14 @@ trap cleanup EXIT
 
 case "$OS" in
   Darwin)
-    APP="build/macos/Build/Products/Debug/clashmiao.app"
-    [[ -d "$APP" ]] || APP="build/macos/Build/Products/Release/clashmiao.app"
+    APP="build/macos/Build/Products/Debug/ClashMiao.app"
+    [[ -d "$APP" ]] || APP="build/macos/Build/Products/Release/ClashMiao.app"
     [[ -d "$APP" ]] || { echo "error: $APP not built (run flutter build macos --{debug,release})"; exit 4; }
-    pkill -x clashmiao 2>/dev/null || true
+    pkill -x ClashMiao 2>/dev/null || true
     sleep 1
-    log "launching $APP/Contents/MacOS/clashmiao"
+    log "launching $APP/Contents/MacOS/ClashMiao"
     # 直接 exec binary，stdout 留给 CI 排错；`open` 拿不到子进程 PID 不好 kill
-    "$APP/Contents/MacOS/clashmiao" > /tmp/clashmiao-stdout.log 2>&1 &
+    "$APP/Contents/MacOS/ClashMiao" > /tmp/clashmiao-stdout.log 2>&1 &
     APP_PID=$!
     ;;
   Linux)

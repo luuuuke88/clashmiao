@@ -307,7 +307,7 @@ ios/
 - `networkSettingsProvider` — 端口、TUN、系统代理、DNS 等设置（`lib/domain/config/application/network_settings.dart`）
 - `optimisticProxySelectionsProvider` — 乐观切换代理节点（`lib/features/proxy/application/`）
 
-### 默认 sing-box 配置（`lib/domain/config/data/default_config_options.dart`）
+### 默认 sing-box 配置（`lib/domain/config/application/default_config_options.dart`）
 
 `getDefaultConfigOptions` 把用户设置与当前模式拼成推给内核的 `configOptions`。按平台分流的两项：
 

@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 
 /// 三态补丁字段：未指定 / 设置为某值 / 清除。
 ///

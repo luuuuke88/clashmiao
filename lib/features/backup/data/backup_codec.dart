@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/pref_registry.dart';
-import 'package:clashmiao/domain/config/data/migrations/v2_direct_dns.dart';
-import 'package:clashmiao/domain/config/model/dns_defaults.dart';
-import 'package:clashmiao/domain/config/model/profile_nodes.dart';
+import 'package:clashmiao/features/config/data/migrations/v2_direct_dns.dart';
+import 'package:clashmiao/features/config/model/dns_defaults.dart';
+import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/backup/model/backup_bundle.dart';

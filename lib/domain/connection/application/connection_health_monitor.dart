@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/http_client/app_http_client.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/application/service_mode.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/service_mode.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';

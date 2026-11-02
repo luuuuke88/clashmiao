@@ -207,7 +207,7 @@ void main() {
 
     test('目录移动：清单外的 <from>/... 引用也按路径段边界改写，configx 不动', () {
       _write(repo, 'lib/domain/uses_gen.dart', '''
-import 'package:clashmiao/domain/config/gen/missing.g.dart';
+import 'package:clashmiao/features/config/gen/missing.g.dart';
 import 'package:clashmiao/domain/configx/missing.g.dart';
 ''');
       _git(repo, ['add', '-A']);
@@ -440,7 +440,7 @@ void _write(Directory repo, String rel, String content) {
 
 void _seed(Directory repo) {
   _write(repo, 'lib/domain/config/a.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
+import 'package:clashmiao/features/config/sub/b.dart';
 import 'package:clashmiao/domain/configx/c.dart';
 
 const a = 1;
@@ -452,22 +452,22 @@ import 'package:clashmiao/domain/other.dart';
 const c = 3;
 ''');
   _write(repo, 'lib/domain/other.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/features/config/a.dart';
 import 'package:clashmiao/domain/configx/c.dart';
-export 'package:clashmiao/domain/config/sub/b.dart'
+export 'package:clashmiao/features/config/sub/b.dart'
     show b;
 import 'dart:async'
-    if (dart.library.io) 'package:clashmiao/domain/config/a.dart';
+    if (dart.library.io) 'package:clashmiao/features/config/a.dart';
 
 const other = 4;
 ''');
   _write(repo, 'test/domain/config/a_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/features/config/a.dart';
 
 void main() {}
 ''');
   _write(repo, 'test/domain/config/sub/b_test.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
+import 'package:clashmiao/features/config/sub/b.dart';
 
 void main() {}
 ''');
@@ -477,19 +477,19 @@ import 'package:clashmiao/domain/configx/c.dart';
 void main() {}
 ''');
   _write(repo, 'test/domain/other_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/features/config/a.dart';
 import 'package:clashmiao/domain/other.dart';
 
 void main() {}
 ''');
   _write(repo, 'test/support/helper.dart', 'const helper = 1;\n');
   _write(repo, 'integration_test/app_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/features/config/a.dart';
 
 void main() {}
 ''');
   _write(repo, 'tool/uses.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
+import 'package:clashmiao/features/config/sub/b.dart';
 
 void main() {}
 ''');

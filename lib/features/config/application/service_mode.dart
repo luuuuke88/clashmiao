@@ -17,7 +17,7 @@
 
 import 'dart:io';
 
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:flutter/foundation.dart';
 
 /// 用户可见的服务模式。

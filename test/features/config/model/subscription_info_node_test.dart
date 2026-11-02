@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/config/model/subscription_info_node.dart';
+import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

@@ -1,5 +1,5 @@
-import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/dns_strategy_conflict.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

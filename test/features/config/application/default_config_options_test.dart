@@ -1,8 +1,8 @@
-import 'package:clashmiao/domain/config/data/cn_direct_rules.dart';
-import 'package:clashmiao/domain/config/application/default_config_options.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/application/service_mode.dart';
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/data/cn_direct_rules.dart';
+import 'package:clashmiao/features/config/application/default_config_options.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/service_mode.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 按内核 BuildConfig 的口径推出「某个域名由哪台 DNS 服务器解析」。

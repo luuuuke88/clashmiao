@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:clashmiao/domain/config/application/warp_availability.dart';
+import 'package:clashmiao/features/config/application/warp_availability.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/config/application/dns_strategy_conflict.dart';
-import 'package:clashmiao/domain/config/model/dns_defaults.dart';
+import 'package:clashmiao/features/config/application/dns_strategy_conflict.dart';
+import 'package:clashmiao/features/config/model/dns_defaults.dart';
 import 'package:hooks_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
 import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
-import 'package:clashmiao/domain/config/application/network_settings.dart';
+import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/config/model/advanced_config.dart';
+import 'package:clashmiao/features/config/model/advanced_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

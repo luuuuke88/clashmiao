@@ -9,7 +9,7 @@ import '../../../support/temp_dirs.dart';
 // 排除 → 渲染整条路径，断言完整输出。cn_direct_rules_test.dart 只对已经生成好
 // 的清单再跑一遍排除，覆盖不到「生成器读了排除表、排除结果确实写进了输出」。
 
-const _fixtures = 'test/domain/config/data/fixtures/cn_direct_pipeline';
+const _fixtures = 'test/features/config/data/fixtures/cn_direct_pipeline';
 const _golden = '$_fixtures/expected_cn_direct_rules.golden';
 
 CnDirectGeneration _generate({

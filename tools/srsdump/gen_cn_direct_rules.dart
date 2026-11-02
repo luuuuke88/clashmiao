@@ -1,4 +1,4 @@
-// 由 srsdump 反编译出的 JSON 生成 lib/domain/config/data/cn_direct_rules.dart。
+// 由 srsdump 反编译出的 JSON 生成 lib/features/config/data/cn_direct_rules.dart。
 //
 // 用法（在仓库根目录跑，前两个参数是 srsdump 的产物，见 README.md）：
 //
@@ -15,7 +15,7 @@ import 'cn_direct_filter.dart';
 
 /// 排除表的默认位置（相对仓库根目录）。
 const kCnDirectExclusionsPath = 'tools/srsdump/cn_direct_exclusions.txt';
-const _outputPath = 'lib/domain/config/data/cn_direct_rules.dart';
+const _outputPath = 'lib/features/config/data/cn_direct_rules.dart';
 
 /// 一次生成的结果：应用排除表之后的清单，以及要写进生成文件的完整内容。
 typedef CnDirectGeneration = ({CnDirectLists lists, String rendered});

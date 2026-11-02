@@ -15,7 +15,7 @@ import '../../../support/golden_file.dart';
 const _path = 'kernel/testdata/rules/cn-direct.json';
 
 const _comment =
-    '由 lib/domain/config/data/cn_direct_rules.dart 导出，与 getDefaultConfigOptions '
+    '由 lib/features/config/data/cn_direct_rules.dart 导出，与 getDefaultConfigOptions '
     '在智能分流下注入的 rules 完全一致；cn_direct_fixture_export_test.dart 负责保持同步'
     '（UPDATE_GOLDEN=1 重写）。';
 

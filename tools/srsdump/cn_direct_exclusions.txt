@@ -1,4 +1,4 @@
-# 国内直连清单的排除表——生成 lib/domain/config/data/cn_direct_rules.dart 时
+# 国内直连清单的排除表——生成 lib/features/config/data/cn_direct_rules.dart 时
 # 由 gen_cn_direct_rules.dart 读取并应用，是生成管线的一部分，不是事后手改。
 #
 # ## 为什么要排除
@@ -26,7 +26,7 @@
 # ## 维护
 #
 # 规则库升级后，跑一次生成器即可自动重新应用这份表；测试
-# test/domain/config/data/cn_direct_rules_test.dart 会用一组谷歌系关键词兜底，
+# test/features/config/data/cn_direct_rules_test.dart 会用一组谷歌系关键词兜底，
 # 新数据里冒出这份表没覆盖到的谷歌域名会直接让测试失败，届时把它补进来。
 
 # ── 谷歌在大陆的地址段（APNIC whois：netname GOOGLECN，

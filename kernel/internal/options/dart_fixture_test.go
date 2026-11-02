@@ -11,7 +11,7 @@ import (
 )
 
 // 跨语言契约（Go 一侧）：Dart 的 getDefaultConfigOptions 在设置矩阵上的输出入库在
-// testdata/options/*.json（由 test/domain/config/data/options_fixture_export_test.dart 生成）。
+// testdata/options/*.json（由 test/features/config/data/options_fixture_export_test.dart 生成）。
 // 这里全部读进来：
 //   - Decode 无「未知键」警告（含 rules 项里的键）、Validate 通过 —— Dart 产生任何 Go 不认识的键即失败；
 //   - 反向：Go 已知键集合 == keys.txt 的 dart 一节 ∪ go-only 一节，且两节不相交；

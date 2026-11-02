@@ -107,7 +107,7 @@ foreach(bundled_library ${PLUGIN_BUNDLED_LIBRARIES})
 endforeach(bundled_library)
 
 # ClashMiao: sing-box 核心库（libcore.so）。
-# libs/libcore.so 由开发者用 core/build.sh linux 生成后手动放到 linux/libs/
+# libs/libcore.so 由开发者用 bin/fetch-libcore.sh 拉取到 linux/libs/
 # 这里检测一下：存在则装进 lib/，让 FFI 用 RPATH ($ORIGIN/lib) 找到。
 set(CLASHMIAO_CORE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libs/libcore.so")
 if(EXISTS "${CLASHMIAO_CORE_LIB}")

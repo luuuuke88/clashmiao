@@ -196,7 +196,7 @@ native 层依赖 `android/app/libs/libcore.aar`（由仓库内的 Go 模块 `ker
 
 Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由仓库内的 Go 模块 `kernel/` 包装成 gomobile 门面。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libclashmiao.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.14.3`。`libclashmiao.so` 所有 LOAD 段按 16 KB（`2**14`）对齐，构建脚本逐项校验。
 
-`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r2`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/libcore/build-android.sh` 保留，只用于回滚（见「升级与回滚」）。
+`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r2`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/kernel/legacy/build-android-1.8.9.sh` 保留，只用于回滚（见「升级与回滚」）。
 
 ### 内核模块 `kernel/`
 
@@ -229,7 +229,7 @@ Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由
 4. 按 `docs/superpowers/specs/2026-10-21-kernel-upgrade-design.md` §7.3 的清单真机验收（先录旧包基线，再装新包逐行对比，不边改边测）；
 5. 发 Release `libcore-v<sing-box 版本>-r<序号>`，只上传 Android 资产，修改 `bin/fetch-libcore.sh` 与两个 workflow 里的 `ANDROID_LIBCORE_TAG`。
 
-回滚：发一个把 aar 与 Kotlin 绑定层换回旧版的 hotfix（旧 aar 在 Release `libcore-v1.8.9-16k`，`tools/libcore/build-android.sh` 可复现重编）。已被新 `Parse` 重写、含 `endpoints` 的订阅文件旧内核读不了，下一次刷新即恢复。
+回滚：发一个把 aar 与 Kotlin 绑定层换回旧版的 hotfix（旧 aar 在 Release `libcore-v1.8.9-16k`，`tools/kernel/legacy/build-android-1.8.9.sh` 可复现重编）。已被新 `Parse` 重写、含 `endpoints` 的订阅文件旧内核读不了，下一次刷新即恢复。
 
 ### 桌面侧（FFI）
 
@@ -431,7 +431,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 ## 已知技术债
 
 - 生成物（slang 的 `lib/core/localization/gen/`、Pigeon 的三端 `*.g.*`）提交进了 git，fresh clone 不用先跑生成器（本仓库不用 build_runner，见 `bin/regen-i18n.sh`、`bin/regen-pigeon.sh`）。CI 目前不校验生成物与源文件是否一致，后续可加一步「重新生成后 diff 为空」。
-- `core/build.sh` 不是发布用 libcore 的来源。Android 的内核由 `kernel/` 经 `tools/kernel/build-android.sh` 构建后手动挂到 GitHub Release tag；桌面与 iOS 仍用旧 tag 的外部构建产物，CI / release flow 通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 Android 的 tag；桌面（cgo 导出）与 Apple（gomobile ios / macos）两个门面另立设计，让包内逻辑零重复。
+- 发布用 libcore 的来源只有 GitHub Release tag。Android 的内核由 `kernel/` 经 `tools/kernel/build-android.sh` 构建后手动挂到 GitHub Release tag；桌面与 iOS 仍用旧 tag 的外部构建产物，CI / release flow 通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 Android 的 tag；桌面（cgo 导出）与 Apple（gomobile ios / macos）两个门面另立设计，让包内逻辑零重复。
 - 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
 - 原生层的内核真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。

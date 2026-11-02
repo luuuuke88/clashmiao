@@ -76,7 +76,7 @@ Steps:
 > exist in the current placeholder framework – the scaffold will not
 > compile until you replace it with the real artefact.
 
-Once `core/build.sh ios` has produced `ios/Frameworks/Libcore.xcframework`:
+Once `bin/fetch-libcore.sh ios` has produced `ios/Frameworks/Libcore.xcframework`:
 
 1. Select the **Runner** target → **General → Frameworks, Libraries,
    and Embedded Content** → drag `Libcore.xcframework` in.

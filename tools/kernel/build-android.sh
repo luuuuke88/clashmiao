@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # build-android.sh — 从源码构建 Android 内核库 libcore.aar（官方 sing-box 1.14 线 + 自有 Go 模块 kernel/）。
 #
-# 与旧脚本 tools/libcore/build-android.sh 的关系：沿用其写法（固定版本 + 校验 + 故障注入自测），
+# 与旧脚本 tools/kernel/legacy/build-android-1.8.9.sh 的关系：沿用其写法（固定版本 + 校验 + 故障注入自测），
 # 但是**复制函数而不是 source**——旧脚本冻结，作为回滚工具保持原样。
 #
 # 用法：

@@ -16,7 +16,7 @@ pass=0; total=0
 
 fresh() { # fresh <name> → 建一份干净的仿仓库并 echo 路径
   local r="$T/$1"
-  mkdir -p "$r/tools/kernel" "$r/tools/libcore" "$r/docs" "$r/.github/workflows" "$r/kernel"
+  mkdir -p "$r/tools/kernel" "$r/tools/kernel/legacy" "$r/docs" "$r/.github/workflows" "$r/kernel"
   cp "$SRC_ENV" "$r/tools/kernel/env.sh"
   printf '#!/bin/sh\nsource "$(dirname "$0")/env.sh"\necho "$KERNEL_TAGS"\n' >"$r/tools/kernel/ok.sh"
   printf 'steps:\n  - run: tools/kernel/gotest.sh\n' >"$r/.github/workflows/ci.yml"
@@ -45,7 +45,7 @@ printf '#!/bin/sh\necho %s\n' "$FIRST_TAG" >"$r/tools/kernel/foo.sh"
 expect fail "新链路脚本只写了其中一个 tag → 失败" "$r"
 
 r="$(fresh frozen)"
-printf '#!/bin/sh\nTAGS="%s"\nLD="%s"\n' "$KERNEL_TAGS" "$KERNEL_LDFLAGS_LINK" >"$r/tools/libcore/build-android.sh"
+printf '#!/bin/sh\nTAGS="%s"\nLD="%s"\n' "$KERNEL_TAGS" "$KERNEL_LDFLAGS_LINK" >"$r/tools/kernel/legacy/build-android-1.8.9.sh"
 expect ok   "冻结的回滚脚本含字面量 → 被忽略" "$r"
 
 r="$(fresh docs)"

@@ -104,7 +104,7 @@ if(PLUGIN_BUNDLED_LIBRARIES)
 endif()
 
 # ClashMiao: sing-box 核心库（libcore.dll）。
-# libs/libcore.dll 由开发者用 core/build.sh windows 生成后手动放到 windows/libs/
+# libs/libcore.dll 由开发者用 bin/fetch-libcore.sh 拉取到 windows/libs/
 # 检测一下：存在就装到与 .exe 同级目录，FFI DynamicLibrary.open('libcore.dll') 即可找到。
 set(CLASHMIAO_CORE_LIB "${CMAKE_CURRENT_SOURCE_DIR}/libs/libcore.dll")
 if(EXISTS "${CLASHMIAO_CORE_LIB}")

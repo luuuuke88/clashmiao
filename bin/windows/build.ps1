@@ -4,8 +4,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-$RepoRoot = Split-Path -Parent $PSScriptRoot
-. (Join-Path $PSScriptRoot 'windows_portable_env.ps1')
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. (Join-Path $PSScriptRoot 'portable-env.ps1')
 
 $FlutterBat = $env:FLUTTER_BIN
 if (-not $FlutterBat) {

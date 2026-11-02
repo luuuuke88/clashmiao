@@ -8,7 +8,7 @@
 #   tools/kernel/*.sh           （env.sh 除外）
 #   .github/workflows/*.yml
 #   kernel/Makefile、kernel/**/Makefile（若有）
-# 显式不扫：冻结的回滚脚本 tools/libcore/build-android.sh（自带同样的字面量，保持原样）、
+# 显式不扫：冻结的回滚脚本 tools/kernel/legacy/build-android-1.8.9.sh（自带同样的字面量，保持原样）、
 #   全部文档（docs/**、README、CHANGELOG）。
 #
 # 本脚本自身只读 env.sh 的变量，源码里不含任何字面量。

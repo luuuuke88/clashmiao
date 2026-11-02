@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/env/build_config.dart';
+import 'package:clashmiao/core/env/platform_capabilities.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/update/update_checker.dart';
 import 'package:clashmiao/features/about/application/update_check_provider.dart';

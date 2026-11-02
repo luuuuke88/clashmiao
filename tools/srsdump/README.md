@@ -1,7 +1,7 @@
 # srsdump
 
 把 `assets/rule-sets/` 下的 `.srs` rule-set 反编译成明文 JSON，用来生成
-`lib/domain/config/data/cn_direct_rules.dart`。
+`lib/features/config/data/cn_direct_rules.dart`。
 
 **为什么需要它**：实际发布用的 libcore 在 `region:"other"` 前提下物理上不支持
 任何形式的 rule-set，分流数据只能以明文列表经 `configOptions.rules` 注入。
@@ -35,7 +35,7 @@ docker run --rm -v "$PWD/core/sing-box:/src" \
 {"domain": ["265.com", ...], "domain_suffix": [".baidu", ...], "ip_cidr": ["1.0.1.0/24", ...]}
 ```
 
-再跑生成器，据此重新生成 `lib/domain/config/data/cn_direct_rules.dart`：
+再跑生成器，据此重新生成 `lib/features/config/data/cn_direct_rules.dart`：
 
 ```bash
 dart tools/srsdump/gen_cn_direct_rules.dart out/site.json out/ip.json
@@ -58,7 +58,7 @@ dart tools/srsdump/gen_cn_direct_rules.dart out/site.json out/ip.json
    这次排除了哪些条目会打印到 stderr，提交前核对一遍。
 
 规则库升级或排除表改动后，重跑上面两步即可，排除表每次都会自动重新应用；
-`test/domain/config/data/cn_direct_rules_test.dart` 里有一条按谷歌系关键词
+`test/features/config/data/cn_direct_rules_test.dart` 里有一条按谷歌系关键词
 兜底的测试，新数据冒出排除表没覆盖的谷歌域名会直接失败，届时补进排除表再
 重新生成。
 

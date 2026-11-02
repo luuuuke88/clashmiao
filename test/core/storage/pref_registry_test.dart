@@ -97,8 +97,9 @@ void main() {
 
   group('防漂移：代码里用到的偏好键必须登记', () {
     test('网络设置的每个 `_k…` 键都已登记，且登记表里的网络键没有多余', () {
-      final source = File('lib/domain/config/application/network_settings.dart')
-          .readAsStringSync();
+      final source = File(
+        'lib/features/config/application/network_settings.dart',
+      ).readAsStringSync();
       final declared = RegExp(r"const _k\w+ = '(clashmiao_[a-z0-9_]+)';")
           .allMatches(source)
           .map((m) => m.group(1)!)

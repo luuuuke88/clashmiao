@@ -304,10 +304,10 @@ ios/
 - `boxStatsProvider`、`outboundGroupsProvider` — 只在已连接时才订阅，避免无谓 IPC
 - `proxyModeProvider` — 智能 / 全局模式持久化（`lib/domain/routing/application/proxy_mode_notifier.dart`，默认 1 = 智能）
 - `profileListProvider` / `activeProfileProvider` — 订阅列表与当前激活订阅（`lib/domain/profile/application/profile_providers.dart`）
-- `networkSettingsProvider` — 端口、TUN、系统代理、DNS 等设置（`lib/domain/config/application/network_settings.dart`）
+- `networkSettingsProvider` — 端口、TUN、系统代理、DNS 等设置（`lib/features/config/application/network_settings.dart`）
 - `optimisticProxySelectionsProvider` — 乐观切换代理节点（`lib/features/proxy/application/`）
 
-### 默认 sing-box 配置（`lib/domain/config/application/default_config_options.dart`）
+### 默认 sing-box 配置（`lib/features/config/application/default_config_options.dart`）
 
 `getDefaultConfigOptions` 把用户设置与当前模式拼成推给内核的 `configOptions`。按平台分流的两项：
 

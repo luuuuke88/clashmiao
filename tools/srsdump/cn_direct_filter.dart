@@ -1,7 +1,7 @@
 // 国内直连清单的排除步骤：生成管线（gen_cn_direct_rules.dart）和单元测试共用。
 //
 // 输入是 srsdump 反编译出来的原始清单 + cn_direct_exclusions.txt，输出是真正
-// 写进 lib/domain/config/data/cn_direct_rules.dart 的四个清单。纯函数，不碰
+// 写进 lib/features/config/data/cn_direct_rules.dart 的四个清单。纯函数，不碰
 // 文件系统——读文件由调用方负责。
 //
 // 匹配语义与内核（libcore 的 makeDomainRule → sing-box 路由规则）一致：

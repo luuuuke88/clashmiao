@@ -39,6 +39,8 @@ jobs:
         run: bash tools/kernel/check-libcore-checksums.sh
       - name: fetch-libcore 校验用例
         run: bash bin/fetch-libcore.test.sh
+      - name: notify-website 用例
+        run: bash bin/notify-website.test.sh
 
   # 自有 Go 内核模块 kernel/ 的验证：与发版共用同一份 reusable workflow（kernel-verify.yml）。
   # 仓库 secret KERNEL_DENYLIST 需要维护者配置一次（名称守卫的词表），未配置则该步骤失败。

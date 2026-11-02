@@ -21,7 +21,8 @@
 // 5. model 层纯净：不依赖 Flutter / Riverpod / dart:io / dart:ui，传递闭包里
 //    也不触达 data / application（[checkModelPurity]）；
 // 6. 页面只在 `app/` 里构造，跨功能的页面跳转只走 `AppRouteScope`：
-//    `app/` 是唯一能依赖页面型功能的地方（规则 3 与白名单共同保证）。
+//    `app/` 之外、页面所在功能之外的文件不得引用别的功能的 `*Page` 类
+//    （[checkPageConstruction]，历史欠账登记在 [kPageConstructionDebt]）。
 //
 // R2（只用 package 导入）已由 `always_use_package_imports` lint 把守，不重复实现。
 import 'import_scanner.dart';
@@ -90,12 +91,45 @@ class AllowedEdge {
 
 const _lintRule = '层间依赖';
 const _intraRule = '同功能内部方向';
+const _pageRule = 'R6 页面只在 app 构造';
 const _illegalAllowRule = '白名单条目非法';
 const _purityRule = 'R1 模型纯净';
 const _nonCanonicalUriRule = '非规范 URI';
 
-final _backupFile = RegExp(r'^(backup_|restore_|startup_restore)');
-const _optionsPageFile = 'config_options_page.dart';
+// ---- LEGACY 映射：仅为 features/config 搬迁前的旧布局而存在（Task 16 搬完后删除）----
+//
+// 旧布局里 `features/config/` 是 backup / options / config 三个功能混住，只能按
+// 文件名拆。但 `features/config/` 同时也是新布局里 config 功能的家，所以这个拆分
+// 必须被圈死在下面这份固定清单里：任何不在清单里、却匹配这些文件名规则的新文件，
+// 都会被 [unexpectedLegacyConfigFiles] 抓出来（layering_test 里有守卫），
+// 不允许悄悄被误判成 backup / options。
+final _legacyBackupFile = RegExp(r'^(backup_|restore_|startup_restore)');
+const _legacyOptionsPageFile = 'config_options_page.dart';
+
+/// 旧布局里 `features/config/` 下按文件名拆走的全部文件（固定清单，只减不增）。
+const kLegacyConfigSplitFiles = {
+  'features/config/application/restore_refresher.dart',
+  'features/config/application/startup_restore_notice.dart',
+  'features/config/data/backup_codec.dart',
+  'features/config/data/backup_engine.dart',
+  'features/config/data/backup_service.dart',
+  'features/config/data/restore_recovery.dart',
+  'features/config/model/backup_bundle.dart',
+  'features/config/presentation/backup_messages.dart',
+  'features/config/presentation/config_options_page.dart',
+};
+
+/// [paths] 里匹配旧映射文件名规则、却不在 [kLegacyConfigSplitFiles] 清单里的
+/// `features/config/` 文件。非空说明有人在 config 下新建了会被误归类的文件：
+/// 换个不以 backup_ / restore_ / startup_restore 开头的名字，或把文件放到正确的功能目录。
+List<String> unexpectedLegacyConfigFiles(Iterable<String> paths) => [
+  for (final p in paths)
+    if (p.startsWith('features/config/') &&
+        !kLegacyConfigSplitFiles.contains(p) &&
+        (_legacyBackupFile.hasMatch(p.split('/').last) ||
+            p.split('/').last == _legacyOptionsPageFile))
+      p,
+];
 
 /// 把 `lib/` 内相对路径归到逻辑功能；不属于任何功能返回 `null`。
 ///
@@ -125,9 +159,10 @@ LogicalUnit? logicalUnitOf(String libPath) {
   if (root == 'domain') {
     if (feature == 'routing') feature = 'proxy';
   } else if (feature == 'config') {
-    if (_backupFile.hasMatch(file)) {
+    // LEGACY：见 kLegacyConfigSplitFiles 上的说明，Task 16 删除。
+    if (_legacyBackupFile.hasMatch(file)) {
       feature = 'backup';
-    } else if (file == _optionsPageFile) {
+    } else if (file == _legacyOptionsPageFile) {
       feature = 'options';
     }
   }
@@ -448,6 +483,58 @@ List<Violation> checkModelPurity(Map<String, List<String>> uris) {
         }
         parent[path] = node;
         queue.add(path);
+      }
+    }
+  }
+  return violations;
+}
+
+/// 页面类：声明在某功能 presentation 层里、名字以 `Page` 结尾的公开类。
+final _pageClass = RegExp(r'\bclass\s+([A-Z]\w*Page)\b');
+
+final _blockComment = RegExp(r'/\*[\s\S]*?\*/');
+final _lineComment = RegExp(r'(?<!:)//.*');
+
+String _stripComments(String src) =>
+    src.replaceAll(_blockComment, '').replaceAll(_lineComment, '');
+
+/// 规则 6：页面只在 `app/` 里构造，跨功能的页面跳转只走 `AppRouteScope`。
+///
+/// [sources] 的键是 `lib/` 内相对路径，值是文件源码。页面类 = 声明在功能
+/// presentation 层、名字以 `Page` 结尾的公开类。`app/` 以外、且不属于该页面所在
+/// 逻辑功能的任何文件（含 `main.dart`、core、shared、其他功能）只要在代码里
+/// （不含注释）出现这个类名，就是违规：构造它，或者拿它的类型做别的事，
+/// 都意味着页面之间在互相持有。同一文件对同一页面只报一次，`to` 是页面类所在文件。
+List<Violation> checkPageConstruction(Map<String, String> sources) {
+  // 页面类名 → (所在文件, 所属功能)。
+  final pages = <String, (String, String)>{};
+  for (final e in sources.entries) {
+    final unit = logicalUnitOf(e.key);
+    if (unit == null || !unit.isPresentation) continue;
+    for (final m in _pageClass.allMatches(_stripComments(e.value))) {
+      pages.putIfAbsent(m.group(1)!, () => (e.key, unit.feature));
+    }
+  }
+  if (pages.isEmpty) return const [];
+
+  final violations = <Violation>[];
+  for (final e in sources.entries) {
+    if (e.key.startsWith('app/')) continue;
+    final ownFeature = logicalUnitOf(e.key)?.feature;
+    final code = _stripComments(e.value);
+    for (final page in pages.entries) {
+      final (pageFile, pageFeature) = page.value;
+      if (pageFeature == ownFeature) continue;
+      if (RegExp('\\b${page.key}\\b').hasMatch(code)) {
+        violations.add(
+          Violation(
+            e.key,
+            pageFile,
+            _pageRule,
+            '页面 ${page.key} 只能在 app/ 里构造；'
+            '跨功能的页面跳转请通过 AppRouteScope',
+          ),
+        );
       }
     }
   }

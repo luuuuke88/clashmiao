@@ -22,6 +22,18 @@ Map<String, List<String>> scanLib() {
   return result;
 }
 
+/// 扫描 `lib/` 下全部 `.dart` 的源码：「`lib/` 内相对路径 → 源码」。
+Map<String, String> scanSources() {
+  final sources = <String, String>{};
+  for (final f in Directory(
+    'lib',
+  ).listSync(recursive: true).whereType<File>()) {
+    if (!f.path.endsWith('.dart')) continue;
+    sources[f.path.substring('lib/'.length)] = f.readAsStringSync();
+  }
+  return sources;
+}
+
 /// 连接状态的单一真值（子项目 B）：`boxStatusProvider` 只留在 core，给流量统计
 /// / 代理分组两路订阅做门控；界面层（`features/`、`app/`、`main.dart`）一律读
 /// `connectionControllerProvider` / `isConnectedProvider`。
@@ -88,6 +100,45 @@ void main() {
     );
   });
 
+  test('规则 6：页面只在 app 构造（扣除已登记欠账）', () {
+    final violations = withoutDebt(
+      checkPageConstruction(scanSources()),
+      kPageConstructionDebt,
+    );
+    expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('页面构造欠账没有过期条目，且不超上限', () {
+    final stale = staleDebt(
+      checkPageConstruction(scanSources()),
+      kPageConstructionDebt,
+    );
+    expect(
+      stale,
+      isEmpty,
+      reason:
+          '以下欠账已还清，请从 allowlist.dart 的 kPageConstructionDebt 删除：${render(stale)}',
+    );
+    expect(
+      kPageConstructionDebt.length,
+      lessThanOrEqualTo(kPageConstructionDebtCeiling),
+      reason:
+          '欠账只减不增：当前 ${kPageConstructionDebt.length} 条，上限 $kPageConstructionDebtCeiling',
+    );
+  });
+
+  test('features/config 旧映射守卫：没有清单之外的文件会被误归到 backup / options', () {
+    final unexpected = unexpectedLegacyConfigFiles(uris.keys);
+    expect(
+      unexpected,
+      isEmpty,
+      reason:
+          'features/config 下的文件名按旧映射拆分（backup_ / restore_ / startup_restore '
+          '→ backup，config_options_page → options），只对 kLegacyConfigSplitFiles '
+          '里的旧文件成立。新文件请换名字或放进正确的功能目录：${render(unexpected)}',
+    );
+  });
+
   test('白名单没有过期条目', () {
     final stale = staleEntries(uris, kAllowlist);
     expect(
@@ -103,15 +154,7 @@ void main() {
   });
 
   test('单一真值：features / app / main 不引用 boxStatusProvider', () {
-    final sources = <String, String>{};
-    for (final f in Directory(
-      'lib',
-    ).listSync(recursive: true).whereType<File>()) {
-      if (!f.path.endsWith('.dart')) continue;
-      final rel = f.path.substring('lib/'.length);
-      sources[rel] = f.readAsStringSync();
-    }
-    final offenders = boxStatusProviderUsagesInUiLayers(sources);
+    final offenders = boxStatusProviderUsagesInUiLayers(scanSources());
     expect(
       offenders,
       isEmpty,

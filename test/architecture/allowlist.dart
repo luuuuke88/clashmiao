@@ -13,8 +13,8 @@
 // 2. 提示「以下白名单条目对应的依赖已经消除」——把那几条删掉即可。
 // 3. 提示条数超过上限——说明在往名单里加新条目，回到第 1 条。
 //
-// 另有一份 [kIntraDirectionDebt]：规则 4（同功能内部方向）的历史欠账，
-// 条数上限同样只能调小。
+// 另有两份欠账：[kIntraDirectionDebt]（规则 4，同功能内部方向）与
+// [kPageConstructionDebt]（规则 6，页面只在 app 构造），条数上限同样只能调小。
 import 'layering_rules.dart';
 
 /// 白名单条数上限；只能调小。
@@ -64,5 +64,35 @@ const kIntraDirectionDebt = <AllowedEdge>[
     'domain/config/data/default_config_options.dart',
     'domain/config/application/service_mode.dart',
     _debt,
+  ),
+];
+
+/// 规则 6（页面只在 app 构造，跨功能跳转走 `AppRouteScope`）的历史欠账：
+/// 目前是 3 条页面跳转，加上首页直接构造 `ProfilesPage`。
+/// 条数上限等于当前条数，只能调小；Task 15 引入 `AppRouteScope` 后清零，整份删除。
+const kPageConstructionDebtCeiling = 4;
+
+const _construct = '直接构造别的功能的页面，待改为通过 AppRouteScope 跳转';
+
+const kPageConstructionDebt = <AllowedEdge>[
+  AllowedEdge(
+    'features/home/presentation/quick_settings_modal.dart',
+    'features/config/presentation/config_options_page.dart',
+    _construct,
+  ),
+  AllowedEdge(
+    'features/home/presentation/home_page.dart',
+    'features/profile/presentation/profiles_page.dart',
+    _construct,
+  ),
+  AllowedEdge(
+    'features/config/presentation/config_options_page.dart',
+    'features/logs/presentation/logs_page.dart',
+    _construct,
+  ),
+  AllowedEdge(
+    'features/config/presentation/config_options_page.dart',
+    'features/assets/presentation/assets_page.dart',
+    _construct,
   ),
 ];

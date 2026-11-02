@@ -641,6 +641,148 @@ void main() {
     });
   });
 
+  group('checkPageConstruction：规则 6 页面只在 app 构造', () {
+    const settingsPage = 'features/settings/presentation/settings_page.dart';
+    const optionsPage = 'features/config/presentation/config_options_page.dart';
+    const defs = {
+      settingsPage: 'class SettingsPage extends StatelessWidget {}',
+      optionsPage: 'class ConfigOptionsPage extends StatelessWidget {}',
+    };
+
+    List<Violation> page(Map<String, String> more) =>
+        checkPageConstruction({...defs, ...more});
+
+    test('home 构造 SettingsPage：违规', () {
+      final bad = page({
+        'features/home/presentation/home_page.dart':
+            'void f() { push(const SettingsPage()); }',
+      });
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'features/home/presentation/home_page.dart');
+      expect(bad.single.to, settingsPage);
+    });
+
+    test('app/router 构造 SettingsPage：合规', () {
+      expect(
+        page({'app/router/routes.dart': 'final p = const SettingsPage();'}),
+        isEmpty,
+      );
+    });
+
+    test('页面所在功能自己引用自己的页面与子组件：合规', () {
+      expect(
+        page({
+          'features/settings/presentation/per_app_proxy_page.dart':
+              'void f() { push(const SettingsPage()); }',
+          'features/options/presentation/sub.dart': 'class OptionsSection {}',
+          optionsPage: 'class ConfigOptionsPage { Widget b() => const OptionsSection(); }',
+        }),
+        isEmpty,
+      );
+    });
+
+    test('新旧布局都识别页面类；功能按逻辑功能判定（config_options_page 属于 options）', () {
+      final bad = checkPageConstruction({
+        'features/options/presentation/options_page.dart':
+            'class OptionsPage {}',
+        'features/home/presentation/a.dart': 'OptionsPage();',
+        optionsPage: 'class ConfigOptionsPage {}',
+        'features/logs/presentation/b.dart': 'ConfigOptionsPage();',
+        // 同属 options 功能（旧路径的页面 + 新路径的页面）：合规。
+        'features/options/presentation/c.dart': 'ConfigOptionsPage();',
+      });
+      expect(bad.map((v) => v.from).toSet(), {
+        'features/home/presentation/a.dart',
+        'features/logs/presentation/b.dart',
+      });
+    });
+
+    test('core / shared / 能力型功能的非页面层引用别的功能的页面：同样违规', () {
+      final bad = page({
+        'core/a.dart': 'SettingsPage();',
+        'shared/b.dart': 'SettingsPage();',
+        'domain/profile/application/c.dart': 'SettingsPage();',
+        'main.dart': 'SettingsPage();',
+      });
+      expect(bad, hasLength(4));
+    });
+
+    test('只算 Page 结尾的公开类，且必须声明在 presentation 层', () {
+      expect(
+        checkPageConstruction({
+          'features/settings/presentation/x.dart':
+              'class _HiddenPage {} class SettingsSection {}',
+          'features/settings/application/y.dart': 'class HelperPage {}',
+          'features/home/presentation/h.dart':
+              '_HiddenPage(); SettingsSection(); HelperPage();',
+        }),
+        isEmpty,
+      );
+    });
+
+    test('注释里提到页面名不算引用；标识符必须整词匹配', () {
+      expect(
+        page({
+          'features/home/presentation/a.dart': '''
+// 跳转到 SettingsPage
+/// 见 [SettingsPage]
+/* SettingsPage */
+final url = 'https://x.test'; // SettingsPageExtra
+class MySettingsPageHelper {}
+''',
+        }),
+        isEmpty,
+      );
+    });
+
+    test('同一文件对同一页面只报一次', () {
+      expect(
+        page({
+          'features/home/presentation/a.dart':
+              'SettingsPage(); SettingsPage();',
+        }),
+        hasLength(1),
+      );
+    });
+  });
+
+  group('features/config 的旧映射（Task 16 搬完文件后删除）', () {
+    test('现状：features/config 下按文件名拆；新建 backup_ 开头的文件会被归到 backup', () {
+      final u = logicalUnitOf('features/config/data/backup_settings.dart');
+      expect(u!.feature, 'backup');
+      expect(
+        logicalUnitOf('features/config/data/other.dart')!.feature,
+        'config',
+      );
+    });
+
+    test('unexpectedLegacyConfigFiles：只放行固定清单里的旧文件名', () {
+      expect(
+        unexpectedLegacyConfigFiles([
+          for (final f in kLegacyConfigSplitFiles) f,
+          'features/config/presentation/dns_strategy_messages.dart',
+          'features/profile/data/backup_x.dart',
+        ]),
+        isEmpty,
+      );
+      expect(
+        unexpectedLegacyConfigFiles([
+          'features/config/data/backup_settings.dart',
+          'features/config/application/restore_x.dart',
+          'features/config/application/startup_restore_y.dart',
+          'features/config/presentation/config_options_page.dart',
+          'features/config/presentation/sub/config_options_page.dart',
+        ]),
+        [
+          'features/config/data/backup_settings.dart',
+          'features/config/application/restore_x.dart',
+          'features/config/application/startup_restore_y.dart',
+          'features/config/presentation/sub/config_options_page.dart',
+        ],
+      );
+    });
+  });
+
   group('欠账登记：withoutDebt / staleDebt', () {
     const v1 = Violation('a.dart', 'b.dart', '规则', '提示');
     const v2 = Violation('c.dart', 'd.dart', '规则', '提示');

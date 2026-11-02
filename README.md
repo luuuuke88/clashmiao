@@ -12,7 +12,7 @@
 | macOS | ✅ 可用 | 系统代理（见下方"桌面端的接管范围"） |
 | Windows | ✅ 可用（已真机验证） | 系统代理（同上） |
 | Linux | 🟡 可出包 / 待真机验证 | 系统代理（同上） |
-| iOS | 🟡 代码就绪，未上真机 | NetworkExtension；阻塞于付费 Apple 开发者账号 |
+| iOS | 🟡 真机已跑通，待上架 | NetworkExtension；上架材料见 docs/release/app-store-checklist.md |
 
 ### ⚠️ 桌面端的接管范围
 

@@ -1,0 +1,36 @@
+name: 报告问题
+description: 应用行为不符合预期、崩溃或连接异常
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        安全漏洞请不要在这里提，请按仓库根目录 SECURITY.md 私密报告。
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台
+      options: [Android, iOS, macOS, Windows, Linux]
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 应用版本
+      description: 「关于」页可以看到，例如 0.2.0
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 做了什么、期望发生什么、实际发生了什么
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志
+      description: |
+        **粘贴前请先脱敏：应用日志里可能含有订阅地址、令牌、服务器地址，请把它们替换成 `<redacted>`。**
+      render: text

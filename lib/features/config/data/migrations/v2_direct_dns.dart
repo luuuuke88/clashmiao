@@ -1,8 +1,8 @@
 import 'dart:convert';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
 import 'package:clashmiao/features/config/model/dns_defaults.dart';
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// v1 → v2 迁移前，直连 DNS 原值的备份键（仅当不存在时写入）。
@@ -40,7 +40,7 @@ Future<bool> migrateDirectDnsToV2(SharedPreferences prefs) async {
     }
     return await prefs.remove(kDirectDnsAddressPrefKey);
   } catch (e, st) {
-    debugPrint('[v2_direct_dns] 迁移异常: $e\n$st');
+    logAppFailure('migration.v2DirectDns', e, st);
     return false;
   }
 }

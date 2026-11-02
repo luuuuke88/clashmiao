@@ -201,13 +201,16 @@ CI runner 上一路绿灯，直到 release 流水线跑完整个 macOS 构建才
 libcore 的二进制不在仓库里，走 `libcore-v*` Release tag，由 `bin/fetch-libcore.sh`
 拉取。脚本在下载之后、以及复用本地已有文件之前，都会对照
 `tools/kernel/libcore-checksums.txt` 校验 sha256；不一致、或校验和文件里没有该
-tag/资产，就删掉文件并失败。所以新发（或换）一个 tag 的流程是：
+tag/资产，就失败：刚下载的文件和我们自己的缓存会被删掉；而跑之前就已经在
+`android/app/libs/` 等构建读取路径上的文件**不会被删**（可能是本地自编的产物），
+脚本会提示用 `FORCE=1 bin/fetch-libcore.sh <目标>` 重新下载并覆盖。所以新发（或换）一个 tag 的流程是：
 
 1. 构建产物，上传到新 tag 的 Release。
-2. 在产物目录生成校验和并**一并上传**：`shasum -a 256 * > SHA256SUMS`
-   （`SHA256SUMS` 本身也是 Release 资产）。
+2. 在产物目录生成校验和并**一并上传**，生成时排除已有的 `SHA256SUMS`（否则会把旧的
+   一并算进去）：`ls | grep -vx SHA256SUMS | xargs shasum -a 256 > SHA256SUMS`。
 3. 把该 tag 全部资产的校验值按 `<sha256>  <tag>/<asset>` 追加到
-   `tools/kernel/libcore-checksums.txt`（两个空格，每行一条）。
+   `tools/kernel/libcore-checksums.txt`（两个空格，每行一条）；`SHA256SUMS` 自己的
+   哈希不在它的内容里，另行 `shasum -a 256 SHA256SUMS` 算出后单独登记一条。
 4. 更新 `ci.yml`、`release.yml` 与 `bin/fetch-libcore.sh` 里的 tag，然后跑
    `bash tools/kernel/check-libcore-checksums.sh`——它保证用到的每个 tag 都有
    条目，CI 的 `public-links` job 也会跑它。

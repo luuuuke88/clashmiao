@@ -6,10 +6,13 @@
 # 全程不联网、不碰真实仓库里的文件。断言：
 #   1 内容与校验和一致 → 退出 0，文件保留
 #   2 下载内容被篡改   → 非 0，文件被删除
-#   3 已存在的文件被篡改且没设 FORCE → 非 0，不能直接跳过，文件被删除，也没有发起下载
+#   2b 哈希工具不可用 → 非 0，刚下载的文件被删除
+#   3 已存在的文件被篡改且没设 FORCE → 非 0，不能直接跳过，文件**保留**（可能是本地自编产物），
+#     打印期望/实际值和 `FORCE=1 bin/fetch-libcore.sh android` 提示，也没有发起下载
 #   4 tag 不在校验和文件里 → 非 0，提示「缺少校验和」，文件被删除
 #   5 ios 缓存 zip 被篡改 → 非 0，ios/Frameworks/ 里没有解压出的内容
-#   6 check-libcore-checksums.sh：覆盖完整放行、缺 tag / 缺资产 / 格式错误 / 重复条目拒绝
+#   6 check-libcore-checksums.sh：覆盖完整放行、缺 tag / 缺资产 / 格式错误 / 重复条目拒绝，
+#     以及任何位置（命令、注释）字面引用了未登记 tag 都拒绝
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_ROOT="$(cd "$HERE/.." && pwd)"
@@ -87,12 +90,22 @@ check "2 下载被篡改：退出非 0" test "$RC" -ne 0
 check "2 下载被篡改：文件被删除" test ! -e "$(AAR)"
 case "$OUT" in *期望*实际*) ok "2 下载被篡改：打印期望值和实际值" ;; *) bad "2 输出里没有期望/实际值：$OUT" ;; esac
 
-# 3 已存在但被篡改，没有 FORCE
+# 2b 哈希工具不可用：fakebin 里放两个都失败的哈希工具（盖住系统自带的）
+new_root
+for h in sha256sum shasum; do printf '#!/bin/sh\nexit 1\n' >"$R/fakebin/$h"; chmod +x "$R/fakebin/$h"; done
+run_fetch "$GOOD" bash bin/fetch-libcore.sh android
+check "2b 哈希失败：退出非 0" test "$RC" -ne 0
+check "2b 哈希失败：刚下载的文件被删除" test ! -e "$(AAR)"
+case "$OUT" in *无法计算*sha256*) ok "2b 哈希失败：有明确提示" ;; *) bad "2b 输出里没有明确提示：$OUT" ;; esac
+
+# 3 已存在但被篡改，没有 FORCE：不删（可能是开发者自己编的 libcore）
 new_root
 mkdir -p "$R/android/app/libs"; printf '%s' "tampered-existing" > "$(AAR)"
 run_fetch "$GOOD" bash bin/fetch-libcore.sh android
 check "3 复用文件被篡改：退出非 0" test "$RC" -ne 0
-check "3 复用文件被篡改：文件被删除" test ! -e "$(AAR)"
+check "3 复用文件被篡改：文件保留且内容未变" test "$(cat "$(AAR)")" = "tampered-existing"
+case "$OUT" in *期望*实际*) ok "3 复用文件被篡改：打印期望值和实际值" ;; *) bad "3 输出里没有期望/实际值：$OUT" ;; esac
+case "$OUT" in *"FORCE=1 bin/fetch-libcore.sh android"*) ok "3 复用文件被篡改：提示 FORCE=1 重新下载" ;; *) bad "3 输出里没有 FORCE 提示：$OUT" ;; esac
 check "3 复用文件被篡改：没有直接跳过也没有静默重下" test "$(downloads)" -eq 0
 # 3b 已存在且正确 → 跳过下载，仍然通过
 new_root
@@ -166,6 +179,15 @@ check "6 缺资产：失败" test "$RC" -ne 0
 new_tree
 echo "nothex  $MAIN_TAG/extra" >>"$T/tools/kernel/libcore-checksums.txt"; run_checker
 check "6 格式错误：失败" test "$RC" -ne 0
+
+new_tree
+printf '      - run: gh release download libcore-v6.6.6-z -p x\n' >>"$T/.github/workflows/ci.yml"; run_checker
+check "6 命令里字面引用了未登记 tag：失败" test "$RC" -ne 0
+case "$OUT" in *libcore-v6.6.6-z*) ok "6 未登记 tag：报出具体 tag" ;; *) bad "6 输出里没有该 tag：$OUT" ;; esac
+
+new_tree
+printf '# 旧 tag libcore-v5.5.5 只是打包标签\n' >>"$T/bin/fetch-libcore.sh"; run_checker
+check "6 注释里引用了未登记 tag：失败" test "$RC" -ne 0
 
 new_tree
 echo "$(printf '%064d' 2)  $ANDROID_TAG/libcore.aar" >>"$T/tools/kernel/libcore-checksums.txt"; run_checker

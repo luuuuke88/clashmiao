@@ -73,31 +73,9 @@ void main() {
     expect(violations, isEmpty, reason: render(violations));
   });
 
-  test('规则 4：同功能内部方向 presentation → application → data → model（扣除已登记欠账）', () {
-    final violations = withoutDebt(
-      checkIntraFeatureDirection(uris),
-      kIntraDirectionDebt,
-    );
+  test('规则 4：同功能内部方向 presentation → application → data → model（无豁免）', () {
+    final violations = checkIntraFeatureDirection(uris);
     expect(violations, isEmpty, reason: render(violations));
-  });
-
-  test('欠账没有过期条目，且不超上限', () {
-    final stale = staleDebt(
-      checkIntraFeatureDirection(uris),
-      kIntraDirectionDebt,
-    );
-    expect(
-      stale,
-      isEmpty,
-      reason:
-          '以下欠账已还清，请从 allowlist.dart 的 kIntraDirectionDebt 删除：${render(stale)}',
-    );
-    expect(
-      kIntraDirectionDebt.length,
-      lessThanOrEqualTo(kIntraDirectionDebtCeiling),
-      reason:
-          '欠账只减不增：当前 ${kIntraDirectionDebt.length} 条，上限 $kIntraDirectionDebtCeiling',
-    );
   });
 
   test('规则 6：页面只在 app 构造（扣除已登记欠账）', () {

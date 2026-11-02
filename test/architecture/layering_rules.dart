@@ -17,7 +17,7 @@
 // 3. 页面型的任何一层可依赖任意能力型的任何一层；页面型之间不能互相依赖
 //    （[kAllowlist] 里登记的跳转除外）；
 // 4. 同一功能内部 presentation → application → data → model，不能反过来
-//    （[checkIntraFeatureDirection]，历史欠账登记在 [kIntraDirectionDebt]）；
+//    （[checkIntraFeatureDirection]，无任何豁免）；
 // 5. model 层纯净：不依赖 Flutter / Riverpod / dart:io / dart:ui，传递闭包里
 //    也不触达 data / application（[checkModelPurity]）；
 // 6. 页面只在 `app/` 里构造，跨功能的页面跳转只走 `AppRouteScope`：
@@ -112,7 +112,7 @@ const kLegacyConfigSplitFiles = {
   'features/config/application/startup_restore_notice.dart',
   'features/config/data/backup_codec.dart',
   'features/config/data/backup_engine.dart',
-  'features/config/data/backup_service.dart',
+  'features/config/application/backup_service.dart',
   'features/config/data/restore_recovery.dart',
   'features/config/model/backup_bundle.dart',
   'features/config/presentation/backup_messages.dart',

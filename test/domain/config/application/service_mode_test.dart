@@ -1,6 +1,6 @@
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
-import 'package:clashmiao/domain/config/data/default_config_options.dart';
+import 'package:clashmiao/domain/config/application/default_config_options.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 默认值：两个开关都没动过（升级用户的典型状态）。

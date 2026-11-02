@@ -1,6 +1,6 @@
 import 'package:clashmiao/features/config/application/restore_refresher.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
-import 'package:clashmiao/features/config/data/backup_service.dart';
+import 'package:clashmiao/features/config/application/backup_service.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
 

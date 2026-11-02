@@ -13,8 +13,8 @@
 // 2. 提示「以下白名单条目对应的依赖已经消除」——把那几条删掉即可。
 // 3. 提示条数超过上限——说明在往名单里加新条目，回到第 1 条。
 //
-// 另有两份欠账：[kIntraDirectionDebt]（规则 4，同功能内部方向）与
-// [kPageConstructionDebt]（规则 6，页面只在 app 构造），条数上限同样只能调小。
+// 另有一份欠账：[kPageConstructionDebt]（规则 6，页面只在 app 构造），
+// 条数上限同样只能调小。规则 4（同功能内部方向）已清零，不再有任何豁免。
 import 'layering_rules.dart';
 
 /// 白名单条数上限；只能调小。
@@ -39,31 +39,6 @@ const kAllowlist = <AllowedEdge>[
     'features/config/presentation/config_options_page.dart',
     'features/logs/presentation/logs_page.dart',
     _navigation,
-  ),
-];
-
-/// 规则 4（同功能内部 presentation → application → data → model）的历史欠账。
-/// 和 [kAllowlist] 分开登记：这些是待还的债，不是被接受的页面跳转。
-/// 条数上限等于当前条数，只能调小；还清一条就删一条，清零后整份删除。
-const kIntraDirectionDebtCeiling = 3;
-
-const _debt = '同功能内部 data 反向依赖 application，待改为依赖 model / 下沉';
-
-const kIntraDirectionDebt = <AllowedEdge>[
-  AllowedEdge(
-    'features/config/data/backup_service.dart',
-    'features/config/application/restore_refresher.dart',
-    _debt,
-  ),
-  AllowedEdge(
-    'domain/config/data/default_config_options.dart',
-    'domain/config/application/network_settings.dart',
-    _debt,
-  ),
-  AllowedEdge(
-    'domain/config/data/default_config_options.dart',
-    'domain/config/application/service_mode.dart',
-    _debt,
   ),
 ];
 

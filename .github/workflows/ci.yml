@@ -81,7 +81,31 @@ jobs:
       # 托盘插件的原生资源钩子会在 host（Linux）上编译 C++，需要 GTK 3 / X11 / Xi 头文件。
       - run: sudo apt-get update -y && sudo apt-get install -y libgtk-3-dev libx11-dev libxi-dev
       - run: flutter pub get
-      - run: flutter test test/ --reporter expanded
+      - run: flutter test --coverage test/ --reporter expanded
+      # 只出报告、不设门槛。直接对 lcov.info 里每个源文件的 LF（可执行行）/ LH（已覆盖行）求和，
+      # 不必在 runner 上另装 lcov。
+      - name: 覆盖率摘要
+        # 单测失败时已经有红灯，不再叠加一条覆盖率报错；单测通过却没有报告则是流水线本身的问题。
+        if: success()
+        run: |
+          if [ ! -s coverage/lcov.info ]; then
+            echo '::error::单测通过但没有生成 coverage/lcov.info（或文件为空），覆盖率报告缺失'
+            exit 1
+          fi
+          awk -F: '
+            /^LF:/ { lf += $2 }
+            /^LH:/ { lh += $2 }
+            END {
+              pct = (lf > 0) ? lh * 100 / lf : 0
+              printf "## 单元测试行覆盖率\n\n**%.1f%%**（%d / %d 行）\n", pct, lh, lf
+            }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
+      - name: 上传覆盖率原始数据
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-coverage
+          path: coverage/lcov.info
+          if-no-files-found: error
 
   # Android Kotlin host JVM 单测：守 wire-format / LogBuffer / AIDL decode 这些
   # 纯逻辑。不需要 emulator，但 :app:compileDebugKotlin 引用 libcore.aar

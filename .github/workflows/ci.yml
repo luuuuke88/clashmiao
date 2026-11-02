@@ -83,11 +83,12 @@ jobs:
       # 只出报告、不设门槛。直接对 lcov.info 里每个源文件的 LF（可执行行）/ LH（已覆盖行）求和，
       # 不必在 runner 上另装 lcov。
       - name: 覆盖率摘要
-        if: always()
+        # 单测失败时已经有红灯，不再叠加一条覆盖率报错；单测通过却没有报告则是流水线本身的问题。
+        if: success()
         run: |
-          if [ ! -f coverage/lcov.info ]; then
-            echo '::warning::没有生成 coverage/lcov.info，跳过覆盖率摘要'
-            exit 0
+          if [ ! -s coverage/lcov.info ]; then
+            echo '::error::单测通过但没有生成 coverage/lcov.info（或文件为空），覆盖率报告缺失'
+            exit 1
           fi
           awk -F: '
             /^LF:/ { lf += $2 }
@@ -97,12 +98,12 @@ jobs:
               printf "## 单元测试行覆盖率\n\n**%.1f%%**（%d / %d 行）\n", pct, lh, lf
             }' coverage/lcov.info >> "$GITHUB_STEP_SUMMARY"
       - name: 上传覆盖率原始数据
-        if: always()
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-coverage
           path: coverage/lcov.info
-          if-no-files-found: ignore
+          if-no-files-found: error
 
   # Android Kotlin host JVM 单测：守 wire-format / LogBuffer / AIDL decode 这些
   # 纯逻辑。不需要 emulator，但 :app:compileDebugKotlin 引用 libcore.aar

@@ -173,7 +173,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // android.jar 里的 org.json 在 host JVM 上只是桩（isReturnDefaultValues 下静默返回
     // 默认值），解析 JSON 的单测要用真实实现。
-    testImplementation("org.json:json:20250517")
+    testImplementation("org.json:json:20260814")
 }
 
 kotlin {

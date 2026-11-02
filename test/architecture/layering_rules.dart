@@ -96,51 +96,11 @@ const _illegalAllowRule = '白名单条目非法';
 const _purityRule = 'R1 模型纯净';
 const _nonCanonicalUriRule = '非规范 URI';
 
-// ---- LEGACY 映射：仅为 features/config 搬迁前的旧布局而存在（Task 16 搬完后删除）----
-//
-// 旧布局里 `features/config/` 是 backup / options / config 三个功能混住，只能按
-// 文件名拆。但 `features/config/` 同时也是新布局里 config 功能的家，所以这个拆分
-// 必须被圈死在下面这份固定清单里：任何不在清单里、却匹配这些文件名规则的新文件，
-// 都会被 [unexpectedLegacyConfigFiles] 抓出来（layering_test 里有守卫），
-// 不允许悄悄被误判成 backup / options。
-final _legacyBackupFile = RegExp(r'^(backup_|restore_|startup_restore)');
-const _legacyOptionsPageFile = 'config_options_page.dart';
-
-/// 旧布局里 `features/config/` 下按文件名拆走的全部文件（固定清单，只减不增）。
-const kLegacyConfigSplitFiles = {
-  'features/config/application/restore_refresher.dart',
-  'features/config/application/startup_restore_notice.dart',
-  'features/config/data/backup_codec.dart',
-  'features/config/data/backup_engine.dart',
-  'features/config/application/backup_service.dart',
-  'features/config/data/restore_recovery.dart',
-  'features/config/model/backup_bundle.dart',
-  'features/config/presentation/backup_messages.dart',
-  'features/config/presentation/config_options_page.dart',
-};
-
-/// [paths] 里匹配旧映射文件名规则、却不在 [kLegacyConfigSplitFiles] 清单里的
-/// `features/config/` 文件。非空说明有人在 config 下新建了会被误归类的文件：
-/// 换个不以 backup_ / restore_ / startup_restore 开头的名字，或把文件放到正确的功能目录。
-List<String> unexpectedLegacyConfigFiles(Iterable<String> paths) => [
-  for (final p in paths)
-    if (p.startsWith('features/config/') &&
-        !kLegacyConfigSplitFiles.contains(p) &&
-        (_legacyBackupFile.hasMatch(p.split('/').last) ||
-            p.split('/').last == _legacyOptionsPageFile))
-      p,
-];
-
 /// 把 `lib/` 内相对路径归到逻辑功能；不属于任何功能返回 `null`。
 ///
-/// 旧布局：
-/// - `domain/<x>/<layer>/…`，其中 `routing` 就是 `proxy`；
-/// - `features/<x>/<layer>/…`；其中 `features/config` 是三个功能混住，按文件拆：
-///   文件名匹配 `^(backup_|restore_|startup_restore)`（含 `model/backup_bundle.dart`）
-///   → `backup`；`config_options_page.dart` → `options`（页面型）；
-///   其余（如 `dns_strategy_messages.dart`）→ `config`。
+/// 旧布局：`domain/<x>/<layer>/…`，其中 `routing` 就是 `proxy`。
 ///
-/// 新布局：`features/<f>/<layer>/…`，`<f>` 就是功能名。
+/// 新布局：`features/<f>/<layer>/…`，`<f>` 就是功能名，不再按文件名拆分。
 ///
 /// 页面型功能的文件不在分层目录里（散文件、`widgets/` 之类的子目录）时按
 /// presentation 处理。
@@ -155,17 +115,7 @@ LogicalUnit? logicalUnitOf(String libPath) {
   if (root != 'domain' && root != 'features') return null;
 
   var feature = parts[1];
-  final file = parts.last;
-  if (root == 'domain') {
-    if (feature == 'routing') feature = 'proxy';
-  } else if (feature == 'config') {
-    // LEGACY：见 kLegacyConfigSplitFiles 上的说明，Task 16 删除。
-    if (_legacyBackupFile.hasMatch(file)) {
-      feature = 'backup';
-    } else if (file == _legacyOptionsPageFile) {
-      feature = 'options';
-    }
-  }
+  if (root == 'domain' && feature == 'routing') feature = 'proxy';
 
   final Tier tier;
   if (kCapabilityOrder.contains(feature)) {

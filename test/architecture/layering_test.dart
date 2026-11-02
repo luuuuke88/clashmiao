@@ -105,18 +105,6 @@ void main() {
     );
   });
 
-  test('features/config 旧映射守卫：没有清单之外的文件会被误归到 backup / options', () {
-    final unexpected = unexpectedLegacyConfigFiles(uris.keys);
-    expect(
-      unexpected,
-      isEmpty,
-      reason:
-          'features/config 下的文件名按旧映射拆分（backup_ / restore_ / startup_restore '
-          '→ backup，config_options_page → options），只对 kLegacyConfigSplitFiles '
-          '里的旧文件成立。新文件请换名字或放进正确的功能目录：${render(unexpected)}',
-    );
-  });
-
   test('白名单没有过期条目', () {
     final stale = staleEntries(uris, kAllowlist);
     expect(

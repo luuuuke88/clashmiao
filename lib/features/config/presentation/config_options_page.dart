@@ -12,8 +12,7 @@ import 'package:clashmiao/domain/config/model/dns_defaults.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/warp_config_service.dart';
-import 'package:clashmiao/features/assets/presentation/assets_page.dart';
-import 'package:clashmiao/features/logs/presentation/logs_page.dart';
+import 'package:clashmiao/shared/navigation/app_route.dart';
 import 'package:clashmiao/features/config/application/backup_service.dart';
 import 'package:clashmiao/features/config/presentation/backup_messages.dart';
 import 'package:clashmiao/features/config/presentation/dns_strategy_messages.dart';
@@ -1284,11 +1283,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                   label: t.config.manageRuleAssets,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AssetsPage(),
-                      ),
-                    );
+                    pushAppRoute<void>(context, AppRoute.assets);
                   },
                 ),
                 const SizedBox(height: 4),
@@ -1297,9 +1292,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                   label: t.logs.pageTitle,
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(builder: (_) => const LogsPage()),
-                    );
+                    pushAppRoute<void>(context, AppRoute.logs);
                   },
                 ),
                 const SizedBox(height: 16),

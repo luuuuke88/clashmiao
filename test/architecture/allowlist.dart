@@ -18,56 +18,13 @@
 import 'layering_rules.dart';
 
 /// 白名单条数上限；只能调小。
-const kAllowlistCeiling = 3;
+const kAllowlistCeiling = 0;
 
-const _navigation = '页面跳转，统一路由后删除';
-
-/// 目前的 3 条全是页面之间的直接跳转：路由集中到统一入口之前，
-/// 页面需要持有目标页面的类型，暂时无法解耦。
-const kAllowlist = <AllowedEdge>[
-  AllowedEdge(
-    'features/home/presentation/quick_settings_modal.dart',
-    'features/config/presentation/config_options_page.dart',
-    _navigation,
-  ),
-  AllowedEdge(
-    'features/config/presentation/config_options_page.dart',
-    'features/assets/presentation/assets_page.dart',
-    _navigation,
-  ),
-  AllowedEdge(
-    'features/config/presentation/config_options_page.dart',
-    'features/logs/presentation/logs_page.dart',
-    _navigation,
-  ),
-];
+/// 页面跳转都经 `AppRouteScope`（app 层统一路由入口），不再需要登记。
+const kAllowlist = <AllowedEdge>[];
 
 /// 规则 6（页面只在 app 构造，跨功能跳转走 `AppRouteScope`）的历史欠账：
-/// 目前是 3 条页面跳转，加上首页直接构造 `ProfilesPage`。
-/// 条数上限等于当前条数，只能调小；Task 15 引入 `AppRouteScope` 后清零，整份删除。
-const kPageConstructionDebtCeiling = 4;
+/// 已全部还清。上限为 0，不得再新增。
+const kPageConstructionDebtCeiling = 0;
 
-const _construct = '直接构造别的功能的页面，待改为通过 AppRouteScope 跳转';
-
-const kPageConstructionDebt = <AllowedEdge>[
-  AllowedEdge(
-    'features/home/presentation/quick_settings_modal.dart',
-    'features/config/presentation/config_options_page.dart',
-    _construct,
-  ),
-  AllowedEdge(
-    'features/home/presentation/home_page.dart',
-    'features/profile/presentation/profiles_page.dart',
-    _construct,
-  ),
-  AllowedEdge(
-    'features/config/presentation/config_options_page.dart',
-    'features/logs/presentation/logs_page.dart',
-    _construct,
-  ),
-  AllowedEdge(
-    'features/config/presentation/config_options_page.dart',
-    'features/assets/presentation/assets_page.dart',
-    _construct,
-  ),
-];
+const kPageConstructionDebt = <AllowedEdge>[];

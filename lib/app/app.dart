@@ -2,6 +2,8 @@ import 'package:clashmiao/core/localization/locale_extensions.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/app/router/app_router.dart';
+import 'package:clashmiao/app/router/app_routes.dart';
+import 'package:clashmiao/shared/navigation/app_route.dart';
 import 'package:clashmiao/shared/components/system_ui.dart';
 import 'package:clashmiao/core/theme/app_theme.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
@@ -25,18 +27,21 @@ class ClashMiaoApp extends ConsumerWidget {
 
     return ToastificationWrapper(
       config: appToastConfig(context),
-      child: MaterialApp.router(
-        title: '喵速',
-        debugShowCheckedModeBanner: false,
-        locale: locale.flutterLocale,
-        supportedLocales: AppLocaleUtils.supportedLocales,
-        localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: ModalTokens.apply(theme.lightTheme()),
-        darkTheme: ModalTokens.apply(theme.darkTheme()),
-        themeMode: themeMode.flutterThemeMode,
-        routerConfig: appRouter,
-        // 系统栏：全 App 兜底样式 + edge-to-edge（见 system_ui.dart）。
-        builder: (context, child) => SystemUiScope(child: child!),
+      child: AppRouteScope(
+        builders: appRouteBuilders,
+        child: MaterialApp.router(
+          title: '喵速',
+          debugShowCheckedModeBanner: false,
+          locale: locale.flutterLocale,
+          supportedLocales: AppLocaleUtils.supportedLocales,
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
+          theme: ModalTokens.apply(theme.lightTheme()),
+          darkTheme: ModalTokens.apply(theme.darkTheme()),
+          themeMode: themeMode.flutterThemeMode,
+          routerConfig: appRouter,
+          // 系统栏：全 App 兜底样式 + edge-to-edge（见 system_ui.dart）。
+          builder: (context, child) => SystemUiScope(child: child!),
+        ),
       ),
     );
   }

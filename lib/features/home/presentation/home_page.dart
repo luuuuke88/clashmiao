@@ -28,7 +28,7 @@ import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/home/presentation/sleeping_brand_hero.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
-import 'package:clashmiao/features/profile/presentation/profiles_page.dart';
+import 'package:clashmiao/shared/navigation/app_route.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/glass_card.dart';
@@ -456,7 +456,7 @@ class _ProfilesOverviewSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ProfilesPage(embedInSheet: true);
+    return buildAppRoute(context, AppRoute.profiles);
   }
 }
 

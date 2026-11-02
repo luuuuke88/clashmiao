@@ -5,7 +5,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/shared/navigation/app_route.dart';
 import 'package:clashmiao/shared/components/ai_ui_modal_wrapper.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
@@ -216,10 +216,7 @@ class QuickSettingsModal extends ConsumerWidget {
   }
 
   void _pushConfigOptions(BuildContext context) {
-    Navigator.of(
-      context,
-      rootNavigator: true,
-    ).push(MaterialPageRoute<void>(builder: (_) => const ConfigOptionsPage()));
+    pushAppRoute<void>(context, AppRoute.configOptions, rootNavigator: true);
   }
 }
 

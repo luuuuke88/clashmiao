@@ -7,7 +7,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/shared/components/page_header.dart';
 import 'package:clashmiao/shared/components/tip_card.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

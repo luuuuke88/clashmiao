@@ -12,7 +12,7 @@ import 'package:clashmiao/domain/connection/application/connection_providers.dar
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:clashmiao/features/profile/presentation/qr_scanner_page.dart';
@@ -35,7 +35,7 @@ import 'package:flutter/services.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';
 import 'package:clashmiao/app/restore_recovery_notice.dart';
-import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/backup/application/startup_restore_notice.dart';
 import 'package:clashmiao/shared/components/press_feedback.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 import 'package:clashmiao/shared/navigation/animated_tab_stack.dart';

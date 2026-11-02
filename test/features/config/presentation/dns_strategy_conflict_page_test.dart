@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

@@ -9,7 +9,7 @@ import 'package:clashmiao/domain/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/about/presentation/about_page.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';

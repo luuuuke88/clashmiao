@@ -771,6 +771,14 @@ jobs:
               "${ASSET_FILES[@]}"
           fi
           echo "已发布：$(gh release view "$RELEASE_TAG" --json url --jq .url)"
+      # 只有正式发布才通知官网：tag push 一定是正式发布；手动触发时 draft 是
+      # boolean 输入，勾了 draft 的排练不通知。放在发布步骤之后，所以失败只会让这次
+      # run 变红并输出 ::error，不会回头改已经发布的 release 正文。
+      - name: Notify website
+        if: ${{ success() && (github.event_name == 'push' || inputs.draft == false) }}
+        env:
+          WEB_DISPATCH_TOKEN: ${{ secrets.WEB_DISPATCH_TOKEN }}
+        run: bin/notify-website.sh "$RELEASE_TAG"
 
   report:
     needs: [quality, kernel, android, macos, windows, publish]

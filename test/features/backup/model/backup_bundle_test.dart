@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/features/config/data/backup_codec.dart';
-import 'package:clashmiao/features/config/model/backup_bundle.dart';
+import 'package:clashmiao/features/backup/data/backup_codec.dart';
+import 'package:clashmiao/features/backup/model/backup_bundle.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 BackupBundle _bundle({Map<String, String> aux = const {}}) => BackupBundle(

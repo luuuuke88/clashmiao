@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
-import 'package:clashmiao/features/config/data/backup_engine.dart';
+import 'package:clashmiao/features/backup/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/blocking_alert_dialog.dart';
 import 'package:flutter/material.dart';

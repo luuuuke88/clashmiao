@@ -1,5 +1,5 @@
 import 'package:clashmiao/features/assets/presentation/assets_page.dart';
-import 'package:clashmiao/features/config/presentation/config_options_page.dart';
+import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/features/logs/presentation/logs_page.dart';
 import 'package:clashmiao/features/profile/presentation/profiles_page.dart';
 import 'package:clashmiao/shared/navigation/app_route.dart';

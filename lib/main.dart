@@ -26,9 +26,9 @@ import 'package:clashmiao/app/update/startup_update_check.dart';
 import 'package:clashmiao/app/window/desktop_exit_guard.dart';
 import 'package:clashmiao/core/window/silent_start.dart';
 import 'package:clashmiao/domain/profile/application/profiles_update_scheduler.dart';
-import 'package:clashmiao/features/config/application/restore_refresher.dart';
-import 'package:clashmiao/features/config/application/startup_restore_notice.dart';
-import 'package:clashmiao/features/config/data/restore_recovery.dart';
+import 'package:clashmiao/features/backup/application/restore_refresher.dart';
+import 'package:clashmiao/features/backup/application/startup_restore_notice.dart';
+import 'package:clashmiao/features/backup/data/restore_recovery.dart';
 import 'package:clashmiao/features/profile/presentation/profile_form_dialog.dart'
     show isHttpDownloadUrl;
 import 'package:flutter/foundation.dart';

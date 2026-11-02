@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/app/bootstrap/restore_wiring.dart';
-import 'package:clashmiao/features/config/application/restore_refresher.dart';
+import 'package:clashmiao/features/backup/application/restore_refresher.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/settings/application/app_filter_notifier.dart';
 import 'package:clashmiao/features/settings/application/setting_toggles.dart';

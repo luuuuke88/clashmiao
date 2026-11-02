@@ -196,6 +196,28 @@ macOS 产物是 **universal**（`x86_64` + `arm64`），Intel Mac 和 Apple Sili
 校验"宿主架构在不在"，于是一个纯 arm64 的资产在 Apple Silicon 开发机和 arm64
 CI runner 上一路绿灯，直到 release 流水线跑完整个 macOS 构建才在最后一步炸。
 
+### 手动发布 / 升级 libcore tag
+
+libcore 的二进制不在仓库里，走 `libcore-v*` Release tag，由 `bin/fetch-libcore.sh`
+拉取。脚本在下载之后、以及复用本地已有文件之前，都会对照
+`tools/kernel/libcore-checksums.txt` 校验 sha256；不一致、或校验和文件里没有该
+tag/资产，就失败：刚下载的文件和我们自己的缓存会被删掉；而跑之前就已经在
+`android/app/libs/` 等构建读取路径上的文件**不会被删**（可能是本地自编的产物），
+脚本会提示用 `FORCE=1 bin/fetch-libcore.sh <目标>` 重新下载并覆盖。所以新发（或换）一个 tag 的流程是：
+
+1. 构建产物，上传到新 tag 的 Release。
+2. 在产物目录生成校验和并**一并上传**，生成时排除已有的 `SHA256SUMS`（否则会把旧的
+   一并算进去）：`ls | grep -vx SHA256SUMS | xargs shasum -a 256 > SHA256SUMS`。
+3. 把该 tag 全部资产的校验值按 `<sha256>  <tag>/<asset>` 追加到
+   `tools/kernel/libcore-checksums.txt`（两个空格，每行一条）；`SHA256SUMS` 自己的
+   哈希不在它的内容里，另行 `shasum -a 256 SHA256SUMS` 算出后单独登记一条。
+4. 更新 `ci.yml`、`release.yml` 与 `bin/fetch-libcore.sh` 里的 tag，然后跑
+   `bash tools/kernel/check-libcore-checksums.sh`——它保证用到的每个 tag 都有
+   条目，CI 的 `public-links` job 也会跑它。
+5. `FORCE=1 bin/fetch-libcore.sh all` 真拉一遍，确认全部校验通过。
+
+校验和只证明「拿到的就是登记时的那份」，不证明那份本身可信；登记前要自己核对产物。
+
 ---
 
 ## Windows 代码签名

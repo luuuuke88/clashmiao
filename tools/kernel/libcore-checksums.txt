@@ -1,0 +1,12 @@
+# libcore 预编译产物的 sha256 校验和。格式：<sha256>  <tag>/<asset>（两个空格）。
+# bin/fetch-libcore.sh 在下载之后、以及复用已存在的文件之前，都会逐项对照本文件。
+# 新增或升级 tag 时，把该 tag 全部资产的校验值追加到这里（见 docs/RELEASE.md）。
+0a0e6d713835c358ff9b41cc9b4b1f635536a6f131bba14db30596b8443e6221  libcore-v1.8.9-16k/Libcore.xcframework.zip
+d76345a1a8e5cff159931b360ebb57f7ab5e44054ba5f307347f5735435e83af  libcore-v1.8.9-16k/SHA256SUMS
+656a72b09c955b2e221c8e7be629f4788e3f55e429d827f0d73ddb79a9b66cf5  libcore-v1.8.9-16k/libcore.aar
+6f680df641d3170137177f3bdfff316547a4f672ed09a482d966ded5db492684  libcore-v1.8.9-16k/libcore.dll
+a80d03d8df8194c0b63a9d4f3ad5835761832a037fad4af52fa8917ea48927c6  libcore-v1.8.9-16k/libcore.dylib
+12f059737269892d0dc5ec3cf5678cb58b5be69f4af5187526c066bbb9f965a5  libcore-v1.8.9-16k/libcore.so
+d8fb2a73a3ce2b6ea1ff2b99154829533cde630235be61f69fa4cb6dcb287265  libcore-v1.14.3-r2/SHA256SUMS
+7e3acb6a45e793454c826c597791c42b85308e010acf63b3c7e64b5843a73094  libcore-v1.14.3-r2/libcore.aar
+7409b976029f96fd82023920f0086c984c4a32c52e21cd7f6ac14a948f43ea46  libcore-v1.14.3-r2/libcore.aar.sha256

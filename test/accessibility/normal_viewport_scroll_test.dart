@@ -1,3 +1,5 @@
+import 'package:clashmiao/app/router/app_routes.dart';
+import 'package:clashmiao/shared/navigation/app_route.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/domain/connection/application/connection_providers.dart';
@@ -86,16 +88,19 @@ Future<Widget> _app({
   await container.read(sharedPreferencesProvider.future);
   return UncontrolledProviderScope(
     container: container,
-    child: ToastificationWrapper(
-      child: MaterialApp(
-        theme: ThemeData.light().copyWith(
-          splashFactory: NoSplash.splashFactory,
-          extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+    child: AppRouteScope(
+      builders: appRouteBuilders,
+      child: ToastificationWrapper(
+        child: MaterialApp(
+          theme: ThemeData.light().copyWith(
+            splashFactory: NoSplash.splashFactory,
+            extensions: <ThemeExtension<dynamic>>[AiUiTheme.light],
+          ),
+          builder: (context, child) =>
+              Directionality(textDirection: direction, child: child!),
+          navigatorObservers: [?observer],
+          home: home,
         ),
-        builder: (context, child) =>
-            Directionality(textDirection: direction, child: child!),
-        navigatorObservers: [?observer],
-        home: home,
       ),
     ),
   );

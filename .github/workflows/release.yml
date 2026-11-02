@@ -35,7 +35,7 @@ jobs:
   report-start:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Prepare release-status branch
         run: |
           git fetch origin release-status || true
@@ -86,7 +86,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -133,7 +133,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup-android-build
       - uses: subosito/flutter-action@v2
         with:
@@ -310,7 +310,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -471,7 +471,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -634,7 +634,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: |
           sudo apt-get update -y
           sudo apt-get install -y ninja-build libgtk-3-dev \
@@ -712,7 +712,7 @@ jobs:
       # 不指定 ref：checkout 默认取 github.sha——tag push 时就是该 tag 指向的
       # commit，手动触发（排练）时就是分支头。写死 ref: RELEASE_TAG 的话，
       # 排练用的 tag 还不存在，checkout 直接失败，"排练"这条路根本走不通。
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
@@ -809,7 +809,7 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Prepare release-status branch
         run: |
           git fetch origin release-status || true

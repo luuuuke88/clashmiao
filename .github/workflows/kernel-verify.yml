@@ -19,7 +19,7 @@ jobs:
       matrix:
         go: ['1.26.x', '1.27.x']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # 名称守卫要扫 origin/main..HEAD 的提交信息
       - uses: actions/setup-go@v5

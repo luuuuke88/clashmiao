@@ -161,9 +161,9 @@ android {
 
 dependencies {
     implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
-    implementation("com.google.code.gson:gson:2.10.1")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation("com.google.code.gson:gson:2.15.0")
+    implementation("androidx.core:core-ktx:1.19.1")
+    implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.6.2")
 
     // Kotlin unit tests for engine/ + core/ —— 跑在 host JVM 上，不需要 emulator。

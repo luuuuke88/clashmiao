@@ -365,13 +365,13 @@ jobs:
           flutter build macos --release --no-tree-shake-icons $VERSION_ARGS $DART_DEFINES
       - name: Verify macOS bundle (must be universal)
         run: |
-          APP=build/macos/Build/Products/Release/clashmiao.app
+          APP=build/macos/Build/Products/Release/ClashMiao.app
           test -d "$APP"
           test -s "$APP/Contents/Frameworks/libcore.dylib"
           # 只出 arm64 的话 Intel Mac 装了也跑不起来（Rosetta 只能 x86→arm，
           # 反向不行）。可执行文件和 libcore 两者都必须含两个架构——校验而
           # 不是假设，产物名叫 universal 但实际是单架构才是最坑的情形。
-          for BIN in "$APP/Contents/MacOS/clashmiao" "$APP/Contents/Frameworks/libcore.dylib"; do
+          for BIN in "$APP/Contents/MacOS/ClashMiao" "$APP/Contents/Frameworks/libcore.dylib"; do
             ARCHS="$(lipo -archs "$BIN")"
             echo "$BIN -> $ARCHS"
             case "$ARCHS" in
@@ -400,7 +400,7 @@ jobs:
           security import cert.p12 -k "$KEYCHAIN" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           rm -f cert.p12
-          APP=build/macos/Build/Products/Release/clashmiao.app
+          APP=build/macos/Build/Products/Release/ClashMiao.app
           # 先签内嵌的 dylib，再签 App 本体——顺序反了外层签名会失效。
           find "$APP/Contents/Frameworks" -name '*.dylib' -print0 |
             xargs -0 -I{} codesign --force --timestamp --options runtime \
@@ -426,10 +426,10 @@ jobs:
             --icon-size 100 \
             --app-drop-link 400 200 \
             "$DMG" \
-            "build/macos/Build/Products/Release/clashmiao.app" || \
+            "build/macos/Build/Products/Release/ClashMiao.app" || \
           echo "::warning::dmg 创建失败；zip 产物仍会上传"
           ditto -c -k --keepParent \
-            "build/macos/Build/Products/Release/clashmiao.app" "$ZIP"
+            "build/macos/Build/Products/Release/ClashMiao.app" "$ZIP"
           # dmg 和 zip 至少要有一个，两个都没有说明打包整体失败了
           test -s "$DMG" || test -s "$ZIP"
       - name: Notarize macOS dmg (skipped until Apple Developer account is configured)

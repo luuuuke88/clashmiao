@@ -1,5 +1,5 @@
 name: clashmiao
-description: "喵速 - 跨平台代理客户端"
+description: "ClashMiao — cross-platform proxy client powered by sing-box."
 publish_to: "none"
 # 这个值**只影响本地/调试构建**，不决定发版版本号。
 #

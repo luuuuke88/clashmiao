@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-APP="build/macos/Build/Products/Debug/clashmiao.app"
+APP="build/macos/Build/Products/Debug/ClashMiao.app"
 PORT=2080
 TARGET_HOST="api.ipify.org"
 
@@ -35,7 +35,7 @@ echo "    baseline = $BASELINE"
 
 # ============ 2. 启动 app（背景）============
 # pkill 旧实例避免冲突
-pkill -x clashmiao 2>/dev/null || true
+pkill -x ClashMiao 2>/dev/null || true
 sleep 1
 
 echo "==> launching $APP"
@@ -53,7 +53,7 @@ done
 
 if ! nc -z 127.0.0.1 $PORT 2>/dev/null; then
   echo "error: 端口 $PORT 一直没监听（sing-box 没启动或挂了）"
-  pkill -x clashmiao 2>/dev/null || true
+  pkill -x ClashMiao 2>/dev/null || true
   exit 4
 fi
 
@@ -67,7 +67,7 @@ echo "    proxied  = $PROXIED"
 
 # ============ 5. cleanup ============
 echo "==> killing app"
-pkill -x clashmiao 2>/dev/null || true
+pkill -x ClashMiao 2>/dev/null || true
 sleep 1
 
 # ============ 6. 断言 ============

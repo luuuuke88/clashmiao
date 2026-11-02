@@ -771,14 +771,34 @@ jobs:
               "${ASSET_FILES[@]}"
           fi
           echo "已发布：$(gh release view "$RELEASE_TAG" --json url --jq .url)"
-      # 只有正式发布才通知官网：tag push 一定是正式发布；手动触发时 draft 是
-      # boolean 输入，勾了 draft 的排练不通知。放在发布步骤之后，所以失败只会让这次
-      # run 变红并输出 ::error，不会回头改已经发布的 release 正文。
+      # 只通知官网「真正对外可见」的 release：先用 if 按事件/输入粗筛（tag push 或
+      # 手动触发且没勾 draft），再按 release 的实际状态决定——重跑时走的是
+      # `gh release edit` 分支，不会把已存在的草稿转正，此时事件说「正式」但 release
+      # 仍是草稿，通知官网只会让它同步到一个公众看不到的版本。官网取 latest
+      # （/releases/latest 不含 prerelease），所以 prerelease 也不通知。
+      # 放在发布步骤之后：失败只会让这次 run 变红并输出 ::error，不回头改 release 正文。
       - name: Notify website
         if: ${{ success() && (github.event_name == 'push' || inputs.draft == false) }}
         env:
+          GH_TOKEN: ${{ github.token }}
           WEB_DISPATCH_TOKEN: ${{ secrets.WEB_DISPATCH_TOKEN }}
-        run: bin/notify-website.sh "$RELEASE_TAG"
+        run: |
+          if ! STATE="$(gh release view "$RELEASE_TAG" --json isDraft,isPrerelease \
+            -q '"draft=\(.isDraft) prerelease=\(.isPrerelease)"')"; then
+            echo "::error::读不到 release ${RELEASE_TAG} 的状态，无法判断是否该通知官网"
+            exit 1
+          fi
+          case "$STATE" in
+            "draft=false prerelease=false")
+              bin/notify-website.sh "$RELEASE_TAG"
+              ;;
+            "draft=true "*)
+              echo "::notice::release ${RELEASE_TAG} 仍是草稿（${STATE}），未对外发布，不通知官网。"
+              ;;
+            *)
+              echo "::notice::release ${RELEASE_TAG} 是 prerelease（${STATE}），官网只跟踪正式版，不通知。"
+              ;;
+          esac
 
   report:
     needs: [quality, kernel, android, macos, windows, publish]

@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:clashmiao/domain/config/application/network_settings.dart';
 import 'package:clashmiao/domain/config/application/service_mode.dart';
-import 'package:clashmiao/domain/config/data/default_config_options.dart';
+import 'package:clashmiao/domain/config/application/default_config_options.dart';
 import 'package:clashmiao/domain/config/model/advanced_config.dart';
 import 'package:flutter_test/flutter_test.dart';
 

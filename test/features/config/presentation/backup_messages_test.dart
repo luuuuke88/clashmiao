@@ -6,7 +6,7 @@ import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/config/data/backup_codec.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
-import 'package:clashmiao/features/config/data/backup_service.dart';
+import 'package:clashmiao/features/config/application/backup_service.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
 import 'package:clashmiao/features/config/presentation/backup_messages.dart';
 import 'package:flutter_test/flutter_test.dart';

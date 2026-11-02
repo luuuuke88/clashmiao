@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/features/config/data/backup_engine.dart';
-import 'package:clashmiao/features/config/data/backup_service.dart';
+import 'package:clashmiao/features/config/application/backup_service.dart';
 import 'package:clashmiao/features/config/model/backup_bundle.dart';
 
 /// 备份导入的用户可见文案：确认对话框、结果报告、失败原因。

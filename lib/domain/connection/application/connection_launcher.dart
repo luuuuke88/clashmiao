@@ -27,7 +27,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/domain/config/application/network_settings.dart';
-import 'package:clashmiao/domain/config/data/default_config_options.dart';
+import 'package:clashmiao/domain/config/application/default_config_options.dart';
 import 'package:clashmiao/domain/profile/data/profile_store.dart';
 import 'package:clashmiao/domain/config/data/runtime_config_builder.dart';
 import 'package:clashmiao/domain/connection/model/connection_failure.dart';

@@ -9,7 +9,7 @@ import 'package:clashmiao/app/bootstrap/restore_wiring.dart';
 import 'package:clashmiao/app/bootstrap/storage_bootstrap.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/domain/config/data/default_config_options.dart';
+import 'package:clashmiao/domain/config/application/default_config_options.dart';
 import 'package:clashmiao/core/licenses/bundled_licenses.dart';
 import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/logger/sentry_options.dart';

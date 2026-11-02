@@ -51,14 +51,41 @@ void main() {
     expect(uris.length, greaterThan(100));
   });
 
-  test('层间依赖合规（core ← shared ← domain ← features ← app，domain 内部有序）', () {
+  test('层间依赖合规（按逻辑功能判定：能力型有序、页面型互不依赖，core ← shared ← 功能 ← app）', () {
     final violations = checkLayering(uris, allowlist: kAllowlist);
     expect(violations, isEmpty, reason: render(violations));
   });
 
-  test('R1：domain 模型不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application', () {
+  test('R1：所有功能的 model 层不传递依赖 Flutter / Riverpod / dart:io / dart:ui / data / application', () {
     final violations = checkModelPurity(uris);
     expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('规则 4：同功能内部方向 presentation → application → data → model（扣除已登记欠账）', () {
+    final violations = withoutDebt(
+      checkIntraFeatureDirection(uris),
+      kIntraDirectionDebt,
+    );
+    expect(violations, isEmpty, reason: render(violations));
+  });
+
+  test('欠账没有过期条目，且不超上限', () {
+    final stale = staleDebt(
+      checkIntraFeatureDirection(uris),
+      kIntraDirectionDebt,
+    );
+    expect(
+      stale,
+      isEmpty,
+      reason:
+          '以下欠账已还清，请从 allowlist.dart 的 kIntraDirectionDebt 删除：${render(stale)}',
+    );
+    expect(
+      kIntraDirectionDebt.length,
+      lessThanOrEqualTo(kIntraDirectionDebtCeiling),
+      reason:
+          '欠账只减不增：当前 ${kIntraDirectionDebt.length} 条，上限 $kIntraDirectionDebtCeiling',
+    );
   });
 
   test('白名单没有过期条目', () {
@@ -70,7 +97,7 @@ void main() {
     );
   });
 
-  test('白名单合法：条数不超上限，且只含 features → features', () {
+  test('白名单合法：条数不超上限，且只含页面型 → 页面型', () {
     final problems = checkAllowlist(kAllowlist, ceiling: kAllowlistCeiling);
     expect(problems, isEmpty, reason: render(problems));
   });

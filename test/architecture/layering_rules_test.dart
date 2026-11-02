@@ -11,275 +11,650 @@ Map<String, List<String>> graph(Map<String, List<String>> edges) => {
 };
 
 void main() {
-  group('checkLayering：层间规则', () {
-    test('core → domain 违规；core → core 合规', () {
-      final bad = checkLayering(
-        graph({
-          'core/a.dart': ['domain/x/b.dart'],
-        }),
-        allowlist: const [],
-      );
-      expect(bad, hasLength(1));
-      expect(bad.single.from, 'core/a.dart');
-      expect(bad.single.to, 'domain/x/b.dart');
+  group('logicalUnitOf：新旧目录都按逻辑功能归位', () {
+    void expectUnit(
+      String path,
+      String feature,
+      Tier tier,
+      String layer, {
+      String? reason,
+    }) {
+      final u = logicalUnitOf(path);
+      expect(u, isNotNull, reason: reason ?? path);
+      expect(u!.feature, feature, reason: path);
+      expect(u.tier, tier, reason: path);
+      expect(u.layer, layer, reason: path);
+    }
 
-      expect(
-        checkLayering(
-          graph({
-            'core/a.dart': ['core/b.dart'],
-          }),
-          allowlist: const [],
-        ),
-        isEmpty,
+    test('旧路径 domain/<x>/<layer>：routing 映射为 proxy', () {
+      expectUnit(
+        'domain/routing/application/x.dart',
+        'proxy',
+        Tier.capability,
+        'application',
+      );
+      expectUnit(
+        'domain/routing/model/m.dart',
+        'proxy',
+        Tier.capability,
+        'model',
+      );
+      expectUnit(
+        'domain/profile/data/migrations/v1_profiles.dart',
+        'profile',
+        Tier.capability,
+        'data',
+      );
+      expectUnit(
+        'domain/connection/application/c.dart',
+        'connection',
+        Tier.capability,
+        'application',
+      );
+      expectUnit(
+        'domain/config/model/m.dart',
+        'config',
+        Tier.capability,
+        'model',
       );
     });
 
-    test('shared → features 违规；shared → core / shared 合规', () {
-      expect(
-        checkLayering(
-          graph({
-            'shared/a.dart': ['features/x/b.dart'],
-          }),
-          allowlist: const [],
-        ),
-        hasLength(1),
+    test('旧路径 features/config 按文件拆成 backup / options / config', () {
+      expectUnit(
+        'features/config/data/backup_engine.dart',
+        'backup',
+        Tier.capability,
+        'data',
       );
-      expect(
-        checkLayering(
-          graph({
-            'shared/a.dart': ['core/b.dart', 'shared/c.dart'],
-          }),
-          allowlist: const [],
-        ),
-        isEmpty,
+      expectUnit(
+        'features/config/application/restore_refresher.dart',
+        'backup',
+        Tier.capability,
+        'application',
       );
-    });
-
-    test('shared → domain 违规（shared 只能依赖 core / shared）', () {
-      expect(
-        checkLayering(
-          graph({
-            'shared/a.dart': ['domain/profile/b.dart'],
-          }),
-          allowlist: const [],
-        ),
-        hasLength(1),
+      expectUnit(
+        'features/config/application/startup_restore_notice.dart',
+        'backup',
+        Tier.capability,
+        'application',
       );
-    });
-
-    test('domain 顺序倒置违规；顺序正确合规', () {
-      final bad = checkLayering(
-        graph({
-          'domain/profile/a.dart': ['domain/routing/b.dart'],
-        }),
-        allowlist: const [],
+      expectUnit(
+        'features/config/data/restore_recovery.dart',
+        'backup',
+        Tier.capability,
+        'data',
       );
-      expect(bad, hasLength(1));
-      expect(bad.single.from, 'domain/profile/a.dart');
-      expect(bad.single.to, 'domain/routing/b.dart');
-
-      expect(
-        checkLayering(
-          graph({
-            'domain/routing/a.dart': ['domain/profile/b.dart'],
-          }),
-          allowlist: const [],
-        ),
-        isEmpty,
+      expectUnit(
+        'features/config/model/backup_bundle.dart',
+        'backup',
+        Tier.capability,
+        'model',
+      );
+      expectUnit(
+        'features/config/presentation/backup_messages.dart',
+        'backup',
+        Tier.capability,
+        'presentation',
+      );
+      expectUnit(
+        'features/config/presentation/config_options_page.dart',
+        'options',
+        Tier.page,
+        'presentation',
+      );
+      expectUnit(
+        'features/config/presentation/dns_strategy_messages.dart',
+        'config',
+        Tier.capability,
+        'presentation',
       );
     });
 
-    test('domain 顺序：同一概念内部、依赖 core 都合规', () {
-      expect(
-        checkLayering(
-          graph({
-            'domain/profile/a.dart': [
-              'domain/profile/model/b.dart',
-              'core/c.dart',
-              'domain/config/d.dart',
-            ],
-          }),
-          allowlist: const [],
-        ),
-        isEmpty,
+    test('新路径 features/<f>/<layer>', () {
+      expectUnit(
+        'features/profile/presentation/profiles_page.dart',
+        'profile',
+        Tier.capability,
+        'presentation',
+      );
+      expectUnit(
+        'features/proxy/application/row_order.dart',
+        'proxy',
+        Tier.capability,
+        'application',
+      );
+      expectUnit(
+        'features/backup/data/backup_engine.dart',
+        'backup',
+        Tier.capability,
+        'data',
+      );
+      expectUnit(
+        'features/connection/application/c.dart',
+        'connection',
+        Tier.capability,
+        'application',
+      );
+      expectUnit(
+        'features/options/presentation/config_options_page.dart',
+        'options',
+        Tier.page,
+        'presentation',
+      );
+      expectUnit(
+        'features/assets/data/geo_update_service.dart',
+        'assets',
+        Tier.page,
+        'data',
+      );
+      expectUnit(
+        'features/home/presentation/home_page.dart',
+        'home',
+        Tier.page,
+        'presentation',
       );
     });
 
-    test('domain → features / shared / app 违规', () {
-      for (final target in [
-        'features/x/b.dart',
-        'shared/b.dart',
-        'app/b.dart',
+    test('页面型功能的散文件、非分层子目录按 presentation 处理', () {
+      expectUnit('features/home/home.dart', 'home', Tier.page, 'presentation');
+      expectUnit(
+        'features/splash/widgets/w.dart',
+        'splash',
+        Tier.page,
+        'presentation',
+      );
+    });
+
+    test('core / shared / app / main.dart 不属于任何功能', () {
+      for (final p in [
+        'core/storage/a.dart',
+        'shared/components/a.dart',
+        'app/router/a.dart',
+        'main.dart',
       ]) {
-        expect(
-          checkLayering(
-            graph({
-              'domain/config/a.dart': [target],
-            }),
-            allowlist: const [],
-          ),
-          hasLength(1),
-          reason: target,
-        );
+        expect(logicalUnitOf(p), isNull, reason: p);
       }
     });
 
-    test('features → 其他 feature 违规；在白名单里则合规', () {
-      final uris = graph({
-        'features/home/a.dart': ['features/config/b.dart'],
-      });
-      expect(checkLayering(uris, allowlist: const []), hasLength(1));
-      expect(
-        checkLayering(
-          uris,
-          allowlist: const [
-            AllowedEdge('features/home/a.dart', 'features/config/b.dart', '测试'),
-          ],
-        ),
-        isEmpty,
-      );
+    test('未登记的功能、能力型功能的散文件、domain 下的页面型名字：返回 null', () {
+      for (final p in [
+        'domain/unknown/model/a.dart',
+        'features/unknown/presentation/a.dart',
+        'domain/profile/a.dart',
+        'features/profile/a.dart',
+        'domain/home/presentation/a.dart',
+        'features/a.dart',
+      ]) {
+        expect(logicalUnitOf(p), isNull, reason: p);
+      }
     });
 
-    test('features → 自己 / domain / core / shared 合规', () {
-      expect(
-        checkLayering(
-          graph({
-            'features/home/a.dart': [
-              'features/home/b.dart',
-              'domain/profile/c.dart',
-              'core/d.dart',
-              'shared/e.dart',
+    test('kCapabilityOrder 是能力型功能的层级顺序', () {
+      expect(kCapabilityOrder, [
+        'config',
+        'profile',
+        'proxy',
+        'connection',
+        'backup',
+      ]);
+    });
+  });
+
+  group('checkLayering：六条依赖规则', () {
+    List<Violation> check(
+      Map<String, List<String>> edges, {
+      List<AllowedEdge> allowlist = const [],
+    }) => checkLayering(graph(edges), allowlist: allowlist);
+
+    group('规则 1：能力型的非页面层只能依赖更低的能力型非页面层与 core', () {
+      test('profile application → proxy application：违规', () {
+        final bad = check({
+          'domain/profile/application/a.dart': [
+            'domain/routing/application/b.dart',
+          ],
+        });
+        expect(bad, hasLength(1));
+        expect(bad.single.from, 'domain/profile/application/a.dart');
+        expect(bad.single.to, 'domain/routing/application/b.dart');
+      });
+
+      test('proxy application → profile application：合规', () {
+        expect(
+          check({
+            'domain/routing/application/a.dart': [
+              'domain/profile/application/b.dart',
             ],
           }),
-          allowlist: const [],
-        ),
-        isEmpty,
-      );
-    });
+          isEmpty,
+        );
+      });
 
-    test('features → app 违规', () {
-      expect(
-        checkLayering(
-          graph({
-            'features/home/a.dart': ['app/x.dart'],
+      test('新旧路径混用同样按逻辑功能判定', () {
+        expect(
+          check({
+            'domain/profile/application/a.dart': [
+              'features/proxy/application/b.dart',
+            ],
           }),
-          allowlist: const [],
-        ),
-        hasLength(1),
-      );
+          hasLength(1),
+        );
+        expect(
+          check({
+            'features/proxy/application/a.dart': [
+              'domain/profile/application/b.dart',
+            ],
+          }),
+          isEmpty,
+        );
+      });
+
+      test('各层都按 kCapabilityOrder 判：backup 可依赖全部更低者，反之违规', () {
+        expect(
+          check({
+            'features/config/data/backup_engine.dart': [
+              'domain/config/data/a.dart',
+              'domain/profile/data/b.dart',
+              'domain/routing/data/c.dart',
+              'domain/connection/application/d.dart',
+              'core/e.dart',
+            ],
+          }),
+          isEmpty,
+        );
+        expect(
+          check({
+            'domain/connection/application/a.dart': [
+              'features/config/data/backup_engine.dart',
+            ],
+          }),
+          hasLength(1),
+        );
+      });
+
+      test('非页面层依赖任何 presentation / 页面型功能 / shared：违规', () {
+        for (final target in [
+          'features/profile/presentation/p.dart',
+          'features/home/presentation/p.dart',
+          'shared/components/a.dart',
+          'app/a.dart',
+        ]) {
+          expect(
+            check({
+              'domain/routing/application/a.dart': [target],
+            }),
+            hasLength(1),
+            reason: target,
+          );
+        }
+      });
+
+      test('非页面层依赖 core 合规', () {
+        expect(
+          check({
+            'domain/profile/data/a.dart': ['core/b.dart'],
+          }),
+          isEmpty,
+        );
+      });
     });
 
-    test('白名单只豁免 feature 之间的边：非 feature 条目仍报违规，并额外报条目非法', () {
-      final bad = checkLayering(
-        graph({
-          'core/a.dart': ['domain/x/b.dart'],
-        }),
-        allowlist: const [
-          AllowedEdge('core/a.dart', 'domain/x/b.dart', '企图夹带'),
-        ],
-      );
-      expect(bad, hasLength(2));
-      expect(bad.where((v) => v.rule == '白名单条目非法'), hasLength(1));
-      expect(
-        bad.where((v) => v.rule != '白名单条目非法' && v.from == 'core/a.dart'),
-        hasLength(1),
-      );
+    group('规则 2：能力型的 presentation 可依赖任意能力型非页面层、本功能页面层、shared、core', () {
+      test('profile presentation → proxy application：合规', () {
+        expect(
+          check({
+            'features/profile/presentation/a.dart': [
+              'domain/routing/application/b.dart',
+              'domain/connection/model/c.dart',
+              'features/config/data/backup_engine.dart',
+              'features/profile/presentation/d.dart',
+              'shared/components/e.dart',
+              'core/f.dart',
+            ],
+          }),
+          isEmpty,
+        );
+      });
+
+      test('profile presentation → proxy presentation：违规', () {
+        final bad = check({
+          'features/profile/presentation/a.dart': [
+            'features/proxy/presentation/b.dart',
+          ],
+        });
+        expect(bad, hasLength(1));
+        expect(bad.single.to, 'features/proxy/presentation/b.dart');
+      });
+
+      test('能力型 presentation → 页面型功能：违规', () {
+        expect(
+          check({
+            'features/profile/presentation/a.dart': [
+              'features/settings/presentation/b.dart',
+            ],
+          }),
+          hasLength(1),
+        );
+      });
     });
 
-    test('白名单条目只有一端在 features 下同样非法', () {
-      final bad = checkLayering(
-        graph({
-          'features/home/a.dart': ['app/x.dart'],
-        }),
-        allowlist: const [
-          AllowedEdge('features/home/a.dart', 'app/x.dart', '企图夹带'),
-        ],
-      );
-      expect(bad.where((v) => v.rule == '白名单条目非法'), hasLength(1));
-      // features → app 本身仍然违规，没有被豁免。
-      expect(bad, hasLength(2));
+    group('规则 3：页面型可依赖任意能力型的任何一层；页面型之间不能互相依赖', () {
+      test('home presentation → profile presentation（对话框）：合规', () {
+        expect(
+          check({
+            'features/home/presentation/home_page.dart': [
+              'features/profile/presentation/profile_form_dialog.dart',
+              'domain/connection/application/c.dart',
+              'features/proxy/presentation/p.dart',
+              'shared/components/s.dart',
+              'core/c.dart',
+              'features/home/presentation/other.dart',
+            ],
+          }),
+          isEmpty,
+        );
+      });
+
+      test('home → settings：违规', () {
+        final bad = check({
+          'features/home/presentation/a.dart': [
+            'features/settings/presentation/b.dart',
+          ],
+        });
+        expect(bad, hasLength(1));
+        expect(bad.single.hint, isNot(contains('白名单')));
+        expect(bad.single.hint, contains('路由入口解耦'));
+      });
+
+      test('页面型之间的跳转写进白名单后合规', () {
+        final edges = {
+          'features/home/presentation/quick_settings_modal.dart': [
+            'features/config/presentation/config_options_page.dart',
+          ],
+        };
+        expect(check(edges), hasLength(1));
+        expect(
+          check(
+            edges,
+            allowlist: const [
+              AllowedEdge(
+                'features/home/presentation/quick_settings_modal.dart',
+                'features/config/presentation/config_options_page.dart',
+                '页面跳转',
+              ),
+            ],
+          ),
+          isEmpty,
+        );
+      });
+
+      test('白名单不能豁免能力型功能之间的违规', () {
+        final bad = check(
+          {
+            'domain/profile/application/a.dart': [
+              'domain/routing/application/b.dart',
+            ],
+          },
+          allowlist: const [
+            AllowedEdge(
+              'domain/profile/application/a.dart',
+              'domain/routing/application/b.dart',
+              '企图夹带',
+            ),
+          ],
+        );
+        expect(bad, hasLength(2));
+        expect(bad.where((v) => v.rule == '白名单条目非法'), hasLength(1));
+      });
     });
 
-    test('app 与 main.dart 依赖任意层都合规', () {
-      expect(
-        checkLayering(
-          graph({
+    group('规则 4 不在 checkLayering 里判（单独的 checkIntraFeatureDirection）', () {
+      test('同功能内 data → application 不算层间违规', () {
+        expect(
+          check({
+            'domain/profile/data/a.dart': ['domain/profile/application/b.dart'],
+          }),
+          isEmpty,
+        );
+      });
+    });
+
+    group('core / shared / app 的原有规则', () {
+      test('core → 非 core 违规；core → core 合规', () {
+        final bad = check({
+          'core/a.dart': ['domain/profile/model/b.dart'],
+        });
+        expect(bad, hasLength(1));
+        expect(bad.single.from, 'core/a.dart');
+        expect(bad.single.to, 'domain/profile/model/b.dart');
+        expect(
+          check({
+            'core/a.dart': ['core/b.dart'],
+          }),
+          isEmpty,
+        );
+        expect(
+          check({
+            'core/a.dart': ['features/home/presentation/b.dart'],
+          }),
+          hasLength(1),
+        );
+      });
+
+      test('shared → 功能 / app 违规；shared → core / shared 合规', () {
+        for (final target in [
+          'features/home/presentation/b.dart',
+          'domain/profile/model/b.dart',
+          'app/b.dart',
+        ]) {
+          expect(
+            check({
+              'shared/a.dart': [target],
+            }),
+            hasLength(1),
+            reason: target,
+          );
+        }
+        expect(
+          check({
+            'shared/a.dart': ['core/b.dart', 'shared/c.dart'],
+          }),
+          isEmpty,
+        );
+      });
+
+      test('app 与 main.dart 依赖任意层都合规', () {
+        expect(
+          check({
             'app/x.dart': [
               'core/a.dart',
               'shared/b.dart',
-              'domain/connection/c.dart',
-              'features/home/d.dart',
+              'domain/connection/application/c.dart',
+              'features/home/presentation/d.dart',
               'app/y.dart',
             ],
             'main.dart': [
               'app/app.dart',
               'core/a.dart',
-              'features/home/d.dart',
+              'features/home/presentation/d.dart',
             ],
           }),
-          allowlist: const [],
-        ),
-        isEmpty,
-      );
-    });
+          isEmpty,
+        );
+      });
 
-    test('非项目内 URI（flutter / dart:）不参与层间判定', () {
-      expect(
-        checkLayering({
-          'core/a.dart': ['package:flutter/material.dart', 'dart:io'],
-        }, allowlist: const []),
-        isEmpty,
-      );
-    });
-
-    test('*.g.dart 按所在目录归层，不豁免', () {
-      expect(
-        checkLayering(
-          graph({
-            'core/a.g.dart': ['domain/x/b.dart'],
+      test('功能 → app 违规', () {
+        expect(
+          check({
+            'features/home/presentation/a.dart': ['app/x.dart'],
           }),
-          allowlist: const [],
-        ),
-        hasLength(1),
-      );
+          hasLength(1),
+        );
+      });
+
+      test('非项目内 URI（flutter / dart:）不参与层间判定', () {
+        expect(
+          checkLayering({
+            'core/a.dart': ['package:flutter/material.dart', 'dart:io'],
+          }, allowlist: const []),
+          isEmpty,
+        );
+      });
+
+      test('*.g.dart 按所在目录归层，不豁免', () {
+        expect(
+          check({
+            'core/a.g.dart': ['domain/profile/model/b.dart'],
+          }),
+          hasLength(1),
+        );
+      });
     });
 
-    test('不在已知层里的文件与目标：报违规，不静默放过', () {
-      expect(
-        checkLayering(
-          graph({
+    group('不认识的位置：报违规，不静默放过', () {
+      test('不在已知层里的文件与目标', () {
+        expect(
+          check({
             'stray/a.dart': ['core/b.dart'],
           }),
-          allowlist: const [],
-        ),
-        hasLength(1),
-      );
-      expect(
-        checkLayering(
-          graph({
+          hasLength(1),
+        );
+        expect(
+          check({
             'core/a.dart': ['stray/b.dart'],
           }),
-          allowlist: const [],
-        ),
-        hasLength(1),
-      );
-    });
+          hasLength(1),
+        );
+      });
 
-    test('domain 概念不在固定顺序里：报违规', () {
-      expect(
-        checkLayering(
-          graph({
-            'domain/unknown/a.dart': ['core/b.dart'],
+      test('未登记的功能连依赖 core 也不放过', () {
+        expect(
+          check({
+            'domain/unknown/model/a.dart': ['core/b.dart'],
+            'features/unknown/presentation/a.dart': ['core/b.dart'],
           }),
-          allowlist: const [],
-        ),
-        hasLength(1),
-      );
+          hasLength(2),
+        );
+      });
+
+      test('能力型功能的散文件（不在分层目录里）：违规', () {
+        expect(
+          check({
+            'domain/profile/a.dart': ['core/b.dart'],
+          }),
+          hasLength(1),
+        );
+      });
+
+      test('依赖目标是未登记的功能：违规', () {
+        expect(
+          check({
+            'features/home/presentation/a.dart': [
+              'domain/unknown/model/b.dart',
+            ],
+          }),
+          hasLength(1),
+        );
+      });
     });
 
     test('Violation.toString 形如 from → to · rule · hint', () {
       const v = Violation('a.dart', 'b.dart', '规则', '提示');
       expect(v.toString(), 'a.dart → b.dart · 规则 · 提示');
+    });
+  });
+
+  group('checkIntraFeatureDirection：规则 4 同功能内部方向', () {
+    List<Violation> intra(Map<String, List<String>> edges) =>
+        checkIntraFeatureDirection(graph(edges));
+
+    test('x/data → x/application：违规', () {
+      final bad = intra({
+        'domain/profile/data/a.dart': ['domain/profile/application/b.dart'],
+      });
+      expect(bad, hasLength(1));
+      expect(bad.single.from, 'domain/profile/data/a.dart');
+      expect(bad.single.to, 'domain/profile/application/b.dart');
+    });
+
+    test('model → 任何更高层、application → presentation：违规', () {
+      expect(
+        intra({
+          'domain/profile/model/a.dart': ['domain/profile/data/b.dart'],
+          'domain/profile/application/c.dart': [
+            'features/profile/presentation/d.dart',
+          ],
+        }),
+        hasLength(2),
+      );
+    });
+
+    test('presentation → application → data → model，含跨层与同层：合规', () {
+      expect(
+        intra({
+          'features/profile/presentation/a.dart': [
+            'domain/profile/application/b.dart',
+            'domain/profile/data/c.dart',
+            'domain/profile/model/d.dart',
+            'features/profile/presentation/e.dart',
+          ],
+          'domain/profile/application/b.dart': [
+            'domain/profile/data/c.dart',
+            'domain/profile/model/d.dart',
+          ],
+          'domain/profile/data/c.dart': ['domain/profile/model/d.dart'],
+        }),
+        isEmpty,
+      );
+    });
+
+    test('只判同一个逻辑功能：跨功能的反向不归它管', () {
+      expect(
+        intra({
+          'domain/profile/model/a.dart': ['domain/routing/application/b.dart'],
+        }),
+        isEmpty,
+      );
+    });
+
+    test('features/config 拆出的 backup 与 config 是两个功能', () {
+      expect(
+        intra({
+          'features/config/data/backup_engine.dart': [
+            'domain/config/application/a.dart',
+          ],
+        }),
+        isEmpty,
+      );
+    });
+
+    test('非项目内 URI、不认识的位置不报（交给 checkLayering）', () {
+      expect(
+        checkIntraFeatureDirection({
+          'domain/profile/data/a.dart': [
+            'package:flutter/material.dart',
+            'dart:io',
+          ],
+          'stray/a.dart': [pkg('domain/profile/application/b.dart')],
+        }),
+        isEmpty,
+      );
+    });
+  });
+
+  group('欠账登记：withoutDebt / staleDebt', () {
+    const v1 = Violation('a.dart', 'b.dart', '规则', '提示');
+    const v2 = Violation('c.dart', 'd.dart', '规则', '提示');
+    const d1 = AllowedEdge('a.dart', 'b.dart', '欠账');
+    const gone = AllowedEdge('x.dart', 'y.dart', '已还清');
+
+    test('已登记的违规被扣掉，其余保留', () {
+      expect(withoutDebt(const [v1, v2], const [d1]), [v2]);
+      expect(withoutDebt(const [v1, v2], const []), [v1, v2]);
+    });
+
+    test('登记了但代码里已不再违规的条目被返回（棘轮）', () {
+      expect(staleDebt(const [v1, v2], const [d1, gone]), [gone]);
+      expect(staleDebt(const [v1], const [d1]), isEmpty);
     });
   });
 
@@ -366,6 +741,33 @@ void main() {
       );
     });
 
+    test('新路径与页面型功能的 model 同样适用；触达任何功能的 data / application 都报', () {
+      for (final m in [
+        'features/assets/model/geo_asset.dart',
+        'features/backup/model/backup_bundle.dart',
+        'features/config/model/backup_bundle.dart',
+      ]) {
+        expect(
+          checkModelPurity({
+            m: ['package:flutter/material.dart'],
+          }),
+          hasLength(1),
+          reason: m,
+        );
+      }
+      for (final target in [
+        'features/assets/data/g.dart',
+        'features/proxy/application/g.dart',
+        'features/config/data/backup_engine.dart',
+      ]) {
+        final bad = checkModelPurity({
+          'features/assets/model/geo_asset.dart': [pkg(target)],
+        });
+        expect(bad, hasLength(1), reason: target);
+        expect(bad.single.to, target);
+      }
+    });
+
     test('非 model 文件即使依赖 flutter 也不属于 R1', () {
       expect(
         checkModelPurity({
@@ -399,8 +801,11 @@ void main() {
   });
 
   group('checkAllowlist：白名单自身校验（数字均写死，不依赖 kAllowlistCeiling）', () {
-    AllowedEdge feat(int i) =>
-        AllowedEdge('features/a/p$i.dart', 'features/b/q$i.dart', '合成');
+    AllowedEdge feat(int i) => AllowedEdge(
+      'features/home/presentation/p$i.dart',
+      'features/logs/presentation/q$i.dart',
+      '合成',
+    );
 
     test('恰好 5 条、上限 5：通过', () {
       expect(
@@ -417,8 +822,8 @@ void main() {
         feat(3),
         feat(4),
         const AllowedEdge(
-          'features/a/extra.dart',
-          'features/b/extra.dart',
+          'features/home/presentation/extra.dart',
+          'features/logs/presentation/extra.dart',
           '第六条',
         ),
       ], ceiling: 5);
@@ -440,6 +845,53 @@ void main() {
         const AllowedEdge('core/a.dart', 'domain/x/b.dart', '越层'),
       ], ceiling: 5);
       expect(problems, hasLength(2));
+    });
+
+    test('能力型功能之间、页面型 → 能力型、同一页面型内部的条目：失败', () {
+      for (final e in const [
+        AllowedEdge(
+          'domain/profile/application/a.dart',
+          'domain/routing/application/b.dart',
+          '能力型之间',
+        ),
+        AllowedEdge(
+          'features/home/presentation/a.dart',
+          'features/profile/presentation/b.dart',
+          '页面型 → 能力型本来就合规',
+        ),
+        AllowedEdge(
+          'features/home/presentation/a.dart',
+          'features/home/presentation/b.dart',
+          '同一功能内部',
+        ),
+        AllowedEdge(
+          'features/home/presentation/a.dart',
+          'features/unknown/presentation/b.dart',
+          '未登记',
+        ),
+      ]) {
+        final problems = checkAllowlist([e], ceiling: 5);
+        expect(problems, hasLength(1), reason: e.toString());
+        expect(problems.single, contains('白名单条目非法'));
+      }
+    });
+
+    test('页面型 → 页面型（新旧路径）的条目：通过', () {
+      expect(
+        checkAllowlist(const [
+          AllowedEdge(
+            'features/home/presentation/quick_settings_modal.dart',
+            'features/config/presentation/config_options_page.dart',
+            '旧路径',
+          ),
+          AllowedEdge(
+            'features/options/presentation/config_options_page.dart',
+            'features/logs/presentation/logs_page.dart',
+            '新路径',
+          ),
+        ], ceiling: 5),
+        isEmpty,
+      );
     });
 
     test('空名单合法', () {
@@ -678,7 +1130,8 @@ import 'package:clashmiao/core/storage/stub.dart'
     test('feature 间依赖的失败提示引导解耦，不引导登记白名单', () {
       final bad = checkLayering(
         scan({
-          'features/a/x.dart': "import 'package:clashmiao/features/b/y.dart';",
+          'features/home/presentation/x.dart':
+              "import 'package:clashmiao/features/logs/presentation/y.dart';",
         }),
         allowlist: const [],
       );

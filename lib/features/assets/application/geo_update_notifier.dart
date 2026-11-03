@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/assets/data/geo_update_service.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
@@ -104,7 +104,7 @@ class GeoUpdateNotifier
         ),
       };
     } catch (e, st) {
-      logAppFailure('geo.update', e, st);
+      logInputFailure('geo.update', e, st);
       state = {...state, asset.type: GeoUpdateState(error: e)};
     } finally {
       await progressSub?.cancel();

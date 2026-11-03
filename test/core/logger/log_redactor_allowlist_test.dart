@@ -219,8 +219,8 @@ void main() {
       ),
       (
         '编码的白名单 URL：还原后保留主机与路径，去掉查询串',
-        'open https%3A%2F%2Fgithub.com%2Fo%2Fr%3Fx%3D1 ok',
-        'open https://github.com/o/r ok',
+        'open https%3A%2F%2Fgithub.com%2Fluuuuke88%2Fclashmiao%3Fx%3D1 ok',
+        'open https://github.com/luuuuke88/clashmiao ok',
       ),
       (
         '编码的分享链接',
@@ -244,38 +244,38 @@ void main() {
       ),
       (
         '同一段里：编码的白名单 URL 后面跟着编码的分享链接，整段 <url>',
-        'u=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Cvmess%3A%2F%2FeyJhZGQiOiJ4In0',
+        'u=https%3A%2F%2Fgithub.com%2Fluuuuke88%2Fclashmiao%2Cvmess%3A%2F%2FeyJhZGQiOiJ4In0',
         'u=<url>',
       ),
       (
         '同一段里：第一个是白名单且不变，第二个是订阅地址，整段 <url>',
-        'u=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Chttps%3A%2F%2Fsub.example.org'
+        'u=https%3A%2F%2Fgithub.com%2Fluuuuke88%2Fclashmiao%2Chttps%3A%2F%2Fsub.example.org'
             '%2Fs%2Fab12',
         'u=<url>',
       ),
       (
         '同一段里：编码 URL 后面带编码的节点地址，整段 <url>',
-        'u=https%3A%2F%2Fgithub.com%2Fo%2Fr%2C198.51.100.7%3A8443',
+        'u=https%3A%2F%2Fgithub.com%2Fluuuuke88%2Fclashmiao%2C198.51.100.7%3A8443',
         'u=<url>',
       ),
       (
         '明文白名单 URL 的路径里夹着订阅地址（逗号拼接）',
-        'x https://github.com/o/r,https://sub.example.org/s/ab12 y',
+        'x https://github.com/luuuuke88/clashmiao,https://sub.example.org/s/ab12 y',
         'x <url> y',
       ),
       (
         '明文白名单 URL 的路径里夹着编码过的订阅地址',
-        'x https://github.com/o/r%2Chttps%3A%2F%2Fsub.example.org%2Fs%2Fab12 y',
+        'x https://github.com/luuuuke88/clashmiao%2Chttps%3A%2F%2Fsub.example.org%2Fs%2Fab12 y',
         'x <url> y',
       ),
       (
         '明文白名单 URL 的路径里夹着分享链接',
-        'x https://github.com/o/r,vless://id@x y',
+        'x https://github.com/luuuuke88/clashmiao,vless://id@x y',
         'x <url> y',
       ),
       (
         '明文白名单 URL 的路径里夹着节点地址',
-        'x https://github.com/o/r,198.51.100.7:8443 y',
+        'x https://github.com/luuuuke88/clashmiao,198.51.100.7:8443 y',
         'x <url> y',
       ),
       (
@@ -285,14 +285,25 @@ void main() {
       ),
       (
         '嵌在白名单 URL 的查询里的编码地址随查询串一起去掉',
-        'https://github.com/o/r?u=https%3A%2F%2Fsub.example.org%2Fs%2Fab12',
-        'https://github.com/o/r',
+        'https://github.com/luuuuke88/clashmiao?u=https%3A%2F%2Fsub.example.org%2Fs%2Fab12',
+        'https://github.com/luuuuke88/clashmiao',
       ),
     ]);
 
-    test('普通的百分号路径不被当作编码 URL', () {
-      const text = 'https://github.com/a%20b/c%2Fd';
+    test('普通的百分号路径不被当作编码 URL（单租户主机）', () {
+      const text = 'https://clashmiao.com/a%20b/c%2Fd';
       expect(redactLogText(text), text);
+    });
+
+    test('多租户主机的路径带百分号编码：不放行（可借编码伪装前缀）', () {
+      expect(
+        redactLogText('https://github.com/luuuuke88/clashmiao/a%20b'),
+        '<url>',
+      );
+      expect(
+        redactLogText('https://github.com/luuuuke88%2Fclashmiao/x'),
+        '<url>',
+      );
     });
   });
 
@@ -354,24 +365,25 @@ void main() {
     expectAll(const [
       (
         'github.com',
-        'open https://github.com/example-org/clashmiao/releases/latest'
+        'open https://github.com/luuuuke88/clashmiao/releases/latest'
             '?utm=x#readme now',
-        'open https://github.com/example-org/clashmiao/releases/latest now',
+        'open https://github.com/luuuuke88/clashmiao/releases/latest now',
       ),
       (
         'api.github.com',
-        'GET https://api.github.com/repos/example-org/clashmiao/releases/latest'
+        'GET https://api.github.com/repos/luuuuke88/clashmiao/releases/latest'
             '?per_page=1',
-        'GET https://api.github.com/repos/example-org/clashmiao/releases/latest',
+        'GET https://api.github.com/repos/luuuuke88/clashmiao/releases/latest',
       ),
       (
-        'raw / objects / release-assets 子域',
-        'https://raw.githubusercontent.com/o/r/main/a.json?token=ab12 '
-            'https://objects.githubusercontent.com/x/y '
-            'https://release-assets.githubusercontent.com/x/y?sig=ab12',
-        'https://raw.githubusercontent.com/o/r/main/a.json '
-            'https://objects.githubusercontent.com/x/y '
-            'https://release-assets.githubusercontent.com/x/y',
+        'raw 子域：本项目仓库路径保留；objects / release-assets 路径是不透明 ID，只留主机',
+        'https://raw.githubusercontent.com/luuuuke88/clashmiao/main/a.json'
+            '?token=ab12 '
+            'https://objects.githubusercontent.com/github-production-release-asset/1'
+            ' https://release-assets.githubusercontent.com/x/y?sig=ab12',
+        'https://raw.githubusercontent.com/luuuuke88/clashmiao/main/a.json '
+            'https://objects.githubusercontent.com '
+            'https://release-assets.githubusercontent.com',
       ),
       (
         '官网主域与 www',
@@ -392,8 +404,8 @@ void main() {
       ),
       (
         'userinfo 一并去掉，端口保留',
-        'https://u:p@github.com:443/a?b=c',
-        'https://github.com:443/a',
+        'https://u:p@github.com:443/luuuuke88/clashmiao/a?b=c',
+        'https://github.com:443/luuuuke88/clashmiao/a',
       ),
       (
         '路径里像 token 的段仍然遮盖',
@@ -409,8 +421,8 @@ void main() {
       ),
       (
         'JSON 里转义斜杠的白名单 URL',
-        r'{"u":"https:\/\/github.com\/o\/r?x=1"}',
-        r'{"u":"https:\/\/github.com\/o\/r"}',
+        r'{"u":"https:\/\/github.com\/luuuuke88\/clashmiao?x=1"}',
+        r'{"u":"https:\/\/github.com\/luuuuke88\/clashmiao"}',
       ),
     ]);
   });
@@ -453,6 +465,217 @@ void main() {
     for (final text in untouched) {
       test(text, () => expect(redactLogText(text), text));
     }
+  });
+
+  group('多租户主机：只放行本项目仓库路径与构建期外链的路径前缀', () {
+    tearDown(() => debugOverrideCompiledPublicUrls(null));
+
+    expectAll(const [
+      (
+        '别人托管在 raw.githubusercontent.com 的订阅',
+        'fetch https://raw.githubusercontent.com/someone/repo/main/sub.yaml now',
+        'fetch <url> now',
+      ),
+      (
+        '别人的 github.com 仓库',
+        'fetch https://github.com/someone/sub failed',
+        'fetch <url> failed',
+      ),
+      (
+        'gist 主机',
+        'https://gist.githubusercontent.com/someone/0a1b/raw/sub.yaml '
+            'https://gist.github.com/someone/0a1b',
+        '<url> <url>',
+      ),
+      (
+        'api.github.com 上别人的仓库',
+        'GET https://api.github.com/repos/someone/repo/contents/sub.yaml',
+        'GET <url>',
+      ),
+      (
+        '编码过的别人的订阅地址',
+        'redirect https%3A%2F%2Fraw.githubusercontent.com%2Fsomeone%2Frepo'
+            '%2Fmain%2Fsub.yaml now',
+        'redirect <url> now',
+      ),
+      (
+        'JSON 转义斜杠的别人的订阅地址',
+        r'{"u":"https:\/\/github.com\/someone\/sub"}',
+        r'{"u":"<url>"}',
+      ),
+      (
+        '本项目 Release 页面保留',
+        'open https://github.com/luuuuke88/clashmiao/releases/tag/v0.2.0 ok',
+        'open https://github.com/luuuuke88/clashmiao/releases/tag/v0.2.0 ok',
+      ),
+      (
+        '仓库名大小写不敏感',
+        'open https://github.com/Luuuuke88/ClashMiao/issues ok',
+        'open https://github.com/Luuuuke88/ClashMiao/issues ok',
+      ),
+      (
+        '只前缀相同的仓库不放行',
+        'https://github.com/luuuuke88/clashmiao-sub/x '
+            'https://github.com/luuuuke88/other',
+        '<url> <url>',
+      ),
+      (
+        '点段想爬出本项目路径：不放行',
+        'https://github.com/luuuuke88/clashmiao/../../someone/sub',
+        '<url>',
+      ),
+      (
+        'objects / release-assets：路径是不透明 ID，只留 scheme + 主机',
+        'https://objects.githubusercontent.com/github-production-release-asset'
+            '/12345/abcd?X-Amz-Signature=ab12 '
+            'https://release-assets.githubusercontent.com/some/opaque/id',
+        'https://objects.githubusercontent.com '
+            'https://release-assets.githubusercontent.com',
+      ),
+      (
+        '单租户主机仍保留主机 + 路径',
+        'https://clashmiao.com/privacy https://cp.cloudflare.com/generate_204 '
+            'https://ipwho.is/',
+        'https://clashmiao.com/privacy https://cp.cloudflare.com/generate_204 '
+            'https://ipwho.is/',
+      ),
+    ]);
+
+    test('构建期默认 Geo / 更新地址的路径前缀放行，同主机其它路径不放行', () {
+      debugOverrideCompiledPublicUrls([
+        'https://github.com/example-org/geo-rules/releases/download/latest/'
+            'geoip.db',
+        'https://raw.githubusercontent.com/example-org/updates/main/'
+            'latest.json',
+        'https://cdn.example.net/geo/geosite.db',
+      ]);
+      const kept = [
+        'GET https://github.com/example-org/geo-rules/releases/download/latest/'
+            'geoip.db',
+        'GET https://raw.githubusercontent.com/example-org/updates/main/'
+            'latest.json',
+        'GET https://cdn.example.net/geo/geosite.db',
+      ];
+      for (final text in kept) {
+        expect(redactLogText('$text?x=1'), text, reason: text);
+      }
+      for (final text in [
+        'https://github.com/example-org/other/x',
+        'https://github.com/example-org',
+        'https://github.com/example-org/geo-rules-evil/x',
+        'https://raw.githubusercontent.com/example-org/updates2/x',
+        'https://cdn.example.net/other/sub.yaml',
+      ]) {
+        expect(redactLogText(text), '<url>', reason: text);
+      }
+    });
+
+    test('只有一段的构建期外链（`/用户`）不会放行整个命名空间', () {
+      debugOverrideCompiledPublicUrls(['https://github.com/example-org']);
+      expect(redactLogText('https://github.com/example-org/sub'), '<url>');
+    });
+
+    test('publicUrlAccess：三种结果', () {
+      expect(
+        publicUrlAccess('github.com', '/luuuuke88/clashmiao/x'),
+        PublicUrlAccess.hostAndPath,
+      );
+      expect(
+        publicUrlAccess('api.github.com', '/repos/luuuuke88/clashmiao/x'),
+        PublicUrlAccess.hostAndPath,
+      );
+      expect(
+        publicUrlAccess('objects.githubusercontent.com', '/a/b'),
+        PublicUrlAccess.hostOnly,
+      );
+      expect(publicUrlAccess('github.com', '/a/b'), PublicUrlAccess.none);
+      expect(publicUrlAccess('example.org', '/'), PublicUrlAccess.none);
+      expect(
+        publicUrlAccess('clashmiao.com', '/anything'),
+        PublicUrlAccess.hostAndPath,
+      );
+      expect(publicUrlAccess('github.com', ''), PublicUrlAccess.hostAndPath);
+    });
+  });
+
+  group('严格模式（上报通道）：任何路径都不保留', () {
+    void expectStrict(String input, String expected) {
+      final once = redactStrict(input);
+      expect(once, expected);
+      expect(redactStrict(once), once, reason: '幂等');
+    }
+
+    test('官网短路径只留主机', () {
+      expectStrict(
+        'fetch https://clashmiao.com/sub/short failed',
+        'fetch https://clashmiao.com failed',
+      );
+    });
+
+    test('本项目仓库前缀下的路径只留主机', () {
+      expectStrict(
+        'GET https://github.com/luuuuke88/clashmiao/raw/main/x?a=1 ok',
+        'GET https://github.com ok',
+      );
+      expectStrict(
+        'GET https://api.github.com/repos/luuuuke88/clashmiao/releases/latest',
+        'GET https://api.github.com',
+      );
+    });
+
+    test('其它主机仍是 <url>，对象存储主机只留主机，回环也不留路径', () {
+      expectStrict(
+        'https://raw.githubusercontent.com/someone/repo/main/sub.yaml '
+            'https://objects.githubusercontent.com/x/y '
+            'http://127.0.0.1:9090/proxies',
+        '<url> https://objects.githubusercontent.com http://127.0.0.1:9090',
+      );
+    });
+
+    test('编码过的白名单 URL 同样不留路径', () {
+      expectStrict(
+        'open https%3A%2F%2Fclashmiao.com%2Fsub%2Fshort ok',
+        'open https://clashmiao.com ok',
+      );
+    });
+
+    test('file:/// 本地路径整条换成 <url>，不留路径；句末标点留在外面', () {
+      const path =
+          'file:///var/mobile/Containers/Data/Application/X/Documents/'
+          'profiles/a.json';
+      expectStrict('load $path failed', 'load <url> failed');
+      expectStrict('(file:///Users/me/code/main.dart:12:7)', '(<url>)');
+      expectStrict('read $path.', 'read <url>.');
+      // 非严格（app.log）仍保留堆栈帧里的路径。
+      expect(redactLogText('at ($path)'), 'at ($path)');
+    });
+
+    test('file://localhost/ 走白名单：严格模式只留主机', () {
+      expectStrict(
+        'open file://localhost/tmp/a.txt now',
+        'open file://localhost now',
+      );
+    });
+
+    test('嵌套调用后恢复：严格模式之外仍按白名单路径规则', () {
+      expect(
+        withStrictRedaction(() => redactLogText('https://clashmiao.com/a/b')),
+        'https://clashmiao.com',
+      );
+      expect(
+        redactLogText('https://clashmiao.com/a/b'),
+        'https://clashmiao.com/a/b',
+      );
+    });
+
+    test('结构化值也走严格模式', () {
+      expect(
+        withStrictRedaction(
+          () => redactStructuredValue({'u': 'https://clashmiao.com/sub/short'}),
+        ),
+        {'u': 'https://clashmiao.com'},
+      );
+    });
   });
 
   group('白名单来源', () {

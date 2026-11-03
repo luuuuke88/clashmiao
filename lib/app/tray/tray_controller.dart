@@ -12,6 +12,7 @@ import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/connection/application/connection_providers.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:clashmiao/features/connection/model/request_outcome.dart';
 import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
@@ -532,7 +533,8 @@ class TrayController extends TrayListener {
             c.read(connectionControllerProvider.notifier).applyConfig(),
       );
     } catch (e, st) {
-      logAppFailure('tray.switchProxyMode', e, st);
+      // 切模式会重新生成并应用配置，异常原文可能带订阅 / 节点信息：只落类型名。
+      logConnectionFailure('tray.switchProxyMode', e, st);
     }
     await _rebuildMenu(c.read(connectionPhaseProvider));
   }

@@ -28,11 +28,11 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
 import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 等待这个内核实例第一份实时分组的上限。
@@ -125,7 +125,7 @@ class SelectionReplayPipeline {
       return ReplayPipelineOutcome.dropped;
     }
     if (_ownerUnsettled()) {
-      debugPrint('手选编排 [$epoch/$attempt]：配置变更暂停中，归属未定，延后');
+      debugPrintSensitive('手选编排 [$epoch/$attempt]：配置变更暂停中，归属未定，延后');
       return ReplayPipelineOutcome.deferred;
     }
     // 激活订阅在第一个 await 之前就切换了也无妨：归属在这里才捕获。
@@ -142,7 +142,7 @@ class SelectionReplayPipeline {
     final live = await _awaitLiveGroups(owner);
     if (!owned()) return _drop(owner, _Stage.awaitGroups);
     if (live == null) {
-      debugPrint(
+      debugPrintSensitive(
         '手选编排 [$epoch/$attempt]：${_groupsWait.inSeconds} s 内没有收到这个实例'
         '的实时分组，无法校验手选，本次不重放',
       );
@@ -186,7 +186,7 @@ class SelectionReplayPipeline {
             t != null && runtimeGroup.items.any((item) => item.tag == t);
         final stored = _ownedSelections(owner)?[group];
         if (stored != null && !member(stored)) {
-          debugPrint('手选编排：[$group] 里没有节点 [$stored]，改发默认值');
+          debugPrintSensitive('手选编排：[$group] 里没有节点 [$stored]，改发默认值');
         }
         final fallback = defaults[group];
         final String tag;
@@ -208,9 +208,9 @@ class SelectionReplayPipeline {
         );
         if (outcome is SelectStale) return _drop(owner, _Stage.replayStale);
         if (outcome is SelectFailed) {
-          debugPrint('重放手选代理失败 [$group -> $tag]: ${outcome.code}');
+          debugPrintSensitive('重放手选代理失败 [$group -> $tag]: ${outcome.code}');
         } else if (tag != stored) {
-          debugPrint('手选编排：[$group] 没有有效手选，回到默认值 [$tag]');
+          debugPrintSensitive('手选编排：[$group] 没有有效手选，回到默认值 [$tag]');
         }
       }
       if (!sentAny) break;
@@ -237,7 +237,7 @@ class SelectionReplayPipeline {
     );
     if (plan.isEmpty) return true;
     if (plan.orphaned.isNotEmpty) {
-      debugPrint('手选编排：这些记录对应的分组运行时不存在且无法迁移，保留：${plan.orphaned}');
+      debugPrintSensitive('手选编排：这些记录对应的分组运行时不存在且无法迁移，保留：${plan.orphaned}');
     }
 
     // 已确认落盘的目标：计划时就在存储里的运行时分组记录，加上本次写入确认的。
@@ -250,7 +250,7 @@ class SelectionReplayPipeline {
       final s = _ownedStore(owner);
       if (s == null) return false;
       final previous = _ownedSelections(owner)?[target];
-      debugPrint('手选编排：迁移 [$source -> $node] 到运行时分组 [$target]');
+      debugPrintSensitive('手选编排：迁移 [$source -> $node] 到运行时分组 [$target]');
       // 记下这次写入的版本：写入失败时只撤销仍属于本次迁移的内存记录——
       // 等待落盘期间用户若又选了别的节点，那是更新的意图，内存与磁盘都不动。
       var version = 0;
@@ -261,18 +261,18 @@ class SelectionReplayPipeline {
       });
       if (!_owns(owner)) return false;
       if (!persisted) {
-        debugPrint('手选编排：目标 [$target] 写入未落盘，保留来源 [$source] 待下次重试');
+        debugPrintSensitive('手选编排：目标 [$target] 写入未落盘，保留来源 [$source] 待下次重试');
         if (s.versionOf(target) == version) {
           await _write(() => s.restore(target, previous, ifVersion: version));
         } else {
-          debugPrint('手选编排：[$target] 期间已有更新的选择，不回滚');
+          debugPrintSensitive('手选编排：[$target] 期间已有更新的选择，不回滚');
         }
         if (!_owns(owner)) return false;
         continue;
       }
       confirmed.add(target);
       if (!await _write(() => s.removeGroups({source}))) {
-        debugPrint('手选编排：来源 [$source] 删除未落盘，下次启动再删');
+        debugPrintSensitive('手选编排：来源 [$source] 删除未落盘，下次启动再删');
       }
       if (!_owns(owner)) return false;
     }
@@ -282,7 +282,7 @@ class SelectionReplayPipeline {
       if (!confirmed.contains(target)) continue; // 目标没落盘：来源留着
       final s = _ownedStore(owner);
       if (s == null) return false;
-      debugPrint('手选编排：[$target] 已有记录，删除运行时不存在的 [$source]');
+      debugPrintSensitive('手选编排：[$target] 已有记录，删除运行时不存在的 [$source]');
       await _write(() => s.removeGroups({source}));
       if (!_owns(owner)) return false;
     }
@@ -336,7 +336,7 @@ class SelectionReplayPipeline {
         : profileChanged
         ? ReplayPipelineOutcome.droppedOwnerChanged
         : ReplayPipelineOutcome.dropped;
-    debugPrint(
+    debugPrintSensitive(
       '手选编排 [${owner.epoch}/${owner.attempt}]：${stage.name} 阶段归属已过期'
       '（${outcome.name}），丢弃（不确认、不写不删）',
     );

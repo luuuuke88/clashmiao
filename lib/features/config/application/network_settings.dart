@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:clashmiao/features/config/application/warp_availability.dart';
-import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/config/application/dns_strategy_conflict.dart';
 import 'package:clashmiao/features/config/model/dns_defaults.dart';
@@ -1012,7 +1012,7 @@ class NetworkSettingsNotifier extends StateNotifier<NetworkSettings> {
       }
       map = Map<String, dynamic>.from(decoded);
     } on FormatException catch (e, st) {
-      logAppFailure('settings.importJson', e, st);
+      logInputFailure('settings.importJson', e, st);
       return const NetworkSettingsImportResult(
         appliedKeys: [],
         skippedKeys: [],

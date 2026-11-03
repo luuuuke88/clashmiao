@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/shared/components/sub_page_scaffold.dart';
 import 'package:clashmiao/shared/components/motion_progress.dart';
 import 'package:clashmiao/core/theme/motion.dart';
@@ -1261,7 +1262,7 @@ class _ConfigOptionsActionsModal extends ConsumerWidget {
                     try {
                       await BackupService.export(container);
                     } catch (e, st) {
-                      logAppFailure('backup.export', e, st);
+                      logInputFailure('backup.export', e, st);
                       if (navContext.mounted) {
                         AppToast.error(
                           navContext,
@@ -1329,7 +1330,7 @@ Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
   try {
     prepared = await BackupService.pickAndPrepare(container);
   } catch (e, st) {
-    logAppFailure('backup.pick', e, st);
+    logInputFailure('backup.pick', e, st);
     if (context.mounted) Navigator.pop(context);
     if (navContext.mounted) {
       AppToast.error(navContext, BackupMessages.error(t, e));
@@ -1362,7 +1363,7 @@ Future<void> _importBackup(BuildContext context, WidgetRef ref) async {
       }
     }
   } catch (e, st) {
-    logAppFailure('backup.apply', e, st);
+    logInputFailure('backup.apply', e, st);
     if (navContext.mounted) {
       AppToast.error(navContext, BackupMessages.error(t, e));
     }

@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:app_links/app_links.dart';
-import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/features/profile/data/deep_link_parser.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
@@ -78,13 +78,13 @@ class DeepLinkService {
       _subscription = _appLinks.uriLinkStream.listen(
         (uri) => unawaited(handleDeepLink(uri, _ref)),
         onError: (Object e, StackTrace st) {
-          logAppFailure('deepLink.stream', e, st);
+          logInputFailure('deepLink.stream', e, st);
         },
       );
     } catch (e, st) {
       // 平台没有实现该 channel（例如部分测试/桌面环境没有做原生侧 scheme
       // 注册）时静默忽略——深链是锦上添花的功能，绝不能拖垮 App 启动主流程。
-      logAppFailure('deepLink.subscribe', e, st);
+      logInputFailure('deepLink.subscribe', e, st);
     }
   }
 

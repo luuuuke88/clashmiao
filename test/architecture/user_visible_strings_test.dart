@@ -43,8 +43,7 @@ const Map<String, String> kInternalCarrierTypes = {
   '_Fault': 'EmulatedKernelPort 内部，落成 KernelFailure（同上）',
   'PlatformFailure': 'connection_error_classifier 一律映射为 t.failure.unexpected',
   'UnexpectedFailure': '同上',
-  'SelectFailed':
-      '手选失败结果；proxies_page 只把 code/message 写日志，toast 用 t.proxies.switchFailed',
+  'SelectFailed': '手选失败结果；proxies_page 只把 code 写日志（message 与节点名不进日志），toast 用 t.proxies.switchFailed',
 };
 
 /// 日志通道本身：格式化日志记录时必然输出异常原文，豁免规则 1。

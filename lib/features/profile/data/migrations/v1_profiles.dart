@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
@@ -122,7 +123,7 @@ Future<bool> migrateProfilesToV1(
     }
     return true;
   } catch (e, st) {
-    debugPrint('[v1_profiles] 迁移异常: $e\n$st');
+    logAppFailure('migration.v1Profiles', e, st);
     return false;
   }
 }

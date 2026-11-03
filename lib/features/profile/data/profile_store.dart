@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/async_lock.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
@@ -326,7 +327,7 @@ class ProfileStore {
         storedActiveId: stored,
       );
     } catch (e, st) {
-      debugPrint('[ProfileStore] read 异常，按空列表处理: $e\n$st');
+      logAppFailure('profile.store.read', e, st);
       return const ProfileListView(
         profiles: [],
         activeId: null,
@@ -569,7 +570,7 @@ class ProfileStore {
         throw const FileSystemException('偏好写入返回失败');
       }
     } catch (e, st) {
-      debugPrint('[ProfileStore] 提交失败，还原: $e\n$st');
+      logAppFailure('profile.store.commit', e, st);
       await _rollback(
         undo: undo,
         restorePrefs: touchedPrefs,
@@ -605,7 +606,7 @@ class ProfileStore {
       try {
         await prefs.remove(key);
       } catch (e) {
-        debugPrint('[ProfileStore] 删除附属键失败 $key: $e');
+        logAppFailure('profile.store.removeAuxKey $key', e);
       }
     }
     if (!_changes.isClosed) _changes.add(null);
@@ -622,13 +623,13 @@ class ProfileStore {
         '${entry.formal.path}.${_newOpId()}.del',
       );
     } catch (e) {
-      debugPrint('[ProfileStore] 残留改名 .del 失败，直接删除 ${entry.undo.path}: $e');
+      logAppFailure('profile.store.renameUndoToDel ${entry.undo.path}', e);
     }
     try {
       await _deleteFile(target);
       if (!await target.exists()) return null;
     } catch (e) {
-      debugPrint('[ProfileStore] 删除配置残留失败 ${target.path}: $e');
+      logAppFailure('profile.store.deleteResidue ${target.path}', e);
     }
     return target.path;
   }
@@ -665,7 +666,7 @@ class ProfileStore {
         if (listChanged) await _restoreString(profilesKey, prevList);
         if (activeChanged) await _restoreString(activeProfileKey, prevActive);
       } catch (e) {
-        debugPrint('[ProfileStore] 还原偏好失败: $e');
+        logAppFailure('profile.store.restorePrefs', e);
       }
     }
     for (final entry in undo.reversed) {
@@ -675,7 +676,7 @@ class ProfileStore {
           await _renameFile(entry.undo, entry.formal.path);
         }
       } catch (e) {
-        debugPrint('[ProfileStore] 还原文件失败 ${entry.formal.path}: $e');
+        logAppFailure('profile.store.restoreFile ${entry.formal.path}', e);
       }
     }
   }
@@ -713,7 +714,7 @@ class ProfileStore {
         await prefs.setString(quarantineKey, jsonEncode(items));
       }
     } catch (e) {
-      debugPrint('[ProfileStore] 写隔离区失败（忽略）: $e');
+      logAppFailure('profile.store.writeQuarantine', e);
     }
   }
 
@@ -734,7 +735,7 @@ class ProfileStore {
             ? await prefs.remove(key)
             : await prefs.setString(key, value);
       } catch (e) {
-        debugPrint('[ProfileStore] writeAux 失败 $key: $e');
+        logAppFailure('profile.store.writeAux $key', e);
         return false;
       }
     });
@@ -814,12 +815,12 @@ class ProfileStore {
               throw FileSystemException('处理后残留仍在', entity.path);
             }
           } catch (e) {
-            debugPrint('[ProfileStore] 清理残留失败 $name: $e');
+            logAppFailure('profile.store.cleanResidue $name', e);
             unprocessed.add(entity.path);
           }
         }
       } catch (e) {
-        debugPrint('[ProfileStore] 清理残留失败: $e');
+        logAppFailure('profile.store.cleanResidues', e);
         unprocessed.add(profilesDirPath);
       }
       return ResidueCleanupReport(List.unmodifiable(unprocessed));
@@ -852,7 +853,7 @@ class ProfileStore {
     try {
       if (await file.exists()) await _deleteFile(file);
     } catch (e) {
-      debugPrint('[ProfileStore] 删除失败（留给启动清理）${file.path}: $e');
+      logAppFailure('profile.store.deleteFile ${file.path}', e);
     }
   }
 

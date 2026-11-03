@@ -446,7 +446,13 @@ String _redactUrlMatch(Match m) {
   final lower = scheme.toLowerCase();
   // 堆栈帧与本地路径（`file:///…`）：只放行空 authority；`file://host/…` 的
   // host 是网络共享，照常过白名单。
-  if (lower == 'file' && m[2]!.isEmpty) return whole;
+  if (lower == 'file' && m[2]!.isEmpty) {
+    // 严格模式（上报）：本地路径也不出设备（iOS 容器路径里有用户目录与订阅文件名），
+    // 整条换成 `<url>`，句末标点留在外面；本地 app.log 仍保留堆栈帧。
+    if (_strictDepth == 0) return whole;
+    final punct = _trailingPunct.firstMatch(whole);
+    return '$kRedactedUrl${punct?[0] ?? ''}';
+  }
   if (kProxyShareSchemes.contains(lower)) return whole; // 第 1 步已处理
 
   // 把末尾的句读还给原文：`…uri = https://x/sub?token=S, next` 里的逗号。

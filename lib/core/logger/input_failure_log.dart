@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 /// 导入文本的片段、备份文件路径。日志脱敏器无法知道一条 URL 的来源，白名单
 /// 主机（官网、本项目仓库路径）下的短订阅路径照样会被保留，所以由**来源**这一
 /// 侧负责：这里**不把异常对象交给 [logAppFailure]**，只落定位标签、异常类型名
-/// 和堆栈。需要原文排障时只在 debug 构建的控制台看，不进 app.log。
+/// 和堆栈。异常原文哪里都不落（app.log、控制台、上报都没有）。
 ///
 /// [where] 必须是固定的定位标签，不要拼运行时内容。
 ///
@@ -16,8 +16,10 @@ import 'package:flutter/foundation.dart';
 /// （异常的 toString 抛错、堆栈文本化抛错、日志系统故障）不能改变它们的行为。
 void logInputFailure(String where, Object error, [StackTrace? stackTrace]) {
   try {
+    // 连 debug 控制台也只打标签 + 类型：debugPrint 的文本会被 Sentry 的 print
+    // 面包屑、系统日志带出应用，异常原文（用户给的 URL、裸域名）不能进去。
     if (kDebugMode) {
-      debugPrint('[$where] $error');
+      debugPrint('[$where] ${error.runtimeType}');
     }
     logAppFailure(where, InputFailureSummary(error.runtimeType), stackTrace);
   } catch (_) {

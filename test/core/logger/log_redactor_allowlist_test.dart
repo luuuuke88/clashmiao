@@ -639,6 +639,24 @@ void main() {
       );
     });
 
+    test('file:/// 本地路径整条换成 <url>，不留路径；句末标点留在外面', () {
+      const path =
+          'file:///var/mobile/Containers/Data/Application/X/Documents/'
+          'profiles/a.json';
+      expectStrict('load $path failed', 'load <url> failed');
+      expectStrict('(file:///Users/me/code/main.dart:12:7)', '(<url>)');
+      expectStrict('read $path.', 'read <url>.');
+      // 非严格（app.log）仍保留堆栈帧里的路径。
+      expect(redactLogText('at ($path)'), 'at ($path)');
+    });
+
+    test('file://localhost/ 走白名单：严格模式只留主机', () {
+      expectStrict(
+        'open file://localhost/tmp/a.txt now',
+        'open file://localhost now',
+      );
+    });
+
     test('嵌套调用后恢复：严格模式之外仍按白名单路径规则', () {
       expect(
         withStrictRedaction(() => redactLogText('https://clashmiao.com/a/b')),

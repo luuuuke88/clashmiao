@@ -548,6 +548,31 @@ void main() {
       expectHostOnly(jsonEncode(out.toJson()));
     });
 
+    test('file:/// 本地路径：消息、异常 value、面包屑都不含路径', () {
+      const path =
+          'file:///var/mobile/Containers/Data/Application/X/Documents/'
+          'profiles/a.json';
+      final out = redactSentryEvent(
+        SentryEvent(
+          message: SentryMessage('load $path failed'),
+          exceptions: [
+            SentryException(type: 'PathNotFoundException', value: 'no $path'),
+          ],
+          breadcrumbs: [
+            Breadcrumb(message: 'open $path', data: {'p': path}),
+          ],
+        ),
+      );
+      final encoded = jsonEncode(out.toJson());
+      for (final leak in ['/var/mobile', 'Containers', 'profiles', 'a.json']) {
+        expect(encoded, isNot(contains(leak)), reason: leak);
+      }
+      expect(out.message!.formatted, 'load <url> failed');
+      expect(out.exceptions!.single.value, 'no <url>');
+      expect(out.breadcrumbs!.single.message, 'open <url>');
+      expect(out.breadcrumbs!.single.data!['p'], '<url>');
+    });
+
     test('beforeBreadcrumb', () {
       final crumb = redactBreadcrumb(
         Breadcrumb(message: 'GET $officialSub', data: {'u': repoUrl}),

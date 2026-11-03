@@ -44,6 +44,12 @@ void main() {
     expect(_production().traceLifecycle, SentryTraceLifecycle.static);
   });
 
+  test('生产配置：print 面包屑必须关闭（自由文本绕过脱敏器，debugPrint 会被带出）', () {
+    expect(_production().enablePrintBreadcrumbs, isFalse);
+    // 不能靠 SDK 默认值：默认是 true。
+    expect(SentryFlutterOptions().enablePrintBreadcrumbs, isTrue);
+  });
+
   test('生产配置：脱敏回调全部挂上，不带个人信息与截图', () {
     final options = _production();
     expect(options.dsn, _dsn);

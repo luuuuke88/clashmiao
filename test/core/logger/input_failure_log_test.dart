@@ -7,6 +7,7 @@ import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -92,6 +93,26 @@ void main() {
       expect(line, contains('FileSystemException'));
       expect(line, isNot(contains('someone')));
       _expectClean(line);
+    });
+
+    test('debugPrint 也只拿到标签 + 类型，异常原文不进控制台', () {
+      final printed = <String>[];
+      final original = debugPrint;
+      debugPrint = (String? message, {int? wrapWidth}) =>
+          printed.add(message ?? '');
+      addTearDown(() => debugPrint = original);
+
+      logInputFailure(
+        'geo.update',
+        FormatException(_message, _userUrl),
+        StackTrace.empty,
+      );
+
+      expect(printed, isNotEmpty);
+      expect(printed.first, '[geo.update] FormatException');
+      for (final line in printed) {
+        _expectClean(line);
+      }
     });
 
     test('不向外抛', () {

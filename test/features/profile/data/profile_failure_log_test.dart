@@ -28,6 +28,16 @@ class _LeakyBox extends FakeBoxService {
   }) => _reply();
 }
 
+class _ThrowingStackTrace implements StackTrace {
+  @override
+  String toString() => throw StateError('stack toString broke');
+}
+
+class _ThrowingError {
+  @override
+  String toString() => throw StateError('error toString broke');
+}
+
 void main() {
   late List<AppFailureRecord> records;
 
@@ -61,6 +71,89 @@ void main() {
         'ProfileValidationException(code=uri-invalid)',
       ),
     );
+  });
+
+  group('ProfileValidationException.toString', () {
+    test('只含类型名与稳定码，不含 message 原文；message 仍可供界面读取', () {
+      const e = ProfileValidationException(
+        'uri-invalid: bad $_subUrl via $_nodeAddr',
+        code: 'uri-invalid',
+      );
+      expect('$e', 'ProfileValidationException(code=uri-invalid)');
+      expect(e.message, contains(_subUrl));
+      const noCode = ProfileValidationException('x $_subUrl $_nodeAddr');
+      expect('$noCode', 'ProfileValidationException');
+      expect(
+        '${ProfileValidationException.fromParseError('weird: $_subUrl')}',
+        'ProfileValidationException',
+      );
+    });
+
+    test('被当作字符串拼进别的文本（连接失败文案、日志）时也不泄露', () {
+      final text = 'failed: ${ProfileValidationException(_subUrl)}';
+      expect(text, isNot(contains('a1b2c3')));
+    });
+  });
+
+  test('logProfileFailure：校验异常缺省取自带的稳定码', () {
+    logProfileFailure(
+      'profile.ui.test',
+      ProfileValidationException('x $_subUrl', code: 'no-outbounds'),
+    );
+    expectNoLeak();
+    expect(
+      records.single.line,
+      contains('ProfileValidationException(code=no-outbounds)'),
+    );
+  });
+
+  test('logProfileFailureOnce：同一摘要只记一次，内容不含原文', () {
+    addTearDown(resetAppFailureDedupForTesting);
+    for (var i = 0; i < 3; i++) {
+      logProfileFailureOnce(
+        'profile.ui.once',
+        StateError('dial $_nodeAddr for $_subUrl #$i'),
+      );
+    }
+    expect(records, hasLength(1));
+    expectNoLeak();
+    expect(records.single.line, contains('profile.ui.once: StateError'));
+  });
+
+  group('日志函数是全函数：自身失败不会从 catch 块里抛出', () {
+    test('堆栈的 toString 抛异常', () {
+      expect(
+        () => logProfileFailure(
+          'profile.ui.test',
+          StateError('x $_subUrl'),
+          _ThrowingStackTrace(),
+        ),
+        returnsNormally,
+      );
+      expect(
+        () => logProfileFailureOnce(
+          'profile.ui.testOnce',
+          StateError('x $_subUrl'),
+          _ThrowingStackTrace(),
+        ),
+        returnsNormally,
+      );
+    });
+
+    test('异常对象的 toString 抛异常', () {
+      expect(
+        () => logProfileFailure('profile.ui.test', _ThrowingError()),
+        returnsNormally,
+      );
+    });
+
+    test('日志落点本身抛异常', () {
+      debugAppFailureSink = (_) => throw StateError('sink broke');
+      expect(
+        () => logProfileFailure('profile.ui.test', StateError('x')),
+        returnsNormally,
+      );
+    });
   });
 
   test('文件系统异常的路径也不落盘', () {

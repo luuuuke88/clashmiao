@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
@@ -203,7 +204,7 @@ Future<void> defaultPasteImport(WidgetRef ref) async {
       );
     }
   } catch (e, st) {
-    logAppFailure('pasteImport.import', e, st);
+    logProfileFailure('pasteImport.import', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(

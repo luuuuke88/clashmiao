@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/model/profile_patch.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
@@ -270,7 +270,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
           );
         },
         error: (error, st) {
-          logAppFailureOnce('profileDetails.load', error, st);
+          logProfileFailureOnce('profileDetails.load', error, st);
           return Center(child: Text(t.failure.unexpected));
         },
         loading: () => const Center(child: MotionProgress(strokeWidth: 4)),
@@ -348,7 +348,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (error, st) {
-      logAppFailure('profileDetails.save', error, st);
+      logProfileFailure('profileDetails.save', error, st);
       if (mounted) {
         AppToast.error(
           context,
@@ -369,7 +369,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
       ref.invalidate(activeProfileProvider);
       if (mounted) AppToast.success(context, t.profile.update.successMsg);
     } catch (error, st) {
-      logAppFailure('profileDetails.update', error, st);
+      logProfileFailure('profileDetails.update', error, st);
       if (isStaleRefresh(error)) {
         // 刷新途中订阅被改动，结果已作废：预期内的取消，不提示失败。
         // 不再手动 invalidate：造成作废的那次提交已经通过 ProfileStore.changes
@@ -406,7 +406,7 @@ class _ProfileDetailsPageState extends ConsumerState<ProfileDetailsPage> {
         unawaited(Navigator.of(context).maybePop());
       }
     } catch (error, st) {
-      logAppFailure('profileDetails.delete', error, st);
+      logProfileFailure('profileDetails.delete', error, st);
       if (mounted) {
         AppToast.error(
           context,

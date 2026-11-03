@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/app_theme_mode.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
@@ -17,6 +18,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../../support/log_leak.dart';
 import '../../../support/restore_harness.dart';
 
 Map<String, dynamic> _profile(String id, {String? url}) => {
@@ -310,6 +312,22 @@ void main() {
       await outcome.backfill; // 永不抛出
       expect(fetched, ['c', 'd']);
       expect(reconnects, isEmpty);
+    });
+
+    test('补拉失败：持久日志不含订阅地址与节点地址', () async {
+      final records = <AppFailureRecord>[];
+      debugAppFailureSink = records.add;
+      addTearDown(() => debugAppFailureSink = null);
+      fetchError = {'c': leakyValidation(), 'd': leakyException()};
+      final plan = h.engine.prepare(
+        _backup(withConfig: ['b'], withoutConfig: ['c', 'd']),
+      );
+      await (await refresher().restore(h.engine, plan)).backfill;
+      expect(records.map((r) => r.where), [
+        'restore.backfill c',
+        'restore.backfill d',
+      ]);
+      expectNoLeak(records);
     });
 
     test('备份里每条订阅都带了配置：不补拉', () async {

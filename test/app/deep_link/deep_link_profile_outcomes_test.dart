@@ -1,10 +1,12 @@
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
+import '../../support/log_leak.dart';
 import '../../support/profile_harness.dart';
 
 final _refProvider = Provider<Ref>((ref) => ref);
@@ -76,5 +78,22 @@ void main() {
     final result = container.read(deepLinkImportResultProvider);
     expect(result, isA<DeepLinkImportFailure>());
     expect((result as DeepLinkImportFailure).message, isNot('请升级 App 后再修改订阅'));
+  });
+
+  test('导入失败：持久日志不含订阅地址与节点地址（用户仍看到本地化原因）', () async {
+    final records = <AppFailureRecord>[];
+    debugAppFailureSink = records.add;
+    addTearDown(() => debugAppFailureSink = null);
+    h.adapter.bodyFor = (url, nth) => throw StateError(leakMessage);
+
+    await handleDeepLink(
+      Uri.parse(_installUrl('http://sub.test/new')),
+      container.read(_refProvider),
+    );
+
+    expect(records.map((r) => r.where), ['deepLink.import']);
+    expectNoLeak(records);
+    final result = container.read(deepLinkImportResultProvider);
+    expect(result, isA<DeepLinkImportFailure>());
   });
 }

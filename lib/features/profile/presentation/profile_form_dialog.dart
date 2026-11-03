@@ -13,6 +13,7 @@ import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provid
 import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/config/application/warp_config_service.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/presentation/qr_scanner_page.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/agreement_modal.dart';
@@ -772,7 +773,7 @@ Future<void> doAddProfile(
       );
     }
   } catch (e, st) {
-    logAppFailure('profiles.add', e, st);
+    logProfileFailure('profiles.add', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(
@@ -803,7 +804,7 @@ Future<void> doEditProfile(
       );
     }
   } catch (e, st) {
-    logAppFailure('profiles.edit', e, st);
+    logProfileFailure('profiles.edit', e, st);
     if (context.mounted) {
       final t = ref.read(translationsProvider);
       AppToast.error(

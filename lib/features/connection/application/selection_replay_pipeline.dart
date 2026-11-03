@@ -31,6 +31,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -117,8 +118,8 @@ class SelectionReplayPipeline {
     try {
       await _ref.read(sharedPreferencesProvider.future);
       await _ref.read(activeProfileProvider.future);
-    } catch (e) {
-      debugPrint('手选编排：等待订阅就绪失败（按无手选处理）: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.replay.awaitProfile', e, st);
     }
     if (!_isCurrentInstance(epoch, attempt)) {
       return ReplayPipelineOutcome.dropped;
@@ -292,8 +293,8 @@ class SelectionReplayPipeline {
   Future<bool> _write(Future<bool> Function() op) async {
     try {
       return await op();
-    } catch (e) {
-      debugPrint('手选编排：存储写入异常（按未落盘处理）: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.replay.storeWrite', e, st);
       return false;
     }
   }

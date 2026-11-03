@@ -35,6 +35,7 @@ import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as paths;
@@ -146,8 +147,8 @@ class ConnectionLauncher {
       final file = File('${dir.path}/${runtimeConfigFileName(revision)}');
       if (!await file.exists()) return const {};
       return _rememberSelectorDefaults(revision, await file.readAsBytes());
-    } catch (e) {
-      debugPrint('读取运行时配置 $revision 的选择组默认值失败: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.launcher.readSelectorDefaults', e, st);
       return const {};
     }
   }
@@ -164,8 +165,8 @@ class ConnectionLauncher {
         _selectorDefaults.remove(_selectorDefaults.keys.first);
       }
       return defaults;
-    } catch (e) {
-      debugPrint('解析运行时配置 $revision 的选择组默认值失败: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.launcher.parseSelectorDefaults', e, st);
       return const {};
     }
   }
@@ -295,8 +296,8 @@ class ConnectionLauncher {
     debugPrint('配置文件不存在，尝试重新拉取订阅自愈: ${repo.configFilePath(active.id)}');
     try {
       await repo.update(active.id);
-    } catch (e) {
-      debugPrint('自愈重新拉取订阅失败: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.launcher.selfHealRefetch', e, st);
       final mapped = _mapSelfHealException(e);
       if (mapped != null) throw LaunchPreparationException(mapped);
     }
@@ -416,8 +417,8 @@ class ConnectionLauncher {
     try {
       dir = await _workingDirectory();
       if (!await dir.exists()) return;
-    } catch (e) {
-      debugPrint('清理运行时配置：无法定位目录（忽略）: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.launcher.cleanupLocateDir', e, st);
       return;
     }
     final retainedKeys = <String>{for (final r in retained) ..._pathKeys(r)};
@@ -439,12 +440,12 @@ class ConnectionLauncher {
           }
           if (isPrep && _prepInProgress.contains(entity.path)) continue;
           await entity.delete();
-        } catch (e) {
-          debugPrint('删除运行时配置失败（忽略）: $name $e');
+        } catch (e, st) {
+          logConnectionFailure('connection.launcher.cleanupDelete', e, st);
         }
       }
-    } catch (e) {
-      debugPrint('清理运行时配置失败（忽略）: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.launcher.cleanup', e, st);
     }
   }
 }

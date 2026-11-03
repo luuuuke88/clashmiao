@@ -28,6 +28,7 @@ import 'package:clashmiao/features/connection/model/connection_snapshot.dart';
 import 'package:clashmiao/features/connection/model/request_outcome.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
@@ -130,11 +131,13 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
 
     _snapshotSub = _port.watch().listen(
       (s) => _dispatch(SnapshotReceived(s, now: _now())),
-      onError: (Object e) => debugPrint('内核快照流错误: $e'),
+      onError: (Object e, StackTrace st) =>
+          logConnectionFailure('connection.controller.snapshotStream', e, st),
     );
     _linkSub = _port.watchLink().listen(
       (l) => _dispatch(LinkChanged(l, now: _now())),
-      onError: (Object e) => debugPrint('内核链路流错误: $e'),
+      onError: (Object e, StackTrace st) =>
+          logConnectionFailure('connection.controller.linkStream', e, st),
     );
     // 立即推进一次，让状态机报出「无首个快照 10 s」等截止时间。
     _dispatch(Tick(now: _now()));
@@ -604,8 +607,8 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     try {
       final s = await _port.current();
       _dispatch(SnapshotReceived(s, now: _now(), fromResync: true));
-    } catch (e) {
-      debugPrint('重新同步失败: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.controller.resync', e, st);
       _dispatch(ResyncFailed(now: _now()));
     }
   }
@@ -639,8 +642,12 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
             _ref.read(fatalFailureReporterProvider)(effect.failure!);
           }
       }
-    } catch (e) {
-      debugPrint('连接副作用 ${effect.kind.name} 失败（忽略）: $e');
+    } catch (e, st) {
+      logConnectionFailure(
+        'connection.controller.sideEffect.${effect.kind.name}',
+        e,
+        st,
+      );
     }
   }
 
@@ -808,8 +815,8 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
     return _enqueueDirty(() async {
       try {
         await _ref.read(systemProxyDirtyStoreProvider).mark();
-      } catch (e) {
-        debugPrint('置系统代理脏标记失败: $e');
+      } catch (e, st) {
+        logConnectionFailure('connection.controller.markProxyDirty', e, st);
       }
     });
   }
@@ -826,8 +833,8 @@ class ConnectionController extends StateNotifier<ConnectionSnapshot> {
       if (decidedGen != _onGen) return;
       try {
         await _ref.read(systemProxyDirtyStoreProvider).clear();
-      } catch (e) {
-        debugPrint('清除系统代理脏标记失败: $e');
+      } catch (e, st) {
+        logConnectionFailure('connection.controller.clearProxyDirty', e, st);
       }
     });
   }

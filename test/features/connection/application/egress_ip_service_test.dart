@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:dio/dio.dart';
@@ -242,6 +243,36 @@ void main() {
         dio: Dio(),
       );
       expect(service.autoCheckEnabled, isFalse);
+    });
+  });
+
+  group('EgressIpService.fetch 失败日志不落原文', () {
+    test('请求失败：订阅地址 / host:port 不进持久日志，结果仍是 unknown', () async {
+      final records = <AppFailureRecord>[];
+      debugAppFailureSink = records.add;
+      addTearDown(() => debugAppFailureSink = null);
+      final dio = Dio();
+      dio.httpClientAdapter = _FakeAdapter(
+        (options) async => throw DioException(
+          requestOptions: options,
+          message: 'connect failed https://sub.example.com/a1b2c3 via node1.example.com:8443',
+        ),
+      );
+      final service = await _service(dio: dio);
+
+      final result = await service.fetch();
+
+      expect(result.isUnknown, isTrue);
+      final line = records.single.line;
+      for (final secret in [
+        'https://sub.example.com/a1b2c3',
+        'a1b2c3',
+        'node1.example.com:8443',
+        'example.com',
+      ]) {
+        expect(line, isNot(contains(secret)), reason: line);
+      }
+      expect(line, contains('connection.egressIp.request: DioException'));
     });
   });
 }

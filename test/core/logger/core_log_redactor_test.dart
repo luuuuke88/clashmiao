@@ -102,6 +102,37 @@ void main() {
       );
     });
 
+    test('标签内容里未配对的 ]：只有后面紧跟 : 空白 行尾 , ) 才算标签结束', () {
+      expectCase(
+        'INFO outbound/vless[a]private-node]: connected',
+        'INFO outbound/vless[…]: connected',
+      );
+      expectCase('INFO selector[a]b] => x', 'INFO selector[…] => x');
+      expectCase('INFO urltest[a]b]c], next', 'INFO urltest[…], next');
+      expectCase(
+        'INFO router: match => outbound/vmess[a]b]',
+        'INFO router: match => outbound/vmess[…]',
+      );
+      expectCase(
+        'INFO (outbound/vmess[a]private-node])',
+        'INFO (outbound/vmess[…])',
+      );
+    });
+
+    test('嵌套的标签仍按原规则结束', () {
+      expectCase(
+        'INFO outbound/vless[[HK] private-node] connected',
+        'INFO outbound/vless[…] connected',
+      );
+    });
+
+    test('没有合格结束符：从 [ 起到行尾全部遮盖', () {
+      expectCase(
+        'INFO outbound/vless[a]private-node]x]y',
+        'INFO outbound/vless[…',
+      );
+    });
+
     test('不配对的行：从 [ 起到行尾全部遮盖，下一行不受影响', () {
       expectCase(
         'INFO outbound/vless[[HK private-node connected\nINFO next line',

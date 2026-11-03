@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/box_service.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:clashmiao/features/profile/data/profile_parser.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
@@ -628,7 +629,7 @@ class ProfileRepository {
       await _commitNormalized(normalized, output);
       return true;
     } catch (e, st) {
-      debugPrint('[Profile] _normalizeAndWrite 抛异常: $e\n$st');
+      logAppFailure('profile.repository.normalizeAndWrite', e, st);
       if (e is ProfileValidationException) rethrow;
       throw ProfileValidationException(e.toString());
     } finally {

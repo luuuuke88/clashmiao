@@ -17,13 +17,13 @@ const Map<String, Set<String>?> kAllowedCjkLiterals = {
   'lib/core/localization/locale_extensions.dart': {'中文 (中国)', '中文 (台湾)'},
   'lib/features/settings/presentation/settings_page.dart': {'简体中文', '繁體中文'},
   // 从节点名里识别地区的关键词表（数据，不是文案）。
-  'lib/domain/routing/model/node_display.dart': null,
+  'lib/features/proxy/model/node_display.dart': null,
   // 识别订阅里「官网地址：… / 剩余流量：… / 套餐到期：…」这类信息条目的标签与
   // 值形状（数据，不是文案）：整份文件只有识别用的正则片段。
   'lib/features/config/model/subscription_info_node.dart': null,
   // 仅调试构建、由 dart-define 打开的界面夹具：模拟用户自己的订阅 / 节点名。
   'lib/features/profile/application/profile_providers.dart': {'无订阅信息', '本地导入'},
-  'lib/domain/routing/application/offline_proxy_groups_provider.dart': {
+  'lib/features/proxy/application/offline_proxy_groups_provider.dart': {
     '香港 01 | SS',
     '日本 Tokyo 02',
   },

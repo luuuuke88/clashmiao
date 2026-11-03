@@ -83,7 +83,7 @@ String proxyModeSubmenuLabel(Translations t) => t.tray.proxyModeMenu;
 ///   额外的挂钩机制，超出"列出几个固定选项+点击回调"这个子菜单该做的事，
 ///   所以这里只覆盖三个常驻 tab。
 /// - `proxy_mode`："服务模式"子菜单，对齐 home 页那个"智能分流/全局代理"分段
-///   选择器（`proxyModeProvider`，见 `lib/domain/routing/application/proxy_mode_notifier.dart`
+///   选择器（`proxyModeProvider`，见 `lib/features/proxy/application/proxy_mode_notifier.dart`
 ///   和 `home_page.dart` 里的 `_ModeSelector`）。当前生效的模式用
 ///   `MenuItem.checkbox` 打勾。
 Menu buildTrayMenu({

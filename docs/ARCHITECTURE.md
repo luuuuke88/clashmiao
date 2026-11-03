@@ -302,7 +302,7 @@ ios/
 - `boxStatusProvider`（`lib/core/box_service/box_providers.dart`）— 只给统计 / 分组订阅做门控；架构测试禁止 `features` / `app` / `main.dart` 引用它
 - `boxAlertsProvider` — 非生命周期提示流（如通知权限），`ShellPage` 弹 toast；连接失败的提示改由控制器快照的 `failure` 驱动
 - `boxStatsProvider`、`outboundGroupsProvider` — 只在已连接时才订阅，避免无谓 IPC
-- `proxyModeProvider` — 智能 / 全局模式持久化（`lib/domain/routing/application/proxy_mode_notifier.dart`，默认 1 = 智能）
+- `proxyModeProvider` — 智能 / 全局模式持久化（`lib/features/proxy/application/proxy_mode_notifier.dart`，默认 1 = 智能）
 - `profileListProvider` / `activeProfileProvider` — 订阅列表与当前激活订阅（`lib/features/profile/application/profile_providers.dart`）
 - `networkSettingsProvider` — 端口、TUN、系统代理、DNS 等设置（`lib/features/config/application/network_settings.dart`）
 - `optimisticProxySelectionsProvider` — 乐观切换代理节点（`lib/features/proxy/application/`）

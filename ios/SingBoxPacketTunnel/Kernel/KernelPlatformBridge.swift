@@ -20,68 +20,22 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
 
     /// 弱引用：provider 持有 bridge，反过来强持有会形成引用环。
     private weak var provider: KernelProviderProxy?
-
-    /// 最近一次应用的 NE 设置：`clearDNSCache` 与系统代理开关要在它上面改。
-    private let settingsLock = NSLock()
-    private var lastAppliedSettings: NEPacketTunnelNetworkSettings?
-    /// 设置代次：每次回收（重载 / 停止）+1。被打断的旧一轮迟到时，凭它认出自己已过期。
-    private var settingsGeneration = 0
-    /// 所有 NE 设置的提交（建 TUN、清 DNS 缓存、代理开关）串行经过这道门，并在提交前复核代次：
-    /// 旧一轮不会排在新一轮之后生效，两步的「清空 → 恢复」也不会和别的提交交错。
-    private let settingsGate = DispatchSemaphore(value: 1)
+    /// NE 设置的唯一提交通道（provider 持有；停止时由 provider 直接调它的 `stop()`）。
+    private let tunnelSettings: TunnelSettingsCoordinator
 
     private let monitorLock = NSLock()
     private var pathMonitor: NWPathMonitor?
     private let monitorQueue = DispatchQueue(label: "com.clashmiao.tunnel.path-monitor")
 
-    init(_ provider: KernelProviderProxy) {
+    init(_ provider: KernelProviderProxy, settings: TunnelSettingsCoordinator) {
         self.provider = provider
-    }
-
-    func discardCachedSettings() {
-        settingsLock.lock()
-        lastAppliedSettings = nil
-        settingsGeneration += 1
-        settingsLock.unlock()
-    }
-
-    private var appliedSettings: NEPacketTunnelNetworkSettings? {
-        settingsLock.lock(); defer { settingsLock.unlock() }
-        return lastAppliedSettings
-    }
-
-    private var currentGeneration: Int {
-        settingsLock.lock(); defer { settingsLock.unlock() }
-        return settingsGeneration
-    }
-
-    /// 这一代的设置还能不能提交：代次没变，且隧道没有进入停止（停止是终态，之后不会再有新的一代）。
-    /// 在本 provider 里，进行中的建 TUN 只会被停止打断（重载在串行队列上、总在上一次启动返回之后），
-    /// 所以「迟到的旧请求排在新一代之后」只可能以「停止后迟到」的形式出现，由这里拦下。
-    private func isCurrent(_ generation: Int) -> Bool {
-        generation == currentGeneration && !(provider?.isStoppingForBridge ?? true)
-    }
-
-    /// 在设置门内执行 `body`（阻塞调用线程：只在内核的回调线程上用，不在主线程）。
-    /// 本代已过期时不执行，返回 false。`timeout` 为 nil 时一直等（建 TUN 必须做完）；
-    /// 可选的操作（清 DNS 缓存、代理开关）给有限的等待，等不到就放弃，不让内核的回调线程无限挂住。
-    private func withSettingsGate(generation: Int, timeout: TimeInterval? = nil,
-                                  _ body: () throws -> Void) rethrows -> Bool {
-        if let timeout {
-            guard settingsGate.wait(timeout: .now() + timeout) == .success else { return false }
-        } else {
-            settingsGate.wait()
-        }
-        defer { settingsGate.signal() }
-        guard isCurrent(generation) else { return false }
-        try body()
-        return true
+        self.tunnelSettings = settings
     }
 
     // MARK: - TUN
 
-    /// 内核在启动流程里同步调用；`setTunnelNetworkSettings` 是异步的，这里阻塞等它完成。
-    /// 被 Engine 取消时 Go 侧立即返回，这次设置仍会完成；NE 按调用顺序应用，新一轮总在其后生效。
+    /// 内核在启动流程里同步调用；`setTunnelNetworkSettings` 是异步的，这里阻塞等它完成（有上限）。
+    /// 被 Engine 取消时 Go 侧立即返回；隧道停止时协调器放行这次等待，之后不再向 NE 提交。
     public func openTun(_ specJSON: String?, ret0_: UnsafeMutablePointer<Int32>?) throws {
         guard let ret0_ else { throw NSError(domain: "ClashMiaoTunnel", code: 2, userInfo: [NSLocalizedDescriptionKey: "nil return pointer"]) }
         guard let provider else { throw NSError(domain: "ClashMiaoTunnel", code: 7, userInfo: [NSLocalizedDescriptionKey: "provider released"]) }
@@ -96,18 +50,7 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
             provider.forwardKernelLine("[Tunnel] tun spec fields ignored on iOS: \(ignored.joined(separator: ","))")
         }
         let settings = try TunSettingsBuilder.settings(from: spec)
-        let generation = currentGeneration
-        let applied = try withSettingsGate(generation: generation) {
-            try awaitBlockingThrowing { [provider] in
-                try await provider.setTunnelNetworkSettings(settings)
-            }
-            settingsLock.lock()
-            if settingsGeneration == generation { lastAppliedSettings = settings }
-            settingsLock.unlock()
-        }
-        guard applied else {
-            throw NSError(domain: "ClashMiaoTunnel", code: 8, userInfo: [NSLocalizedDescriptionKey: "tunnel session moved on; stale tun request dropped"])
-        }
+        try tunnelSettings.applyTunSettings(settings, generation: tunnelSettings.currentGeneration)
         // fd 归 NE：内核 dup 一份并在服务关闭时关自己那份，这一份我们不关。
         let fd = CoreTunnelFileDescriptor()
         guard fd >= 0 else {
@@ -248,26 +191,11 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
 
     // MARK: - DNS / 日志
 
+    /// 重设一次隧道设置让系统丢掉 DNS 缓存（细节见 TunnelSettingsCoordinator）。
     public func clearDNSCache() {
-        guard let provider else { return }
-        let generation = currentGeneration
-        // 重设一次隧道设置让系统丢掉 DNS 缓存；期间声明 reasserting，系统不会因此断开隧道。
-        // 两步在设置门内连续完成，并且只恢复本代的设置：重载 / 停止不会被旧设置覆盖回去。
-        let done = withSettingsGate(generation: generation, timeout: 10) {
-            // 重载正在进行（它自己持有 reasserting，并会提交全新的设置）时不必也不该再清一次。
-            guard let settings = appliedSettings, !provider.reasserting else { return }
-            provider.reasserting = true
-            defer { provider.reasserting = false }
-            do {
-                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(nil) }
-                // 两步之间复核：这期间隧道若已停止或换代，不把旧设置恢复回去。
-                guard isCurrent(generation) else { return }
-                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
-            } catch {
-                provider.forwardKernelLine("[Tunnel] clearing DNS cache failed: \(error.localizedDescription)")
-            }
+        if let error = tunnelSettings.clearDNSCache(), error as? TunnelSettingsError != .stale {
+            provider?.forwardKernelLine("[Tunnel] clearing DNS cache failed: \(error.localizedDescription)")
         }
-        if !done { provider.forwardKernelLine("[Tunnel] clearing DNS cache skipped") }
     }
 
     /// nil：用内核自己的本地 DNS（扩展里直接走系统网络）。
@@ -288,40 +216,17 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
     }
 
     public func systemProxyAvailable() -> Bool {
-        appliedSettings?.proxySettings?.httpServer != nil
+        tunnelSettings.appliedSettings?.proxySettings?.httpServer != nil
     }
 
     public func systemProxyEnabled() -> Bool {
-        guard let proxy = appliedSettings?.proxySettings, proxy.httpServer != nil else { return false }
+        guard let proxy = tunnelSettings.appliedSettings?.proxySettings, proxy.httpServer != nil else { return false }
         return proxy.httpEnabled
     }
 
     public func setSystemProxyEnabled(_ enabled: Bool) {
-        guard let provider else { return }
-        let generation = currentGeneration
-        // 在设置门内修改并提交本代的设置，不与建 TUN / 清缓存交错。
-        let done = withSettingsGate(generation: generation, timeout: 10) {
-            guard
-                let current = appliedSettings,
-                let currentProxy = current.proxySettings,
-                currentProxy.httpServer != nil,
-                currentProxy.httpEnabled != enabled,
-                let settings = current.copy() as? NEPacketTunnelNetworkSettings,
-                let proxy = currentProxy.copy() as? NEProxySettings
-            else { return }
-            // 改副本、提交成功后才替换缓存：失败时缓存仍与系统实际生效的设置一致。
-            proxy.httpEnabled = enabled
-            proxy.httpsEnabled = enabled
-            settings.proxySettings = proxy
-            do {
-                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
-                settingsLock.lock()
-                if settingsGeneration == generation { lastAppliedSettings = settings }
-                settingsLock.unlock()
-            } catch {
-                provider.forwardKernelLine("[Tunnel] toggling system proxy failed: \(error.localizedDescription)")
-            }
+        if let error = tunnelSettings.setSystemProxyEnabled(enabled), error as? TunnelSettingsError != .stale {
+            provider?.forwardKernelLine("[Tunnel] toggling system proxy failed: \(error.localizedDescription)")
         }
-        if !done { provider.forwardKernelLine("[Tunnel] toggling system proxy skipped") }
     }
 }

@@ -12,8 +12,9 @@
 //
 //  串行：start 的主体、reload、select、内核自发重载、内存采样都在 `opQueue` 上排队。
 //  `stopTunnel` 不经 `opQueue` 排队：它先在锁内置 `stopping`（在途的 start / reload 在检查点看到后放弃），
-//  并直接调 `engine.interrupt()` 打断阻塞中的启动（粘性：之后的启动一律立即失败），再把回收投递到 `opQueue`。同步路径 `engine.start()` →
-//  `openTun` → `awaitBlocking` → `setTunnelNetworkSettings` 只依赖 NE 自己的回调队列，不依赖 `opQueue`。
+//  再停掉 NE 设置的提交通道（`TunnelSettingsCoordinator.stop()`：之后不再向 NE 提交，在途等待立即放行），
+//  并直接调 `engine.interrupt()` 打断阻塞中的启动（粘性：之后的启动一律立即失败），最后把回收投递到 `opQueue`。
+//  同步路径 `engine.start()` → `openTun` → 协调器 → `setTunnelNetworkSettings` 只依赖 NE 自己的回调，不依赖 `opQueue`。
 //
 //  内存（约 50 MB 的观察值）：只读文件 → 启动 → 立即释放配置文本；不解析 JSON、不常驻副本；
 //  重载先完整停掉旧服务再启动新的；内核自身按 Packet Tunnel 的内存策略运行（见 KernelBridge.setup）。
@@ -40,6 +41,8 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
     private var engineRef: CoreEngine?
     private var serviceRunning = false
     private var platformBridge: KernelPlatformBridge?
+    /// NE 设置与 `reasserting` 的唯一持有者；随 provider 创建，停止时不必等 bridge 出现就能关掉它。
+    private let tunnelSettings = TunnelSettingsCoordinator()
 
     // MARK: - 串行与停止优先
 
@@ -54,6 +57,11 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
     private var memoryTimer: DispatchSourceTimer?
 
     private static var processInitialized = false
+
+    override public init() {
+        super.init()
+        tunnelSettings.attach(self)
+    }
 
     // MARK: - Lifecycle entry points
 
@@ -90,6 +98,8 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         stopping = true
         let engine = engineRef
         flagLock.unlock()
+        // 先关提交通道：此后不会再有设置到达 NE，已在途的等待立即返回（NE 迟到的回调被丢弃）。
+        tunnelSettings.stop()
         // 打断可能正阻塞在 opQueue 上的启动，并让之后的启动立即失败（之后 opQueue 上的回收再完整关闭）。
         // 用粘性的 interrupt 而不是 stop：stop 若落在「检查完 stopping、start 尚未登记取消信号」之间，
         // 随后的 start 照常启动。engine 还没建出来时，bringUp 在登记 engineRef 的同一把锁下看到 stopping。
@@ -180,9 +190,6 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
 
     private var isRunning: Bool { serviceRunning }
 
-    /// 给平台回调用：隧道已进入停止（终态）后，迟到的设置提交一律放弃。
-    var isStoppingForBridge: Bool { isStopping }
-
     private var engine: CoreEngine? {
         flagLock.lock(); defer { flagLock.unlock() }
         return engineRef
@@ -199,7 +206,7 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
 
         try Self.processSetupOnce()
 
-        let bridge = platformBridge ?? KernelPlatformBridge(self)
+        let bridge = platformBridge ?? KernelPlatformBridge(self, settings: tunnelSettings)
         platformBridge = bridge
 
         let engine: CoreEngine
@@ -255,8 +262,8 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         forwardKernelLine("[Tunnel] reloading kernel service")
         w.markReloading(launchId: intent.launchId)
         currentLaunchId = intent.launchId
-        reasserting = true
-        defer { if !terminatedFlag { reasserting = false } }
+        tunnelSettings.beginReasserting()
+        defer { tunnelSettings.endReasserting(leaveSet: terminatedFlag) }
         teardownService()
         sampleMemory("reload-released")
         let effective: KernelIntent
@@ -321,7 +328,7 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
             }
         }
         serviceRunning = false
-        platformBridge?.discardCachedSettings()
+        tunnelSettings.discard()
     }
 
     /// 完整回收：服务 + 命令服务器（删 socket）。幂等；每一步各自兜底。
@@ -451,5 +458,15 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         await withCheckedContinuation { cont in
             opQueue.async { cont.resume(returning: body()) }
         }
+    }
+}
+
+extension KernelProviderProxy: TunnelSettingsHost {
+    func submitTunnelSettings(_ settings: NEPacketTunnelNetworkSettings?, completion: @escaping (Error?) -> Void) {
+        setTunnelNetworkSettings(settings, completionHandler: completion)
+    }
+
+    func setReasserting(_ on: Bool) {
+        reasserting = on
     }
 }

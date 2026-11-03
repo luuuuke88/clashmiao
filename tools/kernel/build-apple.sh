@@ -60,8 +60,23 @@ check_archive() {
 EXPECTED_LIBRARIES="ios||arm64
 ios|simulator|arm64,x86_64"
 
+# 静态库里的**每个**目标文件都必须带 LC_BUILD_VERSION，且平台恰为 want（2 = iOS 设备，7 = iOS 模拟器）。
+# 只看汇总会放过「某个成员缺平台命令、其余成员提供了预期值」。
+check_member_platforms() {
+  local archive="$1" label="$2" want="$3" report bad members
+  report="$(otool -l "$archive" | awk '
+    /^[^ \t].*\(.*\):$/ { if (m != "") print m "\t" (p == "" ? "-" : p); m = $0; p = ""; next }
+    /cmd LC_BUILD_VERSION/ { f = 1; next }
+    f && $1 == "platform" { p = (p == "" ? $2 : p "," $2); f = 0 }
+    END { if (m != "") print m "\t" (p == "" ? "-" : p) }')" || die "${label}：otool 读不出加载命令"
+  members="$(printf '%s\n' "$report" | grep -c . || true)"
+  [ "$members" -gt 0 ] || die "${label}：静态库里没有目标文件"
+  bad="$(printf '%s\n' "$report" | awk -F '\t' -v w="$want" '$2 != w { sub(/^.*\(/, "", $1); sub(/\):$/, "", $1); print $1 "=" $2 }' | head -5 | paste -sd' ' -)"
+  [ -z "$bad" ] || die "${label}：目标文件的平台不是 ${want}（${bad}；- 表示缺 LC_BUILD_VERSION）"
+}
+
 check_xcframework() {
-  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd plist n i id platform variant got want bp lp want_platform plats
+  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd plist n i id platform variant got want bp lp want_platform
   [ -f "$XC/Info.plist" ] || die "产物缺少 xcframework 的 Info.plist"
   plist="$XC/Info.plist"
   n="$(plutil -extract AvailableLibraries raw "$plist" 2>/dev/null)" || die "清单里没有 AvailableLibraries"
@@ -101,8 +116,8 @@ check_xcframework() {
     # 平台以清单为准（上面已核对清单恰好是设备 + 模拟器），再用 Mach-O 的 LC_BUILD_VERSION 核对每个目标文件
     if ! variant="$(plutil -extract "AvailableLibraries" json -o - "$plist" | tr '}' '\n' | grep -F "\"LibraryIdentifier\":\"${slice}\"" | grep -o '"SupportedPlatformVariant":"[a-z]*"')"; then variant=""; fi
     case "$variant" in
-      *simulator*) extra_tags="ios,iossimulator"; want_platform="7|IOSSIMULATOR" ;;
-      "") extra_tags="ios"; want_platform="2|IOS" ;;
+      *simulator*) extra_tags="ios,iossimulator"; want_platform=7 ;;
+      "") extra_tags="ios"; want_platform=2 ;;
       *) die "${slice}：未知的平台变体 ${variant}" ;;
     esac
     archs="$(lipo -archs "$bin")" || die "${slice}：lipo 读不出架构"
@@ -113,8 +128,7 @@ check_xcframework() {
         lipo -thin "$arch" "$bin" -output "$tmpd/thin" || die "${slice}：取不出 ${arch} 架构"
       fi
       check_archive "$tmpd/thin" "${slice}/${arch}" "$extra_tags"
-      plats="$(otool -l "$tmpd/thin" | awk '/LC_BUILD_VERSION/{f=1} f && / platform /{print $2; f=0}' | sort -u | paste -sd, -)"
-      printf '%s' "$plats" | grep -qxE "$want_platform" || die "${slice}/${arch}：目标文件的平台是 ${plats:-<无>}，应为 ${want_platform%%|*}"
+      check_member_platforms "$tmpd/thin" "${slice}/${arch}" "$want_platform"
     done
     headers="$(cat "$fw"/Headers/*.h 2>/dev/null || true)"
     for sym in $REQUIRED_SYMBOLS; do
@@ -125,6 +139,13 @@ check_xcframework() {
   rm -rf "$tmpd"
   [ "$slices" -eq 2 ] || die "xcframework 应有 2 个切片（设备 + 模拟器），实际 ${slices}"
 }
+
+# 只核对单个静态库（单架构）的逐成员平台；给 build-apple.test.sh 用。
+if [ "${1:-}" = "--check-platforms" ]; then
+  [ -f "${2:-}" ] && [ -n "${3:-}" ] || die "用法：$0 --check-platforms <静态库> <2|7>"
+  check_member_platforms "$2" "$(basename "$2")" "$3"
+  exit 0
+fi
 
 if [ "${1:-}" = "--check" ]; then
   [ -n "${2:-}" ] && [ -d "$2" ] || die "用法：$0 --check <Libcore.xcframework>"

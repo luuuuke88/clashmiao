@@ -55,6 +55,8 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+      - name: 放行门用例（逐成员平台核对）
+        run: bash tools/kernel/build-apple.test.sh
       - name: 构建 Libcore.xcframework（含放行门）
         run: OUT_DIR="$RUNNER_TEMP/kernel-apple" tools/kernel/build-apple.sh
       - uses: actions/upload-artifact@v4

@@ -7,6 +7,7 @@ import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:flutter/foundation.dart';
@@ -152,7 +153,7 @@ Future<void> _importAndReport(
     ref.invalidate(offlineProxyGroupsProvider);
     resultNotifier.state = DeepLinkImportSuccess(profile.name);
   } catch (e, st) {
-    logAppFailure('deepLink.import', e, st);
+    logProfileFailure('deepLink.import', e, st);
     final t = ref.read(translationsProvider);
     resultNotifier.state = DeepLinkImportFailure(
       profileFailureMessage(e, t, failed: t.profile.add.failureMsg),

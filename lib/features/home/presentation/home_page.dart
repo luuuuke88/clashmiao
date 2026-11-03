@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
@@ -172,7 +172,7 @@ class HomePage extends ConsumerWidget {
                               child: MotionProgress(strokeWidth: 4),
                             ),
                             error: (e, st) {
-                              logAppFailureOnce('home.profiles', e, st);
+                              logProfileFailureOnce('home.profiles', e, st);
                               final t = ref.watch(translationsProvider);
                               return Center(child: Text(t.failure.unexpected));
                             },

@@ -748,6 +748,11 @@ class ProfileValidationException implements Exception {
   /// 稳定错误码（`no-outbounds` 等），识别不出时为 null。
   final String? code;
 
+  /// 只含类型名与稳定码。[message] 可能夹带订阅地址、节点地址（native 解析器、
+  /// 网络层会把输入原文拼进去），而异常常被直接字符串化后写日志 / 上报，所以
+  /// 原文不进 [toString]；界面要展示时读 [message]。
   @override
-  String toString() => 'ProfileValidationException: $message';
+  String toString() => code == null
+      ? 'ProfileValidationException'
+      : 'ProfileValidationException(code=$code)';
 }

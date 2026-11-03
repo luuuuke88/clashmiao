@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/localization/locale_preferences.dart';
 import 'package:clashmiao/core/theme/theme_preferences.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
@@ -13,6 +12,7 @@ import 'package:clashmiao/domain/routing/application/proxy_selection_store_notif
 import 'package:clashmiao/features/backup/data/backup_codec.dart';
 import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:clashmiao/features/backup/model/backup_bundle.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
 import 'package:hooks_riverpod/misc.dart';
@@ -164,7 +164,7 @@ class RestoreRefresher {
     try {
       await refresh();
     } catch (e, st) {
-      logAppFailure('restore.refresh', e, st);
+      logProfileFailure('restore.refresh', e, st);
     }
   }
 
@@ -204,7 +204,7 @@ class RestoreRefresher {
         await _fetchProfile(id);
         if (_activeProfileId() == id) await _reconnectIfConnected();
       } catch (e, st) {
-        logAppFailure('restore.backfill $id', e, st);
+        logProfileFailure('restore.backfill $id', e, st);
       }
     }
   }

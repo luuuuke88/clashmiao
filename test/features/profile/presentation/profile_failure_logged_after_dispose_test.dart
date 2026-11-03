@@ -141,10 +141,9 @@ void main() {
     expect(logged.isCompleted, isTrue, reason: '失败处理已结束，并已记录');
     final record = await logged.future;
     expect(record.where, 'profiles.update');
-    expect(
-      record.error.toString(),
-      contains('upstream exploded after dispose'),
-    );
+    // 异常原文可能带订阅 / 节点地址，不进持久日志：只有类型名。
+    expect(record.error.toString(), '_Exception');
+    expect(record.line, isNot(contains('upstream exploded after dispose')));
     expect(record.stackTrace, isNotNull);
     expect(records, hasLength(1));
 

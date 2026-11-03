@@ -2,9 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
-import 'package:clashmiao/domain/profile/data/profile_repository.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/profile/model/profile_patch.dart';
+import 'package:clashmiao/features/profile/data/profile_repository.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/model/profile_patch.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

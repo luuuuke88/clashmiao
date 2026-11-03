@@ -5,8 +5,8 @@ import 'package:clashmiao/domain/connection/application/connection_providers.dar
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
 import 'package:clashmiao/domain/routing/model/cached_delay.dart';

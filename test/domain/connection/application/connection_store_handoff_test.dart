@@ -14,8 +14,8 @@ import 'package:clashmiao/domain/connection/application/connection_controller.da
 import 'package:clashmiao/domain/connection/application/connection_launcher.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/request_outcome.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/profile/data/profile_repository.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/backup/application/restore_refresher.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

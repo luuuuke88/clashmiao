@@ -17,9 +17,9 @@ import 'package:clashmiao/domain/connection/application/connection_launcher.dart
 import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
 import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/latency_clock.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';

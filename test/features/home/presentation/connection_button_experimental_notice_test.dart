@@ -7,7 +7,7 @@ import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:clashmiao/features/home/presentation/experimental_feature_notice_dialog.dart';

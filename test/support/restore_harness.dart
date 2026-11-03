@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/profile/model/profile_patch.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/model/profile_patch.dart';
 import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';

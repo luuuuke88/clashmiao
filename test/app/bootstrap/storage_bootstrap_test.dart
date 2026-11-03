@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/app/bootstrap/storage_bootstrap.dart';
 import 'package:clashmiao/core/storage/storage_migrator.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

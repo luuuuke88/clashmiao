@@ -1,6 +1,6 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:clashmiao/core/latency/latency_rules.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/shared/navigation/selected_tab.dart';
 
 import 'dart:async';
@@ -16,11 +16,11 @@ import 'package:clashmiao/domain/connection/application/connection_health_monito
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';

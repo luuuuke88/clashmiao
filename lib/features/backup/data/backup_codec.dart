@@ -4,8 +4,8 @@ import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/features/config/data/migrations/v2_direct_dns.dart';
 import 'package:clashmiao/features/config/model/dns_defaults.dart';
 import 'package:clashmiao/features/config/model/profile_nodes.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/backup/model/backup_bundle.dart';
 
 /// 校验通过、可以直接应用的恢复计划。**不含任何副作用**：解析与校验阶段

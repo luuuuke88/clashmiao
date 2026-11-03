@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/domain/profile/application/expire_formatters.dart';
+import 'package:clashmiao/features/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/profile/application/profile_failures.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_failures.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/profile/model/profile_patch.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/model/profile_patch.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/shared/components/app_toast.dart';
 import 'package:clashmiao/shared/components/confirmation_dialogs.dart';
 import 'package:clashmiao/shared/components/settings_input_dialog.dart';

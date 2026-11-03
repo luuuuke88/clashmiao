@@ -10,7 +10,7 @@ import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:flutter/foundation.dart';

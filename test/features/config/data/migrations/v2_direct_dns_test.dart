@@ -5,7 +5,7 @@ import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/config/data/migrations/v2_direct_dns.dart';
 import 'package:clashmiao/features/config/model/dns_defaults.dart';
-import 'package:clashmiao/domain/profile/data/migrations/v1_profiles.dart';
+import 'package:clashmiao/features/profile/data/migrations/v1_profiles.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

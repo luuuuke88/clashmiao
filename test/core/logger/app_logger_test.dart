@@ -572,7 +572,7 @@ void main() {
         expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
       });
 
-      test('日志目录不存在 + 标记写入失败（注入）：副本只有固定说明，不留标记', () async {
+      test('日志目录不存在 + 清理开始即失败（注入）：副本只有固定说明，不留标记', () async {
         final missingDir = Directory('${tempDir.path}/fresh2');
         AppLogger.configureForTesting(
           resolveLogFile: () async => File('${missingDir.path}/app.log'),

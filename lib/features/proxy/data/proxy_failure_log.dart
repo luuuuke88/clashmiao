@@ -10,11 +10,19 @@ import 'package:flutter/foundation.dart';
 /// 的控制台看，不进 app.log。
 ///
 /// [where] 必须是固定的定位标签，不要拼运行时内容。
+///
+/// 这个函数**绝不抛出**：调用方都是 catch 块里的回退路径（离线解析回退、空
+/// 排除集、手选 stale 的延后重放），日志自己出问题（异常的 toString 抛错、
+/// 堆栈文本化抛错、日志系统故障）不能改变这些路径的行为。
 void logProxyFailure(String where, Object error, [StackTrace? stackTrace]) {
-  if (kDebugMode) {
-    debugPrint('[$where] $error');
+  try {
+    if (kDebugMode) {
+      debugPrint('[$where] $error');
+    }
+    logAppFailure(where, ProxyFailureSummary(error.runtimeType), stackTrace);
+  } catch (_) {
+    // 丢一行日志远好过让回退路径跟着失败；这里不再打任何东西，避免套娃。
   }
-  logAppFailure(where, ProxyFailureSummary(error.runtimeType), stackTrace);
 }
 
 /// 只含类型名的失败摘要；[toString] 就是写进日志的全部内容。

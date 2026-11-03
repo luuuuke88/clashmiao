@@ -10,8 +10,9 @@
 //  - 所有提交串行经过一道门；「复核本代是否仍有效」与「向 NE 发起调用」在同一把锁内完成，
 //    `stop()` 也取这把锁：停止之后不会再有新的提交到达 NE。
 //  - 每一次等待都有上限（等门、等 NE 回调）；`stop()` 立即放行所有在途的等待，NE 迟到的回调被丢弃。
-//  - NE 在时限内不回调、或清缓存后恢复失败 = 隧道设置失控：协调器进入终态（之后不再提交，
-//    所以不会有两个 NE 调用重叠、也不依赖它们的生效顺序），可选操作再请 provider 以失败收掉隧道。
+//  - NE 在时限内不回调、或可选操作（清缓存、代理开关）的提交报错 = 隧道设置失控：NE 不保证
+//    失败时原设置原样保留，缓存就不再可信。协调器进入终态（之后不再提交，所以不会有两个 NE 调用
+//    重叠、也不依赖它们的生效顺序），可选操作再请 provider 以失败收掉隧道。
 //  - `reasserting` 按持有计数：清 DNS 与重载各持一份，最后一个释放的人才把它放回 false。
 //
 
@@ -23,7 +24,7 @@ protocol TunnelSettingsHost: AnyObject {
     /// 发起一次设置提交并立即返回；`completion` 在 NE 完成时（任意线程）调用一次。
     func submitTunnelSettings(_ settings: NEPacketTunnelNetworkSettings?, completion: @escaping (Error?) -> Void)
     func setReasserting(_ on: Bool)
-    /// 隧道设置失控（NE 不回调，或清缓存后恢复失败）：隧道不能再按缓存的设置继续跑，由 provider 以失败收掉。
+    /// 隧道设置失控（NE 不回调，或清缓存 / 代理开关的提交报错）：隧道不能再按缓存的设置继续跑，由 provider 以失败收掉。
     func tunnelSettingsLost(_ reason: String)
 }
 
@@ -152,22 +153,10 @@ final class TunnelSettingsCoordinator {
                 guard let settings = appliedIfCurrent(gen) else { throw TunnelSettingsError.stale }
                 beginReasserting()
                 defer { endReasserting() }
-                switch submit(nil, generation: gen, timeout: optionalTimeout) {
-                case .success:
-                    break
-                case .failure(TunnelSettingsError.timedOut):
-                    lose("NE did not answer clearing the tunnel settings", notify: true)
-                    throw TunnelSettingsError.timedOut
-                case .failure(let error):
-                    throw error // 过期，或 NE 明确拒绝（设置没变，不需要恢复）
-                }
-                // 已清空：恢复失败（含超时）时隧道停在没有设置的状态，不能继续跑；过期则由新一代提交自己的设置。
-                if case .failure(let error) = submit(settings, generation: gen, timeout: optionalTimeout) {
-                    if error as? TunnelSettingsError != .stale {
-                        lose("restoring tunnel settings after clearing DNS cache failed: \(error.localizedDescription)", notify: true)
-                    }
-                    throw error
-                }
+                // 清空或恢复任一步失败（含超时）：系统里的设置已不可知，不能继续跑；过期则由新一代提交自己的设置。
+                try loseOnFailure(submit(nil, generation: gen, timeout: optionalTimeout), "clearing tunnel settings")
+                try loseOnFailure(submit(settings, generation: gen, timeout: optionalTimeout),
+                                  "restoring tunnel settings after clearing DNS cache")
             }
             return nil
         } catch {
@@ -175,8 +164,8 @@ final class TunnelSettingsCoordinator {
         }
     }
 
-    /// 系统代理开关：改副本、提交成功后才替换缓存（NE 明确拒绝时缓存仍与系统实际生效的一致；
-    /// NE 不回调则设置失控，收掉隧道，不留一个结局不明的缓存）。返回 nil 表示成功或无需改动。
+    /// 系统代理开关：改副本、提交成功后才替换缓存；提交失败（含超时）则设置失控，收掉隧道，
+    /// 不留一个与系统可能不符的缓存。返回 nil 表示成功或无需改动。
     @discardableResult
     func setSystemProxyEnabled(_ enabled: Bool) -> Error? {
         let gen = currentGeneration
@@ -194,11 +183,7 @@ final class TunnelSettingsCoordinator {
                 proxy.httpEnabled = enabled
                 proxy.httpsEnabled = enabled
                 settings.proxySettings = proxy
-                let result = submit(settings, generation: gen, timeout: optionalTimeout)
-                if case .failure(TunnelSettingsError.timedOut) = result {
-                    lose("NE did not answer the system proxy change", notify: true)
-                }
-                try result.get()
+                try loseOnFailure(submit(settings, generation: gen, timeout: optionalTimeout), "changing the system proxy")
                 record(settings, generation: gen)
             }
             return nil
@@ -223,6 +208,16 @@ final class TunnelSettingsCoordinator {
     private func appliedIfCurrent(_ gen: Int) -> NEPacketTunnelNetworkSettings? {
         lock.lock(); defer { lock.unlock() }
         return gen == generation && !stopped ? applied : nil
+    }
+
+    /// 可选操作的提交结果：过期照常抛出；其余失败（NE 报错或超时）先进入终态并通知 provider。只在持门时调用。
+    private func loseOnFailure(_ result: Result<Void, Error>, _ what: String) throws {
+        guard case .failure(let error) = result else { return }
+        if error as? TunnelSettingsError != .stale {
+            let detail = error as? TunnelSettingsError == .timedOut ? "NE did not answer" : error.localizedDescription
+            lose("\(what) failed: \(detail)", notify: true)
+        }
+        throw error
     }
 
     private func record(_ settings: NEPacketTunnelNetworkSettings, generation gen: Int) {

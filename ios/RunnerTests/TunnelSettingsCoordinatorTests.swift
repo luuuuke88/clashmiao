@@ -207,12 +207,11 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.calls.count, 2)
     }
 
-    /// 清空那一步被 NE 明确拒绝：设置没变，不恢复、不收隧道。
-    func testClearStepRejectedLeavesSettingsAlone() throws {
+    /// 清空那一步被 NE 报错：NE 不保证原设置原样保留，不再恢复（不与之交错），收掉隧道。
+    func testClearStepRejectedLosesTunnel() throws {
         struct Boom: Error {}
         let (c, h) = make()
-        let s = settings()
-        try c.applyTunSettings(s, generation: c.currentGeneration)
+        try c.applyTunSettings(settings(), generation: c.currentGeneration)
         h.hold = true
         let clearing = background { _ = c.clearDNSCache() }
         XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // apply
@@ -220,28 +219,41 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         h.calls[1].complete(Boom())
         wait(for: [clearing], timeout: 5)
         XCTAssertEqual(h.calls.count, 2)
-        XCTAssertEqual(h.lost, [])
-        XCTAssertTrue(c.appliedSettings === s)
-        XCTAssertEqual(h.reasserting, [true, false])
+        XCTAssertEqual(h.lost.count, 1)
+        XCTAssertNil(c.appliedSettings)
     }
 
-    func testProxyToggleKeepsCacheOnFailure() throws {
+    /// 恢复那一步 NE 不回调：同样收掉隧道。
+    func testRestoreTimeoutLosesTunnel() throws {
+        let (c, h) = make(optional: 0.3)
+        try c.applyTunSettings(settings(), generation: c.currentGeneration)
+        h.hold = true
+        let clearing = background { _ = c.clearDNSCache() }
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // apply
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 清空
+        h.calls[1].complete(nil)
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 恢复：不回调
+        wait(for: [clearing], timeout: 5)
+        XCTAssertEqual(h.lost.count, 1)
+        XCTAssertNil(c.appliedSettings)
+    }
+
+    /// 代理开关被 NE 报错：缓存不再可信，收掉隧道；成功时才替换缓存。
+    func testProxyToggleFailureLosesTunnel() throws {
         struct Boom: Error {}
         let (c, h) = make()
-        let s = settings(proxy: true)
-        try c.applyTunSettings(s, generation: c.currentGeneration)
-        h.hold = true
-        let toggling = background { _ = c.setSystemProxyEnabled(false) }
-        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success)
-        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success)
-        h.calls[1].complete(Boom())
-        wait(for: [toggling], timeout: 5)
-        XCTAssertTrue(c.appliedSettings === s)
-        XCTAssertEqual(c.appliedSettings?.proxySettings?.httpEnabled, true, "失败时原设置未被改动")
-
-        h.hold = false
+        try c.applyTunSettings(settings(proxy: true), generation: c.currentGeneration)
         XCTAssertNil(c.setSystemProxyEnabled(false))
         XCTAssertEqual(c.appliedSettings?.proxySettings?.httpEnabled, false)
+        h.hold = true
+        let toggling = background { _ = c.setSystemProxyEnabled(true) }
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // apply
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 关
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 开：挂起
+        h.calls[2].complete(Boom())
+        wait(for: [toggling], timeout: 5)
+        XCTAssertEqual(h.lost.count, 1)
+        XCTAssertNil(c.appliedSettings)
     }
 
     /// 失败的重载先释放、清 DNS 后释放：reasserting 仍保持（失败保留是粘性的）。

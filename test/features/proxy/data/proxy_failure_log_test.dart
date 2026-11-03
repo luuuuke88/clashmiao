@@ -70,4 +70,48 @@ void main() {
       returnsNormally,
     );
   });
+
+  group('logProxySelectionFailure：节点 / 分组名不进日志', () {
+    const bareDomain = 'node.example.com'; // 节点名常是没有端口的裸域名
+
+    test('只写固定标签与失败码', () {
+      logProxySelectionFailure('exception');
+      final line = records.single.line;
+      expect(
+        line,
+        contains('[ERROR] proxies.select: SelectionFailed(code=exception)'),
+      );
+      expect(line, isNot(contains(bareDomain)));
+    });
+
+    test('失败码不是稳定短码（可能夹带名字）：记成 other', () {
+      logProxySelectionFailure('outbound $bareDomain not found');
+      final line = records.single.line;
+      expect(line, contains('code=other'));
+      expect(line, isNot(contains(bareDomain)));
+      expect(line, isNot(contains('example')));
+    });
+
+    test('真正写进 app.log 的文本里没有裸域名节点名', () async {
+      final dir = await Directory.systemTemp.createTemp('proxy_sel_log_');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/app.log');
+      debugAppFailureSink = null;
+      AppLogger.configureForTesting(resolveLogFile: () async => file);
+      addTearDown(AppLogger.resetForTesting);
+
+      logProxySelectionFailure('unavailable');
+      await AppLogger.instance.flush();
+
+      final content = await file.readAsString();
+      expect(content, contains('proxies.select'));
+      expect(content, contains('code=unavailable'));
+      expect(content, isNot(contains(bareDomain)));
+    });
+
+    test('不向外抛', () {
+      debugAppFailureSink = (_) => throw StateError('sink failed');
+      expect(() => logProxySelectionFailure('x'), returnsNormally);
+    });
+  });
 }

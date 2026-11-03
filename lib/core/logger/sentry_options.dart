@@ -23,6 +23,9 @@ void configureSentryOptions(
   options.beforeSend = (event, hint) => redactSentryEvent(event);
   options.beforeSendTransaction = (transaction, hint) =>
       redactSentryTransaction(transaction);
+  // `print` / `debugPrint` 的文本不进面包屑：它们是自由文本，里面可能有节点名
+  // 之类的裸域名，脱敏器认不出来。需要上报的诊断走 [logAppFailure] 的固定标签。
+  options.enablePrintBreadcrumbs = false;
   options.beforeBreadcrumb = (breadcrumb, hint) => redactBreadcrumb(breadcrumb);
   // 结构化日志（Sentry Logs）：App 不使用，也没有逐字段的脱敏路径；万一被某个
   // 集成打开，整体丢弃，不让未过滤的日志正文 / 属性离开设备。

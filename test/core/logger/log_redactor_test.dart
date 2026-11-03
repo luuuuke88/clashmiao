@@ -20,38 +20,38 @@ void main() {
       // (说明, 输入, 期望)
       (
         '白名单主机：查询串整体去掉，scheme 与主机保留',
-        'GET https://github.com/sub?token=SECRET&flag=1',
-        'GET https://github.com/sub',
+        'GET https://clashmiao.com/sub?token=SECRET&flag=1',
+        'GET https://clashmiao.com/sub',
       ),
       (
         '去掉 userinfo，端口保留',
-        'connect https://alice:hunter2@api.github.com:8443/api/v1/sub failed',
-        'connect https://api.github.com:8443/api/v1/sub failed',
+        'connect https://alice:hunter2@www.clashmiao.com:8443/api/v1/sub failed',
+        'connect https://www.clashmiao.com:8443/api/v1/sub failed',
       ),
       (
         '路径里的长十六进制 token',
-        'https://github.com/link/0123456789abcdef0123456789abcdef',
-        'https://github.com/link/…',
+        'https://clashmiao.com/link/0123456789abcdef0123456789abcdef',
+        'https://clashmiao.com/link/…',
       ),
       (
         '路径里的 UUID',
-        'https://github.com/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
-        'https://github.com/s/…/clash',
+        'https://clashmiao.com/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
+        'https://clashmiao.com/s/…/clash',
       ),
       (
         '路径里的长 base64',
-        'https://github.com/api/c2VjcmV0LXN1YnNjcmlwdGlvbi10b2tlbg==',
-        'https://github.com/api/…',
+        'https://clashmiao.com/api/c2VjcmV0LXN1YnNjcmlwdGlvbi10b2tlbg==',
+        'https://clashmiao.com/api/…',
       ),
       (
         '路径里 16 位以上字母数字混排',
-        'https://github.com/sub/Ab12Cd34Ef56Gh78',
-        'https://github.com/sub/…',
+        'https://clashmiao.com/sub/Ab12Cd34Ef56Gh78',
+        'https://clashmiao.com/sub/…',
       ),
       (
         '片段同样去掉；末尾标点留在外面',
-        'see (https://github.com/x#frag-secret), then retry.',
-        'see (https://github.com/x), then retry.',
+        'see (https://clashmiao.com/x#frag-secret), then retry.',
+        'see (https://clashmiao.com/x), then retry.',
       ),
       (
         'vmess 分享链接整条折叠',
@@ -69,55 +69,55 @@ void main() {
       ),
       (
         '编码过的 UUID 路径段：整段遮盖',
-        'GET https://github.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
-        'GET https://github.com/s/…/clash',
+        'GET https://clashmiao.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
+        'GET https://clashmiao.com/s/…/clash',
       ),
       (
         '编码过的十六进制 token 路径段',
-        'https://github.com/link/%30%31%32%33456789abcdef0123456789abcdef',
-        'https://github.com/link/…',
+        'https://clashmiao.com/link/%30%31%32%33456789abcdef0123456789abcdef',
+        'https://clashmiao.com/link/…',
       ),
       (
         '重复编码的 UUID 路径段',
-        'https://github.com/s/3f2504e0%252D4f89%252D11d3%252D9a0c%252D0305e82c3301',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/3f2504e0%252D4f89%252D11d3%252D9a0c%252D0305e82c3301',
+        'https://clashmiao.com/s/…',
       ),
       (
         '编码的路径分隔符 %2F 把 UUID 和普通段粘成一段：整段遮盖',
-        'https://github.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
+        'https://clashmiao.com/s/…',
       ),
       (
         '重复编码的路径分隔符 %252F',
-        'https://github.com/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+        'https://clashmiao.com/s/…',
       ),
       (
         '三层编码的分隔符与连字符',
-        'https://github.com/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
+        'https://clashmiao.com/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
             '%25252D9a0c%25252D0305e82c3301',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%2F）：整段解码后仍要查',
-        'https://github.com/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
+        'https://clashmiao.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%252F，两层）',
-        'https://github.com/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
+        'https://clashmiao.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%25252F，三层）',
-        'https://github.com/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
-        'https://github.com/s/…',
+        'https://clashmiao.com/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
+        'https://clashmiao.com/s/…',
       ),
       (
         '转义斜杠的 http URL：userinfo 与路径 token',
-        r'{"u":"http:\/\/u:p@github.com\/s\/'
+        r'{"u":"http:\/\/u:p@clashmiao.com\/s\/'
             r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
-        r'{"u":"http:\/\/github.com\/s\/…\/clash"}',
+        r'{"u":"http:\/\/clashmiao.com\/s\/…\/clash"}',
       ),
       (
         '转义斜杠的分享链接',
@@ -342,7 +342,7 @@ void main() {
         'servers': [
           {'host': 'h.example.test', 'uuid': 1234},
         ],
-        'url': 'https://github.com/sub?token=SECRET',
+        'url': 'https://clashmiao.com/sub?token=SECRET',
         'count': 2,
       });
       expect(out, {
@@ -350,7 +350,7 @@ void main() {
         'servers': [
           {'host': 'h.example.test', 'uuid': '…'},
         ],
-        'url': 'https://github.com/sub',
+        'url': 'https://clashmiao.com/sub',
         'count': 2,
       });
     });
@@ -448,7 +448,7 @@ void main() {
     test('自引用 List', () {
       final list = <Object?>[
         {'token': 'SECRET'},
-        'https://github.com/sub?token=SECRET',
+        'https://clashmiao.com/sub?token=SECRET',
       ];
       list.add(list);
       expectSafe(list);
@@ -456,7 +456,7 @@ void main() {
 
     test('两个结构互相引用', () {
       final a = <String, Object?>{'password': 'SECRET'};
-      final b = <Object?>[a, 'https://github.com/sub?token=SECRET'];
+      final b = <Object?>[a, 'https://clashmiao.com/sub?token=SECRET'];
       a['b'] = b;
       expectSafe(a);
       expectSafe(b);
@@ -620,7 +620,7 @@ void main() {
           'errno = 61), address = 127.0.0.1, port = 2080',
       'PlatformException(stale, attempt mismatch, null, null)',
       'TimeoutException after 0:00:20.000000: Future not completed',
-      'https://github.com/api/v1/profiles',
+      'https://clashmiao.com/api/v1/profiles',
       '[ERROR] profiles.update: Exception: upstream exploded',
       '#0      ScriptedProfileRepository.update (file:///Users/me/code/'
           'clashmiao/test/support/scripted_profile_repository.dart:38:24)',
@@ -644,11 +644,11 @@ void main() {
       'pwd: /Users/me/code',
       'Bearer realm="clashmiao"',
       // 路径段：普通段、带编码的普通段、编码的分隔符、畸形转义原样保留。
-      'https://github.com/api/v1/profiles/%E9%A6%99%E6%B8%AF',
-      'https://github.com/api/v1%2Fprofiles%252Fclash',
-      'https://github.com/files/100%zz/abc%',
-      'https://github.com/s/%E0%A4%A',
-      r'{"url":"https:\/\/github.com\/api\/v1\/profiles"}',
+      'https://clashmiao.com/api/v1/profiles/%E9%A6%99%E6%B8%AF',
+      'https://clashmiao.com/api/v1%2Fprofiles%252Fclash',
+      'https://clashmiao.com/files/100%zz/abc%',
+      'https://clashmiao.com/s/%E0%A4%A',
+      r'{"url":"https:\/\/clashmiao.com\/api\/v1\/profiles"}',
       'route: domain_suffix=example.test outbound=proxy',
       'dns: exchange example.test: context deadline exceeded',
       'FormatException: Unexpected character (at character 1)',
@@ -672,8 +672,8 @@ void main() {
       '{"password":"',
       'token=',
       'Authorization:',
-      'https://github.com/%',
-      'https://github.com/%E',
+      'https://clashmiao.com/%',
+      'https://clashmiao.com/%E',
       r'"key":\',
       '"password":"\\',
     ]) {
@@ -683,7 +683,7 @@ void main() {
 
   test('幂等：重复过滤结果不变', () {
     const input =
-        'uri = https://u:p@github.com/sub/0123456789abcdef0123?token=S '
+        'uri = https://u:p@clashmiao.com/sub/0123456789abcdef0123?token=S '
         'vmess://abc token=t Authorization: Bearer x';
     final once = redactLogText(input);
     expect(redactLogText(once), once);

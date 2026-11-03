@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/connection/application/connection_providers.dart';
 import 'package:clashmiao/features/connection/model/connection_phase.dart';
@@ -259,6 +260,46 @@ void main() {
     expect(spy.lastOutboundTag, 'node-b');
     // 乐观更新曾经短暂写入 node-b，失败后必须被撤销，而不是永久停在 node-b。
     expect(container.read(optimisticProxySelectionsProvider), isEmpty);
+    await _drainToasts(tester);
+  });
+
+  testWidgets('selectOutbound 失败：落盘日志里没有节点名 / 分组名（裸域名也不行）', (tester) async {
+    final records = <AppFailureRecord>[];
+    debugAppFailureSink = records.add;
+    addTearDown(() => debugAppFailureSink = null);
+
+    const bareA = OutboundProxy(tag: 'node-a.example.com', type: 'shadowsocks');
+    const bareB = OutboundProxy(tag: 'node-b.example.com', type: 'shadowsocks');
+    final (widget, container, spy) = await _hostWithGroups(
+      connected: true,
+      groups: const [
+        OutboundGroup(
+          tag: 'proxy',
+          type: 'selector',
+          selected: 'node-a.example.com',
+          items: [bareA, bareB],
+        ),
+      ],
+    );
+    // 内核回显的消息里也带着节点名。
+    spy.selectOutboundError = Exception(
+      'outbound node-b.example.com not found',
+    );
+    await tester.pumpWidget(widget);
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.tap(find.text('node-b.example.com'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(spy.selectOutboundCalls, 1);
+    expect(container.read(optimisticProxySelectionsProvider), isEmpty);
+    expect(records, hasLength(1));
+    final line = records.single.line;
+    expect(line, contains('proxies.select'));
+    expect(line, contains('code=exception'));
+    expect(line, isNot(contains('example.com')), reason: line);
+    expect(line, isNot(contains('node-b')), reason: line);
     await _drainToasts(tester);
   });
 

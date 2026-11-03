@@ -7,13 +7,16 @@
 // （服务器、端口、密码 / UUID 全写在一起）、节点地址（`host:port`、IP）。
 // 所以这里按**白名单**处理：除非主机在公共白名单里（[isPublicHost]：GitHub、
 // 官网、构建期外链、本机回环），一律遮盖；不再靠「看起来像不像 token」去猜。
+// GitHub 这类谁都能托管订阅的多租户主机，还要路径在本项目仓库或构建期外链的路径
+// 前缀之下才放行（[publicUrlAccess]）。
 //
 // 规则（按顺序执行，结果幂等，可以重复过滤）：
 // 1. 代理分享链接（vmess:// vless:// ss:// trojan:// hysteria2:// tuic:// …）整条
 //    折叠为 `<scheme>://…`。
 // 2. 其它 URL（任何 scheme：http / https / ws / wss / clash:// / sing-box:// …）：
 //    主机不在白名单里，整条换成 [kRedactedUrl]（`<url>`）。主机在白名单里：去掉
-//    userinfo、查询串与片段，保留 scheme、主机、端口与路径；路径段按子段判断像不像
+//    userinfo、查询串与片段，保留 scheme、主机、端口与路径（多租户主机路径不在放行
+//    前缀下仍是 `<url>`；对象存储 / 发布资源主机只留 scheme + 主机）；路径段按子段判断像不像
 //    token（长十六进制、UUID、长 base64、16 位以上字母数字混排、JWT），像就把
 //    **整个原始段**换成 `…`（最多三轮宽松百分号解码）。只有空 authority 的 `file:///`（堆栈帧）不处理，`file://host/…` 照常过白名单。
 //    百分号编码（`https%3A%2F%2F…`）与 JSON unicode 转义（`https\u003a\u002f\u002f…`）的 URL
@@ -58,7 +61,7 @@ const String kRedactedAddr = '<addr>';
 
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 7;
+const int kLogRedactionVersion = 8;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -448,7 +451,16 @@ String _redactUrlMatch(Match m) {
   if (at >= 0) authority = authority.substring(at + 1);
 
   // 白名单：主机不在里面，整条 URL 都是用户数据（订阅地址、节点地址……）。
-  if (!isPublicHost(_hostOfAuthority(authority))) return '$kRedactedUrl$tail';
+  // 多租户主机（GitHub 等）还要看路径：只有本项目自己的仓库路径或构建期外链的
+  // 路径前缀才放行；对象存储 / 发布资源主机的路径是不透明 ID，只留 scheme + 主机。
+  switch (publicUrlAccess(_hostOfAuthority(authority), path)) {
+    case PublicUrlAccess.none:
+      return '$kRedactedUrl$tail';
+    case PublicUrlAccess.hostOnly:
+      return '$scheme://$authority$tail';
+    case PublicUrlAccess.hostAndPath:
+      break;
+  }
 
   // 路径里藏着别的地址（`/o/r,https://订阅地址`、编码过的 `%2Chttps%3A%2F%2F…`、
   // 节点 `host:port`）：这条 URL 不再只是「公共主机 + 路径」，整条当用户数据。

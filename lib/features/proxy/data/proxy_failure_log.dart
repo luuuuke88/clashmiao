@@ -25,6 +25,25 @@ void logProxyFailure(String where, Object error, [StackTrace? stackTrace]) {
   }
 }
 
+/// 手选节点失败的落盘口：固定标签 `proxies.select` + 失败码。
+///
+/// 分组名与节点名是订阅里用户 / 机场自己起的名字，常常就是一个裸域名
+/// （`node.example.com`，没有端口，日志脱敏器认不出来），所以**绝不**拼进日志；
+/// 内核回显的 message 同样可能带着节点名，也不记。失败码只接受 `[a-z0-9_.-]`
+/// 的短码（原生桥与内核端的固定码表），别的一律记成 `other`。
+///
+/// 绝不抛出，理由同 [logProxyFailure]。
+void logProxySelectionFailure(String code) {
+  try {
+    final safe = _stableCode.hasMatch(code) ? code : 'other';
+    logAppFailure('proxies.select', 'SelectionFailed(code=$safe)');
+  } catch (_) {
+    // 同上：不递归打日志。
+  }
+}
+
+final RegExp _stableCode = RegExp(r'^[a-z0-9_.\-]{1,40}$');
+
 /// 只含类型名的失败摘要；[toString] 就是写进日志的全部内容。
 @immutable
 class ProxyFailureSummary {

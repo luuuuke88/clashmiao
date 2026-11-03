@@ -362,6 +362,16 @@ void logAppFailure(String where, Object error, [StackTrace? stackTrace]) {
   unawaited(AppLogger.instance.append(line));
 }
 
+/// 带用户 / 订阅派生标识（分组名、节点名、订阅名）的调试输出：只在 debug 构建
+/// 的控制台出现，release 构建里完全不输出。
+///
+/// 节点名常是裸域名，日志脱敏器认不出来；而 `debugPrint` 的内容会被 Sentry 的
+/// print 面包屑、系统日志（logcat / 控制台）带出应用，所以这类内容不能走普通
+/// `debugPrint`。
+void debugPrintSensitive(String message) {
+  if (kDebugMode) debugPrint(message);
+}
+
 /// 错误本身是 Map / List（解析失败时直接抛出的 JSON 片段之类）时，先按键名
 /// 结构化脱敏再转文本；其它对象原样交给字符串化，之后统一过 [redactLogText]。
 Object? _structuredFirst(Object? error) =>

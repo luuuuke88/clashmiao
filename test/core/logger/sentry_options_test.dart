@@ -50,6 +50,8 @@ void main() {
     expect(options.beforeSend, isNotNull);
     expect(options.beforeSendTransaction, isNotNull);
     expect(options.beforeBreadcrumb, isNotNull);
+    // print / debugPrint 的自由文本（可能含裸域名节点名）不进面包屑。
+    expect(options.enablePrintBreadcrumbs, isFalse);
     expect(options.sendDefaultPii, isFalse);
     expect(options.attachScreenshot, isFalse);
     expect(options.tracesSampleRate, 0.05);

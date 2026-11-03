@@ -2,7 +2,6 @@ import 'package:clashmiao/shared/components/animated_mark.dart';
 
 import 'dart:math' as math;
 
-import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/theme/motion.dart';
 
 import 'dart:async';
@@ -11,6 +10,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/connection/application/connection_providers.dart';
 import 'package:clashmiao/features/proxy/application/proxy_selection_service.dart';
+import 'package:clashmiao/features/proxy/data/proxy_failure_log.dart';
 import 'package:clashmiao/core/haptic/haptic_service.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
@@ -502,11 +502,9 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           .then((result) {
             if (result is! SelectionFailed) return;
             optimisticNotifier.revert(groupTag, previousSelection);
-            // 技术细节只进应用日志；用户看到的是类型化的本地化文案。
-            logAppFailure(
-              'proxies.select $groupTag -> $outboundTag',
-              'SelectionFailed(${result.code}, ${result.message})',
-            );
+            // 只落固定标签 + 失败码：组名、节点名（常是裸域名）与内核回显的
+            // 消息都不进 app.log / 上报。用户看到的是类型化的本地化文案。
+            logProxySelectionFailure(result.code);
             if (!context.mounted) return;
             AppToast.error(context, t.proxies.switchFailed);
           }),
@@ -541,8 +539,8 @@ class _ProxiesPageState extends ConsumerState<ProxiesPage> {
           .read(latencyTestCoordinatorProvider.notifier)
           .manualTest(group.tag);
     } catch (error, st) {
-      // 技术细节（PlatformException 等）只进日志。
-      logAppFailure('proxies.latencyTest ${group.tag}', error, st);
+      // 只落固定标签 + 异常类型：组名不进日志，异常原文可能带节点名。
+      logProxyFailure('proxies.latencyTest', error, st);
       if (!context.mounted) return;
       AppToast.error(context, t.proxies.testFailed);
     }

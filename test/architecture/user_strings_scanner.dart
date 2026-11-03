@@ -196,6 +196,7 @@ class _Visitor extends RecursiveAstVisitor<void> {
 
   static const _logFunctions = {
     'debugPrint',
+    'debugPrintSensitive', // 仅 debug 控制台（core/logger/app_logger.dart）
     'print',
     'log',
     'debugLog',

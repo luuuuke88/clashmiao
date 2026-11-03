@@ -20,10 +20,10 @@
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
 import 'package:clashmiao/features/proxy/data/proxy_failure_log.dart';
-import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 一次手选的结果。
@@ -83,7 +83,7 @@ class ProxySelectionService {
     // 落盘失败（订阅已删除 / 换代、写入失败）时内核照样切换，但下次启动重放的
     // 会是磁盘上的旧值：记一笔，存储与内核不一致时有据可查。
     if (!await write.persisted) {
-      debugPrint('手选 [$groupTag] -> [$outboundTag]：存储未落盘');
+      debugPrintSensitive('手选 [$groupTag] -> [$outboundTag]：存储未落盘');
     }
 
     final port = _ref.read(kernelPortProvider);
@@ -108,8 +108,10 @@ class ProxySelectionService {
       }
     }
 
-    // 每次手选一行：节点名不敏感，出现「重放出来的不是我选的」时用来对账。
-    debugPrint('手选 [$groupTag] -> [$outboundTag]：${outcome.runtimeType}');
+    // 每次手选一行（仅 debug 控制台，节点名不进任何持久化 / 上报通道）：出现「重放出来的不是我选的」时用来对账。
+    debugPrintSensitive(
+      '手选 [$groupTag] -> [$outboundTag]：${outcome.runtimeType}',
+    );
     switch (outcome) {
       case SelectOk():
         return const SelectionApplied();

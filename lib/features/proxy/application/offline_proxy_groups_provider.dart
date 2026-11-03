@@ -14,6 +14,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:clashmiao/features/proxy/data/config_parser.dart';
+import 'package:clashmiao/features/proxy/data/proxy_failure_log.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -45,8 +46,9 @@ Future<List<OutboundGroup>> loadOfflineGroups(
         final groups = ConfigParser.parseConfig(compiled);
         if (groups.isNotEmpty) return groups;
       }
-    } catch (e) {
-      debugPrint('离线分组：编译运行时配置失败，退回解析订阅配置: $e');
+    } catch (e, st) {
+      // 退回解析订阅配置；异常原文只进 debug 控制台，不进 app.log。
+      logProxyFailure('proxy.offlineGroups.compile', e, st);
     }
   }
   return ConfigParser.parseFile(configPath);
@@ -100,8 +102,8 @@ final offlineInfoExclusionsProvider = FutureProvider<Set<String>>((ref) async {
     final cfg = jsonDecode(await file.readAsString());
     if (cfg is! Map<String, dynamic>) return const {};
     return subscriptionInfoExclusionsForConfig(cfg);
-  } catch (e) {
-    debugPrint('离线信息条目排除集：读取订阅配置失败: $e');
+  } catch (e, st) {
+    logProxyFailure('proxy.offlineGroups.infoExclusions', e, st);
     return const {};
   }
 });

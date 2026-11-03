@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
@@ -271,6 +272,34 @@ void main() {
       prefs.getString('proxy_selection_p1'),
       contains('"proxy":"hk"'),
       reason: 'p1 自己的存储保持它当时写下的值（stale 不回滚）',
+    );
+  });
+  test('stale 后读取内核快照失败：app.log 只有类型名，不带异常里的地址', () async {
+    final records = <AppFailureRecord>[];
+    debugAppFailureSink = records.add;
+    addTearDown(() => debugAppFailureSink = null);
+    port.selectResult = (_, _, _) => const SelectStale();
+    port.currentError = StateError(
+      'dial node1.example.com:8443 via https://sub.example.com/a1b2c3',
+    );
+
+    final r = await service().select('proxy', 'hk', expectedAttempt: 3);
+
+    expect(r, isA<SelectionDeferred>());
+    expect(records, isNotEmpty);
+    for (final rec in records) {
+      for (final secret in [
+        'node1.example.com',
+        '8443',
+        'sub.example.com',
+        'a1b2c3',
+      ]) {
+        expect(rec.line, isNot(contains(secret)), reason: rec.line);
+      }
+    }
+    expect(
+      records.single.line,
+      contains('[ERROR] proxy.selection.staleSnapshot: StateError'),
     );
   });
 }

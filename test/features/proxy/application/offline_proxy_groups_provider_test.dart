@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -74,5 +75,33 @@ void main() {
       )).map((g) => g.tag),
       ['proxy'],
     );
+  });
+
+  test('编译失败：app.log 只有类型名，不带异常里的订阅地址 / 节点地址', () async {
+    final records = <AppFailureRecord>[];
+    debugAppFailureSink = records.add;
+    addTearDown(() => debugAppFailureSink = null);
+
+    final groups = await loadOfflineGroups(
+      path,
+      compile: (_) async => throw StateError(
+        'dial node1.example.com:8443 via https://sub.example.com/a1b2c3 '
+        'in /Users/someone/profile.json',
+      ),
+    );
+
+    expect(groups.map((g) => g.tag), ['proxy'], reason: '仍退回解析订阅配置');
+    expect(records, hasLength(1));
+    final line = records.single.line;
+    for (final secret in [
+      'node1.example.com',
+      '8443',
+      'sub.example.com',
+      'a1b2c3',
+      'someone',
+    ]) {
+      expect(line, isNot(contains(secret)), reason: line);
+    }
+    expect(line, contains('[ERROR] proxy.offlineGroups.compile: StateError'));
   });
 }

@@ -19,10 +19,11 @@
 
 set -euo pipefail
 
-# Android 用自有内核模块（kernel/，官方 sing-box 1.14.3）构建的 aar；桌面与 iOS 本期不动，
-# 仍用旧 tag 的外部构建产物。两个 tag 分开：升级 Android 内核不影响其它平台的下载。
+# Android 与 iOS 用自有内核模块（kernel/，官方 sing-box 1.14.3）构建的产物；桌面本期不动，
+# 仍用旧 tag 的外部构建产物。三个 tag 分开：升级一个平台的内核不影响其它平台的下载。
 TAG="${LIBCORE_TAG:-libcore-v1.8.9-16k}"
 ANDROID_TAG="${ANDROID_LIBCORE_TAG:-libcore-v1.14.3-r2}"
+IOS_TAG="${IOS_LIBCORE_TAG:-libcore-v1.14.3-r3}"
 LIBCORE_REPO="${LIBCORE_REPO:-luuuuke88/clashmiao}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
@@ -193,8 +194,22 @@ PLIST
 }
 
 normalize_ios_framework_slice() {
-  local framework="$1"
+  local framework="$1" item
   [ -d "$framework" ] || return
+
+  # 版本化 bundle（Versions/A + 顶层符号链接，gomobile 的默认产物）：先把真实内容搬到顶层，
+  # 否则下面删 Versions 会连二进制一起删掉。
+  if [ -d "$framework/Versions/A" ]; then
+    for item in Headers Modules Libcore; do
+      if [ -e "$framework/Versions/A/$item" ]; then
+        rm -rf "$framework/$item"
+        mv "$framework/Versions/A/$item" "$framework/$item"
+      fi
+    done
+    if [ ! -f "$framework/Info.plist" ] && [ -f "$framework/Versions/A/Resources/Info.plist" ]; then
+      mv "$framework/Versions/A/Resources/Info.plist" "$framework/Info.plist"
+    fi
+  fi
 
   if [ ! -f "$framework/Info.plist" ]; then
     if [ -f "$framework/Resources/Info.plist" ]; then
@@ -210,6 +225,10 @@ normalize_ios_framework_slice() {
   # iOS frameworks must be shallow bundles. Some libcore archives are built with
   # macOS-style Versions/Resources directories, which Xcode rejects for iOS apps.
   rm -rf "$framework/Versions" "$framework/Resources"
+  if [ ! -f "$framework/Libcore" ] || [ -L "$framework/Libcore" ]; then
+    warn "$framework 缺少二进制 Libcore"
+    exit 1
+  fi
   write_ios_framework_info_plist "$framework/Info.plist"
 }
 
@@ -229,12 +248,12 @@ fetch_ios() {
   mkdir -p "$(dirname "$tmp")" ios/Frameworks
   if [ ! -s "$tmp" ] || [ "${FORCE:-}" = "1" ]; then
     log "下载 Libcore.xcframework.zip"
-    gh release download "$TAG" -p Libcore.xcframework.zip -O "$tmp" --clobber --repo "$LIBCORE_REPO"
+    gh release download "$IOS_TAG" -p Libcore.xcframework.zip -O "$tmp" --clobber --repo "$LIBCORE_REPO"
   else
     log "${tmp} 已存在，复用前先校验"
   fi
   # 缓存复用与新下载一视同仁：校验通过才允许解压；不通过则 zip 被删、Frameworks 不动。
-  verify_or_die "$TAG" Libcore.xcframework.zip "$tmp"
+  verify_or_die "$IOS_TAG" Libcore.xcframework.zip "$tmp"
   log "Libcore.xcframework.zip sha256 校验通过"
   rm -rf ios/Frameworks/Libcore.xcframework
   unzip -q -o "$tmp" -d ios/Frameworks/
@@ -271,4 +290,4 @@ case "${1:-default}" in
     ;;
 esac
 
-log "done. tag: ${TAG}（Android: ${ANDROID_TAG}）"
+log "done. tag: ${TAG}（Android: ${ANDROID_TAG}，iOS: ${IOS_TAG}）"

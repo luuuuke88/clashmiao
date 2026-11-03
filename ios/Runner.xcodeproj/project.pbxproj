@@ -10,6 +10,8 @@
 		0A03DACD4094B8C20D3CC02A /* KernelSnapshotStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7228246999CE4B5C5D69372E /* KernelSnapshotStream.swift */; };
 		10A4AB572719EBBF64053085 /* ConfigBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B82E905342F0ACF01092B4A /* ConfigBuilderTests.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1685790305F24D3ACDE6376A /* TunSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345E1E4E168FC127C75AE4F3 /* TunSettings.swift */; };
+		2303D70CD2A43B3FBA8B9454 /* TunSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345E1E4E168FC127C75AE4F3 /* TunSettings.swift */; };
 		26CDD8AC61C6166764AEA977 /* Libcore.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9D249027C372FD99566246 /* Libcore.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		28FDE8390C19EE681F3FD833 /* Libcore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9D249027C372FD99566246 /* Libcore.xcframework */; };
 		2A5E964D883263D4555CAA71 /* KernelBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D66462C8FA02752B041C785 /* KernelBridge.swift */; };
@@ -63,6 +65,7 @@
 		DB73BF91B13EF34DDF1BB0F0 /* Pods_SingBoxPacketTunnel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BEF56D6C5E02ADCEBA6DE715 /* Pods_SingBoxPacketTunnel.framework */; };
 		DD363280295662F7931409FA /* PigeonParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6DC51D34947BAD797A4521 /* PigeonParityTests.swift */; };
 		DD880A3571FA40BC0DBB865D /* ExtensionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */; };
+		EB6C196084647384052FEDCB /* TunSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */; };
 		EFCBFB91B3C2AB6AFA2E8B71 /* ClashMiaoTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234CCAD97882DE94F0BB9F61 /* ClashMiaoTunnelProvider.swift */; };
 		EFDEEA655251E5A547232BA1 /* BlockingRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86831862671502B9FCF81396 /* BlockingRunner.swift */; };
 		F4629C1C570EEE1B1A9915AB /* ExtensionStateWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB33108E1240C31F3B1BC4A7 /* ExtensionStateWriter.swift */; };
@@ -125,6 +128,7 @@
 		2D66462C8FA02752B041C785 /* KernelBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelBridge.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		345E1E4E168FC127C75AE4F3 /* TunSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunSettings.swift; sourceTree = "<group>"; };
 		3618E840D41F5D97FC66A99A /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		3967CFEF70F984513C1DC678 /* ProfilePathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePathResolver.swift; sourceTree = "<group>"; };
 		399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtensionState.swift; sourceTree = "<group>"; };
@@ -166,6 +170,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D9D249027C372FD99566246 /* Libcore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Libcore.xcframework; sourceTree = "<group>"; };
 		9DC9D10E04D8DA31F2EAEF08 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunSettingsTests.swift; sourceTree = "<group>"; };
 		A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonBridge.swift; sourceTree = "<group>"; };
 		A97E2CFC5C23F36872715E03 /* TunnelAdapter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunnelAdapter.swift; sourceTree = "<group>"; };
 		B4EBA6FCCF1F15E39DEC477A /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
@@ -232,6 +237,7 @@
 				164D52776DD6876105D6F3D5 /* KernelCoordinatorTests.swift */,
 				3B864947F4BB82A12413D8F1 /* ExtensionStateWriterTests.swift */,
 				7B6DC51D34947BAD797A4521 /* PigeonParityTests.swift */,
+				A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -389,6 +395,7 @@
 				5B2712D02C8610583E6CCF8E /* KernelIntent.swift */,
 				399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */,
 				EB33108E1240C31F3B1BC4A7 /* ExtensionStateWriter.swift */,
+				345E1E4E168FC127C75AE4F3 /* TunSettings.swift */,
 			);
 			name = Kernel;
 			path = Kernel;
@@ -713,6 +720,7 @@
 				8243C983493AC21ECA6AA913 /* KernelCoordinatorTests.swift in Sources */,
 				BD9A79BAE12B211F21477D3F /* ExtensionStateWriterTests.swift in Sources */,
 				DD363280295662F7931409FA /* PigeonParityTests.swift in Sources */,
+				EB6C196084647384052FEDCB /* TunSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -750,6 +758,7 @@
 				7CE1DF5B07C9F6D847F819AE /* KernelHost.swift in Sources */,
 				0A03DACD4094B8C20D3CC02A /* KernelSnapshotStream.swift in Sources */,
 				8DCB887D7B6318FC03562F82 /* NetworkStream.swift in Sources */,
+				1685790305F24D3ACDE6376A /* TunSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -768,6 +777,7 @@
 				C8B1F50847B0DD834993A8A6 /* KernelIntent.swift in Sources */,
 				C43A6851170DFFDB91D9B763 /* ExtensionState.swift in Sources */,
 				2BE6BF22C13C3262817B9710 /* ExtensionStateWriter.swift in Sources */,
+				2303D70CD2A43B3FBA8B9454 /* TunSettings.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

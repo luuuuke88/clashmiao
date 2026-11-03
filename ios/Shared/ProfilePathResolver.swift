@@ -53,10 +53,15 @@ public enum ProfilePathResolver {
         .appendingPathComponent("Library", isDirectory: true)
         .appendingPathComponent("Caches", isDirectory: true)
 
-    /// Working directory passed to `LibboxSetup`. Holds the active
-    /// rule-set cache and the libbox unix-domain command socket.
+    /// Working directory of the extension's kernel. Holds the active
+    /// rule-set cache (the command socket lives at the container root).
     public static let runtimeWorkingDirectory = cacheDirectory
         .appendingPathComponent("Runtime", isDirectory: true)
+
+    /// Runner 进程自己的内核工作目录（崩溃输出、临时文件）。不能与扩展共用
+    /// `runtimeWorkingDirectory`：内核按进程把崩溃输出写到工作目录下的同名文件。
+    public static let runnerKernelDirectory = cacheDirectory
+        .appendingPathComponent("RunnerKernel", isDirectory: true)
 
     /// Runner 与扩展交换意图 / 事实的目录。不放 `Library/Caches`（系统可能清理），
     /// 也不放 Dart 的 `Runtime/`（Dart 启动器会清理 `runtime-*.json`）。

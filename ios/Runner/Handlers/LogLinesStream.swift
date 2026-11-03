@@ -13,7 +13,6 @@
 import Foundation
 import Combine
 import Flutter
-import Libcore
 
 public final class LogLinesStream: NSObject, FlutterPlugin, FlutterStreamHandler {
 
@@ -37,9 +36,6 @@ public final class LogLinesStream: NSObject, FlutterPlugin, FlutterStreamHandler
 
     public func onListen(withArguments arguments: Any?,
                          eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        FileManager.default.changeCurrentDirectoryPath(
-            ProfilePathResolver.sharedContainer.path
-        )
         sink = events
         let client = KernelCommandClient(.kernelLog)
         commandClient = client

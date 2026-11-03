@@ -68,13 +68,12 @@ Steps:
 
 ## 4. Link libcore.xcframework
 
-> **Heads-up:** the repo currently ships a placeholder
-> `ios/Frameworks/Libbox.xcframework` (vanilla sing-box, no `Mobile*`
-> wrapper). The Swift sources in this scaffold import the
-> `Libcore` module and call `MobileSetup` / `MobileParse` /
-> `MobileBuildConfig` / `MobileGenerateWarpConfig`. These do **not**
-> exist in the current placeholder framework – the scaffold will not
-> compile until you replace it with the real artefact.
+> **Heads-up:** the Swift sources import the `Libcore` module and call
+> the kernel facade (`CoreSetup` / `CoreParse` / `CoreBuildConfig` /
+> `CoreNewEngine` / `CoreNewClient` …), generated from the repo's
+> `kernel/` module. Get it with `bin/fetch-libcore.sh ios`, or build it
+> locally with `tools/kernel/build-apple.sh`. Any other `Libbox` /
+> `Libcore` framework lying around in `ios/Frameworks/` will not link.
 
 Once `bin/fetch-libcore.sh ios` has produced `ios/Frameworks/Libcore.xcframework`:
 

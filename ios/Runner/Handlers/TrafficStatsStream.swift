@@ -5,7 +5,7 @@
 //  GPL-3.0 License
 //  Copyright (c) 2026 ClashMiao Contributors
 //
-//  Pushes per-tick libcore status messages (uplink/downlink, total
+//  Pushes per-tick kernel stats frames (uplink/downlink rates, total
 //  bytes, connection counters) to Dart via the `/stats` event
 //  channel. The Dart side decodes the map into `BoxStats`.
 //
@@ -13,7 +13,6 @@
 import Foundation
 import Combine
 import Flutter
-import Libcore
 
 public final class TrafficStatsStream: NSObject, FlutterPlugin, FlutterStreamHandler {
 
@@ -38,14 +37,11 @@ public final class TrafficStatsStream: NSObject, FlutterPlugin, FlutterStreamHan
 
     public func onListen(withArguments arguments: Any?,
                          eventSink events: @escaping FlutterEventSink) -> FlutterError? {
-        FileManager.default.changeCurrentDirectoryPath(
-            ProfilePathResolver.sharedContainer.path
-        )
         sink = events
         let client = KernelCommandClient(.runtimeStatus)
         commandClient = client
-        subscription = client.$latestStatus.sink { [weak self] status in
-            self?.forward(status)
+        subscription = client.$latestStats.sink { [weak self] stats in
+            self?.forward(stats)
         }
         client.connect()
         return nil
@@ -60,17 +56,9 @@ public final class TrafficStatsStream: NSObject, FlutterPlugin, FlutterStreamHan
         return nil
     }
 
-    private func forward(_ status: LibboxStatusMessage?) {
-        guard let status, let sink else { return }
-        // Field names mirror the Dart `BoxStats.fromJson` decoder.
-        let payload: [String: Any] = [
-            "connections-in":  status.connectionsIn,
-            "connections-out": status.connectionsOut,
-            "uplink":          status.uplink,
-            "downlink":        status.downlink,
-            "uplink-total":    status.uplinkTotal,
-            "downlink-total":  status.downlinkTotal,
-        ]
-        sink(payload)
+    private func forward(_ stats: [String: Any]?) {
+        // 已经是线格式的键名（与 Dart `BoxStats.fromJson` 一致），原样转发。
+        guard let stats, let sink else { return }
+        sink(stats)
     }
 }

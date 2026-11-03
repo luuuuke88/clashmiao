@@ -5,255 +5,261 @@
 //  GPL-3.0 License
 //  Copyright (c) 2026 ClashMiao Contributors
 //
-//  Implements libcore's platform interface: every native callback the
-//  kernel needs (TUN setup, WiFi detection, log sink, DNS reload, ...)
-//  routes through this object. The class also doubles as the command
-//  server's handler so Runner-side `KernelCommandClient` instances
-//  receive log / status / group updates.
+//  内核在扩展里的平台回调（`CorePlatform`）与命令服务器回调（`CoreEngineHandler`）。
+//  TUN 规格到 NE 设置的翻译在 Shared/Kernel/TunSettings.swift（纯函数，有单测）。
 //
 
+import Darwin
 import Foundation
 import Libcore
+import Network
 import NetworkExtension
 
-/// Lives for the duration of one tunnel session.
-public final class KernelPlatformBridge: NSObject,
-                                         LibboxPlatformInterfaceProtocol,
-                                         LibboxCommandServerHandlerProtocol {
+/// 一次隧道会话内的平台回调。
+public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEngineHandlerProtocol {
 
-    /// Back-pointer to the provider so we can call NEPacketTunnelProvider
-    /// APIs (setTunnelNetworkSettings, packetFlow.value(forKeyPath:), …).
-    /// 弱引用：provider 持有 bridge，反过来强持有会形成引用环，停止后两者都释放不掉。
+    /// 弱引用：provider 持有 bridge，反过来强持有会形成引用环。
     private weak var provider: KernelProviderProxy?
 
-    /// Last applied NE settings. Used to support `clearDNSCache` and the
-    /// system-proxy toggle without re-deriving from scratch.
+    /// 最近一次应用的 NE 设置：`clearDNSCache` 与系统代理开关要在它上面改。
+    private let settingsLock = NSLock()
     private var lastAppliedSettings: NEPacketTunnelNetworkSettings?
+
+    private let monitorLock = NSLock()
+    private var pathMonitor: NWPathMonitor?
+    private let monitorQueue = DispatchQueue(label: "com.clashmiao.tunnel.path-monitor")
 
     init(_ provider: KernelProviderProxy) {
         self.provider = provider
     }
 
-    /// Allow `KernelProviderProxy` to reset cached state on tunnel stop.
     func discardCachedSettings() {
+        settingsLock.lock()
         lastAppliedSettings = nil
+        settingsLock.unlock()
     }
 
-    // MARK: - WiFi state
-
-    public func readWIFIState() -> LibboxWIFIState? {
-        // iOS does not expose SSID/BSSID to non-privileged extensions
-        // without the location entitlement. Returning nil disables
-        // rules that depend on WiFi identification.
-        return nil
+    private var appliedSettings: NEPacketTunnelNetworkSettings? {
+        settingsLock.lock(); defer { settingsLock.unlock() }
+        return lastAppliedSettings
     }
 
-    // MARK: - TUN handling
+    // MARK: - TUN
 
-    public func openTun(_ options: LibboxTunOptionsProtocol?,
-                        ret0_: UnsafeMutablePointer<Int32>?) throws {
-        try awaitBlockingThrowing { [self] in
-            try await openTunAsync(options, ret0_)
+    /// 内核在启动流程里同步调用；`setTunnelNetworkSettings` 是异步的，这里阻塞等它完成。
+    /// 被 Engine 取消时 Go 侧立即返回，这次设置仍会完成；NE 按调用顺序应用，新一轮总在其后生效。
+    public func openTun(_ specJSON: String?, ret0_: UnsafeMutablePointer<Int32>?) throws {
+        guard let ret0_ else { throw NSError(domain: "ClashMiaoTunnel", code: 2, userInfo: [NSLocalizedDescriptionKey: "nil return pointer"]) }
+        guard let provider else { throw NSError(domain: "ClashMiaoTunnel", code: 7, userInfo: [NSLocalizedDescriptionKey: "provider released"]) }
+        let spec: TunSpec
+        do {
+            spec = try JSONDecoder().decode(TunSpec.self, from: Data((specJSON ?? "").utf8))
+        } catch {
+            throw TunSpecError.malformed(error.localizedDescription)
         }
-    }
-
-    /// Translates libcore's tun configuration request into NetworkExtension
-    /// settings and applies them. The returned file descriptor (via
-    /// `ret0_`) is what libcore will feed packets to/from.
-    private func openTunAsync(_ options: LibboxTunOptionsProtocol?,
-                              _ ret0_: UnsafeMutablePointer<Int32>?) async throws {
-        guard let options else {
-            throw NSError(domain: "[ClashMiao] nil tun options", code: 1)
+        let ignored = TunSettingsBuilder.ignoredFields(spec)
+        if !ignored.isEmpty {
+            provider.forwardKernelLine("[Tunnel] tun spec fields ignored on iOS: \(ignored.joined(separator: ","))")
         }
-        guard let ret0_ else {
-            throw NSError(domain: "[ClashMiao] nil return pointer", code: 2)
-        }
-
-        guard let provider else {
-            throw NSError(domain: "[ClashMiao] provider released", code: 7)
-        }
-        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
-
-        if options.getAutoRoute() {
-            settings.mtu = NSNumber(value: options.getMTU())
-
-            var dnsError: NSError?
-            let dns = options.getDNSServerAddress(&dnsError)
-            if let dnsError { throw dnsError }
-            settings.dnsSettings = NEDNSSettings(servers: [dns])
-
-            try Self.applyIPv4(settings: settings, options: options)
-            try Self.applyIPv6(settings: settings, options: options)
-        }
-
-        if options.isHTTPProxyEnabled() {
-            let proxy = NEProxySettings()
-            let endpoint = NEProxyServer(
-                address: options.getHTTPProxyServer(),
-                port: Int(options.getHTTPProxyServerPort())
-            )
-            proxy.httpServer = endpoint
-            proxy.httpsServer = endpoint
-            settings.proxySettings = proxy
-        }
-
+        let settings = try TunSettingsBuilder.settings(from: spec)
+        settingsLock.lock()
         lastAppliedSettings = settings
-        try await provider.setTunnelNetworkSettings(settings)
-
-        // Prefer the raw fd off the packet flow's underlying socket –
-        // this is the fastest path. Fall back to libcore's helper if
-        // KVC is unavailable (some OS versions strip it).
-        if let fd = provider.packetFlow.value(forKeyPath: "socket.fileDescriptor") as? Int32 {
-            ret0_.pointee = fd
-            return
-        }
-        let fallback = LibboxGetTunnelFileDescriptor()
-        guard fallback != -1 else {
-            throw NSError(domain: "[ClashMiao] missing tun fd", code: 3)
-        }
-        ret0_.pointee = fallback
-    }
-
-    private static func applyIPv4(settings: NEPacketTunnelNetworkSettings,
-                                  options: LibboxTunOptionsProtocol) throws {
-        var addrs: [String] = []
-        var masks: [String] = []
-        if let iter = options.getInet4Address() {
-            while iter.hasNext() {
-                guard let prefix = iter.next() else { continue }
-                addrs.append(prefix.address())
-                masks.append(prefix.mask())
-            }
-        }
-        let ipv4 = NEIPv4Settings(addresses: addrs, subnetMasks: masks)
-        var routes: [NEIPv4Route] = []
-        if let routeIter = options.getInet4RouteAddress(), routeIter.hasNext() {
-            while routeIter.hasNext() {
-                guard let r = routeIter.next() else { continue }
-                routes.append(NEIPv4Route(destinationAddress: r.address(),
-                                          subnetMask: r.mask()))
-            }
-        } else {
-            routes.append(NEIPv4Route.default())
-        }
-        for (index, address) in addrs.enumerated() {
-            routes.append(NEIPv4Route(destinationAddress: address,
-                                      subnetMask: masks[index]))
-        }
-        ipv4.includedRoutes = routes
-        settings.ipv4Settings = ipv4
-    }
-
-    private static func applyIPv6(settings: NEPacketTunnelNetworkSettings,
-                                  options: LibboxTunOptionsProtocol) throws {
-        var addrs: [String] = []
-        var prefixes: [NSNumber] = []
-        if let iter = options.getInet6Address() {
-            while iter.hasNext() {
-                guard let prefix = iter.next() else { continue }
-                addrs.append(prefix.address())
-                prefixes.append(NSNumber(value: prefix.prefix()))
-            }
-        }
-        let ipv6 = NEIPv6Settings(addresses: addrs, networkPrefixLengths: prefixes)
-        var routes: [NEIPv6Route] = []
-        if let routeIter = options.getInet6RouteAddress(), routeIter.hasNext() {
-            while routeIter.hasNext() {
-                guard let r = routeIter.next() else { continue }
-                routes.append(NEIPv6Route(destinationAddress: r.address(),
-                                          networkPrefixLength: NSNumber(value: r.prefix())))
-            }
-        } else {
-            routes.append(NEIPv6Route.default())
-        }
-        ipv6.includedRoutes = routes
-        settings.ipv6Settings = ipv6
-    }
-
-    // MARK: - Interface monitoring (delegated to OS)
-
-    public func usePlatformAutoDetectControl() -> Bool { true }
-    public func autoDetectControl(_: Int32) throws {}
-    public func usePlatformDefaultInterfaceMonitor() -> Bool { false }
-    public func startDefaultInterfaceMonitor(_: LibboxInterfaceUpdateListenerProtocol?) throws {}
-    public func closeDefaultInterfaceMonitor(_: LibboxInterfaceUpdateListenerProtocol?) throws {}
-    public func useGetter() -> Bool { false }
-    public func getInterfaces() throws -> LibboxNetworkInterfaceIteratorProtocol {
-        throw NSError(domain: "[ClashMiao] interface enumeration not supported", code: 4)
-    }
-    public func underNetworkExtension() -> Bool { true }
-    public func includeAllNetworks() -> Bool { false }
-
-    // MARK: - Process attribution (unused on iOS)
-
-    public func findConnectionOwner(_: Int32,
-                                    sourceAddress _: String?,
-                                    sourcePort _: Int32,
-                                    destinationAddress _: String?,
-                                    destinationPort _: Int32,
-                                    ret0_ _: UnsafeMutablePointer<Int32>?) throws {
-        throw NSError(domain: "[ClashMiao] findConnectionOwner unsupported", code: 5)
-    }
-
-    public func packageName(byUid _: Int32, error _: NSErrorPointer) -> String { "" }
-    public func uid(byPackageName _: String?, ret0_ _: UnsafeMutablePointer<Int32>?) throws {
-        throw NSError(domain: "[ClashMiao] uid lookup unsupported", code: 6)
-    }
-    public func useProcFS() -> Bool { false }
-
-    // MARK: - Logging
-
-    public func writeLog(_ message: String?) {
-        guard let message else { return }
-        provider?.forwardKernelLine(message)
-    }
-
-    // MARK: - DNS / proxy lifecycle
-
-    public func clearDNSCache() {
-        guard let lastAppliedSettings, let provider else { return }
-        // Bounce the tunnel settings to force a DNS cache flush. We
-        // assert reasserting around it so the OS doesn't try to drop
-        // the tunnel while we're swapping settings.
-        provider.reasserting = true
-        provider.setTunnelNetworkSettings(nil) { _ in }
-        provider.setTunnelNetworkSettings(lastAppliedSettings) { _ in }
-        provider.reasserting = false
-    }
-
-    /// 不阻塞 libbox 的回调线程：只入队，由 provider 的串行队列执行重载。
-    public func serviceReload() throws {
-        provider?.requestSelfReload()
-    }
-
-    public func getSystemProxyStatus() -> LibboxSystemProxyStatus? {
-        let status = LibboxSystemProxyStatus()
-        guard let proxySettings = lastAppliedSettings?.proxySettings,
-              proxySettings.httpServer != nil else {
-            return status
-        }
-        status.available = true
-        status.enabled = proxySettings.httpEnabled
-        return status
-    }
-
-    public func setSystemProxyEnabled(_ isEnabled: Bool) throws {
-        guard
-            let settings = lastAppliedSettings,
-            let proxySettings = settings.proxySettings,
-            proxySettings.httpServer != nil,
-            proxySettings.httpEnabled != isEnabled
-        else { return }
-        proxySettings.httpEnabled = isEnabled
-        proxySettings.httpsEnabled = isEnabled
-        settings.proxySettings = proxySettings
-        guard let provider else { return }
+        settingsLock.unlock()
         try awaitBlockingThrowing { [provider] in
             try await provider.setTunnelNetworkSettings(settings)
         }
+        // fd 归 NE：内核 dup 一份并在服务关闭时关自己那份，这一份我们不关。
+        let fd = CoreTunnelFileDescriptor()
+        guard fd >= 0 else {
+            throw NSError(domain: "ClashMiaoTunnel", code: 3, userInfo: [NSLocalizedDescriptionKey: "missing tun file descriptor"])
+        }
+        ret0_.pointee = fd
     }
 
-    public func postServiceClose() {
-        // Reserved for future cleanup hooks. Intentionally empty.
+    /// 扩展自己的 socket 本来就不走隧道，不需要保护。
+    public func protect(_ fd: Int32) throws {}
+
+    public func useProcFS() -> Bool { false }
+
+    public func findOwner(_ protocol: Int32, srcAddr: String?, srcPort: Int32,
+                          dstAddr: String?, dstPort: Int32, error: NSErrorPointer) -> String {
+        error?.pointee = NSError(domain: "ClashMiaoTunnel", code: 5,
+                                 userInfo: [NSLocalizedDescriptionKey: "connection owner lookup is not supported on iOS"])
+        return ""
+    }
+
+    // MARK: - 默认接口监视
+
+    public func startInterfaceMonitor(_ l: CoreInterfaceListenerProtocol?) throws {
+        guard let l else { return }
+        let monitor = NWPathMonitor()
+        monitor.pathUpdateHandler = { path in
+            // 排除隧道自己的 utun：默认接口指的是物理出口。
+            let iface = path.availableInterfaces.first { !$0.name.hasPrefix("utun") && $0.type != .loopback }
+            guard path.status == .satisfied, let iface else {
+                l.update("", index: -1, expensive: false, constrained: false)
+                return
+            }
+            l.update(iface.name, index: Int32(iface.index), expensive: path.isExpensive, constrained: path.isConstrained)
+        }
+        monitorLock.lock()
+        pathMonitor?.cancel()
+        pathMonitor = monitor
+        monitorLock.unlock()
+        monitor.start(queue: monitorQueue)
+    }
+
+    public func stopInterfaceMonitor() throws {
+        monitorLock.lock()
+        pathMonitor?.cancel()
+        pathMonitor = nil
+        monitorLock.unlock()
+    }
+
+    // MARK: - 接口列表
+
+    /// `[{name,index,mtu,flags,type,addresses[],dns[],gateway[],metered}]`；type：0 wifi、1 蜂窝、2 有线、3 其它。
+    public func interfacesJSON(_ error: NSErrorPointer) -> String {
+        monitorLock.lock()
+        let path = pathMonitor?.currentPath
+        monitorLock.unlock()
+        var types: [String: Int32] = [:]
+        for iface in path?.availableInterfaces ?? [] {
+            switch iface.type {
+            case .wifi: types[iface.name] = 0
+            case .cellular: types[iface.name] = 1
+            case .wiredEthernet: types[iface.name] = 2
+            default: types[iface.name] = 3
+            }
+        }
+        let list = Self.collectInterfaces(types: types)
+        do {
+            let data = try JSONSerialization.data(withJSONObject: list)
+            return String(decoding: data, as: UTF8.self)
+        } catch let e as NSError {
+            error?.pointee = e
+            return ""
+        }
+    }
+
+    /// `types`：系统路径给出的接口类型（监视器在跑时才有）；缺省按名字推断（iPhone 上 en0 是 Wi-Fi、pdp_ip 是蜂窝）。
+    static func collectInterfaces(types: [String: Int32]) -> [[String: Any]] {
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return [] }
+        defer { freeifaddrs(head) }
+        struct Entry { var flags: Int32; var mtu: Int32; var addrs: [String] }
+        var byName: [String: Entry] = [:]
+        var order: [String] = []
+        var cursor: UnsafeMutablePointer<ifaddrs>? = first
+        while let p = cursor {
+            defer { cursor = p.pointee.ifa_next }
+            let name = String(cString: p.pointee.ifa_name)
+            // 隧道自己的 utun 与回环不是出口
+            if name.hasPrefix("utun") || name.hasPrefix("lo") { continue }
+            if byName[name] == nil {
+                byName[name] = Entry(flags: Int32(bitPattern: p.pointee.ifa_flags), mtu: 0, addrs: [])
+                order.append(name)
+            }
+            guard let sa = p.pointee.ifa_addr else { continue }
+            let family = Int32(sa.pointee.sa_family)
+            if family == AF_LINK, let data = p.pointee.ifa_data {
+                byName[name]?.mtu = Int32(bitPattern: data.assumingMemoryBound(to: if_data.self).pointee.ifi_mtu)
+                continue
+            }
+            guard family == AF_INET || family == AF_INET6, let mask = p.pointee.ifa_netmask else { continue }
+            if let addr = numericHost(sa) {
+                byName[name]?.addrs.append("\(addr)/\(prefixLength(mask, family: family))")
+            }
+        }
+        return order.compactMap { name -> [String: Any]? in
+            guard let e = byName[name], !e.addrs.isEmpty else { return nil }
+            let type = types[name] ?? (name == "en0" ? 0 : (name.hasPrefix("pdp_ip") ? 1 : (name.hasPrefix("en") ? 2 : 3)))
+            return [
+                "name": name, "index": Int32(if_nametoindex(name)), "mtu": e.mtu > 0 ? e.mtu : 1500,
+                "flags": e.flags, "type": type, "addresses": e.addrs,
+                "dns": [String](), "gateway": [String](), "metered": type == 1,
+            ]
+        }
+    }
+
+    private static func numericHost(_ sa: UnsafeMutablePointer<sockaddr>) -> String? {
+        var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+        let len = socklen_t(sa.pointee.sa_family == AF_INET6 ? MemoryLayout<sockaddr_in6>.size : MemoryLayout<sockaddr_in>.size)
+        guard getnameinfo(sa, len, &host, socklen_t(host.count), nil, 0, NI_NUMERICHOST) == 0 else { return nil }
+        let s = String(cString: host)
+        // 链路本地地址带 %scope 后缀，内核不认
+        return s.split(separator: "%").first.map(String.init)
+    }
+
+    private static func prefixLength(_ mask: UnsafeMutablePointer<sockaddr>, family: Int32) -> Int {
+        var bits = 0
+        if family == AF_INET {
+            mask.withMemoryRebound(to: sockaddr_in.self, capacity: 1) {
+                bits = UInt32(bigEndian: $0.pointee.sin_addr.s_addr).nonzeroBitCount
+            }
+        } else {
+            mask.withMemoryRebound(to: sockaddr_in6.self, capacity: 1) {
+                var a = $0.pointee.sin6_addr
+                withUnsafeBytes(of: &a) { raw in bits = raw.reduce(0) { $0 + $1.nonzeroBitCount } }
+            }
+        }
+        return bits
+    }
+
+    // MARK: - DNS / 日志
+
+    public func clearDNSCache() {
+        guard let settings = appliedSettings, let provider else { return }
+        // 重设一次隧道设置让系统丢掉 DNS 缓存；期间声明 reasserting，系统不会因此断开隧道。
+        provider.reasserting = true
+        provider.setTunnelNetworkSettings(nil) { _ in
+            provider.setTunnelNetworkSettings(settings) { _ in
+                provider.reasserting = false
+            }
+        }
+    }
+
+    /// nil：用内核自己的本地 DNS（扩展里直接走系统网络）。
+    public func localDNS() -> CoreLocalDNSProtocol? { nil }
+
+    /// 内核日志已经在命令服务器的日志流里（Runner 订阅它）；这里不再转写，避免同一行进两次。
+    public func writeLog(_ line: String?) {}
+
+    // MARK: - CoreEngineHandler
+
+    /// 不阻塞内核的回调线程：只入队，由 provider 的串行队列执行重载。
+    public func onReloadRequested() {
+        provider?.requestSelfReload()
+    }
+
+    public func onStopRequested() {
+        provider?.cancelTunnelWithError(nil)
+    }
+
+    public func systemProxyAvailable() -> Bool {
+        appliedSettings?.proxySettings?.httpServer != nil
+    }
+
+    public func systemProxyEnabled() -> Bool {
+        guard let proxy = appliedSettings?.proxySettings, proxy.httpServer != nil else { return false }
+        return proxy.httpEnabled
+    }
+
+    public func setSystemProxyEnabled(_ enabled: Bool) {
+        guard
+            let settings = appliedSettings,
+            let proxy = settings.proxySettings,
+            proxy.httpServer != nil,
+            proxy.httpEnabled != enabled,
+            let provider
+        else { return }
+        proxy.httpEnabled = enabled
+        proxy.httpsEnabled = enabled
+        settings.proxySettings = proxy
+        provider.setTunnelNetworkSettings(settings) { error in
+            if let error {
+                provider.forwardKernelLine("[Tunnel] toggling system proxy failed: \(error.localizedDescription)")
+            }
+        }
     }
 }

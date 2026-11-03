@@ -3,7 +3,7 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
 import 'package:clashmiao/features/home/presentation/home_page.dart';
 import 'package:flutter/material.dart';

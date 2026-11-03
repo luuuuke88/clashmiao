@@ -1,9 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

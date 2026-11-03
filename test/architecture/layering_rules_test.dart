@@ -1258,7 +1258,7 @@ import 'package:clashmiao/core/storage/stub.dart'
             'app/x.dart': """
 import 'package:clashmiao/core/a.dart';
 import 'package:clashmiao/shared/b.dart';
-import 'package:clashmiao/domain/connection/c.dart';
+import 'package:clashmiao/features/connection/c.dart';
 import 'package:clashmiao/features/home/d.dart';
 import './y.dart';
 """,

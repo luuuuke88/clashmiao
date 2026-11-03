@@ -1,14 +1,14 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/features/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/box_status.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/proxy/application/latency_test_coordinator.dart';
-import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
+import 'package:clashmiao/features/connection/application/latency_test_wiring.dart';
 import 'package:clashmiao/features/proxy/model/cached_delay.dart';
 import 'package:collection/collection.dart';
 import 'package:fake_async/fake_async.dart';

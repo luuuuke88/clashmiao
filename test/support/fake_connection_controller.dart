@@ -1,7 +1,7 @@
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
-import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
-import 'package:clashmiao/domain/connection/model/request_outcome.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/model/connection_snapshot.dart';
+import 'package:clashmiao/features/connection/model/request_outcome.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// UI / 消费者测试用的假控制器：直接以给定快照为状态，不接内核端口、不跑状态机。

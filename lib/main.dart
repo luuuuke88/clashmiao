@@ -15,7 +15,7 @@ import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/logger/sentry_options.dart';
 import 'package:clashmiao/core/box_service/model/directories.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/proxy/system_proxy_guard.dart';

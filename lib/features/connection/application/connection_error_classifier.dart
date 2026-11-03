@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/core/localization/gen/translations.g.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
 import 'package:flutter/services.dart' show PlatformException;
 
 /// 连接失败归类之后的类别。

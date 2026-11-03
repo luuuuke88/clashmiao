@@ -1,11 +1,11 @@
 import 'dart:async';
 
 import 'package:clashmiao/core/box_service/model/box_status.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/application/connection_providers.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_providers.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart' show Desired;
-import 'package:clashmiao/domain/connection/application/connection_timing.dart';
+import 'package:clashmiao/features/connection/application/connection_timing.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:flutter/material.dart';

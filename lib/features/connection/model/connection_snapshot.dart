@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/box_service/kernel_port.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
 
 /// 对外的连接状态（只读）：所有消费者读取的唯一真值，由 `ConnectionMachine`
 /// 从内核快照与本地请求记录派生。

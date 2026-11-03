@@ -3,7 +3,7 @@ import 'dart:async';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:clashmiao/core/logger/app_logger.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:flutter/widgets.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

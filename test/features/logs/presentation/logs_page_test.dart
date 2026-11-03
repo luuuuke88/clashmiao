@@ -142,6 +142,8 @@ void main() {
       AppLogger.configureForTesting(
         resolveLogFile: () async => File('${tempDir.path}/app.log'),
       );
+      // 正常运行时 initAppLogger 启动即完成清理、写下当前版本标记；测试里补上这一步。
+      await AppLogger.instance.discardOutdatedLogFiles();
     });
 
     tearDown(() async {
@@ -174,7 +176,7 @@ void main() {
       expect(appContent, isNot(contains('core log line one')));
     });
 
-    test('"分享应用日志"分享的是脱敏副本：升级前写下的带 token 旧日志不外泄', () async {
+    test('"分享应用日志"分享的是脱敏副本：带 token 的内容不外泄', () async {
       final rawLog = File('${tempDir.path}/app.log');
       await rawLog.writeAsString(
         '2026-06-01T10:00:00.000 [ERROR] profiles.update: '

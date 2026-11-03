@@ -476,6 +476,7 @@ void main() {
     });
 
     test('导出副本：每次都过脱敏器，原文件不交出去', () async {
+      await AppLogger.instance.discardOutdatedLogFiles(); // 标记已是当前版本
       await logFile.writeAsString(
         'fetch https://clashmiao.com/sub/short failed\n',
       );
@@ -486,6 +487,123 @@ void main() {
       expect(copy.path, isNot(logFile.path));
       expect(copy.parent.path, outDir.path);
       expect(await copy.readAsString(), 'fetch https://clashmiao.com failed\n');
+    });
+
+    group('清理失败时旧日志不得进入分享副本', () {
+      Future<String> shareCopy() async {
+        final copy = await AppLogger.instance.writeRedactedCopy(
+          Directory('${tempDir.path}/share'),
+        );
+        return copy.readAsString();
+      }
+
+      test('清理失败 + 旧日志含裸域名节点名：副本不含任何 app.log 内容，只有固定说明', () async {
+        await seedOldLog();
+        AppLogger.instance.debugBeforeDiscard = () async =>
+            throw const FileSystemException('simulated failure');
+
+        // 启动时的清理失败，被吞掉；旧内容仍在盘上。
+        await AppLogger.instance.discardOutdatedLogFiles();
+        expect(await logFile.readAsString(), contains('node.example.com'));
+
+        final shared = await shareCopy();
+
+        expect(shared, '$kLogShareUnavailableNotice\n');
+        expect(shared, isNot(contains('node.example.com')));
+        expect(shared, isNot(contains('proxies.select')));
+        expect(shared, isNot(contains('plain line')));
+      });
+
+      test('分享时重试清理成功：副本是正常脱敏内容，旧内容不存在', () async {
+        await seedOldLog();
+        var failures = 1;
+        AppLogger.instance.debugBeforeDiscard = () async {
+          if (failures-- > 0) {
+            throw const FileSystemException('simulated failure');
+          }
+        };
+        await AppLogger.instance.discardOutdatedLogFiles(); // 第一次失败
+
+        final shared = await shareCopy();
+
+        expect(shared, '$kLogResetNotice\n');
+        expect(shared, isNot(contains('node.example.com')));
+        expect(shared, isNot(contains(kLogShareUnavailableNotice)));
+        expect(await logFile.readAsString(), '$kLogResetNotice\n');
+
+        // 之后新写的行正常进入副本。
+        await AppLogger.instance.append(
+          'fetch https://clashmiao.com/sub/short failed',
+        );
+        expect(
+          await shareCopy(),
+          '$kLogResetNotice\nfetch https://clashmiao.com failed\n',
+        );
+      });
+
+      test('日志目录不存在：建出目录、写下当前版本标记，副本是正常（空）内容', () async {
+        final missingDir = Directory('${tempDir.path}/fresh/logs');
+        final missingLog = File('${missingDir.path}/app.log');
+        AppLogger.configureForTesting(resolveLogFile: () async => missingLog);
+        expect(missingDir.existsSync(), isFalse);
+
+        final shared = await shareCopy();
+
+        expect(shared, isEmpty);
+        expect(shared, isNot(contains(kLogShareUnavailableNotice)));
+        expect(missingDir.existsSync(), isTrue);
+        expect(
+          await File('${missingDir.path}/.app_log_redaction').readAsString(),
+          '$kLogRedactionVersion',
+        );
+
+        // 之后新写的行正常进入副本。
+        await AppLogger.instance.append('plain line');
+        expect(await shareCopy(), 'plain line\n');
+      });
+
+      test('日志目录建不出来（父路径是个文件）：不返回已是当前版本，副本只有固定说明', () async {
+        final blocker = File('${tempDir.path}/blocker');
+        await blocker.writeAsString('not a directory');
+        AppLogger.configureForTesting(
+          resolveLogFile: () async => File('${blocker.path}/logs/app.log'),
+        );
+
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+      });
+
+      test('日志目录不存在 + 清理开始即失败（注入）：副本只有固定说明，不留标记', () async {
+        final missingDir = Directory('${tempDir.path}/fresh2');
+        AppLogger.configureForTesting(
+          resolveLogFile: () async => File('${missingDir.path}/app.log'),
+        );
+        AppLogger.instance.debugBeforeDiscard = () async =>
+            throw const FileSystemException('simulated failure');
+
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+        expect(
+          File('${missingDir.path}/.app_log_redaction').existsSync(),
+          isFalse,
+        );
+      });
+
+      test('重试仍失败：每次分享都只有固定说明，不会死锁', () async {
+        await seedOldLog();
+        AppLogger.instance.debugBeforeDiscard = () async =>
+            throw const FileSystemException('simulated failure');
+
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+      });
+
+      test('正常路径（标记已是当前版本）：行为不变，读 app.log 过脱敏器', () async {
+        await AppLogger.instance.discardOutdatedLogFiles();
+        await AppLogger.instance.append(
+          'fetch https://clashmiao.com/sub/short failed',
+        );
+
+        expect(await shareCopy(), 'fetch https://clashmiao.com failed\n');
+      });
     });
   });
 

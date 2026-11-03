@@ -23,6 +23,10 @@ import (
 var testWorkDir string
 
 func TestMain(m *testing.M) {
+	// 跨进程用例的子进程：自己 Setup 父进程给的 BasePath，只做 Client 一侧（见 crossprocess_test.go）。
+	if base := os.Getenv(crossProcessEnv); base != "" {
+		os.Exit(runCrossProcessChild(base))
+	}
 	base, err := os.MkdirTemp("", "ce")
 	if err != nil {
 		panic(err)

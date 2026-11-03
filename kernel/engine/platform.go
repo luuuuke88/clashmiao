@@ -358,7 +358,7 @@ func (i *ifaceIterator) Next() *libbox.NetworkInterface {
 
 // ---- 其余：固定答案 / 不使用 ----
 
-func (p *platformAdapter) UnderNetworkExtension() bool { return false }
+func (p *platformAdapter) UnderNetworkExtension() bool { return underNetworkExtension }
 func (p *platformAdapter) IncludeAllNetworks() bool    { return false }
 func (p *platformAdapter) ReadWIFIState() *libbox.WIFIState {
 	return nil

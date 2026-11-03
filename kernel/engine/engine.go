@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/experimental/libbox"
+	"github.com/sagernet/sing-box/log"
 )
 
 // SetupOptions 对应 spec §4.2 的 SetupOptions。
@@ -35,6 +36,10 @@ func Setup(o SetupOptions) error {
 	setupMu.Lock()
 	setupBase = o.BasePath
 	setupMu.Unlock()
+	// 受限内存的两套策略（见 memory.go）：iOS 的 Packet Tunnel 用内核自带的 NE 策略（OOM killer 的
+	// network_extension 模式：按系统报告的剩余可用内存回收连接，GC 与软上限由 libbox 按 NE 默认值设置）；
+	// 其它平台（Android）沿用旧内核的 GC 10 + 30 MiB 软上限，不启用 OOM killer。
+	neOOM := o.MemoryLimited && underNetworkExtension
 	err := libbox.Setup(&libbox.SetupOptions{
 		BasePath:          o.BasePath,
 		WorkingPath:       o.WorkingPath,
@@ -42,9 +47,12 @@ func Setup(o SetupOptions) error {
 		LogMaxLines:       o.LogMaxLines,
 		Debug:             o.Debug,
 		CrashReportSource: "clashmiao",
+		OomKillerEnabled:  neOOM,
 	})
 	// libbox.Setup 会把软内存上限重置成「不限」，所以要放在它后面。
-	applyMemoryLimit(o.MemoryLimited)
+	if !neOOM {
+		applyMemoryLimit(o.MemoryLimited)
+	}
 	return err
 }
 
@@ -261,6 +269,14 @@ func (e *Engine) Wake() {
 func (e *Engine) ResetNetwork() {
 	if s := e.server(); s != nil {
 		s.ResetNetwork()
+	}
+}
+
+// WriteLog 把宿主自己的一行诊断写进命令服务器的日志流（与内核日志同一条流，订阅者都能看到）。
+// 命令服务器不在时丢弃。
+func (e *Engine) WriteLog(line string) {
+	if s := e.server(); s != nil {
+		s.WriteMessage(int32(log.LevelInfo), line)
 	}
 }
 

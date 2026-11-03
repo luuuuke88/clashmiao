@@ -64,7 +64,7 @@ type DisconnectListener interface{ OnDisconnected(message string) }
 
 // Subscription 是一条命令流订阅。Close 幂等；关闭后不会再有回调。
 type Subscription struct {
-	e      *Engine
+	owner  subOwner
 	client *libbox.CommandClient
 
 	closed   atomic.Bool
@@ -116,7 +116,9 @@ func (s *Subscription) Close() error {
 		case <-time.After(30 * time.Second):
 			errs = append(errs, errSubscriptionDrain)
 		}
-		s.e.removeSub(s)
+		if s.owner != nil {
+			s.owner.removeSub(s)
+		}
 		s.closeErr = errors.Join(errs...)
 	})
 	return s.closeErr
@@ -185,28 +187,28 @@ func (c *clientHandler) InitializeClashMode(libbox.StringIterator, string) {}
 func (c *clientHandler) UpdateClashMode(string)                            {}
 func (c *clientHandler) WriteConnectionEvents(*libbox.ConnectionEvents)    {}
 
-func (e *Engine) subscribe(command int32, intervalNanos int64, h *clientHandler) (*Subscription, error) {
-	e.mu.Lock()
-	if e.srv == nil {
-		e.mu.Unlock()
-		return nil, os.ErrClosed
-	}
-	e.mu.Unlock()
+// subOwner 是订阅的登记方：Engine（同进程，带命令服务器）或 Client（只连别人的命令服务器）。
+type subOwner interface {
+	// register 登记一条新订阅；登记方已关闭时返回错误（os.ErrClosed）。
+	register(*Subscription) error
+	removeSub(*Subscription)
+	// connectHooks 返回测试注入点（生产路径两个都是 nil）。
+	connectHooks() (beforeConnect func(*Subscription), connect func(*Subscription) error)
+}
 
-	sub := &Subscription{e: e, done: make(chan struct{}), connectDone: make(chan struct{})}
+func subscribe(owner subOwner, command int32, intervalNanos int64, h *clientHandler) (*Subscription, error) {
+	sub := &Subscription{owner: owner, done: make(chan struct{}), connectDone: make(chan struct{})}
 	sub.pending.Store(1)
 	h.sub = sub
 	opts := &libbox.CommandClientOptions{StatusInterval: intervalNanos}
 	opts.AddCommand(command)
 	sub.client = libbox.NewCommandClient(h, opts)
 
-	e.mu.Lock()
-	e.subs[sub] = struct{}{}
-	e.mu.Unlock()
+	if err := owner.register(sub); err != nil {
+		return nil, err
+	}
 
-	e.mu.Lock()
-	beforeConnect, connect := e.hooks.beforeConnect, e.hooks.connect
-	e.mu.Unlock()
+	beforeConnect, connect := owner.connectHooks()
 	if beforeConnect != nil {
 		beforeConnect(sub)
 	}
@@ -223,7 +225,7 @@ func (e *Engine) subscribe(command int32, intervalNanos int64, h *clientHandler)
 		sub.closed.Store(true)
 		sub.finishDone()
 		_ = sub.client.Disconnect()
-		e.removeSub(sub)
+		owner.removeSub(sub)
 		return nil, err
 	}
 	if sub.closed.Load() {
@@ -232,6 +234,22 @@ func (e *Engine) subscribe(command int32, intervalNanos int64, h *clientHandler)
 		return nil, os.ErrClosed
 	}
 	return sub, nil
+}
+
+func (e *Engine) register(s *Subscription) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	if e.srv == nil {
+		return os.ErrClosed
+	}
+	e.subs[s] = struct{}{}
+	return nil
+}
+
+func (e *Engine) connectHooks() (func(*Subscription), func(*Subscription) error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	return e.hooks.beforeConnect, e.hooks.connect
 }
 
 func (e *Engine) removeSub(s *Subscription) {
@@ -250,6 +268,10 @@ func (e *Engine) closeSubscriptions() error {
 		subs = append(subs, s)
 	}
 	e.mu.Unlock()
+	return closeAll(subs)
+}
+
+func closeAll(subs []*Subscription) error {
 	var errs []error
 	for _, s := range subs {
 		if err := s.Close(); err != nil {
@@ -261,15 +283,27 @@ func (e *Engine) closeSubscriptions() error {
 
 // SubscribeGroups 订阅分组流：连上后立刻推一次当前值，之后每次分组 / 延迟变化再推。
 func (e *Engine) SubscribeGroups(h GroupsHandler) (*Subscription, error) {
-	return e.subscribe(libbox.CommandGroup, 0, &clientHandler{
+	return subscribeGroups(e, h)
+}
+
+// SubscribeStats 见 subscribeStats。
+func (e *Engine) SubscribeStats(h StatsHandler, intervalMillis int64) (*Subscription, error) {
+	return subscribeStats(e, h, intervalMillis)
+}
+
+// SubscribeLogs 订阅内核日志：先回放环形缓冲里的历史行，再推新行。
+func (e *Engine) SubscribeLogs(h LogHandler) (*Subscription, error) { return subscribeLogs(e, h) }
+
+func subscribeGroups(owner subOwner, h GroupsHandler) (*Subscription, error) {
+	return subscribe(owner, libbox.CommandGroup, 0, &clientHandler{
 		onGroups: h.OnGroups,
 		h:        h,
 	})
 }
 
-// SubscribeStats 订阅统计流。速率（uplink / downlink）是每秒字节数，按两帧累计值之差与实际间隔算出，
+// subscribeStats 订阅统计流。速率（uplink / downlink）是每秒字节数，按两帧累计值之差与实际间隔算出，
 // 与旧内核「当前速率」的语义一致；libbox 自己给的是「一个间隔内的增量」，间隔不是 1 s 时不能直接用。
-func (e *Engine) SubscribeStats(h StatsHandler, intervalMillis int64) (*Subscription, error) {
+func subscribeStats(owner subOwner, h StatsHandler, intervalMillis int64) (*Subscription, error) {
 	if intervalMillis <= 0 {
 		intervalMillis = 1000
 	}
@@ -302,12 +336,11 @@ func (e *Engine) SubscribeStats(h StatsHandler, intervalMillis int64) (*Subscrip
 		})
 		h.OnStats(string(raw))
 	}
-	return e.subscribe(libbox.CommandStatus, intervalMillis*int64(time.Millisecond), ch)
+	return subscribe(owner, libbox.CommandStatus, intervalMillis*int64(time.Millisecond), ch)
 }
 
-// SubscribeLogs 订阅内核日志：先回放环形缓冲里的历史行，再推新行。
-func (e *Engine) SubscribeLogs(h LogHandler) (*Subscription, error) {
-	return e.subscribe(libbox.CommandLog, 0, &clientHandler{onLog: h.OnLog, h: h})
+func subscribeLogs(owner subOwner, h LogHandler) (*Subscription, error) {
+	return subscribe(owner, libbox.CommandLog, 0, &clientHandler{onLog: h.OnLog, h: h})
 }
 
 type logToHost struct{ host Platform }
@@ -340,14 +373,18 @@ func (e *Engine) ensureLogForwarder() {
 // ---- 一次性命令 ----
 
 // SelectOutbound 在选择组 group 里选中 tag。
-func (e *Engine) SelectOutbound(group, tag string) error {
+func (e *Engine) SelectOutbound(group, tag string) error { return selectOutbound(group, tag) }
+
+// URLTest 对 tag（组或单个出站）发起一次测速；结果经分组流推送。
+func (e *Engine) URLTest(tag string) error { return urlTest(tag) }
+
+func selectOutbound(group, tag string) error {
 	c := libbox.NewStandaloneCommandClient()
 	defer c.Disconnect()
 	return c.SelectOutbound(group, tag)
 }
 
-// URLTest 对 tag（组或单个出站）发起一次测速；结果经分组流推送。
-func (e *Engine) URLTest(tag string) error {
+func urlTest(tag string) error {
 	c := libbox.NewStandaloneCommandClient()
 	defer c.Disconnect()
 	return c.URLTest(tag)

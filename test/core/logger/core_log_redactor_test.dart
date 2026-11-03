@@ -173,6 +173,13 @@ void main() {
       expectCase(line, line);
     });
 
+    test('前导点的后缀域名（domain_suffix=.example.org）也遮盖', () {
+      expectCase(
+        'INFO router: match domain_suffix=.example.org rule',
+        'INFO router: match domain_suffix=.<host> rule',
+      );
+    });
+
     test('过度遮盖可以接受：文件名形态也会被当成主机名', () {
       expectCase('INFO loaded config.json', 'INFO loaded <host>');
     });

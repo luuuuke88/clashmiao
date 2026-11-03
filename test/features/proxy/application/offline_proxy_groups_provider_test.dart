@@ -37,6 +37,11 @@ final _runtime = jsonEncode({
   ],
 });
 
+class _ThrowingError {
+  @override
+  String toString() => throw StateError('toString failed');
+}
+
 void main() {
   late Directory dir;
   late String path;
@@ -103,5 +108,13 @@ void main() {
       expect(line, isNot(contains(secret)), reason: line);
     }
     expect(line, contains('[ERROR] proxy.offlineGroups.compile: StateError'));
+  });
+
+  test('编译抛出的异常连 toString 都会抛：日志不得影响退回解析订阅配置', () async {
+    final groups = await loadOfflineGroups(
+      path,
+      compile: (_) async => throw _ThrowingError(),
+    );
+    expect(groups.map((g) => g.tag), ['proxy']);
   });
 }

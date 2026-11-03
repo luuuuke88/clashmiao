@@ -32,10 +32,10 @@ import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/backup/application/startup_restore_notice.dart';
 import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:clashmiao/core/box_service/kernel_port.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
-import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/model/connection_snapshot.dart';
 
 import '../support/fake_connection_controller.dart';
 

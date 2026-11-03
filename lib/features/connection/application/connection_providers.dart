@@ -1,9 +1,9 @@
 // 连接状态的只读派生 provider：所有消费者读同一份真值（控制器的
 // [ConnectionSnapshot]），不再各自订阅底层内核状态。
 
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 当前连接阶段。

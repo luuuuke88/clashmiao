@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/box_service.dart';
-import 'package:clashmiao/domain/connection/application/connection_providers.dart';
+import 'package:clashmiao/features/connection/application/connection_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';

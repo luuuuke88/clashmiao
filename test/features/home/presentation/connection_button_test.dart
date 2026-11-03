@@ -1,10 +1,10 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/brand_colors.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/application/connection_providers.dart';
-import 'package:clashmiao/domain/connection/application/connection_timing.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_providers.dart';
+import 'package:clashmiao/features/connection/application/connection_timing.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:clashmiao/features/home/presentation/connection_button.dart';
 import 'package:clashmiao/features/home/presentation/speed_cat_connection_mark.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

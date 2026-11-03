@@ -12,11 +12,11 @@
 // 然后执行 [Transition.actions]，并按 [Transition.nextWake] 安排一个 [Tick]。
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
-import 'package:clashmiao/domain/connection/application/connection_timing.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
-import 'package:clashmiao/domain/connection/model/connection_phase.dart';
-import 'package:clashmiao/domain/connection/model/connection_snapshot.dart';
-import 'package:clashmiao/domain/connection/model/request_outcome.dart';
+import 'package:clashmiao/features/connection/application/connection_timing.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_phase.dart';
+import 'package:clashmiao/features/connection/model/connection_snapshot.dart';
+import 'package:clashmiao/features/connection/model/request_outcome.dart';
 
 // ─────────────────────────────────────────────────────────────────────────
 // 事件

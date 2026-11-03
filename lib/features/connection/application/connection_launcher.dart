@@ -30,7 +30,7 @@ import 'package:clashmiao/features/config/application/network_settings.dart';
 import 'package:clashmiao/features/config/application/default_config_options.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/features/config/data/runtime_config_builder.dart';
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';

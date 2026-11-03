@@ -4,7 +4,7 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/connection/application/selection_replay_pipeline.dart';
+import 'package:clashmiao/features/connection/application/selection_replay_pipeline.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:clashmiao/domain/connection/application/egress_ip_service.dart';
+import 'package:clashmiao/features/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';

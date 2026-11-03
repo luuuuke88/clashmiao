@@ -1,9 +1,9 @@
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/box_service/box_providers.dart';
-import 'package:clashmiao/domain/connection/application/connection_controller.dart';
-import 'package:clashmiao/domain/connection/application/connection_health_monitor.dart';
-import 'package:clashmiao/domain/connection/application/egress_ip_probe.dart';
-import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
+import 'package:clashmiao/features/connection/application/connection_controller.dart';
+import 'package:clashmiao/features/connection/application/connection_health_monitor.dart';
+import 'package:clashmiao/features/connection/application/egress_ip_probe.dart';
+import 'package:clashmiao/features/connection/application/latency_test_wiring.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/misc.dart';

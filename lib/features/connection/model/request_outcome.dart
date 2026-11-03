@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/connection/model/connection_failure.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
 
 /// 一次 connect / disconnect 请求的终结结果（spec §10.6）。每个请求恰好得到一个。
 sealed class RequestOutcome {

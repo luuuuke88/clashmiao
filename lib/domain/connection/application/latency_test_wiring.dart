@@ -1,6 +1,6 @@
 // 测速协调器的 Riverpod 接线。
 //
-// 协调器本身（纯逻辑）在 `domain/routing`；它要跟着「是否已连接」这份单一真值
+// 协调器本身（纯逻辑）在 `features/proxy`；它要跟着「是否已连接」这份单一真值
 // 走，而 domain 内部顺序是 routing < connection，routing 不能反向依赖连接层，
 // 所以接线放在连接层。
 

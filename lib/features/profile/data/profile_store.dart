@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
 import 'package:clashmiao/core/storage/async_lock.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
+import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/profile/model/profile_patch.dart';
 import 'package:flutter/foundation.dart';
@@ -327,7 +327,7 @@ class ProfileStore {
         storedActiveId: stored,
       );
     } catch (e, st) {
-      logAppFailure('profile.store.read', e, st);
+      logProfileFailure('profile.store.read', e, st);
       return const ProfileListView(
         profiles: [],
         activeId: null,
@@ -570,7 +570,7 @@ class ProfileStore {
         throw const FileSystemException('偏好写入返回失败');
       }
     } catch (e, st) {
-      logAppFailure('profile.store.commit', e, st);
+      logProfileFailure('profile.store.commit', e, st);
       await _rollback(
         undo: undo,
         restorePrefs: touchedPrefs,
@@ -606,7 +606,7 @@ class ProfileStore {
       try {
         await prefs.remove(key);
       } catch (e) {
-        logAppFailure('profile.store.removeAuxKey $key', e);
+        logProfileFailure('profile.store.removeAuxKey', e);
       }
     }
     if (!_changes.isClosed) _changes.add(null);
@@ -623,13 +623,13 @@ class ProfileStore {
         '${entry.formal.path}.${_newOpId()}.del',
       );
     } catch (e) {
-      logAppFailure('profile.store.renameUndoToDel ${entry.undo.path}', e);
+      logProfileFailure('profile.store.renameUndoToDel', e);
     }
     try {
       await _deleteFile(target);
       if (!await target.exists()) return null;
     } catch (e) {
-      logAppFailure('profile.store.deleteResidue ${target.path}', e);
+      logProfileFailure('profile.store.deleteResidue', e);
     }
     return target.path;
   }
@@ -666,7 +666,7 @@ class ProfileStore {
         if (listChanged) await _restoreString(profilesKey, prevList);
         if (activeChanged) await _restoreString(activeProfileKey, prevActive);
       } catch (e) {
-        logAppFailure('profile.store.restorePrefs', e);
+        logProfileFailure('profile.store.restorePrefs', e);
       }
     }
     for (final entry in undo.reversed) {
@@ -676,7 +676,7 @@ class ProfileStore {
           await _renameFile(entry.undo, entry.formal.path);
         }
       } catch (e) {
-        logAppFailure('profile.store.restoreFile ${entry.formal.path}', e);
+        logProfileFailure('profile.store.restoreFile', e);
       }
     }
   }
@@ -714,7 +714,7 @@ class ProfileStore {
         await prefs.setString(quarantineKey, jsonEncode(items));
       }
     } catch (e) {
-      logAppFailure('profile.store.writeQuarantine', e);
+      logProfileFailure('profile.store.writeQuarantine', e);
     }
   }
 
@@ -735,7 +735,7 @@ class ProfileStore {
             ? await prefs.remove(key)
             : await prefs.setString(key, value);
       } catch (e) {
-        logAppFailure('profile.store.writeAux $key', e);
+        logProfileFailure('profile.store.writeAux', e);
         return false;
       }
     });
@@ -815,12 +815,12 @@ class ProfileStore {
               throw FileSystemException('处理后残留仍在', entity.path);
             }
           } catch (e) {
-            logAppFailure('profile.store.cleanResidue $name', e);
+            logProfileFailure('profile.store.cleanResidue', e);
             unprocessed.add(entity.path);
           }
         }
       } catch (e) {
-        logAppFailure('profile.store.cleanResidues', e);
+        logProfileFailure('profile.store.cleanResidues', e);
         unprocessed.add(profilesDirPath);
       }
       return ResidueCleanupReport(List.unmodifiable(unprocessed));
@@ -853,7 +853,7 @@ class ProfileStore {
     try {
       if (await file.exists()) await _deleteFile(file);
     } catch (e) {
-      logAppFailure('profile.store.deleteFile ${file.path}', e);
+      logProfileFailure('profile.store.deleteFile', e);
     }
   }
 

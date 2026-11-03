@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -83,11 +84,58 @@ void main() {
       final content = await logFile.readAsString();
       expect(content, isNot(contains('SECRET')));
       expect(content, isNot(contains(secretUrl)));
-      // 排障需要的东西都在：异常类别、底层异常、主机路径、堆栈帧。
+      // 排障需要的东西都在：异常类别、底层异常、堆栈帧；订阅地址整条是 <url>。
       expect(content, contains('DioException'));
       expect(content, contains('HttpException: Connection closed'));
-      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('<url>'));
       expect(content, contains(stack.toString().split('\n').first));
+    });
+
+    test('端到端：订阅短 token、节点 host:port 与 IP 一律不进 app.log', () async {
+      const subUrl = 'https://sub.example.org/s/ab12';
+      final error = DioException(
+        requestOptions: RequestOptions(path: subUrl),
+        error: const SocketException(
+          'Connection refused',
+          address: null,
+          port: 8443,
+        ),
+        message:
+            'The connection errored: dial tcp example.net:443 and '
+            '198.51.100.7:8443 and [2001:db8::1]:443 via $subUrl?flag=android',
+      );
+      logAppFailure('proxies.latencyTest', error, StackTrace.current);
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      for (final leak in [
+        'sub.example.org',
+        'ab12',
+        'example.net',
+        '198.51.100.7',
+        '2001:db8',
+      ]) {
+        expect(content, isNot(contains(leak)), reason: leak);
+      }
+      expect(content, contains('[ERROR] proxies.latencyTest: DioException'));
+      expect(content, contains('<url>'));
+      expect(content, contains('<addr>'));
+    });
+
+    test('连接失败对象：对象里保留原文，写进 app.log 时才脱敏', () async {
+      const text =
+          'prepare https://sub.example.org/s/ab12 via 198.51.100.7:8443';
+      const failure = UnexpectedFailure(text);
+
+      logAppFailure('connection.prepare', failure);
+      await AppLogger.instance.flush();
+
+      expect(failure.message, text);
+      final content = await logFile.readAsString();
+      expect(content, contains('UnexpectedFailure(prepare <url> via <addr>)'));
+      for (final leak in ['sub.example.org', 'ab12', '198.51.100.7']) {
+        expect(content, isNot(contains(leak)), reason: leak);
+      }
     });
 
     test('结构化的错误先按键名脱敏再转文本：跨行的秘密值也不泄露', () async {
@@ -128,7 +176,7 @@ void main() {
       expect(content, isNot(contains('key=K')));
       expect(content, isNot(contains('u:pw@')));
       expect(content, isNot(contains('uuid@1.2.3.4')));
-      expect(content, contains('https://example.test/s?…'));
+      expect(content, contains('<url>'));
       expect(content, contains('vless://…'));
     });
 
@@ -230,6 +278,36 @@ void main() {
       expect(content, contains('boom-flutter-error'));
     });
 
+    test('全局兜底：未捕获的 Dio 异常里的请求 URI 与节点地址不进 app.log', () async {
+      final previousFlutter = FlutterError.onError;
+      final previousPlatform = PlatformDispatcher.instance.onError;
+      addTearDown(() {
+        FlutterError.onError = previousFlutter;
+        PlatformDispatcher.instance.onError = previousPlatform;
+      });
+      DioException uncaught(String tag) => DioException(
+        requestOptions: RequestOptions(
+          path: 'https://sub.example.org/s/$tag?flag=android',
+        ),
+        message: 'connection error to 198.51.100.7:8443',
+      );
+
+      await initAppLogger();
+      FlutterError.onError!(FlutterErrorDetails(exception: uncaught('tok1')));
+      PlatformDispatcher.instance.onError!(
+        uncaught('tok2'),
+        StackTrace.current,
+      );
+      await AppLogger.instance.flush();
+
+      final content = await logFile.readAsString();
+      expect(content, contains('[FlutterError]'));
+      expect(content, contains('[PlatformDispatcher]'));
+      for (final leak in ['sub.example.org', 'tok1', 'tok2', '198.51.100.7']) {
+        expect(content, isNot(contains(leak)), reason: leak);
+      }
+    });
+
     test('PlatformDispatcher.instance.onError 触发时，错误信息落地到日志文件', () async {
       final previous = PlatformDispatcher.instance.onError;
       addTearDown(() => PlatformDispatcher.instance.onError = previous);
@@ -278,7 +356,7 @@ void main() {
     void expectRedacted(String content) {
       expect(content, isNot(contains('SECRET')));
       expect(content, isNot(contains('hello world')));
-      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('<url>'));
       expect(content, contains('"password":…'));
       expect(content, contains('plain line'));
     }

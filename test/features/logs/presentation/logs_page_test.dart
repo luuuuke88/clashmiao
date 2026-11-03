@@ -188,7 +188,7 @@ void main() {
       final shared = await File(appPath).readAsString();
       expect(shared, isNot(contains('SECRET')));
       expect(shared, isNot(contains('uuid@1.2.3.4')));
-      expect(shared, contains('https://example.test/sub?…'));
+      expect(shared, contains('fetch <url> failed'));
       expect(shared, contains('vless://…'));
       expect(shared, contains('[ERROR] profiles.update'));
     });
@@ -204,7 +204,7 @@ void main() {
       expect(content, isNot(contains('SECRET')));
       expect(content, isNot(contains('pass@h.example.test')));
       expect(content, contains('INFO outbound/vless[hk]: started'));
-      expect(content, contains('https://example.test/sub?…'));
+      expect(content, contains('fetch <url> failed'));
       expect(content, contains('trojan://…'));
     });
   });

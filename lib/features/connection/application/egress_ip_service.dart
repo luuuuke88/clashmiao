@@ -121,7 +121,9 @@ class EgressIpService {
   final Dio _dio;
   final Duration _timeout;
 
-  static const _endpoint = 'https://ipwho.is/';
+  /// 出口 IP 查询地址。日志脱敏白名单（`core/logger/public_hosts.dart`）里有这个
+  /// 主机，改域名时要同步（测试会检查）。
+  static const endpoint = 'https://ipwho.is/';
 
   static Dio _buildDefaultDio(Ref ref, {required bool proxyOnly}) {
     // 故意不像 ProfileRepository（profile_providers.dart 的
@@ -166,7 +168,7 @@ class EgressIpService {
     final cancelToken = CancelToken();
     try {
       final response = await _dio
-          .get<dynamic>(_endpoint, cancelToken: cancelToken)
+          .get<dynamic>(endpoint, cancelToken: cancelToken)
           .timeout(
             _timeout,
             onTimeout: () {

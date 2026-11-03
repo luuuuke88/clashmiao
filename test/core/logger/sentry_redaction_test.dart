@@ -65,10 +65,7 @@ void main() {
     final out = redactSentryEvent(event);
 
     expectClean(out.message!.formatted);
-    expect(
-      out.message!.formatted,
-      'refresh failed for https://example.test/sub?…',
-    );
+    expect(out.message!.formatted, 'refresh failed for <url>');
     expect(out.message!.template, 'refresh failed for %s');
     expectClean(out.message!.params!.first as String);
     expect(out.message!.params![1], 42);
@@ -77,7 +74,7 @@ void main() {
     expectClean(exception.value);
     expect(exception.type, 'DioException');
     expect(exception.value, contains('HttpException: Connection closed'));
-    expect(exception.value, contains('uri = https://example.test/sub?…'));
+    expect(exception.value, contains('uri = <url>'));
     expect(exception.stackTrace!.frames.single, same(frame));
     expect(frame.absPath, contains('profile_repository.dart'));
     expect(frame.lineNo, 512);
@@ -195,10 +192,8 @@ void main() {
     expect(out.contexts.runtimes.single.key, 'dart');
     expect(out.contexts.runtimes.single.version, '3.9');
     expect(out.contexts.trace!.sampled, isFalse);
-    expect(out.contexts.trace!.description, 'load https://example.test/sub?…');
-    expect(out.contexts.app!.viewNames, [
-      '/profiles?url=https://example.test/sub?…',
-    ]);
+    expect(out.contexts.trace!.description, 'load <url>');
+    expect(out.contexts.app!.viewNames, ['/profiles?url=<url>']);
     expectClean(jsonEncode(json));
   });
 
@@ -316,7 +311,7 @@ void main() {
     expect(serialized, isNot(contains('eyJhZGQi')));
     expect(serialized, isNot(contains('flutter_error_details')));
     // 排障信息还在：主机、异常类别、堆栈帧。
-    expect(serialized, contains('https://example.test/sub?…'));
+    expect(serialized, contains('<url>'));
     expect(serialized, contains('HttpException'));
     expect(serialized, contains('_ProfilesPageState._import'));
     expect(serialized, contains('h.example.test'));
@@ -501,8 +496,8 @@ void main() {
         data: {'url': subUrl, 'status_code': 500, 'token': 'SECRET'},
       ),
     )!;
-    expect(crumb.message, 'GET https://example.test/sub?…');
-    expect(crumb.data!['url'], 'https://example.test/sub?…');
+    expect(crumb.message, 'GET <url>');
+    expect(crumb.data!['url'], '<url>');
     expect(crumb.data!['status_code'], 500);
     expect(crumb.data!['token'], '…');
     expect(crumb.category, 'http');

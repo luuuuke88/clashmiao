@@ -23,11 +23,12 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 /// 把订阅配置文件编译成运行时配置文本；`null` = 当前平台不用这条路径。
 ///
-/// 只在 Android 上启用：编译走 Pigeon（异步、在原生 IO 线程）。桌面端的 FFI
-/// 编译会阻塞 UI isolate，iOS 未验证，二者维持直接解析订阅配置。
+/// Android 与 iOS 启用：两端是同一个内核（订阅解析只保留节点、分组由构建器
+/// 重建），编译都走 Pigeon（异步、在原生后台线程）。桌面端的 FFI 编译会阻塞
+/// UI isolate，维持直接解析订阅配置。
 final runtimeConfigCompilerProvider =
     Provider<Future<String?> Function(String path)?>((ref) {
-      if (!Platform.isAndroid) return null;
+      if (!Platform.isAndroid && !Platform.isIOS) return null;
       final service = ref.watch(boxServiceProvider);
       return service.generateFullConfig;
     });

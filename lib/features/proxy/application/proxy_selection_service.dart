@@ -22,6 +22,7 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/features/proxy/data/proxy_failure_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
@@ -102,8 +103,8 @@ class ProxySelectionService {
             snap.attempt != expectedAttempt) {
           outcome = await _select(port, groupTag, outboundTag, snap.attempt);
         }
-      } catch (e) {
-        debugPrint('手选 stale 后读取内核快照失败: $e');
+      } catch (e, st) {
+        logProxyFailure('proxy.selection.staleSnapshot', e, st);
       }
     }
 

@@ -283,7 +283,7 @@ native 层依赖 `android/app/libs/libcore.aar`（由仓库内的 Go 模块 `ker
 
 Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由仓库内的 Go 模块 `kernel/` 包装成 gomobile 门面。读法：解压 `android/app/libs/libcore.aar`，对 `jni/arm64-v8a/libclashmiao.so` 执行 `go version -m`，依赖列表里 `sing-box` 的版本为 `v1.14.3`。`libclashmiao.so` 所有 LOAD 段按 16 KB（`2**14`）对齐，构建脚本逐项校验。
 
-`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r2`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。桌面与 iOS 本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），它们的 Pigeon / FFI 路径与 `configOptions` 契约不变。旧 Android 内核的重编工具 `tools/kernel/legacy/build-android-1.8.9.sh` 保留，只用于回滚（见「升级与回滚」）。
+`bin/fetch-libcore.sh` 与 CI 里 Android 默认拉取的 Release tag 叫 `libcore-v1.14.3-r2`（环境变量 `ANDROID_LIBCORE_TAG` 覆盖；资产名仍是 `libcore.aar`）。iOS 用同一份 `kernel/` 经 `tools/kernel/build-apple.sh` 构建的 `Libcore.xcframework.zip`，tag `libcore-v1.14.3-r3`（`IOS_LIBCORE_TAG`）。桌面本期不动，继续用旧 tag `libcore-v1.8.9-16k` 的资产（`LIBCORE_TAG`），FFI 路径与 `configOptions` 契约不变（升级设计见 `docs/superpowers/specs/2026-11-03-apple-desktop-kernel-design.md` §5）。旧 Android 内核的重编工具 `tools/kernel/legacy/build-android-1.8.9.sh` 保留，只用于回滚（见「升级与回滚」）。
 
 ### 内核模块 `kernel/`
 
@@ -291,8 +291,8 @@ Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由
 
 | 层 | 包 | 职责 |
 |---|---|---|
-| 门面 | `core` | gomobile 绑定的唯一入口：`Setup` / `Parse` / `BuildConfig` / `CheckConfig` / `GenerateWarpConfig` / `Version`，以及 `Engine`（启动、热重载、停止、手选、测速、统计 / 分组 / 日志订阅）与平台回调接口 `Platform` / `LocalDNS` / `InterfaceListener`。**只有这一层暴露给 Kotlin** |
-| 引擎 | `engine` | 官方 `libbox`（sing-box 的移动端包）的唯一使用点：把平台回调、命令服务、订阅流包成稳定接口。升级 sing-box 时 API 变化只落在这里 |
+| 门面 | `core` | gomobile 绑定的唯一入口：`Setup` / `Parse` / `BuildConfig` / `CheckConfig` / `GenerateWarpConfig` / `Version`，以及 `Engine`（启动、热重载、停止、手选、测速、统计 / 分组 / 日志订阅）与平台回调接口 `Platform` / `LocalDNS` / `InterfaceListener`。**只有这一层暴露给 Kotlin 与 Swift**。`//go:build !android` 的 `apple.go` 另有 iOS 专用的 `Client`（只连命令服务器、不持有服务：Runner 订阅扩展里的内核）、`TunnelFileDescriptor`、`Engine.WriteLog`——Android 的绑定看不到它们，Java API 快照不变；`BuildConfig` 的构建环境按构建标签选（iOS 构建用 iOS 环境，其它仍是 Android 环境） |
+| 引擎 | `engine` | 官方 `libbox`（sing-box 的移动端包）的唯一使用点：把平台回调、命令服务、订阅流包成稳定接口。`Engine` 与 `Client` 共用同一套订阅实现、各自登记各自关闭。iOS 构建下 `UnderNetworkExtension` 为真，受限内存走内核自带的 Packet Tunnel 策略（其它平台仍是 GC 10 + 30 MiB 软上限）。升级 sing-box 时 API 变化只落在这里 |
 | 纯数据层 | `internal/options`、`internal/build`、`internal/subscription`、`internal/uri`、`internal/legacy`、`internal/warp` | 不 import sing-box（架构测试扫描全部 `internal/`，只有测试支撑的 `build/gate` 与 `build/e2e` 例外）：选项解码与校验、运行配置构建（DNS / 路由 / 出站 / WARP 图）、订阅解析（sing-box JSON / Clash YAML / URI 列表）、各协议 URI 转换、旧 1.8 形态的读时清洗、WARP 账号注册与端点生成 |
 
 契约要点（Kotlin / Dart 侧都不用变）：
@@ -314,7 +314,7 @@ Android 的内核是 **官方 sing-box v1.14.3**（Go 1.27 系列编译），由
 2. 跑 `tools/kernel/gotest.sh` 全部闸门——schema 变化会表现为黄金文件 diff、`CheckConfig` 或真 `Start` 失败，逐项修，不放宽闸门；
 3. 跑 `tools/kernel/build-android.sh`，API 有变化时核对差异后 `UPDATE_API=1` 更新 `kernel/api/java-api.txt`；
 4. 按 `docs/superpowers/specs/2026-10-21-kernel-upgrade-design.md` §7.3 的清单真机验收（先录旧包基线，再装新包逐行对比，不边改边测）；
-5. 发 Release `libcore-v<sing-box 版本>-r<序号>`，只上传 Android 资产，修改 `bin/fetch-libcore.sh` 与两个 workflow 里的 `ANDROID_LIBCORE_TAG`。
+5. 发 Release `libcore-v<sing-box 版本>-r<序号>`，一个 tag 只放一个平台的资产：Android 上传 `libcore.aar`，改 `ANDROID_LIBCORE_TAG`；iOS 上传 CI `kernel-apple` job 产出的 `Libcore.xcframework.zip`，改 `IOS_LIBCORE_TAG`（`bin/fetch-libcore.sh` 与两个 workflow 里各一处），并把 sha256 追加进 `tools/kernel/libcore-checksums.txt`。
 
 回滚：发一个把 aar 与 Kotlin 绑定层换回旧版的 hotfix（旧 aar 在 Release `libcore-v1.8.9-16k`，`tools/kernel/legacy/build-android-1.8.9.sh` 可复现重编）。已被新 `Parse` 重写、含 `endpoints` 的订阅文件旧内核读不了，下一次刷新即恢复。
 
@@ -358,7 +358,7 @@ ios/
 │   ├── ClashMiaoTunnelProvider.swift  — NEPacketTunnelProvider 入口（继承 KernelProviderProxy）
 │   └── Kernel/
 │       ├── KernelProviderProxy.swift  — opQueue 串行；start / reload / select / 自发重载；失败自洽；内存采样
-│       └── KernelPlatformBridge.swift — 实现 libcore 的平台回调（TUN 配置、日志、DNS 等）
+│       └── KernelPlatformBridge.swift — 内核的平台回调（`CorePlatform`：TunSpec → NE 设置、接口监视与列表、DNS）与命令服务器回调（`CoreEngineHandler`）
 └── Shared/                    — Runner 和 Extension 都用
     ├── ProfilePathResolver.swift — App Group 容器内的路径约定
     ├── KernelBridge.swift / KernelCommandClient.swift
@@ -379,7 +379,9 @@ ios/
 
 **扩展内存**（约 50 MB 的观察值，Apple 不保证）：配置在 Runner 拼装，扩展只读文件 → 建 service → 立即释放文本，不解析、不常驻；删除了一个从未对上端口的流量轮询；`provider ↔ bridge` 引用环断开；重载先完整释放旧 service；关键步骤与每 10 s 采样余量写进 state。
 
-`ios/Frameworks/Libcore.xcframework/` 同 Android：不在 git tracking，`bin/fetch-libcore.sh ios` 拉 zip 解压并整理成 iOS 能用的 shallow framework。新增 Swift 文件要登记进 Xcode 工程（`objectVersion=54`，无目录同步）：改 `ios/scripts/sync_sources.rb` 的 MANIFEST 后运行它。
+**内核与进程**：扩展里只有一个 `CoreEngine`（命令服务器 + 服务）；启动 = `engine.start(config)`，重载 = `stop` 后 `start`（先完整释放旧服务），`stopTunnel` 直接调 `engine.stop()` 打断阻塞中的启动。Runner 不跑内核，只用 `CoreClient` 经 `<App Group 根>/command.sock` 订阅统计 / 分组 / 日志、测速；订阅失败或断线按 0.5 / 1 / 2 / 4 s 退避重连，扩展晚启动或重启后流会自己接上。两个进程 `CoreSetup` 同一个 BasePath（App Group 根；socket 路径超过 104 字节时明确报错，模拟器上的容器路径就超了——模拟器本来也跑不了扩展），工作目录各用各的。TUN 规格 JSON 到 NE 设置的逐字段映射见 `docs/superpowers/specs/2026-11-03-apple-desktop-kernel-design.md` §4.3；内核是静态库，cgo 的链接参数传不出来，扩展要显式链接 UIKit（`Base.xcconfig`）。
+
+`ios/Frameworks/Libcore.xcframework/` 同 Android：不在 git tracking，`bin/fetch-libcore.sh ios` 拉 zip 解压并整理成 iOS 能用的 shallow framework。本地改了 `kernel/` 用 `tools/kernel/build-apple.sh` 现编（产物已拍平成浅层 bundle，`--check <xcframework>` 只跑放行门）。新增 Swift 文件要登记进 Xcode 工程（`objectVersion=54`，无目录同步）：改 `ios/scripts/sync_sources.rb` 的 MANIFEST 后运行它。
 
 签名与 Xcode 工程配置（NetworkExtension capability、App Group `group.com.clashmiao.shared`、扩展 target）见 `ios/SCAFFOLDING.md`。
 
@@ -518,7 +520,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 ## 已知技术债
 
 - 生成物（slang 的 `lib/core/localization/gen/`、Pigeon 的三端 `*.g.*`）提交进了 git，fresh clone 不用先跑生成器（本仓库不用 build_runner，见 `bin/regen-i18n.sh`、`bin/regen-pigeon.sh`）。CI 目前不校验生成物与源文件是否一致，后续可加一步「重新生成后 diff 为空」。
-- 发布用 libcore 的来源只有 GitHub Release tag。Android 的内核由 `kernel/` 经 `tools/kernel/build-android.sh` 构建后手动挂到 GitHub Release tag；桌面与 iOS 仍用旧 tag 的外部构建产物，CI / release flow 通过 `bin/fetch-libcore.sh` 解耦。后续可考虑加一个 release workflow 自动重建 Android 的 tag；桌面（cgo 导出）与 Apple（gomobile ios / macos）两个门面另立设计，让包内逻辑零重复。
+- 发布用 libcore 的来源只有 GitHub Release tag。Android 的内核由 `kernel/` 经 `tools/kernel/build-android.sh` 构建后手动挂到 GitHub Release tag；iOS 的内核由 CI 的 `kernel-apple` job 从同一份 `kernel/` 构建，产物挂到 iOS 的 tag；桌面仍用旧 tag 的外部构建产物，CI / release flow 通过 `bin/fetch-libcore.sh` 解耦。桌面门面（cgo 导出）见 `docs/superpowers/specs/2026-11-03-apple-desktop-kernel-design.md` §5。
 - 桌面内核加载失败目前只记日志，`coreLoadFailed` 告警路径未接通（见「`BoxService` 抽象」一节：失败发生在 `init()`，不在工厂构造里）。
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
 - 原生层的内核真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。

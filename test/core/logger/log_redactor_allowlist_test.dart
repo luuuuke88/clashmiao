@@ -598,6 +598,68 @@ void main() {
     });
   });
 
+  group('严格模式（上报通道）：任何路径都不保留', () {
+    void expectStrict(String input, String expected) {
+      final once = redactStrict(input);
+      expect(once, expected);
+      expect(redactStrict(once), once, reason: '幂等');
+    }
+
+    test('官网短路径只留主机', () {
+      expectStrict(
+        'fetch https://clashmiao.com/sub/short failed',
+        'fetch https://clashmiao.com failed',
+      );
+    });
+
+    test('本项目仓库前缀下的路径只留主机', () {
+      expectStrict(
+        'GET https://github.com/luuuuke88/clashmiao/raw/main/x?a=1 ok',
+        'GET https://github.com ok',
+      );
+      expectStrict(
+        'GET https://api.github.com/repos/luuuuke88/clashmiao/releases/latest',
+        'GET https://api.github.com',
+      );
+    });
+
+    test('其它主机仍是 <url>，对象存储主机只留主机，回环也不留路径', () {
+      expectStrict(
+        'https://raw.githubusercontent.com/someone/repo/main/sub.yaml '
+            'https://objects.githubusercontent.com/x/y '
+            'http://127.0.0.1:9090/proxies',
+        '<url> https://objects.githubusercontent.com http://127.0.0.1:9090',
+      );
+    });
+
+    test('编码过的白名单 URL 同样不留路径', () {
+      expectStrict(
+        'open https%3A%2F%2Fclashmiao.com%2Fsub%2Fshort ok',
+        'open https://clashmiao.com ok',
+      );
+    });
+
+    test('嵌套调用后恢复：严格模式之外仍按白名单路径规则', () {
+      expect(
+        withStrictRedaction(() => redactLogText('https://clashmiao.com/a/b')),
+        'https://clashmiao.com',
+      );
+      expect(
+        redactLogText('https://clashmiao.com/a/b'),
+        'https://clashmiao.com/a/b',
+      );
+    });
+
+    test('结构化值也走严格模式', () {
+      expect(
+        withStrictRedaction(
+          () => redactStructuredValue({'u': 'https://clashmiao.com/sub/short'}),
+        ),
+        {'u': 'https://clashmiao.com'},
+      );
+    });
+  });
+
   group('白名单来源', () {
     test('固定的公共域名与子域（含大小写、末尾点）', () {
       for (final host in [

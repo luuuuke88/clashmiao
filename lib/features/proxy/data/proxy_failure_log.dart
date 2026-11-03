@@ -1,4 +1,5 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/failure_codes.dart';
 import 'package:flutter/foundation.dart';
 
 /// 代理分组 / 节点选择路径的失败落盘口。
@@ -29,20 +30,35 @@ void logProxyFailure(String where, Object error, [StackTrace? stackTrace]) {
 ///
 /// 分组名与节点名是订阅里用户 / 机场自己起的名字，常常就是一个裸域名
 /// （`node.example.com`，没有端口，日志脱敏器认不出来），所以**绝不**拼进日志；
-/// 内核回显的 message 同样可能带着节点名，也不记。失败码只接受 `[a-z0-9_.-]`
-/// 的短码（原生桥与内核端的固定码表），别的一律记成 `other`。
+/// 内核回显的 message 同样可能带着节点名，也不记。失败码只接受
+/// [kSelectionFailureCodes] 里明确列出的固定码，别的（包括看起来像短码的
+/// `node.example.com`、`hk-01`）一律记成 `other`。
 ///
 /// 绝不抛出，理由同 [logProxyFailure]。
 void logProxySelectionFailure(String code) {
   try {
-    final safe = _stableCode.hasMatch(code) ? code : 'other';
+    final safe = trustedFailureCode(code, kSelectionFailureCodes);
     logAppFailure('proxies.select', 'SelectionFailed(code=$safe)');
   } catch (_) {
     // 同上：不递归打日志。
   }
 }
 
-final RegExp _stableCode = RegExp(r'^[a-z0-9_.\-]{1,40}$');
+/// 手选失败码的白名单：原生桥（`selectOutbound`、`stale` 之外的 FlutterError
+/// code）、端口层（`timeout`、`malformed`、`unavailable`、`unknown`、
+/// `exception`）与 Pigeon 通道层（`channel-error`、`unimplemented`、
+/// `unsupported`）的固定码。
+const Set<String> kSelectionFailureCodes = {
+  'selectOutbound',
+  'exception',
+  'unavailable',
+  'unknown',
+  'timeout',
+  'malformed',
+  'channel-error',
+  'unimplemented',
+  'unsupported',
+};
 
 /// 只含类型名的失败摘要；[toString] 就是写进日志的全部内容。
 @immutable

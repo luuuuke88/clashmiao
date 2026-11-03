@@ -226,4 +226,30 @@ void main() {
       expectNoLeak();
     });
   });
+
+  group('失败码白名单', () {
+    test('像节点名的短串当作 code 传入：记成 other', () {
+      final records = <AppFailureRecord>[];
+      debugAppFailureSink = records.add;
+      addTearDown(() => debugAppFailureSink = null);
+      for (final code in ['node.example.com', 'a.b', 'hk-01']) {
+        records.clear();
+        logProfileFailure('t', StateError('x'), StackTrace.empty, code);
+        final line = records.single.line;
+        expect(line, contains('StateError(code=other)'), reason: code);
+        expect(line, isNot(contains(code)), reason: code);
+      }
+    });
+
+    test('解析器固定码表内的码原样保留', () {
+      final records = <AppFailureRecord>[];
+      debugAppFailureSink = records.add;
+      addTearDown(() => debugAppFailureSink = null);
+      for (final code in kParseErrorCodes) {
+        records.clear();
+        logProfileFailure('t', StateError('x'), StackTrace.empty, code);
+        expect(records.single.line, contains('StateError(code=$code)'));
+      }
+    });
+  });
 }

@@ -84,6 +84,24 @@ void main() {
       expect(line, isNot(contains(bareDomain)));
     });
 
+    test('像节点名的短串当作 code 传入：一律 other', () {
+      for (final code in ['node.example.com', 'a.b', 'hk-01', 'hk01', '']) {
+        records.clear();
+        logProxySelectionFailure(code);
+        final line = records.single.line;
+        expect(line, contains('SelectionFailed(code=other)'), reason: code);
+        expect(line, isNot(contains(code.isEmpty ? '\u0000' : 'code=$code')));
+      }
+    });
+
+    test('白名单内的失败码原样保留', () {
+      for (final code in kSelectionFailureCodes) {
+        records.clear();
+        logProxySelectionFailure(code);
+        expect(records.single.line, contains('SelectionFailed(code=$code)'));
+      }
+    });
+
     test('失败码不是稳定短码（可能夹带名字）：记成 other', () {
       logProxySelectionFailure('outbound $bareDomain not found');
       final line = records.single.line;

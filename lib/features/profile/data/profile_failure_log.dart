@@ -1,6 +1,7 @@
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/failure_codes.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart'
-    show ProfileValidationException;
+    show ProfileValidationException, kParseErrorCodes;
 import 'package:flutter/foundation.dart';
 
 /// 订阅存储 / 仓库 / 迁移的失败落盘口。
@@ -65,7 +66,11 @@ void _logSafely(void Function() body) {
 ProfileFailureSummary _summaryOf(Object error, String? code) =>
     ProfileFailureSummary(
       error.runtimeType,
-      code ?? (error is ProfileValidationException ? error.code : null),
+      // 只认解析器的固定码表，其余（包括像短码的裸域名）记成 `other`。
+      trustedFailureCode(
+        code ?? (error is ProfileValidationException ? error.code : null),
+        kParseErrorCodes,
+      ),
     );
 
 /// 只含类型名与稳定码的失败摘要；[toString] 就是写进日志的全部内容。

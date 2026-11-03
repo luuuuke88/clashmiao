@@ -517,6 +517,73 @@ void main() {
     expect(out.exceptions!.single.value, 'Bad state: boom');
     expect(out.tags, {'phase': 'connected'});
   });
+
+  group('严格模式：白名单主机的路径也不上报', () {
+    const officialSub = 'https://clashmiao.com/sub/short';
+    const repoUrl = 'https://github.com/luuuuke88/clashmiao/raw/main/x';
+
+    void expectHostOnly(String? text) {
+      expect(text, isNot(contains('/sub/short')));
+      expect(text, isNot(contains('/luuuuke88')));
+      expect(text, isNot(contains('/raw/main')));
+    }
+
+    test('beforeSend：消息、异常 value、面包屑、tags、extra', () {
+      final event = SentryEvent(
+        message: SentryMessage('load $officialSub'),
+        exceptions: [SentryException(type: 'E', value: 'fail $repoUrl')],
+        breadcrumbs: [
+          Breadcrumb(message: 'open $officialSub', data: {'u': repoUrl}),
+        ],
+        tags: {'u': officialSub},
+        extra: {'u': repoUrl},
+      );
+      final out = redactSentryEvent(event);
+      expect(out.message!.formatted, 'load https://clashmiao.com');
+      expect(out.exceptions!.single.value, 'fail https://github.com');
+      expect(out.breadcrumbs!.single.message, 'open https://clashmiao.com');
+      expect(out.breadcrumbs!.single.data!['u'], 'https://github.com');
+      expect(out.tags!['u'], 'https://clashmiao.com');
+      expect(out.extra!['u'], 'https://github.com');
+      expectHostOnly(jsonEncode(out.toJson()));
+    });
+
+    test('beforeBreadcrumb', () {
+      final crumb = redactBreadcrumb(
+        Breadcrumb(message: 'GET $officialSub', data: {'u': repoUrl}),
+      )!;
+      expect(crumb.message, 'GET https://clashmiao.com');
+      expect(crumb.data!['u'], 'https://github.com');
+    });
+
+    test('beforeSendTransaction：事务名与子 span 描述', () async {
+      SentryTransaction? raw;
+      final options = SentryOptions(dsn: 'https://public@example.test/1')
+        ..traceLifecycle = SentryTraceLifecycle.static
+        ..tracesSampleRate = 1
+        ..transport = _DiscardingTransport()
+        ..beforeSendTransaction = (transaction, hint) {
+          raw = transaction;
+          return null;
+        };
+      final hub = Hub(options);
+      addTearDown(hub.close);
+      final root = hub.startTransaction(
+        'GET $officialSub',
+        'ui.action',
+        bindToScope: true,
+      );
+      final child = root.startChild('http.client', description: 'GET $repoUrl');
+      await child.finish();
+      await root.finish();
+
+      final out = redactSentryTransaction(raw!)!;
+      final encoded = jsonEncode(out.toJson());
+      expectHostOnly(encoded);
+      expect(encoded, contains('https://github.com'));
+      expect(encoded, contains('https://clashmiao.com'));
+    });
+  });
 }
 
 /// 什么都不发：测试里的 Hub 不能真的联网。

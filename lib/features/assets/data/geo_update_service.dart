@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/features/assets/model/geo_asset.dart';
 import 'package:crypto/crypto.dart';
@@ -61,7 +61,7 @@ class GeoUpdateService {
     } on GeoChecksumMismatchException {
       rethrow;
     } catch (e, st) {
-      logAppFailure('geo.sha256Skipped', e, st);
+      logInputFailure('geo.sha256Skipped', e, st);
     }
 
     final dest = File('${workDir.path}/${asset.filename}');

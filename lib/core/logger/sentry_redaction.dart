@@ -30,7 +30,13 @@ import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// `beforeSend`：原地脱敏后返回同一个事件。
-SentryEvent redactSentryEvent(SentryEvent event) {
+///
+/// 上报会离开设备，整个过程用**严格模式**（[withStrictRedaction]）：URL 只留
+/// scheme + 主机，任何路径都不保留，包括官网与本项目仓库前缀。
+SentryEvent redactSentryEvent(SentryEvent event) =>
+    withStrictRedaction(() => _redactSentryEvent(event));
+
+SentryEvent _redactSentryEvent(SentryEvent event) {
   event.request = null;
   event.contexts = _keepAllowedContexts(event.contexts);
 
@@ -108,7 +114,10 @@ SentryEvent redactSentryEvent(SentryEvent event) {
 ///
 /// 某个子 span 取不到 JSON 或脱敏失败时只丢掉它；事务的 span 列表改不了时整个
 /// 事务都不发（返回 null）——宁可少一条性能数据，也不发出没过滤的内容。
-SentryTransaction? redactSentryTransaction(SentryTransaction transaction) {
+SentryTransaction? redactSentryTransaction(SentryTransaction transaction) =>
+    withStrictRedaction(() => _redactSentryTransaction(transaction));
+
+SentryTransaction? _redactSentryTransaction(SentryTransaction transaction) {
   redactSentryEvent(transaction);
   final spans = transaction.spans;
   try {
@@ -287,7 +296,7 @@ class _RedactedSpanSnapshot implements SentrySpan {
 /// `beforeBreadcrumb`：原地脱敏后返回同一条面包屑。
 Breadcrumb? redactBreadcrumb(Breadcrumb? breadcrumb) {
   if (breadcrumb == null) return null;
-  _redactBreadcrumbInPlace(breadcrumb);
+  withStrictRedaction(() => _redactBreadcrumbInPlace(breadcrumb));
   return breadcrumb;
 }
 

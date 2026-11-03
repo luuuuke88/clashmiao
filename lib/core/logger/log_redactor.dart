@@ -8,7 +8,8 @@
 // 所以这里按**白名单**处理：除非主机在公共白名单里（[isPublicHost]：GitHub、
 // 官网、构建期外链、本机回环），一律遮盖；不再靠「看起来像不像 token」去猜。
 // GitHub 这类谁都能托管订阅的多租户主机，还要路径在本项目仓库或构建期外链的路径
-// 前缀之下才放行（[publicUrlAccess]）。
+// 前缀之下才放行（[publicUrlAccess]）。离开设备的通道（Sentry）用严格模式
+// （[withStrictRedaction] / [redactStrict]）：白名单主机也只留 scheme + 主机，不留路径。
 //
 // 规则（按顺序执行，结果幂等，可以重复过滤）：
 // 1. 代理分享链接（vmess:// vless:// ss:// trojan:// hysteria2:// tuic:// …）整条
@@ -201,6 +202,30 @@ String redactLogText(String input) {
   });
   return out;
 }
+
+// ─── 严格模式 ─────────────────────────────────────────────────────────
+
+int _strictDepth = 0;
+
+/// 在 [body] 执行期间启用**严格模式**：所有 URL 只保留 scheme + 主机（白名单
+/// 主机）或 `<url>`（其它），**任何路径都不保留**——包括官网与本项目仓库前缀。
+///
+/// 脱敏器认得出主机，却无法知道一条 URL 的**来源**：官网或仓库前缀下的短路径
+/// 可能就是用户的订阅地址。离开设备的通道（Sentry）不能赌这一点，所以用严格
+/// 模式；app.log 本地导出沿用白名单路径规则（来源侧的失败日志另有 `logInputFailure`
+/// 等把关）。同步执行，可嵌套。
+T withStrictRedaction<T>(T Function() body) {
+  _strictDepth++;
+  try {
+    return body();
+  } finally {
+    _strictDepth--;
+  }
+}
+
+/// [redactLogText] 的严格模式版本（见 [withStrictRedaction]）。
+String redactStrict(String input) =>
+    withStrictRedaction(() => redactLogText(input));
 
 /// 结构化数据（Map 键名、请求头名）里，[name] 是否是秘密字段名。
 /// 与文本里键值规则用同一份字段名表；结构化场景下强弱字段都算。
@@ -459,7 +484,8 @@ String _redactUrlMatch(Match m) {
     case PublicUrlAccess.hostOnly:
       return '$scheme://$authority$tail';
     case PublicUrlAccess.hostAndPath:
-      break;
+      // 严格模式：来源不明，路径一律不保留。
+      if (_strictDepth > 0) return '$scheme://$authority$tail';
   }
 
   // 路径里藏着别的地址（`/o/r,https://订阅地址`、编码过的 `%2Chttps%3A%2F%2F…`、

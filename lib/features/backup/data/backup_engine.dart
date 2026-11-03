@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/input_failure_log.dart';
 import 'package:clashmiao/core/storage/pref_registry.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
@@ -271,11 +272,11 @@ class BackupEngine {
       await _apply(plan);
       await _clearMarker();
     } catch (e, st) {
-      logAppFailure('backup.applyRestore', e, st);
+      logInputFailure('backup.applyRestore', e, st);
       try {
         await _rollbackTo(snapshot);
       } catch (e2, st2) {
-        logAppFailure('backup.rollbackAfterFailedRestore', e2, st2);
+        logInputFailure('backup.rollbackAfterFailedRestore', e2, st2);
         // 恢复线索在内存里也记一份：磁盘标记可能没清掉也可能已经没了，
         // 这个进程里下一次导入必须先把这件事了结，不能直接覆盖线索。
         _state.pendingSnapshot = snapshot.path;
@@ -441,7 +442,7 @@ class BackupEngine {
       }
       return file;
     } catch (e, st) {
-      logAppFailure('backup.writeSnapshot', e, st);
+      logInputFailure('backup.writeSnapshot', e, st);
       if (file != null) {
         await _deleteQuietly(file);
         await _deleteQuietly(File('${file.path}.tmp'));
@@ -481,7 +482,7 @@ class BackupEngine {
     try {
       await prefs.setString(kRestoreMarkerKey, path);
     } catch (e, st) {
-      logAppFailure('backup.reassertMarker', e, st);
+      logInputFailure('backup.reassertMarker', e, st);
     }
   }
 
@@ -532,7 +533,7 @@ class BackupEngine {
         await _deleteQuietly(stale);
       }
     } catch (e, st) {
-      logAppFailure('backup.pruneSnapshots', e, st);
+      logInputFailure('backup.pruneSnapshots', e, st);
     }
   }
 
@@ -582,7 +583,7 @@ class BackupEngine {
     final file = File(p.join(backupsDir.path, name));
     try {
       if (name.isEmpty || !await file.exists()) {
-        logAppFailure('backup.snapshotMissing', 'snapshot not found: $clue');
+        logAppFailure('backup.snapshotMissing', 'snapshot not found');
         await _forgetMarker();
         _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
@@ -595,7 +596,7 @@ class BackupEngine {
           trusted: true,
         );
       } catch (e, st) {
-        logAppFailure('backup.snapshotCorrupt', e, st);
+        logInputFailure('backup.snapshotCorrupt', e, st);
         await _forgetMarker();
         _state.pendingSnapshot = null;
         return RecoveryOutcome.unrecoverable;
@@ -606,7 +607,7 @@ class BackupEngine {
       debugPrint('[backup] 已用恢复前快照回到上次恢复之前的状态');
       return RecoveryOutcome.recovered;
     } catch (e, st) {
-      logAppFailure('backup.rollback', e, st);
+      logInputFailure('backup.rollback', e, st);
       _state.pendingSnapshot = file.path;
       await _reassertMarker(file.path);
       return RecoveryOutcome.failed;

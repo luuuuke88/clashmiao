@@ -42,41 +42,35 @@ void main() {
 
   group('move.dart', () {
     test('目录移动：lib 与 test 镜像一起移动，四个根目录的 import 都改写', () {
-      final r = move(['domain/config', 'features/config']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
 
-      expect(exists('lib/domain/config/a.dart'), isFalse);
-      expect(exists('lib/features/config/a.dart'), isTrue);
-      expect(exists('lib/features/config/sub/b.dart'), isTrue, reason: '保留子结构');
-      expect(exists('test/features/config/a_test.dart'), isTrue);
-      expect(exists('test/features/config/sub/b_test.dart'), isTrue);
-      expect(exists('test/domain/config/a_test.dart'), isFalse);
+      expect(exists('lib/zz_old/cfg/a.dart'), isFalse);
+      expect(exists('lib/zz_new/cfg/a.dart'), isTrue);
+      expect(exists('lib/zz_new/cfg/sub/b.dart'), isTrue, reason: '保留子结构');
+      expect(exists('test/zz_new/cfg/a_test.dart'), isTrue);
+      expect(exists('test/zz_new/cfg/sub/b_test.dart'), isTrue);
+      expect(exists('test/zz_old/cfg/a_test.dart'), isFalse);
 
       for (final f in [
-        'lib/features/config/a.dart',
+        'lib/zz_new/cfg/a.dart',
         'lib/domain/other.dart',
-        'test/features/config/a_test.dart',
+        'test/zz_new/cfg/a_test.dart',
         'test/domain/other_test.dart',
         'integration_test/app_test.dart',
         'tool/uses.dart',
       ]) {
-        expect(
-          read(f),
-          contains("'package:clashmiao/features/config/"),
-          reason: f,
-        );
-        expect(read(f), isNot(contains("'package:clashmiao/domain/config/")));
+        expect(read(f), contains("'package:clashmiao/zz_new/cfg/"), reason: f);
+        expect(read(f), isNot(contains("'package:clashmiao/zz_old/cfg/")));
       }
       // export 与条件 import 的分支也要改写。
       expect(
         read('lib/domain/other.dart'),
-        contains("export 'package:clashmiao/features/config/sub/b.dart'"),
+        contains("export 'package:clashmiao/zz_new/cfg/sub/b.dart'"),
       );
       expect(
         read('lib/domain/other.dart'),
-        contains(
-          "if (dart.library.io) 'package:clashmiao/features/config/a.dart'",
-        ),
+        contains("if (dart.library.io) 'package:clashmiao/zz_new/cfg/a.dart'"),
       );
       // 迁移结果是 git 重命名（保留历史），不是删除加新增。
       expect(
@@ -85,19 +79,16 @@ void main() {
       );
     });
 
-    test('路径前缀边界：domain/config 不得误伤 domain/configx', () {
-      final r = move(['domain/config', 'features/config']);
+    test('路径前缀边界：zz_old/cfg 不得误伤 zz_old/cfgx', () {
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
       expect(
         read('lib/domain/other.dart'),
-        contains("'package:clashmiao/domain/configx/c.dart'"),
+        contains("'package:clashmiao/zz_old/cfgx/c.dart'"),
       );
-      expect(
-        read('lib/domain/other.dart'),
-        isNot(contains('features/configx')),
-      );
-      expect(exists('lib/domain/configx/c.dart'), isTrue);
-      expect(exists('test/domain/configx/c_test.dart'), isTrue);
+      expect(read('lib/domain/other.dart'), isNot(contains('zz_new/cfgx')));
+      expect(exists('lib/zz_old/cfgx/c.dart'), isTrue);
+      expect(exists('test/zz_old/cfgx/c_test.dart'), isTrue);
     });
 
     test('单文件移动：同时移动 test 下对应的 _test.dart', () {
@@ -109,7 +100,7 @@ void main() {
       expect(exists('test/domain/other_test.dart'), isFalse);
       // 其他文件对它的引用被改写。
       expect(
-        read('lib/domain/configx/c.dart'),
+        read('lib/zz_old/cfgx/c.dart'),
         contains("'package:clashmiao/features/misc/other.dart'"),
       );
     });
@@ -123,31 +114,31 @@ void main() {
       expect(exists('lib/domain/other.dart'), isTrue);
       expect(exists('test/domain/other_test.dart'), isTrue);
       expect(target.readAsStringSync(), '// existing\n');
-      expect(read('lib/domain/configx/c.dart'), contains('domain/other.dart'));
+      expect(read('lib/zz_old/cfgx/c.dart'), contains('domain/other.dart'));
       // 唯一的改动是测试自己造的那个目标文件。
       expect(status().trim(), '?? lib/features/');
     });
 
     test('目录移动撞名：先检查全部再动手，一个文件都不移', () {
-      File(p.join(repo.path, 'lib/features/config/sub/b.dart'))
+      File(p.join(repo.path, 'lib/zz_new/cfg/sub/b.dart'))
         ..createSync(recursive: true)
         ..writeAsStringSync('// existing\n');
-      final r = move(['domain/config', 'features/config']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, isNot(0));
-      expect(exists('lib/domain/config/a.dart'), isTrue);
-      expect(exists('lib/domain/config/sub/b.dart'), isTrue);
-      expect(exists('lib/features/config/a.dart'), isFalse);
-      expect(exists('test/domain/config/a_test.dart'), isTrue);
+      expect(exists('lib/zz_old/cfg/a.dart'), isTrue);
+      expect(exists('lib/zz_old/cfg/sub/b.dart'), isTrue);
+      expect(exists('lib/zz_new/cfg/a.dart'), isFalse);
+      expect(exists('test/zz_old/cfg/a_test.dart'), isTrue);
     });
 
     test('--dry-run：打印计划，不修改任何文件', () {
-      final r = move(['domain/config', 'features/config', '--dry-run']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg', '--dry-run']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
       expect(status(), isEmpty);
-      expect(exists('lib/domain/config/a.dart'), isTrue);
-      expect(exists('lib/features/config/a.dart'), isFalse);
-      expect(r.stdout, contains('lib/domain/config/a.dart'));
-      expect(r.stdout, contains('lib/features/config/a.dart'));
+      expect(exists('lib/zz_old/cfg/a.dart'), isTrue);
+      expect(exists('lib/zz_new/cfg/a.dart'), isFalse);
+      expect(r.stdout, contains('lib/zz_old/cfg/a.dart'));
+      expect(r.stdout, contains('lib/zz_new/cfg/a.dart'));
     });
 
     test('测试文件目录深度改变且含相对 import：非 0 退出，什么都不动', () {
@@ -164,10 +155,10 @@ void main() {
     });
 
     test('相对 import 指向一同移动的文件、相对关系不变：放行', () {
-      File(p.join(repo.path, 'test/domain/config/a_test.dart'))
+      File(p.join(repo.path, 'test/zz_old/cfg/a_test.dart'))
           .writeAsStringSync("import 'sub/b_test.dart';\n");
       _git(repo, ['commit', '-qam', 'rel-ok']);
-      final r = move(['domain/config', 'features/config']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
     });
 
@@ -207,19 +198,16 @@ void main() {
 
     test('目录移动：清单外的 <from>/... 引用也按路径段边界改写，configx 不动', () {
       _write(repo, 'lib/domain/uses_gen.dart', '''
-import 'package:clashmiao/domain/config/gen/missing.g.dart';
-import 'package:clashmiao/domain/configx/missing.g.dart';
+import 'package:clashmiao/zz_old/cfg/gen/missing.g.dart';
+import 'package:clashmiao/zz_old/cfgx/missing.g.dart';
 ''');
       _git(repo, ['add', '-A']);
       _git(repo, ['commit', '-qm', 'gen']);
-      final r = move(['domain/config', 'features/config']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
       final t = read('lib/domain/uses_gen.dart');
-      expect(
-        t,
-        contains("'package:clashmiao/features/config/gen/missing.g.dart'"),
-      );
-      expect(t, contains("'package:clashmiao/domain/configx/missing.g.dart'"));
+      expect(t, contains("'package:clashmiao/zz_new/cfg/gen/missing.g.dart'"));
+      expect(t, contains("'package:clashmiao/zz_old/cfgx/missing.g.dart'"));
     });
 
     test('相关文件有未暂存修改：拒绝；已暂存的改动允许连续多次运行', () {
@@ -232,9 +220,9 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
 
       _git(repo, ['checkout', '--', 'lib/domain/other.dart']);
       // 不提交，连续两次移动：第二次要处理第一次改写过的文件。
-      r = move(['domain/config/sub/b.dart', 'features/b.dart']);
+      r = move(['zz_old/cfg/sub/b.dart', 'features/b.dart']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
-      r = move(['domain/config/a.dart', 'features/a.dart']);
+      r = move(['zz_old/cfg/a.dart', 'features/a.dart']);
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
       expect(check('HEAD').exitCode, 0);
     });
@@ -243,34 +231,34 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
       if ((Process.runSync('id', ['-u']).stdout as String).trim() == '0') {
         return; // root 不受目录权限限制，无法制造失败。
       }
-      Directory(p.join(repo.path, 'lib/features/config/sub'))
+      Directory(p.join(repo.path, 'lib/zz_new/cfg/sub'))
           .createSync(recursive: true);
       Process.runSync('chmod', [
         '555',
-        p.join(repo.path, 'lib/features/config/sub'),
+        p.join(repo.path, 'lib/zz_new/cfg/sub'),
       ]);
-      final r = move(['domain/config', 'features/config']);
+      final r = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r.exitCode, isNot(0));
       expect(r.stderr, contains('回滚'));
-      expect(exists('lib/domain/config/a.dart'), isTrue);
-      expect(exists('lib/domain/config/sub/b.dart'), isTrue);
-      expect(exists('lib/features/config/a.dart'), isFalse);
-      expect(exists('test/domain/config/a_test.dart'), isTrue);
-      expect(read('lib/domain/other.dart'), contains('domain/config/a.dart'));
-      expect(read('lib/domain/other.dart'), isNot(contains('features/config')));
+      expect(exists('lib/zz_old/cfg/a.dart'), isTrue);
+      expect(exists('lib/zz_old/cfg/sub/b.dart'), isTrue);
+      expect(exists('lib/zz_new/cfg/a.dart'), isFalse);
+      expect(exists('test/zz_old/cfg/a_test.dart'), isTrue);
+      expect(read('lib/domain/other.dart'), contains('zz_old/cfg/a.dart'));
+      expect(read('lib/domain/other.dart'), isNot(contains('zz_new/cfg')));
       expect(status(), isEmpty);
     });
 
     test('源路径不存在 / 参数缺失：非 0 退出', () {
       expect(move(['domain/nope', 'features/nope']).exitCode, isNot(0));
-      expect(move(['domain/config']).exitCode, isNot(0));
+      expect(move(['zz_old/cfg']).exitCode, isNot(0));
       expect(status(), isEmpty);
     });
   });
 
   group('check_pure_move.sh', () {
     test('只有重命名与 import 改写：退出码 0', () {
-      final r0 = move(['domain/config', 'features/config']);
+      final r0 = move(['zz_old/cfg', 'zz_new/cfg']);
       expect(r0.exitCode, 0, reason: '${r0.stdout}\n${r0.stderr}');
       final r = check('HEAD');
       expect(r.exitCode, 0, reason: '${r.stdout}\n${r.stderr}');
@@ -278,7 +266,7 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
 
     test('提交后相对 base 仍为 0', () {
       final base = _git(repo, ['rev-parse', 'HEAD']).trim();
-      move(['domain/config', 'features/config']);
+      move(['zz_old/cfg', 'zz_new/cfg']);
       _git(repo, ['add', '-A']);
       _git(repo, ['commit', '-qm', 'moved']);
       final r = check(base);
@@ -286,9 +274,9 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
     });
 
     test('多改了一行代码：退出码 1，并打印违规行', () {
-      move(['domain/config', 'features/config']);
-      File(p.join(repo.path, 'lib/features/config/a.dart')).writeAsStringSync(
-        '${read('lib/features/config/a.dart')}const sneaky = 1;\n',
+      move(['zz_old/cfg', 'zz_new/cfg']);
+      File(p.join(repo.path, 'lib/zz_new/cfg/a.dart')).writeAsStringSync(
+        '${read('lib/zz_new/cfg/a.dart')}const sneaky = 1;\n',
       );
       final r = check('HEAD');
       expect(r.exitCode, 1);
@@ -303,8 +291,8 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
     });
 
     test('同一行夹带代码（import 行后接 void changed）：退出码 1', () {
-      move(['domain/config', 'features/config']);
-      final f = File(p.join(repo.path, 'lib/features/config/a.dart'));
+      move(['zz_old/cfg', 'zz_new/cfg']);
+      final f = File(p.join(repo.path, 'lib/zz_new/cfg/a.dart'));
       f.writeAsStringSync(
         f.readAsStringSync().replaceFirst(
           "sub/b.dart';",
@@ -320,15 +308,15 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
       final f = File(p.join(repo.path, 'lib/domain/other.dart'));
       f.writeAsStringSync(
         f.readAsStringSync().replaceFirst(
-          "domain/configx/c.dart';",
-          "domain/configx/c.dart'; void changed() {}",
+          "zz_old/cfgx/c.dart';",
+          "zz_old/cfgx/c.dart'; void changed() {}",
         ),
       );
       expect(check('HEAD').exitCode, 1);
     });
 
     test('import 行除路径外还改了 as / show：退出码 1', () {
-      final f = File(p.join(repo.path, 'lib/domain/configx/c.dart'));
+      final f = File(p.join(repo.path, 'lib/zz_old/cfgx/c.dart'));
       f.writeAsStringSync(
         f.readAsStringSync().replaceFirst("other.dart';", "other.dart' as o;"),
       );
@@ -338,9 +326,9 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
     });
 
     test('只新增一条 import（没有对应删除）：退出码 1', () {
-      final f = File(p.join(repo.path, 'lib/domain/configx/c.dart'));
+      final f = File(p.join(repo.path, 'lib/zz_old/cfgx/c.dart'));
       f.writeAsStringSync(
-        "import 'package:clashmiao/domain/config/a.dart';\n${f.readAsStringSync()}",
+        "import 'package:clashmiao/zz_old/cfg/a.dart';\n${f.readAsStringSync()}",
       );
       final r = check('HEAD');
       expect(r.exitCode, 1);
@@ -410,7 +398,7 @@ import 'package:clashmiao/domain/configx/missing.g.dart';
     });
 
     test('删除文件：退出码 1', () {
-      _git(repo, ['rm', '-q', 'lib/domain/configx/c.dart']);
+      _git(repo, ['rm', '-q', 'lib/zz_old/cfgx/c.dart']);
       expect(check('HEAD').exitCode, 1);
     });
 
@@ -439,57 +427,57 @@ void _write(Directory repo, String rel, String content) {
 }
 
 void _seed(Directory repo) {
-  _write(repo, 'lib/domain/config/a.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
-import 'package:clashmiao/domain/configx/c.dart';
+  _write(repo, 'lib/zz_old/cfg/a.dart', '''
+import 'package:clashmiao/zz_old/cfg/sub/b.dart';
+import 'package:clashmiao/zz_old/cfgx/c.dart';
 
 const a = 1;
 ''');
-  _write(repo, 'lib/domain/config/sub/b.dart', 'const b = 2;\n');
-  _write(repo, 'lib/domain/configx/c.dart', '''
+  _write(repo, 'lib/zz_old/cfg/sub/b.dart', 'const b = 2;\n');
+  _write(repo, 'lib/zz_old/cfgx/c.dart', '''
 import 'package:clashmiao/domain/other.dart';
 
 const c = 3;
 ''');
   _write(repo, 'lib/domain/other.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
-import 'package:clashmiao/domain/configx/c.dart';
-export 'package:clashmiao/domain/config/sub/b.dart'
+import 'package:clashmiao/zz_old/cfg/a.dart';
+import 'package:clashmiao/zz_old/cfgx/c.dart';
+export 'package:clashmiao/zz_old/cfg/sub/b.dart'
     show b;
 import 'dart:async'
-    if (dart.library.io) 'package:clashmiao/domain/config/a.dart';
+    if (dart.library.io) 'package:clashmiao/zz_old/cfg/a.dart';
 
 const other = 4;
 ''');
-  _write(repo, 'test/domain/config/a_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+  _write(repo, 'test/zz_old/cfg/a_test.dart', '''
+import 'package:clashmiao/zz_old/cfg/a.dart';
 
 void main() {}
 ''');
-  _write(repo, 'test/domain/config/sub/b_test.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
+  _write(repo, 'test/zz_old/cfg/sub/b_test.dart', '''
+import 'package:clashmiao/zz_old/cfg/sub/b.dart';
 
 void main() {}
 ''');
-  _write(repo, 'test/domain/configx/c_test.dart', '''
-import 'package:clashmiao/domain/configx/c.dart';
+  _write(repo, 'test/zz_old/cfgx/c_test.dart', '''
+import 'package:clashmiao/zz_old/cfgx/c.dart';
 
 void main() {}
 ''');
   _write(repo, 'test/domain/other_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/zz_old/cfg/a.dart';
 import 'package:clashmiao/domain/other.dart';
 
 void main() {}
 ''');
   _write(repo, 'test/support/helper.dart', 'const helper = 1;\n');
   _write(repo, 'integration_test/app_test.dart', '''
-import 'package:clashmiao/domain/config/a.dart';
+import 'package:clashmiao/zz_old/cfg/a.dart';
 
 void main() {}
 ''');
   _write(repo, 'tool/uses.dart', '''
-import 'package:clashmiao/domain/config/sub/b.dart';
+import 'package:clashmiao/zz_old/cfg/sub/b.dart';
 
 void main() {}
 ''');

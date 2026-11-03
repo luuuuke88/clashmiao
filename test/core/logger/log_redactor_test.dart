@@ -631,6 +631,13 @@ void main() {
     }
   });
 
+  test('app.log 规则不遮裸主机名：Dart 堆栈帧里的 package: 路径原样（裸主机名遮盖只用于内核日志导出）', () {
+    const frame =
+        '#1      _ProfilesPageState._updateProfile '
+        '(package:clashmiao/features/profile/presentation/profiles_page.dart:428:7)';
+    expect(redactLogText(frame), frame);
+  });
+
   test('畸形输入不抛异常', () {
     for (final input in [
       '{"password":"',

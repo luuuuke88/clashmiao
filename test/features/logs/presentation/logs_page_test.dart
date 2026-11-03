@@ -222,6 +222,7 @@ void main() {
       expect(content, isNot(contains('node.example.com')));
       expect(content, contains('outbound/vless[…]: outbound connection to'));
       expect(content, contains('=> outbound/selector[…]'));
+      expect(content, isNot(contains('example')));
       // inbound 标签是应用内部固定名，保留。
       expect(content, contains('inbound/mixed[mixed-in]'));
     });

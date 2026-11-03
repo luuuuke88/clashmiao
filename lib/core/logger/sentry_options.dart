@@ -24,4 +24,7 @@ void configureSentryOptions(
   options.beforeSendTransaction = (transaction, hint) =>
       redactSentryTransaction(transaction);
   options.beforeBreadcrumb = (breadcrumb, hint) => redactBreadcrumb(breadcrumb);
+  // 结构化日志（Sentry Logs）：App 不使用，也没有逐字段的脱敏路径；万一被某个
+  // 集成打开，整体丢弃，不让未过滤的日志正文 / 属性离开设备。
+  options.beforeSendLog = (log, hint) => null;
 }

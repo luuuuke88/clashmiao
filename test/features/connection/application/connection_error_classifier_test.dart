@@ -272,5 +272,13 @@ void main() {
     test('其它异常 → unexpected', () {
       expect(failureFromError(StateError('x')), isA<UnexpectedFailure>());
     });
+    test('失败对象保留异常原文（相等性与状态不变）；脱敏只发生在日志 / 上报边界', () {
+      const text =
+          'refresh https://sub.example.org/s/ab12 failed, dial 198.51.100.7:8443';
+      expect(
+        failureFromError(StateError(text)),
+        const UnexpectedFailure('Bad state: $text'),
+      );
+    });
   });
 }

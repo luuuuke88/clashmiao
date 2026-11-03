@@ -19,39 +19,39 @@ void main() {
     const cases = <(String, String, String)>[
       // (说明, 输入, 期望)
       (
-        '查询串整体折叠，scheme 与主机保留',
-        'GET https://example.test/sub?token=SECRET&flag=1',
-        'GET https://example.test/sub?…',
+        '白名单主机：查询串整体去掉，scheme 与主机保留',
+        'GET https://github.com/sub?token=SECRET&flag=1',
+        'GET https://github.com/sub',
       ),
       (
         '去掉 userinfo，端口保留',
-        'connect https://alice:hunter2@panel.example.test:8443/api/v1/sub failed',
-        'connect https://panel.example.test:8443/api/v1/sub failed',
+        'connect https://alice:hunter2@api.github.com:8443/api/v1/sub failed',
+        'connect https://api.github.com:8443/api/v1/sub failed',
       ),
       (
         '路径里的长十六进制 token',
-        'https://example.test/link/0123456789abcdef0123456789abcdef',
-        'https://example.test/link/…',
+        'https://github.com/link/0123456789abcdef0123456789abcdef',
+        'https://github.com/link/…',
       ),
       (
         '路径里的 UUID',
-        'https://example.test/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
-        'https://example.test/s/…/clash',
+        'https://github.com/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
+        'https://github.com/s/…/clash',
       ),
       (
         '路径里的长 base64',
-        'https://example.test/api/c2VjcmV0LXN1YnNjcmlwdGlvbi10b2tlbg==',
-        'https://example.test/api/…',
+        'https://github.com/api/c2VjcmV0LXN1YnNjcmlwdGlvbi10b2tlbg==',
+        'https://github.com/api/…',
       ),
       (
         '路径里 16 位以上字母数字混排',
-        'https://example.test/sub/Ab12Cd34Ef56Gh78',
-        'https://example.test/sub/…',
+        'https://github.com/sub/Ab12Cd34Ef56Gh78',
+        'https://github.com/sub/…',
       ),
       (
-        '片段同样折叠；末尾标点留在外面',
-        'see (https://example.test/x#frag-secret), then retry.',
-        'see (https://example.test/x#…), then retry.',
+        '片段同样去掉；末尾标点留在外面',
+        'see (https://github.com/x#frag-secret), then retry.',
+        'see (https://github.com/x), then retry.',
       ),
       (
         'vmess 分享链接整条折叠',
@@ -69,55 +69,55 @@ void main() {
       ),
       (
         '编码过的 UUID 路径段：整段遮盖',
-        'GET https://example.test/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
-        'GET https://example.test/s/…/clash',
+        'GET https://github.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
+        'GET https://github.com/s/…/clash',
       ),
       (
         '编码过的十六进制 token 路径段',
-        'https://example.test/link/%30%31%32%33456789abcdef0123456789abcdef',
-        'https://example.test/link/…',
+        'https://github.com/link/%30%31%32%33456789abcdef0123456789abcdef',
+        'https://github.com/link/…',
       ),
       (
         '重复编码的 UUID 路径段',
-        'https://example.test/s/3f2504e0%252D4f89%252D11d3%252D9a0c%252D0305e82c3301',
-        'https://example.test/s/…',
+        'https://github.com/s/3f2504e0%252D4f89%252D11d3%252D9a0c%252D0305e82c3301',
+        'https://github.com/s/…',
       ),
       (
         '编码的路径分隔符 %2F 把 UUID 和普通段粘成一段：整段遮盖',
-        'https://example.test/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
-        'https://example.test/s/…',
+        'https://github.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
+        'https://github.com/s/…',
       ),
       (
         '重复编码的路径分隔符 %252F',
-        'https://example.test/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
-        'https://example.test/s/…',
+        'https://github.com/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+        'https://github.com/s/…',
       ),
       (
         '三层编码的分隔符与连字符',
-        'https://example.test/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
+        'https://github.com/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
             '%25252D9a0c%25252D0305e82c3301',
-        'https://example.test/s/…',
+        'https://github.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%2F）：整段解码后仍要查',
-        'https://example.test/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
-        'https://example.test/s/…',
+        'https://github.com/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
+        'https://github.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%252F，两层）',
-        'https://example.test/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
-        'https://example.test/s/…',
+        'https://github.com/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
+        'https://github.com/s/…',
       ),
       (
         '含编码 / 的 base64 段（%25252F，三层）',
-        'https://example.test/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
-        'https://example.test/s/…',
+        'https://github.com/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
+        'https://github.com/s/…',
       ),
       (
         '转义斜杠的 http URL：userinfo 与路径 token',
-        r'{"u":"http:\/\/u:p@example.test\/s\/'
+        r'{"u":"http:\/\/u:p@github.com\/s\/'
             r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
-        r'{"u":"http:\/\/example.test\/s\/…\/clash"}',
+        r'{"u":"http:\/\/github.com\/s\/…\/clash"}',
       ),
       (
         '转义斜杠的分享链接',
@@ -342,7 +342,7 @@ void main() {
         'servers': [
           {'host': 'h.example.test', 'uuid': 1234},
         ],
-        'url': 'https://example.test/sub?token=SECRET',
+        'url': 'https://github.com/sub?token=SECRET',
         'count': 2,
       });
       expect(out, {
@@ -350,7 +350,7 @@ void main() {
         'servers': [
           {'host': 'h.example.test', 'uuid': '…'},
         ],
-        'url': 'https://example.test/sub?…',
+        'url': 'https://github.com/sub',
         'count': 2,
       });
     });
@@ -448,7 +448,7 @@ void main() {
     test('自引用 List', () {
       final list = <Object?>[
         {'token': 'SECRET'},
-        'https://example.test/sub?token=SECRET',
+        'https://github.com/sub?token=SECRET',
       ];
       list.add(list);
       expectSafe(list);
@@ -456,7 +456,7 @@ void main() {
 
     test('两个结构互相引用', () {
       final a = <String, Object?>{'password': 'SECRET'};
-      final b = <Object?>[a, 'https://example.test/sub?token=SECRET'];
+      final b = <Object?>[a, 'https://github.com/sub?token=SECRET'];
       a['b'] = b;
       expectSafe(a);
       expectSafe(b);
@@ -620,7 +620,7 @@ void main() {
           'errno = 61), address = 127.0.0.1, port = 2080',
       'PlatformException(stale, attempt mismatch, null, null)',
       'TimeoutException after 0:00:20.000000: Future not completed',
-      'https://example.test/api/v1/profiles',
+      'https://github.com/api/v1/profiles',
       '[ERROR] profiles.update: Exception: upstream exploded',
       '#0      ScriptedProfileRepository.update (file:///Users/me/code/'
           'clashmiao/test/support/scripted_profile_repository.dart:38:24)',
@@ -644,15 +644,13 @@ void main() {
       'pwd: /Users/me/code',
       'Bearer realm="clashmiao"',
       // 路径段：普通段、带编码的普通段、编码的分隔符、畸形转义原样保留。
-      'https://example.test/api/v1/profiles/%E9%A6%99%E6%B8%AF',
-      'https://example.test/api/v1%2Fprofiles%252Fclash',
-      'https://example.test/files/100%zz/abc%',
-      'https://example.test/s/%E0%A4%A',
-      r'{"url":"https:\/\/example.test\/api\/v1\/profiles"}',
+      'https://github.com/api/v1/profiles/%E9%A6%99%E6%B8%AF',
+      'https://github.com/api/v1%2Fprofiles%252Fclash',
+      'https://github.com/files/100%zz/abc%',
+      'https://github.com/s/%E0%A4%A',
+      r'{"url":"https:\/\/github.com\/api\/v1\/profiles"}',
       'route: domain_suffix=example.test outbound=proxy',
       'dns: exchange example.test: context deadline exceeded',
-      'outbound/vless[hk]: dial tcp 1.2.3.4:443: i/o timeout',
-      'inbound/tun[tun-in]: started at 172.19.0.1/30',
       'FormatException: Unexpected character (at character 1)',
       "type 'Null' is not a subtype of type 'String' in type cast",
       'Exception: profile not found (id=7)',
@@ -674,8 +672,8 @@ void main() {
       '{"password":"',
       'token=',
       'Authorization:',
-      'https://example.test/%',
-      'https://example.test/%E',
+      'https://github.com/%',
+      'https://github.com/%E',
       r'"key":\',
       '"password":"\\',
     ]) {
@@ -685,7 +683,7 @@ void main() {
 
   test('幂等：重复过滤结果不变', () {
     const input =
-        'uri = https://u:p@example.test/sub/0123456789abcdef0123?token=S '
+        'uri = https://u:p@github.com/sub/0123456789abcdef0123?token=S '
         'vmess://abc token=t Authorization: Bearer x';
     final once = redactLogText(input);
     expect(redactLogText(once), once);

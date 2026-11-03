@@ -1,19 +1,34 @@
-// 日志脱敏：所有**落盘 / 导出 / 上报**的日志文本都先过这里。
+// 日志脱敏：所有**落盘 / 导出 / 上报**的日志文本都先过这里（app.log、导出的
+// 日志、全局错误兜底、Sentry 事件与面包屑，见 `AppLogger.append` 与
+// `sentry_redaction.dart`），没有第二条出口。
 //
-// 应用日志（app.log）与导出的核心日志会被用户分享出去排障，而异常文本里常带着
-// 订阅地址：订阅链接本身就是凭据（路径或查询里的 token），代理分享链接更是把
-// 服务器、端口、密码 / UUID 全写在一起。这里只抹掉这些，**保留**排障需要的
-// 东西：异常类名、错误码、主机名与端口、堆栈帧（`file://` / `package:` 路径不动）。
+// 应用日志会被用户分享出去排障，崩溃上报会离开设备，而异常文本里常带着：
+// 订阅地址（本身就是凭据：路径或查询里的 token，短 token 也算）、代理分享链接
+// （服务器、端口、密码 / UUID 全写在一起）、节点地址（`host:port`、IP）。
+// 所以这里按**白名单**处理：除非主机在公共白名单里（[isPublicHost]：GitHub、
+// 官网、构建期外链、本机回环），一律遮盖；不再靠「看起来像不像 token」去猜。
 //
 // 规则（按顺序执行，结果幂等，可以重复过滤）：
 // 1. 代理分享链接（vmess:// vless:// ss:// trojan:// hysteria2:// tuic:// …）整条
 //    折叠为 `<scheme>://…`。
-// 2. 其它 URL：去掉 userinfo；查询串换成 `?…`、片段换成 `#…`；路径段原样以及
-//    最多三轮宽松的百分号解码之后，都按解出的 `/` 拆成子段逐个判断像不像 token
-//    （长十六进制、UUID、长 base64、16 位以上字母数字混排、JWT），任何子段像就把
-//    **整个原始段**换成 `…`，都不像就原样保留（包括原来的编码）。scheme、主机、端口保留。`file://` 不处理（堆栈帧）。JSON 里转义成
-//    `https:\/\/host\/path` 的 URL 先还原 `\/` 再按同样规则处理，处理完再转义回去。
-// 3. 键值形式的秘密：字段名（可带引号，含转义引号）+ 分隔符 `=` 或 `:`。识别出
+// 2. 其它 URL（任何 scheme：http / https / ws / wss / clash:// / sing-box:// …）：
+//    主机不在白名单里，整条换成 [kRedactedUrl]（`<url>`）。主机在白名单里：去掉
+//    userinfo、查询串与片段，保留 scheme、主机、端口与路径；路径段按子段判断像不像
+//    token（长十六进制、UUID、长 base64、16 位以上字母数字混排、JWT），像就把
+//    **整个原始段**换成 `…`（最多三轮宽松百分号解码）。只有空 authority 的 `file:///`（堆栈帧）不处理，`file://host/…` 照常过白名单。
+//    百分号编码（`https%3A%2F%2F…`）与 JSON unicode 转义（`https\u003a\u002f\u002f…`）的 URL
+//    还原后的整段文本走完整脱敏，
+//    任何一部分需要遮盖就整段换成 `<url>`。
+//    JSON 里转义成 `https:\/\/host\/path` 的 URL 先还原 `\/` 再按同样规则处理，处理完再
+//    转义回去。
+// 3. 裸地址：IPv4 / IPv6（带不带端口、带不带方括号都算）与 `host:port` 换成
+//    [kRedactedAddr]（`<addr>`），本机回环与白名单主机除外（IPv6 可带 zone id，端口 1~5 位，
+//    TLD 可以是 punycode，主机名可以是 Unicode IDN；带路径或带行列的堆栈帧
+//    形态天然不匹配，裸的 `main.js:12` 会被当主机遮盖；单标签 `node:443` 不处理）；SocketException 的
+//    `address = host` 与 `Failed host lookup: 'host'` 同样处理。时间戳（`12:34:56`）、
+//    版本号（`1.14.3`）、Dart 堆栈帧（`package:foo/bar.dart:12:7`、`dart:async`）与
+//    时长不会被碰。
+// 4. 键值形式的秘密：字段名（可带引号，含转义引号）+ 分隔符 `=` 或 `:`。识别出
 //    秘密字段后**从值开头一直遮到行尾**，不去猜值在哪里结束——打印出来的文本
 //    （`Map.toString` 不给字符串加引号、不转义）里值的边界本来就不可靠。
 //    - 结构化写法：带引号的字段名（JSON `"key":`，值是任何类型）、`key=`、
@@ -25,17 +40,25 @@
 //      遮盖；弱字段（key / auth / sid / sig / signature / pwd …）把冒号后整行
 //      余下内容按非 token 字符拆成片段，任何一个片段像凭据就遮盖，
 //      `Invalid key: profiles` 原样保留。
-// 4. 游离的 `Bearer <token>`：token 像凭据时遮盖。
+// 5. 游离的 `Bearer <token>`：token 像凭据时遮盖。
 
 import 'dart:collection';
 import 'dart:convert';
 
+import 'package:clashmiao/core/logger/public_hosts.dart';
+
 /// 脱敏后的占位符。
 const String kRedacted = '…';
 
+/// 非白名单 URL 的占位符。
+const String kRedactedUrl = '<url>';
+
+/// 节点地址（`host:port`、IP）的占位符。
+const String kRedactedAddr = '<addr>';
+
 /// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
 /// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 6;
+const int kLogRedactionVersion = 7;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -69,6 +92,21 @@ final RegExp _shareLink = RegExp(
 final RegExp _escapedUrl = RegExp(
   r'''\b[a-zA-Z][a-zA-Z0-9+.\-]*:\\/\\/[^\s"'<>]*''',
 );
+// 编码过的 URL：`https%3A%2F%2Fhost%2Fpath`（百分号，大小写不敏感）与
+// `https\u003a\u002f\u002fhost`（JSON unicode 转义）。分隔符 `:` `//` 里至少有
+// 一个是编码写法才算（全是明文的已由 [_url] 处理；只有 `\/` 转义的由
+// [_escapedUrl] 处理）。
+const _encColon = r'(?:%3[Aa]|\\u003[Aa])';
+const _encSlash = r'(?:%2[Ff]|\\u002[Ff])';
+const _anySlash = r'(?:%2[Ff]|\\u002[Ff]|\\/|/)';
+const _plainSlash = r'(?:\\/|/)';
+final RegExp _encodedUrl = RegExp(
+  r'\b([a-zA-Z][a-zA-Z0-9+.\-]*)'
+  '(?:$_encColon$_anySlash$_anySlash'
+  '|:(?:$_encSlash$_anySlash|$_plainSlash$_encSlash))'
+  r'''[^\s"'<>]*''',
+);
+
 final RegExp _trailingBackslashes = RegExp(r'\\+$');
 
 final RegExp _url = RegExp(
@@ -150,6 +188,8 @@ String redactLogText(String input) {
   var out = input.replaceAllMapped(_shareLink, (m) => '${m[1]}://$kRedacted');
   out = out.replaceAllMapped(_url, _redactUrlMatch);
   out = out.replaceAllMapped(_escapedUrl, _redactEscapedUrlMatch);
+  out = out.replaceAllMapped(_encodedUrl, _redactEncodedUrlMatch);
+  out = _redactAddresses(out);
   out = _redactKeyValues(out);
   out = out.replaceAllMapped(_bearer, (m) {
     final token = m[1]!;
@@ -337,11 +377,48 @@ String _redactEscapedUrlMatch(Match m) {
   return '${redacted.replaceAll('/', r'\/')}$tail';
 }
 
+/// 编码过的 URL：先还原（`\uXXXX`、`\/`、百分号），再把还原后的**整段文本**交给
+/// 完整的 [redactLogText]（URL、分享链接、裸地址、键值……一个都不少）：
+/// - 还原后没有任何东西被遮盖：原样返回编码文本（如 `file:///`）。
+/// - 有东西被遮盖，且结果里留下了占位符（非白名单 URL、分享链接、`host:port`、
+///   IP、被遮的 token……）：整段编码文本换成 `<url>`，不留尾巴，**绝不**返回原文。
+/// - 还原后全是白名单 URL：输出脱敏后的还原形式（已去掉查询串与片段）。
+String _redactEncodedUrlMatch(Match m) {
+  var whole = m[0]!;
+  var tail = '';
+  final trailing = _trailingBackslashes.firstMatch(whole);
+  if (trailing != null) {
+    tail = trailing[0]!;
+    whole = whole.substring(0, trailing.start);
+  }
+  final decoded = _percentDecodeLenient(_unescapeJson(whole));
+  final redacted = redactLogText(decoded);
+  if (redacted == decoded) return m[0]!;
+  if (redacted.contains(kRedactedUrl) ||
+      redacted.contains(kRedactedAddr) ||
+      redacted.contains(kRedacted)) {
+    return '$kRedactedUrl$tail';
+  }
+  return '$redacted$tail';
+}
+
+final RegExp _jsonUnicodeEscape = RegExp(r'\\u([0-9a-fA-F]{4})');
+
+/// 还原 JSON 的 `\uXXXX` 与 `\/`。
+String _unescapeJson(String text) => text
+    .replaceAllMapped(
+      _jsonUnicodeEscape,
+      (m) => String.fromCharCode(int.parse(m[1]!, radix: 16)),
+    )
+    .replaceAll(r'\/', '/');
+
 String _redactUrlMatch(Match m) {
   final whole = m[0]!;
   final scheme = m[1]!;
   final lower = scheme.toLowerCase();
-  if (lower == 'file') return whole; // 堆栈帧与本地路径
+  // 堆栈帧与本地路径（`file:///…`）：只放行空 authority；`file://host/…` 的
+  // host 是网络共享，照常过白名单。
+  if (lower == 'file' && m[2]!.isEmpty) return whole;
   if (kProxyShareSchemes.contains(lower)) return whole; // 第 1 步已处理
 
   // 把末尾的句读还给原文：`…uri = https://x/sub?token=S, next` 里的逗号。
@@ -370,22 +447,147 @@ String _redactUrlMatch(Match m) {
   final at = authority.lastIndexOf('@');
   if (at >= 0) authority = authority.substring(at + 1);
 
+  // 白名单：主机不在里面，整条 URL 都是用户数据（订阅地址、节点地址……）。
+  if (!isPublicHost(_hostOfAuthority(authority))) return '$kRedactedUrl$tail';
+
+  // 路径里藏着别的地址（`/o/r,https://订阅地址`、编码过的 `%2Chttps%3A%2F%2F…`、
+  // 节点 `host:port`）：这条 URL 不再只是「公共主机 + 路径」，整条当用户数据。
+  if (_pathHidesAddress(path)) return '$kRedactedUrl$tail';
+
   final maskedPath = path
       .split('/')
       .map((segment) => _isSensitiveSegment(segment) ? kRedacted : segment)
       .join('/');
 
-  final buffer = StringBuffer()
-    ..write(scheme)
-    ..write('://')
-    ..write(authority)
-    ..write(maskedPath);
-  if (query != null) buffer.write(query.length > 1 ? '?$kRedacted' : query);
-  if (fragment != null) {
-    buffer.write(fragment.length > 1 ? '#$kRedacted' : fragment);
+  // 公共主机的 URL 也不保留查询串与片段：那里才是 token 的常见位置。
+  return '$scheme://$authority$maskedPath$tail';
+}
+
+/// `host`、`host:port`、`[v6]:port` → 主机部分（不含端口与方括号外壳以外的东西）。
+String _hostOfAuthority(String authority) {
+  if (authority.startsWith('[')) {
+    final close = authority.indexOf(']');
+    return close < 0 ? authority : authority.substring(0, close + 1);
   }
-  buffer.write(tail);
-  return buffer.toString();
+  final colon = authority.indexOf(':');
+  return colon < 0 ? authority : authority.substring(0, colon);
+}
+
+// ─── 裸地址 ───────────────────────────────────────────────────────────
+
+/// 方括号里的 IPv6，可带端口：`[2001:db8::1]:443`。
+final RegExp _bracketedIpv6 = RegExp(
+  r'\[([0-9A-Fa-f:.]{2,}(?:%[A-Za-z0-9_.\-]+)?)\](?::\d{1,5})?',
+);
+
+/// 没有方括号的 IPv6 候选（可带 zone id：`fe80::1%en0`）；是否真是地址由
+/// [Uri.parseIPv6Address] 判定（`12:34:56` 这类时间戳不是合法 IPv6，不会被碰）。
+final RegExp _bareIpv6 = RegExp(
+  r'(?<![\w:.\[])[0-9A-Fa-f:.]{2,}(?:%[A-Za-z0-9_\-]+)?(?![\w:\[])',
+);
+
+/// IPv4，可带端口。`1.14.3` 只有三段不匹配；前面紧跟字母数字（`v1.2.3.4`）也不匹配。
+final RegExp _ipv4 = RegExp(
+  r'(?<![\w.])((?:\d{1,3}\.){3}\d{1,3})(?::(\d{1,5}))?(?!\w|\.\d)',
+);
+
+/// 带点的主机名 + 端口（1~5 位）。标签可以含任意语言的字母（Unicode IDN，
+/// `例子.测试:443`）；TLD 是字母（`.org`、`.测试`）或 punycode（`.xn--p1ai`）。
+/// 端口后面不能再跟 `:数字`（`foo.dart:12:7` 堆栈帧），前面不能是路径字符
+/// （`package:foo/bar.dart:12`、`dart:core/x.dart:12`、`(lib/x.dart:12:7)`）——
+/// 真实的堆栈帧形态都因此不会被碰，不需要按文件扩展名豁免：
+/// 单个数字的 `(server.rs:443)` 是主机，`at main.js:12` 也会被当成主机遮盖
+/// （保守，见测试）。
+final RegExp _hostPort = RegExp(
+  r'(?<![\p{L}\p{M}\p{N}_.\-/%])'
+  r'((?:[\p{L}\p{N}](?:[\p{L}\p{M}\p{N}\-]*[\p{L}\p{M}\p{N}])?\.)+'
+  r'(?:\p{L}[\p{L}\p{M}]{1,23}|xn--[A-Za-z0-9\-]{1,59}))'
+  r':(\d{1,5})(?![\p{L}\p{M}\p{N}_]|:\d|\.\d)',
+  unicode: true,
+);
+
+/// SocketException 的 `address = host`、`Failed host lookup: 'host'`。
+final RegExp _socketHost = RegExp(
+  r"(\baddress = |\bhost lookup: ')([^\s,)'<>]+)",
+  caseSensitive: false,
+);
+
+String _redactAddresses(String text) {
+  var out = text.replaceAllMapped(_socketHost, (m) {
+    final host = m[2]!;
+    if (host == kRedactedAddr || isPublicHost(host)) return m[0]!;
+    return '${m[1]}$kRedactedAddr';
+  });
+  out = out.replaceAllMapped(_bracketedIpv6, (m) {
+    if (!_isIpv6(m[1]!) || isLoopbackHost(_withoutZone(m[1]!))) return m[0]!;
+    return kRedactedAddr;
+  });
+  out = out.replaceAllMapped(_bareIpv6, (m) {
+    final candidate = m[0]!;
+    if (_redactableIpv6(candidate)) return kRedactedAddr;
+    // 句末的 `.` / `:` 不属于地址：`peer 2001:db8::1.`
+    if (candidate.length > 2 &&
+        (candidate.endsWith('.') || candidate.endsWith(':'))) {
+      final trimmed = candidate.substring(0, candidate.length - 1);
+      if (_redactableIpv6(trimmed)) {
+        return '$kRedactedAddr${candidate[candidate.length - 1]}';
+      }
+    }
+    return candidate;
+  });
+  out = out.replaceAllMapped(_ipv4, (m) {
+    final octets = m[1]!.split('.');
+    if (octets.any((o) => int.parse(o) > 255)) return m[0]!;
+    if (octets.first == '127') return m[0]!; // 回环
+    final port = m[2];
+    if (port != null && int.parse(port) > 65535) return m[0]!;
+    return kRedactedAddr;
+  });
+  out = out.replaceAllMapped(_hostPort, (m) {
+    final host = m[1]!;
+    if (int.parse(m[2]!) > 65535) return m[0]!;
+    if (isPublicHost(host)) return m[0]!;
+    return kRedactedAddr;
+  });
+  return out;
+}
+
+bool _isIpv6(String candidate) {
+  if (!candidate.contains(':')) return false;
+  try {
+    Uri.parseIPv6Address(_withoutZone(candidate));
+    return true;
+  } on FormatException {
+    return false;
+  }
+}
+
+/// 去掉 IPv6 的 zone id（`fe80::1%en0` -> `fe80::1`）。
+String _withoutZone(String address) {
+  final percent = address.indexOf('%');
+  return percent < 0 ? address : address.substring(0, percent);
+}
+
+/// 要遮盖的 IPv6：合法、至少含一个十六进制数字（排除孤立的 `::`）、不是回环。
+bool _redactableIpv6(String candidate) =>
+    _isIpv6(candidate) &&
+    RegExp('[0-9A-Fa-f]').hasMatch(candidate) &&
+    !isLoopbackHost(_withoutZone(candidate));
+
+final RegExp _nestedScheme = RegExp(r'[a-zA-Z][a-zA-Z0-9+.\-]*://');
+
+/// 白名单 URL 的路径（原样以及最多三轮 JSON / 百分号解码之后）里是否含有另一个
+/// URL（任意 scheme，含分享链接）或节点地址。
+bool _pathHidesAddress(String path) {
+  var current = path;
+  for (var round = 0; ; round++) {
+    if (_nestedScheme.hasMatch(current)) return true;
+    if (_redactAddresses(current) != current) return true;
+    if (round == 3) return false;
+    final decoded = _percentDecodeLenient(_unescapeJson(current));
+    if (decoded == current) return false;
+    current = decoded;
+  }
 }
 
 /// 路径段：原样以及每一轮宽松解码（最多三轮，应对重复编码）之后，整段与按解出

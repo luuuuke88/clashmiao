@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/logger/sentry_options.dart';
+import 'package:clashmiao/features/connection/model/connection_failure.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -95,7 +96,8 @@ void main() {
     }
     // 无害字段原样保留：脱敏不能把子 span 整个抹掉。
     expect(sent, contains('"op":"http.client"'));
-    expect(sent, contains('sub.example.test'));
+    expect(sent, isNot(contains('sub.example.test')));
+    expect(sent, contains('GET <url>'));
     expect(sent, contains('"http.method":"GET"'));
     expect(sent, contains('"region":"hk"'));
   });
@@ -138,6 +140,78 @@ void main() {
     // 已结束的子 span 照常发送。
     expect(sent, contains('"op":"db"'));
     expect(sent, contains('"region":"hk"'));
+  });
+
+  test('端到端：异常值与面包屑里的订阅地址、节点地址不进信封', () async {
+    final options = _production();
+    final transport = _CapturingTransport(options);
+    options.transport = transport;
+    final hub = Hub(options);
+    addTearDown(hub.close);
+
+    hub.configureScope(
+      (scope) => scope.addBreadcrumb(
+        Breadcrumb(
+          message: 'GET https://sub.example.org/s/crumb1?flag=android',
+          data: {'peer': '198.51.100.7:8443', 'url': _subUrl},
+        ),
+      ),
+    );
+    await hub.captureException(
+      StateError(
+        'dial tcp example.net:443 failed, peer [2001:db8::1]:443, '
+        'uri = https://sub.example.org/s/exc1?flag=android',
+      ),
+      stackTrace: StackTrace.current,
+    );
+    await pumpEventQueue();
+
+    expect(transport.envelopes, isNotEmpty);
+    final sent = transport.envelopes.join('\n');
+    for (final leak in [
+      'sub.example.org',
+      'crumb1',
+      'exc1',
+      'example.net',
+      '198.51.100.7',
+      '2001:db8',
+      'SECRET',
+    ]) {
+      expect(sent, isNot(contains(leak)), reason: leak);
+    }
+    expect(sent, contains('Bad state: dial tcp <addr> failed'));
+    expect(sent, contains('<url>'));
+  });
+
+  test('连接失败对象作为异常上报：对象保留原文，信封里已脱敏', () async {
+    const text = 'prepare https://sub.example.org/s/ab12 via 198.51.100.7:8443';
+    const failure = UnexpectedFailure(text);
+    final options = _production();
+    final transport = _CapturingTransport(options);
+    options.transport = transport;
+    final hub = Hub(options);
+    addTearDown(hub.close);
+
+    await hub.captureException(failure, stackTrace: StackTrace.current);
+    await pumpEventQueue();
+
+    expect(failure.message, text);
+    final sent = transport.envelopes.join('\n');
+    expect(sent, contains('UnexpectedFailure'));
+    for (final leak in ['sub.example.org', 'ab12', '198.51.100.7']) {
+      expect(sent, isNot(contains(leak)), reason: leak);
+    }
+  });
+
+  test('结构化日志（Sentry Logs）整体丢弃', () async {
+    final log = SentryLog(
+      timestamp: DateTime.utc(2026),
+      traceId: SentryId.newId(),
+      level: SentryLogLevel.error,
+      body: 'GET https://sub.example.org/s/ab12',
+      attributes: {},
+    );
+    expect(await _production().beforeSendLog!(log, Hint()), isNull);
   });
 
   test('对照：改成 stream 时事务根本不经过 beforeSendTransaction', () async {

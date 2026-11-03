@@ -303,7 +303,7 @@ ios/
 - `boxAlertsProvider` — 非生命周期提示流（如通知权限），`ShellPage` 弹 toast；连接失败的提示改由控制器快照的 `failure` 驱动
 - `boxStatsProvider`、`outboundGroupsProvider` — 只在已连接时才订阅，避免无谓 IPC
 - `proxyModeProvider` — 智能 / 全局模式持久化（`lib/domain/routing/application/proxy_mode_notifier.dart`，默认 1 = 智能）
-- `profileListProvider` / `activeProfileProvider` — 订阅列表与当前激活订阅（`lib/domain/profile/application/profile_providers.dart`）
+- `profileListProvider` / `activeProfileProvider` — 订阅列表与当前激活订阅（`lib/features/profile/application/profile_providers.dart`）
 - `networkSettingsProvider` — 端口、TUN、系统代理、DNS 等设置（`lib/features/config/application/network_settings.dart`）
 - `optimisticProxySelectionsProvider` — 乐观切换代理节点（`lib/features/proxy/application/`）
 
@@ -385,7 +385,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 
 ## 持久化
 
-### 订阅存储 `ProfileStore`（`lib/domain/profile/data/profile_store.dart`）
+### 订阅存储 `ProfileStore`（`lib/features/profile/data/profile_store.dart`）
 
 进程级单例，所有读改写走同一把锁且基于锁内最新数据。写入一律 `commit(plan)`：`plan` 是**同步**函数，拿锁内视图算出 `Plan`（列表、激活 id、待装 / 待删配置文件、待删附属键），Store 自己在锁内落盘：暂存文件改名为正式文件（被替换的旧文件先改名 `.undo`）→ 写列表键与激活键并检查返回值 → 成功清理 `.undo` 与附属键并广播 `changes`；任一步失败还原。网络等慢操作在锁外，落地前用 `(id, inc, rev, url, ua)` 校验输入仍成立，否则丢弃为 stale。启动时清理残留（`.staging` 删除、正式文件缺失时还原 `.undo`）。
 

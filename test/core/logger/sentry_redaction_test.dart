@@ -21,7 +21,8 @@ void main() {
 
   test('事件各字段：订阅地址与分享链接都被脱敏，堆栈帧不动', () {
     final frame = SentryStackFrame(
-      absPath: 'package:clashmiao/domain/profile/data/profile_repository.dart',
+      absPath:
+          'package:clashmiao/features/profile/data/profile_repository.dart',
       function: 'ProfileRepository.update',
       lineNo: 512,
     );

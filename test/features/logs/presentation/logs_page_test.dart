@@ -193,7 +193,7 @@ void main() {
       expect(shared, contains('[ERROR] profiles.update'));
     });
 
-    test('导出的核心日志过同一个脱敏器：订阅凭据与分享链接不进文件', () async {
+    test('导出的核心日志：订阅凭据、分享链接与出站标签都不进文件', () async {
       final corePath = await writeCoreLogsTempFile([
         'INFO outbound/vless[hk]: started',
         'ERROR fetch https://example.test/sub?token=SECRET failed',
@@ -203,9 +203,27 @@ void main() {
       final content = await File(corePath).readAsString();
       expect(content, isNot(contains('SECRET')));
       expect(content, isNot(contains('pass@h.example.test')));
-      expect(content, contains('INFO outbound/vless[hk]: started'));
+      expect(content, isNot(contains('[hk]')));
+      expect(content, contains('INFO outbound/vless[…]: started'));
       expect(content, contains('fetch <url> failed'));
       expect(content, contains('trojan://…'));
+    });
+
+    test('导出的核心日志：裸域名节点名作为出站标签也被遮盖', () async {
+      final corePath = await writeCoreLogsTempFile([
+        'INFO [123 5ms] outbound/vless[node.example.com]: outbound connection '
+            'to example.org:443',
+        'INFO [124 0ms] router: match[0] => outbound/selector[node.example.com]',
+        'INFO [125 0ms] inbound/mixed[mixed-in]: inbound connection from '
+            '127.0.0.1:50000',
+      ]);
+
+      final content = await File(corePath).readAsString();
+      expect(content, isNot(contains('node.example.com')));
+      expect(content, contains('outbound/vless[…]: outbound connection to'));
+      expect(content, contains('=> outbound/selector[…]'));
+      // inbound 标签是应用内部固定名，保留。
+      expect(content, contains('inbound/mixed[mixed-in]'));
     });
   });
 }

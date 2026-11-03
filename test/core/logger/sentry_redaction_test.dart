@@ -518,7 +518,7 @@ void main() {
     expect(out.tags, {'phase': 'connected'});
   });
 
-  group('严格模式：白名单主机的路径也不上报', () {
+  group('白名单主机的路径与本地文件路径也不上报', () {
     const officialSub = 'https://clashmiao.com/sub/short';
     const repoUrl = 'https://github.com/luuuuke88/clashmiao/raw/main/x';
 

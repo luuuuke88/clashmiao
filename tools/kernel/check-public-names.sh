@@ -7,6 +7,8 @@
 #
 # 词表：tools/kernel/denylist.local（不入库，一行一个名字，# 开头为注释）。
 #   CI 用仓库 secret KERNEL_DENYLIST 把词表写进该文件；词表缺失、不可读或为空一律失败。
+#   环境变量 PUBLIC_NAME_DENYLIST_FILE 可指向别处的词表文件（如在 git worktree 里检查时，
+#   指向主检出的词表，不必复制进来）；设了就只读那个文件。
 # 允许表：tools/kernel/check-public-names.allow（入库，一行一个完整 token）。
 #   比对前先把这些完整 token 从行里剔除；token 以外的出现照常失败。
 # 扫描范围：git 已跟踪与未忽略的未跟踪文件里，
@@ -18,7 +20,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 DENY_REL="tools/kernel/denylist.local"
 ALLOW_REL="tools/kernel/check-public-names.allow"
-DENY="$ROOT/$DENY_REL"
+DENY="${PUBLIC_NAME_DENYLIST_FILE:-$ROOT/$DENY_REL}"
 ALLOW="$ROOT/$ALLOW_REL"
 SCOPE=(kernel/ tools/kernel/ docs/ android/ lib/ test/ bin/ README.md CHANGELOG.md)
 

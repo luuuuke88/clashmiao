@@ -19,39 +19,33 @@ void main() {
     const cases = <(String, String, String)>[
       // (说明, 输入, 期望)
       (
-        '白名单主机：查询串整体去掉，scheme 与主机保留',
+        '白名单主机：路径、查询串都去掉，scheme 与主机保留',
         'GET https://clashmiao.com/sub?token=SECRET&flag=1',
-        'GET https://clashmiao.com/sub',
+        'GET https://clashmiao.com',
       ),
       (
         '去掉 userinfo，端口保留',
         'connect https://alice:hunter2@www.clashmiao.com:8443/api/v1/sub failed',
-        'connect https://www.clashmiao.com:8443/api/v1/sub failed',
+        'connect https://www.clashmiao.com:8443 failed',
       ),
       (
-        '路径里的长十六进制 token',
-        'https://clashmiao.com/link/0123456789abcdef0123456789abcdef',
-        'https://clashmiao.com/link/…',
+        '路径里无论是不是 token 都不留（不再靠猜）',
+        'https://clashmiao.com/link/0123456789abcdef0123456789abcdef '
+            'https://clashmiao.com/sub/short '
+            'https://clashmiao.com/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
+        'https://clashmiao.com https://clashmiao.com https://clashmiao.com',
       ),
       (
-        '路径里的 UUID',
-        'https://clashmiao.com/s/3f2504e0-4f89-11d3-9a0c-0305e82c3301/clash',
-        'https://clashmiao.com/s/…/clash',
-      ),
-      (
-        '路径里的长 base64',
-        'https://clashmiao.com/api/c2VjcmV0LXN1YnNjcmlwdGlvbi10b2tlbg==',
-        'https://clashmiao.com/api/…',
-      ),
-      (
-        '路径里 16 位以上字母数字混排',
-        'https://clashmiao.com/sub/Ab12Cd34Ef56Gh78',
-        'https://clashmiao.com/sub/…',
+        '编码过的路径段、重复编码的分隔符：整个路径都丢',
+        'a https://clashmiao.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash '
+            'b https://clashmiao.com/s/clash%252F3f2504e0-4f89 '
+            'c https://clashmiao.com/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz01',
+        'a https://clashmiao.com b https://clashmiao.com c https://clashmiao.com',
       ),
       (
         '片段同样去掉；末尾标点留在外面',
         'see (https://clashmiao.com/x#frag-secret), then retry.',
-        'see (https://clashmiao.com/x), then retry.',
+        'see (https://clashmiao.com), then retry.',
       ),
       (
         'vmess 分享链接整条折叠',
@@ -68,56 +62,10 @@ void main() {
         'vless://… trojan://… ss://… hysteria2://… tuic://…',
       ),
       (
-        '编码过的 UUID 路径段：整段遮盖',
-        'GET https://clashmiao.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301/clash',
-        'GET https://clashmiao.com/s/…/clash',
-      ),
-      (
-        '编码过的十六进制 token 路径段',
-        'https://clashmiao.com/link/%30%31%32%33456789abcdef0123456789abcdef',
-        'https://clashmiao.com/link/…',
-      ),
-      (
-        '重复编码的 UUID 路径段',
-        'https://clashmiao.com/s/3f2504e0%252D4f89%252D11d3%252D9a0c%252D0305e82c3301',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '编码的路径分隔符 %2F 把 UUID 和普通段粘成一段：整段遮盖',
-        'https://clashmiao.com/s/3f2504e0%2D4f89%2D11d3%2D9a0c%2D0305e82c3301%2Fclash',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '重复编码的路径分隔符 %252F',
-        'https://clashmiao.com/s/clash%252F3f2504e0-4f89-11d3-9a0c-0305e82c3301',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '三层编码的分隔符与连字符',
-        'https://clashmiao.com/s/a%25252F3f2504e0%25252D4f89%25252D11d3'
-            '%25252D9a0c%25252D0305e82c3301',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '含编码 / 的 base64 段（%2F）：整段解码后仍要查',
-        'https://clashmiao.com/s/AbCdEfGhIjK%2FMnOpQrStUvW%2FYz0123456789',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '含编码 / 的 base64 段（%252F，两层）',
-        'https://clashmiao.com/s/AbCdEfGhIjK%252FMnOpQrStUvW%252FYz0123456789',
-        'https://clashmiao.com/s/…',
-      ),
-      (
-        '含编码 / 的 base64 段（%25252F，三层）',
-        'https://clashmiao.com/s/AbCdEfGhIjK%25252FMnOpQrStUvW%25252FYz0123456789',
-        'https://clashmiao.com/s/…',
-      ),
-      (
         '转义斜杠的 http URL：userinfo 与路径 token',
         r'{"u":"http:\/\/u:p@clashmiao.com\/s\/'
             r'3f2504e0-4f89-11d3-9a0c-0305e82c3301\/clash"}',
-        r'{"u":"http:\/\/clashmiao.com\/s\/…\/clash"}',
+        r'{"u":"http:\/\/clashmiao.com"}',
       ),
       (
         '转义斜杠的分享链接',
@@ -350,7 +298,7 @@ void main() {
         'servers': [
           {'host': 'h.example.test', 'uuid': '…'},
         ],
-        'url': 'https://clashmiao.com/sub',
+        'url': 'https://clashmiao.com',
         'count': 2,
       });
     });
@@ -620,10 +568,7 @@ void main() {
           'errno = 61), address = 127.0.0.1, port = 2080',
       'PlatformException(stale, attempt mismatch, null, null)',
       'TimeoutException after 0:00:20.000000: Future not completed',
-      'https://clashmiao.com/api/v1/profiles',
       '[ERROR] profiles.update: Exception: upstream exploded',
-      '#0      ScriptedProfileRepository.update (file:///Users/me/code/'
-          'clashmiao/test/support/scripted_profile_repository.dart:38:24)',
       '#1      _ProfilesPageState._updateProfile '
           '(package:clashmiao/features/profile/presentation/profiles_page.dart:428:7)',
       '<asynchronous suspension>',
@@ -643,12 +588,6 @@ void main() {
       'sid: 12',
       'pwd: /Users/me/code',
       'Bearer realm="clashmiao"',
-      // 路径段：普通段、带编码的普通段、编码的分隔符、畸形转义原样保留。
-      'https://clashmiao.com/api/v1/profiles/%E9%A6%99%E6%B8%AF',
-      'https://clashmiao.com/api/v1%2Fprofiles%252Fclash',
-      'https://clashmiao.com/files/100%zz/abc%',
-      'https://clashmiao.com/s/%E0%A4%A',
-      r'{"url":"https:\/\/clashmiao.com\/api\/v1\/profiles"}',
       'route: domain_suffix=example.test outbound=proxy',
       'dns: exchange example.test: context deadline exceeded',
       'FormatException: Unexpected character (at character 1)',
@@ -664,6 +603,31 @@ void main() {
       test(text.isEmpty ? '(空串)' : text, () {
         expect(redactLogText(text), text);
       });
+    }
+  });
+
+  group('file:/// 与白名单 URL 的路径：整条遮盖 / 只留主机', () {
+    const cases = <(String, String, String)>[
+      (
+        'debug 构建的堆栈帧含本机绝对路径：整条换成 <url>，右括号留着',
+        '#0      ScriptedProfileRepository.update (file:///Users/me/code/'
+            'clashmiao/test/support/scripted_profile_repository.dart:38:24)',
+        '#0      ScriptedProfileRepository.update (<url>)',
+      ),
+      (
+        '白名单主机的普通 / 编码 / 畸形百分号路径：都只留主机',
+        'https://clashmiao.com/api/v1/profiles/%E9%A6%99%E6%B8%AF '
+            'https://clashmiao.com/api/v1%2Fprofiles%252Fclash '
+            'https://clashmiao.com/files/100%zz/abc% '
+            'https://clashmiao.com/s/%E0%A4%A '
+            r'{"url":"https:\/\/clashmiao.com\/api\/v1\/profiles"}',
+        'https://clashmiao.com https://clashmiao.com https://clashmiao.com '
+            'https://clashmiao.com '
+            r'{"url":"https:\/\/clashmiao.com"}',
+      ),
+    ];
+    for (final (name, input, expected) in cases) {
+      test(name, () => expectCase(input, expected));
     }
   });
 

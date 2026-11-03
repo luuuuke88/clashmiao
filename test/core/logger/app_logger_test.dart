@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:clashmiao/core/logger/app_logger.dart';
+import 'package:clashmiao/core/logger/log_redactor.dart'
+    show kLogRedactionVersion;
 import 'package:clashmiao/features/connection/model/connection_failure.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
@@ -65,7 +67,9 @@ void main() {
 
       final content = await logFile.readAsString();
       expect(content, contains('[ERROR] profiles.update: Bad state: boom'));
-      expect(content, contains(stack.toString().split('\n').first));
+      // 堆栈保留；debug 构建里 file:/// 本机路径整条换成 <url>，包名帧原样。
+      expect(content, contains('#1      Declarer.test'));
+      expect(content, isNot(contains('file:///')));
     });
 
     test('订阅地址凭据不进 app.log：Dio 包着带 token 的 HttpException', () async {
@@ -88,7 +92,8 @@ void main() {
       expect(content, contains('DioException'));
       expect(content, contains('HttpException: Connection closed'));
       expect(content, contains('<url>'));
-      expect(content, contains(stack.toString().split('\n').first));
+      expect(content, contains('#1      Declarer.test'));
+      expect(content, isNot(contains('file:///')));
     });
 
     test('端到端：订阅短 token、节点 host:port 与 IP 一律不进 app.log', () async {
@@ -341,27 +346,18 @@ void main() {
     });
   });
 
-  group('升级前写下的旧日志：启动迁移与导出副本都脱敏', () {
+  group('脱敏规则升级：旧规则下写下的日志直接丢弃', () {
     const rawLine =
-        '2026-06-01T10:00:00.000 [ERROR] profiles.update: HttpException: '
-        'Connection closed, uri = https://example.test/sub?token=SECRET';
-    const rawJson = '{"password":"hello world","server":"h.example.test"}';
+        '2026-06-01T10:00:00.000 [ERROR] proxies.select proxy -> '
+        'node.example.com: SelectionFailed(exception, node.example.com not found)';
 
     tearDown(resetAppLoggerInitializedForTesting);
 
     Future<void> seedOldLog() async {
-      await logFile.writeAsString('$rawLine\n$rawJson\nplain line\n');
+      await logFile.writeAsString('$rawLine\nplain line\n');
     }
 
-    void expectRedacted(String content) {
-      expect(content, isNot(contains('SECRET')));
-      expect(content, isNot(contains('hello world')));
-      expect(content, contains('<url>'));
-      expect(content, contains('"password":…'));
-      expect(content, contains('plain line'));
-    }
-
-    test('迁移把 app.log 与 app.log.<数字> 重写为脱敏内容，别的文件不碰', () async {
+    test('旧 app.log 与 app.log.<数字> 被丢弃，只留一行固定说明；别的文件不碰', () async {
       await seedOldLog();
       final rotated = File('${tempDir.path}/app.log.1');
       await rotated.writeAsString('$rawLine\n');
@@ -372,73 +368,99 @@ void main() {
       await foreignTemp.writeAsString('keep me');
       final rotatedTemp = File('${tempDir.path}/app.log.1.redacting');
       await rotatedTemp.writeAsString(rawLine);
-      // 上次迁移被打断留下的临时文件。
+      // 上次清理被打断留下的临时文件。
       final leftover = File('${tempDir.path}/app.log.redacting');
       await leftover.writeAsString(rawLine);
 
-      await AppLogger.instance.redactExistingLogFiles();
+      await AppLogger.instance.discardOutdatedLogFiles();
 
-      expectRedacted(await logFile.readAsString());
-      expect(await rotated.readAsString(), isNot(contains('SECRET')));
+      expect(await logFile.readAsString(), '$kLogResetNotice\n');
+      expect(rotated.existsSync(), isFalse);
       expect(await unrelated.readAsString(), rawLine);
       expect(leftover.existsSync(), isFalse);
       expect(rotatedTemp.existsSync(), isFalse);
       expect(await foreignTemp.readAsString(), 'keep me');
     });
 
-    test('迁移幂等：重复运行、去掉完成标记再跑，内容都不再变化', () async {
+    test('旧版本标记也算旧日志：版本 8 的日志升级后不再存在', () async {
       await seedOldLog();
-      await AppLogger.instance.redactExistingLogFiles();
-      final first = await logFile.readAsString();
+      await File('${tempDir.path}/.app_log_redaction').writeAsString('8');
 
-      await AppLogger.instance.redactExistingLogFiles();
-      expect(await logFile.readAsString(), first);
-
-      for (final entity in tempDir.listSync()) {
-        final name = entity.uri.pathSegments.last;
-        if (name != 'app.log') entity.deleteSync();
-      }
-      await AppLogger.instance.redactExistingLogFiles();
-      expect(await logFile.readAsString(), first);
-      expectRedacted(first);
-    });
-
-    test('迁移只跑一次：完成标记在且版本一致时直接跳过', () async {
-      await AppLogger.instance.redactExistingLogFiles();
-      await seedOldLog(); // 迁移完成之后才出现的原文（正常不会发生）
-
-      await AppLogger.instance.redactExistingLogFiles();
-
-      expect(await logFile.readAsString(), contains('SECRET'));
-    });
-
-    test('迁移期间来的新行排在后面，不会被改名覆盖吞掉', () async {
-      await seedOldLog();
-
-      final migration = AppLogger.instance.redactExistingLogFiles();
-      final appended = AppLogger.instance.append('new line after upgrade');
-      await Future.wait([migration, appended]);
+      await AppLogger.instance.discardOutdatedLogFiles();
 
       final content = await logFile.readAsString();
-      expectRedacted(content);
-      expect(content.trimRight().split('\n').last, 'new line after upgrade');
+      expect(content, isNot(contains('node.example.com')));
+      expect(content, isNot(contains('proxies.select')));
+      expect(content, '$kLogResetNotice\n');
     });
 
-    test('旧日志里有非法 UTF-8 也照样迁移，不抛异常', () async {
+    test('升级后分享出去的副本里没有旧日志的裸域名节点名', () async {
+      await seedOldLog();
+      await AppLogger.instance.discardOutdatedLogFiles();
+
+      final copy = await AppLogger.instance.writeRedactedCopy(
+        Directory('${tempDir.path}/share'),
+      );
+
+      final shared = await copy.readAsString();
+      expect(shared, isNot(contains('node.example.com')));
+      expect(shared, contains(kLogResetNotice));
+    });
+
+    test('幂等：重复运行不再变化，说明不会重复写', () async {
+      await seedOldLog();
+      await AppLogger.instance.discardOutdatedLogFiles();
+      await AppLogger.instance.append('new line after upgrade');
+      final first = await logFile.readAsString();
+
+      await AppLogger.instance.discardOutdatedLogFiles();
+
+      expect(await logFile.readAsString(), first);
+    });
+
+    test('只跑一次：完成标记在且版本一致时，之后的内容不被动', () async {
+      await AppLogger.instance.discardOutdatedLogFiles();
+      await seedOldLog(); // 清理完成之后才出现的内容（正常不会发生）
+
+      await AppLogger.instance.discardOutdatedLogFiles();
+
+      expect(await logFile.readAsString(), contains('node.example.com'));
+    });
+
+    test('没有旧内容（首次安装）：不写说明，只写标记', () async {
+      await AppLogger.instance.discardOutdatedLogFiles();
+
+      expect(logFile.existsSync() ? await logFile.readAsString() : '', isEmpty);
+      expect(
+        await File('${tempDir.path}/.app_log_redaction').readAsString(),
+        '$kLogRedactionVersion',
+      );
+    });
+
+    test('清理期间来的新行排在说明后面，不会被改名覆盖吞掉', () async {
+      await seedOldLog();
+
+      final cleanup = AppLogger.instance.discardOutdatedLogFiles();
+      final appended = AppLogger.instance.append('new line after upgrade');
+      await Future.wait([cleanup, appended]);
+
+      final lines = (await logFile.readAsString()).trimRight().split('\n');
+      expect(lines, [kLogResetNotice, 'new line after upgrade']);
+    });
+
+    test('旧日志里有非法 UTF-8 也照样丢弃，不抛异常', () async {
       await logFile.writeAsBytes([
         ...'$rawLine\n'.codeUnits,
         0xE9, 0xA6, // 截断的多字节字符
         ...'\nplain line\n'.codeUnits,
       ]);
 
-      await AppLogger.instance.redactExistingLogFiles();
+      await AppLogger.instance.discardOutdatedLogFiles();
 
-      final content = await logFile.readAsString();
-      expect(content, isNot(contains('SECRET')));
-      expect(content, contains('plain line'));
+      expect(await logFile.readAsString(), '$kLogResetNotice\n');
     });
 
-    test('initAppLogger 启动时触发迁移', () async {
+    test('initAppLogger 启动时触发清理', () async {
       final previousFlutter = FlutterError.onError;
       final previousPlatform = PlatformDispatcher.instance.onError;
       addTearDown(() {
@@ -450,18 +472,20 @@ void main() {
       await initAppLogger();
       await AppLogger.instance.flush();
 
-      expectRedacted(await logFile.readAsString());
+      expect(await logFile.readAsString(), '$kLogResetNotice\n');
     });
 
-    test('导出副本：没迁移过的旧日志也脱敏，原文件不交出去', () async {
-      await seedOldLog();
+    test('导出副本：每次都过脱敏器，原文件不交出去', () async {
+      await logFile.writeAsString(
+        'fetch https://clashmiao.com/sub/short failed\n',
+      );
       final outDir = Directory('${tempDir.path}/share');
 
       final copy = await AppLogger.instance.writeRedactedCopy(outDir);
 
       expect(copy.path, isNot(logFile.path));
       expect(copy.parent.path, outDir.path);
-      expectRedacted(await copy.readAsString());
+      expect(await copy.readAsString(), 'fetch https://clashmiao.com failed\n');
     });
   });
 

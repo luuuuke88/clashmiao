@@ -17,7 +17,7 @@ import 'package:path_provider/path_provider.dart';
 /// 的分级过滤已经由 `log_filter_notifier.dart` 处理，职责不重叠。
 ///
 /// 调用 [initAppLogger] 完成三件事：
-/// 1. 把升级前写下的旧日志过一遍脱敏器（[AppLogger.redactExistingLogFiles]）。
+/// 1. 脱敏规则升级后丢弃旧规则下写下的日志（[AppLogger.discardOutdatedLogFiles]）。
 /// 2. 挂载 `FlutterError.onError` / `PlatformDispatcher.instance.onError`
 ///    兜底，把捕获到的错误写入日志文件（且不会吞掉之前已经注册的 handler，
 ///    原有的会在写完日志后继续被调用）。
@@ -42,10 +42,13 @@ const String kAppLogFileName = 'app.log';
 /// [AppLogger.writeRedactedCopy]）。
 const String kAppLogShareFileName = 'clashmiao-app-logs.log';
 
-/// 旧日志迁移完成的标记文件（内容是 [kLogRedactionVersion]），与 app.log 同目录。
+/// 旧日志清理后留在 app.log 里的唯一一行说明。
+const String kLogResetNotice = '日志规则已更新，旧日志已清除';
+
+/// 旧日志清理完成的标记文件（内容是 [kLogRedactionVersion]），与 app.log 同目录。
 const String _kRedactionMarkerName = '.app_log_redaction';
 
-/// 迁移时临时文件的后缀：`app.log.redacting`，写完再改名覆盖。
+/// 清理时临时文件的后缀：`app.log.redacting`，写完再改名覆盖。
 const String _kRedactionTempSuffix = 'redacting';
 
 typedef LogFileResolver = Future<File> Function();
@@ -149,17 +152,18 @@ class AppLogger {
     });
   }
 
-  /// 启动时的一次性迁移：把升级前写下的 app.log（以及按 `app.log.<数字>`
-  /// 命名的旧滚动文件）整个过一遍脱敏器。
+  /// 启动时的一次性清理：脱敏规则版本（[kLogRedactionVersion]）变了，升级前写下
+  /// 的 app.log（以及按 `app.log.<数字>` 命名的旧滚动文件）**直接丢弃**，不再
+  /// 重新过滤——旧规则下落盘的内容（节点名、白名单主机下的路径……）新规则认不出
+  /// 来，也没法事后补救。app.log 里只留一行固定说明 [kLogResetNotice]。
   ///
-  /// - 一次性：完成后在同目录写下 [kLogRedactionVersion] 标记，之后启动直接
-  ///   跳过；脱敏规则升级（版本号变了）会再跑一次。
-  /// - 幂等：脱敏器本身幂等，内容没变的文件不重写。
-  /// - 崩溃安全：先写同目录的临时文件并刷盘，再改名覆盖原文件；任何一步被
-  ///   打断，原文件要么是旧的完整内容，要么是新的完整内容。残留的临时文件
-  ///   下次启动时清掉。
-  /// - 不抛异常：迁移失败只是这次没迁，分享时的脱敏副本照样兜底。
-  Future<void> redactExistingLogFiles() {
+  /// - 一次性：完成后在同目录写下 [kLogRedactionVersion] 标记，之后启动直接跳过。
+  /// - 没有旧内容（首次安装、日志本来就是空的）不写说明。
+  /// - 崩溃安全：说明先写同目录的临时文件并刷盘，再改名覆盖 app.log；任何一步被
+  ///   打断，app.log 要么是旧的完整内容（下次启动会再清），要么是新的完整内容。
+  ///   残留的临时文件下次启动时清掉。
+  /// - 不抛异常：清理失败只是这次没清，分享时的脱敏副本照样兜底。
+  Future<void> discardOutdatedLogFiles() {
     return _serialized(() async {
       try {
         final log = await _resolveLogFile();
@@ -178,33 +182,29 @@ class AppLogger {
         final ownTemp = RegExp(
           '^$escaped(?:\\.\\d+)?\\.${RegExp.escape(_kRedactionTempSuffix)}\$',
         );
-        final targets = <File>[];
+        var hadOldContent = false;
         await for (final entity in dir.list(followLinks: false)) {
           if (entity is! File) continue;
           final name = entity.uri.pathSegments.last;
           if (ownTemp.hasMatch(name)) {
-            await entity.delete(); // 上次迁移被打断留下的
-          } else if (name == logName || rotated.hasMatch(name)) {
-            targets.add(entity);
+            await entity.delete(); // 上次清理被打断留下的
+          } else if (rotated.hasMatch(name)) {
+            hadOldContent = true;
+            await entity.delete();
+          } else if (name == logName && await entity.length() > 0) {
+            hadOldContent = true;
           }
         }
-        for (final file in targets) {
-          await _rewriteRedacted(file);
+        if (hadOldContent) {
+          final temp = File('${log.path}.$_kRedactionTempSuffix');
+          await temp.writeAsString('$kLogResetNotice\n', flush: true);
+          await temp.rename(log.path);
         }
         await marker.writeAsString('$kLogRedactionVersion', flush: true);
       } catch (_) {
         // 同 _appendInternal：日志系统自己的失败不往外抛，也不再打日志。
       }
     });
-  }
-
-  Future<void> _rewriteRedacted(File file) async {
-    final original = await _readLenient(file);
-    final redacted = redactLogText(original);
-    if (redacted == original) return;
-    final temp = File('${file.path}.$_kRedactionTempSuffix');
-    await temp.writeAsString(redacted, flush: true);
-    await temp.rename(file.path);
   }
 
   /// 读文本，遇到非法 UTF-8 用替换字符而不是抛异常（日志可能被截断在多字节
@@ -278,9 +278,9 @@ Future<void> initAppLogger() async {
   if (_appLoggerInitialized) return;
   _appLoggerInitialized = true;
 
-  // 升级前写下的旧日志可能带着没脱敏的凭据：排进写入队列里迁移一次，不阻塞
+  // 脱敏规则升级后，旧规则下写下的日志直接丢弃：排进写入队列里清理一次，不阻塞
   // 启动；之后的追加自动排在它后面。
-  unawaited(AppLogger.instance.redactExistingLogFiles());
+  unawaited(AppLogger.instance.discardOutdatedLogFiles());
 
   Loggy.initLoggy(logPrinter: const _AppFileLoggyPrinter());
 

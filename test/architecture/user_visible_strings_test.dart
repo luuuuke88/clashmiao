@@ -7,6 +7,8 @@ import 'user_strings_scanner.dart';
 /// 允许出现 CJK 字面量的地方：文件 → 允许的完整字面量；`null` = 整个文件豁免。
 /// 只登记**不该翻译**的内容，每条写明原因。界面文案一律走 i18n。
 const Map<String, Set<String>?> kAllowedCjkLiterals = {
+  // 旧日志清除后写进 app.log 的固定说明：日志文本（面向排障者），不是界面文案。
+  'lib/core/logger/app_logger.dart': {'日志规则已更新，旧日志已清除'},
   // 品牌名：任务切换器 / 窗口标题，各语言一致。
   'lib/app/app.dart': {'喵速'},
   // 品牌吉祥物的问候语，属于开屏插画的一部分。

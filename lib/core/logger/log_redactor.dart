@@ -5,21 +5,21 @@
 // 应用日志会被用户分享出去排障，崩溃上报会离开设备，而异常文本里常带着：
 // 订阅地址（本身就是凭据：路径或查询里的 token，短 token 也算）、代理分享链接
 // （服务器、端口、密码 / UUID 全写在一起）、节点地址（`host:port`、IP）。
-// 所以这里按**白名单**处理：除非主机在公共白名单里（[isPublicHost]：GitHub、
-// 官网、构建期外链、本机回环），一律遮盖；不再靠「看起来像不像 token」去猜。
-// GitHub 这类谁都能托管订阅的多租户主机，还要路径在本项目仓库或构建期外链的路径
-// 前缀之下才放行（[publicUrlAccess]）。离开设备的通道（Sentry）用严格模式
-// （[withStrictRedaction] / [redactStrict]）：白名单主机也只留 scheme + 主机，不留路径。
+// 所以这里按**白名单**处理，且只有**一套**规则（落盘、导出、上报完全相同，没有
+// 「本地宽松 / 上报严格」之分）：
+// - 脱敏器无法知道一条 URL 的来源——官网或 GitHub 仓库路径下的短路径照样可能是
+//   用户的订阅地址，所以**任何 URL 都不保留路径、查询串、片段、userinfo**。
+// - 主机在公共白名单里（[isPublicHost]：GitHub、官网、构建期外链、本机回环）：只
+//   留 `scheme://host[:port]`；其它一律遮盖。不再靠「看起来像不像 token」去猜。
 //
 // 规则（按顺序执行，结果幂等，可以重复过滤）：
 // 1. 代理分享链接（vmess:// vless:// ss:// trojan:// hysteria2:// tuic:// …）整条
 //    折叠为 `<scheme>://…`。
 // 2. 其它 URL（任何 scheme：http / https / ws / wss / clash:// / sing-box:// …）：
-//    主机不在白名单里，整条换成 [kRedactedUrl]（`<url>`）。主机在白名单里：去掉
-//    userinfo、查询串与片段，保留 scheme、主机、端口与路径（多租户主机路径不在放行
-//    前缀下仍是 `<url>`；对象存储 / 发布资源主机只留 scheme + 主机）；路径段按子段判断像不像
-//    token（长十六进制、UUID、长 base64、16 位以上字母数字混排、JWT），像就把
-//    **整个原始段**换成 `…`（最多三轮宽松百分号解码）。空 authority 的 `file:///`（堆栈帧）在本地日志规则下不处理，严格模式（上报）下整条换成 `<url>`；`file://host/…` 照常过白名单。
+//    主机不在白名单里，整条换成 [kRedactedUrl]（`<url>`）；在白名单里，只留
+//    `scheme://host[:port]`。`file:///…`（空 authority，本地路径与 debug 构建的堆栈
+//    帧）整条换成 `<url>`：路径里有用户目录与订阅文件名；`file://host/…` 照常过
+//    白名单。
 //    百分号编码（`https%3A%2F%2F…`）与 JSON unicode 转义（`https\u003a\u002f\u002f…`）的 URL
 //    还原后的整段文本走完整脱敏，
 //    任何一部分需要遮盖就整段换成 `<url>`。
@@ -60,9 +60,9 @@ const String kRedactedUrl = '<url>';
 /// 节点地址（`host:port`、IP）的占位符。
 const String kRedactedAddr = '<addr>';
 
-/// 脱敏规则的版本号。规则收紧时递增：应用日志启动时据此把旧文件重新过一遍
-/// （见 `AppLogger.redactExistingLogFiles`）。
-const int kLogRedactionVersion = 8;
+/// 脱敏规则的版本号。规则变化时递增：应用日志启动时据此丢弃旧规则下写下的日志文件
+/// （见 `AppLogger.discardOutdatedLogFiles`）。
+const int kLogRedactionVersion = 9;
 
 /// 会被整条折叠的代理分享链接 scheme。
 const Set<String> kProxyShareSchemes = {
@@ -202,30 +202,6 @@ String redactLogText(String input) {
   });
   return out;
 }
-
-// ─── 严格模式 ─────────────────────────────────────────────────────────
-
-int _strictDepth = 0;
-
-/// 在 [body] 执行期间启用**严格模式**：所有 URL 只保留 scheme + 主机（白名单
-/// 主机）或 `<url>`（其它），**任何路径都不保留**——包括官网与本项目仓库前缀。
-///
-/// 脱敏器认得出主机，却无法知道一条 URL 的**来源**：官网或仓库前缀下的短路径
-/// 可能就是用户的订阅地址。离开设备的通道（Sentry）不能赌这一点，所以用严格
-/// 模式；app.log 本地导出沿用白名单路径规则（来源侧的失败日志另有 `logInputFailure`
-/// 等把关）。同步执行，可嵌套。
-T withStrictRedaction<T>(T Function() body) {
-  _strictDepth++;
-  try {
-    return body();
-  } finally {
-    _strictDepth--;
-  }
-}
-
-/// [redactLogText] 的严格模式版本（见 [withStrictRedaction]）。
-String redactStrict(String input) =>
-    withStrictRedaction(() => redactLogText(input));
 
 /// 结构化数据（Map 键名、请求头名）里，[name] 是否是秘密字段名。
 /// 与文本里键值规则用同一份字段名表；结构化场景下强弱字段都算。
@@ -444,12 +420,9 @@ String _redactUrlMatch(Match m) {
   final whole = m[0]!;
   final scheme = m[1]!;
   final lower = scheme.toLowerCase();
-  // 堆栈帧与本地路径（`file:///…`）：只放行空 authority；`file://host/…` 的
-  // host 是网络共享，照常过白名单。
+  // 本地路径与 debug 构建的堆栈帧（`file:///…`，空 authority）整条遮盖，句末标点
+  // 留在外面；`file://host/…` 的 host 是网络共享，照常过白名单。
   if (lower == 'file' && m[2]!.isEmpty) {
-    // 严格模式（上报）：本地路径也不出设备（iOS 容器路径里有用户目录与订阅文件名），
-    // 整条换成 `<url>`，句末标点留在外面；本地 app.log 仍保留堆栈帧。
-    if (_strictDepth == 0) return whole;
     final punct = _trailingPunct.firstMatch(whole);
     return '$kRedactedUrl${punct?[0] ?? ''}';
   }
@@ -482,29 +455,11 @@ String _redactUrlMatch(Match m) {
   if (at >= 0) authority = authority.substring(at + 1);
 
   // 白名单：主机不在里面，整条 URL 都是用户数据（订阅地址、节点地址……）。
-  // 多租户主机（GitHub 等）还要看路径：只有本项目自己的仓库路径或构建期外链的
-  // 路径前缀才放行；对象存储 / 发布资源主机的路径是不透明 ID，只留 scheme + 主机。
-  switch (publicUrlAccess(_hostOfAuthority(authority), path)) {
-    case PublicUrlAccess.none:
-      return '$kRedactedUrl$tail';
-    case PublicUrlAccess.hostOnly:
-      return '$scheme://$authority$tail';
-    case PublicUrlAccess.hostAndPath:
-      // 严格模式：来源不明，路径一律不保留。
-      if (_strictDepth > 0) return '$scheme://$authority$tail';
-  }
+  if (!isPublicHost(_hostOfAuthority(authority))) return '$kRedactedUrl$tail';
 
-  // 路径里藏着别的地址（`/o/r,https://订阅地址`、编码过的 `%2Chttps%3A%2F%2F…`、
-  // 节点 `host:port`）：这条 URL 不再只是「公共主机 + 路径」，整条当用户数据。
-  if (_pathHidesAddress(path)) return '$kRedactedUrl$tail';
-
-  final maskedPath = path
-      .split('/')
-      .map((segment) => _isSensitiveSegment(segment) ? kRedacted : segment)
-      .join('/');
-
-  // 公共主机的 URL 也不保留查询串与片段：那里才是 token 的常见位置。
-  return '$scheme://$authority$maskedPath$tail';
+  // 主机在白名单里也不保留路径 / 查询串 / 片段 / userinfo：脱敏器无法知道这条
+  // URL 的来源，那里面可能就是订阅地址。
+  return '$scheme://$authority$tail';
 }
 
 /// `host`、`host:port`、`[v6]:port` → 主机部分（不含端口与方括号外壳以外的东西）。
@@ -617,39 +572,6 @@ bool _redactableIpv6(String candidate) =>
     _isIpv6(candidate) &&
     RegExp('[0-9A-Fa-f]').hasMatch(candidate) &&
     !isLoopbackHost(_withoutZone(candidate));
-
-final RegExp _nestedScheme = RegExp(r'[a-zA-Z][a-zA-Z0-9+.\-]*://');
-
-/// 白名单 URL 的路径（原样以及最多三轮 JSON / 百分号解码之后）里是否含有另一个
-/// URL（任意 scheme，含分享链接）或节点地址。
-bool _pathHidesAddress(String path) {
-  var current = path;
-  for (var round = 0; ; round++) {
-    if (_nestedScheme.hasMatch(current)) return true;
-    if (_redactAddresses(current) != current) return true;
-    if (round == 3) return false;
-    final decoded = _percentDecodeLenient(_unescapeJson(current));
-    if (decoded == current) return false;
-    current = decoded;
-  }
-}
-
-/// 路径段：原样以及每一轮宽松解码（最多三轮，应对重复编码）之后，整段与按解出
-/// 的 `/` 拆开的每个子段都判断一次；任何一个像 token，整个原始段都算敏感。
-bool _isSensitiveSegment(String segment) {
-  if (segment.isEmpty || segment == kRedacted) return false;
-  var current = segment;
-  for (var round = 0; ; round++) {
-    // 整段（含 `/` 的 base64 之类）与按 `/` 拆开的子段都要查。
-    if (_looksLikeToken(current) || current.split('/').any(_looksLikeToken)) {
-      return true;
-    }
-    if (round == 3 || !current.contains('%')) return false;
-    final decoded = _percentDecodeLenient(current);
-    if (decoded == current) return false;
-    current = decoded;
-  }
-}
 
 /// 百分号解码，容忍畸形转义：`%` 后面不是两位十六进制就原样保留；解出的字节
 /// 不是合法 UTF-8 时用替换字符，不会抛异常。

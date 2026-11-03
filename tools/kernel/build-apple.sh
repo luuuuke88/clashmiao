@@ -61,7 +61,7 @@ EXPECTED_LIBRARIES="ios||arm64
 ios|simulator|arm64,x86_64"
 
 check_xcframework() {
-  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd plist n i id platform variant got want bp
+  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd plist n i id platform variant got want bp lp want_platform plats
   [ -f "$XC/Info.plist" ] || die "产物缺少 xcframework 的 Info.plist"
   plist="$XC/Info.plist"
   n="$(plutil -extract AvailableLibraries raw "$plist" 2>/dev/null)" || die "清单里没有 AvailableLibraries"
@@ -70,10 +70,13 @@ check_xcframework() {
   while [ "$i" -lt "$n" ]; do
     id="$(plutil -extract "AvailableLibraries.$i.LibraryIdentifier" raw "$plist")" || die "清单第 ${i} 项缺 LibraryIdentifier"
     platform="$(plutil -extract "AvailableLibraries.$i.SupportedPlatform" raw "$plist")" || die "${id}：清单缺 SupportedPlatform"
-    variant="$(plutil -extract "AvailableLibraries.$i.SupportedPlatformVariant" raw "$plist" 2>/dev/null || true)"
+    # plutil 取不到键时把错误写到 stdout（不同版本不一），所以按退出码判断、失败时丢弃输出
+    if ! variant="$(plutil -extract "AvailableLibraries.$i.SupportedPlatformVariant" raw "$plist" 2>/dev/null)"; then variant=""; fi
     archs="$(plutil -extract "AvailableLibraries.$i.SupportedArchitectures" json -o - "$plist" | tr -d '[]" ' | tr ',' '\n' | sort | paste -sd, -)"
-    bp="$(plutil -extract "AvailableLibraries.$i.BinaryPath" raw "$plist" 2>/dev/null || echo "${FRAMEWORK}.framework/${FRAMEWORK}")"
+    bp="$(plutil -extract "AvailableLibraries.$i.BinaryPath" raw "$plist" 2>/dev/null)" || die "${id}：清单缺 BinaryPath"
     [ "$bp" = "${FRAMEWORK}.framework/${FRAMEWORK}" ] || die "${id}：清单的 BinaryPath 不是浅层路径（${bp}）"
+    lp="$(plutil -extract "AvailableLibraries.$i.LibraryPath" raw "$plist" 2>/dev/null)" || die "${id}：清单缺 LibraryPath"
+    [ "$lp" = "${FRAMEWORK}.framework" ] && [ -d "$XC/$id/$lp" ] || die "${id}：清单的 LibraryPath 与实际目录不符（${lp}）"
     bin="$XC/$id/$bp"
     [ -f "$bin" ] && [ ! -L "$bin" ] || die "${id}：清单指向的二进制不存在"
     # 二进制里的架构必须与清单声明的完全一致
@@ -95,9 +98,12 @@ check_xcframework() {
     [ -f "$bin" ] && [ ! -L "$bin" ] || die "${slice}：根上没有二进制（或是符号链接）"
     [ -f "$fw/Info.plist" ] && [ ! -e "$fw/Versions" ] || die "${slice}：不是浅层 bundle"
     # gomobile 会自动追加平台标签：设备切片 ios，模拟器切片 ios,iossimulator。
-    case "$slice" in
-      *simulator*) extra_tags="ios,iossimulator" ;;
-      *) extra_tags="ios" ;;
+    # 平台以清单为准（上面已核对清单恰好是设备 + 模拟器），再用 Mach-O 的 LC_BUILD_VERSION 核对每个目标文件
+    if ! variant="$(plutil -extract "AvailableLibraries" json -o - "$plist" | tr '}' '\n' | grep -F "\"LibraryIdentifier\":\"${slice}\"" | grep -o '"SupportedPlatformVariant":"[a-z]*"')"; then variant=""; fi
+    case "$variant" in
+      *simulator*) extra_tags="ios,iossimulator"; want_platform="7|IOSSIMULATOR" ;;
+      "") extra_tags="ios"; want_platform="2|IOS" ;;
+      *) die "${slice}：未知的平台变体 ${variant}" ;;
     esac
     archs="$(lipo -archs "$bin")" || die "${slice}：lipo 读不出架构"
     for arch in $archs; do
@@ -107,6 +113,8 @@ check_xcframework() {
         lipo -thin "$arch" "$bin" -output "$tmpd/thin" || die "${slice}：取不出 ${arch} 架构"
       fi
       check_archive "$tmpd/thin" "${slice}/${arch}" "$extra_tags"
+      plats="$(otool -l "$tmpd/thin" | awk '/LC_BUILD_VERSION/{f=1} f && / platform /{print $2; f=0}' | sort -u | paste -sd, -)"
+      printf '%s' "$plats" | grep -qxE "$want_platform" || die "${slice}/${arch}：目标文件的平台是 ${plats:-<无>}，应为 ${want_platform%%|*}"
     done
     headers="$(cat "$fw"/Headers/*.h 2>/dev/null || true)"
     for sym in $REQUIRED_SYMBOLS; do

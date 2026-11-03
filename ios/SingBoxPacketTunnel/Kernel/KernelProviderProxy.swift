@@ -180,6 +180,9 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
 
     private var isRunning: Bool { serviceRunning }
 
+    /// 给平台回调用：隧道已进入停止（终态）后，迟到的设置提交一律放弃。
+    var isStoppingForBridge: Bool { isStopping }
+
     private var engine: CoreEngine? {
         flagLock.lock(); defer { flagLock.unlock() }
         return engineRef

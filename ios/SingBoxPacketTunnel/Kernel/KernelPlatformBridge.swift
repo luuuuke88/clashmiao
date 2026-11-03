@@ -55,12 +55,25 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
         return settingsGeneration
     }
 
+    /// 这一代的设置还能不能提交：代次没变，且隧道没有进入停止（停止是终态，之后不会再有新的一代）。
+    /// 在本 provider 里，进行中的建 TUN 只会被停止打断（重载在串行队列上、总在上一次启动返回之后），
+    /// 所以「迟到的旧请求排在新一代之后」只可能以「停止后迟到」的形式出现，由这里拦下。
+    private func isCurrent(_ generation: Int) -> Bool {
+        generation == currentGeneration && !(provider?.isStoppingForBridge ?? true)
+    }
+
     /// 在设置门内执行 `body`（阻塞调用线程：只在内核的回调线程上用，不在主线程）。
-    /// `generation` 与当前代次不一致时不执行，返回 false。
-    private func withSettingsGate(generation: Int, _ body: () throws -> Void) rethrows -> Bool {
-        settingsGate.wait()
+    /// 本代已过期时不执行，返回 false。`timeout` 为 nil 时一直等（建 TUN 必须做完）；
+    /// 可选的操作（清 DNS 缓存、代理开关）给有限的等待，等不到就放弃，不让内核的回调线程无限挂住。
+    private func withSettingsGate(generation: Int, timeout: TimeInterval? = nil,
+                                  _ body: () throws -> Void) rethrows -> Bool {
+        if let timeout {
+            guard settingsGate.wait(timeout: .now() + timeout) == .success else { return false }
+        } else {
+            settingsGate.wait()
+        }
         defer { settingsGate.signal() }
-        guard generation == currentGeneration else { return false }
+        guard isCurrent(generation) else { return false }
         try body()
         return true
     }
@@ -240,17 +253,21 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
         let generation = currentGeneration
         // 重设一次隧道设置让系统丢掉 DNS 缓存；期间声明 reasserting，系统不会因此断开隧道。
         // 两步在设置门内连续完成，并且只恢复本代的设置：重载 / 停止不会被旧设置覆盖回去。
-        _ = withSettingsGate(generation: generation) {
-            guard let settings = appliedSettings else { return }
+        let done = withSettingsGate(generation: generation, timeout: 10) {
+            // 重载正在进行（它自己持有 reasserting，并会提交全新的设置）时不必也不该再清一次。
+            guard let settings = appliedSettings, !provider.reasserting else { return }
             provider.reasserting = true
             defer { provider.reasserting = false }
             do {
                 try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(nil) }
+                // 两步之间复核：这期间隧道若已停止或换代，不把旧设置恢复回去。
+                guard isCurrent(generation) else { return }
                 try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
             } catch {
                 provider.forwardKernelLine("[Tunnel] clearing DNS cache failed: \(error.localizedDescription)")
             }
         }
+        if !done { provider.forwardKernelLine("[Tunnel] clearing DNS cache skipped") }
     }
 
     /// nil：用内核自己的本地 DNS（扩展里直接走系统网络）。
@@ -283,21 +300,28 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
         guard let provider else { return }
         let generation = currentGeneration
         // 在设置门内修改并提交本代的设置，不与建 TUN / 清缓存交错。
-        _ = withSettingsGate(generation: generation) {
+        let done = withSettingsGate(generation: generation, timeout: 10) {
             guard
-                let settings = appliedSettings,
-                let proxy = settings.proxySettings,
-                proxy.httpServer != nil,
-                proxy.httpEnabled != enabled
+                let current = appliedSettings,
+                let currentProxy = current.proxySettings,
+                currentProxy.httpServer != nil,
+                currentProxy.httpEnabled != enabled,
+                let settings = current.copy() as? NEPacketTunnelNetworkSettings,
+                let proxy = currentProxy.copy() as? NEProxySettings
             else { return }
+            // 改副本、提交成功后才替换缓存：失败时缓存仍与系统实际生效的设置一致。
             proxy.httpEnabled = enabled
             proxy.httpsEnabled = enabled
             settings.proxySettings = proxy
             do {
                 try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
+                settingsLock.lock()
+                if settingsGeneration == generation { lastAppliedSettings = settings }
+                settingsLock.unlock()
             } catch {
                 provider.forwardKernelLine("[Tunnel] toggling system proxy failed: \(error.localizedDescription)")
             }
         }
+        if !done { provider.forwardKernelLine("[Tunnel] toggling system proxy skipped") }
     }
 }

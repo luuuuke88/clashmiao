@@ -50,8 +50,8 @@ bool _hasScheme(String uri) => _schemePattern.hasMatch(uri);
 ///
 /// 为什么不照 Dart 解析器的语义去「尽量还原」：反斜杠、`%2e%2e` 之类的转义写法、
 /// 多余的 `..`，analyzer 与 Dart 工具链可能各有各的解读，规则检查器一旦和它们
-/// 解读不一致就是漏洞——`package:clashmiao/core/../domain/x.dart` 在 Dart 里指向
-/// domain，检查器若按字面当作 core 就被绕过了。所以一律失败即关闭：
+/// 解读不一致就是漏洞——`package:clashmiao/core/../features/x.dart` 在 Dart 里指向
+/// features，检查器若按字面当作 core 就被绕过了。所以一律失败即关闭：
 /// 凡不是规范写法的项目内 URI，都当违规处理，让作者改成规范的 `package:clashmiao/` 导入。
 ///
 /// 规范写法 = 只由 `/` 分隔的非空段，无转义、无 query/fragment：

@@ -4,64 +4,151 @@
 
 Flutter 写 UI 与业务，**抽象出 `BoxService` 接口**，每个平台用各自最稳的方式接 sing-box：移动端走原生桥（Pigeon + EventChannel，原生侧是 Android 的 VpnService / iOS 的 PacketTunnel 扩展），桌面端走 FFI 直接调动态库。连接的开 / 关 / 重载不直接调 `BoxService`，而是经 **`KernelPort`** 提交「期望状态」，由内核侧（移动端的原生协调器，桌面的 Dart 模拟层）收敛并回报权威快照，见「连接生命周期」。
 
-`lib/` 按职责分成五层，依赖方向单一，由架构测试在 CI 里强制（见下一节）。
+`lib/` 分为 `app`、`features`、`core`、`shared` 四块外加入口 `main.dart`，依赖方向单一，由架构测试在 CI 里强制（见下一节）。
 
 ## 分层
 
 ### 目录结构
 
+下面的目录树由 `find lib -maxdepth 3 -type d` 的输出生成：每个模块目录都真实存在；`features/` 下的分层目录（第三级）合并写在功能那一行，`core/` 下更深的子目录（如 `box_service/{model,pigeon}`、`localization/gen`）省略。
+
 ```
 lib/
-├─ main.dart            启动组装（可依赖全部层）
-├─ app/                 应用外壳：App、路由、底部导航 Shell、启动开屏、托盘、快捷键、
-│                       窗口退出守卫、启动检查更新、深链编排
-├─ features/<功能>/      页面级功能：about assets config home logs profile proxy settings splash
-│   ├─ model/           （可选）只给本功能用的模型
-│   ├─ data/            （可选）只给本功能用的数据访问
-│   ├─ application/     （可选）只给本功能用的状态
-│   └─ presentation/    页面与组件
-├─ domain/<概念>/        跨功能的业务概念：config profile routing connection
-│   ├─ model/           纯 Dart 模型
-│   ├─ data/            仓库、解析、IO
-│   └─ application/     Provider / Notifier / 服务
-├─ core/<模块>/          平台与基础设施，零业务
-│                       auto_start battery_optimization box_service env haptic http_client
-│                       localization logger proxy storage store_review theme update utils window
-└─ shared/<模块>/        不懂业务的通用 UI 与导航状态：components navigation
+├─ main.dart                启动组装（可依赖全部层）
+├─ app/                     应用外壳（可依赖全部层）
+│  ├─ bootstrap/            启动编排：存储、常驻服务、恢复接线
+│  ├─ deep_link/            深链编排
+│  ├─ router/               路由；AppRoute → 页面的构造器登记（页面只在 app/ 构造）
+│  ├─ shortcuts/            桌面快捷键
+│  ├─ tray/                 托盘
+│  ├─ update/               启动检查更新
+│  └─ window/               窗口退出守卫
+├─ core/                    平台与基础设施，零业务
+│  ├─ auto_start/           开机自启
+│  ├─ auto_start_permission/ 自启权限引导
+│  ├─ battery_optimization/ 电池优化白名单
+│  ├─ box_service/          BoxService 接口、Pigeon / FFI 实现、内核侧模型
+│  ├─ env/                  构建配置与平台能力
+│  ├─ haptic/               触觉反馈
+│  ├─ http_client/          HTTP 客户端
+│  ├─ latency/              延迟判定规则
+│  ├─ licenses/             内置许可证
+│  ├─ localization/         翻译（slang）与语言偏好
+│  ├─ logger/               日志
+│  ├─ proxy/                系统代理守卫
+│  ├─ storage/              偏好注册表、存储迁移框架、异步锁等存储基础
+│  ├─ store_review/         应用商店评分
+│  ├─ theme/                主题与主题偏好
+│  ├─ update/               版本检查
+│  ├─ utils/                通用格式化等工具
+│  └─ window/               静默启动
+├─ features/                功能，分能力型与页面型两档（下面的「功能清单」）
+│  ├─ config/               [能力型] application data model presentation
+│  ├─ profile/              [能力型] application data model presentation
+│  ├─ proxy/                [能力型] application data model presentation
+│  ├─ connection/           [能力型] application data model
+│  ├─ backup/               [能力型] application data model presentation
+│  ├─ options/              [页面型] presentation
+│  ├─ home/                 [页面型] presentation
+│  ├─ settings/             [页面型] application presentation
+│  ├─ logs/                 [页面型] application presentation
+│  ├─ about/                [页面型] application presentation
+│  ├─ assets/               [页面型] application data model presentation
+│  └─ splash/               [页面型] presentation
+└─ shared/                  不懂业务的通用 UI 与导航状态
+   ├─ components/           通用组件
+   ├─ latency/              延迟展示用的纯值
+   └─ navigation/           AppRoute / AppRouteScope、底部导航状态
 ```
 
-`*.g.dart` 等生成文件跟随所在目录，算作那一层，不单独豁免。
+每个功能的内部再按 `model/`（纯 Dart 模型）、`data/`（仓库、解析、IO）、`application/`（Provider、Notifier、服务）、`presentation/`（页面与组件）分；用不到的层不建目录。`*.g.dart` 等生成文件跟随所在目录，算作那一层，不单独豁免。
+
+**`lib/domain/` 已经不存在**，也不允许再出现：该目录下的任何文件都会被架构测试判为违规。
+
+### 两档功能
+
+- **能力型**：沉淀可被多处复用的业务能力（状态、数据、模型），自带或不带页面。按层级**从低到高**固定排序：`config` → `profile` → `proxy` → `connection` → `backup`。排序按真实依赖推出：订阅仓库要读代理端口（profile → config）；节点选择按订阅 id 存（proxy → profile）；连接状态机要组装订阅、节点和配置（connection → 前三者）；备份与恢复要读写全部（backup → 全部）。用固定顺序而不是「不成环」，是因为它更好懂，也能挡住「两个功能互相引用一次」这种还没成环、但已经开始缠绕的情况。新增能力型功能必须先在 `kCapabilityOrder`（`test/architecture/layering_rules.dart`）登记位置。
+- **页面型**：一个完整的页面（或一组页面）及其专属的状态。页面型功能之间互不依赖，只能依赖能力型功能。新增页面型功能必须先登记到 `kPageFeatures`。
 
 ### 依赖规则
+
+下面六条规则**没有任何豁免**：没有白名单，也没有「欠账登记」，每一条都由 `test/architecture/` 对真实的 `lib/` 强制执行。
+
+1. **能力型功能的非页面层**（`model` / `data` / `application`）只能依赖层级**更低**的能力型功能的非页面层，以及 `core`。
+2. **能力型功能的页面层**（`presentation`）可以依赖：任意能力型功能的非页面层、本功能的页面层、`shared`、`core`。不能依赖其他能力型功能的 `presentation`。
+3. **页面型功能的任何一层**可以依赖任意能力型功能的任何一层；**页面型功能之间不能互相依赖**。能力型功能也不能依赖页面型功能。
+4. **同一个功能内部**，依赖方向只能是 `presentation → application → data → model`，不能反过来（可以跨层、可以同层）。
+5. **`model` 层保持纯净（按传递闭包检查）**：从任何功能的 `model/**` 出发，沿项目内 import / export 走到的所有文件（含自身）都不得引用 `package:flutter/*`、Riverpod 系列包、`dart:io`、`dart:ui`，也不得到达任何功能的 `data` 或 `application`。只查直接 import 会放行「模型 → 工具函数 → 翻译 → Flutter」这种间接依赖。
+6. **页面只在 `app/` 里构造**；跨功能的页面跳转只能通过 `AppRouteScope`（见下节）。具体检查：声明在某功能 `presentation` 里、名字以 `Page` 结尾的公开类，在 `app/` 之外、且不属于该页面所在功能的任何文件里出现（注释除外）都算违规——构造它，或拿它的类型做别的事，都意味着页面之间在互相持有。
+
+其他层：
 
 | 层 | 允许依赖（项目内） |
 |---|---|
 | `core` | `core` |
 | `shared` | `core`、`shared` |
-| `domain/<X>` | `core`、`domain/<X>`、**排序更低**的 `domain/<Y>` |
-| `features/<F>` | `domain`、`core`、`shared`、`features/<F>` 自身 |
+| `features/<F>` | 按上面六条；能力型的非页面层不能依赖 `shared` |
 | `app` | 全部 |
 | `main.dart` | 全部 |
 
-`app` 与 `main.dart` 只豁免上表的**依赖方向**；相对 URI 的规范性检查对所有文件一视同仁，`app/` 与 `main.dart` 也不例外。
+`app` 与 `main.dart` 只豁免**依赖方向**；相对 URI 的规范性检查对所有文件一视同仁，`app/` 与 `main.dart` 也不例外。
 
-**domain 概念的固定顺序**（从低到高）：`config` → `profile` → `routing` → `connection`。高的可以依赖低的，反之不行。这是按真实依赖推出来的：订阅仓库要读代理端口（profile → config），节点选择按订阅 id 存（routing → profile），连接状态机要组装订阅、路由和配置（connection → 全部）。用固定顺序而不是「不成环」，是因为它更好懂，也能挡住「两个概念互相引用一次」这种还没成环但已经开始缠绕的情况。新增概念必须先在 `kDomainOrder` 登记位置。
+其他约束：
 
-四个 domain 概念的内容：
-
-| 概念 | 内容 |
-|---|---|
-| `config` | 网络设置（`NetworkSettings`）、默认 sing-box 配置、运行时配置生成、国内直连规则、WARP |
-| `profile` | 订阅模型、仓库、解析、拉取、载荷、定时更新、深链解析、到期时间格式化 |
-| `routing` | 代理模式、从配置解析节点分组、离线分组、节点选择记录、延迟缓存 |
-| `connection` | 纯函数状态机（`ConnectionMachine`）与控制器（`ConnectionController`）、启动产物准备（`ConnectionLauncher`）、错误分类、健康探测、出口 IP |
-
-附加规则：
-
-- **模型纯净（按传递闭包检查）**：从 `domain/*/model/**` 出发，沿项目内 import / export 走到的所有文件（含自身）都不得引用 `package:flutter/*`、Riverpod 系列包、`dart:io`、`dart:ui`，也不得到达任何 `domain/*/data` 或 `domain/*/application`。只查直接 import 会放行「模型 → 工具函数 → 翻译 → Flutter」这种间接依赖。
 - **只用 package 导入**：`analysis_options.yaml` 启用了官方 lint `always_use_package_imports`，`flutter analyze --fatal-warnings` 会拦相对导入。
-- **功能之间不互相引用**，唯一的口子是白名单（见下）。
 - **没有转发用的 barrel 文件**：barrel 会增加一层间接依赖、让依赖归属更难追踪，所以直接导入定义所在的文件。
+- **连接状态只有一个真值**：`boxStatusProvider` 只留在 `core`，`features/`、`app/`、`main.dart` 一律读 `connectionControllerProvider` / `isConnectedProvider`（`layering_test.dart` 里有专门的守卫）。
+
+### 功能清单
+
+| 功能 | 档 | 层级 / 登记 | 内容 |
+|---|---|---|---|
+| `config` | 能力型 | 1（最低） | 网络设置（`NetworkSettings`）、默认 sing-box 配置与配置选项默认值、运行时配置生成、国内直连规则、DNS 策略冲突与提示文案、WARP、服务模式 |
+| `profile` | 能力型 | 2 | 订阅模型与补丁、仓库与存储、解析、拉取、载荷、定时更新、失败日志、深链解析、到期时间格式化；订阅列表 / 详情 / 表单 / 二维码 / 扫码页面 |
+| `proxy` | 能力型 | 3 | 代理模式、从配置解析节点分组、离线分组、节点选择记录与选择服务、延迟缓存与测速协调、排序与行序；节点页面 |
+| `connection` | 能力型 | 4 | 纯函数状态机（`ConnectionMachine`）与控制器（`ConnectionController`）、启动产物准备（`ConnectionLauncher`）、选择回放流水线、错误分类、健康探测、出口 IP、连接失败日志；无页面 |
+| `backup` | 能力型 | 5（最高） | 备份编解码与引擎（导出 / 校验 / 整表替换式恢复）、恢复前快照与中断恢复、恢复后刷新、启动恢复提示、备份相关提示文案 |
+| `options` | 页面型 | - | 配置选项页（`ConfigOptionsPage`） |
+| `home` | 页面型 | - | 首页：连接按钮与品牌主视觉、快捷设置弹层、实验功能提示 |
+| `settings` | 页面型 | - | 设置页、分应用代理页，及其开关与应用过滤状态 |
+| `logs` | 页面型 | - | 日志页，及日志流与过滤状态 |
+| `about` | 页面型 | - | 关于页，及检查更新状态 |
+| `assets` | 页面型 | - | 规则资源页（地理库 / 规则集的更新服务、状态与模型） |
+| `splash` | 页面型 | - | 启动开屏页 |
+
+### 跨功能页面跳转：`AppRouteScope`
+
+规则 3 禁止页面型功能之间互相依赖，规则 6 要求页面只在 `app/` 构造，所以一个功能要打开别的功能的页面时，不 import 对方页面，而是只写一个 `AppRoute` 枚举值，由 `app/` 提供真正的构造器：
+
+1. `lib/shared/navigation/app_route.dart`：在 `AppRoute` 枚举里加一项（目前有 `configOptions`、`assets`、`logs`、`profiles`）。
+2. `lib/app/router/app_routes.dart`：在 `appRouteBuilders` 里登记 `AppRoute.xxx: (_) => const XxxPage()`。这是页面构造的唯一落点。
+3. `lib/app/app.dart`：`MaterialApp.router` 外层已经包了 `AppRouteScope(builders: appRouteBuilders, ...)`，不需要再动。
+4. 调用方（任何功能的代码）：
+   - 整页压栈：`pushAppRoute<void>(context, AppRoute.assets)`。要用根导航器（例如从弹层里打开整页）加 `rootNavigator: true`，语义与 `Navigator.of(context, rootNavigator: true).push(...)` 相同。
+   - 把页面放进底部弹层等非整页容器：`buildAppRoute(context, AppRoute.profiles)` 取页面 widget，不压栈。`profiles` 登记的就是可嵌入弹层的形态（`ProfilesPage(embedInSheet: true)`）。
+
+漏登记或没放 `AppRouteScope` 时，运行期会抛带说明的 `FlutterError`。
+
+### 移动文件：`tool/arch/move.dart`
+
+调整功能归属时用脚本搬文件，不要手工 `mv` 再逐个改 import：
+
+```bash
+# 路径相对 lib/；--dry-run 只打印计划
+dart run tool/arch/move.dart <from> <to> [--dry-run]
+dart run tool/arch/move.dart features/foo features/bar                      # 整个目录
+dart run tool/arch/move.dart features/a/data/x.dart features/b/data/x.dart  # 单个文件
+```
+
+它用 `git mv` 保留历史，同时移动 `test/` 下的镜像，并改写 `lib/ test/ integration_test/ tool/` 里全部 `package:clashmiao/...` 的 `import` / `export` / `part`。先检查后动手：目标已存在、源文件有未暂存修改、相对 import 会失效，都是「什么都没改」就退出。改写后的文件会 `git add`，可以不提交、连续多次运行。
+
+「纯移动」的 PR 用 `tool/arch/check_pure_move.sh` 自证：
+
+```bash
+tool/arch/check_pure_move.sh origin/main   # 在仓库内任意目录执行；比较的是 <base> 与工作区
+```
+
+它要求：文件只做重命名，内容里唯一允许变化的是 `import|export 'package:clashmiao/...'` 整行且一一对应；不许新增、删除文件，不许改权限。退出码 0 是纯移动，1 是有违规（逐条打印），2 是参数或 git 错误。纯移动 PR 里不夹带任何行为改动；要改行为另开 PR。
 
 ### 架构测试
 
@@ -69,37 +156,37 @@ lib/
 
 | 文件 | 作用 |
 |---|---|
-| `layering_test.dart` | 对真实的 `lib/` 跑全部规则 |
-| `layering_rules.dart` | 规则判定：层间依赖、domain 顺序（`kDomainOrder`）、模型纯净、非规范 URI（`checkLayering` / `checkModelPurity`），以及白名单的过期条目（`staleEntries`）与合法性、上限（`checkAllowlist`） |
+| `layering_test.dart` | 对真实的 `lib/` 跑全部规则：`lib/domain/` 不得存在、层间依赖（规则 1–3）、同功能内部方向（规则 4）、模型纯净（规则 5）、页面只在 app 构造（规则 6）、`boxStatusProvider` 单一真值 |
+| `layering_rules.dart` | 规则判定：`logicalUnitOf`（文件 → 功能 / 档 / 层）、`checkLayering`、`checkIntraFeatureDirection`、`checkModelPurity`、`checkPageConstruction`；功能登记表 `kCapabilityOrder` / `kPageFeatures` 也在这里 |
 | `import_scanner.dart` | 用官方 `analyzer` 解析器提取 `import` / `export` 指令的 URI（含条件导入的每个分支），不用正则；`part` / `part of` 不产生依赖边，不提取。`projectPath` 把 URI 还原成 `lib/` 内路径，`nonCanonicalUriReason` 判定项目内 URI 是否规范 |
-| `allowlist.dart` | 功能之间依赖的白名单与上限 |
 | `*_test.dart`（扫描器、规则） | 检查器自测：用合成源码覆盖正反用例，保证检查器真的会报错，不是永远绿 |
+| 其他守卫 | 用户可见文案（`user_visible_strings_test.dart`）、错误日志（`error_logging_guard_test.dart`）、动效 token、翻译重复字符等 |
 
-跑法：`flutter test test/architecture/`（全量 `flutter test` 也会跑到）。失败时每条违规打印成「源文件 → 目标文件 · 违反的规则 · 修复建议」，一次列全。**报错时的处理顺序**：
+跑法：`flutter test test/architecture/`（全量 `flutter test` 也会跑到）。失败时每条违规打印成「源文件 → 目标文件 · 违反的规则 · 修复建议」，一次列全。
 
-1. **层间依赖违规**：改代码，不要去动测试。共享的状态 / 模型下沉到 `domain`，共享的 UI 下沉到 `shared`，与业务无关的基础能力下沉到 `core`。
-2. **domain 顺序违规**：说明依赖方向反了。把被依赖的那部分挪到更低的概念里，或改由更高的概念来组装。
-3. **模型纯净违规**：报错里带有最短的传递链，沿链找到把 Flutter / Riverpod / `dart:io` 带进模型的那个文件，把那部分挪出 `model/`。
-4. **「白名单条目对应的依赖已经消除」**：依赖已经没了，把那几条从 `allowlist.dart` 删掉即可（见下面的棘轮）。
-5. **提示不在任何一层里**：文件放错了位置，按下面「新文件归属」归位。
-6. **「非规范 URI」**：`import` / `export`（含条件导入分支）里写了含反斜杠、百分号转义、query/fragment、空段的项目内 URI，或含 `.` / `..` 段的 `package:clashmiao/` 路径（如 `package:clashmiao/core/../domain/x.dart`），或越出 `lib/` 的相对路径，检查器无法可靠还原依赖边，一律按违规处理（失败即关闭）。改成 `package:clashmiao/...` 导入。
+#### 架构测试报错了怎么办
 
-### 白名单：只减不增
+**一律改代码，不改测试、不加豁免**——这套规则里没有白名单这种机制，往测试里加例外就是在修改规则本身，需要单独的设计讨论。按报错类型处理：
 
-`features/<F> → features/<G>` 的文件级依赖默认是违规的，目前只登记了 5 条页面之间的直接跳转（首页 → 订阅表单、首页 → 订阅列表、首页快捷设置 → 配置页、配置页 → 资源页、配置页 → 日志页）：路由集中到统一入口之前，页面需要持有目标页面的类型，暂时无法解耦。
-
-- 白名单**只能**豁免功能之间的边；两端不都在 `features/` 下的条目本身就算违规，跨层依赖没有后门。
-- **棘轮**：条目对应的依赖在代码里已经不存在时，测试失败，要求删除该条目。
-- **上限**：`allowlist.dart` 里的 `kAllowlistCeiling`（当前为 5）限制条数。上限只能调小：每清掉一条依赖，同时删条目、调低上限；想加一条，必须同时改条目和上限两处，在 diff 里一眼可见，评审时要有充分理由。
+1. **层间依赖违规**（规则 1–3）：
+   - 能力型 A 依赖了排在它后面的能力型 B：依赖方向反了，把被依赖的那部分挪到更低的功能里，或改由更高的功能来组装。
+   - 能力型的非页面层依赖了 `presentation` / `shared`：共享的状态 / 模型下沉到能力型功能，共享的 UI 下沉到 `shared`，与业务无关的基础能力下沉到 `core`。
+   - 页面型之间互相依赖：共享的部分下沉到能力型功能；页面跳转走 `AppRouteScope`。
+2. **同功能内部方向违规**（规则 4）：下层依赖了上层，把被依赖的内容下移一层（例如 `data` 引用了 `application` 里的类型，就把该类型挪进 `model`）。
+3. **模型纯净违规**（规则 5）：报错里带有最短的传递链，沿链找到把 Flutter / Riverpod / `dart:io` / `data` / `application` 带进模型的那个文件，把那部分挪出 `model/`。
+4. **页面只在 app 构造**（规则 6）：把对页面类的引用换成 `AppRoute` + `pushAppRoute` / `buildAppRoute`，并在 `app/router/app_routes.dart` 登记构造器。
+5. **提示文件不在已登记位置**：文件放错了位置——能力型功能的文件必须在 `model/data/application/presentation` 目录下；功能名必须登记在 `kCapabilityOrder` / `kPageFeatures`；`lib/domain/` 下不允许有任何文件。按下面「新文件归属」归位，搬动用 `tool/arch/move.dart`。
+6. **「非规范 URI」**：`import` / `export`（含条件导入分支）里写了含反斜杠、百分号转义、query/fragment、空段的项目内 URI，或含 `.` / `..` 段的 `package:clashmiao/` 路径（如 `package:clashmiao/core/../features/x.dart`），或越出 `lib/` 的相对路径，检查器无法可靠还原依赖边，一律按违规处理（失败即关闭）。改成规范的 `package:clashmiao/...` 导入。
 
 ### 新文件归属
 
-清单之外的新文件按下面的顺序判定：
+按下面的顺序判定：
 
-1. 被两个及以上功能、或被 `app` / `domain` 使用的业务逻辑 → `domain`。
+1. 沉淀成业务能力、会被两个及以上功能（或 `app`）使用的状态 / 数据 / 模型 → 能力型功能（按真实依赖放进 `kCapabilityOrder` 合适的位置；放不下就先讨论，不要硬塞）。
 2. 不知道任何代理 / 订阅概念、换个 App 也能用 → `core`（逻辑）或 `shared`（UI）。
-3. 只服务一个页面 → 该功能内部。
+3. 只服务一个页面 → 该页面型功能内部（按 `model/data/application/presentation` 分层）。
 4. 判定不了时放更靠近使用方的一侧，等出现第二个使用方再上提。
+5. 要打开别的功能的页面 → 不 import，走 `AppRouteScope`。
 
 ## 关键模块
 
@@ -412,7 +499,7 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 
 ## 测试
 
-`test/` 与 `lib/` 的新路径一一对应（`test/core`、`test/domain`、`test/features`、`test/shared`、`test/app`），另有：
+`test/` 与 `lib/` 的新路径一一对应（`test/core`、`test/features`、`test/shared`、`test/app`），另有：
 
 - `test/architecture/` — 架构测试，见「分层」一节；另有用户可见文案守卫（`user_visible_strings_test.dart`）：异常原文插值进文案、或出现未登记的写死中文即失败；
 - `test/support/` — 共享的测试替身（`fake_box_service.dart`、`counting_box_service.dart`、`temp_dirs.dart`）；
@@ -436,4 +523,3 @@ release 包经 R8 混淆：字段被改名，Gson 不带 keep 规则，`@Seriali
 - Windows / Linux 缺真机 connection smoke：CI 默认只 gate 编译 + libcore 打包 + 符号检查，真流量 smoke job 需要 `ENABLE_SMOKE` 开关和测试订阅 secret 才会跑。
 - 原生层的内核真实调用（Android / iOS 的启动、重载、手选）与各条 EventChannel 的推送仍主要靠真机验证；iOS 扩展在真机上的内存余量、Wi-Fi ↔ 蜂窝切换行为、NE 状态时序是否与 `CoordinatorCore` 的假设一致，见 `docs/superpowers/research/2026-10-20-ios-device-smoke.md`。
 - 桌面的连接生命周期是降级契约（见「桌面：降级契约」）：FFI 调用移出 UI isolate 尚未完成。
-- 功能之间还有 5 条页面跳转依赖留在架构测试白名单里，等路由统一后清零（见「白名单：只减不增」）。

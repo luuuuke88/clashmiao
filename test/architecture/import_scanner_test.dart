@@ -157,8 +157,8 @@ part 'a.g.dart';
       expect(projectPath('./b.dart', from: 'core/a.dart'), 'core/b.dart');
       expect(projectPath('b.dart', from: 'core/x/a.dart'), 'core/x/b.dart');
       expect(
-        projectPath('../../domain/p/m.dart', from: 'core/storage/a.dart'),
-        'domain/p/m.dart',
+        projectPath('../../features/p/m.dart', from: 'core/storage/a.dart'),
+        'features/p/m.dart',
       );
     });
 
@@ -190,7 +190,7 @@ part 'a.g.dart';
 
     test('package URI 含点段、空段、转义等：有原因，且 projectPath 返回 null', () {
       for (final uri in [
-        'package:clashmiao/core/../domain/a.dart',
+        'package:clashmiao/core/../features/a.dart',
         'package:clashmiao/core/./a.dart',
         'package:clashmiao/core//a.dart',
         'package:clashmiao/core/%2e%2e/a.dart',

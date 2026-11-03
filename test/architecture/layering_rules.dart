@@ -1,8 +1,7 @@
 // 分层依赖规则：纯 Dart、无 flutter_test 依赖，输入是「文件 → 它的全部 URI」。
 //
-// 判定单位是「逻辑功能」而不是目录：同一个功能的文件可能散在 `domain/<x>/` 与
-// `features/<x>/` 两处（旧布局），也可能已经归到 `features/<f>/<layer>/`（新布局），
-// [logicalUnitOf] 两种都认，所以规则在目录搬迁前、中、后都成立。
+// 判定单位是「逻辑功能」：`features/<f>/<layer>/…` 里的 `<f>` 就是功能名，
+// 见 [logicalUnitOf]。`lib/domain/` 已经不存在，出现在那里的任何文件都是违规。
 //
 // 功能分两档：
 // - 能力型（[Tier.capability]）：config < profile < proxy < connection < backup，
@@ -14,15 +13,16 @@
 //    非页面层，以及 core；
 // 2. 能力型的 presentation 可依赖任意能力型的非页面层、本功能的 presentation、
 //    shared、core；
-// 3. 页面型的任何一层可依赖任意能力型的任何一层；页面型之间不能互相依赖
-//    （[kAllowlist] 里登记的跳转除外）；
+// 3. 页面型的任何一层可依赖任意能力型的任何一层；页面型之间不能互相依赖；
 // 4. 同一功能内部 presentation → application → data → model，不能反过来
 //    （[checkIntraFeatureDirection]，无任何豁免）；
 // 5. model 层纯净：不依赖 Flutter / Riverpod / dart:io / dart:ui，传递闭包里
 //    也不触达 data / application（[checkModelPurity]）；
 // 6. 页面只在 `app/` 里构造，跨功能的页面跳转只走 `AppRouteScope`：
 //    `app/` 之外、页面所在功能之外的文件不得引用别的功能的 `*Page` 类
-//    （[checkPageConstruction]，历史欠账登记在 [kPageConstructionDebt]）。
+//    （[checkPageConstruction]）。
+//
+// 六条规则一律零豁免：没有白名单，也没有欠账登记。
 //
 // R2（只用 package 导入）已由 `always_use_package_imports` lint 把守，不重复实现。
 import 'import_scanner.dart';
@@ -77,50 +77,33 @@ class Violation {
   String toString() => '$from → $to · $rule · $hint';
 }
 
-/// 白名单条目：一条被豁免的「页面型 → 页面型」文件级依赖边（页面跳转）。
-class AllowedEdge {
-  const AllowedEdge(this.from, this.to, this.reason);
-
-  final String from;
-  final String to;
-  final String reason;
-
-  @override
-  String toString() => '$from → $to（$reason）';
-}
-
 const _lintRule = '层间依赖';
 const _intraRule = '同功能内部方向';
 const _pageRule = 'R6 页面只在 app 构造';
-const _illegalAllowRule = '白名单条目非法';
 const _purityRule = 'R1 模型纯净';
 const _nonCanonicalUriRule = '非规范 URI';
 
 /// 把 `lib/` 内相对路径归到逻辑功能；不属于任何功能返回 `null`。
 ///
-/// 旧布局：`domain/<x>/<layer>/…`，其中 `routing` 就是 `proxy`。
-///
-/// 新布局：`features/<f>/<layer>/…`，`<f>` 就是功能名，不再按文件名拆分。
+/// `features/<f>/<layer>/…`：`<f>` 就是功能名，不再按文件名拆分。
 ///
 /// 页面型功能的文件不在分层目录里（散文件、`widgets/` 之类的子目录）时按
 /// presentation 处理。
 ///
 /// 返回 `null` 的情形：`core` / `shared` / `app` / `main.dart`（不属于功能，走各自
-/// 的规则），以及**无法归位**的路径——未登记的功能名、`domain/` 下的页面型功能名、
-/// 能力型功能里不在分层目录中的文件。后一类由 [checkLayering] 报为违规，不会静默放过。
+/// 的规则），以及**无法归位**的路径——未登记的功能名、能力型功能里不在分层目录中的
+/// 文件、`lib/domain/` 下的一切。后一类由 [checkLayering] 报为违规，不会静默放过。
 LogicalUnit? logicalUnitOf(String libPath) {
   final parts = libPath.split('/');
   if (parts.length < 3) return null;
   final root = parts[0];
-  if (root != 'domain' && root != 'features') return null;
+  if (root != 'features') return null;
 
-  var feature = parts[1];
-  if (root == 'domain' && feature == 'routing') feature = 'proxy';
-
+  final feature = parts[1];
   final Tier tier;
   if (kCapabilityOrder.contains(feature)) {
     tier = Tier.capability;
-  } else if (root == 'features' && kPageFeatures.contains(feature)) {
+  } else if (kPageFeatures.contains(feature)) {
     tier = Tier.page;
   } else {
     return null;
@@ -137,18 +120,18 @@ LogicalUnit? logicalUnitOf(String libPath) {
 class _Place {
   const _Place(this.root, this.unit);
 
-  /// `core` / `shared` / `app` / `main`，或 `domain` / `features`，
-  /// 或 `unknown`（不在已知层里）。
+  /// `core` / `shared` / `app` / `main` / `features`，
+  /// 或 `unknown`（不在已知层里，含已废弃的 `domain`）。
   final String root;
 
-  /// 仅 `domain` / `features` 且能归位时非空。
+  /// 仅 `features` 且能归位时非空。
   final LogicalUnit? unit;
 
-  bool get isFeatureRoot => root == 'domain' || root == 'features';
+  bool get isFeatureRoot => root == 'features';
 
   bool get isUnrestricted => root == 'app' || root == 'main';
 
-  /// `domain` / `features` 下无法归位的路径。
+  /// `features` 下无法归位的路径。
   bool get isUnplaced => isFeatureRoot && unit == null;
 
   static _Place of(String path) {
@@ -159,7 +142,6 @@ class _Place {
       case 'shared':
       case 'app':
         return _Place(root, null);
-      case 'domain':
       case 'features':
         return _Place(root, logicalUnitOf(path));
     }
@@ -167,65 +149,35 @@ class _Place {
   }
 }
 
-/// 白名单条目是否合法：两端都是页面型功能，且是不同的功能。
-bool _isPageEdge(AllowedEdge e) {
-  final from = logicalUnitOf(e.from);
-  final to = logicalUnitOf(e.to);
-  return from != null &&
-      to != null &&
-      from.tier == Tier.page &&
-      to.tier == Tier.page &&
-      from.feature != to.feature;
-}
-
-/// 白名单里不是「页面型 → 页面型」的非法条目。
-/// [checkLayering]（逐条报违规）与 [checkAllowlist]（汇总问题）都从这里取，
-/// 「什么算合法条目」只有这一份判定。
-List<AllowedEdge> _illegalEntries(List<AllowedEdge> entries) => [
-  for (final e in entries)
-    if (!_isPageEdge(e)) e,
-];
-
 String _nonCanonicalUriHint(String uri, String reason) =>
     '非规范的 URI，请改用 package:clashmiao/ 导入（$reason）：$uri';
 
 const _unplacedHint =
-    '文件不在 core/shared/app/domain/features 的已登记位置里：能力型功能的文件必须放在 '
+    '文件不在 core/shared/app/features 的已登记位置里：能力型功能的文件必须放在 '
     'model/data/application/presentation 目录下，功能名必须登记在 kCapabilityOrder / '
     'kPageFeatures，请归位';
 
+const _domainGoneHint =
+    'lib/domain/ 已废弃，不允许再出现任何文件：能力型功能放进 '
+    'features/<功能>/{model,data,application,presentation}/，不要重建 domain 目录';
+
+/// 无法归位的路径对应的提示：`lib/domain/` 下的单独说明。
+String _unplacedHintFor(String path) =>
+    path.startsWith('domain/') ? _domainGoneHint : _unplacedHint;
+
 /// 层间依赖检查。[uris] 的键是 `lib/` 内相对路径，值是该文件的全部 URI。
 ///
-/// 白名单**只**豁免「页面型 → 页面型」的页面跳转：跨层、跨能力的口子一旦能开，
-/// 白名单就会变成架构的后门。所以不是页面型 → 页面型的条目本身就是违规。
+/// 零豁免：没有白名单，页面型功能之间的跳转一律走 `AppRouteScope`。
 ///
 /// 同一功能内部的层间方向（规则 4）不在这里判，见 [checkIntraFeatureDirection]。
-List<Violation> checkLayering(
-  Map<String, List<String>> uris, {
-  required List<AllowedEdge> allowlist,
-}) {
+List<Violation> checkLayering(Map<String, List<String>> uris) {
   final violations = <Violation>[];
-
-  for (final e in _illegalEntries(allowlist)) {
-    violations.add(
-      Violation(
-        e.from,
-        e.to,
-        _illegalAllowRule,
-        '白名单只能豁免页面型功能之间的页面跳转，其他层间依赖必须改代码',
-      ),
-    );
-  }
-  final allowed = {
-    for (final e in allowlist)
-      if (_isPageEdge(e)) '${e.from}\u0000${e.to}',
-  };
 
   for (final entry in uris.entries) {
     final from = entry.key;
     final fromPlace = _Place.of(from);
     if (fromPlace.root == 'unknown' || fromPlace.isUnplaced) {
-      violations.add(Violation(from, '-', _lintRule, _unplacedHint));
+      violations.add(Violation(from, '-', _lintRule, _unplacedHintFor(from)));
       continue;
     }
     for (final uri in entry.value) {
@@ -248,12 +200,11 @@ List<Violation> checkLayering(
       if (to == null) continue;
       final toPlace = _Place.of(to);
       if (toPlace.root == 'unknown' || toPlace.isUnplaced) {
-        violations.add(Violation(from, to, _lintRule, _unplacedHint));
+        violations.add(Violation(from, to, _lintRule, _unplacedHintFor(to)));
         continue;
       }
       final hint = _check(fromPlace, toPlace);
       if (hint == null) continue;
-      if (allowed.contains('$from\u0000$to')) continue;
       violations.add(Violation(from, to, _lintRule, hint));
     }
   }
@@ -288,7 +239,7 @@ String? _check(_Place from, _Place to) {
   if (f.tier == Tier.page) {
     return t.tier == Tier.capability
         ? null
-        : '页面型功能之间不能互相依赖：页面跳转请通过 app 层的路由入口解耦';
+        : '页面型功能之间不能互相依赖：页面跳转请通过 AppRouteScope（app 层统一路由入口）解耦';
   }
   if (t.tier == Tier.page) {
     return '能力型功能（${f.feature}）不能依赖页面型功能（${t.feature}）：'
@@ -359,7 +310,7 @@ bool _isNonModelFile(String path) {
   return layer == 'data' || layer == 'application';
 }
 
-/// R1 模型纯净：从任何功能（旧布局或新布局）的 model 层文件出发沿项目内 import 求传递闭包，
+/// R1 模型纯净：从任何功能的 model 层文件出发沿项目内 import 求传递闭包，
 /// 闭包里（含自身）不得碰到 Flutter / Riverpod / `dart:io` / `dart:ui`，
 /// 也不得触达任何功能的 data / application 层文件。
 ///
@@ -489,58 +440,4 @@ List<Violation> checkPageConstruction(Map<String, String> sources) {
     }
   }
   return violations;
-}
-
-/// 扣掉已登记欠账（[debt]，按 from + to 匹配）后剩下的违规。
-List<Violation> withoutDebt(
-  List<Violation> violations,
-  List<AllowedEdge> debt,
-) {
-  final registered = {for (final e in debt) '${e.from}\u0000${e.to}'};
-  return [
-    for (final v in violations)
-      if (!registered.contains('${v.from}\u0000${v.to}')) v,
-  ];
-}
-
-/// 欠账里登记了、但代码中已不再违规的条目（棘轮：还清后必须同步删除）。
-List<AllowedEdge> staleDebt(
-  List<Violation> violations,
-  List<AllowedEdge> debt,
-) {
-  final current = {for (final v in violations) '${v.from}\u0000${v.to}'};
-  return [
-    for (final e in debt)
-      if (!current.contains('${e.from}\u0000${e.to}')) e,
-  ];
-}
-
-/// 白名单里在代码中已不存在的边（棘轮：依赖消除后条目必须同步删除）。
-List<AllowedEdge> staleEntries(
-  Map<String, List<String>> uris,
-  List<AllowedEdge> allowlist,
-) {
-  return [
-    for (final e in allowlist)
-      if (!(uris[e.from] ?? const <String>[]).any(
-        (u) => projectPath(u, from: e.from) == e.to,
-      ))
-        e,
-  ];
-}
-
-/// 白名单自身的合法性校验，返回问题描述；空列表表示合法。
-///
-/// 真实仓库测试与合成测试共用这个入口：上限在这里判定；「条目必须是
-/// 页面型 → 页面型」与 [checkLayering] 共用 [_illegalEntries]，不会各写一份。
-/// [ceiling] 由调用方传入，保证测试可以用写死的数字验证，而不是拿常量自己比自己。
-List<String> checkAllowlist(List<AllowedEdge> entries, {required int ceiling}) {
-  final problems = <String>[];
-  if (entries.length > ceiling) {
-    problems.add('白名单只减不增：当前 ${entries.length} 条，上限 $ceiling');
-  }
-  for (final e in _illegalEntries(entries)) {
-    problems.add('$_illegalAllowRule：${e.from} → ${e.to}（只能是页面型功能之间的页面跳转）');
-  }
-  return problems;
 }

@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-import 'allowlist.dart';
 import 'import_scanner.dart';
 import 'layering_rules.dart';
 
@@ -63,8 +62,16 @@ void main() {
     expect(uris.length, greaterThan(100));
   });
 
+  test('lib/domain/ 已废弃：该目录不得存在', () {
+    expect(
+      Directory('lib/domain').existsSync(),
+      isFalse,
+      reason: 'lib/domain/ 已并入 features/，不要重建',
+    );
+  });
+
   test('层间依赖合规（按逻辑功能判定：能力型有序、页面型互不依赖，core ← shared ← 功能 ← app）', () {
-    final violations = checkLayering(uris, allowlist: kAllowlist);
+    final violations = checkLayering(uris);
     expect(violations, isEmpty, reason: render(violations));
   });
 
@@ -78,45 +85,9 @@ void main() {
     expect(violations, isEmpty, reason: render(violations));
   });
 
-  test('规则 6：页面只在 app 构造（扣除已登记欠账）', () {
-    final violations = withoutDebt(
-      checkPageConstruction(scanSources()),
-      kPageConstructionDebt,
-    );
+  test('规则 6：页面只在 app 构造（无豁免）', () {
+    final violations = checkPageConstruction(scanSources());
     expect(violations, isEmpty, reason: render(violations));
-  });
-
-  test('页面构造欠账没有过期条目，且不超上限', () {
-    final stale = staleDebt(
-      checkPageConstruction(scanSources()),
-      kPageConstructionDebt,
-    );
-    expect(
-      stale,
-      isEmpty,
-      reason:
-          '以下欠账已还清，请从 allowlist.dart 的 kPageConstructionDebt 删除：${render(stale)}',
-    );
-    expect(
-      kPageConstructionDebt.length,
-      lessThanOrEqualTo(kPageConstructionDebtCeiling),
-      reason:
-          '欠账只减不增：当前 ${kPageConstructionDebt.length} 条，上限 $kPageConstructionDebtCeiling',
-    );
-  });
-
-  test('白名单没有过期条目', () {
-    final stale = staleEntries(uris, kAllowlist);
-    expect(
-      stale,
-      isEmpty,
-      reason: '以下白名单条目对应的依赖已经消除，请从 allowlist.dart 删除：${render(stale)}',
-    );
-  });
-
-  test('白名单合法：条数不超上限，且只含页面型 → 页面型', () {
-    final problems = checkAllowlist(kAllowlist, ceiling: kAllowlistCeiling);
-    expect(problems, isEmpty, reason: render(problems));
   });
 
   test('单一真值：features / app / main 不引用 boxStatusProvider', () {
@@ -137,7 +108,6 @@ void main() {
         'app/b.dart': 'ref.read(boxStatusProvider)',
         'main.dart': 'container.read(boxStatusProvider);',
         'core/box_service/box_providers.dart': 'final boxStatusProvider = 1;',
-        'domain/connection/c.dart': 'boxStatusProvider',
         'features/home/ok.dart':
             'ref.watch(isConnectedProvider); // boxStatsProvider',
       }),

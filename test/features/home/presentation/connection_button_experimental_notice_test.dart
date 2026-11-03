@@ -23,7 +23,7 @@ import '../../../support/fake_box_service.dart';
 import '../../../support/fake_connection_controller.dart';
 
 /// 把 path_provider 的所有 MethodChannel 调用劫持到一个临时目录
-/// （照抄 test/domain/connection/application/connection_controller_test.dart 的既有模式）。
+/// （照抄 test/features/connection/application/connection_controller_test.dart 的既有模式）。
 Future<Directory> _mockPathProvider() async {
   final tmp = await Directory.systemTemp.createTemp('cb_experimental_test_');
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger

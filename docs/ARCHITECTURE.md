@@ -298,7 +298,7 @@ ios/
 
 ### Flutter 端关键 provider
 
-- `connectionControllerProvider`（`lib/domain/connection/application/connection_controller.dart`）— 连接的**唯一真值**（`ConnectionSnapshot`：phase、failure、startedAt……）：连接 / 断开 / 切换 / `applyConfig`，网络设置与激活订阅变化后防抖重新应用；`isConnectedProvider` 等只读 provider 都从它派生
+- `connectionControllerProvider`（`lib/features/connection/application/connection_controller.dart`）— 连接的**唯一真值**（`ConnectionSnapshot`：phase、failure、startedAt……）：连接 / 断开 / 切换 / `applyConfig`，网络设置与激活订阅变化后防抖重新应用；`isConnectedProvider` 等只读 provider 都从它派生
 - `boxStatusProvider`（`lib/core/box_service/box_providers.dart`）— 只给统计 / 分组订阅做门控；架构测试禁止 `features` / `app` / `main.dart` 引用它
 - `boxAlertsProvider` — 非生命周期提示流（如通知权限），`ShellPage` 弹 toast；连接失败的提示改由控制器快照的 `failure` 驱动
 - `boxStatsProvider`、`outboundGroupsProvider` — 只在已连接时才订阅，避免无谓 IPC

@@ -24,6 +24,7 @@ import 'package:clashmiao/features/connection/application/connection_controller.
 import 'package:clashmiao/features/connection/application/egress_ip_service.dart';
 import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
@@ -250,8 +251,8 @@ class EgressIpProbe extends StateNotifier<EgressIpState> {
       EgressIpResult result;
       try {
         result = await fetch();
-      } catch (e) {
-        debugPrint('出口 IP 探测第 ${i + 1} 次异常: $e');
+      } catch (e, st) {
+        logConnectionFailure('connection.egressProbe.attempt', e, st);
         result = const EgressIpResult.unknown();
       }
       if (!mounted || gen != _generation) return;

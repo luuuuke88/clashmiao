@@ -7,6 +7,7 @@ import 'package:clashmiao/features/connection/application/egress_ip_service.dart
 import 'package:clashmiao/features/connection/application/connection_controller.dart';
 import 'package:clashmiao/features/connection/model/connection_phase.dart';
 import 'package:clashmiao/features/connection/model/connection_snapshot.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -295,8 +296,8 @@ Future<bool> probeTunnel(
       ),
     );
     return response.statusCode == 204;
-  } catch (e) {
-    debugPrint('[ConnectionHealth] 经 tun 探测失败: $e');
+  } catch (e, st) {
+    logConnectionFailure('connection.health.tunProbe', e, st);
     return false;
   } finally {
     dio.close(force: true);

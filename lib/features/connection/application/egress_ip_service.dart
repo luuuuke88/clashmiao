@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:clashmiao/core/http_client/app_http_client.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/config/application/network_settings.dart';
+import 'package:clashmiao/features/connection/data/connection_failure_log.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
@@ -151,8 +152,8 @@ class EgressIpService {
     try {
       final prefs = _ref.read(sharedPreferencesProvider).requireValue;
       return prefs.getBool(_autoCheckPrefKey) ?? _autoCheckDefault;
-    } catch (e) {
-      debugPrint('EgressIpService: 读取自动检查开关失败，回退默认值: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.egressIp.autoCheckPref', e, st);
       return _autoCheckDefault;
     }
   }
@@ -177,14 +178,14 @@ class EgressIpService {
             },
           );
       return _parse(response.data);
-    } on TimeoutException catch (e) {
-      debugPrint('EgressIpService: 查询超时，已忽略: $e');
+    } on TimeoutException catch (e, st) {
+      logConnectionFailure('connection.egressIp.timeout', e, st);
       return const EgressIpResult.unknown();
-    } on DioException catch (e) {
-      debugPrint('EgressIpService: 请求失败，已忽略: $e');
+    } on DioException catch (e, st) {
+      logConnectionFailure('connection.egressIp.request', e, st);
       return const EgressIpResult.unknown();
-    } catch (e) {
-      debugPrint('EgressIpService: 解析响应失败，已忽略: $e');
+    } catch (e, st) {
+      logConnectionFailure('connection.egressIp.parse', e, st);
       return const EgressIpResult.unknown();
     }
   }

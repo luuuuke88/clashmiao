@@ -43,7 +43,12 @@ final class TunnelSettingsCoordinator {
     private var generation = 0
     private var stopped = false
     private var applied: NEPacketTunnelNetworkSettings?
+    /// 本代有没有结局不明的提交（超时后 NE 可能迟到生效，或清缓存后恢复失败）：
+    /// 此时缓存不再能代表系统实际生效的设置，代理开关不能凭缓存判定「无需改动」。
+    private var uncertain = false
     private var reassertHolds = 0
+    /// 失败的重载要求保持 reasserting 直到隧道被取消：粘性，与谁最后释放无关。
+    private var reassertPinned = false
     private var inFlight: [ObjectIdentifier: PendingCall] = [:]
 
     private let gate = DispatchSemaphore(value: 1)
@@ -75,6 +80,7 @@ final class TunnelSettingsCoordinator {
     func discard() {
         lock.lock()
         applied = nil
+        uncertain = false
         generation += 1
         lock.unlock()
     }
@@ -99,11 +105,12 @@ final class TunnelSettingsCoordinator {
         if reassertHolds == 1, !stopped { host?.setReasserting(true) }
     }
 
-    /// `leaveSet`：失败路径马上要取消隧道，不把 reasserting 放回 false。
+    /// `leaveSet`：失败路径马上要取消隧道，此后 reasserting 一直保持（别的持有者后释放也不放回）。
     func endReasserting(leaveSet: Bool = false) {
         lock.lock(); defer { lock.unlock() }
+        if leaveSet { reassertPinned = true }
         reassertHolds = max(0, reassertHolds - 1)
-        if reassertHolds == 0, !stopped, !leaveSet { host?.setReasserting(false) }
+        if reassertHolds == 0, !stopped, !reassertPinned { host?.setReasserting(false) }
     }
 
     // MARK: - 三类提交
@@ -128,7 +135,11 @@ final class TunnelSettingsCoordinator {
                 let cleared = submit(nil, generation: gen, timeout: optionalTimeout)
                 if case .failure(TunnelSettingsError.stale) = cleared { throw TunnelSettingsError.stale }
                 // 第一步失败或超时也恢复：NE 按调用顺序生效，恢复总排在清空之后；过期则不恢复。
-                try submit(settings, generation: gen, timeout: optionalTimeout).get()
+                let restored = submit(settings, generation: gen, timeout: optionalTimeout)
+                if case .failure(let error) = restored, error as? TunnelSettingsError != .stale {
+                    markUncertain(gen) // 系统此刻可能停在清空后的状态
+                }
+                try restored.get()
                 try cleared.get()
             }
             return nil
@@ -137,7 +148,8 @@ final class TunnelSettingsCoordinator {
         }
     }
 
-    /// 系统代理开关：改副本、提交成功后才替换缓存（失败时缓存仍与系统实际生效的一致）。
+    /// 系统代理开关：改副本、提交成功后才替换缓存（明确失败时缓存仍与系统实际生效的一致）。
+    /// 有结局不明的提交时不凭缓存跳过，照常提交一次完整设置把系统收敛到请求的状态。
     /// 返回 nil 表示成功或无需改动。
     @discardableResult
     func setSystemProxyEnabled(_ enabled: Bool) -> Error? {
@@ -149,7 +161,7 @@ final class TunnelSettingsCoordinator {
                     let current = appliedIfCurrent(gen),
                     let currentProxy = current.proxySettings,
                     currentProxy.httpServer != nil,
-                    currentProxy.httpEnabled != enabled,
+                    currentProxy.httpEnabled != enabled || isUncertain(gen),
                     let settings = current.copy() as? NEPacketTunnelNetworkSettings,
                     let proxy = currentProxy.copy() as? NEProxySettings
                 else { return }
@@ -183,10 +195,22 @@ final class TunnelSettingsCoordinator {
         return gen == generation && !stopped ? applied : nil
     }
 
+    /// 一次完整设置成功生效：缓存与系统重新一致（NE 按调用顺序生效，更早的迟到提交排在它之前）。
     private func record(_ settings: NEPacketTunnelNetworkSettings, generation gen: Int) {
         lock.lock()
-        if gen == generation, !stopped { applied = settings }
+        if gen == generation, !stopped { applied = settings; uncertain = false }
         lock.unlock()
+    }
+
+    private func markUncertain(_ gen: Int) {
+        lock.lock()
+        if gen == generation { uncertain = true }
+        lock.unlock()
+    }
+
+    private func isUncertain(_ gen: Int) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        return gen == generation && uncertain
     }
 
     /// 复核与发起在同一把锁内：`stop()` / `discard()` 要么排在发起之前（于是这里返回 stale），
@@ -210,7 +234,9 @@ final class TunnelSettingsCoordinator {
         case .completed(nil): return .success(())
         case .completed(let error?): return .failure(error)
         case .abandoned: return .failure(TunnelSettingsError.stale)
-        case nil: return .failure(TunnelSettingsError.timedOut)
+        case nil:
+            markUncertain(gen) // NE 之后仍可能应用这次提交
+            return .failure(TunnelSettingsError.timedOut)
         }
     }
 }

@@ -215,4 +215,50 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertNil(c.setSystemProxyEnabled(false))
         XCTAssertEqual(c.appliedSettings?.proxySettings?.httpEnabled, false)
     }
+
+    /// 失败的重载先释放、清 DNS 后释放：reasserting 仍保持（失败保留是粘性的）。
+    func testFailedReloadPinsReassertingAcrossHolders() {
+        let (c, h) = make()
+        c.beginReasserting() // 清 DNS
+        c.beginReasserting() // 重载
+        c.endReasserting(leaveSet: true) // 重载失败
+        c.endReasserting() // 清 DNS 结束
+        XCTAssertEqual(h.reasserting, [true])
+    }
+
+    /// 关代理的提交超时、NE 之后才迟到生效；再请求「开」时不能凭缓存（仍是开）跳过。
+    func testProxyRequestAfterTimeoutIsNotSkipped() throws {
+        let (c, h) = make(optional: 0.3)
+        try c.applyTunSettings(settings(proxy: true), generation: c.currentGeneration)
+        h.hold = true
+        XCTAssertEqual(c.setSystemProxyEnabled(false) as? TunnelSettingsError, .timedOut)
+        XCTAssertEqual(c.appliedSettings?.proxySettings?.httpEnabled, true, "超时不等于确定未生效，但缓存只记确定的结果")
+        h.calls[1].complete(nil) // 迟到生效：系统里代理其实已关
+        h.hold = false
+        XCTAssertNil(c.setSystemProxyEnabled(true))
+        XCTAssertEqual(h.calls.count, 3, "结局不明时照常提交")
+        XCTAssertEqual(h.calls[2].settings?.proxySettings?.httpEnabled, true)
+        // 收敛后恢复按缓存判定
+        XCTAssertNil(c.setSystemProxyEnabled(true))
+        XCTAssertEqual(h.calls.count, 3)
+    }
+
+    /// 清缓存后恢复那一步失败：系统可能停在清空状态，代理开关之后照常提交完整设置。
+    func testFailedRestoreMakesNextToggleSubmit() throws {
+        struct Boom: Error {}
+        let (c, h) = make()
+        try c.applyTunSettings(settings(proxy: true), generation: c.currentGeneration)
+        h.hold = true
+        let clearing = background { _ = c.clearDNSCache() }
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // apply
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 清空
+        h.calls[1].complete(nil)
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 恢复
+        h.calls[2].complete(Boom())
+        wait(for: [clearing], timeout: 5)
+        h.hold = false
+        XCTAssertNil(c.setSystemProxyEnabled(true))
+        XCTAssertEqual(h.calls.count, 4)
+        XCTAssertNotNil(h.calls[3].settings)
+    }
 }

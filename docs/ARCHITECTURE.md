@@ -145,7 +145,7 @@ dart run tool/arch/move.dart features/a/data/x.dart features/b/data/x.dart  # �
 「纯移动」的 PR 用 `tool/arch/check_pure_move.sh` 自证：
 
 ```bash
-tool/arch/check_pure_move.sh origin/main   # 在仓库内任意目录执行；比较的是 <base> 与工作区
+tool/arch/check_pure_move.sh origin/main   # 在仓库根目录执行；比较的是 <base> 与工作区
 ```
 
 它要求：文件只做重命名，内容里唯一允许变化的是 `import|export 'package:clashmiao/...'` 整行且一一对应；不许新增、删除文件，不许改权限。退出码 0 是纯移动，1 是有违规（逐条打印），2 是参数或 git 错误。纯移动 PR 里不夹带任何行为改动；要改行为另开 PR。

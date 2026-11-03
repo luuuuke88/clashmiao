@@ -438,7 +438,7 @@ void main() {
         });
         expect(dep, hasLength(1));
         expect(dep.single.hint, contains('lib/domain/'));
-        // app / main 也不例外。
+        // 只要文件位于 lib/domain/ 下即违规，与它引用什么无关。
         expect(
           check({
             'domain/a.dart': ['core/b.dart'],

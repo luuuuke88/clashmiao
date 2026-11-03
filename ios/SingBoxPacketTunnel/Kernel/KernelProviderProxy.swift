@@ -469,4 +469,13 @@ extension KernelProviderProxy: TunnelSettingsHost {
     func setReasserting(_ on: Bool) {
         reasserting = on
     }
+
+    /// 清 DNS 缓存 / 代理开关时隧道设置失控：与不可恢复的重载失败同样处理（回收、写 failed、取消隧道）。
+    func tunnelSettingsLost(_ reason: String) {
+        opQueue.async { [weak self] in
+            guard let self, self.isRunning, !self.isStopping, !self.terminatedFlag else { return }
+            _ = self.failReload(KernelStartFailure(code: .startService, message: "tunnel settings lost: \(reason)"),
+                                true)
+        }
+    }
 }

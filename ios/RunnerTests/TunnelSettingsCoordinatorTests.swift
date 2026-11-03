@@ -33,6 +33,12 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         func setReasserting(_ on: Bool) {
             lock.lock(); _reasserting.append(on); lock.unlock()
         }
+
+        private var _lost: [String] = []
+        var lost: [String] { lock.lock(); defer { lock.unlock() }; return _lost }
+        func tunnelSettingsLost(_ reason: String) {
+            lock.lock(); _lost.append(reason); lock.unlock()
+        }
     }
 
     private func settings(proxy: Bool = false) -> NEPacketTunnelNetworkSettings {
@@ -107,16 +113,21 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertNil(c.appliedSettings)
     }
 
-    /// NE 永不回调且没有停止：等待有上限，之后门被释放，后续提交能继续。
-    func testNonReturningSubmitTimesOutAndFreesGate() throws {
+    /// NE 永不回调：等待有上限；之后协调器进入终态，不再有任何提交到达 NE（不会有两个 NE 调用重叠）。
+    /// 建 TUN 的超时由启动失败路径收掉隧道，不另行通知。
+    func testNonReturningTunSubmitEndsTheSession() {
         let (c, h) = make(tun: 0.3, optional: 0.3)
         h.hold = true
         XCTAssertThrowsError(try c.applyTunSettings(settings(), generation: c.currentGeneration)) {
             XCTAssertEqual($0 as? TunnelSettingsError, .timedOut)
         }
         h.hold = false
-        try c.applyTunSettings(settings(), generation: c.currentGeneration)
-        XCTAssertEqual(h.calls.count, 2)
+        c.discard() // 重载换代也救不回来
+        XCTAssertThrowsError(try c.applyTunSettings(settings(), generation: c.currentGeneration)) {
+            XCTAssertEqual($0 as? TunnelSettingsError, .stale)
+        }
+        XCTAssertEqual(h.calls.count, 1)
+        XCTAssertEqual(h.lost, [])
     }
 
     /// 门被一个不返回的可选操作占着时，等门本身也有上限。
@@ -181,19 +192,36 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.reasserting, [true])
     }
 
-    /// 清空那一步超时也要恢复（NE 按调用顺序生效，恢复排在清空之后）。
-    func testClearRestoresEvenWhenClearStepTimesOut() throws {
+    /// 清空那一步 NE 不回调：不再恢复（会与它重叠），收掉隧道。
+    func testClearStepTimeoutLosesTunnel() throws {
         let (c, h) = make(optional: 0.3)
+        try c.applyTunSettings(settings(), generation: c.currentGeneration)
+        h.hold = true
+        XCTAssertEqual(c.clearDNSCache() as? TunnelSettingsError, .timedOut)
+        XCTAssertEqual(h.calls.count, 2, "不在清空悬而未决时发恢复")
+        XCTAssertEqual(h.lost.count, 1)
+        XCTAssertNil(c.appliedSettings)
+        h.calls[1].complete(nil) // 迟到的回调被丢弃
+        h.hold = false
+        XCTAssertEqual(c.setSystemProxyEnabled(true) as? TunnelSettingsError, .stale)
+        XCTAssertEqual(h.calls.count, 2)
+    }
+
+    /// 清空那一步被 NE 明确拒绝：设置没变，不恢复、不收隧道。
+    func testClearStepRejectedLeavesSettingsAlone() throws {
+        struct Boom: Error {}
+        let (c, h) = make()
         let s = settings()
         try c.applyTunSettings(s, generation: c.currentGeneration)
         h.hold = true
         let clearing = background { _ = c.clearDNSCache() }
-        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success)
-        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 清空：不回调
-        h.hold = false
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // apply
+        XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 清空
+        h.calls[1].complete(Boom())
         wait(for: [clearing], timeout: 5)
-        XCTAssertEqual(h.calls.count, 3)
-        XCTAssertTrue(h.calls[2].settings === s)
+        XCTAssertEqual(h.calls.count, 2)
+        XCTAssertEqual(h.lost, [])
+        XCTAssertTrue(c.appliedSettings === s)
         XCTAssertEqual(h.reasserting, [true, false])
     }
 
@@ -226,25 +254,21 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.reasserting, [true])
     }
 
-    /// 关代理的提交超时、NE 之后才迟到生效；再请求「开」时不能凭缓存（仍是开）跳过。
-    func testProxyRequestAfterTimeoutIsNotSkipped() throws {
+    /// 代理开关 NE 不回调：收掉隧道；旧提交迟到生效也不会与任何新提交交错（之后不再提交）。
+    func testProxyTimeoutLosesTunnelAndNeverOverlaps() throws {
         let (c, h) = make(optional: 0.3)
         try c.applyTunSettings(settings(proxy: true), generation: c.currentGeneration)
         h.hold = true
         XCTAssertEqual(c.setSystemProxyEnabled(false) as? TunnelSettingsError, .timedOut)
-        XCTAssertEqual(c.appliedSettings?.proxySettings?.httpEnabled, true, "超时不等于确定未生效，但缓存只记确定的结果")
-        h.calls[1].complete(nil) // 迟到生效：系统里代理其实已关
+        XCTAssertEqual(h.lost.count, 1)
         h.hold = false
-        XCTAssertNil(c.setSystemProxyEnabled(true))
-        XCTAssertEqual(h.calls.count, 3, "结局不明时照常提交")
-        XCTAssertEqual(h.calls[2].settings?.proxySettings?.httpEnabled, true)
-        // 收敛后恢复按缓存判定
-        XCTAssertNil(c.setSystemProxyEnabled(true))
-        XCTAssertEqual(h.calls.count, 3)
+        XCTAssertEqual(c.setSystemProxyEnabled(true) as? TunnelSettingsError, .stale)
+        h.calls[1].complete(nil) // 迟到生效
+        XCTAssertEqual(h.calls.count, 2, "超时之后没有新的提交")
     }
 
-    /// 清缓存后恢复那一步失败：系统可能停在清空状态，代理开关之后照常提交完整设置。
-    func testFailedRestoreMakesNextToggleSubmit() throws {
+    /// 清缓存后恢复那一步失败：隧道停在没有设置的状态，收掉隧道（不等别的操作碰巧补救）。
+    func testFailedRestoreLosesTunnel() throws {
         struct Boom: Error {}
         let (c, h) = make()
         try c.applyTunSettings(settings(proxy: true), generation: c.currentGeneration)
@@ -256,9 +280,16 @@ final class TunnelSettingsCoordinatorTests: XCTestCase {
         XCTAssertEqual(h.submitted.wait(timeout: .now() + 5), .success) // 恢复
         h.calls[2].complete(Boom())
         wait(for: [clearing], timeout: 5)
-        h.hold = false
-        XCTAssertNil(c.setSystemProxyEnabled(true))
-        XCTAssertEqual(h.calls.count, 4)
-        XCTAssertNotNil(h.calls[3].settings)
+        XCTAssertEqual(h.lost.count, 1)
+        XCTAssertNil(c.appliedSettings)
+    }
+
+    /// 停止之后发生的失控不通知（隧道已经在收）。
+    func testLossAfterStopIsNotReported() throws {
+        let (c, h) = make(optional: 0.3)
+        try c.applyTunSettings(settings(), generation: c.currentGeneration)
+        c.stop()
+        XCTAssertEqual(c.clearDNSCache() as? TunnelSettingsError, .stale)
+        XCTAssertEqual(h.lost, [])
     }
 }

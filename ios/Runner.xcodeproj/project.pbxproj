@@ -8,8 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		0A03DACD4094B8C20D3CC02A /* KernelSnapshotStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7228246999CE4B5C5D69372E /* KernelSnapshotStream.swift */; };
+		0AD4AF1FBCF07E8797753E29 /* TunnelSettingsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9219D14704C067518A20635A /* TunnelSettingsCoordinator.swift */; };
 		10A4AB572719EBBF64053085 /* ConfigBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B82E905342F0ACF01092B4A /* ConfigBuilderTests.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1685790305F24D3ACDE6376A /* TunSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345E1E4E168FC127C75AE4F3 /* TunSettings.swift */; };
+		2303D70CD2A43B3FBA8B9454 /* TunSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 345E1E4E168FC127C75AE4F3 /* TunSettings.swift */; };
 		26CDD8AC61C6166764AEA977 /* Libcore.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9D249027C372FD99566246 /* Libcore.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		28FDE8390C19EE681F3FD833 /* Libcore.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9D249027C372FD99566246 /* Libcore.xcframework */; };
 		2A5E964D883263D4555CAA71 /* KernelBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D66462C8FA02752B041C785 /* KernelBridge.swift */; };
@@ -40,6 +43,7 @@
 		8243C983493AC21ECA6AA913 /* KernelCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 164D52776DD6876105D6F3D5 /* KernelCoordinatorTests.swift */; };
 		872B12F13DECFBB4360C27B9 /* ChannelMethodHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62AF794B8AA9BF53FAFF248C /* ChannelMethodHandler.swift */; };
 		8DCB887D7B6318FC03562F82 /* NetworkStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5AE7E2842888E87C17E5118 /* NetworkStream.swift */; };
+		9241E30294EC776843C2C875 /* TunnelSettingsCoordinatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0BE82147E9BB303DC67BC17 /* TunnelSettingsCoordinatorTests.swift */; };
 		927C52595F2AEEBAE6B9D34B /* KernelIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2712D02C8610583E6CCF8E /* KernelIntent.swift */; };
 		92F4A19BDD7C23E288B249E3 /* TrafficStatsStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D76E2A918B7080335498259 /* TrafficStatsStream.swift */; };
 		93C9242734E0B0180FF98C0B /* TunnelAdapter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97E2CFC5C23F36872715E03 /* TunnelAdapter.swift */; };
@@ -60,11 +64,12 @@
 		C8B1F50847B0DD834993A8A6 /* KernelIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B2712D02C8610583E6CCF8E /* KernelIntent.swift */; };
 		D258672C45B93CE3426A9BE6 /* Bundle+Properties.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1737B3387557DC51FA0401F /* Bundle+Properties.swift */; };
 		D4E8F1A23C9B5E6D7A8F4C10 /* PigeonBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */; };
+		D722208D4665605E8BCA8DD5 /* TunnelSettingsCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9219D14704C067518A20635A /* TunnelSettingsCoordinator.swift */; };
 		DB73BF91B13EF34DDF1BB0F0 /* Pods_SingBoxPacketTunnel.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BEF56D6C5E02ADCEBA6DE715 /* Pods_SingBoxPacketTunnel.framework */; };
 		DD363280295662F7931409FA /* PigeonParityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B6DC51D34947BAD797A4521 /* PigeonParityTests.swift */; };
 		DD880A3571FA40BC0DBB865D /* ExtensionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */; };
+		EB6C196084647384052FEDCB /* TunSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */; };
 		EFCBFB91B3C2AB6AFA2E8B71 /* ClashMiaoTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 234CCAD97882DE94F0BB9F61 /* ClashMiaoTunnelProvider.swift */; };
-		EFDEEA655251E5A547232BA1 /* BlockingRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86831862671502B9FCF81396 /* BlockingRunner.swift */; };
 		F4629C1C570EEE1B1A9915AB /* ExtensionStateWriter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB33108E1240C31F3B1BC4A7 /* ExtensionStateWriter.swift */; };
 		F5C36AABCF7D47F719B0DDA3 /* KernelCommandClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC238F9F0DAAD38A0F719675 /* KernelCommandClient.swift */; };
 		F75CE347A47118F547EDE334 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8624CEE0422FDD124AD4BD34 /* Pods_RunnerTests.framework */; };
@@ -125,6 +130,7 @@
 		2D66462C8FA02752B041C785 /* KernelBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelBridge.swift; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		345E1E4E168FC127C75AE4F3 /* TunSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunSettings.swift; sourceTree = "<group>"; };
 		3618E840D41F5D97FC66A99A /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		3967CFEF70F984513C1DC678 /* ProfilePathResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePathResolver.swift; sourceTree = "<group>"; };
 		399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtensionState.swift; sourceTree = "<group>"; };
@@ -153,10 +159,10 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7B6DC51D34947BAD797A4521 /* PigeonParityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PigeonParityTests.swift; sourceTree = "<group>"; };
 		8624CEE0422FDD124AD4BD34 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		86831862671502B9FCF81396 /* BlockingRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockingRunner.swift; sourceTree = "<group>"; };
 		888C8ABFA11AA387A36A0878 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		8A52774D52648C65121FE014 /* TunnelProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelProfile.swift; sourceTree = "<group>"; };
 		9062D9C76545DA003FA897EC /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		9219D14704C067518A20635A /* TunnelSettingsCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunnelSettingsCoordinator.swift; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -166,8 +172,10 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9D9D249027C372FD99566246 /* Libcore.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; path = Libcore.xcframework; sourceTree = "<group>"; };
 		9DC9D10E04D8DA31F2EAEF08 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunSettingsTests.swift; sourceTree = "<group>"; };
 		A3F9C2B15E8D4F7B9C1A0E23 /* PigeonBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PigeonBridge.swift; sourceTree = "<group>"; };
 		A97E2CFC5C23F36872715E03 /* TunnelAdapter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunnelAdapter.swift; sourceTree = "<group>"; };
+		B0BE82147E9BB303DC67BC17 /* TunnelSettingsCoordinatorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TunnelSettingsCoordinatorTests.swift; sourceTree = "<group>"; };
 		B4EBA6FCCF1F15E39DEC477A /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		B5B17085BB5863CB3630CF2B /* KernelHost.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = KernelHost.swift; sourceTree = "<group>"; };
 		B8FCB3B25364AB7C5A5CA1F8 /* CoordinatorModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CoordinatorModel.swift; sourceTree = "<group>"; };
@@ -232,6 +240,8 @@
 				164D52776DD6876105D6F3D5 /* KernelCoordinatorTests.swift */,
 				3B864947F4BB82A12413D8F1 /* ExtensionStateWriterTests.swift */,
 				7B6DC51D34947BAD797A4521 /* PigeonParityTests.swift */,
+				A087F896BADEADE97A12FF14 /* TunSettingsTests.swift */,
+				B0BE82147E9BB303DC67BC17 /* TunnelSettingsCoordinatorTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -364,7 +374,6 @@
 		B78EE3DE26AF7B42A3461250 /* Kernel */ = {
 			isa = PBXGroup;
 			children = (
-				86831862671502B9FCF81396 /* BlockingRunner.swift */,
 				E4A52161345FBC07C670EB60 /* KernelPlatformBridge.swift */,
 				EE6A2A6AA865037501EECB1D /* KernelProviderProxy.swift */,
 			);
@@ -389,6 +398,8 @@
 				5B2712D02C8610583E6CCF8E /* KernelIntent.swift */,
 				399EAAB1B15C1B67B55D93A0 /* ExtensionState.swift */,
 				EB33108E1240C31F3B1BC4A7 /* ExtensionStateWriter.swift */,
+				345E1E4E168FC127C75AE4F3 /* TunSettings.swift */,
+				9219D14704C067518A20635A /* TunnelSettingsCoordinator.swift */,
 			);
 			name = Kernel;
 			path = Kernel;
@@ -713,6 +724,8 @@
 				8243C983493AC21ECA6AA913 /* KernelCoordinatorTests.swift in Sources */,
 				BD9A79BAE12B211F21477D3F /* ExtensionStateWriterTests.swift in Sources */,
 				DD363280295662F7931409FA /* PigeonParityTests.swift in Sources */,
+				EB6C196084647384052FEDCB /* TunSettingsTests.swift in Sources */,
+				9241E30294EC776843C2C875 /* TunnelSettingsCoordinatorTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -750,6 +763,8 @@
 				7CE1DF5B07C9F6D847F819AE /* KernelHost.swift in Sources */,
 				0A03DACD4094B8C20D3CC02A /* KernelSnapshotStream.swift in Sources */,
 				8DCB887D7B6318FC03562F82 /* NetworkStream.swift in Sources */,
+				1685790305F24D3ACDE6376A /* TunSettings.swift in Sources */,
+				D722208D4665605E8BCA8DD5 /* TunnelSettingsCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -759,7 +774,6 @@
 			files = (
 				EFCBFB91B3C2AB6AFA2E8B71 /* ClashMiaoTunnelProvider.swift in Sources */,
 				4C93AA9EBB65AE35514D8FB3 /* TunnelLogger.swift in Sources */,
-				EFDEEA655251E5A547232BA1 /* BlockingRunner.swift in Sources */,
 				34C6CCF152ED2A39E6CE1560 /* KernelPlatformBridge.swift in Sources */,
 				7A185717AA1D45AE7C620B39 /* KernelProviderProxy.swift in Sources */,
 				6FBF9F10807633A37DA2D462 /* KernelBridge.swift in Sources */,
@@ -768,6 +782,8 @@
 				C8B1F50847B0DD834993A8A6 /* KernelIntent.swift in Sources */,
 				C43A6851170DFFDB91D9B763 /* ExtensionState.swift in Sources */,
 				2BE6BF22C13C3262817B9710 /* ExtensionStateWriter.swift in Sources */,
+				2303D70CD2A43B3FBA8B9454 /* TunSettings.swift in Sources */,
+				0AD4AF1FBCF07E8797753E29 /* TunnelSettingsCoordinator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

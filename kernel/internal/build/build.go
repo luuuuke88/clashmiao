@@ -33,7 +33,7 @@ func ParseProfile(raw []byte) (Profile, error) {
 	return p, nil
 }
 
-// Env 让构建可测试地区分 Android 与桌面。
+// Env 让构建可测试地区分各平台。
 type Env struct {
 	GOOS          string // "android" 时才生成 override_android_vpn
 	IPv6Supported bool   // 平台是否能承载 IPv6（决定 TUN 是否带 v6 地址）
@@ -41,6 +41,9 @@ type Env struct {
 
 // AndroidEnv 是 Android 上的环境。
 func AndroidEnv() Env { return Env{GOOS: "android", IPv6Supported: true} }
+
+// IOSEnv 是 iOS（Packet Tunnel 扩展）上的环境。
+func IOSEnv() Env { return Env{GOOS: "ios", IPv6Supported: true} }
 
 // Build 产出运行配置 JSON 与警告。失败的错误以稳定前缀开头。
 func Build(profile Profile, o *options.Options, env Env) ([]byte, []string, error) {

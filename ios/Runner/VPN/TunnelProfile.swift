@@ -25,7 +25,7 @@ final class TunnelProfile {
         self.store = UserDefaults(suiteName: ProfilePathResolver.appGroupIdentifier) ?? .standard
     }
 
-    /// JSON blob fed into `MobileBuildConfig`. Updated via `changeConfigOptions` from the Dart side.
+    /// JSON blob fed into `CoreBuildConfig`. Updated via `changeConfigOptions` from the Dart side.
     var configOptions: String {
         get { store.string(forKey: Keys.configOptions) ?? "" }
         set { store.set(newValue, forKey: Keys.configOptions) }

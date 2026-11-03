@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/sagernet/sing-box/experimental/libbox"
+	"github.com/sagernet/sing-box/log"
 )
 
 // SetupOptions 对应 spec §4.2 的 SetupOptions。
@@ -35,6 +36,10 @@ func Setup(o SetupOptions) error {
 	setupMu.Lock()
 	setupBase = o.BasePath
 	setupMu.Unlock()
+	// 受限内存的两套策略（见 memory.go）：iOS 的 Packet Tunnel 用内核自带的 NE 策略（OOM killer 的
+	// network_extension 模式：按系统报告的剩余可用内存回收连接，GC 与软上限由 libbox 按 NE 默认值设置）；
+	// 其它平台（Android）沿用旧内核的 GC 10 + 30 MiB 软上限，不启用 OOM killer。
+	neOOM := o.MemoryLimited && underNetworkExtension
 	err := libbox.Setup(&libbox.SetupOptions{
 		BasePath:          o.BasePath,
 		WorkingPath:       o.WorkingPath,
@@ -42,9 +47,12 @@ func Setup(o SetupOptions) error {
 		LogMaxLines:       o.LogMaxLines,
 		Debug:             o.Debug,
 		CrashReportSource: "clashmiao",
+		OomKillerEnabled:  neOOM,
 	})
 	// libbox.Setup 会把软内存上限重置成「不限」，所以要放在它后面。
-	applyMemoryLimit(o.MemoryLimited)
+	if !neOOM {
+		applyMemoryLimit(o.MemoryLimited)
+	}
 	return err
 }
 
@@ -65,9 +73,12 @@ type Engine struct {
 	srv     *libbox.CommandServer
 	cancel  chan struct{} // 当前这一次 Start 的取消信号
 	cancelD bool
-	subs    map[*Subscription]struct{}
-	logSub  *Subscription
-	hooks   hooks
+	// interrupted 由 Interrupt 置位且不复位：之后的 Start 一律立即返回 ErrCanceled。
+	// 给「停止是终态」的宿主用（iOS 的 Packet Tunnel 一旦 stopTunnel，这个实例不会再启动）。
+	interrupted bool
+	subs        map[*Subscription]struct{}
+	logSub      *Subscription
+	hooks       hooks
 	// stepObserver 只给测试用：每个清理步骤执行完都会回调（含失败的）。
 	stepObserver func(name string, err error)
 }
@@ -138,6 +149,10 @@ func (e *Engine) ensureServerLocked() error {
 // 失败的错误以 PrefixCreateService / PrefixStartService 开头；被 Stop / Close 打断返回 ErrCanceled。
 func (e *Engine) Start(configJSON string) error {
 	e.mu.Lock()
+	if e.interrupted {
+		e.mu.Unlock()
+		return ErrCanceled
+	}
 	if err := e.ensureServerLocked(); err != nil {
 		e.mu.Unlock()
 		return err
@@ -161,6 +176,17 @@ func (e *Engine) Start(configJSON string) error {
 	}
 	e.ensureLogForwarder()
 	return nil
+}
+
+// Interrupt 打断正在进行的 Start，并让之后的 Start 都立即返回 ErrCanceled（不可撤销）。
+// 与 Stop 的区别：Stop 只打断「当前这一次」，若 Stop 落在宿主检查完状态、Start 还没登记取消信号之间，
+// 随后的 Start 照常启动；Interrupt 的置位与 Start 的登记在同一把锁下，没有这个窗口。
+// 它不做清理，之后仍要调用 Stop / Close。
+func (e *Engine) Interrupt() {
+	e.mu.Lock()
+	e.interrupted = true
+	e.mu.Unlock()
+	e.signalCancel()
 }
 
 // signalCancel 打断正在进行的 Start（幂等）。
@@ -261,6 +287,14 @@ func (e *Engine) Wake() {
 func (e *Engine) ResetNetwork() {
 	if s := e.server(); s != nil {
 		s.ResetNetwork()
+	}
+}
+
+// WriteLog 把宿主自己的一行诊断写进命令服务器的日志流（与内核日志同一条流，订阅者都能看到）。
+// 命令服务器不在时丢弃。
+func (e *Engine) WriteLog(line string) {
+	if s := e.server(); s != nil {
+		s.WriteMessage(int32(log.LevelInfo), line)
 	}
 }
 

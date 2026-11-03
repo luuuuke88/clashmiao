@@ -39,12 +39,19 @@ public final class ChannelMethodHandler: NSObject, FlutterPlugin {
         }
         // 注册请求会联网，放到后台，结果回主线程。
         DispatchQueue.global(qos: .userInitiated).async {
-            let warp = KernelBridge.generateWarpCredential(
-                licenseKey: licenseKey,
-                previousAccountId: accountId,
-                previousAccessToken: accessToken
-            )
-            DispatchQueue.main.async { result(warp) }
+            let reply: Any
+            do {
+                reply = try KernelBridge.generateWarpCredential(
+                    licenseKey: licenseKey,
+                    previousAccountId: accountId,
+                    previousAccessToken: accessToken
+                )
+            } catch {
+                // 与 Android 抛异常的表现一致：Dart 侧拿到平台异常，而不是把错误文本当成配置。
+                let message = (error as? KernelBridgeError)?.message ?? error.localizedDescription
+                reply = FlutterError(code: "generate_warp_config", message: message, details: nil)
+            }
+            DispatchQueue.main.async { result(reply) }
         }
     }
 }

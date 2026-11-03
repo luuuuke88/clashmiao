@@ -4,9 +4,10 @@
 # 1) 扫描 ci.yml、release.yml、bin/fetch-libcore.sh，凡是字面出现的 libcore-v<数字开头> tag
 #    （不论写在变量、默认值、命令还是注释里）都必须在 tools/kernel/libcore-checksums.txt 里
 #    至少有一条；
-# 2) 对 LIBCORE_TAG / ANDROID_LIBCORE_TAG 指向的 tag，再要求它被下载的全部资产都有条目：
+# 2) 对 LIBCORE_TAG / ANDROID_LIBCORE_TAG / IOS_LIBCORE_TAG 指向的 tag，再要求它被下载的全部资产都有条目：
 #      ANDROID_LIBCORE_TAG → libcore.aar
-#      LIBCORE_TAG         → libcore.dylib / libcore.dll / libcore.so / Libcore.xcframework.zip
+#      IOS_LIBCORE_TAG     → Libcore.xcframework.zip
+#      LIBCORE_TAG         → libcore.dylib / libcore.dll / libcore.so（桌面）
 # 同时检查校验和文件本身的格式（64 位十六进制 + 两个空格 + <tag>/<asset>）与重复条目。
 #
 # 用法：tools/kernel/check-libcore-checksums.sh [仓库根目录]
@@ -47,6 +48,8 @@ wf="$ROOT/.github/workflows/ci.yml $ROOT/.github/workflows/release.yml"
 main_tags="$( { tags_from LIBCORE_TAG $wf; default_from LIBCORE_TAG; } | sort -u )"
 # shellcheck disable=SC2086
 android_tags="$( { tags_from ANDROID_LIBCORE_TAG $wf; default_from ANDROID_LIBCORE_TAG; } | sort -u )"
+# shellcheck disable=SC2086
+ios_tags="$( { tags_from IOS_LIBCORE_TAG $wf; default_from IOS_LIBCORE_TAG; } | sort -u )"
 
 # 所有字面出现的 tag（grep -o，去重；去掉行尾可能粘上的 . 与 -）
 # shellcheck disable=SC2086
@@ -61,6 +64,7 @@ done
 
 [ -n "$main_tags" ]    || fail "没有找到 LIBCORE_TAG（ci.yml / release.yml / fetch-libcore.sh）"
 [ -n "$android_tags" ] || fail "没有找到 ANDROID_LIBCORE_TAG（ci.yml / release.yml / fetch-libcore.sh）"
+[ -n "$ios_tags" ]     || fail "没有找到 IOS_LIBCORE_TAG（ci.yml / release.yml / fetch-libcore.sh）"
 
 need() { # <tag> <asset>
   if ! awk -v k="$1/$2" '$1 !~ /^#/ && $2 == k { f = 1 } END { exit f ? 0 : 1 }' "$SUMS"; then
@@ -68,9 +72,10 @@ need() { # <tag> <asset>
   fi
 }
 for t in $main_tags; do
-  for a in libcore.dylib libcore.dll libcore.so Libcore.xcframework.zip; do need "$t" "$a"; done
+  for a in libcore.dylib libcore.dll libcore.so; do need "$t" "$a"; done
 done
 for t in $android_tags; do need "$t" libcore.aar; done
+for t in $ios_tags; do need "$t" Libcore.xcframework.zip; done
 
 [ "$bad" = 0 ] || exit 1
 echo "check-libcore-checksums: OK（$(echo $all_tags | tr '\n' ' ')）"

@@ -20,9 +20,10 @@ concurrency:
 
 env:
   FLUTTER_VERSION: '3.47.7'
-  # 桌面 / iOS 仍用旧 tag；Android 用自有内核模块构建的 aar（只有 Android 资产）。
+  # 桌面仍用旧 tag；Android 与 iOS 用自有内核模块（kernel/）构建的产物，各自一个 tag（只含本平台资产）。
   LIBCORE_TAG: libcore-v1.8.9-16k
   ANDROID_LIBCORE_TAG: libcore-v1.14.3-r2
+  IOS_LIBCORE_TAG: libcore-v1.14.3-r3
   LIBCORE_REPO: luuuuke88/clashmiao
 
 jobs:
@@ -47,6 +48,24 @@ jobs:
   kernel:
     uses: ./.github/workflows/kernel-verify.yml
     secrets: inherit
+
+  # iOS 内核从源码构建（与 Android 同一份 kernel/、同一组 tags）：gomobile bind → 拍平 → 放行门。
+  # 产物上传为 artifact；发布 IOS_LIBCORE_TAG 时用的就是这个 job 的产物（见 docs/RELEASE.md）。
+  kernel-apple:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: 放行门用例（逐成员平台核对）
+        run: bash tools/kernel/build-apple.test.sh
+      - name: 构建 Libcore.xcframework（含放行门）
+        run: OUT_DIR="$RUNNER_TEMP/kernel-apple" tools/kernel/build-apple.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Libcore.xcframework
+          path: |
+            ${{ runner.temp }}/kernel-apple/Libcore.xcframework.zip
+            ${{ runner.temp }}/kernel-apple/Libcore.xcframework.zip.sha256
+          if-no-files-found: error
 
   analyze:
     runs-on: ubuntu-latest

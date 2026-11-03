@@ -25,6 +25,8 @@ MANIFEST = {
   'Shared/Kernel/KernelIntent.swift' => [R, X],
   'Shared/Kernel/ExtensionState.swift' => [R, X],
   'Shared/Kernel/ExtensionStateWriter.swift' => [R, X],
+  'Shared/Kernel/TunSettings.swift' => [R, X],
+  'Shared/Kernel/TunnelSettingsCoordinator.swift' => [R, X],
   # Runner 协调器
   'Runner/Kernel/CoordinatorModel.swift' => [R],
   'Runner/Kernel/CoordinatorCore.swift' => [R],
@@ -44,6 +46,8 @@ MANIFEST = {
   'RunnerTests/KernelCoordinatorTests.swift' => [T],
   'RunnerTests/ExtensionStateWriterTests.swift' => [T],
   'RunnerTests/PigeonParityTests.swift' => [T],
+  'RunnerTests/TunSettingsTests.swift' => [T],
+  'RunnerTests/TunnelSettingsCoordinatorTests.swift' => [T],
 }.freeze
 
 # 已从磁盘删除、需要移出工程的文件。
@@ -51,6 +55,7 @@ REMOVED = %w[
   Runner/VPN/TunnelManager.swift
   SingBoxPacketTunnel/TrafficStats.swift
   SingBoxPacketTunnel/Kernel/KernelEngine.swift
+  SingBoxPacketTunnel/Kernel/BlockingRunner.swift
 ].freeze
 
 project = Xcodeproj::Project.open(PROJECT)

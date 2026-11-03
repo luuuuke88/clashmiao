@@ -8,6 +8,7 @@
 
 import Flutter
 import Foundation
+import Libcore
 
 /// iOS implementation of the Pigeon-generated BoxHostApi protocol.
 ///
@@ -50,7 +51,12 @@ final class PigeonBridge: BoxHostApi {
     /// 授权被拒不在这里报错：真正连接时会以 `permissionDenied` 如实失败。
     private func prepare(_ completion: @escaping (Result<Void, Error>) -> Void) {
         DispatchQueue.global(qos: .userInitiated).async { [controller, coordinator] in
-            KernelBridge.bootOnce()
+            do {
+                try KernelBridge.setupRunnerOnce()
+            } catch {
+                // 只影响 Runner 侧的订阅与测速（各自会重试 Setup）；解析与构建不依赖它。
+                NSLog("[ClashMiao] kernel setup failed: %@", String(describing: error))
+            }
             if controller.currentStatus == .invalid {
                 do {
                     try controller.ensureConfigured()
@@ -183,7 +189,12 @@ final class PigeonBridge: BoxHostApi {
         DispatchQueue.global(qos: .userInitiated).async {
             let result: Result<Void, Error>
             do {
-                try KernelBridge.withStandaloneClient { try $0.urlTest(groupTag) }
+                try KernelBridge.setupRunnerOnce()
+                guard let client = CoreNewClient() else {
+                    throw KernelBridgeError.invalidArguments("cannot create command client")
+                }
+                defer { try? client.close() }
+                try client.urlTest(groupTag)
                 result = .success(())
             } catch {
                 result = .failure(error)

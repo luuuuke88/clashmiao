@@ -5,226 +5,200 @@
 //  GPL-3.0 License
 //  Copyright (c) 2026 ClashMiao Contributors
 //
-//  Thin wrapper around libcore's `LibboxCommandClient`. The kernel runs
-//  inside the network extension, which opens a unix-domain command
-//  socket. Both the extension itself and the main app process talk to
-//  that socket through this client; subscribers are notified via
-//  `@Published` properties so SwiftUI / Combine pipelines stay tidy.
+//  订阅扩展里内核的命令流（统计 / 分组 / 日志）。内核跑在 Packet Tunnel 扩展里，命令服务器监听
+//  App Group 根目录下的 unix socket；Runner 经 `CoreClient` 连它（两个进程 Setup 同一个 BasePath）。
+//
+//  重连：订阅失败（扩展还没起来）或断线（扩展重载、被系统回收、用户断开）后按 0.5 / 1 / 2 / 4 s
+//  （封顶 4 s）退避重试，直到 `disconnect()`。所以扩展晚启动、重启之后，流会自己接上。
 //
 
 import Foundation
 import Libcore
 
-/// Live connection to the running kernel's command socket.
-///
-/// Each instance handles a *single* topic. Spin up multiple clients if
-/// you need both logs and status; they share the underlying socket via
-/// libcore but logically present independent streams.
+/// 一个话题一个实例；结果经 `@Published` 交给 Combine 订阅方（Flutter 的 EventChannel 处理器）。
 public class KernelCommandClient: ObservableObject {
 
-    /// What kind of data this client is interested in.
     public enum Topic {
-        case runtimeStatus       // uplink/downlink/connection counters
-        case proxyGroups         // outbound groups + their currently selected node
-        case proxyGroupsLite     // groups without per-item delays (cheaper)
-        case kernelLog           // streaming text log
+        case runtimeStatus  // 统计：线格式 JSON 解码成的字典
+        case proxyGroups    // 分组：线格式 JSON 原文
+        case kernelLog      // 日志：最近若干行
     }
 
-    // MARK: - Tunables
+    // MARK: - 状态（只在 `queue` 上读写）
 
     private let topic: Topic
     private let maxBufferedLogLines: Int
+    private let queue = DispatchQueue(label: "com.clashmiao.kernel.command-client")
+    private var client: CoreClient?
+    private var subscription: CoreSubscription?
+    private var active = false
+    /// 每次 connect / disconnect / 断线都换代：迟到的回调与重试只认自己那一代。
+    private var generation = 0
+    private var attempt = 0
 
-    // MARK: - libcore handles
+    private static let backoff: [TimeInterval] = [0.5, 1, 2, 4]
 
-    private var nativeClient: LibboxCommandClient?
-    private var connectionTask: Task<Void, Error>?
+    // MARK: - 发布给订阅方（主线程）
 
-    // MARK: - Published state (consumed by Combine sinks in handlers)
-
-    @Published public private(set) var isConnected: Bool = false
-    @Published public private(set) var latestStatus: LibboxStatusMessage?
-    @Published public private(set) var outboundGroups: [OutboundGroupSnapshot]?
+    @Published public private(set) var isConnected = false
+    /// 统计帧：`connections-in` / `connections-out` / `uplink` / `downlink` / `uplink-total` / `downlink-total`。
+    @Published public private(set) var latestStats: [String: Any]?
+    /// 分组帧原文（线格式：`[{tag,type,selected,items:[{tag,type,url-test-delay}]}]`）。
+    @Published public private(set) var groupsJSON: String?
     @Published public private(set) var bufferedLogs: [String] = []
-
-    // MARK: - Lifecycle
 
     public init(_ topic: Topic, maxBufferedLogLines: Int = 300) {
         self.topic = topic
         self.maxBufferedLogLines = maxBufferedLogLines
     }
 
-    /// Begin connecting. Safe to call multiple times – additional calls
-    /// while already connected are no-ops; pending attempts are cancelled
-    /// and restarted to avoid leaking tasks.
+    deinit {
+        let sub = subscription
+        let c = client
+        queue.async {
+            try? sub?.close()
+            try? c?.close()
+        }
+    }
+
+    // MARK: - 生命周期
+
+    /// 开始订阅（幂等）。连不上会按退避一直重试，直到 `disconnect()`。
     public func connect() {
-        if isConnected { return }
-        connectionTask?.cancel()
-        connectionTask = Task { [weak self] in
-            await self?.runConnectLoop()
+        queue.async {
+            guard !self.active else { return }
+            self.active = true
+            self.generation += 1
+            self.attempt = 0
+            self.subscribe(self.generation)
         }
     }
 
-    /// Tear down the socket. Idempotent.
+    /// 停止订阅与重试（幂等）。
     public func disconnect() {
-        connectionTask?.cancel()
-        connectionTask = nil
-        if let nativeClient {
-            try? nativeClient.disconnect()
-            self.nativeClient = nil
+        queue.async {
+            self.active = false
+            self.generation += 1
+            let sub = self.subscription
+            self.subscription = nil
+            try? sub?.close()
+            DispatchQueue.main.async { self.isConnected = false }
         }
     }
 
-    // MARK: - Internal connect loop
+    // MARK: - 订阅与重连（queue 上）
 
-    /// libcore's command server can take a moment to come up after the
-    /// tunnel starts. We retry with progressive back-off so we don't
-    /// race against the extension boot sequence.
-    private nonisolated func runConnectLoop() async {
-        let options = LibboxCommandClientOptions()
-        switch topic {
-        case .runtimeStatus:
-            options.command = LibboxCommandStatus
-        case .proxyGroups:
-            options.command = LibboxCommandGroup
-        case .proxyGroupsLite:
-            options.command = LibboxCommandGroupInfoOnly
-        case .kernelLog:
-            options.command = LibboxCommandLog
-        }
-        options.statusInterval = Int64(2 * NSEC_PER_SEC)
-
-        let handler = NativeHandler(owner: self)
-        guard let client = LibboxNewCommandClient(handler, options) else {
-            return
-        }
-
-        // Up to ~3.5s of staggered retries.
-        for attempt in 0..<10 {
-            let backoffMs = 100 + (attempt * 50)
-            try? await Task.sleep(nanoseconds: UInt64(backoffMs) * NSEC_PER_MSEC)
-            if Task.isCancelled { break }
-            do {
-                try client.connect()
-                await MainActor.run { [weak self] in
-                    self?.nativeClient = client
-                }
+    private func subscribe(_ gen: Int) {
+        guard active, gen == generation else { return }
+        do {
+            try KernelBridge.setupRunnerOnce()
+            if client == nil { client = CoreNewClient() }
+            guard let client else {
+                throw KernelBridgeError.invalidArguments("cannot create command client")
+            }
+            let handler = Handler(owner: self, generation: gen)
+            if topic == .kernelLog {
+                // 日志流连上后先回放内核的环形缓冲：清掉旧缓冲，避免重复。
+                DispatchQueue.main.async { self.bufferedLogs = [] }
+            }
+            let sub: CoreSubscription?
+            switch topic {
+            case .runtimeStatus: sub = try client.subscribeStats(handler, intervalMillis: 1000)
+            case .proxyGroups: sub = try client.subscribeGroups(handler)
+            case .kernelLog: sub = try client.subscribeLogs(handler)
+            }
+            guard gen == generation, active else {
+                try? sub?.close()
                 return
-            } catch {
-                // try again
             }
-            if Task.isCancelled { break }
+            subscription = sub
+            attempt = 0
+            DispatchQueue.main.async { self.isConnected = true }
+        } catch {
+            scheduleRetry(gen)
         }
-        try? client.disconnect()
     }
 
-    // MARK: - libcore callback adapter
+    private func scheduleRetry(_ gen: Int) {
+        guard active, gen == generation else { return }
+        let delay = Self.backoff[min(attempt, Self.backoff.count - 1)]
+        attempt += 1
+        queue.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.subscribe(gen)
+        }
+    }
 
-    /// Bridges libcore's Objective-C-style protocol back into Swift.
-    /// Kept private so callers can't accidentally drive this directly.
-    private final class NativeHandler: NSObject, LibboxCommandClientHandlerProtocol {
+    /// 内核报告断线（服务停止、扩展退出）：换一代、退避重连。
+    fileprivate func handleDisconnected(_ gen: Int) {
+        queue.async {
+            guard self.active, gen == self.generation else { return }
+            self.generation += 1
+            let next = self.generation
+            let sub = self.subscription
+            self.subscription = nil
+            DispatchQueue.main.async { self.isConnected = false }
+            // 关闭放到别的线程：断线回调可能还在流 goroutine 的调用栈里，Close 要等它退出。
+            DispatchQueue.global(qos: .utility).async { try? sub?.close() }
+            self.scheduleRetry(next)
+        }
+    }
 
+    // MARK: - 回调（Go 线程 → queue 核对代次 → 主线程）
+
+    /// 只投递当前这一代的帧：断线换代之后，旧订阅迟到的帧不再发布。
+    private func deliver(_ gen: Int, _ publish: @escaping () -> Void) {
+        queue.async {
+            guard self.active, gen == self.generation else { return }
+            DispatchQueue.main.async(execute: publish)
+        }
+    }
+
+    fileprivate func deliverStats(_ json: String, _ gen: Int) {
+        guard let data = json.data(using: .utf8),
+              let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return }
+        deliver(gen) { self.latestStats = dict }
+    }
+
+    fileprivate func deliverGroups(_ json: String, _ gen: Int) {
+        deliver(gen) { self.groupsJSON = json }
+    }
+
+    fileprivate func deliverLog(_ line: String, _ gen: Int) {
+        deliver(gen) {
+            if self.bufferedLogs.count >= self.maxBufferedLogLines {
+                self.bufferedLogs.removeFirst(self.bufferedLogs.count - self.maxBufferedLogLines + 1)
+            }
+            self.bufferedLogs.append(line)
+        }
+    }
+
+    /// 同时实现三类处理器协议；按话题只会收到其中一类回调。
+    private final class Handler: NSObject, CoreStatsHandlerProtocol, CoreGroupsHandlerProtocol, CoreLogHandlerProtocol {
         private weak var owner: KernelCommandClient?
+        private let generation: Int
 
-        init(owner: KernelCommandClient) {
+        init(owner: KernelCommandClient, generation: Int) {
             self.owner = owner
+            self.generation = generation
         }
 
-        func connected() {
-            DispatchQueue.main.async { [weak self] in
-                guard let owner = self?.owner else { return }
-                if owner.topic == .kernelLog {
-                    owner.bufferedLogs = []
-                }
-                owner.isConnected = true
-            }
+        func onStats(_ json: String?) {
+            guard let json else { return }
+            owner?.deliverStats(json, generation)
         }
 
-        func disconnected(_: String?) {
-            DispatchQueue.main.async { [weak self] in
-                self?.owner?.isConnected = false
-            }
+        func onGroups(_ json: String?) {
+            guard let json else { return }
+            owner?.deliverGroups(json, generation)
         }
 
-        func clearLog() {
-            DispatchQueue.main.async { [weak self] in
-                self?.owner?.bufferedLogs.removeAll()
-            }
+        func onLog(_ line: String?) {
+            guard let line else { return }
+            owner?.deliverLog(line, generation)
         }
 
-        func writeLog(_ message: String?) {
-            guard let message else { return }
-            DispatchQueue.main.async { [weak self] in
-                guard let owner = self?.owner else { return }
-                if owner.bufferedLogs.count > owner.maxBufferedLogLines {
-                    owner.bufferedLogs.removeFirst()
-                }
-                owner.bufferedLogs.append(message)
-            }
+        func onDisconnected(_ message: String?) {
+            owner?.handleDisconnected(generation)
         }
-
-        func writeStatus(_ message: LibboxStatusMessage?) {
-            DispatchQueue.main.async { [weak self] in
-                self?.owner?.latestStatus = message
-            }
-        }
-
-        func writeGroups(_ groupIter: LibboxOutboundGroupIteratorProtocol?) {
-            guard let groupIter else { return }
-            var collected: [OutboundGroupSnapshot] = []
-            while groupIter.hasNext() {
-                guard let group = groupIter.next() else { continue }
-                var items: [OutboundItemSnapshot] = []
-                let itemsIter = group.getItems()
-                while itemsIter?.hasNext() ?? false {
-                    if let item = itemsIter?.next() {
-                        items.append(OutboundItemSnapshot(
-                            tag: item.tag,
-                            type: item.type,
-                            urlTestDelay: Int(item.urlTestDelay)
-                        ))
-                    }
-                }
-                collected.append(OutboundGroupSnapshot(
-                    tag: group.tag,
-                    type: group.type,
-                    selected: group.selected,
-                    items: items
-                ))
-            }
-            DispatchQueue.main.async { [weak self] in
-                self?.owner?.outboundGroups = collected
-            }
-        }
-
-        // Clash-mode hooks are unused by ClashMiao for now. Kept as
-        // explicit no-ops so libcore doesn't complain about an
-        // incomplete protocol implementation.
-        func initializeClashMode(_: LibboxStringIteratorProtocol?, currentMode _: String?) {}
-        func updateClashMode(_: String?) {}
     }
-}
-
-// MARK: - Snapshot DTOs
-
-/// JSON-encodable description of a single outbound option inside a group.
-/// Field names mirror what the Dart `OutboundItem` model expects.
-public struct OutboundItemSnapshot: Codable {
-    public let tag: String
-    public let type: String
-    public let urlTestDelay: Int
-
-    enum CodingKeys: String, CodingKey {
-        case tag
-        case type
-        case urlTestDelay = "url-test-delay"
-    }
-}
-
-/// JSON-encodable description of an outbound group.
-public struct OutboundGroupSnapshot: Codable {
-    public let tag: String
-    public let type: String
-    public let selected: String
-    public let items: [OutboundItemSnapshot]
 }

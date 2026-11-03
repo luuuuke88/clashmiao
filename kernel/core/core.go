@@ -73,7 +73,7 @@ func BuildConfig(profilePath, optionsJSON string) (string, error) {
 	if err := o.Validate(); err != nil {
 		return "", err
 	}
-	out, _, err := build.BuildJSON(rawProfile, o, build.AndroidEnv())
+	out, _, err := build.BuildJSON(rawProfile, o, platformEnv())
 	if err != nil {
 		return "", err
 	}

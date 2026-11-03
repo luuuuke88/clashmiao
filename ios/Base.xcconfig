@@ -42,4 +42,7 @@ PODS_PODFILE_DIR_PATH = ${SRCROOT}/.
 // (_res_9_nclose / _res_9_ninit / _res_9_nsearch). libresolv is a private
 // Apple framework so it must be linked explicitly rather than pulled in via
 // the framework linker search path.
-OTHER_LDFLAGS = $(inherited) -lresolv
+// The kernel is a static archive, so its cgo link flags do not propagate:
+// its power/thermal reporting reads UIDevice (battery state), which needs
+// UIKit linked into the extension as well.
+OTHER_LDFLAGS = $(inherited) -lresolv -framework UIKit

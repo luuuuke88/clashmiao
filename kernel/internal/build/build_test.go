@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/luuuuke88/clashmiao/kernel/internal/build"
+	"github.com/luuuuke88/clashmiao/kernel/internal/build/gate"
 	"github.com/luuuuke88/clashmiao/kernel/internal/options"
 )
 
@@ -94,5 +95,35 @@ func TestAllowLANControlsListen(t *testing.T) {
 func TestParseProfileRejectsGarbage(t *testing.T) {
 	if _, err := build.ParseProfile([]byte("not json")); err == nil || !strings.HasPrefix(err.Error(), build.PrefixBuildFailed) {
 		t.Fatalf("err = %v", err)
+	}
+}
+
+// iOS 环境：不生成 Android 专用的 override_android_vpn，其余与 Android 相同；产物要能过内核的 CheckConfig。
+func TestIOSEnvOmitsAndroidOnlyKeys(t *testing.T) {
+	o := options.Default()
+	o.IPv6Mode = "prefer_ipv6"
+	android, _, err := build.Build(profile(t), o, build.AndroidEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	ios, _, err := build.Build(profile(t), o, build.IOSEnv())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(android, []byte("override_android_vpn")) {
+		t.Fatal("Android 环境应带 override_android_vpn（对照组失效）")
+	}
+	if bytes.Contains(ios, []byte("override_android_vpn")) {
+		t.Fatalf("iOS 环境不该带 override_android_vpn:\n%s", ios)
+	}
+	if !bytes.Contains(ios, []byte("fdfe:dcba:9876::1/126")) {
+		t.Error("iOS 支持 IPv6：prefer_ipv6 时 TUN 应带 v6 地址")
+	}
+	stripped := bytes.ReplaceAll(android, []byte(`"override_android_vpn": true,`), nil)
+	if !bytes.Equal(bytes.Join(bytes.Fields(stripped), nil), bytes.Join(bytes.Fields(ios), nil)) {
+		t.Fatalf("除 override_android_vpn 外两个环境的产物应一致\nandroid:\n%s\nios:\n%s", android, ios)
+	}
+	if err := gate.CheckConfig(ios); err != nil {
+		t.Fatalf("iOS 产物过不了 CheckConfig: %v", err)
 	}
 }

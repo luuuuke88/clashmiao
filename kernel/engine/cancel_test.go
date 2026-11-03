@@ -196,3 +196,57 @@ func TestLateMonitorStartDoesNotStopNewerMonitor(t *testing.T) {
 		t.Fatalf("Stop 后 StopInterfaceMonitor 调用 %d 次，应为 1", got)
 	}
 }
+
+// Interrupt 打断阻塞中的 Start，且之后的 Start 都立即返回 ErrCanceled（Stop 做不到后者）。
+func TestInterruptCancelsInFlightAndFutureStarts(t *testing.T) {
+	host := newFakeHost()
+	host.tunSpecs = make(chan string, 4)
+	host.tunOwned = make(chan int, 4)
+	host.tunPeers = make(chan *os.File, 4)
+	entered, release := make(chan struct{}, 1), make(chan struct{})
+	host.setTunBlock(entered, release)
+	e, _ := newTestEngine(t, host)
+	cfg := tunConfig(t, freePort(t))
+
+	startErr := make(chan error, 1)
+	go func() { startErr <- e.Start(cfg) }()
+	recv(t, entered, "OpenTun")
+	<-host.tunSpecs // 第一次 Start 的规格
+	e.Interrupt()
+	if err := recvErr(t, startErr, "Start to return"); !errors.Is(err, ErrCanceled) {
+		t.Fatalf("in-flight Start = %v, want ErrCanceled", err)
+	}
+	close(release)
+	if fd := <-host.tunOwned; fd >= 0 {
+		_ = syscall.Close(fd)
+	}
+	if p := <-host.tunPeers; p != nil {
+		p.Close()
+	}
+	// 之后的 Start 不再进入宿主（OpenTun 不会再被调用）
+	if err := e.Start(cfg); !errors.Is(err, ErrCanceled) {
+		t.Fatalf("Start after Interrupt = %v, want ErrCanceled", err)
+	}
+	select {
+	case <-host.tunSpecs:
+		t.Fatal("Start after Interrupt reached OpenTun")
+	default:
+	}
+	if err := e.Stop(); err != nil {
+		t.Fatalf("Stop: %v", err)
+	}
+}
+
+// 对照：只调 Stop 时，之后的 Start 照常启动（Android 的语义不变）。
+func TestStopDoesNotBlockLaterStart(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeHost())
+	if err := e.Stop(); err != nil {
+		t.Fatal(err)
+	}
+	if err := e.Start(cancelConfig(t, freePort(t))); err != nil {
+		t.Fatalf("Start after Stop = %v, want success", err)
+	}
+	if err := e.Stop(); err != nil {
+		t.Fatal(err)
+	}
+}

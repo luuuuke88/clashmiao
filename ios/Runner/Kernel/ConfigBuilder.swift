@@ -75,7 +75,7 @@ protocol ConfigBuilding {
 }
 
 struct ConfigBuilder: ConfigBuilding {
-    /// `(profile 路径, options JSON) → 最终配置文本`；生产实现是内核的 `MobileBuildConfig`。
+    /// `(profile 路径, options JSON) → 最终配置文本`；生产实现是内核的 `CoreBuildConfig`。
     let assemble: (_ profilePath: String, _ optionsJson: String) throws -> String
     let directory: URL
     var log: (String) -> Void = { _ in }

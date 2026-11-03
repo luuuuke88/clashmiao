@@ -89,7 +89,7 @@ TUN 隧道的必要授权。
 - **UI**: Flutter 3.41+
 - **状态**: Riverpod (hooks_riverpod)
 - **路由**: go_router
-- **代理核心**: [sing-box](https://github.com/SagerNet/sing-box)。Android 用仓库内的 Go 模块 `kernel/`（官方 sing-box 1.14.3 + 自有门面，gomobile 绑定）；桌面与 iOS 暂用预编译库
+- **代理核心**: [sing-box](https://github.com/SagerNet/sing-box)。Android 与 iOS 用仓库内的 Go 模块 `kernel/`（官方 sing-box 1.14.3 + 自有门面，gomobile 绑定）；桌面暂用预编译库
 
 架构细节见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
@@ -104,7 +104,7 @@ TUN 隧道的必要授权。
 
 ### sing-box 核心
 
-预编译库通过 GitHub Release 分发：Android 的 aar 用 tag `libcore-v1.14.3-r2`（自有内核模块构建），桌面与 iOS 暂用 `libcore-v1.8.9-16k`。fresh clone 后跑：
+预编译库通过 GitHub Release 分发：Android 的 aar 用 tag `libcore-v1.14.3-r2`、iOS 的 xcframework 用 tag `libcore-v1.14.3-r3`（都由自有内核模块构建），桌面暂用 `libcore-v1.8.9-16k`。fresh clone 后跑：
 
 ```bash
 bin/fetch-libcore.sh          # 默认拉 Android + 当前 host 平台的 lib
@@ -119,7 +119,7 @@ bin/fetch-libcore.sh ios      # 单独拉 iOS xcframework
 - `windows/libs/libcore.dll`
 - `linux/libs/libcore.so`
 
-CI 同样走这个脚本（`ANDROID_LIBCORE_TAG` 与 `LIBCORE_TAG` 分别指定 Android 与其它平台的 tag）。升级 sing-box 版本时另起一个 tag 上传新二进制。
+CI 同样走这个脚本（`ANDROID_LIBCORE_TAG`、`IOS_LIBCORE_TAG` 与 `LIBCORE_TAG` 分别指定 Android、iOS 与桌面的 tag）。本地改了 `kernel/` 后重编 iOS 内核：`tools/kernel/build-apple.sh`（macOS + Xcode）。升级 sing-box 版本时另起一个 tag 上传新二进制。
 
 #### 构建与验证 Android 内核（`kernel/`）
 

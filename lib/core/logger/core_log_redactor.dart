@@ -3,7 +3,8 @@
 // 内核日志的前缀里带着出站 / 分组的标签：`outbound/vless[<tag>]: …`、
 // `=> outbound/vless[<tag>]`、`selector[<tag>]`。标签是订阅里用户 / 机场起的节点
 // 名，常常就是裸域名（`node.example.com`，没有端口），通用脱敏器认不出来。所以导出
-// 时先把这些标签整个换成 `…`，再过 [redactLogText]。
+// 时先把这些标签整个换成 `…`（标签里可以有嵌套的方括号，按配对深度解析），再过
+// [redactLogText]。
 //
 // inbound 标签是应用内部的固定名字，保留。
 //
@@ -21,29 +22,62 @@
 import 'package:clashmiao/core/logger/log_redactor.dart';
 import 'package:clashmiao/core/logger/public_hosts.dart';
 
-/// `outbound/<type>[<tag>]`、`endpoint/<type>[<tag>]`。标签里可能带 `]`
-/// （`[HK] node`），所以先找「后面紧跟 `:` 或行尾」的第一个 `]`；找不到再退回到
-/// 最近的 `]`。宁可多遮，不留尾巴。
-final RegExp _taggedPrefix = RegExp(
-  r'\b((?:outbound|endpoint)/[A-Za-z0-9_.+\-]+)'
-  r'\[(?:.*?\](?=:|[ \t]*$)|[^\]\r\n]*\])',
-  multiLine: true,
+/// 带标签的前缀：`outbound/<type>[`、`endpoint/<type>[`，以及分组类型
+/// `selector[` / `urltest[` / `loadbalance[` / `fallback[`。`[` 之后的标签由
+/// [_maskBracketTags] 按方括号配对解析。
+final RegExp _tagOpen = RegExp(
+  r'\b((?:outbound|endpoint)/[A-Za-z0-9_.+\-]+|selector|urltest|loadbalance|fallback)\[',
 );
 
-/// `selector[<tag>]`、`urltest[<tag>]` 等分组类型的标签写法。
-final RegExp _groupTagged = RegExp(
-  r'\b(selector|urltest|loadbalance|fallback)'
-  r'\[(?:.*?\](?=:|[ \t]*$)|[^\]\r\n]*\])',
-  multiLine: true,
-);
+/// 把每个 `前缀[标签]` 里的标签换成 `…`。标签按**方括号配对深度**解析到与开头
+/// `[` 匹配的 `]`（`[[HK] node]` 里的 `[HK]` 计深度），标签后面的正文原样留下；
+/// 同一行里找不到配对的 `]` 时，从 `[` 起到行尾全部换成 `…`（宁可多遮）。
+/// 结果幂等：`[…]` 再扫一遍还是 `[…]`，不配对的 `[…` 再扫一遍还是 `[…`。
+String _maskBracketTags(String text) {
+  final out = StringBuffer();
+  var copied = 0;
+  for (final m in _tagOpen.allMatches(text)) {
+    if (m.start < copied) continue; // 落在已遮盖的标签里
+    final open = m.end - 1; // `[` 的位置
+    var depth = 0;
+    var close = -1;
+    var k = open;
+    for (; k < text.length; k++) {
+      final c = text[k];
+      if (c == '\n' || c == '\r') break;
+      if (c == '[') {
+        depth++;
+      } else if (c == ']') {
+        depth--;
+        if (depth == 0) {
+          close = k;
+          break;
+        }
+      }
+    }
+    out.write(text.substring(copied, open + 1));
+    out.write(kRedacted);
+    if (close >= 0) {
+      out.write(']');
+      copied = close + 1;
+    } else {
+      copied = k; // 到行尾（不含换行）
+    }
+  }
+  if (copied == 0) return text;
+  out.write(text.substring(copied));
+  return out.toString();
+}
 
 /// 多标签主机名（可带端口）：标签可以含任意语言的字母（Unicode IDN），TLD 是字母
-/// 或 punycode。前面不能紧贴标签字符，也不能是「标签字符 + 点」（避免从长名字中间截取；前导点的 `.example.org` 仍能匹配），后面不能紧跟
+/// 或 punycode。**不设标签长度上限**：按 DNS 规则（每段 ≤63、总长 ≤253）校验的话，
+/// 超长的名字匹配不上，前面的防截断条件又阻止从中间匹配，反而原样导出；超长的也
+/// 不是合法主机名，宁可遮盖。前面不能紧贴标签字符，也不能是「标签字符 + 点」（避免从长名字中间截取；前导点的 `.example.org` 仍能匹配），后面不能紧跟
 /// 字母、数字、下划线、连字符。`1.14.3` 这类版本号与时间戳的 TLD 不是字母，不匹配。
 final RegExp _bareHost = RegExp(
   r'(?<![\p{L}\p{M}\p{N}_\-])(?<![\p{L}\p{M}\p{N}_\-]\.)'
   r'((?:[\p{L}\p{N}](?:[\p{L}\p{M}\p{N}\-]*[\p{L}\p{M}\p{N}])?\.)+'
-  r'(?:\p{L}[\p{L}\p{M}]{1,23}|xn--[A-Za-z0-9\-]{1,59}))'
+  r'(?:\p{L}[\p{L}\p{M}]+|xn--[A-Za-z0-9\-]+))'
   r'(?::\d{1,5})?(?![\p{L}\p{M}\p{N}_\-])',
   unicode: true,
 );
@@ -54,10 +88,7 @@ const String kRedactedHost = '<host>';
 /// 一行（或多行）内核日志：出站 / 分组标签换成 `…`，再过通用脱敏器，最后把所有
 /// 非白名单的裸主机名换成 [kRedactedHost]。
 String redactCoreLogText(String text) {
-  final masked = text
-      .replaceAllMapped(_taggedPrefix, (m) => '${m[1]}[$kRedacted]')
-      .replaceAllMapped(_groupTagged, (m) => '${m[1]}[$kRedacted]');
-  return redactLogText(masked).replaceAllMapped(
+  return redactLogText(_maskBracketTags(text)).replaceAllMapped(
     _bareHost,
     (m) => isPublicHost(m[1]!) ? m[0]! : kRedactedHost,
   );

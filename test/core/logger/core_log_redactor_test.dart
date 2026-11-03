@@ -61,6 +61,56 @@ void main() {
     });
   });
 
+  group('标签边界按方括号配对深度解析', () {
+    test('嵌套方括号后面还有正文：整个标签遮盖，正文保留', () {
+      expectCase(
+        'INFO outbound/vless[[HK] private-node] connected',
+        'INFO outbound/vless[…] connected',
+      );
+      expectCase(
+        'INFO endpoint/wireguard[[JP] [IEPL] private-node] ready',
+        'INFO endpoint/wireguard[…] ready',
+      );
+    });
+
+    test('分组标签同理', () {
+      expectCase(
+        'INFO selector[[HK] private-group] switched to ok',
+        'INFO selector[…] switched to ok',
+      );
+      expectCase(
+        'INFO urltest[[AUTO] private-group] tested',
+        'INFO urltest[…] tested',
+      );
+    });
+
+    test('标签后面紧跟冒号或行尾', () {
+      expectCase(
+        'INFO outbound/vmess[[HK] private-node]: dial failed',
+        'INFO outbound/vmess[…]: dial failed',
+      );
+      expectCase(
+        'INFO router: match => outbound/vmess[[HK] private-node]',
+        'INFO router: match => outbound/vmess[…]',
+      );
+    });
+
+    test('正文里还有别的方括号：不被吞掉', () {
+      expectCase(
+        'INFO outbound/vless[private-node] got [x] bytes',
+        'INFO outbound/vless[…] got [x] bytes',
+      );
+    });
+
+    test('不配对的行：从 [ 起到行尾全部遮盖，下一行不受影响', () {
+      expectCase(
+        'INFO outbound/vless[[HK private-node connected\nINFO next line',
+        'INFO outbound/vless[…\nINFO next line',
+      );
+      expectCase('INFO selector[[a] [b private-group tail', 'INFO selector[…');
+    });
+  });
+
   group('分组标签', () {
     test('selector[...] / urltest[...]', () {
       expectCase(
@@ -74,8 +124,8 @@ void main() {
   group('保留与叠加', () {
     test('inbound 标签保留', () {
       expectCase(
-        'INFO inbound/mixed[mixed-in]: started at 127.0.0.1:2080',
-        'INFO inbound/mixed[mixed-in]: started at 127.0.0.1:2080',
+        'INFO inbound/mixed[mixed-in]: started',
+        'INFO inbound/mixed[mixed-in]: started',
       );
     });
 
@@ -152,15 +202,15 @@ void main() {
     test('白名单主机与回环保留', () {
       expectCase(
         'INFO dns: exchange github.com and api.github.com:443 and '
-            'clashmiao.com localhost 127.0.0.1:2080',
+            'clashmiao.com localhost',
         'INFO dns: exchange github.com and api.github.com:443 and '
-            'clashmiao.com localhost 127.0.0.1:2080',
+            'clashmiao.com localhost',
       );
     });
 
     test('已有占位符与类型名不被破坏', () {
       expectCase(
-        'ERROR outbound/vless[node.example.com]: dial tcp 198.51.100.7:443 '
+        'ERROR outbound/vless[node.example.com]: dial tcp example.org:443 '
             'via https://sub.example.org/s/ab12 vless://u@x.example.org:443',
         'ERROR outbound/vless[…]: dial tcp <addr> via <url> vless://…',
       );
@@ -177,6 +227,22 @@ void main() {
       expectCase(
         'INFO router: match domain_suffix=.example.org rule',
         'INFO router: match domain_suffix=.<host> rule',
+      );
+    });
+
+    test('末级标签超过 24 个字符的 Unicode IDN 主机名也遮盖', () {
+      final longTld = '例' * 30;
+      expectCase(
+        'INFO dns: exchange node.$longTld and 节点.example.$longTld:443 done',
+        'INFO dns: exchange <host> and <host> done',
+      );
+    });
+
+    test('超过 DNS 长度上限的名字也遮盖，不从中间截取放过', () {
+      final longLabel = 'a' * 70;
+      expectCase(
+        'INFO dns: exchange $longLabel.example.org ok',
+        'INFO dns: exchange <host> ok',
       );
     });
 

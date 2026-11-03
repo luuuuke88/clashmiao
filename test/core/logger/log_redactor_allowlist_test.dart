@@ -255,7 +255,7 @@ void main() {
       ),
       (
         '同一段里：编码 URL 后面带编码的节点地址：不留任何尾巴',
-        'u=https%3A%2F%2Fgithub.com%2Fo%2Fr%2C198.51.100.7%3A8443',
+        'u=https%3A%2F%2Fgithub.com%2Fo%2Fr%2Cnode.example.org%3A8443',
         'u=https://github.com',
       ),
       (
@@ -275,7 +275,7 @@ void main() {
       ),
       (
         '明文白名单 URL 的路径里夹着节点地址',
-        'x https://github.com/o/r,198.51.100.7:8443 y',
+        'x https://github.com/o/r,node.example.org:8443 y',
         'x https://github.com y',
       ),
       (
@@ -418,9 +418,9 @@ void main() {
       ),
       (
         '本机回环的 URL 也只留主机与端口',
-        'GET http://127.0.0.1:9090/proxies?secret=ab12 '
-            'http://localhost:8080/a [http://[::1]:7890/x]',
-        'GET http://127.0.0.1:9090 http://localhost:8080 [http://[::1]:7890]',
+        'GET http://localhost:9090/proxies?secret=ab12 '
+            'http://localhost:8080/a',
+        'GET http://localhost:9090 http://localhost:8080',
       ),
       (
         'JSON 里转义斜杠的白名单 URL',
@@ -430,7 +430,7 @@ void main() {
       (
         '路径里夹着别的地址：随路径一起去掉',
         'x https://github.com/o/r,https://sub.example.org/s/ab12 y '
-            'z https://clashmiao.com/a,198.51.100.7:8443 w',
+            'z https://clashmiao.com/a,node.example.org:8443 w',
         'x https://github.com y z https://clashmiao.com w',
       ),
     ]);

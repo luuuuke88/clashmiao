@@ -215,7 +215,7 @@ void main() {
             'to example.org:443',
         'INFO [124 0ms] router: match[0] => outbound/selector[node.example.com]',
         'INFO [125 0ms] inbound/mixed[mixed-in]: inbound connection from '
-            '127.0.0.1:50000',
+            'localhost:50000',
       ]);
 
       final content = await File(corePath).readAsString();

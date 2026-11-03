@@ -78,16 +78,20 @@ void main() {
     sub.close();
     await container.pump();
 
-    final timerCountAtDispose = timerCount;
-    // 等待超过一个完整轮询间隔（1.5s），文件内容保持不变——这正是
-    // async* 的"取消时在下一个 yield 处停止"机制救不了的场景：只要
-    // 内容不变，循环体里就不会再走到任何 yield，只能靠显式的
-    // disposed 标记才能让循环真正 return。
+    // dispose 那一刻循环可能正卡在 exists()/readAsString() 上，读完后还会
+    // 合法地再调度"最后一个" 1.5s 定时器，醒来看到 disposed 才 return。
+    // 所以先等过一个完整轮询间隔让这一轮收尾，再开始计数。
+    await Future<void>.delayed(const Duration(milliseconds: 1700));
+    final timerCountAfterSettle = timerCount;
+    // 再等两个完整轮询间隔，文件内容保持不变——这正是 async* 的"取消时
+    // 在下一个 yield 处停止"机制救不了的场景：只要内容不变，循环体里
+    // 就不会再走到任何 yield，只能靠显式的 disposed 标记才能让循环
+    // 真正 return。
     await Future<void>.delayed(const Duration(milliseconds: 3200));
 
     expect(
       timerCount,
-      timerCountAtDispose,
+      timerCountAfterSettle,
       reason:
           'provider 被 dispose 后，桌面端轮询循环应该在下一次 tick 就 return，'
           '不应该再调度新的 Future.delayed 定时器（否则即使没人监听也会'

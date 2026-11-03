@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/routing/model/node_display.dart';
+import 'package:clashmiao/features/proxy/model/node_display.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

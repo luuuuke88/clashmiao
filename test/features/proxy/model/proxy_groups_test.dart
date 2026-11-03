@@ -1,6 +1,6 @@
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/features/config/model/subscription_info_node.dart';
-import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
+import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 const _hk = OutboundProxy(tag: '香港01', type: 'vless');

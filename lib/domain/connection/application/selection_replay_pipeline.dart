@@ -29,8 +29,8 @@ import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
-import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
+import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

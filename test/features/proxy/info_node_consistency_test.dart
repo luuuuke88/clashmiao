@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:clashmiao/features/config/data/runtime_config_builder.dart';
 import 'package:clashmiao/features/config/model/subscription_info_node.dart';
-import 'package:clashmiao/domain/routing/data/config_parser.dart';
-import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
+import 'package:clashmiao/features/proxy/data/config_parser.dart';
+import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/temp_dirs.dart';

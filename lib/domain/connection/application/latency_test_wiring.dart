@@ -8,9 +8,9 @@ import 'package:clashmiao/core/box_service/box_providers.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/routing/application/latency_clock.dart';
-import 'package:clashmiao/domain/routing/application/latency_test_coordinator.dart';
-import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/features/proxy/application/latency_clock.dart';
+import 'package:clashmiao/features/proxy/application/latency_test_coordinator.dart';
+import 'package:clashmiao/features/proxy/application/proxy_delay_cache_notifier.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod/legacy.dart';
 

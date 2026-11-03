@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// 订阅配置：自带一个叫 `proxy` 的 selector（运行时会被内核丢掉重建）。

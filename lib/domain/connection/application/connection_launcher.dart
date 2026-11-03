@@ -34,7 +34,7 @@ import 'package:clashmiao/domain/connection/model/connection_failure.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:path/path.dart' as paths;

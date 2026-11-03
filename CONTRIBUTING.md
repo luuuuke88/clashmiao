@@ -6,13 +6,12 @@
 
 ```
 clashmiao-client/
-├── lib/                       Flutter 代码，按五层组织（依赖规则与归属原则见 docs/ARCHITECTURE.md「分层」）
+├── lib/                       Flutter 代码，按功能组织（依赖规则与归属原则见 docs/ARCHITECTURE.md「分层」）
 │   ├── main.dart              启动组装
 │   ├── app/                   应用外壳：路由、Shell、托盘、快捷键、窗口守卫、深链编排
-│   ├── features/<功能>/        页面级功能（about / assets / config / home / logs / profile / proxy / settings / splash），
+│   ├── features/<功能>/        能力型（config / profile / proxy / connection / backup，按此层级从低到高）
+│   │                          与页面型（options / home / settings / logs / about / assets / splash），
 │   │                          内部按 model / data / application / presentation 分
-│   ├── domain/<概念>/          跨功能的业务概念（config / profile / routing / connection），
-│   │                          内部按 model / data / application 分
 │   ├── core/<模块>/            平台与基础设施，零业务（box_service、theme、localization、http_client 等）
 │   └── shared/                不懂业务的通用 UI（components）与导航状态（navigation）
 ├── android/                   Android 原生（VpnService + libcore.aar）
@@ -28,7 +27,7 @@ clashmiao-client/
 └── .github/workflows/         CI（analyze + unit test + 各平台构建）
 ```
 
-新增文件放哪一层、什么样的跨层依赖会被 CI 拒绝，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 的「分层」一节；架构测试（`test/architecture/`）报错时按该节「架构测试」里的顺序处理，**不要靠往白名单里加条目过关**。
+新增文件放哪一层、什么样的跨层依赖会被 CI 拒绝，见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) 的「分层」一节；架构测试（`test/architecture/`）报错时按该节「架构测试」里的顺序处理，**没有白名单，不要想办法绕过规则**。
 
 ## 环境准备
 
@@ -73,7 +72,7 @@ PR 必须：
 
 - 注释解释 **WHY**，不解释 WHAT。
 - 状态用 Riverpod（hooks_riverpod），不用 setState 跨 widget 共享。
-- 新文件归属：被多个功能（或 `app` / `domain`）用到的业务逻辑放 `lib/domain/<概念>/`；与业务无关的通用 UI 放 `lib/shared/`，通用基础能力放 `lib/core/`；只服务一个页面的放该功能目录。判定细则见 docs/ARCHITECTURE.md。
+- 新文件归属：被多个功能用到的业务能力放能力型功能（`lib/features/<功能>/`，层级见 docs/ARCHITECTURE.md）；与业务无关的通用 UI 放 `lib/shared/`，通用基础能力放 `lib/core/`；只服务一个页面的放该功能目录。判定细则见 docs/ARCHITECTURE.md。
 - 一律用 `package:clashmiao/...` 导入，不用相对路径（`always_use_package_imports` lint 会拦）。
 - 翻译用 slang，不要硬编码字符串（已有部分历史遗留待清理）。
 

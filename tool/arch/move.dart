@@ -2,7 +2,7 @@
 //
 // 用法（在仓库任意子目录执行均可，路径相对 lib/）：
 //   dart run tool/arch/move.dart <from> <to> [--dry-run]
-//   dart run tool/arch/move.dart domain/config features/config
+//   dart run tool/arch/move.dart features/foo features/bar
 //   dart run tool/arch/move.dart features/config/data/backup_engine.dart \
 //       features/backup/data/backup_engine.dart
 //
@@ -13,7 +13,7 @@
 //      test/x_test.dart 以及 test/<from> 本身（若存在）。镜像不存在就跳过。
 //   3. lib/ test/ integration_test/ tool/ 里所有 `import|export|part` 指令中的
 //      `package:clashmiao/<旧路径>` 改写为新路径。按**完整文件路径**精确匹配，
-//      所以移动 domain/config 不会误伤 domain/configx；目录移动另外按路径段边界改写
+//      所以移动 features/foo 不会误伤 features/foox；目录移动另外按路径段边界改写
 //      `<from>/...` 下不在清单里的引用。条件 import 的
 //      `if (...) '...'` 分支同样处理。
 //   4. 相对路径 import / part：移动后相对关系变了（含指向被移动文件的、以及被移动文件

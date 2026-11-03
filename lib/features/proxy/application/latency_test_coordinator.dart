@@ -3,8 +3,8 @@ import 'dart:math' as math;
 
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/latency/latency_rules.dart';
-import 'package:clashmiao/domain/routing/model/cached_delay.dart';
-import 'package:clashmiao/domain/routing/model/proxy_groups.dart';
+import 'package:clashmiao/features/proxy/model/cached_delay.dart';
+import 'package:clashmiao/features/proxy/model/proxy_groups.dart';
 import 'package:hooks_riverpod/legacy.dart';
 
 /// 进入 connected 后等这么久再自动测当前组（给内核与分组流一点起来的时间）。

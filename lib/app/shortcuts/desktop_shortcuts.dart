@@ -8,7 +8,7 @@ import 'package:clashmiao/domain/connection/application/connection_controller.da
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/profile/application/profile_failures.dart';
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/app/router/app_router.dart';
 import 'package:clashmiao/app/tray/tray_controller.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';

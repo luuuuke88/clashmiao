@@ -10,7 +10,7 @@ import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/options/presentation/config_options_page.dart';
 import 'package:clashmiao/features/home/presentation/quick_settings_modal.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';

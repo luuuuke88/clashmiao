@@ -11,11 +11,11 @@ import 'package:clashmiao/domain/connection/application/connection_providers.dar
 import 'package:clashmiao/domain/connection/application/latency_test_wiring.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/proxy/application/proxies_sort_notifier.dart';
 import 'package:clashmiao/features/proxy/presentation/proxies_page.dart';
 import 'package:clashmiao/core/theme/motion.dart';
-import 'package:clashmiao/domain/routing/application/proxy_delay_cache_notifier.dart';
+import 'package:clashmiao/features/proxy/application/proxy_delay_cache_notifier.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';

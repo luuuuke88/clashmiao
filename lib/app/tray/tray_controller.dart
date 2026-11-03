@@ -14,7 +14,7 @@ import 'package:clashmiao/domain/connection/application/connection_controller.da
 import 'package:clashmiao/domain/connection/application/connection_providers.dart';
 import 'package:clashmiao/domain/connection/model/connection_phase.dart';
 import 'package:clashmiao/domain/connection/model/request_outcome.dart';
-import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:tray_manager/legacy.dart';

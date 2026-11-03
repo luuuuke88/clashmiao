@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:clashmiao/core/latency/latency_rules.dart';
-import 'package:clashmiao/domain/routing/model/cached_delay.dart';
+import 'package:clashmiao/features/proxy/model/cached_delay.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

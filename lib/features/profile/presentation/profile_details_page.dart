@@ -4,7 +4,7 @@ import 'package:clashmiao/features/profile/application/expire_formatters.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/application/profile_failures.dart';
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/model/profile_patch.dart';

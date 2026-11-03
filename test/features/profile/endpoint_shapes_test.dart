@@ -9,7 +9,7 @@ import 'package:clashmiao/features/config/model/profile_nodes.dart';
 import 'package:clashmiao/features/config/model/subscription_info_node.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/data/subscription_payload.dart';
-import 'package:clashmiao/domain/routing/data/config_parser.dart';
+import 'package:clashmiao/features/proxy/data/config_parser.dart';
 import 'package:clashmiao/features/backup/data/backup_codec.dart';
 import 'package:clashmiao/features/backup/model/backup_bundle.dart';
 import 'package:dio/dio.dart';

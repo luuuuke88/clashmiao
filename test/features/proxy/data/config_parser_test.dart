@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:clashmiao/domain/routing/data/config_parser.dart';
+import 'package:clashmiao/features/proxy/data/config_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

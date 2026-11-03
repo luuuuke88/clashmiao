@@ -6,7 +6,7 @@ import 'package:clashmiao/features/profile/data/deep_link_parser.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/core/localization/translations.dart';
 import 'package:clashmiao/features/profile/application/profile_failures.dart';
-import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
+import 'package:clashmiao/features/proxy/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/features/profile/data/profile_failure_log.dart';
 import 'package:clashmiao/features/profile/data/profile_repository.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';

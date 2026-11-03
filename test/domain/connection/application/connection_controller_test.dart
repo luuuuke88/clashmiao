@@ -22,7 +22,7 @@ import 'package:clashmiao/domain/connection/model/request_outcome.dart';
 import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/features/profile/model/profile_entity.dart';
-import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
+import 'package:clashmiao/features/proxy/application/proxy_selection_store_notifier.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

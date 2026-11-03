@@ -1,4 +1,4 @@
-import 'package:clashmiao/domain/routing/application/proxy_mode_notifier.dart';
+import 'package:clashmiao/features/proxy/application/proxy_mode_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

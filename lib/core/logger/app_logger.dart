@@ -45,6 +45,9 @@ const String kAppLogShareFileName = 'clashmiao-app-logs.log';
 /// 旧日志清理后留在 app.log 里的唯一一行说明。
 const String kLogResetNotice = '日志规则已更新，旧日志已清除';
 
+/// 旧日志清理未完成时，分享副本里唯一的内容（不含任何 app.log 内容）。
+const String kLogShareUnavailableNotice = '日志规则升级未完成，旧日志不予分享';
+
 /// 旧日志清理完成的标记文件（内容是 [kLogRedactionVersion]），与 app.log 同目录。
 const String _kRedactionMarkerName = '.app_log_redaction';
 
@@ -139,14 +142,23 @@ class AppLogger {
   }
 
   /// 把当前日志过一遍脱敏器，写成 [directory] 下的一个临时副本，返回副本。
-  /// 「分享应用日志」只分享这个副本，从不交出原始 app.log——即便启动迁移
-  /// 还没跑完或者失败了，分享出去的内容也是脱敏过的。
+  /// 「分享应用日志」只分享这个副本，从不交出原始 app.log。
+  ///
+  /// 旧规则下落盘的内容（节点名、白名单主机下的路径……）新规则认不出来，光靠通用
+  /// 脱敏器兜不住，所以先确认旧日志已经清理：标记不是当前版本就当场重试一次清理；
+  /// 重试后仍不是当前版本（清理失败）→ 副本**不含任何 app.log 内容**，只写一行固定
+  /// 说明 [kLogShareUnavailableNotice]。只有标记是当前版本时才读 app.log 过脱敏器。
   Future<File> writeRedactedCopy(Directory directory) {
     return _serialized(() async {
-      final source = await _file();
-      final content = await _readLenient(source);
+      final upToDate = await _discardOutdatedUnlocked();
       await directory.create(recursive: true);
       final copy = File('${directory.path}/$kAppLogShareFileName');
+      if (!upToDate) {
+        await copy.writeAsString('$kLogShareUnavailableNotice\n', flush: true);
+        return copy;
+      }
+      final source = await _file();
+      final content = await _readLenient(source);
       await copy.writeAsString(redactLogText(content), flush: true);
       return copy;
     });
@@ -162,49 +174,64 @@ class AppLogger {
   /// - 崩溃安全：说明先写同目录的临时文件并刷盘，再改名覆盖 app.log；任何一步被
   ///   打断，app.log 要么是旧的完整内容（下次启动会再清），要么是新的完整内容。
   ///   残留的临时文件下次启动时清掉。
-  /// - 不抛异常：清理失败只是这次没清，分享时的脱敏副本照样兜底。
+  /// - 不抛异常：清理失败只是这次没清（标记不会写），下次启动再试；分享时
+  ///   [writeRedactedCopy] 会当场重试，仍失败就**不分享任何 app.log 内容**。
   Future<void> discardOutdatedLogFiles() {
     return _serialized(() async {
-      try {
-        final log = await _resolveLogFile();
-        final dir = log.parent;
-        if (!await dir.exists()) return;
-        final marker = File('${dir.path}/$_kRedactionMarkerName');
-        if (await marker.exists() &&
-            (await marker.readAsString()).trim() == '$kLogRedactionVersion') {
-          return;
-        }
-        final logName = log.uri.pathSegments.last;
-        final escaped = RegExp.escape(logName);
-        final rotated = RegExp('^$escaped\\.\\d+\$');
-        // 只认自己的临时文件：app.log.redacting、app.log.<数字>.redacting。
-        // 目录是 App 的 Documents，不是日志专用目录，别的 `.redacting` 不碰。
-        final ownTemp = RegExp(
-          '^$escaped(?:\\.\\d+)?\\.${RegExp.escape(_kRedactionTempSuffix)}\$',
-        );
-        var hadOldContent = false;
-        await for (final entity in dir.list(followLinks: false)) {
-          if (entity is! File) continue;
-          final name = entity.uri.pathSegments.last;
-          if (ownTemp.hasMatch(name)) {
-            await entity.delete(); // 上次清理被打断留下的
-          } else if (rotated.hasMatch(name)) {
-            hadOldContent = true;
-            await entity.delete();
-          } else if (name == logName && await entity.length() > 0) {
-            hadOldContent = true;
-          }
-        }
-        if (hadOldContent) {
-          final temp = File('${log.path}.$_kRedactionTempSuffix');
-          await temp.writeAsString('$kLogResetNotice\n', flush: true);
-          await temp.rename(log.path);
-        }
-        await marker.writeAsString('$kLogRedactionVersion', flush: true);
-      } catch (_) {
-        // 同 _appendInternal：日志系统自己的失败不往外抛，也不再打日志。
-      }
+      await _discardOutdatedUnlocked();
     });
+  }
+
+  /// 测试专用：非空时在每次清理开始处调用，抛异常即模拟清理失败。
+  @visibleForTesting
+  Future<void> Function()? debugBeforeDiscard;
+
+  /// [discardOutdatedLogFiles] 的主体，**不加锁**：调用方必须已在 [_serialized]
+  /// 里（嵌套 `_serialized` 会死锁）。返回日志是否已处于当前规则版本——标记已是
+  /// 当前版本，或这次清理成功写下了标记；清理失败返回 false，绝不抛出。
+  Future<bool> _discardOutdatedUnlocked() async {
+    try {
+      await debugBeforeDiscard?.call();
+      final log = await _resolveLogFile();
+      final dir = log.parent;
+      if (!await dir.exists()) return true; // 没有日志，也就没有旧内容
+      final marker = File('${dir.path}/$_kRedactionMarkerName');
+      if (await marker.exists() &&
+          (await marker.readAsString()).trim() == '$kLogRedactionVersion') {
+        return true;
+      }
+      final logName = log.uri.pathSegments.last;
+      final escaped = RegExp.escape(logName);
+      final rotated = RegExp('^$escaped\\.\\d+\$');
+      // 只认自己的临时文件：app.log.redacting、app.log.<数字>.redacting。
+      // 目录是 App 的 Documents，不是日志专用目录，别的 `.redacting` 不碰。
+      final ownTemp = RegExp(
+        '^$escaped(?:\\.\\d+)?\\.${RegExp.escape(_kRedactionTempSuffix)}\$',
+      );
+      var hadOldContent = false;
+      await for (final entity in dir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.last;
+        if (ownTemp.hasMatch(name)) {
+          await entity.delete(); // 上次清理被打断留下的
+        } else if (rotated.hasMatch(name)) {
+          hadOldContent = true;
+          await entity.delete();
+        } else if (name == logName && await entity.length() > 0) {
+          hadOldContent = true;
+        }
+      }
+      if (hadOldContent) {
+        final temp = File('${log.path}.$_kRedactionTempSuffix');
+        await temp.writeAsString('$kLogResetNotice\n', flush: true);
+        await temp.rename(log.path);
+      }
+      await marker.writeAsString('$kLogRedactionVersion', flush: true);
+      return true;
+    } catch (_) {
+      // 同 _appendInternal：日志系统自己的失败不往外抛，也不再打日志。
+      return false;
+    }
   }
 
   /// 读文本，遇到非法 UTF-8 用替换字符而不是抛异常（日志可能被截断在多字节

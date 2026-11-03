@@ -56,10 +56,35 @@ check_archive() {
   log "${label}：Go ${GO_VERSION}、tags、sing-box ${SINGBOX_VERSION}、版本覆盖 ✓"
 }
 
+# 清单（AvailableLibraries）必须恰好是这两个切片：<平台>|<变体>|<排序后的架构>
+EXPECTED_LIBRARIES="ios||arm64
+ios|simulator|arm64,x86_64"
+
 check_xcframework() {
-  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd
-  tmpd="$(mktemp -d "${TMPDIR:-/tmp}/clashmiao-apple-check.XXXXXX")"
+  local XC="$1" slices=0 fw slice bin headers sym archs arch extra_tags tmpd plist n i id platform variant got want bp
   [ -f "$XC/Info.plist" ] || die "产物缺少 xcframework 的 Info.plist"
+  plist="$XC/Info.plist"
+  n="$(plutil -extract AvailableLibraries raw "$plist" 2>/dev/null)" || die "清单里没有 AvailableLibraries"
+  got=""
+  i=0
+  while [ "$i" -lt "$n" ]; do
+    id="$(plutil -extract "AvailableLibraries.$i.LibraryIdentifier" raw "$plist")" || die "清单第 ${i} 项缺 LibraryIdentifier"
+    platform="$(plutil -extract "AvailableLibraries.$i.SupportedPlatform" raw "$plist")" || die "${id}：清单缺 SupportedPlatform"
+    variant="$(plutil -extract "AvailableLibraries.$i.SupportedPlatformVariant" raw "$plist" 2>/dev/null || true)"
+    archs="$(plutil -extract "AvailableLibraries.$i.SupportedArchitectures" json -o - "$plist" | tr -d '[]" ' | tr ',' '\n' | sort | paste -sd, -)"
+    bp="$(plutil -extract "AvailableLibraries.$i.BinaryPath" raw "$plist" 2>/dev/null || echo "${FRAMEWORK}.framework/${FRAMEWORK}")"
+    [ "$bp" = "${FRAMEWORK}.framework/${FRAMEWORK}" ] || die "${id}：清单的 BinaryPath 不是浅层路径（${bp}）"
+    bin="$XC/$id/$bp"
+    [ -f "$bin" ] && [ ! -L "$bin" ] || die "${id}：清单指向的二进制不存在"
+    # 二进制里的架构必须与清单声明的完全一致
+    [ "$(lipo -archs "$bin" | tr ' ' '\n' | sort | paste -sd, -)" = "$archs" ] || die "${id}：二进制架构与清单不一致"
+    got="${got}${platform}|${variant}|${archs}
+"
+    i=$((i + 1))
+  done
+  [ "$(printf '%s' "$got" | sort)" = "$(printf '%s\n' "$EXPECTED_LIBRARIES" | sort)" ] \
+    || die "清单里的切片不是预期的「设备 arm64 + 模拟器 arm64/x86_64」：$(printf '%s' "$got" | tr '\n' ' ')"
+  tmpd="$(mktemp -d "${TMPDIR:-/tmp}/clashmiao-apple-check.XXXXXX")"
   slices=0
   for fw in "$XC"/*/"${FRAMEWORK}.framework"; do
     [ -d "$fw" ] || continue
@@ -76,7 +101,11 @@ check_xcframework() {
     esac
     archs="$(lipo -archs "$bin")" || die "${slice}：lipo 读不出架构"
     for arch in $archs; do
-      lipo -thin "$arch" "$bin" -output "$tmpd/thin" 2>/dev/null || cp -f "$bin" "$tmpd/thin"
+      if [ "$(printf '%s' "$archs" | wc -w | tr -d ' ')" = 1 ]; then
+        cp -f "$bin" "$tmpd/thin"   # 单架构（可能不是胖二进制，lipo -thin 会拒绝）
+      else
+        lipo -thin "$arch" "$bin" -output "$tmpd/thin" || die "${slice}：取不出 ${arch} 架构"
+      fi
       check_archive "$tmpd/thin" "${slice}/${arch}" "$extra_tags"
     done
     headers="$(cat "$fw"/Headers/*.h 2>/dev/null || true)"
@@ -185,6 +214,16 @@ flatten_framework() {
 }
 for fw in "$WORK/out/${FRAMEWORK}.xcframework"/*/"${FRAMEWORK}.framework"; do
   flatten_framework "$fw"
+done
+# xcframework 的清单里 BinaryPath 仍指向 Versions/A，跟着改成浅层路径
+plist="$WORK/out/${FRAMEWORK}.xcframework/Info.plist"
+n="$(plutil -extract AvailableLibraries raw "$plist")" || die "读不了 xcframework 的 AvailableLibraries"
+i=0
+while [ "$i" -lt "$n" ]; do
+  if plutil -extract "AvailableLibraries.$i.BinaryPath" raw "$plist" >/dev/null 2>&1; then
+    plutil -replace "AvailableLibraries.$i.BinaryPath" -string "${FRAMEWORK}.framework/${FRAMEWORK}" "$plist" || die "改写 BinaryPath 失败"
+  fi
+  i=$((i + 1))
 done
 
 # ---------------------------------------------------------------- 放行门

@@ -24,6 +24,11 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
     /// 最近一次应用的 NE 设置：`clearDNSCache` 与系统代理开关要在它上面改。
     private let settingsLock = NSLock()
     private var lastAppliedSettings: NEPacketTunnelNetworkSettings?
+    /// 设置代次：每次回收（重载 / 停止）+1。被打断的旧一轮迟到时，凭它认出自己已过期。
+    private var settingsGeneration = 0
+    /// 所有 NE 设置的提交（建 TUN、清 DNS 缓存、代理开关）串行经过这道门，并在提交前复核代次：
+    /// 旧一轮不会排在新一轮之后生效，两步的「清空 → 恢复」也不会和别的提交交错。
+    private let settingsGate = DispatchSemaphore(value: 1)
 
     private let monitorLock = NSLock()
     private var pathMonitor: NWPathMonitor?
@@ -36,12 +41,28 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
     func discardCachedSettings() {
         settingsLock.lock()
         lastAppliedSettings = nil
+        settingsGeneration += 1
         settingsLock.unlock()
     }
 
     private var appliedSettings: NEPacketTunnelNetworkSettings? {
         settingsLock.lock(); defer { settingsLock.unlock() }
         return lastAppliedSettings
+    }
+
+    private var currentGeneration: Int {
+        settingsLock.lock(); defer { settingsLock.unlock() }
+        return settingsGeneration
+    }
+
+    /// 在设置门内执行 `body`（阻塞调用线程：只在内核的回调线程上用，不在主线程）。
+    /// `generation` 与当前代次不一致时不执行，返回 false。
+    private func withSettingsGate(generation: Int, _ body: () throws -> Void) rethrows -> Bool {
+        settingsGate.wait()
+        defer { settingsGate.signal() }
+        guard generation == currentGeneration else { return false }
+        try body()
+        return true
     }
 
     // MARK: - TUN
@@ -62,11 +83,17 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
             provider.forwardKernelLine("[Tunnel] tun spec fields ignored on iOS: \(ignored.joined(separator: ","))")
         }
         let settings = try TunSettingsBuilder.settings(from: spec)
-        settingsLock.lock()
-        lastAppliedSettings = settings
-        settingsLock.unlock()
-        try awaitBlockingThrowing { [provider] in
-            try await provider.setTunnelNetworkSettings(settings)
+        let generation = currentGeneration
+        let applied = try withSettingsGate(generation: generation) {
+            try awaitBlockingThrowing { [provider] in
+                try await provider.setTunnelNetworkSettings(settings)
+            }
+            settingsLock.lock()
+            if settingsGeneration == generation { lastAppliedSettings = settings }
+            settingsLock.unlock()
+        }
+        guard applied else {
+            throw NSError(domain: "ClashMiaoTunnel", code: 8, userInfo: [NSLocalizedDescriptionKey: "tunnel session moved on; stale tun request dropped"])
         }
         // fd 归 NE：内核 dup 一份并在服务关闭时关自己那份，这一份我们不关。
         let fd = CoreTunnelFileDescriptor()
@@ -209,12 +236,19 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
     // MARK: - DNS / 日志
 
     public func clearDNSCache() {
-        guard let settings = appliedSettings, let provider else { return }
+        guard let provider else { return }
+        let generation = currentGeneration
         // 重设一次隧道设置让系统丢掉 DNS 缓存；期间声明 reasserting，系统不会因此断开隧道。
-        provider.reasserting = true
-        provider.setTunnelNetworkSettings(nil) { _ in
-            provider.setTunnelNetworkSettings(settings) { _ in
-                provider.reasserting = false
+        // 两步在设置门内连续完成，并且只恢复本代的设置：重载 / 停止不会被旧设置覆盖回去。
+        _ = withSettingsGate(generation: generation) {
+            guard let settings = appliedSettings else { return }
+            provider.reasserting = true
+            defer { provider.reasserting = false }
+            do {
+                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(nil) }
+                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
+            } catch {
+                provider.forwardKernelLine("[Tunnel] clearing DNS cache failed: \(error.localizedDescription)")
             }
         }
     }
@@ -246,18 +280,22 @@ public final class KernelPlatformBridge: NSObject, CorePlatformProtocol, CoreEng
     }
 
     public func setSystemProxyEnabled(_ enabled: Bool) {
-        guard
-            let settings = appliedSettings,
-            let proxy = settings.proxySettings,
-            proxy.httpServer != nil,
-            proxy.httpEnabled != enabled,
-            let provider
-        else { return }
-        proxy.httpEnabled = enabled
-        proxy.httpsEnabled = enabled
-        settings.proxySettings = proxy
-        provider.setTunnelNetworkSettings(settings) { error in
-            if let error {
+        guard let provider else { return }
+        let generation = currentGeneration
+        // 在设置门内修改并提交本代的设置，不与建 TUN / 清缓存交错。
+        _ = withSettingsGate(generation: generation) {
+            guard
+                let settings = appliedSettings,
+                let proxy = settings.proxySettings,
+                proxy.httpServer != nil,
+                proxy.httpEnabled != enabled
+            else { return }
+            proxy.httpEnabled = enabled
+            proxy.httpsEnabled = enabled
+            settings.proxySettings = proxy
+            do {
+                try awaitBlockingThrowing { try await provider.setTunnelNetworkSettings(settings) }
+            } catch {
                 provider.forwardKernelLine("[Tunnel] toggling system proxy failed: \(error.localizedDescription)")
             }
         }

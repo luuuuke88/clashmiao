@@ -12,7 +12,7 @@
 //
 //  串行：start 的主体、reload、select、内核自发重载、内存采样都在 `opQueue` 上排队。
 //  `stopTunnel` 不经 `opQueue` 排队：它先在锁内置 `stopping`（在途的 start / reload 在检查点看到后放弃），
-//  并直接调 `engine.stop()` 打断阻塞中的启动，再把回收投递到 `opQueue`。同步路径 `engine.start()` →
+//  并直接调 `engine.interrupt()` 打断阻塞中的启动（粘性：之后的启动一律立即失败），再把回收投递到 `opQueue`。同步路径 `engine.start()` →
 //  `openTun` → `awaitBlocking` → `setTunnelNetworkSettings` 只依赖 NE 自己的回调队列，不依赖 `opQueue`。
 //
 //  内存（约 50 MB 的观察值）：只读文件 → 启动 → 立即释放配置文本；不解析 JSON、不常驻副本；
@@ -90,8 +90,10 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
         stopping = true
         let engine = engineRef
         flagLock.unlock()
-        // 打断可能正阻塞在 opQueue 上的启动（幂等；之后 opQueue 上的回收再完整关闭）。
-        try? engine?.stop()
+        // 打断可能正阻塞在 opQueue 上的启动，并让之后的启动立即失败（之后 opQueue 上的回收再完整关闭）。
+        // 用粘性的 interrupt 而不是 stop：stop 若落在「检查完 stopping、start 尚未登记取消信号」之间，
+        // 随后的 start 照常启动。engine 还没建出来时，bringUp 在登记 engineRef 的同一把锁下看到 stopping。
+        engine?.interrupt()
         // 先记下停止原因（终态粘性：已有 failed 则不覆盖），再回收。
         writer?.markStopped(reason: reason.rawValue)
         memoryTimer?.cancel()
@@ -207,10 +209,16 @@ open class KernelProviderProxy: NEPacketTunnelProvider {
                 throw KernelStartFailure(code: .startCommandServer,
                                          message: newError?.localizedDescription ?? "CoreNewEngine returned nil")
             }
+            // 登记与检查 stopping 在同一把锁下：stopTunnel 要么看到这个 engine 并打断它，要么我们看到 stopping。
             flagLock.lock()
             engineRef = created
+            let stoppingNow = stopping
             flagLock.unlock()
             engine = created
+            if stoppingNow {
+                created.interrupt()
+                throw KernelStartFailure(code: .startService, message: "stopped during start")
+            }
             forwardKernelLine("[Tunnel] command server ready")
         }
         if isStopping { throw KernelStartFailure(code: .startService, message: "stopped during start") }

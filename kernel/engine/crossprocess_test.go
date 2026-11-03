@@ -58,7 +58,7 @@ func runCrossProcessChild(base string) int {
 	if !ok {
 		return 1
 	}
-	say("%s", normalizeGroups(ev))
+	say("%s", ev) // 由父进程归一化（normalizeGroups 只在 !race 文件里）
 	if err := c.SelectOutbound("select", "b"); err != nil {
 		say("fail select %v", err)
 		return 1

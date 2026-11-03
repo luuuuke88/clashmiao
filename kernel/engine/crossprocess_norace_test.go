@@ -60,7 +60,7 @@ func TestCrossProcessClient(t *testing.T) {
 		}
 	}
 
-	first := strings.TrimPrefix(expect("groups "), "groups ")
+	first := normalizeGroups(strings.TrimPrefix(expect("groups "), "groups "))
 	want, err := os.ReadFile(wirePath("groups-first.json"))
 	if err != nil {
 		t.Fatal(err)

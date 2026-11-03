@@ -240,6 +240,20 @@ normalize_ios_xcframework() {
     [ -d "$framework" ] || continue
     normalize_ios_framework_slice "$framework"
   done
+
+  # 清单里的 BinaryPath 若还指向 Versions/A（版本化 bundle 的写法），跟着改成浅层路径
+  local plist="$xcframework/Info.plist" n i bp
+  if [ -f "$plist" ] && grep -q "Versions/" "$plist" && command -v plutil >/dev/null; then
+    n="$(plutil -extract AvailableLibraries raw "$plist" 2>/dev/null || echo 0)"
+    i=0
+    while [ "$i" -lt "$n" ]; do
+      bp="$(plutil -extract "AvailableLibraries.$i.BinaryPath" raw "$plist" 2>/dev/null || true)"
+      case "$bp" in
+        *Versions/*) plutil -replace "AvailableLibraries.$i.BinaryPath" -string "Libcore.framework/Libcore" "$plist" ;;
+      esac
+      i=$((i + 1))
+    done
+  fi
 }
 
 fetch_ios() {

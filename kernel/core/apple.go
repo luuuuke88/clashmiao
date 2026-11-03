@@ -36,5 +36,9 @@ func (c *Client) Close() error { return c.inner.Close() }
 // NE 的 packetFlow 拿不到 fd 时的兜底。
 func TunnelFileDescriptor() int32 { return engine.TunnelFileDescriptor() }
 
+// Interrupt 打断正在进行的 Start，并让之后的 Start 都立即失败（canceled:），不可撤销；不做清理。
+// 给停止即终态的宿主（iOS 的 stopTunnel）用：没有「检查完状态、Start 尚未登记取消信号」的窗口。
+func (e *Engine) Interrupt() { e.inner.Interrupt() }
+
 // WriteLog 把宿主自己的一行诊断写进内核日志流（订阅者都能看到）；命令服务器不在时丢弃。
 func (e *Engine) WriteLog(line string) { e.inner.WriteLog(line) }

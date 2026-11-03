@@ -73,9 +73,12 @@ type Engine struct {
 	srv     *libbox.CommandServer
 	cancel  chan struct{} // 当前这一次 Start 的取消信号
 	cancelD bool
-	subs    map[*Subscription]struct{}
-	logSub  *Subscription
-	hooks   hooks
+	// interrupted 由 Interrupt 置位且不复位：之后的 Start 一律立即返回 ErrCanceled。
+	// 给「停止是终态」的宿主用（iOS 的 Packet Tunnel 一旦 stopTunnel，这个实例不会再启动）。
+	interrupted bool
+	subs        map[*Subscription]struct{}
+	logSub      *Subscription
+	hooks       hooks
 	// stepObserver 只给测试用：每个清理步骤执行完都会回调（含失败的）。
 	stepObserver func(name string, err error)
 }
@@ -146,6 +149,10 @@ func (e *Engine) ensureServerLocked() error {
 // 失败的错误以 PrefixCreateService / PrefixStartService 开头；被 Stop / Close 打断返回 ErrCanceled。
 func (e *Engine) Start(configJSON string) error {
 	e.mu.Lock()
+	if e.interrupted {
+		e.mu.Unlock()
+		return ErrCanceled
+	}
 	if err := e.ensureServerLocked(); err != nil {
 		e.mu.Unlock()
 		return err
@@ -169,6 +176,17 @@ func (e *Engine) Start(configJSON string) error {
 	}
 	e.ensureLogForwarder()
 	return nil
+}
+
+// Interrupt 打断正在进行的 Start，并让之后的 Start 都立即返回 ErrCanceled（不可撤销）。
+// 与 Stop 的区别：Stop 只打断「当前这一次」，若 Stop 落在宿主检查完状态、Start 还没登记取消信号之间，
+// 随后的 Start 照常启动；Interrupt 的置位与 Start 的登记在同一把锁下，没有这个窗口。
+// 它不做清理，之后仍要调用 Stop / Close。
+func (e *Engine) Interrupt() {
+	e.mu.Lock()
+	e.interrupted = true
+	e.mu.Unlock()
+	e.signalCancel()
 }
 
 // signalCancel 打断正在进行的 Start（幂等）。

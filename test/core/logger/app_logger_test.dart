@@ -541,6 +541,52 @@ void main() {
         );
       });
 
+      test('日志目录不存在：建出目录、写下当前版本标记，副本是正常（空）内容', () async {
+        final missingDir = Directory('${tempDir.path}/fresh/logs');
+        final missingLog = File('${missingDir.path}/app.log');
+        AppLogger.configureForTesting(resolveLogFile: () async => missingLog);
+        expect(missingDir.existsSync(), isFalse);
+
+        final shared = await shareCopy();
+
+        expect(shared, isEmpty);
+        expect(shared, isNot(contains(kLogShareUnavailableNotice)));
+        expect(missingDir.existsSync(), isTrue);
+        expect(
+          await File('${missingDir.path}/.app_log_redaction').readAsString(),
+          '$kLogRedactionVersion',
+        );
+
+        // 之后新写的行正常进入副本。
+        await AppLogger.instance.append('plain line');
+        expect(await shareCopy(), 'plain line\n');
+      });
+
+      test('日志目录建不出来（父路径是个文件）：不返回已是当前版本，副本只有固定说明', () async {
+        final blocker = File('${tempDir.path}/blocker');
+        await blocker.writeAsString('not a directory');
+        AppLogger.configureForTesting(
+          resolveLogFile: () async => File('${blocker.path}/logs/app.log'),
+        );
+
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+      });
+
+      test('日志目录不存在 + 标记写入失败（注入）：副本只有固定说明，不留标记', () async {
+        final missingDir = Directory('${tempDir.path}/fresh2');
+        AppLogger.configureForTesting(
+          resolveLogFile: () async => File('${missingDir.path}/app.log'),
+        );
+        AppLogger.instance.debugBeforeDiscard = () async =>
+            throw const FileSystemException('simulated failure');
+
+        expect(await shareCopy(), '$kLogShareUnavailableNotice\n');
+        expect(
+          File('${missingDir.path}/.app_log_redaction').existsSync(),
+          isFalse,
+        );
+      });
+
       test('重试仍失败：每次分享都只有固定说明，不会死锁', () async {
         await seedOldLog();
         AppLogger.instance.debugBeforeDiscard = () async =>

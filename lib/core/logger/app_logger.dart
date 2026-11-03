@@ -188,13 +188,16 @@ class AppLogger {
 
   /// [discardOutdatedLogFiles] 的主体，**不加锁**：调用方必须已在 [_serialized]
   /// 里（嵌套 `_serialized` 会死锁）。返回日志是否已处于当前规则版本——标记已是
-  /// 当前版本，或这次清理成功写下了标记；清理失败返回 false，绝不抛出。
+  /// 当前版本，或这次清理成功写下了标记（日志目录不存在时先建目录再写标记）；
+  /// 任何一步失败返回 false，绝不抛出。
   Future<bool> _discardOutdatedUnlocked() async {
     try {
       await debugBeforeDiscard?.call();
       final log = await _resolveLogFile();
       final dir = log.parent;
-      if (!await dir.exists()) return true; // 没有日志，也就没有旧内容
+      // 目录不存在：没有旧内容，但也要建出目录并写下当前版本标记——只有标记写成功
+      // 才算“已是当前版本”；建不出目录或写不进标记返回 false（分享走固定说明）。
+      if (!await dir.exists()) await dir.create(recursive: true);
       final marker = File('${dir.path}/$_kRedactionMarkerName');
       if (await marker.exists() &&
           (await marker.readAsString()).trim() == '$kLogRedactionVersion') {

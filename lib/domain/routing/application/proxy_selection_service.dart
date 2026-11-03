@@ -20,7 +20,7 @@
 
 import 'package:clashmiao/core/box_service/kernel_port.dart';
 import 'package:clashmiao/core/box_service/kernel_port_provider.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

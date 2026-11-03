@@ -14,7 +14,7 @@ import 'package:clashmiao/core/box_service/model/box_alert.dart';
 import 'package:clashmiao/core/box_service/model/box_stats.dart';
 import 'package:clashmiao/core/box_service/model/outbound.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:clashmiao/domain/routing/application/offline_proxy_groups_provider.dart';
 import 'package:clashmiao/core/theme/theme_extensions.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';

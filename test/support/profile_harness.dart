@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:clashmiao/core/box_service/stub_box_service.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/domain/profile/data/profile_repository.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/data/profile_repository.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';

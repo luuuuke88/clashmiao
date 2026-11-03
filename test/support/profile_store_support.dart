@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// 建一个真实的 [ProfileStore]，并把 [profiles] 种进偏好（激活第一条，除非指定）。

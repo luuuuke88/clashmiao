@@ -1,7 +1,7 @@
 import 'package:clashmiao/app/deep_link/deep_link_service.dart';
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
 import 'package:clashmiao/core/storage/storage_schema.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 

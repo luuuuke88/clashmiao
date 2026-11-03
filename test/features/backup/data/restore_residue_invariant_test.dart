@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/storage/pref_registry.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
 import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;

@@ -1,7 +1,7 @@
 import 'package:clashmiao/core/storage/shared_preferences_provider.dart';
-import 'package:clashmiao/domain/profile/application/profile_providers.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/application/profile_providers.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/domain/routing/application/proxy_selection_store_notifier.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';

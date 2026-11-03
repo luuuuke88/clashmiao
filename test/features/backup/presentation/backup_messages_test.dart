@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:clashmiao/core/localization/translations.dart';
-import 'package:clashmiao/domain/profile/data/profile_store.dart';
-import 'package:clashmiao/domain/profile/model/profile_entity.dart';
+import 'package:clashmiao/features/profile/data/profile_store.dart';
+import 'package:clashmiao/features/profile/model/profile_entity.dart';
 import 'package:clashmiao/features/backup/data/backup_codec.dart';
 import 'package:clashmiao/features/backup/data/backup_engine.dart';
 import 'package:clashmiao/features/backup/application/backup_service.dart';
